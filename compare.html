@@ -1,0 +1,182 @@
+<!doctype html>
+<meta charset=utf-8>
+<title>phosphorus</title>
+<link rel=stylesheet href=compare.css>
+<div class=title>
+  <div class=progress-bar></div>
+  <input class=url value=http://scratch.mit.edu/projects/10000160>
+</div>
+<div class=controls>
+  <a href=# class=flag title="Shift+click to enable turbo mode."><!-- G -->&#x2691;</a>
+  <a href=# class=pause><!-- P -->&#x2759;&#x200a;&#x2759;</a>
+  <a href=# class=stop><!-- S -->&#x25fc;</a>
+  <a href=# class=full-screen><!-- F -->&#x263c;</a>
+</div>
+<div class=player>
+</div>
+<script src=phosphorus.js></script>
+<script>
+
+(function () {
+  'use strict';
+
+  var interpreter, stage;
+  var isFullScreen = false;
+
+  var prefix = 'http://scratch.mit.edu/projects/';
+  var defaultId = '10000160';
+
+  var projectId = location.hash ? location.hash.substr(1) : defaultId;
+
+  var urlInput = document.querySelector('.url');
+  urlInput.value = prefix + projectId;
+
+  var progressBar = document.querySelector('.progress-bar');
+  var player = document.querySelector('.player');
+
+  var controls = document.querySelector('.controls');
+  var flag = document.querySelector('.flag');
+  var pause = document.querySelector('.pause');
+  var stop = document.querySelector('.stop');
+  var fullScreen = document.querySelector('.full-screen');
+
+  flag.addEventListener('click', function (e) {
+    if (e.shiftKey) {
+      interpreter.isTurbo = !interpreter.isTurbo;
+      flag.style.textDecoration = interpreter.isTurbo ? 'underline' : 'none';
+      flag.title = interpreter.isTurbo ? 'Turbo mode enabled. Shift+click to disable.' : 'Shift+click to enable turbo mode.';
+    } else {
+      interpreter.triggerGreenFlag();
+    }
+    e.preventDefault();
+  });
+
+  pause.addEventListener('click', function (e) {
+    if (interpreter.isRunning) {
+      interpreter.pause();
+    } else {
+      interpreter.start();
+    }
+    pause.textContent = interpreter.isRunning ? '\u2759\u200a\u2759' : '\u25b6';
+    e.preventDefault();
+  });
+
+  stop.addEventListener('click', function (e) {
+    interpreter.stop();
+    e.preventDefault();
+  });
+
+  fullScreen.addEventListener('click', function (e) {
+    document.documentElement.classList.toggle('fs');
+    isFullScreen = !isFullScreen;
+    if (isFullScreen) {
+      window.scrollTo(0, 0);
+    } else {
+      document.body.style.height =
+      document.body.style.width =
+      document.body.style.marginLeft =
+      document.body.style.marginTop =
+      player.style.WebkitTransform =
+      player.style.MozTransform =
+      player.style.msTransform =
+      player.style.OTransform =
+      player.style.transform = '';
+    }
+    updateFullScreen();
+    e.preventDefault();
+  });
+
+  var updateFullScreen = function () {
+    if (isFullScreen) {
+      var padding = 8;
+      var w = window.innerWidth - padding * 2;
+      var h = window.innerHeight - padding * 2 - controls.offsetHeight;
+      w = Math.min(w, h / .75);
+      h = w * .75 + controls.offsetHeight;
+      document.body.style.width = w + 'px';
+      document.body.style.height = h + 'px';
+      document.body.style.marginLeft = (window.innerWidth - w) / 2 + 'px';
+      document.body.style.marginTop = (window.innerHeight - h) / 2 + 'px';
+      var scale = stage.zoom = w / 480;
+      var transform = 'scale(' + scale + ')';
+      player.style.WebkitTransform =
+      player.style.MozTransform =
+      player.style.msTransform =
+      player.style.OTransform =
+      player.style.transform = transform;
+    } else {
+      stage.zoom = 1;
+    }
+  };
+
+  window.addEventListener('resize', updateFullScreen);
+
+  var timeout;
+  urlInput.addEventListener('input', function () {
+    var ss = urlInput.selectionStart;
+    var se = urlInput.selectionEnd;
+    var url = urlInput.value;
+    var id = url.match(/\d+/g) || [''];
+    while (id.length > 1 && id.indexOf(projectId) > -1) {
+      id.splice(id.indexOf(projectId), 1);
+    }
+    id = id[0];
+    urlInput.value = url = prefix + id;
+    urlInput.selectionStart = urlInput.selectionEnd = Math.max(prefix.length, ss);
+    clearTimeout(timeout);
+    if (projectId !== id) {
+      timeout = setTimeout(function () {
+        projectId = id;
+        location.hash = '#' + id;
+      }, 300);
+    }
+  });
+
+  window.addEventListener('hashchange', function () {
+    var id = location.hash.substr(1);
+    if (+id !== +id) id = '';
+    urlInput.value = prefix + id;
+    load(id);
+  });
+
+  var load = function (id) {
+    player.innerHTML = '';
+    progressBar.style.display = 'none';
+    if (!id) return;
+    setTimeout(function () {
+      progressBar.style.width = '10%';
+      progressBar.className = 'progress-bar';
+      progressBar.style.opacity = 1;
+      progressBar.style.display = 'block';
+    });
+    var request = P.IO.loadScratchr2Project(id);
+    request.onload = function (s) {
+      progressBar.style.width = '100%';
+      setTimeout(function () {
+        progressBar.style.opacity = 0;
+        setTimeout(function () {
+          progressBar.style.display = 'none';
+        }, 300);
+      }, 100);
+
+      console.log(window.stage = stage = s);
+      player.appendChild(stage.element);
+      interpreter = new P.Interpreter(stage);
+      interpreter.start();
+      interpreter.triggerGreenFlag();
+    };
+    request.onerror = function (e) {
+      progressBar.style.width = '100%';
+      progressBar.className = 'progress-bar error';
+      console.error(e.stack);
+    };
+    request.onprogress = function (e) {
+      progressBar.style.width = (10 + e.loaded / e.total * 90) + '%';
+    };
+  };
+
+  load(projectId);
+
+}());
+
+</script>
