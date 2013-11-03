@@ -1514,7 +1514,7 @@ var P = (function () {
         this.interpreter.stopThreadsFor(this.target, true);
         return;
     }
-    throw new Error;
+    console.warn('Unrecognized stopScripts argument', e);
   };
   specialForms['wait:elapsed:from:'] = function (e) {
     if (this.frame.tmp == null) {
@@ -1823,7 +1823,26 @@ var P = (function () {
   // primitives['soundLevel'] = function () {};
   // primitives['isLoud'] = function () {};
   // primitives['timestamp'] = function () {};
-  // primitives['timeAndDate'] = function () {};
+  primitives['timeAndDate'] = function (format) {
+    var d = new Date;
+    switch (format) {
+      case 'year':
+        return d.getFullYear()
+      case 'month':
+        return d.getMonth() + 1;
+      case 'date':
+        return d.getDate();
+      case 'day':
+        return d.getDay() + 1;
+      case 'hour':
+        return d.getHours();
+      case 'minute':
+        return d.getMinutes();
+      case 'second':
+        return d.getSeconds();
+    }
+    console.warn('Unrecognized date format', format);
+  };
   // primitives['sensor:'] = function () {};
   // primitives['sensorPressed:'] = function () {};
 
