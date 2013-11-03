@@ -1072,6 +1072,21 @@ var P = (function () {
     return zeroNull(this.contents[this.index(index)]);
   };
 
+  List.prototype.length = function () {
+    return this.contents.length;
+  };
+
+  List.prototype.contains = function (value) {
+    var contents = this.contents;
+    var i = contents.length;
+    while (i--) {
+      if (compare(contents[i], value) === 0) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   var Interpreter = function (stage) {
     this.threads = [];
     this.stage = stage;
@@ -1749,8 +1764,14 @@ var P = (function () {
     var list = this.getList(name);
     return list ? list.get(i) : 0;
   };
-  // primitives["lineCountOfList:"] = function () {};
-  // primitives["list:contains:"] = function () {};
+  primitives["lineCountOfList:"] = function (name) {
+    var list = this.getList(name);
+    return list ? list.length() : 0;
+  };
+  primitives["list:contains:"] = function (name, value) {
+    var list = this.getList(name);
+    return list ? list.contains(value) : false;
+  };
   // primitives['showVariable:'] = function () {};
   // primitives['hideVariable:'] = function () {};
   // primitives['showList:'] = function () {};
