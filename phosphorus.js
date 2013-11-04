@@ -526,6 +526,7 @@ var P = (function () {
   };
 
   Base.prototype.updateFilters = function () {
+    if (!this.currentCostume) return;
     this.currentCostume.image.style.opacity = 1 - this.filters.ghost / 100;
     this.currentCostume.image.style.WebkitFilter =
       'brightness(' + (this.filters.brightness / 100 + 1) + ') ' +
@@ -1280,6 +1281,9 @@ var P = (function () {
     if (typeof expression === 'number' || typeof expression === 'string') {
       return expression;
     }
+    if (!expression) {
+      return this.pop();
+    }
     if (expression.slice) {
       if (typeof expression[0] === 'string') {
         return this.evalBlock(expression);
@@ -1512,6 +1516,7 @@ var P = (function () {
       case 'other scripts in sprite':
       case 'other scripts in stage':
         this.interpreter.stopThreadsFor(this.target, true);
+        this.pop();
         return;
     }
     console.warn('Unrecognized stopScripts argument', e);
@@ -1832,7 +1837,7 @@ var P = (function () {
         return d.getMonth() + 1;
       case 'date':
         return d.getDate();
-      case 'day':
+      case 'day of week':
         return d.getDay() + 1;
       case 'hour':
         return d.getHours();
