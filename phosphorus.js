@@ -357,9 +357,6 @@ var P = (function () {
       ghost: 0
     };
 
-    this.element = document.createElement('div');
-    this.element.style.position = 'absolute';
-
     var costume = this.costumes[this.currentCostumeIndex];
     if (costume) {
       if (costume.isLoaded) {
@@ -437,12 +434,8 @@ var P = (function () {
   };
 
   Base.prototype.switchCostume = function () {
-    if (this.currentCostume) {
-      this.element.removeChild(this.currentCostume.image);
-    }
     this.currentCostume = this.costumes[this.currentCostumeIndex];
-    this.element.insertBefore(this.currentCostume.image, this.element.childNodes[0]);
-    this.updateFilters();
+    this.stage.render = true;
   };
 
   Base.prototype.setCurrentCostumeIndex = function (i) {
@@ -526,11 +519,11 @@ var P = (function () {
   };
 
   Base.prototype.updateFilters = function () {
-    if (!this.currentCostume) return;
-    this.currentCostume.image.style.opacity = 1 - this.filters.ghost / 100;
-    this.currentCostume.image.style.WebkitFilter =
-      'brightness(' + (this.filters.brightness / 100 + 1) + ') ' +
-      'hue-rotate(' + (this.filters.color * 360 / 200) + 'deg)';
+    // if (!this.currentCostume) return;
+    // this.layer.opacity = 1 - this.filters.ghost / 100;
+    // this.layer.style.WebkitFilter =
+    //   'brightness(' + (this.filters.brightness / 100 + 1) + ') ' +
+    //   'hue-rotate(' + (this.filters.color * 360 / 200) + 'deg)';
   };
 
   var Stage = function (data) {
@@ -547,52 +540,32 @@ var P = (function () {
     this.zoom = 1;
     this.timerStart = 0;
     this.cloneCount = 0;
+    this.render = true;
 
     this.keys = {};
     this.mouseX = 0;
     this.mouseY = 0;
     this.mousePressed = false;
 
-    this.element.tabIndex = 0;
-    this.element.style.outline = 'none';
-    this.element.style.overflow = 'hidden';
-    this.element.style.WebkitUserSelect =
-    this.element.style.MozUserSelect =
-    this.element.style.MsUserSelect =
-    this.element.style.userSelect = 'none';
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = 480;
+    this.canvas.height = 360;
+    this.context = this.canvas.getContext('2d');
 
-    this.element.style.background = '#fff';
-    this.element.style.width = '480px';
-    this.element.style.height = '360px';
+    this.canvas.tabIndex = 0;
+    this.canvas.style.outline = 'none';
+    this.canvas.style.position = 'absolute';
+    this.canvas.style.background = '#fff';
 
     // hardware acceleration
-    this.element.style.WebkitTransform = 'translateZ(0)';
+    this.canvas.style.WebkitTransform = 'translateZ(0)';
 
-    this.element.appendChild(this.penLayer.image);
-    this.penLayer.image.style.position = 'absolute';
-    this.penLayer.image.style.left = 0;
-    this.penLayer.image.style.top = 0;
-    this.penLayer.image.style.zIndex = -1;
-
-    var children = this.children;
-    var i = children.length;
-    while (i--) {
-      this.element.appendChild(children[i].element);
-    }
-
-    this.updateZ();
-
-    this.element.addEventListener('mousedown', function (e) {
-      var t = e.target;
-      while (t && t !== this.element) {
-        t = t.parentNode;
-        if (t.className === 'watcher') return;
-      }
+    this.canvas.addEventListener('mousedown', function (e) {
       e.preventDefault();
-      this.element.focus();
+      this.canvas.focus();
     }.bind(this));
 
-    this.element.addEventListener('keydown', function (e) {
+    this.canvas.addEventListener('keydown', function (e) {
       if (e.ctrlKey || e.altKey || e.metaKey) {
         return;
       }
@@ -603,14 +576,14 @@ var P = (function () {
       e.preventDefault();
     }.bind(this));
 
-    this.element.addEventListener('keyup', function (e) {
+    this.canvas.addEventListener('keyup', function (e) {
       this.keys[getKeyName(e.keyCode)] = false;
       e.stopPropagation();
       e.preventDefault();
     }.bind(this));
 
     document.addEventListener('mousemove', function (e) {
-      var bb = this.element.getBoundingClientRect();
+      var bb = this.canvas.getBoundingClientRect();
       var x = (e.clientX - bb.left) / this.zoom - 240;
       var y = 180 - (e.clientY - bb.top) / this.zoom;
       if (x < -240) x = -240;
@@ -621,7 +594,7 @@ var P = (function () {
       this.mouseY = y;
     }.bind(this));
 
-    this.element.addEventListener('mousedown', function (e) {
+    this.canvas.addEventListener('mousedown', function (e) {
       this.mousePressed = true;
     }.bind(this));
 
@@ -637,36 +610,11 @@ var P = (function () {
 
   Stage.prototype.add = function (child) {
     this.children.push(child);
-    this.element.appendChild(child.element);
+    this.render = true;
   };
 
   Stage.prototype.trigger = function (event) {
     if (this.interpreter) this.interpreter.trigger(event);
-  };
-
-  Stage.prototype.switchCostume = function () {
-    Stage.base(this, 'switchCostume');
-    this.currentCostume.image.style.zIndex = '-2';
-
-    this.currentCostume.image.style.WebkitTransformOrigin =
-    this.currentCostume.image.style.MozTransformOrigin =
-    this.currentCostume.image.style.msTransformOrigin =
-    this.currentCostume.image.style.OTransformOrigin =
-    this.currentCostume.image.style.transformOrigin = '0 0';
-
-    this.currentCostume.image.style.WebkitTransform =
-    this.currentCostume.image.style.MozTransform =
-    this.currentCostume.image.style.msTransform =
-    this.currentCostume.image.style.OTransform =
-    this.currentCostume.image.style.transform =
-      'scale(' + (1 / this.currentCostume.bitmapResolution) + ')';
-  };
-
-  Stage.prototype.updateZ = function () {
-    var children = this.children;
-    for (var i = 0, l = children.length; i < l; ++i) {
-      children[i].element.style.zIndex = i;
-    }
   };
 
   Stage.prototype.resetAllFilters = function () {
@@ -676,6 +624,7 @@ var P = (function () {
       children[i].resetFilters();
     }
     this.resetFilters();
+    this.render = true;
   };
 
   Stage.prototype.removeAllClones = function () {
@@ -683,12 +632,12 @@ var P = (function () {
     var i = children.length;
     while (i--) {
       if (children[i].isClone) {
-        this.element.removeChild(children[i].element);
         children.splice(i, 1);
       }
     }
     this.tempListeners = {};
     this.cloneCount = 0;
+    this.render = true;
   };
 
   Stage.prototype.getObject = function (name) {
@@ -699,6 +648,38 @@ var P = (function () {
         return children[i];
       }
     }
+  };
+
+  Stage.prototype.draw = function () {
+    var context = this.context;
+
+    this.canvas.width = 480;
+
+    context.save();
+
+    var children = this.children;
+    var i = 0;
+    var l = children.length;
+    while (i < l) {
+      var sprite = children[i++];
+
+      context.save();
+
+      context.translate(-sprite.currentCostume.rotationCenterX, -sprite.currentCostume.rotationCenterY);
+      context.rotate((sprite.direction - 90) * Math.PI / 180);
+      context.scale(sprite.scale, sprite.scale);
+      context.translate(sprite.scratchX + 240, 180 - sprite.scratchY);
+
+      context.globalAlpha = 1 - sprite.filters.ghost / 100;
+
+      context.drawImage(sprite.currentCostume.baseLayer.image, 0, 0);
+
+      context.restore();
+    }
+
+    context.restore();
+
+    this.render = false;
   };
 
   Stage.prototype.moveBy =
@@ -734,12 +715,6 @@ var P = (function () {
     this.penColor = this.isClone ? data.penColor : 0x0000ff;
     this.penSize = this.isClone ? data.penSize : 1;
     this.isPenDown = this.isClone ? data.isPenDown : false;
-
-    this.element.addEventListener('click', function (e) {
-      this.stage.trigger('whenClicked:' + this.objName);
-    }.bind(this));
-
-    this.updateVisible();
   };
   inherits(Sprite, Base);
 
@@ -806,62 +781,22 @@ var P = (function () {
     return this.stage.getList(name);
   };
 
-  Sprite.prototype.switchCostume = function () {
-    Sprite.base(this, 'switchCostume');
-    this.updateTransform();
-  };
-
   Sprite.prototype.setVisible = function (visible) {
-    this.visible = visible;
-    this.updateVisible();
-  };
-
-  Sprite.prototype.updateVisible = function () {
-    this.element.style.display = this.visible ? 'block' : 'none';
-    if (this.visible && this.currentCostume) {
-      this.updateTransform();
+    if (this.visible !== visible) {
+      this.visible = visible;
+      this.stage.render = true;
     }
   };
 
-  Sprite.prototype.updateTransform = function () {
-    if (!this.visible) return;
-
-    var x = 240 + (this.scratchX - this.currentCostume.rotationCenterX);
-    var y = 180 - (this.scratchY + this.currentCostume.rotationCenterY);
-    this.element.style.WebkitTransform =
-    this.element.style.MozTransform =
-    this.element.style.msTransform =
-    this.element.style.OTransform =
-    this.element.style.transform =
-      'translate(' + x + 'px, ' + y + 'px) ' +
-      'rotate(' + (this.direction - 90) + 'deg)' +
-      'scale(' + (this.scale / this.currentCostume.bitmapResolution) + ')';
-
-    this.element.style.WebkitTransformOrigin =
-    this.element.style.MozTransformOrigin =
-    this.element.style.msTransformOrigin =
-    this.element.style.OTransformOrigin =
-    this.element.style.transformOrigin =
-      this.currentCostume.rotationCenterX + 'px ' +
-      this.currentCostume.rotationCenterY + 'px';
-
-    // this.element.style.display = 'none';
-    // this.element.offsetHeight;
-    // this.element.style.display = 'block';
-  };
-
-  Sprite.prototype.moveBy = function (x, y) {
-    this.moveTo(this.scratchX + x, this.scratchY + y);
-  };
-
   Sprite.prototype.moveTo = function (x, y) {
+    if (ox === x && oy === y && !this.isPenDown) return;
     var ox = this.scratchX;
     var oy = this.scratchY;
     this.scratchX = x;
     this.scratchY = y;
     this.keepOnStage();
     if (this.isPenDown) this.stroke(ox, oy, x, y);
-    this.updateTransform();
+    this.stage.render = true;
   };
 
   Sprite.prototype.stroke = function (ox, oy, x, y) {
@@ -906,30 +841,32 @@ var P = (function () {
     if (d > 180) d -= 360;
     if (d <= -180) d += 360;
     this.direction = d;
-    this.updateTransform();
+    this.stage.render = true;
   };
 
   Sprite.prototype.setScale = function (scale) {
     this.scale = scale;
-    this.updateTransform();
+    this.stage.render = true;
   };
 
   var Costume = function (data, baseLayer) {
     this.baseLayerID = data.baseLayerID;
     this.baseLayerMD5 = data.baseLayerMD5;
-    this.baseLayer = baseLayer ? baseLayer.copy() : IO.openMD5(data.baseLayerMD5);
+    this.baseLayer = baseLayer || IO.openMD5(data.baseLayerMD5);
     this.bitmapResolution = data.bitmapResolution || 1;
     this.costumeName = data.costumeName;
     this.rotationCenterX = data.rotationCenterX;
     this.rotationCenterY = data.rotationCenterY;
 
-    this.image = document.createElement('div');
+    this.image = document.createElement('canvas');
+    this.context = this.image.getContext('2d');
+
     this.isLoaded = this.baseLayer.isLoaded;
     if (this.isLoaded) {
-      this.createImage();
+      this.render();
     } else {
       this.baseLayer.addEventListener('load', function () {
-        this.createImage();
+        this.render();
         this.dispatchEvent('load', this);
       }.bind(this));
     }
@@ -947,17 +884,14 @@ var P = (function () {
     }, this.baseLayer);
   };
 
-  Costume.prototype.createImage = function () {
-    this.image.appendChild(this.baseLayer.image);
+  Costume.prototype.render = function () {
+    var scale = 1 / this.baseLayer.bitmapResolution;
+    this.image.width = this.baseLayer.image.width * scale;
+    this.image.height = this.baseLayer.image.height * scale;
 
-    this.image.width = this.baseLayer.image.width;
-    this.image.height = this.baseLayer.image.height;
-    this.image.style.width = this.image.width + 'px';
-    this.image.style.height = this.image.height + 'px';
-
-    this.image.style.position = 'absolute';
-    this.image.style.left = 0;
-    this.image.style.top = 0;
+    this.context.save();
+    this.context.scale(scale, scale);
+    this.context.drawImage(this.baseLayer.image, 0, 0);
   };
 
   var ImageAsset = function (md5, image) {
@@ -1198,7 +1132,7 @@ var P = (function () {
   };
 
   Interpreter.prototype.lazilyPause = function () {
-    if (this.interval) {
+    if (this.interval && !this.stage.render) {
       clearInterval(this.interval);
       delete this.interval;
       this.paused = Date.now();
@@ -1223,9 +1157,12 @@ var P = (function () {
       }
       if (!threads.length) {
         this.lazilyPause();
-        return;
+        break;
       }
-    } while (this.isTurbo && Date.now() - time < this.framerate - 3);
+    } while ((!this.redraw || this.isTurbo) && Date.now() - time < this.framerate - 3);
+    if (this.stage.render) {
+      this.stage.draw();
+    }
   };
 
   var Thread = function (interpreter, script, event) {
@@ -1252,7 +1189,7 @@ var P = (function () {
       try {
         this.eval(this.frame.expression);
       } catch (e) {
-        console.error(e);
+        console.error(e.stack);
         this.shouldStop = true;
       }
     }
@@ -1282,11 +1219,15 @@ var P = (function () {
       return expression;
     }
     if (!expression) {
-      return this.pop();
+      return this.stack.pop();
     }
     if (expression.slice) {
       if (typeof expression[0] === 'string') {
-        return this.evalBlock(expression);
+        if (this.specialForms[expression[0]]) {
+          return this.specialForms[expression[0]].call(this, expression);
+        }
+        this.stack.pop();
+        return this.callBlock(expression);
       }
       return this.evalSequence(expression);
     }
@@ -1308,15 +1249,6 @@ var P = (function () {
     }
     this.push(expression[this.frame.tmp]);
     this.frame.tmp += 1;
-  };
-
-  Thread.prototype.evalBlock = function (expression) {
-    var selector = expression[0];
-    if (hasOwnProperty.call(this.specialForms, selector)) {
-      return this.specialForms[selector].call(this, expression);
-    }
-    this.pop();
-    return this.callBlock(expression);
   };
 
   Thread.prototype.callBlock = function (expression) {
@@ -1561,7 +1493,8 @@ var P = (function () {
   primitives['forward:'] = function (steps) {
     var t = Math.PI / 2 - this.direction * Math.PI / 180;
     var r = num(steps);
-    this.moveBy(r * Math.cos(t), r * Math.sin(t));
+    this.moveTo(this.scratchX + r * Math.cos(t),
+                this.scratchY + r * Math.sin(t));
   };
   primitives['turnRight:'] = function (degrees) {
     this.setDirection(this.direction + num(degrees));
@@ -1578,13 +1511,13 @@ var P = (function () {
   };
   // primitives['gotoSpriteOrMouse:'] = function () {};
   primitives['changeXposBy:'] = function (x) {
-    this.moveBy(num(x), 0);
+    this.moveTo(this.scratchX + num(x), this.scratchY);
   };
   primitives['xpos:'] = function (x) {
     this.moveTo(num(x), this.scratchY);
   };
   primitives['changeYposBy:'] = function (y) {
-    this.moveBy(0, num(y));
+    this.moveTo(this.scratchX, this.scratchY + num(y));
   };
   primitives['ypos:'] = function (y) {
     this.moveTo(this.scratchX, num(y));
@@ -1668,7 +1601,6 @@ var P = (function () {
       children.splice(i, 1);
     }
     children.push(this);
-    this.stage.updateZ();
   };
   primitives['goBackByLayers:'] = function (layers) {
     var children = this.stage.children;
