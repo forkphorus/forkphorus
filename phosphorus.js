@@ -321,25 +321,21 @@ var P = (function () {
           callback(result);
         }));
     } else if (ext === 'svg') {
-      var request = new Request;
-      IO.projectRequest.add(request);
-      IO.load(IO.ASSET_URL + md5 + '/get/', function (source) {
-        var canvas = document.createElement('canvas');
-        var context = canvas.getContext('2d');
-        canvg(canvas, source, {
-          ignoreMouse: true,
-          ignoreAnimation: true,
-          ignoreClear: true,
-          renderCallback: function () {
-            var image = new Image;
-            image.src = canvas.toDataURL();
-            image.onload = function () {
-              callback(image);
-              request.load();
-            };
-          }
-        })
-      });
+      IO.projectRequest.add(
+        IO.load(IO.ASSET_URL + md5 + '/get/', function (source) {
+          var canvas = document.createElement('canvas');
+          var context = canvas.getContext('2d');
+          var image = new Image;
+          callback(image);
+          canvg(canvas, source, {
+            ignoreMouse: true,
+            ignoreAnimation: true,
+            ignoreClear: true,
+            renderCallback: function () {
+              image.src = canvas.toDataURL();
+            }
+          })
+      }));
     }
   };
 
@@ -844,7 +840,9 @@ var P = (function () {
 
     this.image = document.createElement('canvas');
 
-    this.render();
+    this.baseLayer.onload = function () {
+      this.render();
+    }.bind(this);
   };
   addEvents(Costume, 'load');
 
