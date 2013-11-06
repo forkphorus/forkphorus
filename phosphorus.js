@@ -1109,7 +1109,9 @@ P.compile = (function () {
 
         return '(Date.now() - self.timerStart) / 1000';
 
-      // } else if (e[0] === 'keyPressed:') {
+      } else if (e[0] === 'keyPressed:') {
+
+        return 'self.keys[P.getKeyCode(' + val(e[1]) + ')]';
 
       // } else if (e[0] === 'distanceTo:') {
 
@@ -1849,6 +1851,54 @@ P.runtime = (function () {
         list.contents[i] = value;
       }
     }
+  };
+
+  var mathFunc = function (f, x) {
+    switch (f) {
+      case 'abs':
+      case 'floor':
+      case 'sqrt':
+        return Math[f](x);
+      case 'ceiling':
+        return Math.ceil(x);
+      case 'cos':
+        x = 90 - x;
+      case 'sin':
+        // 0 <= x <= 45 for degrees->radians to work well
+        var neg = false;
+        x = x % 360;
+        if (x < 0) x += 360;
+        if (x > 180) {
+          neg = !neg;
+          x -= 180;
+        }
+        if (x > 90) {
+          x = 180 - x;
+        }
+        var z = x > 45 ?
+          Math.cos((90 - x) * Math.PI / 180) :
+          Math.sin(x * Math.PI / 180);
+        return neg ? -z : z;
+      case 'tan':
+        x = x % 180;
+        if (x < 0) x += 180;
+        return x > 90 ?
+          -Math.tan((90 - x) * Math.PI / 180) :
+          Math.tan(x * Math.PI / 180);
+      case 'asin':
+      case 'acos':
+      case 'atan':
+        return Math[f](x) * 180 / Math.PI;
+      case 'ln':
+        return Math.log(x);
+      case 'log':
+        return Math.log(x) / Math.LN10;
+      case 'e ^':
+        return Math.exp(x);
+      case '10 ^':
+        return Math.exp(x * Math.LN10)
+    }
+    return 0;
   };
 
   var save = function () {
