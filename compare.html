@@ -8,19 +8,21 @@
 </div>
 <div class=controls>
   <a href=# class=flag title="Shift+click to enable turbo mode."><!-- G -->&#x2691;</a>
-  <a href=# class=pause><!-- P -->&#x2759;&#x200a;&#x2759;</a>
   <a href=# class=stop><!-- S -->&#x25fc;</a>
   <a href=# class=full-screen><!-- F -->&#x263c;</a>
 </div>
 <div class=player>
 </div>
+<script src=//canvg.googlecode.com/svn/trunk/rgbcolor.js></script>
+<script src=//canvg.googlecode.com/svn/trunk/StackBlur.js></script>
+<script src=//canvg.googlecode.com/svn/trunk/canvg.js></script>
 <script src=phosphorus.js></script>
 <script>
 
 (function () {
   'use strict';
 
-  var interpreter, stage;
+  var stage;
   var isFullScreen = false;
 
   var prefix = 'http://scratch.mit.edu/projects/';
@@ -42,27 +44,18 @@
 
   flag.addEventListener('click', function (e) {
     if (e.shiftKey) {
-      interpreter.isTurbo = !interpreter.isTurbo;
-      flag.style.textDecoration = interpreter.isTurbo ? 'underline' : 'none';
-      flag.title = interpreter.isTurbo ? 'Turbo mode enabled. Shift+click to disable.' : 'Shift+click to enable turbo mode.';
+      stage.isTurbo = !stage.isTurbo;
+      flag.style.textDecoration = stage.isTurbo ? 'underline' : 'none';
+      flag.title = stage.isTurbo ? 'Turbo mode enabled. Shift+click to disable.' : 'Shift+click to enable turbo mode.';
     } else {
-      interpreter.triggerGreenFlag();
+      stage.stopAll();
+      stage.triggerGreenFlag();
     }
-    e.preventDefault();
-  });
-
-  pause.addEventListener('click', function (e) {
-    if (interpreter.isRunning) {
-      interpreter.pause();
-    } else {
-      interpreter.start();
-    }
-    pause.textContent = interpreter.isRunning ? '\u2759\u200a\u2759' : '\u25b6';
     e.preventDefault();
   });
 
   stop.addEventListener('click', function (e) {
-    interpreter.stop();
+    stage.stopAll();
     e.preventDefault();
   });
 
@@ -160,10 +153,10 @@
       }, 100);
 
       console.log(window.stage = stage = s);
+      stage.start();
+      stage.triggerGreenFlag();
+
       player.appendChild(stage.canvas);
-      interpreter = new P.Interpreter(stage);
-      interpreter.start();
-      interpreter.triggerGreenFlag();
     };
     request.onerror = function (e) {
       progressBar.style.width = '100%';

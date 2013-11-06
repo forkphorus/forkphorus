@@ -146,6 +146,7 @@ var P = (function () {
       }
     }
     this.progress(loaded, total, lengthComputable);
+    this.doneCount = done;
     this.isDone = done === requests.length;
     if (this.isDone && !this.defer) {
       this.load(this.getResult());
@@ -235,14 +236,15 @@ var P = (function () {
       IO.load(IO.PROJECT_URL + id + '/get/')
         .addEventListener('load', function (contents) {
           try {
-            var project = IO.openProject(JSON.parse(contents));
+            var json = JSON.parse(contents);
+            IO.loadProject(json);
             if (callback) request.onLoad(callback.bind(self));
             if (request.isDone) {
-              request.load(project);
+              request.load(new Stage().fromJSON(json));
             } else {
               request.defer = false;
               request.getResult = function () {
-                return project;
+                return new Stage().fromJSON(json);
               };
             }
           } catch (e) {
@@ -253,99 +255,119 @@ var P = (function () {
     return request;
   };
 
-  IO.openProject = function (data) {
-    IO.projectData = data;
-    return new Stage(data || {});
+  IO.loadJSONProject = function (json, callback, self) {
+    var request = IO.projectRequest = new CompositeRequest;
+
+    try {
+      IO.loadProject(json);
+      if (callback) request.onLoad(callback.bind(self));
+      if (request.requests.length === 0) {
+        request.load(json);
+      } else {
+        request.defer = false;
+        request.getResult = function () {
+          return json;
+        };
+      }
+    } catch (e) {
+      request.error(e);
+    }
+
+    return request;
   };
 
-  IO.openMap = function (data) {
-    return data || {};
+  IO.loadProject = function (data) {
+    IO.loadBase(data);
+    IO.loadArray(data.children, IO.loadObject);
   };
 
-  IO.openArray = function (data, unpack) {
+  IO.loadBase = function (data) {
+    data.scripts = data.scripts || [];
+    data.costumes = IO.loadArray(data.costumes, IO.loadCostume);
+    data.sounds = IO.loadArray(data.sounds, IO.loadSound);
+    data.variables = data.variables || [];
+    data.lists = data.lists || [];
+  };
+
+  IO.loadArray = function (data, process) {
     if (!data) return [];
-    var result = [];
-    for (var i = 0, l = data.length; i < l; ++i) {
-      var item = unpack(data[i]);
-      if (item) result.push(item);
+    for (var i = 0; i < data.length; i++) {
+      process(data[i]);
     }
-    return result;
+    return data;
   };
 
-  IO.openObject = function (stage, data) {
-    if (!data) return null;
-    if (data.cmd) {
-      return null; // TODO
+  IO.loadObject = function (data) {
+    if (!data.cmd) {
+      IO.loadBase(data);
     }
-    return new Sprite(data, stage);
   };
 
-  IO.openCostume = function (data) {
-    return new Costume(data || {});
+  IO.loadCostume = function (data) {
+    IO.loadMD5(data.baseLayerMD5, function (asset) {
+      data.$image = asset;
+    });
   };
 
-  IO.openSound = function () {
-    return null; // TODO
+  IO.loadSound = function () {
+    // TODO
   };
 
-  IO.openMD5 = function (md5, callback) {
+  IO.loadMD5 = function (md5, callback) {
     var ext = md5.split('.').pop();
-    if (ext === 'png' || ext === 'svg') {
-      return new ImageAsset(md5);
+    if (ext === 'png') {
+      IO.projectRequest.add(
+        IO.loadImage(IO.PROXY_URL + encodeURIComponent(IO.ASSET_URL + md5 + '/get/'), function (result) {
+          callback(result);
+        }));
+    } else if (ext === 'svg') {
+      var request = new Request;
+      IO.projectRequest.add(request);
+      IO.load(IO.ASSET_URL + md5 + '/get/', function (source) {
+        var canvas = document.createElement('canvas');
+        var context = canvas.getContext('2d');
+        canvg(canvas, source, {
+          ignoreMouse: true,
+          ignoreAnimation: true,
+          ignoreClear: true,
+          renderCallback: function () {
+            var image = new Image;
+            image.src = canvas.toDataURL();
+            image.onload = function () {
+              callback(image);
+              request.load();
+            };
+          }
+        })
+      });
     }
-    return null;
   };
 
-  IO.EVENT_SELECTORS = [
-    'whenClicked',
-    'whenCloned',
-    'whenGreenFlag',
-    'whenIReceive',
-    'whenKeyPressed',
-    'whenSceneStarts',
-    'whenSensorGreaterThan' // TODO
-  ];
+  var Base = function () {
+    this.isClone = false;
+    this.costumes = [];
+    this.currentCostumeIndex = 0;
+    this.objName = '';
+    this.sounds = [];
 
-  IO.openScript = function (script) {
-    return new Script(script[0], script[1], script[2]);
-  };
+    this.varRefs = {};
+    this.listRefs = {};
 
-  var Base = function (data) {
-    this.isClone = !!data.isClone;
-    this.costumes = this.isClone ? data.costumes : IO.openArray(data.costumes, IO.openCostume);
-    this.currentCostumeIndex = data.currentCostumeIndex;
-    this.objName = this.isClone ? '<clone>' + (++Base.id) : data.objName;
-    this.sounds = this.isClone ? data.sounds : IO.openArray(data.sounds, IO.openSound);
-
-    this.variables = {};
-    this.varNames = {};
-    if (this.isClone) {
-      var vars = data.variables;
-      for (var key in vars) if (hasOwnProperty.call(vars, key)) {
-        this.variables[key] = vars[key];
-        this.varNames[key] = true;
-      }
-    } else {
-      if (data.variables) this.addVariables(data.variables);
-    }
-
-    this.lists = {};
-    this.listNames = {};
-    if (this.isClone) {
-      var lists = data.lists;
-      for (key in lists) if (hasOwnProperty.call(lists, key)) {
-        this.lists[key] = new List(lists[key].contents);
-        this.listNames[key] = true;
-      }
-    } else {
-      if (data.lists) this.addLists(data.lists);
-    }
-
-    this.listeners = {};
     this.procedures = {};
+    this.listeners = {
+      whenClicked: [],
+      whenCloned: [],
+      whenGreenFlag: [],
+      whenIReceive: {},
+      whenKeyPressed: [],
+      whenSceneStarts: [],
+      whenSensorGreaterThan: []
+    };
+    for (var i = 0; i < 256; i++) {
+      this.listeners.whenKeyPressed.push([]);
+    }
+    this.fns = [];
     this.scripts = [];
-    if (this.isStage) this.tempListeners = {};
-    if (data.scripts) this.addScripts(data.scripts);
 
     this.filters = {
       color: 0,
@@ -357,99 +379,54 @@ var P = (function () {
       ghost: 0
     };
 
-    var costume = this.costumes[this.currentCostumeIndex];
-    if (costume) {
-      if (costume.isLoaded) {
-        this.switchCostume();
-      } else {
-        costume.addEventListener('load', this.switchCostume.bind(this));
-      }
-    }
-  };
-  Base.id = 1;
-
-  Base.prototype.addScripts = function (scripts) {
-    for (var i = 0, l = scripts.length; i < l; ++i) {
-      var s = scripts[i] && scripts[i][2];
-      if (s) {
-        this.addScript(s);
-        this.scripts.push(scripts[i]);
-      }
-    }
+    this.initRuntime();
   };
 
-  Base.prototype.addScript = function (script) {
-    var h = script[0];
-    var bh = script.slice(1);
-    var listeners = this.isClone ? this.stage.tempListeners : this.stage.listeners;
-    var locals = this.listeners;
+  Base.prototype.fromJSON = function (data) {
+    this.objName = data.objName;
+    this.scripts = data.scripts;
+    this.costumes = data.costumes.map(function (d) {
+      return new Costume(d);
+    });
+    // this.sounds = data.sounds.map(function (d) {
+    //   return new Sound(d);
+    // });
+    this.addLists(this.lists = data.lists);
+    this.addVariables(this.variables = data.variables);
 
-    if (!bh.length) return;
-
-    if (h[0] === 'procDef') {
-      this.procedures[h[1]] = new Procedure(h, bh);
-    } else if (IO.EVENT_SELECTORS.indexOf(h[0]) > -1) {
-      var event = h[0];
-      if (h[0] === 'whenClicked') {
-        event += ':' + this.objName;
-      }
-      if (h[1]) {
-        event += ':' + h[1].toLowerCase();
-      }
-      var s = new Script(this, bh);
-      if (listeners[event]) {
-        listeners[event].push(s);
-      } else {
-        listeners[event] = [s];
-      }
-      if (locals[event]) {
-        locals[event].push(s);
-      } else {
-        locals[event] = [s];
-      }
-    }
+    return this;
   };
 
   Base.prototype.addVariables = function (variables) {
-    for (var i = variables.length; i--;) {
-      var v = variables[i];
-      if (v.isPeristent) {
+    for (var i = 0; i < variables.length; i++) {
+      if (variables[i].isPeristent) {
         throw new Error('Cloud variables are not supported');
       }
-      this.variables[v.name] = v.value;
-      this.varNames[v.name] = true;
+      this.varRefs[variables[i].name] = variables[i];
     }
   };
 
   Base.prototype.addLists = function (lists) {
-    for (var i = lists.length; i--;) {
-      var v = lists[i];
-      if (v.isPeristent) {
+    for (var i = 0; i < lists.length; i++) {
+      if (lists[i].isPeristent) {
         throw new Error('Cloud lists are not supported');
       }
-      this.lists[v.listName] = new List(v.contents);
-      this.listNames[v.listName] = true;
+      this.listRefs[lists[i].listName] = lists[i];
       // TODO list watchers
     }
   };
 
-  Base.prototype.switchCostume = function () {
-    this.currentCostume = this.costumes[this.currentCostumeIndex];
-    this.stage.render = true;
-  };
-
-  Base.prototype.setCurrentCostumeIndex = function (i) {
-    this.currentCostumeIndex = i;
-    this.switchCostume();
-  };
-
   Base.prototype.showNextCostume = function () {
-    this.setCurrentCostumeIndex((this.currentCostumeIndex + 1) % this.costumes.length);
+    this.currentCostumeIndex = (this.currentCostumeIndex + 1) % this.costumes.length;
   };
 
   Base.prototype.showPreviousCostume = function () {
     var length = this.costumes.length;
-    this.setCurrentCostumeIndex((this.currentCostumeIndex + length - 1) % length);
+    this.currentCostumeIndex = (this.currentCostumeIndex + length - 1) % length;
+  };
+
+  Base.prototype.getCostumeName = function () {
+    return this.costumes[this.currentCostumeIndex] ? this.costumes[this.currentCostumeIndex].objName : "";
   };
 
   Base.prototype.setCostume = function (costume) {
@@ -459,25 +436,13 @@ var P = (function () {
     while (i--) {
       var c = costumes[i];
       if (c.costumeName === costume) {
-        this.setCurrentCostumeIndex(i);
+        this.currentCostumeIndex = i;
         return;
       }
     }
     i = (num(costume) - 1) % costumes.length;
     if (i < 0) i += costumes.length;
-    this.setCurrentCostumeIndex(i);
-  };
-
-  Base.prototype.getVariable = function (name) {
-    return zeroNull(this.variables[name]);
-  };
-
-  Base.prototype.setVariable = function (name, value) {
-    this.variables[name] = value;
-  };
-
-  Base.prototype.getList = function (name) {
-    return this.lists[name];
+    this.currentCostumeIndex = i;
   };
 
   Base.prototype.setFilter = function (name, value) {
@@ -515,32 +480,27 @@ var P = (function () {
       brightness: 0,
       ghost: 0
     };
-    this.updateFilters();
   };
 
-  Base.prototype.updateFilters = function () {
-    // if (!this.currentCostume) return;
-    // this.layer.opacity = 1 - this.filters.ghost / 100;
-    // this.layer.style.WebkitFilter =
-    //   'brightness(' + (this.filters.brightness / 100 + 1) + ') ' +
-    //   'hue-rotate(' + (this.filters.color * 360 / 200) + 'deg)';
-  };
-
-  var Stage = function (data) {
+  var Stage = function () {
     this.stage = this;
-    Stage.parent.call(this, data);
 
-    this.children = IO.openArray(data.children, IO.openObject.bind(IO, this));
-    this.info = IO.openMap(data.info);
-    this.penLayer = new CanvasAsset(480, 360);
-    this.penContext = this.penLayer.image.getContext('2d');
-    this.tempoBPM = data.tempoBPM;
-    this.videoAlpha = data.videoAlpha;
+    Stage.parent.call(this);
 
+    this.children = [];
+
+    this.info = {};
+    this.tempoBPM = 60;
+    this.videoAlpha = 1;
     this.zoom = 1;
     this.timerStart = 0;
     this.cloneCount = 0;
-    this.render = true;
+
+    this.penCanvas = document.createElement('canvas');
+    this.penCanvas.width = 480;
+    this.penCanvas.height = 360;
+    this.penContext = this.penCanvas.getContext('2d');
+    this.penContext.lineCap = 'round';
 
     this.keys = {};
     this.mouseX = 0;
@@ -561,6 +521,15 @@ var P = (function () {
     this.canvas.style.WebkitTransform = 'translateZ(0)';
 
     this.canvas.addEventListener('mousedown', function (e) {
+      this.updateMouse(e);
+
+      for (var i = this.children.length; i--;) {
+        if (this.children[i].visible && this.children[i].touching('_mouse_')) {
+          this.triggerFor(this.children[i], 'whenClicked');
+          break;
+        }
+      }
+
       e.preventDefault();
       this.canvas.focus();
     }.bind(this));
@@ -569,29 +538,20 @@ var P = (function () {
       if (e.ctrlKey || e.altKey || e.metaKey) {
         return;
       }
-      var keyName = getKeyName(e.keyCode);
-      this.keys[keyName] = true;
-      this.trigger('whenKeyPressed:' + keyName);
+      this.keys[e.keyCode] = true;
+      this.trigger('whenKeyPressed', e.keyCode);
       e.stopPropagation();
       e.preventDefault();
     }.bind(this));
 
     this.canvas.addEventListener('keyup', function (e) {
-      this.keys[getKeyName(e.keyCode)] = false;
+      this.keys[e.keyCode] = false;
       e.stopPropagation();
       e.preventDefault();
     }.bind(this));
 
     document.addEventListener('mousemove', function (e) {
-      var bb = this.canvas.getBoundingClientRect();
-      var x = (e.clientX - bb.left) / this.zoom - 240;
-      var y = 180 - (e.clientY - bb.top) / this.zoom;
-      if (x < -240) x = -240;
-      if (x > 240) x = 240;
-      if (y < -180) y = -180;
-      if (y > 180) y = 180;
-      this.mouseX = x;
-      this.mouseY = y;
+      this.updateMouse(e);
     }.bind(this));
 
     this.canvas.addEventListener('mousedown', function (e) {
@@ -601,20 +561,37 @@ var P = (function () {
     document.addEventListener('mouseup', function (e) {
       this.mousePressed = false;
     }.bind(this));
+
   };
   inherits(Stage, Base);
 
-  Stage.MAX_CLONES = 300;
-
   Stage.prototype.isStage = true;
 
-  Stage.prototype.add = function (child) {
-    this.children.push(child);
-    this.render = true;
+  Stage.prototype.fromJSON = function (data) {
+    Stage.parent.prototype.fromJSON.call(this, data);
+
+    data.children.forEach(function (d) {
+      if (d.cmd) {
+        return;
+      }
+      this.children.push(new Sprite(this).fromJSON(d));
+    }, this);
+
+    P.compile(this);
+
+    return this;
   };
 
-  Stage.prototype.trigger = function (event) {
-    if (this.interpreter) this.interpreter.trigger(event);
+  Stage.prototype.updateMouse = function (e) {
+    var bb = this.canvas.getBoundingClientRect();
+    var x = (e.clientX - bb.left) / this.zoom - 240;
+    var y = 180 - (e.clientY - bb.top) / this.zoom;
+    if (x < -240) x = -240;
+    if (x > 240) x = 240;
+    if (y < -180) y = -180;
+    if (y > 180) y = 180;
+    this.mouseX = x;
+    this.mouseY = y;
   };
 
   Stage.prototype.resetAllFilters = function () {
@@ -624,28 +601,22 @@ var P = (function () {
       children[i].resetFilters();
     }
     this.resetFilters();
-    this.render = true;
   };
 
   Stage.prototype.removeAllClones = function () {
-    var children = this.children;
-    var i = children.length;
+    var i = this.children.length;
     while (i--) {
-      if (children[i].isClone) {
-        children.splice(i, 1);
+      if (this.children[i].isClone) {
+        this.children.splice(i, 1);
       }
     }
-    this.tempListeners = {};
     this.cloneCount = 0;
-    this.render = true;
   };
 
   Stage.prototype.getObject = function (name) {
-    var children = this.children;
-    var i = children.length;
-    while (i--) {
-      if (children[i].objName === name) {
-        return children[i];
+    for (var i = 0; i < this.children.length; i++) {
+      if (this.children[i].objName === name) {
+        return this.children[i];
       }
     }
   };
@@ -653,54 +624,65 @@ var P = (function () {
   Stage.prototype.draw = function () {
     var context = this.context;
 
-    this.canvas.width = 480;
+    this.canvas.width = 480; // clear
 
     context.save();
 
-    var children = this.children;
-    var i = 0;
-    var l = children.length;
-    while (i < l) {
-      var sprite = children[i++];
+    context.drawImage(this.costumes[this.currentCostumeIndex].image, 0, 0);
+    context.drawImage(this.penCanvas, 0, 0);
 
-      context.save();
-
-      context.translate(-sprite.currentCostume.rotationCenterX, -sprite.currentCostume.rotationCenterY);
-      context.rotate((sprite.direction - 90) * Math.PI / 180);
-      context.scale(sprite.scale, sprite.scale);
-      context.translate(sprite.scratchX + 240, 180 - sprite.scratchY);
-
-      context.globalAlpha = 1 - sprite.filters.ghost / 100;
-
-      context.drawImage(sprite.currentCostume.baseLayer.image, 0, 0);
-
-      context.restore();
+    for (var i = 0; i < this.children.length; i++) {
+      if (this.children[i].visible) {
+        this.children[i].draw(context);
+      }
     }
 
     context.restore();
-
-    this.render = false;
   };
 
-  Stage.prototype.moveBy =
-  Stage.prototype.moveTo =
-  Stage.prototype.setVisible = function () {};
+  Stage.prototype.moveTo = function () {};
 
-  var KEY_NAMES = {
-    32: 'space',
-    37: 'left arrow',
-    38: 'up arrow',
-    39: 'right arrow',
-    40: 'down arrow'
+  var KEY_CODES = {
+    'space': 32,
+    'left arrow': 37,
+    'up arrow': 38,
+    'right arrow': 39,
+    'down arrow': 40
   };
 
-  var getKeyName = function (keyCode) {
-    return KEY_NAMES[keyCode] || String.fromCharCode(keyCode);
+  var getKeyCode = function (keyName) {
+    return KEY_CODES[keyName] || keyName.charCodeAt(0);
   };
 
-  var Sprite = function (data, stage) {
+  var Sprite = function (stage) {
     this.stage = stage;
-    Sprite.parent.call(this, data);
+
+    Sprite.parent.call(this);
+
+    this.addVariables(stage.variables);
+
+    this.direction = 90;
+    this.indexInLibrary = -1;
+    this.isDraggable = false;
+    this.rotationStyle = 'normal';
+    this.scale = 1;
+    this.scratchX = 0;
+    this.scratchY = 0;
+    this.spriteInfo = {};
+    this.visible = true;
+
+    this.penHue = 240;
+    this.penSaturation = 100;
+    this.penLightness = 50;
+
+    this.penSize = 1;
+    this.isPenDown = false;
+  };
+  inherits(Sprite, Base);
+
+  Sprite.prototype.fromJSON = function (data) {
+
+    Sprite.parent.prototype.fromJSON.call(this, data);
 
     this.direction = data.direction;
     this.indexInLibrary = data.indexInLibrary;
@@ -712,123 +694,120 @@ var P = (function () {
     this.spriteInfo = data.spriteInfo;
     this.visible = data.visible;
 
-    this.penColor = this.isClone ? data.penColor : 0x0000ff;
-    this.penSize = this.isClone ? data.penSize : 1;
-    this.isPenDown = this.isClone ? data.isPenDown : false;
-  };
-  inherits(Sprite, Base);
-
-  Sprite.prototype.copy = function () {
-    var sprite = new Sprite({
-      isClone: true,
-      costumes: this.costumes.map(function (costume) {
-        return costume.copy();
-      }),
-      sounds: this.sounds.map(function (sound) {
-        return sound.copy();
-      }),
-      currentCostumeIndex: this.currentCostumeIndex,
-      objName: this.objName,
-      variables: this.variables,
-      lists: this.lists,
-      filters: {
-        color: this.filters.color,
-        fisheye: this.filters.fisheye,
-        whirl: this.filters.whirl,
-        pixelate: this.filters.pixelate,
-        mosaic: this.filters.mosaic,
-        brightness: this.filters.brightness,
-        ghost: this.filters.ghost
-      },
-      scripts: this.scripts,
-
-      direction: this.direction,
-      isDraggable: this.isDraggable,
-      rotationStyle: this.rotationStyle,
-      scale: this.scale,
-      scratchX: this.scratchX,
-      scratchY: this.scratchY,
-      spriteInfo: this.spriteInfo,
-      visible: this.visible,
-
-      penColor: this.penColor,
-      penSize: this.penSize,
-      isPenDown: this.isPenDown
-    }, this.stage);
-    sprite.procedures = this.procedures;
-    return sprite;
+    return this;
   };
 
-  Sprite.prototype.getVariable = function (name) {
-    if (this.varNames[name]) {
-      return zeroNull(this.variables[name]);
-    }
-    return this.stage.getVariable(name);
+  Sprite.prototype.clone = function () {
+    var c = new Sprite(this.stage);
+
+    c.isClone = true;
+    c.costumes = this.costumes;
+    c.currentCostumeIndex = this.currentCostumeIndex;
+    c.objName = this.objName;
+    c.sounds = this.sounds;
+    c.varRefs = this.varRefs;
+    c.variables = this.variables;
+    c.listRefs = this.listRefs;
+    c.lists = this.lists;
+
+    c.procedures = this.procedures;
+    c.listeners = this.listeners;
+    c.fns = this.fns;
+    c.scripts = this.scripts;
+
+    this.filters = {
+      color: this.filters.color,
+      fisheye: this.filters.fisheye,
+      whirl: this.filters.whirl,
+      pixelate: this.filters.pixelate,
+      mosaic: this.filters.mosaic,
+      brightness: this.filters.brightness,
+      ghost: this.filters.ghost
+    };
+
+    c.direction = this.direction;
+    c.indexInLibrary = this.indexInLibrary;
+    c.isDraggable = this.isDraggable;
+    c.rotationStyle = this.rotationStyle;
+    c.scale = this.scale;
+    c.scratchX = this.scratchX;
+    c.scratchY = this.scratchY;
+    c.visible = this.visible;
+    c.penHue = this.penHue;
+    c.penSaturation = this.penSaturation;
+    c.penLightness = this.penLightness;
+    c.penSize = this.penSize;
+    c.isPenDown = this.isPenDown;
+
+    c.initRuntime();
+
+    return c;
   };
 
-  Sprite.prototype.setVariable = function (name, value) {
-    if (this.varNames[name]) {
-      this.variables[name] = value;
-    } else {
-      this.stage.setVariable(name, value);
-    }
-  };
-
-  Sprite.prototype.getList = function (name) {
-    if (this.listNames[name]) {
-      return this.lists[name];
-    }
-    return this.stage.getList(name);
-  };
-
-  Sprite.prototype.setVisible = function (visible) {
-    if (this.visible !== visible) {
-      this.visible = visible;
-      this.stage.render = true;
-    }
-  };
+  Sprite.prototype.forward = function (steps) {
+    var d = (90 - this.direction) * Math.PI / 180;
+    this.moveTo(this.scratchX + steps * Math.cos(d), this.scratchY + steps * Math.sin(d));
+  }
 
   Sprite.prototype.moveTo = function (x, y) {
-    if (ox === x && oy === y && !this.isPenDown) return;
     var ox = this.scratchX;
     var oy = this.scratchY;
+    if (ox === x && oy === y && !this.isPenDown) return;
     this.scratchX = x;
     this.scratchY = y;
     this.keepOnStage();
-    if (this.isPenDown) this.stroke(ox, oy, x, y);
-    this.stage.render = true;
+    if (this.isPenDown) {
+      var context = this.stage.penContext;
+      if (this.penSize % 2 > .5 && this.penSize % 2 < 1.5) {
+        ox -= .5;
+        oy -= .5;
+        x -= .5;
+        y -= .5;
+      }
+      context.strokeStyle = 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + this.penLightness + '%)';
+      context.lineWidth = this.penSize;
+      context.beginPath();
+      context.moveTo(240 + ox, 180 - oy);
+      context.lineTo(240 + x, 180 - y);
+      context.stroke();
+    }
   };
 
-  Sprite.prototype.stroke = function (ox, oy, x, y) {
-    var hex = this.penColor.toString(16);
-    while (hex.length < 6) hex = '0' + hex;
+  Sprite.prototype.dotPen = function () {
     var context = this.stage.penContext;
-    context.strokeStyle = '#' + hex;
-    context.lineCap = 'round';
-    context.lineWidth = this.penSize;
-    context.beginPath();
-    if (Math.abs(this.penSize % 2 - 1) < .0001) {
-      ox -= .5;
-      oy -= .5;
+    var x = this.scratchX;
+    var y = this.scratchY;
+    if (this.penSize % 2 > .5 && this.penSize % 2 < 1.5) {
       x -= .5;
       y -= .5;
     }
-    context.moveTo(240 + ox, 180 - oy);
-    context.lineTo(240 + x, 180 - y);
+    context.strokeStyle = 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + this.penLightness + '%)';
+    context.lineWidth = this.penSize;
+    context.beginPath();
+    context.moveTo(240 + x, 180 - y);
+    context.lineTo(240.01 + x, 180 - y);
     context.stroke();
   };
 
   Sprite.prototype.stamp = function () {
     var context = this.stage.penContext;
+    this.draw(context);
+  };
+
+  Sprite.prototype.draw = function (context) {
+    var costume = this.costumes[this.currentCostumeIndex];
+
     context.save();
-    context.translate(-this.currentCostume.rotationCenterX, -this.currentCostume.rotationCenterY);
-    var scale = this.scale / this.currentCostume.bitmapResolution;
-    context.scale(scale, scale);
+
+    context.translate(this.scratchX + 240, 180 - this.scratchY);
     context.rotate((this.direction - 90) * Math.PI / 180);
-    context.translate(this.currentCostume.rotationCenterX / scale, this.currentCostume.rotationCenterY / scale);
-    context.translate((this.scratchX + 240) / scale, (180 - this.scratchY) / scale);
-    context.globalAlpha = 1 - this.filters.ghost / 100;
-    context.drawImage(this.currentCostume.baseLayer.image, 0, 0);
+    context.translate(-costume.rotationCenterX, -costume.rotationCenterY);
+    context.scale(this.scale, this.scale);
+
+    context.globalAlpha = Math.max(0, Math.min(1, 1 - this.filters.ghost / 100));
+
+    context.drawImage(costume.image, 0, 0);
+
     context.restore();
   };
 
@@ -841,1074 +820,1049 @@ var P = (function () {
     if (d > 180) d -= 360;
     if (d <= -180) d += 360;
     this.direction = d;
-    this.stage.render = true;
   };
 
-  Sprite.prototype.setScale = function (scale) {
-    this.scale = scale;
-    this.stage.render = true;
+  Sprite.prototype.touching = function (thing) {
+    if (thing === '_mouse_') {
+      var costume = this.costumes[this.currentCostumeIndex];
+      var d = costume.context.getImageData(this.stage.mouseX - this.scratchX + costume.rotationCenterX, (this.scratchY - this.stage.mouseY + costume.rotationCenterY), 1, 1).data;
+      return d[3] !== 0;
+    } else {
+      throw new Error('Unimplemented');
+    }
   };
 
-  var Costume = function (data, baseLayer) {
+  var Costume = function (data) {
     this.baseLayerID = data.baseLayerID;
     this.baseLayerMD5 = data.baseLayerMD5;
-    this.baseLayer = baseLayer || IO.openMD5(data.baseLayerMD5);
+    this.baseLayer = data.$image;
     this.bitmapResolution = data.bitmapResolution || 1;
     this.costumeName = data.costumeName;
     this.rotationCenterX = data.rotationCenterX;
     this.rotationCenterY = data.rotationCenterY;
 
     this.image = document.createElement('canvas');
-    this.context = this.image.getContext('2d');
 
-    this.isLoaded = this.baseLayer.isLoaded;
-    if (this.isLoaded) {
-      this.render();
-    } else {
-      this.baseLayer.addEventListener('load', function () {
-        this.render();
-        this.dispatchEvent('load', this);
-      }.bind(this));
-    }
+    this.render();
   };
   addEvents(Costume, 'load');
 
-  Costume.prototype.copy = function () {
-    return new Costume({
-      baseLayerID: this.baseLayerID,
-      baseLayerMD5: this.baseLayerMD5,
-      bitmapResolution: this.bitmapResolution,
-      costumeName: this.costumeName,
-      rotationCenterX: this.rotationCenterX,
-      rotationCenterY: this.rotationCenterY
-    }, this.baseLayer);
-  };
-
   Costume.prototype.render = function () {
-    var scale = 1 / this.baseLayer.bitmapResolution;
-    this.image.width = this.baseLayer.image.width * scale;
-    this.image.height = this.baseLayer.image.height * scale;
+    var scale = 1 / this.bitmapResolution;
+    this.image.width = this.baseLayer.width * scale;
+    this.image.height = this.baseLayer.height * scale;
 
+    this.context = this.image.getContext('2d');
     this.context.save();
     this.context.scale(scale, scale);
-    this.context.drawImage(this.baseLayer.image, 0, 0);
-  };
-
-  var ImageAsset = function (md5, image) {
-    this.md5 = md5;
-    this.isLoaded = !!image;
-    if (image) {
-      this.image = new Image;
-      this.image.src = image.src;
-    } else {
-      IO.projectRequest.add(
-        IO.loadImage(IO.ASSET_URL + md5 + '/get/', function (result) {
-          this.isLoaded = true;
-          this.image = result;
-          this.dispatchEvent('load', this);
-        }, this));
-    }
-  };
-  addEvents(ImageAsset, 'load');
-
-  ImageAsset.prototype.copy = function () {
-    return new ImageAsset(this.md5, this.image);
-  };
-
-  var CanvasAsset = function (width, height) {
-    this.isLoaded = true;
-    this.image = document.createElement('canvas');
-    this.image.width = width;
-    this.image.height = height;
-  };
-
-  var Script = function (target, expression) {
-    this.target = target;
-    this.expression = expression;
-  };
-
-  var Procedure = function (data, expression) {
-    this.spec = data[1];
-    this.inputs = data[2];
-    this.defaults = data[3];
-    this.isAtomic = data[4];
-    this.expression = expression;
-  };
-
-  var List = function (contents) {
-    this.contents = contents;
-  };
-
-  List.prototype.index = function (index, max) {
-    if (max == null) max = this.contents.length;
-    if (index === 'random' || index === 'any') {
-      return Math.floor(Math.random() * max);
-    }
-    if (index === 'last') {
-      return this.contents.length - 1;
-    }
-    if (+index !== +index) {
-      return -1;
-    }
-    index = Math.floor(index) - 1;
-    return index < 0 || index >= this.contents.length ? - 1 : index;
-  };
-
-  List.prototype.isAllChars = function () {
-    var contents = this.contents;
-    var i = contents.length;
-    while (i--) {
-      if (('' + contents[i]).length !== 1) {
-        return false;
-      }
-    }
-    return true;
-  };
-
-  List.prototype.toString = function () {
-    var s = '';
-    this.contents.join(this.isAllChars() ? '' : ' ');
-  };
-
-  List.prototype.add = function (value) {
-    this.contents.push(value);
-  };
-
-  List.prototype.delete = function (index) {
-    if (index === 'all') {
-      this.contents = [];
-    } else {
-      var i = this.index(index);
-      if (i !== -1) {
-        this.contents.splice(i, 1);
-      }
-    }
-  };
-
-  List.prototype.insert = function (index, value) {
-    if (index === 'last') {
-      this.add(value);
-    } else {
-      var i = this.index(index, this.contents.length + 1);
-      if (i !== -1) {
-        this.contents.splice(i, 0, value);
-      }
-    }
-  };
-
-  List.prototype.put = function (index, value) {
-    var i = this.index(index);
-    if (i !== -1) {
-      this.contents[i] = value;
-    }
-  };
-
-  List.prototype.get = function (index) {
-    return zeroNull(this.contents[this.index(index)]);
-  };
-
-  List.prototype.length = function () {
-    return this.contents.length;
-  };
-
-  List.prototype.contains = function (value) {
-    var contents = this.contents;
-    var i = contents.length;
-    while (i--) {
-      if (compare(contents[i], value) === 0) {
-        return true;
-      }
-    }
-    return false;
-  };
-
-  var Interpreter = function (stage) {
-    this.threads = [];
-    this.stage = stage;
-    this.framerate = 1000 / 30;
-    this.isTurbo = false;
-    this.now = 0;
-    this.lastTime = Date.now();
-
-    this.step = this.step.bind(this);
-
-    stage.interpreter = this;
-  };
-
-  Interpreter.prototype.startThread = function (script, event) {
-    this.stopThread(script);
-    this.threads.push(new Thread(this, script, event));
-    this.lazilyStart();
-  };
-
-  Interpreter.prototype.stopThread = function (script) {
-    var expression = script.expression;
-    var threads = this.threads;
-    var i = threads.length;
-    while (i--) {
-      if (threads[i].top === expression) {
-        threads.splice(i, 1);
-      }
-    }
-  };
-
-  Interpreter.prototype.stopThreadsFor = function (target, exceptCurrent) {
-    var threads = this.threads;
-    var i = threads.length;
-    while (i--) {
-      var t = threads[i];
-      if (t.target === target && (!exceptCurrent || t !== this.currentThread)) {
-        t.shouldStop = true;
-      }
-    }
-  };
-
-  Interpreter.prototype.trigger = function (event) {
-    var listeners = this.stage.listeners[event];
-    var tl = this.stage.tempListeners[event];
-    if (!listeners && !tl) return;
-    if (listeners) {
-      for (var i = 0, l = listeners.length; i < l; ++i) {
-        this.startThread(listeners[i], event);
-      }
-    }
-    if (tl) {
-      for (var i = 0, l = tl.length; i < l; ++i) {
-        this.startThread(tl[i], event);
-      }
-    }
-  };
-  Interpreter.prototype.triggerFor = function (target, event) {
-    var listeners = target.listeners[event];
-    if (!listeners) return;
-    for (var i = 0, l = listeners.length; i < l; ++i) {
-      this.startThread(listeners[i], event);
-    }
-  };
-
-  Interpreter.prototype.triggerGreenFlag = function () {
-    this.stop();
-    this.trigger('whenGreenFlag');
-  };
-
-  Interpreter.prototype.hasTrigger = function (event) {
-    var threads = this.threads;
-    var i = threads.length;
-    while (i--) {
-      if (threads[i].event === event) {
-        return true;
-      }
-    }
-    return false;
-  };
-
-  Interpreter.prototype.start = function () {
-    this.isRunning = true;
-    if (this.interval) return;
-    this.lastTime = Date.now();
-    this.interval = setInterval(this.step, this.framerate);
-  };
-
-  Interpreter.prototype.lazilyStart = function () {
-    if (this.isRunning && !this.interval) {
-      this.now += Date.now() - this.paused;
-      this.start();
-    }
-  };
-
-  Interpreter.prototype.pause = function () {
-    if (this.interval) {
-      clearInterval(this.interval);
-      delete this.interval;
-    }
-    this.isRunning = false;
-  };
-
-  Interpreter.prototype.stop = function () {
-    this.threads = [];
-    this.lazilyPause();
-    this.stage.resetAllFilters();
-    this.stage.removeAllClones();
-  };
-
-  Interpreter.prototype.lazilyPause = function () {
-    if (this.interval && !this.stage.render) {
-      clearInterval(this.interval);
-      delete this.interval;
-      this.paused = Date.now();
-    }
-  };
-
-  Interpreter.prototype.step = function () {
-    this.now += Date.now() - this.lastTime;
-    this.lastTime = Date.now();
-    var time = Date.now();
-    var threads = this.threads;
-    do {
-      for (var i = 0, l = threads.length; i < l; ++i) {
-        this.currentThread = threads[i];
-        this.currentThread.step();
-      }
-      i = threads.length;
-      while (i--) {
-        if (threads[i].isDone) {
-          threads.splice(i, 1);
-        }
-      }
-      if (!threads.length) {
-        this.lazilyPause();
-        break;
-      }
-    } while ((!this.redraw || this.isTurbo) && Date.now() - time < this.framerate - 3);
-    if (this.stage.render) {
-      this.stage.draw();
-    }
-  };
-
-  var Thread = function (interpreter, script, event) {
-    this.interpreter = interpreter;
-    this.target = script.target;
-    this.top = script.expression;
-    this.stack = [new StackFrame(script.expression)];
-    this.callStack = [];
-    this.isDone = false;
-    this.shouldStop = false;
-    this.shouldYield = false;
-    this.event = event;
-  };
-
-  Thread.prototype.step = function () {
-    this.shouldYield = false;
-    this.warp = 0;
-    while (!this.shouldStop && (!this.shouldYield || this.warp)) {
-      if (!this.stack.length) {
-        this.isDone = true;
-        break;
-      }
-      this.frame = this.stack[this.stack.length - 1];
-      try {
-        this.eval(this.frame.expression);
-      } catch (e) {
-        console.error(e.stack);
-        this.shouldStop = true;
-      }
-    }
-    if (this.shouldStop) {
-      this.isDone = true;
-    }
-  };
-
-  Thread.prototype.push = function (expression) {
-    this.stack.push(new StackFrame(expression));
-  };
-
-  Thread.prototype.pushInternal = function (selector) {
-    this.stack.push(new StackFrame([selector]));
-  };
-
-  Thread.prototype.pushYield = function () {
-    this.pushInternal('yield_');
-  };
-
-  Thread.prototype.pop = function () {
-    this.stack.pop();
-  };
-
-  Thread.prototype.eval = function (expression) {
-    if (typeof expression === 'number' || typeof expression === 'string') {
-      return expression;
-    }
-    if (!expression) {
-      return this.stack.pop();
-    }
-    if (expression.slice) {
-      if (typeof expression[0] === 'string') {
-        if (this.specialForms[expression[0]]) {
-          return this.specialForms[expression[0]].call(this, expression);
-        }
-        this.stack.pop();
-        return this.callBlock(expression);
-      }
-      return this.evalSequence(expression);
-    }
-  };
-
-  Thread.prototype.arg = function (expression) {
-    return typeof expression === 'object' ?
-      this.callBlock(expression) :
-      expression;
-  };
-
-  Thread.prototype.evalSequence = function (expression) {
-    if (this.frame.tmp == null) {
-      this.frame.tmp = 0;
-    }
-    if (this.frame.tmp >= expression.length) {
-      this.pop();
-      return;
-    }
-    this.push(expression[this.frame.tmp]);
-    this.frame.tmp += 1;
-  };
-
-  Thread.prototype.callBlock = function (expression) {
-    var selector = expression[0];
-    var args = [];
-    for (var i = 1, l = expression.length; i < l; ++i) {
-      args.push(this.arg(expression[i]));
-    }
-    if (hasOwnProperty.call(this.primitives, selector)) {
-      return this.primitives[selector].apply(this.target, args);
-    } else {
-      if (!Thread.warnings[selector]) {
-        console.warn('Unimplemented:', selector);
-        Thread.warnings[selector] = true;
-      }
-    }
-  };
-
-  var bool = function (x) {
-    x = x + '';
-    return x !== 'false' && x !== '0' && x !== '';
-  };
-
-  var num = function (x) {
-    return +x || 0;
-  };
-
-  var color = function (x) {
-    return Math.floor(num(x)) & 0xffffff;
-  };
-
-  var zeroNull = function (x) {
-    return x == null ? '0' : '' + x;
-  };
-
-  var compare = function (x, y) {
-    if (+x === +x && +y === +y) {
-      return +x < +y ? -1 : +x === +y ? 0 : 1;
-    }
-    return '' + x < '' + y ? -1 : '' + x === '' + y ? 0 : 1;
-  };
-
-  Thread.warnings = {};
-
-  var specialForms = Thread.prototype.specialForms = {};
-  specialForms['broadcast:'] = function (e) {
-    this.interpreter.trigger('whenIReceive:' + ('' + this.arg(e[1])).toLowerCase());
-    this.pop();
-  };
-  specialForms['call'] = function (e) {
-    var procedure = this.target.procedures[e[1]];
-    this.pop();
-    if (!procedure) return;
-
-    var args = {};
-    for (var i = 2, l = e.length; i < l; ++i) {
-      args[procedure.inputs[i - 2]] = this.arg(e[i]);
-    }
-
-    this.callStack.push({
-      procedure: procedure,
-      arguments: args
-    });
-
-    if (procedure.isAtomic) {
-      this.warp += 1;
-    }
-
-    this.pushInternal('endCall_');
-    this.push(procedure.expression);
-  };
-  specialForms['doBroadcastAndWait'] = function (e) {
-    if (this.frame.tmp == null) {
-      this.frame.tmp = 'whenIReceive:' + ('' + this.arg(e[1])).toLowerCase();
-      this.interpreter.trigger(this.frame.tmp);
-    }
-    if (!this.interpreter.hasTrigger(this.frame.tmp)) {
-      this.pop();
-    }
-    this.shouldYield = true;
-  };
-  specialForms['doForever'] = function (e) {
-    this.pushYield();
-    this.push(e[1]);
-  };
-  specialForms['doForeverIf'] = function () {
-    if (bool(this.arg(e[1]))) {
-      this.pushYield();
-      this.push(e[2]);
-    } else {
-      this.shouldYield = true;
-    }
-  };
-  // doForLoop
-  specialForms['doIf'] = function (e) {
-    this.pop();
-    if (bool(this.arg(e[1]))) {
-      this.push(e[2]);
-    }
-  };
-  specialForms['doIfElse'] = function (e) {
-    this.pop();
-    if (bool(this.arg(e[1]))) {
-      this.push(e[2]);
-    } else {
-      this.push(e[3]);
-    }
-  };
-  specialForms['doRepeat'] = function (e) {
-    if (this.frame.tmp == null) {
-      // Scratch 1.4 uses ceil; Scratch 2.0 uses round
-      this.frame.tmp = Math.ceil(num(this.arg(e[1])));
-    }
-    if (this.frame.tmp > 0) {
-      this.frame.tmp -= 1;
-      this.pushYield();
-      this.push(e[2]);
-    } else {
-      this.pop();
-    }
-  };
-  specialForms['doReturn'] = function (e) {
-    while (true) {
-      if (!this.stack.length) return;
-      var e = this.stack[this.stack.length - 1].expression;
-      if (e[0] === 'endCall_') {
-        this.pop();
-        return;
-      }
-      this.pop();
-    }
-  };
-  specialForms['doUntil'] = function (e) {
-    if (bool(this.arg(e[1]))) {
-      this.pop();
-    } else {
-      this.pushYield();
-      this.push(e[2]);
-    }
-  };
-  specialForms['doWhile'] = function (e) {
-    if (!bool(this.arg(e[1]))) {
-      this.pop();
-    } else {
-      this.pushYield();
-      this.push(e[2]);
-    }
-  };
-  specialForms['doWaitUntil'] = function (e) {
-    if (bool(this.arg(e[1]))) {
-      this.pop();
-    } else {
-      this.shouldYield = true;
-    }
-  };
-  specialForms['glideSecs:toX:y:elapsed:from:'] = function (e) {
-    if (this.frame.tmp == null) {
-      this.frame.tmp = num(this.arg(e[1])) * 1000;
-      this.frame.ox = this.target.scratchX;
-      this.frame.oy = this.target.scratchY;
-      this.frame.x = num(this.arg(e[2])) - this.frame.ox;
-      this.frame.y = num(this.arg(e[3])) - this.frame.oy;
-      this.frame.start = this.interpreter.now;
-    }
-    var delta = this.interpreter.now - this.frame.start;
-    var f = delta / this.frame.tmp;
-    if (delta > this.frame.tmp) {
-      this.pop();
-      f = 1;
-    }
-    this.target.moveTo(this.frame.ox + this.frame.x * f, this.frame.oy + this.frame.y * f);
-    this.shouldYield = true;
-  };
-  specialForms['startSceneAndWait'] = function (e) {
-    if (this.frame.tmp == null) {
-      this.primitives.showBackground.call(this, this.arg(e[1]));
-      this.frame.tmp = 'whenSceneStarts:' + this.target.stage.currentCostume.costumeName.toLowerCase();
-    }
-    if (!this.hasTrigger(this.frame.tmp)) {
-      this.pop();
-    }
-    this.shouldYield = true;
-  };
-  specialForms['stopAll'] = function () {
-    this.pop();
-    this.interpreter.stop();
-    this.shouldStop = true;
-  };
-  specialForms['stopScripts'] = function (e) {
-    switch (this.arg(e[1])) {
-      case 'all':
-        this.specialForms.stopAll.call(this);
-        return;
-      case 'this script':
-        this.specialForms.doReturn.call(this);
-        return;
-      case 'other scripts in sprite':
-      case 'other scripts in stage':
-        this.interpreter.stopThreadsFor(this.target, true);
-        this.pop();
-        return;
-    }
-    console.warn('Unrecognized stopScripts argument', e);
-  };
-  specialForms['wait:elapsed:from:'] = function (e) {
-    if (this.frame.tmp == null) {
-      this.frame.tmp = num(this.arg(e[1])) * 1000;
-      this.frame.start = this.interpreter.now;
-    }
-    if (this.interpreter.now - this.frame.start > this.frame.tmp) {
-      this.pop();
-    }
-    this.shouldYield = true;
-  };
-  specialForms['warpSpeed'] = function (e) {
-    this.warp += 1;
-    this.pop();
-    this.pushInternal('endWarpSpeed_');
-    this.push(e[1]);
-  };
-
-  // Internal
-  specialForms['yield_'] = function () {
-    this.pop();
-    this.shouldYield = true;
-  };
-  specialForms['endCall_'] = function () {
-    var call = this.callStack.pop();
-    this.pop();
-    if (call.procedure.isAtomic) {
-      this.warp -= 1;
-    }
-  };
-  specialForms['endWarpSpeed_'] = function () {
-    this.pop();
-    this.warp -= 1;
-  };
-
-  var primitives = Thread.prototype.primitives = {};
-
-  // Motion
-  primitives['forward:'] = function (steps) {
-    var t = Math.PI / 2 - this.direction * Math.PI / 180;
-    var r = num(steps);
-    this.moveTo(this.scratchX + r * Math.cos(t),
-                this.scratchY + r * Math.sin(t));
-  };
-  primitives['turnRight:'] = function (degrees) {
-    this.setDirection(this.direction + num(degrees));
-  };
-  primitives['turnLeft:'] = function (degrees) {
-    this.setDirection(this.direction - num(degrees));
-  };
-  primitives['heading:'] = function (degrees) {
-    this.setDirection(num(degrees));
-  };
-  // primitives['pointTowards:'] = function () {};
-  primitives['gotoX:y:'] = function (x, y) {
-    this.moveTo(num(x), num(y));
-  };
-  // primitives['gotoSpriteOrMouse:'] = function () {};
-  primitives['changeXposBy:'] = function (x) {
-    this.moveTo(this.scratchX + num(x), this.scratchY);
-  };
-  primitives['xpos:'] = function (x) {
-    this.moveTo(num(x), this.scratchY);
-  };
-  primitives['changeYposBy:'] = function (y) {
-    this.moveTo(this.scratchX, this.scratchY + num(y));
-  };
-  primitives['ypos:'] = function (y) {
-    this.moveTo(this.scratchX, num(y));
-  };
-  // primitives['bounceOffEdge'] = function () {};
-  primitives['xpos'] = function () {
-    return this.scratchX;
-  };
-  primitives['ypos'] = function () {
-    return this.scratchY;
-  };
-  primitives['heading'] = function () {
-    return this.direction;
-  };
-
-  // Looks
-  primitives['lookLike:'] = function (costume) {
-    this.setCostume(costume);
-  };
-  primitives['nextCostume'] = function () {
-    this.showNextCostume();
-  };
-  primitives['costumeIndex'] = function () {
-    return this.currentCostumeIndex + 1;
-  };
-  primitives['costumeName'] = function () {
-    return this.currentCostume.costumeName;
-  };
-  primitives['showBackground:'] = function (costume) {
-    if (costume === 'next backdrop') {
-      this.stage.showNextCostume();
-    } else if (costume === 'previous backdrop') {
-      this.stage.showPreviousCostume();
-    } else {
-      this.stage.setCostume(costume);
-    }
-    this.stage.interpreter.trigger('whenSceneStarts:' + this.stage.currentCostume.costumeName.toLowerCase());
-  };
-  primitives['nextBackground'] = function () {
-    this.stage.showNextCostume();
-  };
-  primitives['backgroundIndex'] = function () {
-    return this.stage.currentCostumeIndex + 1;
-  };
-  primitives['sceneName'] = function () {
-    return this.stage.currentCostume.costumeName;
-  };
-  primitives['nextScene'] = primitives['nextBackground'];
-  primitives['startScene'] = primitives['showBackground:'];
-  // startSceneAndWait (special form)
-  // primitives['say:duration:elapsed:from:'] = function () {};
-  // primitives['say:'] = function () {};
-  // primitives['think:duration:elapsed:from:'] = function () {};
-  // primitives['think:'] = function () {};
-  primitives['changeGraphicEffect:by:'] = function (name, value) {
-    this.setFilter(name, this.filters[name] + num(value));
-  };
-  primitives['setGraphicEffect:to:'] = function (name, value) {
-    this.setFilter(name, num(value));
-  };
-  primitives['filterReset'] = function () {
-    this.resetFilters();
-  };
-  primitives['changeSizeBy:'] = function (scale) {
-    this.setScale(this.scale + num(scale) / 100);
-  };
-  primitives['setSizeTo:'] = function (scale) {
-    this.setScale(num(scale) / 100);
-  };
-  // primitives['scale'] = function () {};
-  primitives['show'] = function () {
-    this.setVisible(true);
-  };
-  primitives['hide'] = function () {
-    this.setVisible(false);
-  };
-  primitives['comeToFront'] = function () {
-    var children = this.stage.children;
-    var i = children.indexOf(this);
-    if (i > -1) {
-      children.splice(i, 1);
-    }
-    children.push(this);
-  };
-  primitives['goBackByLayers:'] = function (layers) {
-    var children = this.stage.children;
-    var i = children.indexOf(this);
-    if (i > -1) {
-      children.splice(i, 1);
-    }
-    i -= Math.round(num(layers));
-    if (i < 0) i = 0;
-    children.splice(i, 0, this);
-  };
-  // primitives['setVideoState'] = function () {};
-  // primitives['setVideoTransparency'] = function () {};
-  // primitives['setRotationStyle'] = function () {};
-
-  // Sound
-  // primitives['playSound:'] = function () {};
-  // primitives['doPlaySoundAndWait'] = function () {};
-  // primitives['stopAllSounds'] = function () {};
-  // primitives['drum:duration:elapsed:from:'] = function () {};
-  // primitives['playDrum'] = function () {};
-  // primitives['rest:elapsed:from:'] = function () {};
-  // primitives['noteOn:duration:elapsed:from:'] = function () {};
-  // primitives['midiInstrument:'] = function () {};
-  // primitives['instrument:'] = function () {};
-  // primitives['changeVolumeBy:'] = function () {};
-  // primitives['setVolumeTo:'] = function () {};
-  // primitives['volume'] = function () {};
-  // primitives['changeTempoBy:'] = function () {};
-  // primitives['setTempoTo:'] = function () {};
-  // primitives['tempo'] = function () {};
-
-  // Pen
-  primitives['clearPenTrails'] = function () {
-    var canvas = this.stage.penLayer.image;
-    canvas.width = canvas.width;
-  };
-  primitives['putPenDown'] = function () {
-    this.isPenDown = true;
-    this.stroke(this.scratchX, this.scratchY, this.scratchX, this.scratchY);
-  };
-  primitives['putPenUp'] = function () {
-    this.isPenDown = false;
-  };
-  primitives['penColor:'] = function (x) {
-    this.penColor = color(x);
-  };
-  // primitives['setPenHueTo:'] = function () {};
-  // primitives['changePenHueBy:'] = function () {};
-  // primitives['setPenShadeTo:'] = function () {};
-  // primitives['changePenShadeBy:'] = function () {};
-  primitives['penSize:'] = function (x) {
-    this.penSize = num(x);
-  };
-  primitives['changePenSizeBy:'] = function (x) {
-    this.penSize += num(x);
-  };
-  primitives['stampCostume'] = function () {
-    this.stamp();
-  };
-
-  // Data
-  primitives['getParam'] = function (name) {
-    var thread = this.stage.interpreter.currentThread;
-    var callStack = thread.callStack;
-    return callStack ? zeroNull(callStack[callStack.length - 1].arguments[name]) : 0;
-  };
-  primitives['readVariable'] = function (name) {
-    return this.getVariable(name);
-  };
-  primitives['setVar:to:'] = function (name, value) {
-    this.setVariable(name, value);
-  };
-  primitives['changeVar:by:'] = function (name, value) {
-    this.setVariable(name, num(this.getVariable(name)) + num(value));
-  };
-  primitives["contentsOfList:"] = function () {
-    var list = this.getList(name);
-    return list ? list + '' : '';
-  };
-  primitives["append:toList:"] = function (value, name) {
-    var list = this.getList(name);
-    if (list) list.add(value);
-  };
-  primitives["deleteLine:ofList:"] = function (i, name) {
-    var list = this.getList(name);
-    if (list) list.delete(i);
-  };
-  primitives["insert:at:ofList:"] = function (value, i, name) {
-    var list = this.getList(name);
-    if (list) list.insert(i, value);
-  };
-  primitives["setLine:ofList:to:"] = function (i, name, value) {
-    var list = this.getList(name);
-    if (list) list.put(i, value);
-  };
-  primitives["getLine:ofList:"] = function (i, name) {
-    var list = this.getList(name);
-    return list ? list.get(i) : 0;
-  };
-  primitives["lineCountOfList:"] = function (name) {
-    var list = this.getList(name);
-    return list ? list.length() : 0;
-  };
-  primitives["list:contains:"] = function (name, value) {
-    var list = this.getList(name);
-    return list ? list.contains(value) : false;
-  };
-  // primitives['showVariable:'] = function () {};
-  // primitives['hideVariable:'] = function () {};
-  // primitives['showList:'] = function () {};
-  // primitives['hideList:'] = function () {};
-
-  // Events
-  // broadcast: (special form)
-  // doBroadcastAndWait (special form)
-
-  // Control
-  primitives['createCloneOf'] = function (name) {
-    var parent = name === '_myself_' ? this : this.stage.getObject(name);
-    if (!parent || stage.cloneCount >= Stage.MAX_CLONES) return;
-    var sprite = parent.copy();
-    this.stage.add(sprite);
-    ++stage.cloneCount;
-    this.stage.interpreter.triggerFor(sprite, 'whenCloned');
-  };
-  primitives['deleteClone'] = function () {};
-
-  // Sensing
-  // primitives['touching:'] = function () {};
-  // primitives['touchingColor:'] = function () {};
-  // primitives['color:sees:'] = function () {};
-  // primitives['doAsk'] = function () {};
-  // primitives['answer'] = function () {};
-  primitives['mousePressed'] = function () {
-    return this.stage.mousePressed;
-  };
-  primitives['mouseX'] = function () {
-    return this.stage.mouseX;
-  };
-  primitives['mouseY'] = function () {
-    return this.stage.mouseY;
-  };
-  primitives['timer'] = function () {
-    return (this.stage.interpreter.now - this.stage.timerStart) / 1000;
-  };
-  primitives['timerReset'] = function () {
-    this.stage.timerStart = this.stage.interpreter.now;
-  };
-  primitives['keyPressed:'] = function (key) {
-    return !!this.stage.keys[key];
-  };
-  // primitives['distanceTo:'] = function () {};
-  // primitives['getAttribute:of:'] = function () {};
-  // primitives['getUserId'] = function () {};
-  // primitives['getUserName'] = function () {};
-  // primitives['soundLevel'] = function () {};
-  // primitives['isLoud'] = function () {};
-  // primitives['timestamp'] = function () {};
-  primitives['timeAndDate'] = function (format) {
-    var d = new Date;
-    switch (format) {
-      case 'year':
-        return d.getFullYear()
-      case 'month':
-        return d.getMonth() + 1;
-      case 'date':
-        return d.getDate();
-      case 'day of week':
-        return d.getDay() + 1;
-      case 'hour':
-        return d.getHours();
-      case 'minute':
-        return d.getMinutes();
-      case 'second':
-        return d.getSeconds();
-    }
-    console.warn('Unrecognized date format', format);
-  };
-  // primitives['sensor:'] = function () {};
-  // primitives['sensorPressed:'] = function () {};
-
-  // Operators
-  primitives['+'] = function (x, y) {
-    return num(x) + num(y);
-  };
-  primitives['-'] = function (x, y) {
-    return num(x) - num(y);
-  };
-  primitives['*'] = function (x, y) {
-    return num(x) * num(y);
-  };
-  primitives['/'] = function (x, y) {
-    return num(x) / num(y);
-  };
-  primitives['randomFrom:to:'] = function (a, b) {
-    var min = num(a);
-    var max = num(b);
-    if (min > max) {
-      min = num(b);
-      max = num(a);
-    }
-    if (min % 1 === 0 && max % 1 === 0) {
-      return Math.floor(Math.random() * (max - min + 1) + min);
-    }
-    return Math.random() * (max - min) + min;
-  };
-  primitives['<'] = function (x, y) {
-    return compare(x, y) === -1;
-  };
-  primitives['='] = function (x, y) {
-    return compare(x, y) === 0;
-  };
-  primitives['>'] = function (x, y) {
-    return compare(x, y) === 1;
-  };
-  primitives['&'] = function (x, y) {
-    return bool(x) && bool(y);
-  };
-  primitives['|'] = function (x, y) {
-    return bool(x) && bool(y);
-  };
-  primitives['not'] = function (x) {
-    return !bool(x);
-  };
-  primitives['abs'] = function (x) {
-    return Math.abs(num(x));
-  };
-  primitives['sqrt'] = function (x) {
-    return Math.sqrt(num(x));
-  };
-  primitives['concatenate:with:'] = function (x, y) {
-    return '' + x + y;
-  };
-  primitives['letter:of:'] = function (letter, s) {
-    return ('' + s)[letter];
-  };
-  primitives['stringLength:'] = function (s) {
-    return ('' + s).length;
-  };
-  primitives['%'] = function (x, y) {
-    var n = x % y;
-    if (n / y < 0) {
-      n += y;
-    }
-    return n;
-  };
-  primitives['\\'] = primitives['%'];
-  primitives['rounded'] = function (x) {
-    return Math.round(num(x));
-  };
-  primitives['computeFunction:of:'] = function (f, x) {
-    x = num(x);
-    switch (f) {
-      case 'abs':
-      case 'floor':
-      case 'sqrt':
-        return Math[f](x);
-      case 'ceiling':
-        return Math.ceil(x);
-      case 'cos':
-        x = 90 - x;
-      case 'sin':
-        // 0 <= x <= 45 for degrees->radians to work well
-        var neg = false;
-        x = x % 360;
-        if (x < 0) x += 360;
-        if (x > 180) {
-          neg = !neg;
-          x -= 180;
-        }
-        if (x > 90) {
-          x = 180 - x;
-        }
-        var z = x > 45 ?
-          Math.cos((90 - x) * Math.PI / 180) :
-          Math.sin(x * Math.PI / 180);
-        return neg ? -z : z;
-      case 'tan':
-        x = x % 180;
-        if (x < 0) x += 180;
-        return x > 90 ?
-          -Math.tan((90 - x) * Math.PI / 180) :
-          Math.tan(x * Math.PI / 180);
-      case 'asin':
-      case 'acos':
-      case 'atan':
-        return Math[f](x) * 180 / Math.PI;
-      case 'ln':
-        return Math.log(x);
-      case 'log':
-        return Math.log(x) / Math.LN10;
-      case 'e ^':
-        return Math.exp(x);
-      case '10 ^':
-        return Math.exp(x * Math.LN10)
-    }
-  };
-
-  var StackFrame = function (expression) {
-    this.expression = expression;
-    this.tmp = null;
+    this.context.drawImage(this.baseLayer, 0, 0);
   };
 
   return {
+    getKeyCode: getKeyCode,
     IO: IO,
-    Interpreter: Interpreter,
-    Thread: Thread
+    Base: Base,
+    Stage: Stage,
+    Sprite: Sprite
+  };
+
+}());
+
+P.compile = (function () {
+  'use strict';
+
+  var EVENT_SELECTORS = [
+    'whenClicked',
+    'whenCloned',
+    'whenGreenFlag',
+    'whenIReceive',
+    'whenKeyPressed',
+    'whenSceneStarts',
+    'whenSensorGreaterThan' // TODO
+  ];
+
+  var compileScripts = function (object) {
+    for (var i = 0; i < object.scripts.length; i++) {
+      compileListener(object, object.scripts[i][2]);
+    }
+
+    console.log(object.fns);
+  };
+
+  var warnings;
+  var warn = function (message) {
+    warnings[message] = (warnings[message] || 0) + 1;
+  };
+
+  var name = 'a';
+  function varn() {
+    var i, s;
+    s = '';
+    i = name.length - 1;
+    while (i >= 0 && name[i] === 'z') {
+      s = 'a' + s;
+      --i;
+    }
+    if (i === -1) {
+      s = 'a' + s;
+    } else {
+      s = String.fromCharCode(name.charCodeAt(i) + 1) + s;
+    }
+    s = name.substr(0, i) + s;
+    name = s;
+    return '$tmp_' + s;
+  }
+
+  var compileListener = function (object, script, isAtomic) {
+    if (!script[0] || EVENT_SELECTORS.indexOf(script[0][0]) === -1) return;
+
+    var nextLabel = function () {
+      return object.fns.length + fns.length;
+    };
+
+    var label = function () {
+      var id = nextLabel();
+      fns.push(source.length);
+      return id;
+    };
+
+    var delay = function () {
+      source += 'return;\n';
+      label();
+    };
+
+    var queue = function (id) {
+      source += 'queue(S, STACK, ' + id + ');\n';
+      source += 'return;\n';
+    };
+
+    var seq = function (script) {
+      if (!script) return;
+      for (var i = 0; i < script.length; i++) {
+        compile(script[i]);
+      }
+    };
+
+    var val = function (e) {
+      if (typeof e === 'number') {
+
+        return '' + e;
+
+      } else if (typeof e === 'string') {
+
+        return '"' + e
+          .replace(/\\/g, '\\\\')
+          .replace(/\n/g, '\\n')
+          .replace(/\r/g, '\\r')
+          .replace(/"/g, '\\"') + '"';
+
+      } else if (e[0] === 'xpos') { /* Motion */
+
+        return 'S.scratchX';
+
+      } else if (e[0] === 'ypos') {
+
+        return 'S.scratchY';
+
+      } else if (e[0] === 'heading') {
+
+        return 'S.direction';
+
+      } else if (e[0] === 'costumeIndex') { /* Looks */
+
+        return 'S.currentCostumeIndex';
+
+      } else if (e[0] === 'costumeName') {
+
+        return 'S.getCostumeName()';
+
+      } else if (e[0] === 'backgroundIndex') {
+
+        return 'self.currentCostumeIndex';
+
+      } else if (e[0] === 'sceneName') {
+
+        return 'self.getCostumeName()';
+
+      } else if (e[0] === 'scale') {
+
+        return 'S.scale';
+
+      // } else if (e[0] === 'getParam') { /* Data */
+
+      } else if (e[0] === 'readVariable') {
+
+        return 'S.varRefs[' + val(e[1]) + '].value';
+
+      } else if (e[0] === '+') { /* Operators */
+
+        return '(' + num(e[1]) + ' + ' + num(e[2]) + ')';
+
+      } else if (e[0] === '-') {
+
+        return '(' + num(e[1]) + ' - ' + num(e[2]) + ')';
+
+      } else if (e[0] === '*') {
+
+        return '(' + num(e[1]) + ' * ' + num(e[2]) + ')';
+
+      } else if (e[0] === '/') {
+
+        return '(' + num(e[1]) + ' / ' + num(e[2]) + ')';
+
+      } else if (e[0] === 'randomFrom:to:') {
+
+        return 'random(' + num(e[1]) + ', ' + num(e[2]) + ')';
+
+      } else if (e[0] === '<') {
+
+        return '(compare(' + val(e[1]) + ', ' + val(e[2]) + ') === -1)';
+
+      } else if (e[0] === '=') {
+
+        return '(compare(' + val(e[1]) + ', ' + val(e[2]) + ') === 0)';
+
+      } else if (e[0] === '>') {
+
+        return '(compare(' + val(e[1]) + ', ' + val(e[2]) + ') === 1)';
+
+      } else if (e[0] === '&') {
+
+        return '(' + bool(e[1]) + ' && ' + bool(e[2]) + ')';
+
+      } else if (e[0] === '|') {
+
+        return '(' + bool(e[1]) + ' || ' + bool(e[2]) + ')';
+
+      } else if (e[0] === 'not') {
+
+        return '!' + bool(e[1]) + '';
+
+      } else if (e[0] === 'abs') {
+
+        return 'Math.abs(' + num(e[1]) + ')';
+
+      } else if (e[0] === 'sqrt') {
+
+        return 'Math.sqrt(' + num(e[1]) + ')';
+
+      } else if (e[0] === 'concatenate:with:') {
+
+        return '("" + ' + val(e[1]) + ' + ' + val(e[2]) + ')';
+
+      } else if (e[0] === 'letter:of:') {
+
+        return '(("" + ' + val(e[2]) + ')[Math.floor(' + num(e[1]) + ')] || "")';
+
+      } else if (e[0] === 'stringLength:') {
+
+        return '("" + ' + val(e[1]) + ').length';
+
+      } else if (e[0] === '%' || e[0] === '\\') {
+
+        return 'mod(' + num(e[1]) + ', ' + num(e[2]) + ')';
+
+      } else if (e[0] === 'rounded') {
+
+        return 'Math.round(' + num(e[1]) + ')';
+
+      } else if (e[0] === 'computeFunction:of:') {
+
+        return 'mathFunc(' + val(e[1]) + ', ' + num(e[2]) + ')';
+
+      } else if (e[0] === 'mousePressed') {
+
+        return 'self.mousePressed';
+
+      } else if (e[0] === 'mouseX') {
+
+        return 'self.mouseX';
+
+      } else if (e[0] === 'mouseY') {
+
+        return 'self.mouseY';
+
+      // } else if (e[0] === 'touching:') { /* Sensing */
+
+      // } else if (e[0] === 'touchingColor:') {
+
+      // } else if (e[0] === 'color:sees:') {
+
+      // } else if (e[0] === 'answer') {
+
+      } else if (e[0] === 'timer') {
+
+        return '(Date.now() - self.timerStart) / 1000';
+
+      // } else if (e[0] === 'keyPressed:') {
+
+      // } else if (e[0] === 'distanceTo:') {
+
+      // } else if (e[0] === 'getAttribute:of:') {
+
+      // } else if (e[0] === 'getUserId') {
+
+      // } else if (e[0] === 'getUserName') {
+
+      // } else if (e[0] === 'soundLevel') {
+
+      // } else if (e[0] === 'isLoud') {
+
+      // } else if (e[0] === 'timestamp') {
+
+      // } else if (e[0] === 'timeAndDate') {
+
+      // } else if (e[0] === 'sensor:') {
+
+      // } else if (e[0] === 'sensorPressed:') {
+
+      } else {
+
+        warn('Undefined val: ' + e[0]);
+
+      }
+    };
+
+    var bool = function (e) {
+      return 'bool(' + val(e) + ')';
+    };
+
+    var num = function (e) {
+      if (typeof e === 'number') {
+        return e;
+      }
+      if (typeof e === 'string') {
+        if (+e === +e) {
+          return +e;
+        }
+        return 0;
+      }
+      return '(+' + val(e) + ' || 0)';
+    };
+
+    var compile = function (block) {
+      if (block[0] === 'forward:') { /* Motion */
+
+        source += 'S.forward(' + num(block[1]) + ');\n';
+
+      } else if (block[0] === 'turnRight:') {
+
+        source += 'S.setDirection(S.direction + ' + num(block[1]) + ');\n';
+
+      } else if (block[0] === 'turnLeft:') {
+
+        source += 'S.setDirection(S.direction - ' + num(block[1]) + ');\n';
+
+      } else if (block[0] === 'heading:') {
+
+        source += 'S.setDirection(' + num(block[1]) + ');\n';
+
+      // } else if (block[0] === 'pointTowards:') {
+
+      } else if (block[0] === 'gotoX:y:') {
+
+        source += 'S.moveTo(' + num(block[1]) + ', ' + num(block[2]) + ');\n';
+
+      // } else if (block[0] === 'gotoSpriteOrMouse:') {
+
+      } else if (block[0] === 'changeXposBy:') {
+
+        source += 'S.moveTo(S.scratchX + ' + num(block[1]) + ', S.scratchY);\n';
+
+      } else if (block[0] === 'xpos:') {
+
+        source += 'S.moveTo(' + num(block[1]) + ', S.scratchY);\n';
+
+      } else if (block[0] === 'changeYposBy:') {
+
+        source += 'S.moveTo(S.scratchX, S.scratchY + ' + num(block[1]) + ');\n';
+
+      } else if (block[0] === 'ypos:') {
+
+        source += 'S.moveTo(S.scratchX, ' + num(block[1]) + ');\n';
+
+      // } else if (block[0] === 'bounceOffEdge') {
+
+      } else if (block[0] === 'setRotationStyle') {
+
+        source += 'S.rotationStyle = ' + val(block[1]) + ';\n';
+
+      } else if (block[0] === 'lookLike:') { /* Looks */
+
+        source += 'S.setCostume(' + val(block[1]) + ');\n';
+
+      } else if (block[0] === 'nextCostume') {
+
+        source += 'S.currentCostumeIndex = (S.currentCostumeIndex + 1) % S.costumes.length;\n';
+
+      } else if (block[0] === 'showBackground:' ||
+                 block[0] === 'startScene') {
+
+        source += 'self.setCostume(' + val(block[1]) + ');\n';
+        source += 'sceneChange();\n';
+
+      } else if (block[0] === 'nextBackground' ||
+                 block[0] === 'nextScene') {
+
+        source += 'S.currentCostumeIndex = (S.currentCostumeIndex + 1) % S.costumes.length;\n';
+        source += 'sceneChange();\n';
+
+      } else if (block[0] === 'startSceneAndWait') {
+
+        if (warp) {
+
+          warn('Cannot be used at warp speed: ' + block);
+
+        } else {
+
+          source += 'self.setCostume(' + val(block[1]) + ');\n';
+          source += 'sceneChange();\n';
+          source += 'waitForSceneChange(S, ' + val(block[1]) + ', ' + nextLabel() + ');\n';
+          delay();
+
+        }
+
+      // } else if (block[0] === 'say:duration:elapsed:from:') {
+
+      // } else if (block[0] === 'say:') {
+
+      // } else if (block[0] === 'think:duration:elapsed:from:') {
+
+      // } else if (block[0] === 'think:') {
+
+      } else if (block[0] === 'changeGraphicEffect:by:') {
+
+        source += 'S.filters[' + val(block[1]) + '] += ' + num(block[2]) + ';\n';
+
+      } else if (block[0] === 'setGraphicEffect:to:') {
+
+        source += 'S.filters[' + val(block[1]) + '] = ' + num(block[2]) + ';\n';
+
+      } else if (block[0] === 'filterReset') {
+
+        source += 'S.resetFilters();\n';
+
+      } else if (block[0] === 'changeSizeBy:') {
+
+        source += 'S.scale += ' + num(block[1]) + ' / 100;\n';
+
+      } else if (block[0] === 'setSizeTo:') {
+
+        source += 'S.scale = ' + num(block[1]) + ' / 100;\n';
+
+      } else if (block[0] === 'show') {
+
+        source += 'S.visible = true;\n';
+
+      } else if (block[0] === 'hide') {
+
+        source += 'S.visible = false;\n';
+
+      } else if (block[0] === 'comeToFront') {
+
+        source += 'var i = self.children.indexOf(S);\n';
+        source += 'if (i > -1) self.children.splice(i, 1);\n';
+        source += 'self.children.push(S);\n';
+
+      } else if (block[0] === 'goBackByLayers:') {
+
+        source += 'var i = self.children.indexOf(S);\n';
+        source += 'if (i > -1) {\n';
+        source += '  self.children.splice(i, 1);\n';
+        source += '  self.children.splice(Math.max(0, i - ' + num(block[1]) + '), 0, S);\n';
+        source += '}\n';
+
+      // } else if (e[0] === 'setVideoState') {
+
+      // } else if (e[0] === 'setVideoTransparency') {
+
+      } else if (block[0] === 'clearPenTrails') { /* Pen */
+
+        source += 'self.penCanvas.width = 480;\n';
+
+      } else if (block[0] === 'putPenDown') {
+
+        source += 'S.isPenDown = true;\n';
+        source += 'S.dotPen();\n';
+
+      } else if (block[0] === 'putPenUp') {
+
+        source += 'S.isPenDown = false;\n';
+        source += 'S.penState = null;\n';
+
+      } else if (block[0] === 'penColor:') {
+
+        source += 'var hsl = rgb2hsl(' + num(block[1]) + ');\n';
+        source += 'S.penHue = hsl[0];\n';
+        source += 'S.penSaturation = hsl[1];\n';
+        source += 'S.penLightness = hsl[2];\n';
+
+      } else if (block[0] === 'setPenHueTo:') {
+
+        source += 'S.penHue = ' + num(block[1]) + ' * 360 / 200;\n';
+
+      } else if (block[0] === 'changePenHueBy:') {
+
+        source += 'S.penHue += ' + num(block[1]) + ' * 360 / 200;\n';
+
+      } else if (block[0] === 'setPenShadeTo:') {
+
+        source += 'S.penLightness = ' + num(block[1]) + ' % 200;\n';
+        source += 'if (S.penLightness < 0) S.penLightness += 200;\n';
+        source += 'if (S.penLightness > 100) S.penLightness = 100 - S.penLightness;\n';
+
+      } else if (block[0] === 'changePenShadeBy:') {
+
+        source += 'S.penLightness += ' + num(block[1]) + ' % 200;\n';
+        source += 'if (S.penLightness < 0) S.penLightness += 200;\n';
+        source += 'if (S.penLightness > 100) S.penLightness = 100 - S.penLightness;\n';
+
+      } else if (block[0] === 'penSize:') {
+
+        source += 'S.penSize = ' + num(block[1]) + ';\n';
+
+      } else if (block[0] === 'changePenSizeBy:') {
+
+        source += 'S.penSize += ' + num(block[1]) + ';\n';
+
+      } else if (block[0] === 'stampCostume') {
+
+        source += 'S.draw(self.penContext);\n';
+
+      } else if (block[0] === 'broadcast:') {
+
+        source += 'broadcast(' + val(block[1]) + ');';
+
+      } else if (block[0] === 'call') {
+
+        // TODO
+
+      } else if (block[0] === 'doBroadcastAndWait') {
+
+        source += 'broadcast(' + val(block[1]) + ');\n';
+        source += 'waitForBroadcast(S, ' + val(block[1]) + ', ' + nextLabel() + ');\n';
+        delay();
+
+      } else if (block[0] === 'doForever') {
+
+        var id = label();
+        seq(block[1]);
+        queue(id);
+
+      } else if (block[0] === 'doForeverIf') {
+
+        if (warp) {
+          warn('Cannot be used at warp speed: ' + block);
+        } else {
+
+          var id = label();
+
+          source += 'if (' + bool(block[1]) + ') {\n';
+          seq(block[2]);
+          source += '}\n';
+
+          queue(id);
+
+        }
+
+      // } else if (block[0] === 'doForLoop') {
+
+      } else if (block[0] === 'doIf') {
+
+        source += 'if (' + bool(block[1]) + ') {\n';
+        seq(block[2]);
+        source += '}\n';
+
+      } else if (block[0] === 'doIfElse') {
+
+        source += 'if (' + bool(block[1]) + ') {';
+        seq(block[2]);
+        source += '} else {';
+        seq(block[3]);
+        source += '}';
+
+      } else if (block[0] === 'doRepeat') {
+
+        source += 'save();\n';
+        source += 'R.count = ' + num(block[1]) + ';\n';
+
+        if (warp) {
+
+          source += 'while (R.count > 0) {\n';
+          source += '  R.count -= 1;\n';
+          seq(block[2]);
+          source += '}\n';
+
+          source += 'restore();\n';
+
+        } else {
+
+          var id = label();
+
+          source += 'if (R.count > 0) {\n';
+          source += '  R.count -= 1;\n';
+          seq(block[2]);
+          queue(id);
+          source += '} else {\n';
+          source += '  restore();\n';
+          source += '}\n';
+
+        }
+
+      } else if (block[0] === 'doReturn') {
+
+        source += 'endCall();\n';
+        source += 'return;\n';
+
+      } else if (block[0] === 'doUntil') {
+
+        if (warp) {
+
+          source += 'if (!' + bool(block[1]) + ') {\n';
+          seq(block[2]);
+          source += '}\n';
+
+        } else {
+
+          var id = label();
+          source += 'if (!' + bool(block[1]) + ') {\n';
+          seq(block[2]);
+          queue(id);
+          source += '}\n';
+
+        }
+
+      } else if (block[0] === 'doWhile') {
+
+        if (warp) {
+
+          source += 'while (' + bool(block[1]) + ') {\n';
+          seq(block[2]);
+          source += '}\n';
+
+        } else {
+
+          var id = label();
+          source += 'if (' + bool(block[1]) + ') {\n';
+          seq(block[2]);
+          queue(id);
+          source += '}\n';
+
+        }
+
+      } else if (block[0] === 'doWaitUntil') {
+
+        if (warp) {
+
+          warn('Cannot be used at warp speed: ' + block);
+
+        } else {
+
+          var id = label();
+          source += 'if (!' + bool(block[1]) + ') {\n';
+          queue(id);
+          source += '}\n';
+
+        }
+
+      } else if (block[0] === 'glideSecs:toX:y:elapsed:from:') {
+
+        if (warp) {
+
+          warn('Cannot be used at warp speed: ' + block);
+
+        } else {
+
+          source += 'save();\n';
+          source += 'R.start = Date.now();\n';
+          source += 'R.duration = ' + num(block[1]) + ';\n';
+          source += 'R.baseX = S.scratchX;\n';
+          source += 'R.baseY = S.scratchY;\n';
+          source += 'R.deltaX = ' + num(block[2]) + ' - S.scratchX;\n';
+          source += 'R.deltaY = ' + num(block[3]) + ' - S.scratchY;\n';
+
+          var id = label();
+          source += 'var f = (Date.now() - R.start) / (R.duration * 1000);\n';
+          source += 'if (f > 1) f = 1;\n';
+          source += 'S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
+
+          source += 'if (f < 1) {\n';
+          queue(id);
+          source += '}\n';
+          source += 'restore();\n';
+
+        }
+
+      } else if (block[0] === 'stopAll') {
+
+        source += 'terminate();\n';
+        source += 'return;\n';
+
+      } else if (block[0] === 'stopScripts') {
+
+        source += 'switch (' + val(block[1]) + ') {\n';
+        source += '  case "all":\n'
+        source += '    terminate();\n';
+        source += '    return;\n';
+        source += '  case "this script":\n';
+        source += '    endCall();\n';
+        source += '    return;\n';
+        source += '  case "other scripts in sprite":\n';
+        source += '  case "other scripts in stage":\n';
+        source += '    terminateOthers(S);\n';
+        source += '    break;\n';
+        source += '}\n';
+
+      } else if (block[0] === 'wait:elapsed:from:') {
+
+        source += 'save();\n';
+        source += 'R.start = Date.now();\n';
+        source += 'R.duration = ' + num(block[1]) + ';\n';
+
+        var id = label();
+        source += 'if (Date.now() - R.start < R.duration * 1000) {\n';
+        queue(id);
+        source += '}\n';
+
+        source += 'restore();\n';
+
+      } else if (block[0] === 'warpSpeed') {
+
+        warp += 1;
+        seq(block[1]);
+        warp -= 1;
+
+      } else if (block[0] === 'createCloneOf') { /* Control */
+
+        source += 'clone(' + val(block[1]) + ');\n'
+
+      } else if (block[0] === 'deleteClone') {
+
+        source += 'var i = self.children.indexOf(S);\n';
+        source += 'if (i > -1) self.children.splice(i, 1);\n';
+        source += 'terminateS();\n';
+        source += 'return;\n';
+
+      } else if (block[0] === 'setVar:to:') { /* Data */
+
+        source += 'if (S.varRefs[' + val(block[1]) + ']) S.varRefs[' + val(block[1]) + '].value = ' + val(block[2]) + ';\n';
+
+      } else if (block[0] === 'changeVar:by:') {
+
+        source += 'if (S.varRefs[' + val(block[1]) + ']) S.varRefs[' + val(block[1]) + '].value = (+S.varRefs[' + val(block[1]) + '].value || 0) + ' + num(block[2]) + ';\n';
+
+      // } else if (block[0] === 'doAsk') { /* Sensing */
+
+      } else if (block[0] === 'timerReset') {
+
+        source += 'self.timerStart = Date.now();\n';
+
+      } else {
+
+        warn('Undefined command: ' + block[0]);
+
+      }
+    };
+
+    var source = '';
+    var startfn = object.fns.length;
+    var fns = [0];
+    var warp = +!!isAtomic;
+
+    for (var i = 1; i < script.length; i++) {
+      compile(script[i]);
+    }
+
+    var createContinuation = function (source) {
+      var result = '(function () {\n';
+      var brackets = 0;
+      var delBrackets = 0;
+      var shouldDelete = false;
+      for (var i = 0; i < source.length; i++) {
+        if (shouldDelete) {
+          if (source[i] === '{') {
+            delBrackets += 1;
+          } else if (source[i] === '}') {
+            delBrackets -= 1;
+            if (delBrackets === 0) {
+              shouldDelete = false;
+            }
+          }
+        } else {
+          if (source.substr(i, 8) === '} else {') {
+            if (brackets > 0) {
+              result += '} else {';
+              i += 7;
+            } else {
+              shouldDelete = true;
+              delBrackets = 0;
+            }
+          } else if (source[i] === '{') {
+            brackets += 1;
+            result += '{';
+          } else if (source[i] === '}') {
+            if (brackets > 0) {
+              result += '}';
+              brackets -= 1;
+            }
+          } else {
+            result += source[i];
+          }
+        }
+      }
+      result += '})';
+      try {
+        return P.runtime.scopedEval(result);
+      } catch (e) {
+        debugger;
+      }
+    };
+
+    for (var i = 0; i < fns.length; i++) {
+      object.fns.push(createContinuation(source.slice(fns[i])));
+    }
+
+    var f = object.fns[startfn];
+
+    if (script[0][0] === 'whenClicked') {
+      object.listeners.whenClicked.push(f);
+    } else if (script[0][0] === 'whenGreenFlag') {
+      object.listeners.whenGreenFlag.push(f);
+    } else if (script[0][0] === 'whenCloned') {
+      object.listeners.whenCloned.push(f);
+    } else if (script[0][0] === 'whenIReceive') {
+      var key = script[0][1].toLowerCase();
+      (object.listeners.whenIReceive[key] || (object.listeners.whenIReceive[key] = [])).push(f);
+    } else if (script[0][0] === 'whenKeyPressed') {
+      object.listeners.whenKeyPressed[P.getKeyCode(script[0][0])].push(f);
+    } else if (script[0][0] === 'whenSceneStarts') {
+      var key = script[0][1].toLowerCase();
+      (object.listeners.whenSceneStarts[key] || (object.listeners.whenSceneStarts[key] = [])).push(f);
+    } else {
+      warn('Undefined event:' + script[0][0]);
+    }
+  };
+
+  return function (stage) {
+
+    warnings = Object.create(null);
+
+    compileScripts(stage);
+
+    for (var i = 0; i < stage.children.length; i++) {
+      if (!stage.children[i].cmd) {
+        compileScripts(stage.children[i]);
+      }
+    }
+
+    for (var key in warnings) {
+      console.warn(key + (warnings[key] > 1 ? ' (repeated ' + warnings[key] + ' times)' : ''));
+    }
+
+  };
+
+}());
+
+P.runtime = (function () {
+  'use strict';
+
+  var self, S, R, STACK;
+
+  function bool(v) {
+    return +v !== 0 && v !== '' && v !== 'false';
+  }
+
+  function compare(x, y) {
+    if (+x === +x && +y === +y) {
+      return +x < +y ? -1 : +x === +y ? 0 : 1;
+    }
+    var xs = '' + x;
+    var ys = '' + y;
+    return xs < ys ? -1 : xs === ys ? 0 : 1;
+  }
+
+  function random(x, y) {
+    x = +x || 0;
+    y = +y || 0;
+    if (x > y) {
+      var tmp = y;
+      y = x;
+      x = tmp;
+    }
+    if (x % 1 === 0 && y % 1 === 0) {
+      return Math.floor(Math.random() * (y - x + 1)) + x;
+    }
+    return Math.random() * (y - x) + x;
+  }
+
+  function rgb2hsl(rgb) {
+    var r = (rgb >> 16 & 0xff) / 0xff;
+    var g = (rgb >> 8 & 0xff) / 0xff;
+    var b = (rgb & 0xff) / 0xff;
+
+    var min = Math.min(r, g, b);
+    var max = Math.max(r, g, b);
+
+    if (min === max) {
+      return [0, 0, r];
+    }
+
+    var c = max - min;
+    var l = (min + max) / 2;
+    var s = c / (1 - Math.abs(2 * l - 1));
+
+    var h;
+    switch (max) {
+      case r: h = ((g - b) / c + 6) % 6; break;
+      case g: h = (b - r) / c + 2; break;
+      case b: h = (r - g) / c + 4; break;
+    }
+    h *= 60;
+
+    return [h, s * 100, l * 100];
+  }
+
+  function clone(name) {
+    var c = (name === '_myself_' ? S : self.getObject(name)).clone();
+    self.children.push(c);
+    self.triggerFor(c, "whenCloned");
+  }
+
+  function save() {
+    STACK.push(R);
+    R = {};
+  }
+
+  function restore() {
+    R = STACK.pop();
+  }
+
+  function sceneChange() {
+    self.trigger('whenSceneStarts', self.costumes[self.currentCostumeIndex].costumeName);
+  }
+
+  function broadcast(name) {
+    self.trigger('whenIReceive', name);
+  }
+
+  function queue(sprite, stack, id) {
+    sprite.queue.push({
+      fn: sprite.fns[id],
+      stack: stack
+    });
+  }
+
+  function waitForBroadcast(sprite, message, id) {
+    sprite.wait.push({
+      fn: sprite.fns[id],
+      'for': 'broadcast',
+      'message': message
+    });
+  }
+
+  // Internal definition
+  (function () {
+    'use strict';
+
+    P.Stage.prototype.framerate = 30;
+
+    P.Base.prototype.initRuntime = function () {
+      this.queue = [];
+      this.wait = [];
+    };
+
+    P.Stage.prototype.triggerFor = function (sprite, event, arg) {
+      var threads;
+      if (event === 'whenClicked') {
+        threads = sprite.listeners.whenClicked;
+      } else if (event === 'whenCloned') {
+        threads = sprite.listeners.whenCloned;
+      } else if (event === 'whenGreenFlag') {
+        threads = sprite.listeners.whenGreenFlag;
+      } else if (event === 'whenIReceive') {
+        threads = sprite.listeners.whenIReceive[arg.toLowerCase()]
+      } else if (event === 'whenKeyPressed') {
+        threads = sprite.listeners.whenKeyPressed[arg];
+      } else if (event === 'whenSceneStarts') {
+        threads = sprite.listeners.whenSceneStarts[arg.toLowerCase()];
+      }
+      if (threads) {
+        for (var i = 0; i < threads.length; i++) {
+          sprite.queue.push({
+            fn: threads[i],
+            stack: [{}]
+          });
+        }
+      }
+    };
+
+    P.Stage.prototype.trigger = function (event, arg) {
+      this.triggerFor(this, event, arg);
+      for (var i = 0; i < this.children.length; i++) {
+        this.triggerFor(this.children[i], event, arg);
+      }
+    };
+
+    P.Stage.prototype.triggerGreenFlag = function () {
+      this.trigger('whenGreenFlag');
+    };
+
+    P.Stage.prototype.start = function () {
+      this.timerStart = Date.now();
+      this.interval = setInterval(this.step.bind(this), 1000 / this.framerate);
+    };
+
+    P.Stage.prototype.stopAll = function () {
+      this.queue = [];
+      this.wait = [];
+      this.resetFilters();
+      for (var i = 0; i < this.children.length; i++) {
+        if (this.children[i].isClone) {
+          this.children.splice(i, 1);
+          i -= 1;
+        } else {
+          this.children[i].queue = [];
+          this.children[i].wait = [];
+          this.children[i].resetFilters();
+        }
+      }
+    };
+
+    P.Stage.prototype.runFor = function (sprite) {
+      S = sprite;
+      var queue = sprite.queue;
+      sprite.queue = [];
+      for (var i = 0; i < queue.length; i++) {
+        STACK = queue[i].stack;
+        R = STACK.pop();
+        queue[i].fn();
+        STACK.push(R);
+      }
+    };
+
+    P.Stage.prototype.step = function () {
+      try {
+        self = this;
+        var start = Date.now();
+        do {
+          this.runFor(this);
+          for (var i = 0; i < this.children.length; i++) {
+            this.runFor(this.children[i]);
+          }
+        } while (self.isTurbo && Date.now() - start < 1000 / this.framerate);
+        this.draw();
+      } catch (e) {
+        console.error(e.stack);
+        clearInterval(this.interval);
+      }
+    };
+
+  }());
+
+  return {
+    scopedEval: function (source) {
+      return eval(source);
+    }
   };
 
 }());

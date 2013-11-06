@@ -4,6 +4,7 @@ $ch = curl_init($_GET['u']);
 
 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 curl_setopt($ch, CURLOPT_HEADER, false);
+curl_setopt($ch, CURLOPT_REFERER, 'http://scratch.mit.edu/');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_BINARYTRANSFER, true);
 
