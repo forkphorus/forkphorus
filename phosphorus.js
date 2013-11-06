@@ -298,7 +298,7 @@ var P = (function () {
   };
 
   IO.loadObject = function (data) {
-    if (!data.cmd) {
+    if (!data.cmd && !data.listName) {
       IO.loadBase(data);
     }
   };
@@ -571,7 +571,7 @@ var P = (function () {
     Stage.parent.prototype.fromJSON.call(this, data);
 
     data.children.forEach(function (d) {
-      if (d.cmd) {
+      if (d.cmd || d.listName) {
         return;
       }
       this.children.push(new Sprite(this).fromJSON(d));
@@ -660,6 +660,7 @@ var P = (function () {
     Sprite.parent.call(this);
 
     this.addVariables(stage.variables);
+    this.addLists(stage.lists);
 
     this.direction = 90;
     this.indexInLibrary = -1;
@@ -993,6 +994,22 @@ P.compile = (function () {
       } else if (e[0] === 'readVariable') {
 
         return 'S.varRefs[' + val(e[1]) + '].value';
+
+      } else if (e[0] === 'contentsOfList:') {
+
+        return 'contentsOfList(' + val(e[1]) + ')';
+
+      } else if (e[0] === 'getLine:ofList:') {
+
+        return 'getLineOfList(' + val(e[2]) + ', ' + val(e[1]) + ')';
+
+      } else if (e[0] === 'lineCountOfList:') {
+
+        return 'lineCountOfList(' + val(e[1]) + ')';
+
+      } else if (e[0] === 'list:contains:') {
+
+        return 'listContains(' + val(e[1]) + ', ' + val(e[2]) + ')';
 
       } else if (e[0] === '+') { /* Operators */
 
@@ -1551,6 +1568,30 @@ P.compile = (function () {
 
         source += 'if (S.varRefs[' + val(block[1]) + ']) S.varRefs[' + val(block[1]) + '].value = (+S.varRefs[' + val(block[1]) + '].value || 0) + ' + num(block[2]) + ';\n';
 
+      } else if (block[0] === 'append:toList:') {
+
+        source += 'appendToList(' + val(block[2]) + ', ' + val(block[1]) + ');\n';
+
+      } else if (block[0] === 'deleteLine:ofList:') {
+
+        source += 'deleteLineOfList(' + val(block[2]) + ', ' + val(block[1]) + ');\n';
+
+      } else if (block[0] === 'insert:at:ofList:') {
+
+        source += 'insertInList(' + val(block[3]) + ', ' + val(block[2]) + ', '+ val(block[1]) + ');\n';
+
+      } else if (block[0] === 'setLine:ofList:to:') {
+
+        source += 'setLineOfList(' + val(block[2]) + ', ' + val(block[1]) + ', '+ val(block[3]) + ');\n';
+
+      // } else if (block[0] === 'showVariable:') {
+
+      // } else if (block[0] === 'hideVariable:') {
+
+      // } else if (block[0] === 'showList:') {
+
+      // } else if (block[0] === 'hideList:') {
+
       // } else if (block[0] === 'doAsk') { /* Sensing */
 
       } else if (block[0] === 'timerReset') {
@@ -1668,20 +1709,20 @@ P.runtime = (function () {
 
   var self, S, R, STACK;
 
-  function bool(v) {
+  var bool = function (v) {
     return +v !== 0 && v !== '' && v !== 'false';
-  }
+  };
 
-  function compare(x, y) {
+  var compare = function (x, y) {
     if (+x === +x && +y === +y) {
       return +x < +y ? -1 : +x === +y ? 0 : 1;
     }
     var xs = '' + x;
     var ys = '' + y;
     return xs < ys ? -1 : xs === ys ? 0 : 1;
-  }
+  };
 
-  function random(x, y) {
+  var random = function (x, y) {
     x = +x || 0;
     y = +y || 0;
     if (x > y) {
@@ -1693,9 +1734,9 @@ P.runtime = (function () {
       return Math.floor(Math.random() * (y - x + 1)) + x;
     }
     return Math.random() * (y - x) + x;
-  }
+  };
 
-  function rgb2hsl(rgb) {
+  var rgb2hsl = function (rgb) {
     var r = (rgb >> 16 & 0xff) / 0xff;
     var g = (rgb >> 8 & 0xff) / 0xff;
     var b = (rgb & 0xff) / 0xff;
@@ -1720,45 +1761,129 @@ P.runtime = (function () {
     h *= 60;
 
     return [h, s * 100, l * 100];
-  }
+  };
 
-  function clone(name) {
+  var clone = function (name) {
     var c = (name === '_myself_' ? S : self.getObject(name)).clone();
     self.children.push(c);
     self.triggerFor(c, "whenCloned");
-  }
+  };
 
-  function save() {
+  var listIndex = function (list, index, length) {
+    if (index === 'random' || index === 'any') {
+      return Math.floor(Math.random() * length);
+    }
+    if (index === 'last') {
+      return length - 1;
+    }
+    var i = Math.floor(index) - 1;
+    return i === i && i >= 0 && i < length ? i : -1;
+  };
+
+  var contentsOfList = function (name) {
+    var list = S.listRefs[name];
+    if (!list) return '';
+    var isSingle = true;
+    for (var i = 0; i < list.contents.length; i++) {
+      if (list.contents[i].length !== 1) {
+        isSingle = false;
+        break;
+      }
+    }
+    return list.contents.join(isSingle ? '' : ' ');
+  };
+
+  var getLineOfList = function (name, index) {
+    var list = S.listRefs[name];
+    if (!list) return 0;
+    var i = listIndex(list, index, list.contents.length);
+    return list && i > -1 ? list.contents[i] : 0;
+  };
+
+  var lineCountOfList = function (name) {
+    var list = S.listRefs[name];
+    return list ? list.contents.length : 0;
+  };
+
+  var listContains = function (name, value) {
+    var list = S.listRefs[name];
+    return list ? list.contents.indexOf(value) > -1 : 0;
+  };
+
+  var appendToList = function (name, value) {
+    var list = S.listRefs[name];
+    if (list) {
+      list.contents.push(value);
+    }
+  };
+
+  var deleteLineOfList = function (name, index) {
+    var list = S.listRefs[name];
+    if (list) {
+      if (index === 'all') {
+        list.contents = [];
+      } else {
+        var i = listIndex(list, index, list.contents.length);
+        if (i > -1) {
+          list.contents.splice(i, 1);
+        }
+      }
+    }
+  };
+
+  var insertInList = function (name, index, value) {
+    var list = S.listRefs[name];
+    if (list) {
+      var i = listIndex(list, index, list.contents.length + 1);
+      if (i === list.contents.length) {
+        list.contents.push(value);
+      } else if (i > -1) {
+        list.contents.splice(i, 0, value);
+      }
+    }
+  };
+
+  var setLineOfList = function (name, index, value) {
+    var list = S.listRefs[name];
+    if (list) {
+      var i = listIndex(list, index, list.contents.length);
+      if (i > -1) {
+        list.contents[i] = value;
+      }
+    }
+  };
+
+  var save = function () {
     STACK.push(R);
     R = {};
-  }
+  };
 
-  function restore() {
+  var restore = function () {
     R = STACK.pop();
-  }
+  };
 
-  function sceneChange() {
+  var sceneChange = function () {
     self.trigger('whenSceneStarts', self.costumes[self.currentCostumeIndex].costumeName);
-  }
+  };
 
-  function broadcast(name) {
+  var broadcast = function (name) {
     self.trigger('whenIReceive', name);
-  }
+  };
 
-  function queue(sprite, stack, id) {
+  var queue = function (sprite, stack, id) {
     sprite.queue.push({
       fn: sprite.fns[id],
       stack: stack
     });
-  }
+  };
 
-  function waitForBroadcast(sprite, message, id) {
+  var waitForBroadcast = function (sprite, message, id) {
     sprite.wait.push({
       fn: sprite.fns[id],
       'for': 'broadcast',
       'message': message
     });
-  }
+  };
 
   // Internal definition
   (function () {
