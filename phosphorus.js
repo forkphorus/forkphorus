@@ -871,6 +871,7 @@ P.compile = (function () {
   'use strict';
 
   var EVENT_SELECTORS = [
+    'procDef',
     'whenClicked',
     'whenCloned',
     'whenGreenFlag',
@@ -986,6 +987,10 @@ P.compile = (function () {
       } else if (e[0] === 'scale') {
 
         return 'S.scale';
+
+      // } else if (e[0] === 'volume') { /* Sound */
+
+      // } else if (e[0] === 'tempo') {
 
       // } else if (e[0] === 'getParam') { /* Data */
 
@@ -1289,9 +1294,35 @@ P.compile = (function () {
         source += '  self.children.splice(Math.max(0, i - ' + num(block[1]) + '), 0, S);\n';
         source += '}\n';
 
-      // } else if (e[0] === 'setVideoState') {
+      // } else if (block[0] === 'setVideoState') {
 
-      // } else if (e[0] === 'setVideoTransparency') {
+      // } else if (block[0] === 'setVideoTransparency') {
+
+      // } else if (block[0] === 'playSound:') { /* Sound */
+
+      // } else if (block[0] === 'doPlaySoundAndWait') {
+
+      // } else if (block[0] === 'stopAllSounds') {
+
+      // } else if (block[0] === 'drum:duration:elapsed:from:') {
+
+      // } else if (block[0] === 'playDrum') {
+
+      // } else if (block[0] === 'rest:elapsed:from:') {
+
+      // } else if (block[0] === 'noteOn:duration:elapsed:from:') {
+
+      // } else if (block[0] === 'midiInstrument:') {
+
+      // } else if (block[0] === 'instrument:') {
+
+      // } else if (block[0] === 'changeVolumeBy:') {
+
+      // } else if (block[0] === 'setVolumeTo:') {
+
+      // } else if (block[0] === 'changeTempoBy:') {
+
+      // } else if (block[0] === 'setTempoTo:') {
 
       } else if (block[0] === 'clearPenTrails') { /* Pen */
 
@@ -1346,7 +1377,39 @@ P.compile = (function () {
 
         source += 'S.draw(self.penContext);\n';
 
-      } else if (block[0] === 'broadcast:') {
+      } else if (block[0] === 'setVar:to:') { /* Data */
+
+        source += 'if (S.varRefs[' + val(block[1]) + ']) S.varRefs[' + val(block[1]) + '].value = ' + val(block[2]) + ';\n';
+
+      } else if (block[0] === 'changeVar:by:') {
+
+        source += 'if (S.varRefs[' + val(block[1]) + ']) S.varRefs[' + val(block[1]) + '].value = (+S.varRefs[' + val(block[1]) + '].value || 0) + ' + num(block[2]) + ';\n';
+
+      } else if (block[0] === 'append:toList:') {
+
+        source += 'appendToList(' + val(block[2]) + ', ' + val(block[1]) + ');\n';
+
+      } else if (block[0] === 'deleteLine:ofList:') {
+
+        source += 'deleteLineOfList(' + val(block[2]) + ', ' + val(block[1]) + ');\n';
+
+      } else if (block[0] === 'insert:at:ofList:') {
+
+        source += 'insertInList(' + val(block[3]) + ', ' + val(block[2]) + ', '+ val(block[1]) + ');\n';
+
+      } else if (block[0] === 'setLine:ofList:to:') {
+
+        source += 'setLineOfList(' + val(block[2]) + ', ' + val(block[1]) + ', '+ val(block[3]) + ');\n';
+
+      // } else if (block[0] === 'showVariable:') {
+
+      // } else if (block[0] === 'hideVariable:') {
+
+      // } else if (block[0] === 'showList:') {
+
+      // } else if (block[0] === 'hideList:') {
+
+      } else if (block[0] === 'broadcast:') { /* Control */
 
         source += 'broadcast(' + val(block[1]) + ');';
 
@@ -1549,7 +1612,7 @@ P.compile = (function () {
         seq(block[1]);
         warp -= 1;
 
-      } else if (block[0] === 'createCloneOf') { /* Control */
+      } else if (block[0] === 'createCloneOf') {
 
         source += 'clone(' + val(block[1]) + ');\n'
 
@@ -1559,38 +1622,6 @@ P.compile = (function () {
         source += 'if (i > -1) self.children.splice(i, 1);\n';
         source += 'terminateS();\n';
         source += 'return;\n';
-
-      } else if (block[0] === 'setVar:to:') { /* Data */
-
-        source += 'if (S.varRefs[' + val(block[1]) + ']) S.varRefs[' + val(block[1]) + '].value = ' + val(block[2]) + ';\n';
-
-      } else if (block[0] === 'changeVar:by:') {
-
-        source += 'if (S.varRefs[' + val(block[1]) + ']) S.varRefs[' + val(block[1]) + '].value = (+S.varRefs[' + val(block[1]) + '].value || 0) + ' + num(block[2]) + ';\n';
-
-      } else if (block[0] === 'append:toList:') {
-
-        source += 'appendToList(' + val(block[2]) + ', ' + val(block[1]) + ');\n';
-
-      } else if (block[0] === 'deleteLine:ofList:') {
-
-        source += 'deleteLineOfList(' + val(block[2]) + ', ' + val(block[1]) + ');\n';
-
-      } else if (block[0] === 'insert:at:ofList:') {
-
-        source += 'insertInList(' + val(block[3]) + ', ' + val(block[2]) + ', '+ val(block[1]) + ');\n';
-
-      } else if (block[0] === 'setLine:ofList:to:') {
-
-        source += 'setLineOfList(' + val(block[2]) + ', ' + val(block[1]) + ', '+ val(block[3]) + ');\n';
-
-      // } else if (block[0] === 'showVariable:') {
-
-      // } else if (block[0] === 'hideVariable:') {
-
-      // } else if (block[0] === 'showList:') {
-
-      // } else if (block[0] === 'hideList:') {
 
       // } else if (block[0] === 'doAsk') { /* Sensing */
 
@@ -1679,8 +1710,13 @@ P.compile = (function () {
     } else if (script[0][0] === 'whenSceneStarts') {
       var key = script[0][1].toLowerCase();
       (object.listeners.whenSceneStarts[key] || (object.listeners.whenSceneStarts[key] = [])).push(f);
+    } else if (script[0][0] === 'procDef') {
+      object.procedures[script[0][1]] = {
+        inputs: script[0][2],
+        fn: f
+      };
     } else {
-      warn('Undefined event:' + script[0][0]);
+      warn('Undefined event: ' + script[0][0]);
     }
   };
 
