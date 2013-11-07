@@ -840,9 +840,13 @@ var P = (function () {
 
     this.image = document.createElement('canvas');
 
-    this.baseLayer.onload = function () {
+    if (this.baseLayer.width) {
       this.render();
-    }.bind(this);
+    } else {
+      this.baseLayer.onload = function () {
+        this.render();
+      }.bind(this);
+    }
   };
   addEvents(Costume, 'load');
 
@@ -932,7 +936,7 @@ P.compile = (function () {
     };
 
     var queue = function (id) {
-      source += 'queue(S, STACK, ' + id + ');\n';
+      source += 'queue(S, STACK, CALLS, ' + id + ');\n';
       source += 'return;\n';
     };
 
@@ -992,7 +996,9 @@ P.compile = (function () {
 
       // } else if (e[0] === 'tempo') {
 
-      // } else if (e[0] === 'getParam') { /* Data */
+      } else if (e[0] === 'getParam') { /* Data */
+
+        return '(C && C.args[' + val(e[1]) + '] != null ? C.args[' + val(e[1]) + ']) : 0)';
 
       } else if (e[0] === 'readVariable') {
 
@@ -1415,7 +1421,15 @@ P.compile = (function () {
 
       } else if (block[0] === 'call') {
 
-        // TODO
+        source += 'call(' + val(block[1]) + ', ' + nextLabel() + ', [';
+        for (var i = 2; i < block.length; i++) {
+          if (i > 2) {
+            source += ', ';
+          }
+          source += val(block[i]);
+        }
+        source += ']);\n';
+        delay();
 
       } else if (block[0] === 'doBroadcastAndWait') {
 
@@ -1645,6 +1659,11 @@ P.compile = (function () {
       compile(script[i]);
     }
 
+    if (script[0][0] === 'procDef') {
+      source += 'endCall();\n';
+      source += 'return;\n';
+    }
+
     var createContinuation = function (source) {
       var result = '(function () {\n';
       var brackets = 0;
@@ -1743,7 +1762,7 @@ P.compile = (function () {
 P.runtime = (function () {
   'use strict';
 
-  var self, S, R, STACK;
+  var self, S, R, STACK, C, CALLS;
 
   var bool = function (v) {
     return +v !== 0 && v !== '' && v !== 'false';
@@ -1946,6 +1965,36 @@ P.runtime = (function () {
     R = STACK.pop();
   };
 
+  var call = function (spec, id, values) {
+    var procedure = S.procedures[spec];
+    if (procedure) {
+      var args = {};
+      for (var i = 0; i < values.length; i++) {
+        args[procedure.inputs[i]] = values[i];
+      }
+      CALLS.push(C);
+      STACK.push(R);
+      C = {
+        fn: S.fns[id],
+        args: args,
+        stack: STACK
+      };
+      STACK = [];
+      R = {};
+      procedure.fn();
+    }
+  };
+
+  var endCall = function () {
+    if (CALLS.length) {
+      var fn = C.fn;
+      C = CALLS.pop();
+      STACK = C.stack;
+      R = STACK.pop();
+      fn();
+    }
+  };
+
   var sceneChange = function () {
     self.trigger('whenSceneStarts', self.costumes[self.currentCostumeIndex].costumeName);
   };
@@ -1954,10 +2003,10 @@ P.runtime = (function () {
     self.trigger('whenIReceive', name);
   };
 
-  var queue = function (sprite, stack, id) {
+  var queue = function (sprite, stack, calls, id) {
     sprite.queue.push({
       fn: sprite.fns[id],
-      stack: stack
+      calls: calls
     });
   };
 
@@ -1999,7 +2048,7 @@ P.runtime = (function () {
         for (var i = 0; i < threads.length; i++) {
           sprite.queue.push({
             fn: threads[i],
-            stack: [{}]
+            calls: [{ args:{}, stack: [{}] }]
           });
         }
       }
@@ -2042,10 +2091,13 @@ P.runtime = (function () {
       var queue = sprite.queue;
       sprite.queue = [];
       for (var i = 0; i < queue.length; i++) {
-        STACK = queue[i].stack;
+        CALLS = queue[i].calls;
+        C = CALLS.pop();
+        STACK = C.stack;
         R = STACK.pop();
         queue[i].fn();
         STACK.push(R);
+        CALLS.push(C);
       }
     };
 
