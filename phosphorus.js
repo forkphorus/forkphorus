@@ -496,7 +496,6 @@ var P = (function () {
     this.penCanvas.width = 480;
     this.penCanvas.height = 360;
     this.penContext = this.penCanvas.getContext('2d');
-    this.penContext.lineCap = 'round';
 
     this.keys = {};
     this.mouseX = 0;
@@ -763,6 +762,7 @@ var P = (function () {
       }
       context.strokeStyle = 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + this.penLightness + '%)';
       context.lineWidth = this.penSize;
+      context.lineCap = 'round';
       context.beginPath();
       context.moveTo(240 + ox, 180 - oy);
       context.lineTo(240 + x, 180 - y);
@@ -780,6 +780,7 @@ var P = (function () {
     }
     context.strokeStyle = 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + this.penLightness + '%)';
     context.lineWidth = this.penSize;
+    context.lineCap = 'round';
     context.beginPath();
     context.moveTo(240 + x, 180 - y);
     context.lineTo(240.01 + x, 180 - y);
