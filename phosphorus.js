@@ -436,7 +436,7 @@ var P = (function () {
         return;
       }
     }
-    i = (num(costume) - 1) % costumes.length;
+    i = ((+costume || 0) - 1) % costumes.length;
     if (i < 0) i += costumes.length;
     this.currentCostumeIndex = i;
   };
