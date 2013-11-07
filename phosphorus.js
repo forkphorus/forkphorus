@@ -998,7 +998,7 @@ P.compile = (function () {
 
       } else if (e[0] === 'getParam') { /* Data */
 
-        return '(C && C.args[' + val(e[1]) + '] != null ? C.args[' + val(e[1]) + ']) : 0)';
+        return '(C && C.args[' + val(e[1]) + '] != null ? C.args[' + val(e[1]) + '] : 0)';
 
       } else if (e[0] === 'readVariable') {
 
