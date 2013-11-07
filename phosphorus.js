@@ -798,8 +798,8 @@ var P = (function () {
 
     context.translate(this.scratchX + 240, 180 - this.scratchY);
     context.rotate((this.direction - 90) * Math.PI / 180);
-    context.translate(-costume.rotationCenterX, -costume.rotationCenterY);
     context.scale(this.scale, this.scale);
+    context.translate(-costume.rotationCenterX, -costume.rotationCenterY);
 
     context.globalAlpha = Math.max(0, Math.min(1, 1 - this.filters.ghost / 100));
 
