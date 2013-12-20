@@ -4,7 +4,7 @@
 <link rel=stylesheet href=compare.css>
 <div class=title>
   <div class=progress-bar></div>
-  <input class=url value=http://scratch.mit.edu/projects/10000160>
+  <input class=url value=http://scratch.mit.edu/projects/>
 </div>
 <div class=controls>
   <a href=# class=flag title="Shift+click to enable turbo mode."><!-- G -->&#x2691;</a>
@@ -13,6 +13,10 @@
 </div>
 <div class=player>
 </div>
+<script src=lib/jszip/jszip.js></script>
+<script src=lib/jszip/jszip-deflate.js></script>
+<script src=lib/jszip/jszip-inflate.js></script>
+<script src=lib/jszip/jszip-load.js></script>
 <script src=//canvg.googlecode.com/svn/trunk/rgbcolor.js></script>
 <script src=//canvg.googlecode.com/svn/trunk/StackBlur.js></script>
 <script src=//canvg.googlecode.com/svn/trunk/canvg.js></script>
@@ -29,6 +33,8 @@
   var defaultId = '10000160';
 
   var projectId = location.hash ? location.hash.substr(1) : defaultId;
+
+  if (projectId === 'zip') projectId = '';
 
   var urlInput = document.querySelector('.url');
   urlInput.value = prefix + projectId;
@@ -127,22 +133,29 @@
 
   window.addEventListener('hashchange', function () {
     var id = location.hash.substr(1);
-    if (+id !== +id) id = '';
-    urlInput.value = prefix + id;
+    if (id !== 'zip') {
+      if (+id !== +id) id = '';
+      urlInput.value = prefix + id;
+    }
     load(id);
   });
 
   var load = function (id) {
+    if (id === 'zip') return;
     player.innerHTML = '';
     progressBar.style.display = 'none';
     if (!id) return;
+    showProgress(P.IO.loadScratchr2Project(id));
+  };
+
+  var showProgress = function (request) {
+    progressBar.style.display = 'none';
     setTimeout(function () {
       progressBar.style.width = '10%';
       progressBar.className = 'progress-bar';
       progressBar.style.opacity = 1;
       progressBar.style.display = 'block';
     });
-    var request = P.IO.loadScratchr2Project(id);
     request.onload = function (s) {
       progressBar.style.width = '100%';
       setTimeout(function () {
@@ -169,6 +182,34 @@
   };
 
   load(projectId);
+
+  var cancel = function (e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  };
+  document.body.addEventListener('dragover', cancel);
+  document.body.addEventListener('dragenter', cancel);
+
+  document.body.addEventListener('drop', function (e) {
+    e.preventDefault();
+
+    var f = e.dataTransfer.files[0];
+
+    if (f) {
+      location.hash = '#zip';
+      var ext = f.name.split('.').pop();
+      if (ext === 'sb2' || ext === 'zip') {
+        var request = P.IO.loadSB2File(f);
+      } else if (ext === 'json') {
+        request = P.IO.loadJSONFile(f);
+      }
+      if (request) {
+        showProgress(request);
+      }
+    }
+
+  });
+
 
 }());
 
