@@ -1257,7 +1257,7 @@ P.compile = (function () {
 
       } else if (e[0] === 'keyPressed:') {
 
-        return 'self.keys[P.getKeyCode(' + val(e[1]) + ')]';
+        return '!!self.keys[P.getKeyCode(' + val(e[1]) + ')]';
 
       } else if (e[0] === 'distanceTo:') {
 
