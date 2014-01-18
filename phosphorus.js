@@ -855,7 +855,7 @@ var P = (function () {
   Sprite.prototype.forward = function (steps) {
     var d = (90 - this.direction) * Math.PI / 180;
     this.moveTo(this.scratchX + steps * Math.cos(d), this.scratchY + steps * Math.sin(d));
-  }
+  };
 
   Sprite.prototype.moveTo = function (x, y) {
     var ox = this.scratchX;
