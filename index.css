@@ -54,7 +54,7 @@ body {
 .controls {
   height: 32px;
 }
-.controls a {
+.controls span {
   width: 32px;
   height: 32px;
   float: left;
@@ -67,7 +67,7 @@ body {
 .controls .full-screen {
   float: right;
 }
-.controls a:hover,
+.controls span:hover,
 .project-link:hover {
   color: #000;
 }
@@ -96,10 +96,10 @@ body {
 .fs .title {
   display: none;
 }
-.fs .controls a {
+.fs .controls span {
   color: rgba(255, 255, 255, .6);
 }
-.fs .controls a:hover {
+.fs .controls span:hover {
   color: #fff;
 }
 .fs .player {

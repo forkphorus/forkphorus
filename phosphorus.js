@@ -620,20 +620,6 @@ var P = (function () {
     // hardware acceleration
     this.canvas.style.WebkitTransform = 'translateZ(0)';
 
-    this.canvas.addEventListener('mousedown', function (e) {
-      this.updateMouse(e);
-
-      for (var i = this.children.length; i--;) {
-        if (this.children[i].visible && this.children[i].touching('_mouse_')) {
-          this.triggerFor(this.children[i], 'whenClicked');
-          break;
-        }
-      }
-
-      e.preventDefault();
-      this.canvas.focus();
-    }.bind(this));
-
     this.canvas.addEventListener('keydown', function (e) {
       if (e.ctrlKey || e.altKey || e.metaKey) {
         return;
@@ -650,15 +636,35 @@ var P = (function () {
       e.preventDefault();
     }.bind(this));
 
+    this.canvas.addEventListener('mousedown', function (e) {
+      this.updateMouse(e);
+      this.clickMouse();
+
+      e.preventDefault();
+      this.canvas.focus();
+    }.bind(this));
+
     document.addEventListener('mousemove', function (e) {
       this.updateMouse(e);
     }.bind(this));
 
-    this.canvas.addEventListener('mousedown', function (e) {
-      this.mousePressed = true;
+    document.addEventListener('mouseup', function (e) {
+      this.updateMouse(e);
+      this.mousePressed = false;
     }.bind(this));
 
-    document.addEventListener('mouseup', function (e) {
+    this.canvas.addEventListener('touchstart', function(e) {
+      this.mousePressed = true;
+      this.updateMouse(e.touches[0]);
+      this.clickMouse();
+      e.preventDefault();
+    }.bind(this));
+
+    document.addEventListener('touchmove', function (e) {
+      this.updateMouse(e.touches[0]);
+    }.bind(this));
+
+    document.addEventListener('touchend', function (e) {
       this.mousePressed = false;
     }.bind(this));
 
@@ -692,6 +698,16 @@ var P = (function () {
     if (y > 180) y = 180;
     this.mouseX = x;
     this.mouseY = y;
+  };
+
+  Stage.prototype.clickMouse = function() {
+    this.mousePressed = true;
+    for (var i = this.children.length; i--;) {
+      if (this.children[i].visible && this.children[i].touching('_mouse_')) {
+        this.triggerFor(this.children[i], 'whenClicked');
+        break;
+      }
+    }
   };
 
   Stage.prototype.resetAllFilters = function () {

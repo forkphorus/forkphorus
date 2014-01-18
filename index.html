@@ -9,9 +9,10 @@
   <a target=_blank class=project-link>&#x21f1;</a>
 </div>
 <div class=controls>
-  <a href=# class=flag title="Shift+click to enable turbo mode."><!-- G -->&#x2691;</a>
-  <a href=# class=stop><!-- S -->&#x25fc;</a>
-  <a href=# class=full-screen><!-- F -->&#x263c;</a>
+  <span class=flag title="Shift+click to enable turbo mode."><!-- G -->&#x2691;</span>
+  <span class=pause><!-- P -->&#x2759;&#x2759;</span>
+  <span class=stop><!-- S -->&#x25fc;</span>
+  <span class=full-screen><!-- F -->&#x263c;</span>
 </div>
 <div class=player>
 </div>
@@ -51,7 +52,7 @@
   var stop = document.querySelector('.stop');
   var fullScreen = document.querySelector('.full-screen');
 
-  flag.addEventListener('click', function (e) {
+  function flagClick(e) {
     if (e.shiftKey) {
       stage.isTurbo = !stage.isTurbo;
       flag.style.textDecoration = stage.isTurbo ? 'underline' : 'none';
@@ -61,14 +62,18 @@
       stage.triggerGreenFlag();
     }
     e.preventDefault();
-  });
+  }
+  flag.addEventListener('touchstart', flagClick);
+  flag.addEventListener('mousedown', flagClick);
 
-  stop.addEventListener('click', function (e) {
+  function stopClick(e) {
     stage.stopAll();
     e.preventDefault();
-  });
+  }
+  stop.addEventListener('touchstart', stopClick);
+  stop.addEventListener('mousedown', stopClick);
 
-  fullScreen.addEventListener('click', function (e) {
+  function fullScreenClick(e) {
     document.documentElement.classList.toggle('fs');
     isFullScreen = !isFullScreen;
     if (isFullScreen) {
@@ -86,7 +91,9 @@
     }
     updateFullScreen();
     e.preventDefault();
-  });
+  }
+  fullScreen.addEventListener('mousedown', fullScreenClick);
+  fullScreen.addEventListener('touchstart', fullScreenClick);
 
   var updateFullScreen = function () {
     if (isFullScreen) {
@@ -106,6 +113,11 @@
   };
 
   window.addEventListener('resize', updateFullScreen);
+  document.addEventListener('touchmove', function(e) {
+    if (isFullScreen) {
+      e.preventDefault();
+    }
+  });
 
   var timeout;
   urlInput.addEventListener('input', function () {
