@@ -1371,7 +1371,9 @@ P.compile = (function () {
 
       // } else if (e[0] === 'isLoud') {
 
-      // } else if (e[0] === 'timestamp') {
+      } else if (e[0] === 'timestamp') {
+
+        return '((Date.now() - epoch) / 86400000)';
 
       // } else if (e[0] === 'timeAndDate') {
 
@@ -2005,6 +2007,8 @@ P.runtime = (function () {
   'use strict';
 
   var self, S, R, STACK, C, CALLS;
+
+  var epoch = Date.UTC(2000, 0, 1);
 
   var bool = function (v) {
     return +v !== 0 && v !== '' && v !== 'false' && v !== false;
