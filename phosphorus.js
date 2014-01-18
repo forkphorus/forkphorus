@@ -1835,21 +1835,24 @@ P.compile = (function () {
 
       } else if (block[0] === 'stopAll') {
 
-        source += 'terminate();\n';
+        source += 'self.stopAll();\n';
+        source += 'TERMINATE = true;\n';
         source += 'return;\n';
 
       } else if (block[0] === 'stopScripts') {
 
         source += 'switch (' + val(block[1]) + ') {\n';
         source += '  case "all":\n'
-        source += '    terminate();\n';
+        source += '    self.stopAll();\n';
+        source += '    TERMINATE = true;\n';
         source += '    return;\n';
         source += '  case "this script":\n';
         source += '    endCall();\n';
         source += '    return;\n';
         source += '  case "other scripts in sprite":\n';
         source += '  case "other scripts in stage":\n';
-        source += '    terminateOthers(S);\n';
+        source += '    S.queue = [];\n';
+        source += '    TERMINATE = true;\n';
         source += '    break;\n';
         source += '}\n';
 
@@ -1880,7 +1883,8 @@ P.compile = (function () {
 
         source += 'var i = self.children.indexOf(S);\n';
         source += 'if (i > -1) self.children.splice(i, 1);\n';
-        source += 'terminateS();\n';
+        source += 'S.queue = [];\n';
+        source += 'TERMINATE = true;\n';
         source += 'return;\n';
 
       // } else if (block[0] === 'doAsk') { /* Sensing */
@@ -2008,7 +2012,7 @@ P.compile = (function () {
 P.runtime = (function () {
   'use strict';
 
-  var self, S, R, STACK, C, CALLS;
+  var self, S, R, STACK, C, CALLS, TERMINATE;
 
   var bool = function (v) {
     return +v !== 0 && v !== '' && v !== 'false' && v !== false;
@@ -2359,6 +2363,7 @@ P.runtime = (function () {
       S = sprite;
       var queue = sprite.queue;
       sprite.queue = [];
+      TERMINATE = false;
       for (var i = 0; i < queue.length; i++) {
         CALLS = queue[i].calls;
         C = CALLS.pop();
@@ -2367,6 +2372,7 @@ P.runtime = (function () {
         queue[i].fn();
         STACK.push(R);
         CALLS.push(C);
+        if (TERMINATE) return;
       }
     };
 
