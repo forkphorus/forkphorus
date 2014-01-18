@@ -526,7 +526,7 @@ var P = (function () {
   };
 
   Base.prototype.getCostumeName = function () {
-    return this.costumes[this.currentCostumeIndex] ? this.costumes[this.currentCostumeIndex].objName : "";
+    return this.costumes[this.currentCostumeIndex] ? this.costumes[this.currentCostumeIndex].objName : '';
   };
 
   Base.prototype.setCostume = function (costume) {
@@ -1956,7 +1956,7 @@ P.runtime = (function () {
   var clone = function (name) {
     var c = (name === '_myself_' ? S : self.getObject(name)).clone();
     self.children.push(c);
-    self.triggerFor(c, "whenCloned");
+    self.triggerFor(c, 'whenCloned');
   };
 
   var listIndex = function (list, index, length) {
