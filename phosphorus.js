@@ -947,6 +947,16 @@ var P = (function () {
     return Math.sqrt((this.scratchX - x) * (this.scratchX - x) + (this.scratchY - y) * (this.scratchY - y));
   };
 
+  Sprite.prototype.gotoObject = function(thing) {
+    if (thing === '_mouse_') {
+      this.moveTo(this.stage.mouseX, this.stage.mouseY);
+    } else {
+      var sprite = this.stage.getObject(thing);
+      if (!sprite) return 0;
+      this.moveTo(sprite.scratchX, sprite.scratchY);
+    }
+  };
+
   var Costume = function (data) {
     this.baseLayerID = data.baseLayerID;
     this.baseLayerMD5 = data.baseLayerMD5;
@@ -1311,7 +1321,9 @@ P.compile = (function () {
 
         source += 'S.moveTo(' + num(block[1]) + ', ' + num(block[2]) + ');\n';
 
-      // } else if (block[0] === 'gotoSpriteOrMouse:') {
+      } else if (block[0] === 'gotoSpriteOrMouse:') {
+
+        source += 'S.gotoObject(' + val(block[1]) + ');\n';
 
       } else if (block[0] === 'changeXposBy:') {
 
