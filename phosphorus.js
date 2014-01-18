@@ -1008,6 +1008,9 @@ var P = (function () {
 P.compile = (function () {
   'use strict';
 
+  var LOG_PRIMITIVES;
+  // LOG_PRIMITIVES = true;
+
   var EVENT_SELECTORS = [
     'procDef',
     'whenClicked',
@@ -1302,6 +1305,10 @@ P.compile = (function () {
     };
 
     var compile = function (block) {
+      if (LOG_PRIMITIVES) {
+        source += 'console.log(' + val(block[0]) + ');\n';
+      }
+
       if (block[0] === 'forward:') { /* Motion */
 
         source += 'S.forward(' + num(block[1]) + ');\n';
