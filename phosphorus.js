@@ -182,7 +182,7 @@ var P = (function () {
   IO.load = function (url, callback, self) {
     var request = new Request;
     var xhr = new XMLHttpRequest;
-    xhr.open('GET', IO.PROXY_URL + encodeURIComponent(url), true);
+    xhr.open('GET', IO.PROXY_URL + encodeURIComponent(url + '?' + Math.random().toString().slice(2)), true);
     xhr.onprogress = function (e) {
       request.progress(e.loaded, e.total, e.lengthComputable);
     };
