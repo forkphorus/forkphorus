@@ -1905,7 +1905,7 @@ P.runtime = (function () {
   var self, S, R, STACK, C, CALLS;
 
   var bool = function (v) {
-    return +v !== 0 && v !== '' && v !== 'false';
+    return +v !== 0 && v !== '' && v !== 'false' && v !== false;
   };
 
   var compare = function (x, y) {
