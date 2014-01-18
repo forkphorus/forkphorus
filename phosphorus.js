@@ -182,7 +182,7 @@ var P = (function () {
   IO.load = function (url, callback, self) {
     var request = new Request;
     var xhr = new XMLHttpRequest;
-    xhr.open('GET', IO.PROXY_URL + encodeURIComponent(url + '?' + Math.random().toString().slice(2)), true);
+    xhr.open('GET', IO.PROXY_URL + encodeURIComponent(url), true);
     xhr.onprogress = function (e) {
       request.progress(e.loaded, e.total, e.lengthComputable);
     };
@@ -248,7 +248,7 @@ var P = (function () {
 
     request.defer = true;
     request.add(
-      IO.load(IO.PROJECT_URL + id + '/get/')
+      IO.load(IO.PROJECT_URL + id + '/get/?' + Math.random().toString().slice(2))
         .addEventListener('load', function (contents) {
           try {
             var json = JSON.parse(contents);
