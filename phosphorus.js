@@ -1048,6 +1048,19 @@ var P = (function () {
     }
   };
 
+  Sprite.prototype.pointTowards = function(thing) {
+    if (thing === '_mouse_') {
+      var x = this.stage.mouseX;
+      var y = this.stage.mouseY;
+    } else {
+      var sprite = this.stage.getObject(thing);
+      if (!sprite) return 0;
+      x = sprite.scratchX;
+      y = sprite.scratchY;
+    }
+    this.direction = Math.atan2(x - this.scratchX, y - this.scratchY) * 180 / Math.PI;
+  };
+
   var Costume = function (data) {
     this.baseLayerID = data.baseLayerID;
     this.baseLayerMD5 = data.baseLayerMD5;
@@ -1408,7 +1421,9 @@ P.compile = (function () {
 
         source += 'S.setDirection(' + num(block[1]) + ');\n';
 
-      // } else if (block[0] === 'pointTowards:') {
+      } else if (block[0] === 'pointTowards:') {
+
+        source += 'S.pointTowards(' + val(block[1]) + ');\n';
 
       } else if (block[0] === 'gotoX:y:') {
 
