@@ -1067,7 +1067,7 @@ P.compile = (function () {
     };
 
     var queue = function (id) {
-      source += 'queue(S, STACK, CALLS, ' + id + ');\n';
+      source += 'queue(' + id + ');\n';
       source += 'return;\n';
     };
 
@@ -2107,14 +2107,13 @@ P.runtime = (function () {
       for (var i = 0; i < values.length; i++) {
         args[procedure.inputs[i]] = values[i];
       }
-      CALLS.push(C);
       STACK.push(R);
+      CALLS.push(C);
       C = {
         fn: S.fns[id],
         args: args,
-        stack: STACK
+        stack: STACK = []
       };
-      STACK = [];
       R = {};
       procedure.fn();
     }
@@ -2138,10 +2137,12 @@ P.runtime = (function () {
     self.trigger('whenIReceive', name);
   };
 
-  var queue = function (sprite, stack, calls, id) {
-    sprite.queue.push({
-      fn: sprite.fns[id],
-      calls: calls
+  var queue = function (id) {
+    CALLS.push(C);
+    STACK.push(R);
+    S.queue.push({
+      fn: S.fns[id],
+      calls: CALLS
     });
   };
 
