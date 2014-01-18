@@ -485,6 +485,7 @@ var P = (function () {
   Base.prototype.fromJSON = function (data) {
     this.objName = data.objName;
     this.scripts = data.scripts;
+    this.currentCostumeIndex = data.currentCostumeIndex || 0;
     this.costumes = data.costumes.map(function (d) {
       return new Costume(d);
     });
