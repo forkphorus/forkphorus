@@ -1292,13 +1292,10 @@ P.compile = (function () {
       if (typeof e === 'number') {
         return e;
       }
-      if (typeof e === 'string') {
-        if (+e === +e) {
-          return +e;
-        }
-        return 0;
+      if (typeof e === 'boolean' || typeof e === 'string') {
+        return Number(e) || 0;
       }
-      return '(+' + val(e) + ' || 0)';
+      return '(Number(' + val(e) + ') || 0)';
     };
 
     var compile = function (block) {
