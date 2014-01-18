@@ -1375,7 +1375,9 @@ P.compile = (function () {
 
         return '((Date.now() - epoch) / 86400000)';
 
-      // } else if (e[0] === 'timeAndDate') {
+      } else if (e[0] === 'timeAndDate') {
+
+        return 'timeAndDate(' + val(e[1]) + ')';
 
       // } else if (e[0] === 'sensor:') {
 
@@ -2008,8 +2010,6 @@ P.runtime = (function () {
 
   var self, S, R, STACK, C, CALLS;
 
-  var epoch = Date.UTC(2000, 0, 1);
-
   var bool = function (v) {
     return +v !== 0 && v !== '' && v !== 'false' && v !== false;
   };
@@ -2068,6 +2068,28 @@ P.runtime = (function () {
     var c = (name === '_myself_' ? S : self.getObject(name)).clone();
     self.children.push(c);
     self.triggerFor(c, 'whenCloned');
+  };
+
+  var epoch = Date.UTC(2000, 0, 1);
+
+  var timeAndDate = function(format) {
+    switch (format) {
+      case 'year':
+        return new Date().getFullYear();
+      case 'month':
+        return new Date().getMonth() + 1;
+      case 'date':
+        return new Date().getDate();
+      case 'day of week':
+        return new Date().getDay() + 1;
+      case 'hour':
+        return new Date().getHours();
+      case 'minute':
+        return new Date().getMinutes();
+      case 'second':
+        return new Date().getSeconds();
+    }
+    return 0;
   };
 
   var listIndex = function (list, index, length) {
