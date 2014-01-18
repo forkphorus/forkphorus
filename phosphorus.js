@@ -980,6 +980,9 @@ var P = (function () {
 
   Costume.prototype.render = function () {
     var scale = 1 / this.bitmapResolution;
+    this.rotationCenterX *= scale;
+    this.rotationCenterY *= scale;
+
     this.image.width = this.baseLayer.width * scale;
     this.image.height = this.baseLayer.height * scale;
 
