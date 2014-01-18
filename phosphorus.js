@@ -934,6 +934,19 @@ var P = (function () {
     }
   };
 
+  Sprite.prototype.distanceTo = function(thing) {
+    if (thing === '_mouse_') {
+      var x = this.stage.mouseX;
+      var y = this.stage.mouseY;
+    } else {
+      var sprite = this.stage.getObject(thing);
+      if (!sprite) return 0;
+      x = sprite.scratchX;
+      y = sprite.scratchY;
+    }
+    return Math.sqrt((this.scratchX - x) * (this.scratchX - x) + (this.scratchY - y) * (this.scratchY - y));
+  };
+
   var Costume = function (data) {
     this.baseLayerID = data.baseLayerID;
     this.baseLayerMD5 = data.baseLayerMD5;
@@ -1229,7 +1242,9 @@ P.compile = (function () {
 
         return 'self.keys[P.getKeyCode(' + val(e[1]) + ')]';
 
-      // } else if (e[0] === 'distanceTo:') {
+      } else if (e[0] === 'distanceTo:') {
+
+        return 'S.distanceTo(' + val(e[1]) + ')';
 
       // } else if (e[0] === 'getAttribute:of:') {
 
