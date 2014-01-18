@@ -5,6 +5,7 @@
 <div class=title>
   <div class=progress-bar></div>
   <input class=url value=http://scratch.mit.edu/projects/>
+  <a target=_blank class=project-link>&#x21f1;</a>
 </div>
 <div class=controls>
   <a href=# class=flag title="Shift+click to enable turbo mode."><!-- G -->&#x2691;</a>
@@ -41,6 +42,7 @@
 
   var progressBar = document.querySelector('.progress-bar');
   var player = document.querySelector('.player');
+  var projectLink = document.querySelector('.project-link');
 
   var controls = document.querySelector('.controls');
   var flag = document.querySelector('.flag');
@@ -141,6 +143,7 @@
   });
 
   var load = function (id) {
+    projectLink.href = id && id !== 'zip' ? 'http://scratch.mit.edu/projects/' + id + '/' : 'http://scratch.mit.edu/';
     if (id === 'zip') return;
     player.innerHTML = '';
     progressBar.style.display = 'none';

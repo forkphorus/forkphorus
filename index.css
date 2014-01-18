@@ -41,6 +41,16 @@ body {
 .progress-bar.error {
   background: #ecc;
 }
+.project-link {
+  position: absolute;
+  right: 100%;
+  top: 0;
+  padding: 0 8px;
+  font: 24px/29px sans-serif;
+  color: rgba(0, 0, 0, .4);
+  cursor: pointer;
+  text-decoration: none;
+}
 .controls {
   height: 32px;
 }
@@ -57,7 +67,8 @@ body {
 .controls .full-screen {
   float: right;
 }
-.controls a:hover {
+.controls a:hover,
+.project-link:hover {
   color: #000;
 }
 .player {
