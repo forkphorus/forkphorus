@@ -398,7 +398,7 @@ var P = (function () {
             console.log(reader.result);
             var image = new Image;
             image.onload = function () {
-              if (callback) callback();
+              if (callback) callback(image);
               request.load();
             };
             image.src = reader.result;
