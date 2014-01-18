@@ -1600,22 +1600,26 @@ P.compile = (function () {
       } else if (block[0] === 'setPenHueTo:') {
 
         source += 'S.penHue = ' + num(block[1]) + ' * 360 / 200;\n';
+        source += 'S.penSaturation = 100;\n';
 
       } else if (block[0] === 'changePenHueBy:') {
 
         source += 'S.penHue += ' + num(block[1]) + ' * 360 / 200;\n';
+        source += 'S.penSaturation = 100;\n';
 
       } else if (block[0] === 'setPenShadeTo:') {
 
         source += 'S.penLightness = ' + num(block[1]) + ' % 200;\n';
         source += 'if (S.penLightness < 0) S.penLightness += 200;\n';
         source += 'if (S.penLightness > 100) S.penLightness = 100 - S.penLightness;\n';
+        source += 'S.penSaturation = 100;\n';
 
       } else if (block[0] === 'changePenShadeBy:') {
 
         source += 'S.penLightness += ' + num(block[1]) + ' % 200;\n';
         source += 'if (S.penLightness < 0) S.penLightness += 200;\n';
         source += 'if (S.penLightness > 100) S.penLightness = 100 - S.penLightness;\n';
+        source += 'S.penSaturation = 100;\n';
 
       } else if (block[0] === 'penSize:') {
 
