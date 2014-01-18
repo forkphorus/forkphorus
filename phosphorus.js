@@ -933,14 +933,96 @@ var P = (function () {
     this.direction = d;
   };
 
+  var collisionCanvas = document.createElement('canvas');
+  var collisionContext = collisionCanvas.getContext('2d');
+
   Sprite.prototype.touching = function (thing) {
+    var costume = this.costumes[this.currentCostumeIndex];
     if (thing === '_mouse_') {
-      var costume = this.costumes[this.currentCostumeIndex];
       var d = costume.context.getImageData((this.stage.mouseX - this.scratchX) * costume.bitmapResolution + costume.rotationCenterX, (this.scratchY - this.stage.mouseY) * costume.bitmapResolution + costume.rotationCenterY, 1, 1).data;
       return d[3] !== 0;
     } else {
-      throw new Error('Unimplemented');
+      var sprite = this.stage.getObject(thing);
+      if (!sprite) return false;
+      var sc = sprite.costumes[sprite.currentCostumeIndex];
+
+      var mb = this.rotatedBounds();
+      var ob = sprite.rotatedBounds();
+
+      if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
+        return false;
+      }
+
+      var left = Math.max(mb.left, ob.left);
+      var top = Math.min(mb.top, ob.top);
+      var right = Math.min(mb.right, ob.right);
+      var bottom = Math.max(mb.bottom, ob.bottom);
+
+      collisionCanvas.width = right - left;
+      collisionCanvas.height = top - bottom;
+
+      collisionContext.save();
+      collisionContext.translate(-(left + 240), -(180 - top));
+
+      this.draw(collisionContext);
+      collisionContext.globalCompositeOperation = 'source-in';
+      sprite.draw(collisionContext);
+
+      collisionContext.restore();
+
+      var data = collisionContext.getImageData(0, 0, right - left, top - bottom).data;
+
+      var length = (right - left) * (top - bottom) * 4;
+      for (var i = 0; i < length; i += 4) {
+        if (data[i + 3]) {
+          return true;
+        }
+      }
+      return false;
     }
+  };
+
+  Sprite.prototype.rotatedBounds = function() {
+    var costume = this.costumes[this.currentCostumeIndex];
+
+    var mSin = Math.sin(this.direction * Math.PI / 180);
+    var mCos = Math.cos(this.direction * Math.PI / 180);
+
+    var left = -costume.rotationCenterX * costume.scale * this.scale;
+    var top = costume.rotationCenterY * costume.scale * this.scale;
+    var right = left + costume.image.width * costume.scale * this.scale;
+    var bottom = top - costume.image.height * costume.scale * this.scale;
+
+    var tlX = mSin * left - mCos * top;
+    var tlY = mCos * left + mSin * top;
+
+    var trX = mSin * right - mCos * top;
+    var trY = mCos * right + mSin * top;
+
+    var blX = mSin * left - mCos * bottom;
+    var blY = mCos * left + mSin * bottom;
+
+    var brX = mSin * right - mCos * bottom;
+    var brY = mCos * right + mSin * bottom;
+
+    return {
+      left: this.scratchX + Math.min(tlX, trX, blX, brX),
+      right: this.scratchX + Math.max(tlX, trX, blX, brX),
+      top: this.scratchY + Math.max(tlY, trY, blY, brY),
+      bottom: this.scratchY + Math.min(tlY, trY, blY, brY)
+    };
+  };
+
+  Sprite.prototype.showRotatedBounds = function() {
+    var bounds = this.rotatedBounds();
+    var div = document.createElement('div');
+    div.style.outline = '1px solid red';
+    div.style.position = 'absolute';
+    div.style.left = (240 + bounds.left) + 'px';
+    div.style.top = (180 - bounds.top) + 'px';
+    div.style.width = (bounds.right - bounds.left) + 'px';
+    div.style.height = (bounds.top - bounds.bottom) + 'px';
+    this.stage.canvas.parentNode.appendChild(div);
   };
 
   Sprite.prototype.distanceTo = function(thing) {
@@ -1244,7 +1326,9 @@ P.compile = (function () {
 
         return 'self.mouseY';
 
-      // } else if (e[0] === 'touching:') { /* Sensing */
+      } else if (e[0] === 'touching:') { /* Sensing */
+
+        return 'S.touching(' + val(e[1]) + ')';
 
       // } else if (e[0] === 'touchingColor:') {
 
