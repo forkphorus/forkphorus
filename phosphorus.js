@@ -541,7 +541,7 @@ var P = (function () {
         return;
       }
     }
-    i = ((+costume || 0) - 1) % costumes.length;
+    i = ((Number(costume) || 0) - 1) % costumes.length;
     if (i < 0) i += costumes.length;
     this.currentCostumeIndex = i;
   };
@@ -1635,7 +1635,7 @@ P.compile = (function () {
 
       } else if (block[0] === 'changeVar:by:') {
 
-        source += 'if (S.varRefs[' + val(block[1]) + ']) S.varRefs[' + val(block[1]) + '].value = (+S.varRefs[' + val(block[1]) + '].value || 0) + ' + num(block[2]) + ';\n';
+        source += 'if (S.varRefs[' + val(block[1]) + ']) S.varRefs[' + val(block[1]) + '].value = (Number(S.varRefs[' + val(block[1]) + '].value) || 0) + ' + num(block[2]) + ';\n';
 
       } else if (block[0] === 'append:toList:') {
 
@@ -2015,21 +2015,23 @@ P.runtime = (function () {
   var self, S, R, STACK, C, CALLS, TERMINATE;
 
   var bool = function (v) {
-    return +v !== 0 && v !== '' && v !== 'false' && v !== false;
+    return Number(v) !== 0 && v !== '' && v !== 'false' && v !== false;
   };
 
   var compare = function (x, y) {
-    if (+x === +x && +y === +y) {
-      return +x < +y ? -1 : +x === +y ? 0 : 1;
+    var nx = Number(x);
+    var ny = Number(y);
+    if (nx === nx && ny === ny) {
+      return nx < ny ? -1 : nx === ny ? 0 : 1;
     }
-    var xs = '' + x;
-    var ys = '' + y;
+    var xs = String(x);
+    var ys = String(y);
     return xs < ys ? -1 : xs === ys ? 0 : 1;
   };
 
   var random = function (x, y) {
-    x = +x || 0;
-    y = +y || 0;
+    x = Number(x) || 0;
+    y = Number(y) || 0;
     if (x > y) {
       var tmp = y;
       y = x;
