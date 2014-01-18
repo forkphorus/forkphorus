@@ -1148,7 +1148,7 @@ P.compile = (function () {
     return '$tmp_' + s;
   }
 
-  var compileListener = function (object, script, isAtomic) {
+  var compileListener = function (object, script) {
     if (!script[0] || EVENT_SELECTORS.indexOf(script[0][0]) === -1) return;
 
     var nextLabel = function () {
@@ -1903,7 +1903,11 @@ P.compile = (function () {
     var source = '';
     var startfn = object.fns.length;
     var fns = [0];
-    var warp = +!!isAtomic;
+    var warp = 0;
+
+    if (script[0][0] === 'procDef') {
+      warp += 1;
+    }
 
     for (var i = 1; i < script.length; i++) {
       compile(script[i]);
