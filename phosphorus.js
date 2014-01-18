@@ -1492,7 +1492,9 @@ P.compile = (function () {
 
       // } else if (block[0] === 'say:duration:elapsed:from:') {
 
-      // } else if (block[0] === 'say:') {
+      } else if (block[0] === 'say:') {
+
+        source += 'console.log(' + val(block[1]) + ');\n';
 
       // } else if (block[0] === 'think:duration:elapsed:from:') {
 
