@@ -813,10 +813,24 @@ var P = (function () {
     c.currentCostumeIndex = this.currentCostumeIndex;
     c.objName = this.objName;
     c.sounds = this.sounds;
-    c.varRefs = this.varRefs;
-    c.variables = this.variables;
-    c.listRefs = this.listRefs;
-    c.lists = this.lists;
+    c.variables = [];
+    c.lists = [];
+
+    for (var i = 0; i < this.variables.length; i++) {
+      var v = this.variables[i];
+      c.varRefs[v.name] = c.variables[i] = {
+        name: v.name,
+        value: v.value
+      };
+    }
+
+    for (var i = 0; i < this.lists.length; i++) {
+      var l = this.lists[i];
+      c.listRefs[l.listName] = c.lists[i] = {
+        contents: l.contents,
+        listName: l.listName
+      };
+    }
 
     c.procedures = this.procedures;
     c.listeners = this.listeners;
