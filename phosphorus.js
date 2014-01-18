@@ -723,11 +723,18 @@ var P = (function () {
   Stage.prototype.draw = function () {
     var context = this.context;
 
-    this.canvas.width = 480; // clear
+    this.canvas.width = 480 * this.zoom; // clear
+    this.canvas.height = 360 * this.zoom;
 
     context.save();
+    context.scale(this.zoom, this.zoom);
 
-    context.drawImage(this.costumes[this.currentCostumeIndex].image, 0, 0);
+    var costume = this.costumes[this.currentCostumeIndex];
+    context.save();
+    context.scale(costume.scale, costume.scale);
+    context.drawImage(costume.image, 0, 0);
+    context.restore();
+
     context.drawImage(this.penCanvas, 0, 0);
 
     for (var i = 0; i < this.children.length; i++) {
@@ -904,6 +911,7 @@ var P = (function () {
     context.translate(this.scratchX + 240, 180 - this.scratchY);
     context.rotate((this.direction - 90) * Math.PI / 180);
     context.scale(this.scale, this.scale);
+    context.scale(costume.scale, costume.scale);
     context.translate(-costume.rotationCenterX, -costume.rotationCenterY);
 
     context.globalAlpha = Math.max(0, Math.min(1, 1 - this.filters.ghost / 100));
@@ -927,7 +935,7 @@ var P = (function () {
   Sprite.prototype.touching = function (thing) {
     if (thing === '_mouse_') {
       var costume = this.costumes[this.currentCostumeIndex];
-      var d = costume.context.getImageData(this.stage.mouseX - this.scratchX + costume.rotationCenterX, (this.scratchY - this.stage.mouseY + costume.rotationCenterY), 1, 1).data;
+      var d = costume.context.getImageData((this.stage.mouseX - this.scratchX) * costume.bitmapResolution + costume.rotationCenterX, (this.scratchY - this.stage.mouseY) * costume.bitmapResolution + costume.rotationCenterY, 1, 1).data;
       return d[3] !== 0;
     } else {
       throw new Error('Unimplemented');
@@ -962,6 +970,7 @@ var P = (function () {
     this.baseLayerMD5 = data.baseLayerMD5;
     this.baseLayer = data.$image;
     this.bitmapResolution = data.bitmapResolution || 1;
+    this.scale = 1 / this.bitmapResolution;
     this.costumeName = data.costumeName;
     this.rotationCenterX = data.rotationCenterX;
     this.rotationCenterY = data.rotationCenterY;
@@ -979,16 +988,10 @@ var P = (function () {
   addEvents(Costume, 'load');
 
   Costume.prototype.render = function () {
-    var scale = 1 / this.bitmapResolution;
-    this.rotationCenterX *= scale;
-    this.rotationCenterY *= scale;
-
-    this.image.width = this.baseLayer.width * scale;
-    this.image.height = this.baseLayer.height * scale;
+    this.image.width = this.baseLayer.width;
+    this.image.height = this.baseLayer.height;
 
     this.context = this.image.getContext('2d');
-    this.context.save();
-    this.context.scale(scale, scale);
     this.context.drawImage(this.baseLayer, 0, 0);
   };
 
