@@ -594,6 +594,8 @@ var P = (function () {
     this.tempoBPM = 60;
     this.videoAlpha = 1;
     this.zoom = 1;
+    this.baseNow = 0;
+    this.baseTime = 0;
     this.timerStart = 0;
     this.cloneCount = 0;
 
@@ -1381,7 +1383,7 @@ P.compile = (function () {
 
       } else if (e[0] === 'timer') {
 
-        return '(Date.now() - self.timerStart) / 1000';
+        return '(self.now - self.timerStart) / 1000';
 
       } else if (e[0] === 'keyPressed:') {
 
@@ -1848,7 +1850,7 @@ P.compile = (function () {
         } else {
 
           source += 'save();\n';
-          source += 'R.start = Date.now();\n';
+          source += 'R.start = self.now;\n';
           source += 'R.duration = ' + num(block[1]) + ';\n';
           source += 'R.baseX = S.scratchX;\n';
           source += 'R.baseY = S.scratchY;\n';
@@ -1856,7 +1858,7 @@ P.compile = (function () {
           source += 'R.deltaY = ' + num(block[3]) + ' - S.scratchY;\n';
 
           var id = label();
-          source += 'var f = (Date.now() - R.start) / (R.duration * 1000);\n';
+          source += 'var f = (self.now - R.start) / (R.duration * 1000);\n';
           source += 'if (f > 1) f = 1;\n';
           source += 'S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
 
@@ -1893,11 +1895,11 @@ P.compile = (function () {
       } else if (block[0] === 'wait:elapsed:from:') {
 
         source += 'save();\n';
-        source += 'R.start = Date.now();\n';
+        source += 'R.start = self.now;\n';
         source += 'R.duration = ' + num(block[1]) + ';\n';
 
         var id = label();
-        source += 'if (Date.now() - R.start < R.duration * 1000) {\n';
+        source += 'if (self.now - R.start < R.duration * 1000) {\n';
         queue(id);
         source += '}\n';
 
@@ -1925,7 +1927,7 @@ P.compile = (function () {
 
       } else if (block[0] === 'timerReset') {
 
-        source += 'self.timerStart = Date.now();\n';
+        source += 'self.timerStart = self.now;\n';
 
       } else {
 
@@ -2379,8 +2381,19 @@ P.runtime = (function () {
     };
 
     P.Stage.prototype.start = function () {
-      this.timerStart = Date.now();
+      this.isRunning = true;
+      if (this.interval) return;
+      this.baseTime = Date.now();
       this.interval = setInterval(this.step.bind(this), 1000 / this.framerate);
+    };
+
+    P.Stage.prototype.pause = function () {
+      if (this.interval) {
+        self.baseNow = self.now;
+        clearInterval(this.interval);
+        delete this.interval;
+      }
+      this.isRunning = false;
     };
 
     P.Stage.prototype.stopAll = function () {
@@ -2420,6 +2433,7 @@ P.runtime = (function () {
       try {
         self = this;
         var start = Date.now();
+        self.now = self.baseNow + start - self.baseTime;
         do {
           this.runFor(this);
           for (var i = 0; i < this.children.length; i++) {

@@ -58,6 +58,8 @@
       flag.style.textDecoration = stage.isTurbo ? 'underline' : 'none';
       flag.title = stage.isTurbo ? 'Turbo mode enabled. Shift+click to disable.' : 'Shift+click to enable turbo mode.';
     } else {
+      stage.start();
+      pause.textContent = '\u2759\u2759';
       stage.stopAll();
       stage.triggerGreenFlag();
     }
@@ -66,7 +68,21 @@
   flag.addEventListener('touchstart', flagClick);
   flag.addEventListener('mousedown', flagClick);
 
+  function pauseClick(e) {
+    if (stage.isRunning) {
+      stage.pause();
+      pause.textContent = '\u25ba';
+    } else {
+      stage.start();
+      pause.textContent = '\u2759\u2759';
+    }
+  }
+  pause.addEventListener('touchstart', pauseClick);
+  pause.addEventListener('mousedown', pauseClick);
+
   function stopClick(e) {
+    stage.start();
+    pause.textContent = '\u2759\u2759';
     stage.stopAll();
     e.preventDefault();
   }
@@ -90,6 +106,9 @@
       player.style.transform = '';
     }
     updateFullScreen();
+    if (!stage.isRunning) {
+      stage.draw();
+    }
     e.preventDefault();
   }
   fullScreen.addEventListener('mousedown', fullScreenClick);
