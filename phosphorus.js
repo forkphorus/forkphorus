@@ -1041,6 +1041,38 @@ var P = (function() {
     }
   };
 
+  Sprite.prototype.bounceOffEdge = function() {
+    var b = this.rotatedBounds();
+    var dl = 240 + b.left;
+    var dt = 180 - b.top;
+    var dr = 240 - b.right;
+    var db = 180 + b.bottom;
+
+    var d = Math.min(dl, dt, dr, db);
+    if (d > 0) return;
+
+    var dir = this.direction * Math.PI / 180;
+    var dx = Math.sin(dir);
+    var dy = -Math.cos(dir);
+
+    switch (d) {
+      case dl: dx = Math.max(0.2, Math.abs(dx)); break;
+      case dt: dy = Math.max(0.2, Math.abs(dy)); break;
+      case dr: dx = -Math.max(0.2, Math.abs(dx)); break;
+      case db: dy = -Math.max(0.2, Math.abs(dy)); break;
+    }
+
+    this.direction = Math.atan2(dy, dx) * 180 / Math.PI + 90;
+
+    b = this.rotatedBounds();
+    var x = this.scratchX;
+    var y = this.scratchY;
+    if (b.left < -240) x += -240 - b.left;
+    if (b.top > 180) y += 180 - b.top;
+    if (b.right > 240) x += 240 - b.left;
+    if (b.bottom < -180) y += -180 - b.top;
+  };
+
   Sprite.prototype.rotatedBounds = function() {
     var costume = this.costumes[this.currentCostumeIndex];
 
@@ -1678,7 +1710,9 @@ P.compile = (function() {
 
         source += 'S.moveTo(S.scratchX, ' + num(block[1]) + ');\n';
 
-      // } else if (block[0] === 'bounceOffEdge') {
+      } else if (block[0] === 'bounceOffEdge') {
+
+        source += 'S.bounceOffEdge();\n';
 
       } else if (block[0] === 'setRotationStyle') {
 
