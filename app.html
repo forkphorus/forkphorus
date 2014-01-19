@@ -91,9 +91,9 @@
     s.isTurbo = turbo;
     s.start();
     s.triggerGreenFlag();
-    s.focus();
 
     player.appendChild(s.canvas);
+    s.focus();
   };
   request.onerror = function (e) {
     error.style.display = 'table';
