@@ -1248,7 +1248,6 @@ var P = (function() {
           if (this.mode === 3 && this.stage.mousePressed) {
             var x = this.stage.mouseX + 240 - this.x - 5;
             var y = 180 - this.stage.mouseY - this.y - 20;
-            console.log(x, y);
             if (x >= 0 && y >= 0 && x <= this.width - 5 - 5 && y <= 9) {
               ref.value = this.sliderMin + Math.max(0, Math.min(1, (x - 2.5) / (this.width - 5 - 5 - 5))) * (this.sliderMax - this.sliderMin);
               ref.value = this.isDiscrete ? Math.round(ref.value) : Math.round(ref.value * 100) / 100;
