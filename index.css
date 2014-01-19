@@ -113,6 +113,9 @@ body {
   background-position-y: -32px;
   opacity: .6;
 }
+.fs .controls .turbo {
+  color: rgba(255, 255, 255, .6);
+}
 .fs .player {
   box-shadow: none;
 }
