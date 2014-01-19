@@ -4,7 +4,7 @@ body {
   padding-bottom: 32px;
 }
 .title {
-  margin: 16px 0 48px;
+  margin: 16px 0 0;
   position: relative;
 }
 .url {
@@ -120,12 +120,15 @@ body {
   box-shadow: none;
 }
 
-.package h1,
-.package p {
+section {
+  margin: 32px 0 16px;
+}
+h1,
+p {
   font: 300 16px/1.5 Helvetica Neue, Helvetica, Arial, sans-serif;
   margin: 0 0 16px;
 }
-.package h1 {
+h1 {
   font: 300 24px/32px Helvetica Neue, Helvetica, Arial, sans-serif;
   margin: 16px 0 0;
 }
