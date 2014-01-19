@@ -70,6 +70,12 @@
 
   window.addEventListener('resize', layout);
 
+  if (P.hasTouchEvents) {
+    document.addEventListener('touchmove', function(e) {
+      e.preventDefault();
+    });
+  }
+
   var request = P.IO.loadScratchr2Project(projectId);
 
   request.onload = function (s) {
