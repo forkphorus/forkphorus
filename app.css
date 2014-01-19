@@ -45,4 +45,8 @@ h1 {
 p {
   font: 300 24px/1.5 Helvetica Neue, Helvetica, Arial, sans-serif;
   margin: 0;
+  color: rgba(255, 255, 255, .6);
+}
+.error a {
+  color: #fff;
 }
