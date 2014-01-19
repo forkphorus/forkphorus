@@ -159,7 +159,7 @@
     } else {
       stage.zoom = 1;
     }
-  };
+  }
 
   function preventDefault(e) {
     e.preventDefault();
@@ -230,11 +230,11 @@
     progressBar.style.display = 'none';
     if (!id) return;
     showProgress(P.IO.loadScratchr2Project(id));
-  };
+  }
 
   function updatePackageLink() {
     packageLink.href = '/app.html?id=' + projectId + '&turbo=' + packageTurbo.checked + '&full-screen=' + packageFullScreen.checked;
-  };
+  }
 
   function showProgress(request) {
     progressBar.style.display = 'none';
@@ -268,14 +268,14 @@
     request.onprogress = function(e) {
       progressBar.style.width = (10 + e.loaded / e.total * 90) + '%';
     };
-  };
+  }
 
   load(projectId);
 
   function cancel(e) {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
-  };
+  }
   document.body.addEventListener('dragover', cancel);
   document.body.addEventListener('dragenter', cancel);
 

@@ -61,7 +61,7 @@
 
   var stage;
 
-  var layout = function() {
+  function layout() {
     if (!stage) return;
     var w = Math.min(window.innerWidth, window.innerHeight / .75);
     if (!fullScreen) w = Math.min(w, 480);
@@ -70,7 +70,7 @@
     player.style.top = (window.innerHeight - h) / 2 + 'px';
     stage.zoom = w / 480;
     stage.draw();
-  };
+  }
 
   window.addEventListener('resize', layout);
 
