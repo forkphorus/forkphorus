@@ -1178,6 +1178,12 @@ var P = (function() {
 
   Watcher.prototype.resolve = function() {
     this.target = this.stage.getObject(this.targetName);
+    if (this.target && this.cmd === 'getVar:') {
+      var ref = this.target.varRefs[this.param];
+      if (ref) {
+        ref.watcher = this;
+      }
+    }
   };
 
   Watcher.prototype.draw = function(context) {
@@ -1865,9 +1871,13 @@ P.compile = (function() {
 
         source += 'setLineOfList(' + val(block[2]) + ', ' + val(block[1]) + ', '+ val(block[3]) + ');\n';
 
-      // } else if (block[0] === 'showVariable:') {
+      } else if (block[0] === 'showVariable:') {
 
-      // } else if (block[0] === 'hideVariable:') {
+        source += 'showVariable(' + val(block[1]) + ', true);';
+
+      } else if (block[0] === 'hideVariable:') {
+
+        source += 'showVariable(' + val(block[1]) + ', false);';
 
       // } else if (block[0] === 'showList:') {
 
@@ -2444,6 +2454,13 @@ P.runtime = (function() {
         return Math.exp(x * Math.LN10)
     }
     return 0;
+  };
+
+  var showVariable = function(name, visible) {
+    var ref = S.varRefs[name];
+    if (ref && ref.watcher) {
+      ref.watcher.visible = visible;
+    }
   };
 
   var save = function() {
