@@ -1413,7 +1413,7 @@ P.compile = (function() {
 
       } else if (e[0] === 'costumeIndex') { /* Looks */
 
-        return 'S.currentCostumeIndex';
+        return '(S.currentCostumeIndex + 1)';
 
       } else if (e[0] === 'costumeName') {
 
@@ -1421,7 +1421,7 @@ P.compile = (function() {
 
       } else if (e[0] === 'backgroundIndex') {
 
-        return 'self.currentCostumeIndex';
+        return '(self.currentCostumeIndex + 1)';
 
       } else if (e[0] === 'sceneName') {
 
