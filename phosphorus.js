@@ -701,6 +701,10 @@ var P = (function() {
     return this;
   };
 
+  Stage.prototype.focus = function() {
+    this.canvas.focus();
+  };
+
   Stage.prototype.updateMouse = function(e) {
     var bb = this.canvas.getBoundingClientRect();
     var x = (e.clientX - bb.left) / this.zoom - 240;

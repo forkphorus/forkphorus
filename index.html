@@ -95,7 +95,7 @@
       stage.stopAll();
       stage.triggerGreenFlag();
     }
-    stage.canvas.focus();
+    stage.focus();
     e.preventDefault();
   }
 
@@ -107,7 +107,7 @@
       stage.start();
       pause.className = 'pause';
     }
-    stage.canvas.focus();
+    stage.focus();
     e.preventDefault();
   }
 
@@ -115,7 +115,7 @@
     stage.start();
     pause.className = 'pause';
     stage.stopAll();
-    stage.canvas.focus();
+    stage.focus();
     e.preventDefault();
   }
 
@@ -134,7 +134,7 @@
     if (!stage.isRunning) {
       stage.draw();
     }
-    stage.canvas.focus();
+    stage.focus();
     e.preventDefault();
   }
 
@@ -254,7 +254,7 @@
       stage.triggerGreenFlag();
 
       player.appendChild(stage.canvas);
-      stage.canvas.focus();
+      stage.focus();
     };
     request.onerror = function(e) {
       progressBar.style.width = '100%';
