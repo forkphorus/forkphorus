@@ -1374,11 +1374,11 @@ var P = (function() {
         context.stroke();
         context.fill();
 
-        var x = (sw - sh) * (Number(value) || 0) / (this.sliderMax - this.sliderMin);
+        var x = (sw - sh) * ((Number(value) || 0) - this.sliderMin) / (this.sliderMax - this.sliderMin);
         context.strokeStyle = 'rgb(108, 105, 105)';
         context.fillStyle = 'rgb(233, 236, 239)';
         context.beginPath();
-        context.arc(x - 1 + sh / 2, sh / 2, br - 1, 0, Math.PI * 2, false);
+        context.arc(x + sh / 2, sh / 2, br - 1, 0, Math.PI * 2, false);
         context.stroke();
         context.fill();
 
