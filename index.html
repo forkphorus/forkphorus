@@ -52,11 +52,25 @@
   var stop = document.querySelector('.stop');
   var fullScreen = document.querySelector('.full-screen');
 
+  var flagTouchTimeout;
+  function flagTouchStart() {
+    flagTouchTimeout = setTimeout(function() {
+      turboClick();
+      flagTouchTimeout = true;
+    }, 500);
+  }
+  function turboClick() {
+    stage.isTurbo = !stage.isTurbo;
+    flag.style.textDecoration = stage.isTurbo ? 'underline' : 'none';
+    flag.title = stage.isTurbo ? 'Turbo mode enabled. Shift+click to disable.' : 'Shift+click to enable turbo mode.';
+  }
   function flagClick(e) {
+    if (flagTouchTimeout === true) return;
+    if (flagTouchTimeout) {
+      clearTimeout(flagTouchTimeout);
+    }
     if (e.shiftKey) {
-      stage.isTurbo = !stage.isTurbo;
-      flag.style.textDecoration = stage.isTurbo ? 'underline' : 'none';
-      flag.title = stage.isTurbo ? 'Turbo mode enabled. Shift+click to disable.' : 'Shift+click to enable turbo mode.';
+      turboClick();
     } else {
       stage.start();
       pause.className = 'pause';
@@ -130,6 +144,7 @@
   window.addEventListener('resize', updateFullScreen);
 
   if (P.hasTouchEvents) {
+    flag.addEventListener('touchstart', flagTouchStart);
     flag.addEventListener('touchend', flagClick);
     pause.addEventListener('touchend', pauseClick);
     stop.addEventListener('touchend', stopClick);
