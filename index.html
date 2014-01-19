@@ -100,9 +100,7 @@
   function fullScreenClick(e) {
     document.documentElement.classList.toggle('fs');
     isFullScreen = !isFullScreen;
-    if (isFullScreen) {
-      window.scrollTo(0, 0);
-    } else {
+    if (!isFullScreen) {
       document.body.style.height =
       document.body.style.width =
       document.body.style.marginLeft =
@@ -132,6 +130,7 @@
       document.body.style.marginLeft = (window.innerWidth - w) / 2 + 'px';
       document.body.style.marginTop = (window.innerHeight - h - padding) / 2 + 'px';
       var scale = stage.zoom = w / 480;
+      window.scrollTo(0, 0);
     } else {
       stage.zoom = 1;
     }
