@@ -146,6 +146,7 @@ h1 {
   cursor: pointer;
   color: #000;
   text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
 }
 .package a:hover {
   background: linear-gradient(#fff, #eaeaea);
