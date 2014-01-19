@@ -18,7 +18,7 @@ body {
   margin: 0;
   padding: 0;
   outline: 0;
-  font: 300 24px/1 Helvetica Neue, Helvetica, Arial, sans-serif;
+  font: 300 24px/32px Helvetica Neue, Helvetica, Arial, sans-serif;
   display: block;
   width: 100%;
   color: rgba(0, 0, 0, .4);
@@ -45,31 +45,38 @@ body {
   position: absolute;
   right: 100%;
   top: 0;
-  padding: 0 8px;
-  font: 24px/29px sans-serif;
-  color: rgba(0, 0, 0, .4);
-  cursor: pointer;
-  text-decoration: none;
+  background-position: -160px 0;
 }
 .controls {
   height: 32px;
 }
-.controls span {
+.controls span,
+.project-link {
   width: 32px;
   height: 32px;
   float: left;
   cursor: pointer;
-  font: 18px/32px sans-serif;
   text-align: center;
-  color: rgba(0, 0, 0, .4);
+  opacity: .4;
+  background-image: url(icons.svg);
   text-decoration: none;
+}
+.controls .stop {
+  background-position: -96px 0;
+}
+.controls .pause {
+  background-position: -32px 0;
+}
+.controls .play {
+  background-position: -64px 0;
 }
 .controls .full-screen {
   float: right;
+  background-position: -128px 0;
 }
-.controls span:hover,
-.project-link:hover {
-  color: #000;
+.controls span:active,
+.project-link:active {
+  opacity: 1 !important;
 }
 .player {
   box-shadow: 0 0 0 1px rgba(0, 0, 0, .4);
@@ -97,10 +104,8 @@ body {
   display: none;
 }
 .fs .controls span {
-  color: rgba(255, 255, 255, .6);
-}
-.fs .controls span:hover {
-  color: #fff;
+  background-position-y: -32px;
+  opacity: .6;
 }
 .fs .player {
   box-shadow: none;

@@ -6,13 +6,13 @@
 <div class=title>
   <div class=progress-bar></div>
   <input class=url value=http://scratch.mit.edu/projects/>
-  <a target=_blank class=project-link>&#x21f1;</a>
+  <a target=_blank class=project-link></a>
 </div>
 <div class=controls>
-  <span class=flag title="Shift+click to enable turbo mode."><!-- G -->&#x2691;</span>
-  <span class=pause><!-- P -->&#x2759;&#x2759;</span>
-  <span class=stop><!-- S -->&#x25fc;</span>
-  <span class=full-screen><!-- F -->&#x263c;</span>
+  <span class=flag title="Shift+click to enable turbo mode."></span>
+  <span class=pause></span>
+  <span class=stop></span>
+  <span class=full-screen></span>
 </div>
 <div class=player>
 </div>
@@ -59,7 +59,7 @@
       flag.title = stage.isTurbo ? 'Turbo mode enabled. Shift+click to disable.' : 'Shift+click to enable turbo mode.';
     } else {
       stage.start();
-      pause.textContent = '\u2759\u2759';
+      pause.className = 'pause';
       stage.stopAll();
       stage.triggerGreenFlag();
     }
@@ -71,10 +71,10 @@
   function pauseClick(e) {
     if (stage.isRunning) {
       stage.pause();
-      pause.textContent = '\u25ba';
+      pause.className = 'play';
     } else {
       stage.start();
-      pause.textContent = '\u2759\u2759';
+      pause.className = 'pause';
     }
   }
   pause.addEventListener('touchstart', pauseClick);
@@ -82,7 +82,7 @@
 
   function stopClick(e) {
     stage.start();
-    pause.textContent = '\u2759\u2759';
+    pause.className = 'pause';
     stage.stopAll();
     e.preventDefault();
   }
