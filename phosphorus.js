@@ -642,13 +642,15 @@ var P = (function() {
 
     if (hasTouchEvents) {
 
-      this.canvas.addEventListener('touchstart', function(e) {
+      document.addEventListener('touchstart', function(e) {
         this.mousePressed = true;
         for (var i = 0; i < e.changedTouches.length; i++) {
           this.updateMouse(e.changedTouches[i]);
-          this.clickMouse();
+          if (e.target === this.canvas) {
+            this.clickMouse();
+          }
         }
-        e.preventDefault();
+        if (e.target === this.canvas) e.preventDefault();
       }.bind(this));
 
       document.addEventListener('touchmove', function(e) {
@@ -661,12 +663,15 @@ var P = (function() {
 
     } else {
 
-      this.canvas.addEventListener('mousedown', function(e) {
+      document.addEventListener('mousedown', function(e) {
         this.updateMouse(e);
-        this.clickMouse();
+        this.mousePressed = true;
 
-        e.preventDefault();
-        this.canvas.focus();
+        if (e.target === this.canvas) {
+          this.clickMouse();
+          e.preventDefault();
+          this.canvas.focus();
+        }
       }.bind(this));
 
       document.addEventListener('mousemove', function(e) {
@@ -718,7 +723,6 @@ var P = (function() {
   };
 
   Stage.prototype.clickMouse = function() {
-    this.mousePressed = true;
     for (var i = this.children.length; i--;) {
       if (this.children[i].isSprite && this.children[i].visible && this.children[i].touching('_mouse_')) {
         this.triggerFor(this.children[i], 'whenClicked');
