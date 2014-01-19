@@ -35,7 +35,7 @@
 <script src=phosphorus.js></script>
 <script>
 
-(function () {
+(function() {
   'use strict';
 
   var stage;
@@ -178,7 +178,7 @@
   }
 
   var timeout;
-  urlInput.addEventListener('input', function () {
+  urlInput.addEventListener('input', function() {
     var ss = urlInput.selectionStart;
     var se = urlInput.selectionEnd;
     var url = urlInput.value;
@@ -191,14 +191,14 @@
     urlInput.selectionStart = urlInput.selectionEnd = Math.max(prefix.length, ss);
     clearTimeout(timeout);
     if (projectId !== id) {
-      timeout = setTimeout(function () {
+      timeout = setTimeout(function() {
         projectId = id;
         location.hash = '#' + id;
       }, 300);
     }
   });
 
-  window.addEventListener('hashchange', function () {
+  window.addEventListener('hashchange', function() {
     var id = location.hash.substr(1);
     if (id !== 'zip') {
       if (+id !== +id) id = '';
@@ -208,7 +208,7 @@
     load(id);
   });
 
-  var load = function (id) {
+  function load(id) {
     projectLink.href = id && id !== 'zip' ? 'http://scratch.mit.edu/projects/' + id + '/' : 'http://scratch.mit.edu/';
     updatePackageLink();
     if (id === 'zip') return;
@@ -218,23 +218,23 @@
     showProgress(P.IO.loadScratchr2Project(id));
   };
 
-  var updatePackageLink = function() {
+  function updatePackageLink() {
     packageLink.href = '/app.html?id=' + projectId + '&turbo=' + packageTurbo.checked;
   };
 
-  var showProgress = function (request) {
+  function showProgress(request) {
     progressBar.style.display = 'none';
-    setTimeout(function () {
+    setTimeout(function() {
       progressBar.style.width = '10%';
       progressBar.className = 'progress-bar';
       progressBar.style.opacity = 1;
       progressBar.style.display = 'block';
     });
-    request.onload = function (s) {
+    request.onload = function(s) {
       progressBar.style.width = '100%';
-      setTimeout(function () {
+      setTimeout(function() {
         progressBar.style.opacity = 0;
-        setTimeout(function () {
+        setTimeout(function() {
           progressBar.style.display = 'none';
         }, 300);
       }, 100);
@@ -245,26 +245,26 @@
 
       player.appendChild(stage.canvas);
     };
-    request.onerror = function (e) {
+    request.onerror = function(e) {
       progressBar.style.width = '100%';
       progressBar.className = 'progress-bar error';
       console.error(e.stack);
     };
-    request.onprogress = function (e) {
+    request.onprogress = function(e) {
       progressBar.style.width = (10 + e.loaded / e.total * 90) + '%';
     };
   };
 
   load(projectId);
 
-  var cancel = function (e) {
+  function cancel(e) {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
   };
   document.body.addEventListener('dragover', cancel);
   document.body.addEventListener('dragenter', cancel);
 
-  document.body.addEventListener('drop', function (e) {
+  document.body.addEventListener('drop', function(e) {
     e.preventDefault();
 
     var f = e.dataTransfer.files[0];

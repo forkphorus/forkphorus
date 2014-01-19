@@ -1,34 +1,34 @@
-var P = (function () {
+var P = (function() {
   'use strict';
 
   var hasOwnProperty = {}.hasOwnProperty;
 
   var hasTouchEvents = 'ontouchstart' in document;
 
-  var inherits = function (cla, sup) {
+  var inherits = function(cla, sup) {
     cla.prototype = Object.create(sup.prototype);
     cla.parent = sup;
-    cla.base = function (self, method /*, args... */) {
+    cla.base = function(self, method /*, args... */) {
       return sup.prototype[method].call(self, [].slice.call(arguments, 2));
     };
   };
 
-  var addEvents = function (cla /*, events... */) {
-    [].slice.call(arguments, 1).forEach(function (event) {
+  var addEvents = function(cla /*, events... */) {
+    [].slice.call(arguments, 1).forEach(function(event) {
       addEvent(cla, event);
     });
   };
 
-  var addEvent = function (cla, event) {
+  var addEvent = function(cla, event) {
     var capital = event[0].toUpperCase() + event.substr(1);
 
-    cla.prototype.addEventListener = cla.prototype.addEventListener || function (event, listener) {
+    cla.prototype.addEventListener = cla.prototype.addEventListener || function(event, listener) {
       var listeners = this['$' + event] = this['$' + event] || [];
       listeners.push(listener);
       return this;
     };
 
-    cla.prototype.removeEventListener = cla.prototype.removeEventListener || function (event, listener) {
+    cla.prototype.removeEventListener = cla.prototype.removeEventListener || function(event, listener) {
       var listeners = this['$' + event];
       if (listeners) {
         var i = listeners.indexOf(listener);
@@ -39,10 +39,10 @@ var P = (function () {
       return this;
     };
 
-    cla.prototype.dispatchEvent = cla.prototype.dispatchEvent || function (event, arg) {
+    cla.prototype.dispatchEvent = cla.prototype.dispatchEvent || function(event, arg) {
       var listeners = this['$' + event];
       if (listeners) {
-        listeners.forEach(function (listener) {
+        listeners.forEach(function(listener) {
           listener(arg);
         });
       }
@@ -53,23 +53,23 @@ var P = (function () {
       return this;
     };
 
-    cla.prototype['on' + capital] = function (listener) {
+    cla.prototype['on' + capital] = function(listener) {
       this.addEventListener(event, listener);
       return this;
     };
 
-    cla.prototype['dispatch' + capital] = function (arg) {
+    cla.prototype['dispatch' + capital] = function(arg) {
       this.dispatchEvent(event, arg);
       return this;
     };
   };
 
-  var Request = function () {
+  var Request = function() {
     this.loaded = 0;
   };
   addEvents(Request, 'load', 'progress', 'error');
 
-  Request.prototype.progress = function (loaded, total, lengthComputable) {
+  Request.prototype.progress = function(loaded, total, lengthComputable) {
     this.loaded = loaded;
     this.total = total;
     this.lengthComputable = lengthComputable;
@@ -80,20 +80,20 @@ var P = (function () {
     });
   };
 
-  Request.prototype.load = function (result) {
+  Request.prototype.load = function(result) {
     this.result = result;
     this.isDone = true;
     this.dispatchLoad(result);
   };
 
-  Request.prototype.error = function (error) {
+  Request.prototype.error = function(error) {
     this.result = error;
     this.isError = true;
     this.isDone = true;
     this.dispatchError(error);
   };
 
-  var CompositeRequest = function () {
+  var CompositeRequest = function() {
     this.requests = [];
     this.isDone = true;
     this.update = this.update.bind(this);
@@ -101,7 +101,7 @@ var P = (function () {
   };
   inherits(CompositeRequest, Request);
 
-  CompositeRequest.prototype.add = function (request) {
+  CompositeRequest.prototype.add = function(request) {
     if (request instanceof CompositeRequest) {
       for (var i = 0; i < request.requests.length; i++) {
         this.add(request.requests[i]);
@@ -115,7 +115,7 @@ var P = (function () {
     }
   };
 
-  CompositeRequest.prototype.update = function () {
+  CompositeRequest.prototype.update = function() {
     if (this.isError) return;
     var requests = this.requests;
     var i = requests.length;
@@ -162,7 +162,7 @@ var P = (function () {
     }
   };
 
-  CompositeRequest.prototype.getResult = function () {
+  CompositeRequest.prototype.getResult = function() {
     throw new Error('Users must implement getResult()');
   };
 
@@ -174,28 +174,28 @@ var P = (function () {
 
   IO.PROXY_URL = 'proxy.php?u=';
 
-  IO.init = function (request) {
+  IO.init = function(request) {
     IO.projectRequest = request;
     IO.zip = null;
     IO.costumes = null;
     IO.images = null;
   };
 
-  IO.load = function (url, callback, self) {
+  IO.load = function(url, callback, self) {
     var request = new Request;
     var xhr = new XMLHttpRequest;
     xhr.open('GET', IO.PROXY_URL + encodeURIComponent(url), true);
-    xhr.onprogress = function (e) {
+    xhr.onprogress = function(e) {
       request.progress(e.loaded, e.total, e.lengthComputable);
     };
-    xhr.onload = function () {
+    xhr.onload = function() {
       if (xhr.status === 200) {
         request.load(xhr.responseText);
       } else {
         request.error(new Error('HTTP ' + xhr.status + ': ' + xhr.statusText));
       }
     };
-    xhr.onerror = function () {
+    xhr.onerror = function() {
       request.error(new Error('XHR Error'));
     };
     setTimeout(xhr.send.bind(xhr));
@@ -204,29 +204,29 @@ var P = (function () {
     return request;
   };
 
-  IO.loadImage = function (url, callback, self) {
+  IO.loadImage = function(url, callback, self) {
     var request = new Request;
     var image = new Image;
     image.src = url;
-    image.onload = function () {
+    image.onload = function() {
       request.load(image);
     };
-    image.onerror = function () {
+    image.onerror = function() {
       request.error(new Error('Failed to load image'));
     };
     // var xhr = new XMLHttpRequest;
     // xhr.open('GET', IO.PROXY_URL + encodeURIComponent(url), true);
     // xhr.responseType = 'blob';
-    // xhr.onprogress = function (e) {
+    // xhr.onprogress = function(e) {
     //   request.progress(e.loaded, e.total, e.lengthComputable);
     // };
-    // xhr.onload = function (e) {
+    // xhr.onload = function(e) {
     //   if (xhr.status === 200) {
     //     var reader = new FileReader;
-    //     reader.addEventListener('loadend', function () {
+    //     reader.addEventListener('loadend', function() {
     //       var image = new Image;
     //       image.src = reader.result;
-    //       image.onload = function () {
+    //       image.onload = function() {
     //         request.load(image);
     //       };
     //     });
@@ -235,7 +235,7 @@ var P = (function () {
     //     request.error(new Error('HTTP ' + xhr.status + ': ' + xhr.statusText));
     //   }
     // };
-    // xhr.onerror = function () {
+    // xhr.onerror = function() {
     //   request.error(new Image('Failed to load image'));
     // };
     // xhr.send();
@@ -244,14 +244,14 @@ var P = (function () {
     return request;
   };
 
-  IO.loadScratchr2Project = function (id, callback, self) {
+  IO.loadScratchr2Project = function(id, callback, self) {
     var request = new CompositeRequest;
     IO.init(request);
 
     request.defer = true;
     request.add(
       IO.load(IO.PROJECT_URL + id + '/get/?' + Math.random().toString().slice(2))
-        .addEventListener('load', function (contents) {
+        .addEventListener('load', function(contents) {
           try {
             var json = JSON.parse(contents);
             IO.loadProject(json);
@@ -260,7 +260,7 @@ var P = (function () {
               request.load(new Stage().fromJSON(json));
             } else {
               request.defer = false;
-              request.getResult = function () {
+              request.getResult = function() {
                 return new Stage().fromJSON(json);
               };
             }
@@ -272,7 +272,7 @@ var P = (function () {
     return request;
   };
 
-  IO.loadJSONProject = function (json, callback, self) {
+  IO.loadJSONProject = function(json, callback, self) {
     var request = new CompositeRequest;
     IO.init(request);
 
@@ -283,7 +283,7 @@ var P = (function () {
         request.load(new Stage().fromJSON(json));
       } else {
         request.defer = false;
-        request.getResult = function () {
+        request.getResult = function() {
           return new Stage().fromJSON(json);
         };
       }
@@ -294,7 +294,7 @@ var P = (function () {
     return request;
   };
 
-  IO.loadSB2Project = function (ab, callback, self) {
+  IO.loadSB2Project = function(ab, callback, self) {
     var request = new CompositeRequest;
     IO.init(request);
 
@@ -311,7 +311,7 @@ var P = (function () {
         request.load(new Stage().fromJSON(json));
       } else {
         request.defer = false;
-        request.getResult = function () {
+        request.getResult = function() {
           return new Stage().fromJSON(json);
         };
       }
@@ -322,24 +322,24 @@ var P = (function () {
     return request;
   };
 
-  IO.loadSB2File = function (f, callback, self) {
+  IO.loadSB2File = function(f, callback, self) {
     var cr = new CompositeRequest;
     cr.defer = true;
     var request = new Request;
     cr.add(request);
     var reader = new FileReader;
-    reader.onloadend = function () {
+    reader.onloadend = function() {
       cr.defer = true;
-      cr.add(IO.loadSB2Project(reader.result, function (result) {
+      cr.add(IO.loadSB2Project(reader.result, function(result) {
         cr.defer = false;
-        cr.getResult = function () {
+        cr.getResult = function() {
           return result;
         };
         cr.update();
       }));
       request.load();
     };
-    reader.onprogress = function (e) {
+    reader.onprogress = function(e) {
       request.progress(e.loaded, e.total, e.lengthComputable);
     };
     reader.readAsArrayBuffer(f);
@@ -347,12 +347,12 @@ var P = (function () {
     return cr;
   };
 
-  IO.loadProject = function (data) {
+  IO.loadProject = function(data) {
     IO.loadBase(data);
     IO.loadArray(data.children, IO.loadObject);
   };
 
-  IO.loadBase = function (data) {
+  IO.loadBase = function(data) {
     data.scripts = data.scripts || [];
     data.costumes = IO.loadArray(data.costumes, IO.loadCostume);
     data.sounds = IO.loadArray(data.sounds, IO.loadSound);
@@ -360,7 +360,7 @@ var P = (function () {
     data.lists = data.lists || [];
   };
 
-  IO.loadArray = function (data, process) {
+  IO.loadArray = function(data, process) {
     if (!data) return [];
     for (var i = 0; i < data.length; i++) {
       process(data[i]);
@@ -368,23 +368,23 @@ var P = (function () {
     return data;
   };
 
-  IO.loadObject = function (data) {
+  IO.loadObject = function(data) {
     if (!data.cmd && !data.listName) {
       IO.loadBase(data);
     }
   };
 
-  IO.loadCostume = function (data) {
-    IO.loadMD5(data.baseLayerMD5, function (asset) {
+  IO.loadCostume = function(data) {
+    IO.loadMD5(data.baseLayerMD5, function(asset) {
       data.$image = asset;
     });
   };
 
-  IO.loadSound = function () {
+  IO.loadSound = function() {
     // TODO
   };
 
-  IO.loadMD5 = function (md5, callback, zip, index) {
+  IO.loadMD5 = function(md5, callback, zip, index) {
     var ext = md5.split('.').pop();
     if (ext === 'png') {
       if (IO.zip) {
@@ -392,14 +392,14 @@ var P = (function () {
         IO.images += 1;
 
         var request = new Request;
-        setTimeout(function () {
+        setTimeout(function() {
           var f = IO.zip.file(image + '.png');
 
           var reader = new FileReader;
-          reader.onloadend = function () {
+          reader.onloadend = function() {
             console.log(reader.result);
             var image = new Image;
-            image.onload = function () {
+            image.onload = function() {
               if (callback) callback(image);
               request.load();
             };
@@ -410,12 +410,12 @@ var P = (function () {
         });
       } else {
         IO.projectRequest.add(
-          IO.loadImage(IO.PROXY_URL + encodeURIComponent(IO.ASSET_URL + md5 + '/get/'), function (result) {
+          IO.loadImage(IO.PROXY_URL + encodeURIComponent(IO.ASSET_URL + md5 + '/get/'), function(result) {
             callback(result);
           }));
       }
     } else if (ext === 'svg') {
-      var cb = function (source) {
+      var cb = function(source) {
         var canvas = document.createElement('canvas');
         var context = canvas.getContext('2d');
         var image = new Image;
@@ -424,7 +424,7 @@ var P = (function () {
           ignoreMouse: true,
           ignoreAnimation: true,
           ignoreClear: true,
-          renderCallback: function () {
+          renderCallback: function() {
             image.src = canvas.toDataURL();
           }
         })
@@ -434,7 +434,7 @@ var P = (function () {
         IO.images += 1;
 
         var request = new Request;
-        setTimeout(function () {
+        setTimeout(function() {
           cb(IO.zip.file(image + '.svg').asText());
           request.load();
         });
@@ -445,7 +445,7 @@ var P = (function () {
     }
   };
 
-  var Base = function () {
+  var Base = function() {
     this.isClone = false;
     this.costumes = [];
     this.currentCostumeIndex = 0;
@@ -484,14 +484,14 @@ var P = (function () {
     this.initRuntime();
   };
 
-  Base.prototype.fromJSON = function (data) {
+  Base.prototype.fromJSON = function(data) {
     this.objName = data.objName;
     this.scripts = data.scripts;
     this.currentCostumeIndex = data.currentCostumeIndex || 0;
-    this.costumes = data.costumes.map(function (d) {
+    this.costumes = data.costumes.map(function(d) {
       return new Costume(d);
     });
-    // this.sounds = data.sounds.map(function (d) {
+    // this.sounds = data.sounds.map(function(d) {
     //   return new Sound(d);
     // });
     this.addLists(this.lists = data.lists);
@@ -500,7 +500,7 @@ var P = (function () {
     return this;
   };
 
-  Base.prototype.addVariables = function (variables) {
+  Base.prototype.addVariables = function(variables) {
     for (var i = 0; i < variables.length; i++) {
       if (variables[i].isPeristent) {
         throw new Error('Cloud variables are not supported');
@@ -509,7 +509,7 @@ var P = (function () {
     }
   };
 
-  Base.prototype.addLists = function (lists) {
+  Base.prototype.addLists = function(lists) {
     for (var i = 0; i < lists.length; i++) {
       if (lists[i].isPeristent) {
         throw new Error('Cloud lists are not supported');
@@ -519,20 +519,20 @@ var P = (function () {
     }
   };
 
-  Base.prototype.showNextCostume = function () {
+  Base.prototype.showNextCostume = function() {
     this.currentCostumeIndex = (this.currentCostumeIndex + 1) % this.costumes.length;
   };
 
-  Base.prototype.showPreviousCostume = function () {
+  Base.prototype.showPreviousCostume = function() {
     var length = this.costumes.length;
     this.currentCostumeIndex = (this.currentCostumeIndex + length - 1) % length;
   };
 
-  Base.prototype.getCostumeName = function () {
+  Base.prototype.getCostumeName = function() {
     return this.costumes[this.currentCostumeIndex] ? this.costumes[this.currentCostumeIndex].objName : '';
   };
 
-  Base.prototype.setCostume = function (costume) {
+  Base.prototype.setCostume = function(costume) {
     costume = '' + costume;
     var costumes = this.costumes;
     var i = costumes.length;
@@ -548,7 +548,7 @@ var P = (function () {
     this.currentCostumeIndex = i;
   };
 
-  Base.prototype.setFilter = function (name, value) {
+  Base.prototype.setFilter = function(name, value) {
     var min = 0;
     var max = 100;
     switch (name) {
@@ -573,7 +573,7 @@ var P = (function () {
     this.updateFilters();
   };
 
-  Base.prototype.resetFilters = function () {
+  Base.prototype.resetFilters = function() {
     this.filters = {
       color: 0,
       fisheye: 0,
@@ -585,7 +585,7 @@ var P = (function () {
     };
   };
 
-  var Stage = function () {
+  var Stage = function() {
     this.stage = this;
 
     Stage.parent.call(this);
@@ -624,7 +624,7 @@ var P = (function () {
     // hardware acceleration
     this.canvas.style.WebkitTransform = 'translateZ(0)';
 
-    this.canvas.addEventListener('keydown', function (e) {
+    this.canvas.addEventListener('keydown', function(e) {
       if (e.ctrlKey || e.altKey || e.metaKey) {
         return;
       }
@@ -634,7 +634,7 @@ var P = (function () {
       e.preventDefault();
     }.bind(this));
 
-    this.canvas.addEventListener('keyup', function (e) {
+    this.canvas.addEventListener('keyup', function(e) {
       this.keys[e.keyCode] = false;
       e.stopPropagation();
       e.preventDefault();
@@ -651,17 +651,17 @@ var P = (function () {
         e.preventDefault();
       }.bind(this));
 
-      document.addEventListener('touchmove', function (e) {
+      document.addEventListener('touchmove', function(e) {
         this.updateMouse(e.changedTouches[0]);
       }.bind(this));
 
-      document.addEventListener('touchend', function (e) {
+      document.addEventListener('touchend', function(e) {
         this.mousePressed = false;
       }.bind(this));
 
     } else {
 
-      this.canvas.addEventListener('mousedown', function (e) {
+      this.canvas.addEventListener('mousedown', function(e) {
         this.updateMouse(e);
         this.clickMouse();
 
@@ -669,11 +669,11 @@ var P = (function () {
         this.canvas.focus();
       }.bind(this));
 
-      document.addEventListener('mousemove', function (e) {
+      document.addEventListener('mousemove', function(e) {
         this.updateMouse(e);
       }.bind(this));
 
-      document.addEventListener('mouseup', function (e) {
+      document.addEventListener('mouseup', function(e) {
         this.updateMouse(e);
         this.mousePressed = false;
       }.bind(this));
@@ -684,10 +684,10 @@ var P = (function () {
 
   Stage.prototype.isStage = true;
 
-  Stage.prototype.fromJSON = function (data) {
+  Stage.prototype.fromJSON = function(data) {
     Stage.parent.prototype.fromJSON.call(this, data);
 
-    data.children.forEach(function (d) {
+    data.children.forEach(function(d) {
       if (d.cmd || d.listName) {
         return;
       }
@@ -699,7 +699,7 @@ var P = (function () {
     return this;
   };
 
-  Stage.prototype.updateMouse = function (e) {
+  Stage.prototype.updateMouse = function(e) {
     var bb = this.canvas.getBoundingClientRect();
     var x = (e.clientX - bb.left) / this.zoom - 240;
     var y = 180 - (e.clientY - bb.top) / this.zoom;
@@ -721,7 +721,7 @@ var P = (function () {
     }
   };
 
-  Stage.prototype.resetAllFilters = function () {
+  Stage.prototype.resetAllFilters = function() {
     var children = this.children;
     var i = children.length;
     while (i--) {
@@ -730,7 +730,7 @@ var P = (function () {
     this.resetFilters();
   };
 
-  Stage.prototype.removeAllClones = function () {
+  Stage.prototype.removeAllClones = function() {
     var i = this.children.length;
     while (i--) {
       if (this.children[i].isClone) {
@@ -740,7 +740,7 @@ var P = (function () {
     this.cloneCount = 0;
   };
 
-  Stage.prototype.getObject = function (name) {
+  Stage.prototype.getObject = function(name) {
     for (var i = 0; i < this.children.length; i++) {
       if (this.children[i].objName === name) {
         return this.children[i];
@@ -748,7 +748,7 @@ var P = (function () {
     }
   };
 
-  Stage.prototype.draw = function () {
+  Stage.prototype.draw = function() {
     var context = this.context;
 
     this.canvas.width = 480 * this.zoom; // clear
@@ -774,7 +774,7 @@ var P = (function () {
     context.restore();
   };
 
-  Stage.prototype.moveTo = function () {};
+  Stage.prototype.moveTo = function() {};
 
   var KEY_CODES = {
     'space': 32,
@@ -784,11 +784,11 @@ var P = (function () {
     'down arrow': 40
   };
 
-  var getKeyCode = function (keyName) {
+  var getKeyCode = function(keyName) {
     return KEY_CODES[keyName] || keyName.charCodeAt(0);
   };
 
-  var Sprite = function (stage) {
+  var Sprite = function(stage) {
     this.stage = stage;
 
     Sprite.parent.call(this);
@@ -815,7 +815,7 @@ var P = (function () {
   };
   inherits(Sprite, Base);
 
-  Sprite.prototype.fromJSON = function (data) {
+  Sprite.prototype.fromJSON = function(data) {
 
     Sprite.parent.prototype.fromJSON.call(this, data);
 
@@ -832,7 +832,7 @@ var P = (function () {
     return this;
   };
 
-  Sprite.prototype.clone = function () {
+  Sprite.prototype.clone = function() {
     var c = new Sprite(this.stage);
 
     c.isClone = true;
@@ -893,12 +893,12 @@ var P = (function () {
     return c;
   };
 
-  Sprite.prototype.forward = function (steps) {
+  Sprite.prototype.forward = function(steps) {
     var d = (90 - this.direction) * Math.PI / 180;
     this.moveTo(this.scratchX + steps * Math.cos(d), this.scratchY + steps * Math.sin(d));
   };
 
-  Sprite.prototype.moveTo = function (x, y) {
+  Sprite.prototype.moveTo = function(x, y) {
     var ox = this.scratchX;
     var oy = this.scratchY;
     if (ox === x && oy === y && !this.isPenDown) return;
@@ -923,7 +923,7 @@ var P = (function () {
     }
   };
 
-  Sprite.prototype.dotPen = function () {
+  Sprite.prototype.dotPen = function() {
     var context = this.stage.penContext;
     var x = this.scratchX;
     var y = this.scratchY;
@@ -940,12 +940,12 @@ var P = (function () {
     context.stroke();
   };
 
-  Sprite.prototype.stamp = function () {
+  Sprite.prototype.stamp = function() {
     var context = this.stage.penContext;
     this.draw(context);
   };
 
-  Sprite.prototype.draw = function (context) {
+  Sprite.prototype.draw = function(context) {
     var costume = this.costumes[this.currentCostumeIndex];
 
     context.save();
@@ -963,11 +963,11 @@ var P = (function () {
     context.restore();
   };
 
-  Sprite.prototype.keepOnStage = function () {
+  Sprite.prototype.keepOnStage = function() {
     // TODO
   };
 
-  Sprite.prototype.setDirection = function (degrees) {
+  Sprite.prototype.setDirection = function(degrees) {
     var d = degrees % 360;
     if (d > 180) d -= 360;
     if (d <= -180) d += 360;
@@ -977,7 +977,7 @@ var P = (function () {
   var collisionCanvas = document.createElement('canvas');
   var collisionContext = collisionCanvas.getContext('2d');
 
-  Sprite.prototype.touching = function (thing) {
+  Sprite.prototype.touching = function(thing) {
     var costume = this.costumes[this.currentCostumeIndex];
     if (thing === '_mouse_') {
       var d = costume.context.getImageData((this.stage.mouseX - this.scratchX) * costume.bitmapResolution + costume.rotationCenterX, (this.scratchY - this.stage.mouseY) * costume.bitmapResolution + costume.rotationCenterY, 1, 1).data;
@@ -1102,7 +1102,7 @@ var P = (function () {
     this.direction = Math.atan2(x - this.scratchX, y - this.scratchY) * 180 / Math.PI;
   };
 
-  var Costume = function (data) {
+  var Costume = function(data) {
     this.baseLayerID = data.baseLayerID;
     this.baseLayerMD5 = data.baseLayerMD5;
     this.baseLayer = data.$image;
@@ -1117,14 +1117,14 @@ var P = (function () {
     if (this.baseLayer.width) {
       this.render();
     } else {
-      this.baseLayer.onload = function () {
+      this.baseLayer.onload = function() {
         this.render();
       }.bind(this);
     }
   };
   addEvents(Costume, 'load');
 
-  Costume.prototype.render = function () {
+  Costume.prototype.render = function() {
     this.image.width = this.baseLayer.width;
     this.image.height = this.baseLayer.height;
 
@@ -1143,7 +1143,7 @@ var P = (function () {
 
 }());
 
-P.compile = (function () {
+P.compile = (function() {
   'use strict';
 
   var LOG_PRIMITIVES;
@@ -1160,14 +1160,14 @@ P.compile = (function () {
     'whenSensorGreaterThan' // TODO
   ];
 
-  var compileScripts = function (object) {
+  var compileScripts = function(object) {
     for (var i = 0; i < object.scripts.length; i++) {
       compileListener(object, object.scripts[i][2]);
     }
   };
 
   var warnings;
-  var warn = function (message) {
+  var warn = function(message) {
     warnings[message] = (warnings[message] || 0) + 1;
   };
 
@@ -1190,37 +1190,37 @@ P.compile = (function () {
     return '$tmp_' + s;
   }
 
-  var compileListener = function (object, script) {
+  var compileListener = function(object, script) {
     if (!script[0] || EVENT_SELECTORS.indexOf(script[0][0]) === -1) return;
 
-    var nextLabel = function () {
+    var nextLabel = function() {
       return object.fns.length + fns.length;
     };
 
-    var label = function () {
+    var label = function() {
       var id = nextLabel();
       fns.push(source.length);
       return id;
     };
 
-    var delay = function () {
+    var delay = function() {
       source += 'return;\n';
       label();
     };
 
-    var queue = function (id) {
+    var queue = function(id) {
       source += 'queue(' + id + ');\n';
       source += 'return;\n';
     };
 
-    var seq = function (script) {
+    var seq = function(script) {
       if (!script) return;
       for (var i = 0; i < script.length; i++) {
         compile(script[i]);
       }
     };
 
-    var val = function (e) {
+    var val = function(e) {
       if (typeof e === 'number') {
 
         return '' + e;
@@ -1432,11 +1432,11 @@ P.compile = (function () {
       }
     };
 
-    var bool = function (e) {
+    var bool = function(e) {
       return 'bool(' + val(e) + ')';
     };
 
-    var num = function (e) {
+    var num = function(e) {
       if (typeof e === 'number') {
         return e;
       }
@@ -1446,7 +1446,7 @@ P.compile = (function () {
       return '(Number(' + val(e) + ') || 0)';
     };
 
-    var compile = function (block) {
+    var compile = function(block) {
       if (LOG_PRIMITIVES) {
         source += 'console.log(' + val(block[0]) + ');\n';
       }
@@ -1964,8 +1964,8 @@ P.compile = (function () {
       source += 'return;\n';
     }
 
-    var createContinuation = function (source) {
-      var result = '(function () {\n';
+    var createContinuation = function(source) {
+      var result = '(function() {\n';
       var brackets = 0;
       var delBrackets = 0;
       var shouldDelete = false;
@@ -2039,7 +2039,7 @@ P.compile = (function () {
     }
   };
 
-  return function (stage) {
+  return function(stage) {
 
     warnings = Object.create(null);
 
@@ -2059,16 +2059,16 @@ P.compile = (function () {
 
 }());
 
-P.runtime = (function () {
+P.runtime = (function() {
   'use strict';
 
   var self, S, R, STACK, C, CALLS, TERMINATE;
 
-  var bool = function (v) {
+  var bool = function(v) {
     return Number(v) !== 0 && v !== '' && v !== 'false' && v !== false;
   };
 
-  var compare = function (x, y) {
+  var compare = function(x, y) {
     var nx = Number(x);
     var ny = Number(y);
     if (nx === nx && ny === ny) {
@@ -2079,7 +2079,7 @@ P.runtime = (function () {
     return xs < ys ? -1 : xs === ys ? 0 : 1;
   };
 
-  var random = function (x, y) {
+  var random = function(x, y) {
     x = Number(x) || 0;
     y = Number(y) || 0;
     if (x > y) {
@@ -2093,7 +2093,7 @@ P.runtime = (function () {
     return Math.random() * (y - x) + x;
   };
 
-  var rgb2hsl = function (rgb) {
+  var rgb2hsl = function(rgb) {
     var r = (rgb >> 16 & 0xff) / 0xff;
     var g = (rgb >> 8 & 0xff) / 0xff;
     var b = (rgb & 0xff) / 0xff;
@@ -2120,7 +2120,7 @@ P.runtime = (function () {
     return [h, s * 100, l * 100];
   };
 
-  var clone = function (name) {
+  var clone = function(name) {
     var c = (name === '_myself_' ? S : self.getObject(name)).clone();
     self.children.push(c);
     self.triggerFor(c, 'whenCloned');
@@ -2148,7 +2148,7 @@ P.runtime = (function () {
     return 0;
   };
 
-  var listIndex = function (list, index, length) {
+  var listIndex = function(list, index, length) {
     if (index === 'random' || index === 'any') {
       return Math.floor(Math.random() * length);
     }
@@ -2159,7 +2159,7 @@ P.runtime = (function () {
     return i === i && i >= 0 && i < length ? i : -1;
   };
 
-  var contentsOfList = function (name) {
+  var contentsOfList = function(name) {
     var list = S.listRefs[name];
     if (!list) return '';
     var isSingle = true;
@@ -2172,31 +2172,31 @@ P.runtime = (function () {
     return list.contents.join(isSingle ? '' : ' ');
   };
 
-  var getLineOfList = function (name, index) {
+  var getLineOfList = function(name, index) {
     var list = S.listRefs[name];
     if (!list) return 0;
     var i = listIndex(list, index, list.contents.length);
     return list && i > -1 ? list.contents[i] : 0;
   };
 
-  var lineCountOfList = function (name) {
+  var lineCountOfList = function(name) {
     var list = S.listRefs[name];
     return list ? list.contents.length : 0;
   };
 
-  var listContains = function (name, value) {
+  var listContains = function(name, value) {
     var list = S.listRefs[name];
     return list ? list.contents.indexOf(value) > -1 : 0;
   };
 
-  var appendToList = function (name, value) {
+  var appendToList = function(name, value) {
     var list = S.listRefs[name];
     if (list) {
       list.contents.push(value);
     }
   };
 
-  var deleteLineOfList = function (name, index) {
+  var deleteLineOfList = function(name, index) {
     var list = S.listRefs[name];
     if (list) {
       if (index === 'all') {
@@ -2210,7 +2210,7 @@ P.runtime = (function () {
     }
   };
 
-  var insertInList = function (name, index, value) {
+  var insertInList = function(name, index, value) {
     var list = S.listRefs[name];
     if (list) {
       var i = listIndex(list, index, list.contents.length + 1);
@@ -2222,7 +2222,7 @@ P.runtime = (function () {
     }
   };
 
-  var setLineOfList = function (name, index, value) {
+  var setLineOfList = function(name, index, value) {
     var list = S.listRefs[name];
     if (list) {
       var i = listIndex(list, index, list.contents.length);
@@ -2232,7 +2232,7 @@ P.runtime = (function () {
     }
   };
 
-  var mathFunc = function (f, x) {
+  var mathFunc = function(f, x) {
     switch (f) {
       case 'abs':
       case 'floor':
@@ -2280,16 +2280,16 @@ P.runtime = (function () {
     return 0;
   };
 
-  var save = function () {
+  var save = function() {
     STACK.push(R);
     R = {};
   };
 
-  var restore = function () {
+  var restore = function() {
     R = STACK.pop();
   };
 
-  var call = function (spec, id, values) {
+  var call = function(spec, id, values) {
     var procedure = S.procedures[spec];
     if (procedure) {
       var args = {};
@@ -2308,7 +2308,7 @@ P.runtime = (function () {
     }
   };
 
-  var endCall = function () {
+  var endCall = function() {
     if (CALLS.length) {
       var fn = C.fn;
       C = CALLS.pop();
@@ -2318,15 +2318,15 @@ P.runtime = (function () {
     }
   };
 
-  var sceneChange = function () {
+  var sceneChange = function() {
     self.trigger('whenSceneStarts', self.costumes[self.currentCostumeIndex].costumeName);
   };
 
-  var broadcast = function (name) {
+  var broadcast = function(name) {
     self.trigger('whenIReceive', name);
   };
 
-  var queue = function (id) {
+  var queue = function(id) {
     CALLS.push(C);
     STACK.push(R);
     S.queue.push({
@@ -2335,7 +2335,7 @@ P.runtime = (function () {
     });
   };
 
-  var waitForBroadcast = function (sprite, message, id) {
+  var waitForBroadcast = function(sprite, message, id) {
     sprite.wait.push({
       fn: sprite.fns[id],
       'for': 'broadcast',
@@ -2344,17 +2344,17 @@ P.runtime = (function () {
   };
 
   // Internal definition
-  (function () {
+  (function() {
     'use strict';
 
     P.Stage.prototype.framerate = 30;
 
-    P.Base.prototype.initRuntime = function () {
+    P.Base.prototype.initRuntime = function() {
       this.queue = [];
       this.wait = [];
     };
 
-    P.Stage.prototype.triggerFor = function (sprite, event, arg) {
+    P.Stage.prototype.triggerFor = function(sprite, event, arg) {
       var threads;
       if (event === 'whenClicked') {
         threads = sprite.listeners.whenClicked;
@@ -2379,25 +2379,25 @@ P.runtime = (function () {
       }
     };
 
-    P.Stage.prototype.trigger = function (event, arg) {
+    P.Stage.prototype.trigger = function(event, arg) {
       this.triggerFor(this, event, arg);
       for (var i = 0; i < this.children.length; i++) {
         this.triggerFor(this.children[i], event, arg);
       }
     };
 
-    P.Stage.prototype.triggerGreenFlag = function () {
+    P.Stage.prototype.triggerGreenFlag = function() {
       this.trigger('whenGreenFlag');
     };
 
-    P.Stage.prototype.start = function () {
+    P.Stage.prototype.start = function() {
       this.isRunning = true;
       if (this.interval) return;
       this.baseTime = Date.now();
       this.interval = setInterval(this.step.bind(this), 1000 / this.framerate);
     };
 
-    P.Stage.prototype.pause = function () {
+    P.Stage.prototype.pause = function() {
       if (this.interval) {
         self.baseNow = self.now();
         clearInterval(this.interval);
@@ -2406,7 +2406,7 @@ P.runtime = (function () {
       this.isRunning = false;
     };
 
-    P.Stage.prototype.stopAll = function () {
+    P.Stage.prototype.stopAll = function() {
       this.queue = [];
       this.wait = [];
       this.resetFilters();
@@ -2422,7 +2422,7 @@ P.runtime = (function () {
       }
     };
 
-    P.Stage.prototype.runFor = function (sprite) {
+    P.Stage.prototype.runFor = function(sprite) {
       S = sprite;
       var queue = sprite.queue;
       sprite.queue = [];
@@ -2443,7 +2443,7 @@ P.runtime = (function () {
       return self.baseNow + Date.now() - self.baseTime;
     };
 
-    P.Stage.prototype.step = function () {
+    P.Stage.prototype.step = function() {
       try {
         self = this;
         var start = Date.now();
@@ -2463,7 +2463,7 @@ P.runtime = (function () {
   }());
 
   return {
-    scopedEval: function (source) {
+    scopedEval: function(source) {
       return eval(source);
     }
   };
