@@ -118,13 +118,13 @@
     if (isFullScreen) {
       var padding = 8;
       var w = window.innerWidth - padding * 2;
-      var h = window.innerHeight - padding * 2 - controls.offsetHeight;
+      var h = window.innerHeight - padding - controls.offsetHeight;
       w = Math.min(w, h / .75);
       h = w * .75 + controls.offsetHeight;
       document.body.style.width = w + 'px';
       document.body.style.height = h + 'px';
       document.body.style.marginLeft = (window.innerWidth - w) / 2 + 'px';
-      document.body.style.marginTop = (window.innerHeight - h) / 2 + 'px';
+      document.body.style.marginTop = (window.innerHeight - h - padding) / 2 + 'px';
       var scale = stage.zoom = w / 480;
     } else {
       stage.zoom = 1;
