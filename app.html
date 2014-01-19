@@ -94,6 +94,9 @@
 
     player.appendChild(s.canvas);
     s.focus();
+    s.canvas.addEventListener('blur', function() {
+      s.canvas.focus();
+    });
   };
   request.onerror = function (e) {
     error.style.display = 'table';
