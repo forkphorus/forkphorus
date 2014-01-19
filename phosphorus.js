@@ -688,10 +688,12 @@ var P = (function() {
     Stage.parent.prototype.fromJSON.call(this, data);
 
     data.children.forEach(function(d) {
-      if (d.cmd || d.listName) {
-        return;
-      }
-      this.children.push(new Sprite(this).fromJSON(d));
+      if (d.listName) return;
+      this.children.push(new (d.cmd ? Watcher : Sprite)(this).fromJSON(d));
+    }, this);
+
+    this.children.forEach(function(child) {
+      if (child.resolve) child.resolve();
     }, this);
 
     P.compile(this);
@@ -714,7 +716,7 @@ var P = (function() {
   Stage.prototype.clickMouse = function() {
     this.mousePressed = true;
     for (var i = this.children.length; i--;) {
-      if (this.children[i].visible && this.children[i].touching('_mouse_')) {
+      if (this.children[i].isSprite && this.children[i].visible && this.children[i].touching('_mouse_')) {
         this.triggerFor(this.children[i], 'whenClicked');
         break;
       }
@@ -745,6 +747,9 @@ var P = (function() {
       if (this.children[i].objName === name) {
         return this.children[i];
       }
+    }
+    if (this.objName === name) {
+      return this;
     }
   };
 
@@ -812,6 +817,7 @@ var P = (function() {
 
     this.penSize = 1;
     this.isPenDown = false;
+    this.isSprite = true;
   };
   inherits(Sprite, Base);
 
@@ -1132,13 +1138,172 @@ var P = (function() {
     this.context.drawImage(this.baseLayer, 0, 0);
   };
 
+  var Watcher = function(stage) {
+    this.stage = stage;
+
+    this.cmd = 'getVar:';
+    this.color = '#ee7d16';
+    this.isDiscrete = true;
+    this.label = 'watcher';
+    this.mode = 1;
+    this.param = 'var';
+    this.sliderMax = 100;
+    this.sliderMin = 0;
+    this.target = undefined;
+    this.visible = true;
+    this.x = 0;
+    this.y = 0;
+  };
+
+  Watcher.prototype.fromJSON = function(data) {
+    this.cmd = data.cmd || 'getVar:';
+    if (data.color) {
+      var c = data.color.toString(16);
+      this.color = '#000000'.slice(0, -c.length) + c;
+    }
+    this.isDiscrete = data.isDiscrete == null ? true : data.isDiscrete;
+    this.label = data.label || '';
+    this.mode = data.mode || 1;
+    this.param = data.param;
+    this.sliderMax = data.sliderMax == null ? 100 : data.sliderMax;
+    this.sliderMin = data.sliderMin || 0;
+    this.targetName = data.target;
+    this.visible = data.visible == null ? true : data.visible;
+    this.x = data.x || 0;
+    this.y = data.y || 0;
+
+    return this;
+  };
+
+  Watcher.prototype.resolve = function() {
+    this.target = this.stage.getObject(this.targetName);
+  };
+
+  Watcher.prototype.draw = function(context) {
+    var value = 0;
+    if (!this.target) return;
+    switch (this.cmd) {
+      case 'answer':
+        // TODO
+        break;
+      case 'backgroundIndex':
+        value = this.stage.currentCostumeIndex + 1;
+        break;
+      case 'costumeIndex':
+        value = this.target.currentCostumeIndex + 1;
+        break;
+      case 'getVar:':
+        var ref = this.target.varRefs[this.param];
+        if (ref) value = ref.value;
+        break;
+      case 'heading':
+        value = this.target.direction;
+        break;
+      case 'scale':
+        value = this.target.scale * 100;
+        break;
+      case 'sceneName':
+        ref = this.stage.costumes[this.stage.currentCostumeIndex];
+        if (ref) value = ref.costumeName;
+        break;
+      case 'senseVideoMotion':
+        // TODO
+        break;
+      case 'soundLevel':
+        // TODO
+        break;
+      case 'tempo':
+        // TODO
+        break;
+      case 'timeAndDate':
+        value = this.timeAndDate(this.param);
+        break;
+      case 'timer':
+        value = (this.stage.now - this.stage.timerStart) / 1000;
+        break;
+      case 'volume':
+        // TODO
+        break;
+      case 'xpos':
+        value = this.target.scratchX;
+        break;
+      case 'ypos':
+        value = this.target.scratchY;
+        break;
+    }
+    if (typeof value === 'number' && (value < 0.001 || value > 0.001)) {
+      value = Math.round(value * 1000) / 1000;
+    }
+    value = String(value);
+
+    context.font = 'bold 11px sans-serif';
+
+    if (this.labelWidth == null) {
+      this.labelWidth = context.measureText(this.label).width;
+    }
+
+    context.save();
+    context.translate(this.x, this.y);
+
+    if (this.mode === 1) {
+      var dw = Math.max(41, 5 + context.measureText(value).width + 5);
+      var r = 5;
+      var w = 5 + this.labelWidth + 5 + dw + 5;
+      var h = 22;
+
+      context.strokeStyle = 'rgb(148, 145, 145)';
+      context.fillStyle = 'rgb(193, 196, 199)';
+      context.lineWidth = 2;
+      context.beginPath();
+      context.arc(r + 1, r + 1, r, Math.PI, Math.PI * 3/2, false);
+      context.arc(w - r - 1, r + 1, r, Math.PI * 3/2, 0, false);
+      context.arc(w - r - 1, h - r - 1, r, 0, Math.PI/2, false);
+      context.arc(r + 1, h - r - 1, r, Math.PI/2, Math.PI, false);
+      context.closePath();
+      context.stroke();
+      context.fill();
+
+      context.fillStyle = '#000';
+      context.fillText(this.label, 5, h - 8);
+
+      var dh = 15;
+      var dx = 5 + this.labelWidth + 5;
+      var dy = 3;
+      var dr = 4;
+
+      context.save();
+      context.translate(dx, dy);
+
+      context.strokeStyle = '#fff';
+      context.fillStyle = this.color;
+      context.lineWidth = 2;
+      context.beginPath();
+      context.arc(dr + 1, dr + 1, dr, Math.PI, Math.PI * 3/2, false);
+      context.arc(dw - dr - 1, dr + 1, dr, Math.PI * 3/2, 0, false);
+      context.arc(dw - dr - 1, dh - dr - 1, dr, 0, Math.PI/2, false);
+      context.arc(dr + 1, dh - dr - 1, dr, Math.PI/2, Math.PI, false);
+      context.closePath();
+      context.stroke();
+      context.fill();
+
+      context.fillStyle = '#fff';
+      context.textAlign = 'center';
+      context.fillText(value, dw / 2, dh - 4);
+
+      context.restore();
+    }
+
+    context.restore();
+  };
+
   return {
     hasTouchEvents: hasTouchEvents,
     getKeyCode: getKeyCode,
     IO: IO,
     Base: Base,
     Stage: Stage,
-    Sprite: Sprite
+    Sprite: Sprite,
+    Watcher: Watcher
   };
 
 }());
@@ -2128,7 +2293,7 @@ P.runtime = (function() {
 
   var epoch = Date.UTC(2000, 0, 1);
 
-  var timeAndDate = function(format) {
+  var timeAndDate = P.Watcher.prototype.timeAndDate = function(format) {
     switch (format) {
       case 'year':
         return new Date().getFullYear();
@@ -2382,7 +2547,9 @@ P.runtime = (function() {
     P.Stage.prototype.trigger = function(event, arg) {
       this.triggerFor(this, event, arg);
       for (var i = 0; i < this.children.length; i++) {
-        this.triggerFor(this.children[i], event, arg);
+        if (this.children[i].isSprite) {
+          this.triggerFor(this.children[i], event, arg);
+        }
       }
     };
 
@@ -2411,13 +2578,14 @@ P.runtime = (function() {
       this.wait = [];
       this.resetFilters();
       for (var i = 0; i < this.children.length; i++) {
-        if (this.children[i].isClone) {
+        var c = this.children[i];
+        if (c.isClone) {
           this.children.splice(i, 1);
           i -= 1;
-        } else {
-          this.children[i].queue = [];
-          this.children[i].wait = [];
-          this.children[i].resetFilters();
+        } else if (c.isSprite) {
+          c.queue = [];
+          c.wait = [];
+          c.resetFilters();
         }
       }
     };
@@ -2450,7 +2618,9 @@ P.runtime = (function() {
         do {
           this.runFor(this);
           for (var i = 0; i < this.children.length; i++) {
-            this.runFor(this.children[i]);
+            if (this.children[i].isSprite) {
+              this.runFor(this.children[i]);
+            }
           }
         } while (self.isTurbo && Date.now() - start < 1000 / this.framerate);
         this.draw();
