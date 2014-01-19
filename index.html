@@ -65,8 +65,6 @@
     }
     e.preventDefault();
   }
-  flag.addEventListener('touchstart', flagClick);
-  flag.addEventListener('mousedown', flagClick);
 
   function pauseClick(e) {
     if (stage.isRunning) {
@@ -77,8 +75,6 @@
       pause.className = 'pause';
     }
   }
-  pause.addEventListener('touchstart', pauseClick);
-  pause.addEventListener('mousedown', pauseClick);
 
   function stopClick(e) {
     stage.start();
@@ -86,8 +82,6 @@
     stage.stopAll();
     e.preventDefault();
   }
-  stop.addEventListener('touchstart', stopClick);
-  stop.addEventListener('mousedown', stopClick);
 
   function fullScreenClick(e) {
     document.documentElement.classList.toggle('fs');
@@ -111,10 +105,8 @@
     }
     e.preventDefault();
   }
-  fullScreen.addEventListener('mousedown', fullScreenClick);
-  fullScreen.addEventListener('touchstart', fullScreenClick);
 
-  var updateFullScreen = function () {
+  function updateFullScreen() {
     if (isFullScreen) {
       var padding = 8;
       var w = window.innerWidth - padding * 2;
@@ -131,12 +123,32 @@
     }
   };
 
+  function preventDefault(e) {
+    e.preventDefault();
+  }
+
   window.addEventListener('resize', updateFullScreen);
-  document.addEventListener('touchmove', function(e) {
-    if (isFullScreen) {
-      e.preventDefault();
-    }
-  });
+
+  if (P.hasTouchEvents) {
+    flag.addEventListener('touchend', flagClick);
+    pause.addEventListener('touchend', pauseClick);
+    stop.addEventListener('touchend', stopClick);
+    fullScreen.addEventListener('touchend', fullScreenClick);
+
+    flag.addEventListener('touchmove', preventDefault);
+    pause.addEventListener('touchmove', preventDefault);
+    stop.addEventListener('touchmove', preventDefault);
+    fullScreen.addEventListener('touchmove', preventDefault);
+
+    document.addEventListener('touchmove', function(e) {
+      if (isFullScreen) e.preventDefault();
+    });
+  } else {
+    flag.addEventListener('click', flagClick);
+    pause.addEventListener('click', pauseClick);
+    stop.addEventListener('click', stopClick);
+    fullScreen.addEventListener('click', fullScreenClick);
+  }
 
   var timeout;
   urlInput.addEventListener('input', function () {

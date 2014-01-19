@@ -3,6 +3,8 @@ var P = (function () {
 
   var hasOwnProperty = {}.hasOwnProperty;
 
+  var hasTouchEvents = 'ontouchstart' in document;
+
   var inherits = function (cla, sup) {
     cla.prototype = Object.create(sup.prototype);
     cla.parent = sup;
@@ -638,37 +640,42 @@ var P = (function () {
       e.preventDefault();
     }.bind(this));
 
-    this.canvas.addEventListener('mousedown', function (e) {
-      this.updateMouse(e);
-      this.clickMouse();
+    if (hasTouchEvents) {
 
-      e.preventDefault();
-      this.canvas.focus();
-    }.bind(this));
+      this.canvas.addEventListener('touchstart', function(e) {
+        this.mousePressed = true;
+        this.updateMouse(e.touches[0]);
+        this.clickMouse();
+        e.preventDefault();
+      }.bind(this));
 
-    document.addEventListener('mousemove', function (e) {
-      this.updateMouse(e);
-    }.bind(this));
+      document.addEventListener('touchmove', function (e) {
+        this.updateMouse(e.touches[0]);
+      }.bind(this));
 
-    document.addEventListener('mouseup', function (e) {
-      this.updateMouse(e);
-      this.mousePressed = false;
-    }.bind(this));
+      document.addEventListener('touchend', function (e) {
+        this.mousePressed = false;
+      }.bind(this));
 
-    this.canvas.addEventListener('touchstart', function(e) {
-      this.mousePressed = true;
-      this.updateMouse(e.touches[0]);
-      this.clickMouse();
-      e.preventDefault();
-    }.bind(this));
+    } else {
 
-    document.addEventListener('touchmove', function (e) {
-      this.updateMouse(e.touches[0]);
-    }.bind(this));
+      this.canvas.addEventListener('mousedown', function (e) {
+        this.updateMouse(e);
+        this.clickMouse();
 
-    document.addEventListener('touchend', function (e) {
-      this.mousePressed = false;
-    }.bind(this));
+        e.preventDefault();
+        this.canvas.focus();
+      }.bind(this));
+
+      document.addEventListener('mousemove', function (e) {
+        this.updateMouse(e);
+      }.bind(this));
+
+      document.addEventListener('mouseup', function (e) {
+        this.updateMouse(e);
+        this.mousePressed = false;
+      }.bind(this));
+    }
 
   };
   inherits(Stage, Base);
@@ -1124,6 +1131,7 @@ var P = (function () {
   };
 
   return {
+    hasTouchEvents: hasTouchEvents,
     getKeyCode: getKeyCode,
     IO: IO,
     Base: Base,
