@@ -52,7 +52,7 @@ body {
 .project-link {
   width: 32px;
   height: 32px;
-  float: left;
+  float: right;
   cursor: pointer;
   text-align: center;
   opacity: .4;
@@ -69,7 +69,7 @@ body {
   background-position: -64px 0;
 }
 .controls .full-screen {
-  float: right;
+  float: left;
   background-position: -128px 0;
 }
 .controls span:active,
