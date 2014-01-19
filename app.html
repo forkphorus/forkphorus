@@ -98,6 +98,13 @@
     progressBar.style.width = (10 + e.loaded / e.total * 90) + '%';
   };
 
+  P.IO.load('http://scratch.mit.edu/projects/' + projectId + '/').onload = function(data) {
+    var m = /<title>\s*(.+?)(\s+on\s+Scratch)?\s*<\/title>/.exec(data);
+    if (m) {
+      document.title = m[1];
+    }
+  };
+
 }());
 
 </script>
