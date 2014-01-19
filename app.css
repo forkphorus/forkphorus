@@ -1,6 +1,7 @@
 body {
   background: #000;
   margin: 0;
+  overflow: hidden;
 }
 .player {
   position: absolute;
