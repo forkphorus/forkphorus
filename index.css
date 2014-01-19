@@ -4,7 +4,7 @@ body {
   padding-bottom: 32px;
 }
 .title {
-  margin: 16px 0 0;
+  margin: 16px 0 48px;
   position: relative;
 }
 .url {
@@ -118,4 +118,47 @@ body {
 }
 .fs .player {
   box-shadow: none;
+}
+
+.package h1,
+.package p {
+  font: 300 16px/1.5 Helvetica Neue, Helvetica, Arial, sans-serif;
+  margin: 0 0 16px;
+}
+.package h1 {
+  font: 300 24px/32px Helvetica Neue, Helvetica, Arial, sans-serif;
+  margin: 16px 0 0;
+}
+.package a {
+  border: 0;
+  margin: 0 16px 0 0;
+  padding: 2px 8px;
+  font: inherit;
+  background: linear-gradient(#fafafa, #e8e8e8);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, .35),
+    0 1px 4px rgba(0, 0, 0, .2);
+  border-radius: 3px;
+  cursor: pointer;
+  color: #000;
+  text-decoration: none;
+}
+.package a:hover {
+  background: linear-gradient(#fff, #eaeaea);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, .4),
+    0 1px 4px rgba(0, 0, 0, .3);
+}
+.package a:active {
+  background: linear-gradient(#ddd, #eaeaea);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, .5),
+    inset 0 2px 5px rgba(0, 0, 0, .15);
+}
+.package label,
+.package input,
+.package a,
+.package span {
+  display: inline-block;
+  vertical-align: middle;
 }

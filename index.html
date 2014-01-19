@@ -10,12 +10,20 @@
   <div class=turbo>Turbo Mode</div>
   <span class=full-screen></span>
 </div>
-<div class=player>
-</div>
+<div class=player></div>
 <div class=title>
   <div class=progress-bar></div>
   <input class=url value=http://scratch.mit.edu/projects/>
   <a target=_blank class=project-link></a>
+</div>
+<div class=package>
+  <h1>Package this project</h1>
+  <p>Make a web page that automatically runs your project in full screen.</p>
+  <p>
+    <a href=# target=_blank id=package-link>Package</a>
+    <input type=checkbox id=package-turbo>
+    <label for=package-turbo>Launch in turbo mode</label>
+  </p>
 </div>
 <script src=lib/jszip/jszip.js></script>
 <script src=lib/jszip/jszip-deflate.js></script>
@@ -53,6 +61,9 @@
   var pause = document.querySelector('.pause');
   var stop = document.querySelector('.stop');
   var fullScreen = document.querySelector('.full-screen');
+
+  var packageLink = document.querySelector('#package-link');
+  var packageTurbo = document.querySelector('#package-turbo');
 
   var flagTouchTimeout;
   function flagTouchStart() {
@@ -191,6 +202,7 @@
     var id = location.hash.substr(1);
     if (id !== 'zip') {
       if (+id !== +id) id = '';
+      projectId = id;
       urlInput.value = prefix + id;
     }
     load(id);
@@ -198,11 +210,16 @@
 
   var load = function (id) {
     projectLink.href = id && id !== 'zip' ? 'http://scratch.mit.edu/projects/' + id + '/' : 'http://scratch.mit.edu/';
+    updatePackageLink();
     if (id === 'zip') return;
     player.innerHTML = '';
     progressBar.style.display = 'none';
     if (!id) return;
     showProgress(P.IO.loadScratchr2Project(id));
+  };
+
+  var updatePackageLink = function() {
+    packageLink.href = '/app.html?id=' + projectId + '&turbo=' + packageTurbo.checked;
   };
 
   var showProgress = function (request) {
@@ -266,7 +283,6 @@
     }
 
   });
-
 
 }());
 
