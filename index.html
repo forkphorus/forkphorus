@@ -154,6 +154,7 @@
   }
 
   window.addEventListener('resize', updateFullScreen);
+  packageTurbo.addEventListener('change', updatePackageLink);
 
   if (P.hasTouchEvents) {
     flag.addEventListener('touchstart', flagTouchStart);
