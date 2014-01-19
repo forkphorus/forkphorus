@@ -791,7 +791,7 @@ var P = (function() {
   };
 
   var getKeyCode = function(keyName) {
-    return KEY_CODES[keyName] || keyName.charCodeAt(0);
+    return KEY_CODES[keyName.toLowerCase()] || keyName.toUpperCase().charCodeAt(0);
   };
 
   var Sprite = function(stage) {
@@ -2191,7 +2191,7 @@ P.compile = (function() {
       var key = script[0][1].toLowerCase();
       (object.listeners.whenIReceive[key] || (object.listeners.whenIReceive[key] = [])).push(f);
     } else if (script[0][0] === 'whenKeyPressed') {
-      object.listeners.whenKeyPressed[P.getKeyCode(script[0][0])].push(f);
+      object.listeners.whenKeyPressed[P.getKeyCode(script[0][1])].push(f);
     } else if (script[0][0] === 'whenSceneStarts') {
       var key = script[0][1].toLowerCase();
       (object.listeners.whenSceneStarts[key] || (object.listeners.whenSceneStarts[key] = [])).push(f);
