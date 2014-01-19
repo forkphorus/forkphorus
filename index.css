@@ -134,10 +134,7 @@ h1 {
   margin: 16px 0 0;
 }
 .package a {
-  border: 0;
-  margin: 0 16px 0 0;
   padding: 2px 8px;
-  font: inherit;
   background: linear-gradient(#fafafa, #e8e8e8);
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, .35),
@@ -166,4 +163,7 @@ h1 {
 .package span {
   display: inline-block;
   vertical-align: middle;
+}
+.package input {
+  margin: 0 0 0 16px;
 }

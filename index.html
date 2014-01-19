@@ -18,11 +18,13 @@
 </div>
 <section class=package>
   <h1>Package this project</h1>
-  <p>Make a web page that automatically runs your project in full screen.</p>
+  <p>Make a web page that automatically runs your project.</p>
   <p>
     <a href=# target=_blank id=package-link>Package</a>
     <input type=checkbox id=package-turbo>
-    <label for=package-turbo>Launch in turbo mode</label>
+    <label for=package-turbo>Turbo mode</label>
+    <input type=checkbox id=package-full-screen checked>
+    <label for=package-full-screen>Full screen</label>
   </p>
 </section>
 <section>
@@ -68,6 +70,7 @@
 
   var packageLink = document.querySelector('#package-link');
   var packageTurbo = document.querySelector('#package-turbo');
+  var packageFullScreen = document.querySelector('#package-full-screen');
 
   var flagTouchTimeout;
   function flagTouchStart() {
@@ -164,6 +167,7 @@
 
   window.addEventListener('resize', updateFullScreen);
   packageTurbo.addEventListener('change', updatePackageLink);
+  packageFullScreen.addEventListener('change', updatePackageLink);
 
   if (P.hasTouchEvents) {
     flag.addEventListener('touchstart', flagTouchStart);
@@ -229,7 +233,7 @@
   };
 
   function updatePackageLink() {
-    packageLink.href = '/app.html?id=' + projectId + '&turbo=' + packageTurbo.checked;
+    packageLink.href = '/app.html?id=' + projectId + '&turbo=' + packageTurbo.checked + '&full-screen=' + packageFullScreen.checked;
   };
 
   function showProgress(request) {

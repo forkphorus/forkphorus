@@ -28,13 +28,13 @@
   'use strict';
 
   var stage;
-  var isFullScreen = false;
 
   var prefix = 'http://scratch.mit.edu/projects/';
   var defaultId = '10000160';
 
   var projectId = defaultId;
   var turbo = false;
+  var fullScreen = false;
 
   var params = location.search.substr(1).split('&');
   params.forEach(function(p) {
@@ -46,6 +46,9 @@
           break;
         case 'turbo':
           turbo = parts[1] !== 'false';
+          break;
+        case 'full-screen':
+          fullScreen = parts[1] !== 'false';
           break;
       }
     }
@@ -61,6 +64,7 @@
   var layout = function() {
     if (!stage) return;
     var w = Math.min(window.innerWidth, window.innerHeight / .75);
+    if (!fullScreen) w = Math.min(w, 480);
     var h = w * .75;
     player.style.left = (window.innerWidth - w) / 2 + 'px';
     player.style.top = (window.innerHeight - h) / 2 + 'px';
