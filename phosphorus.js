@@ -644,13 +644,15 @@ var P = (function () {
 
       this.canvas.addEventListener('touchstart', function(e) {
         this.mousePressed = true;
-        this.updateMouse(e.touches[0]);
-        this.clickMouse();
+        for (var i = 0; i < e.changedTouches.length; i++) {
+          this.updateMouse(e.changedTouches[i]);
+          this.clickMouse();
+        }
         e.preventDefault();
       }.bind(this));
 
       document.addEventListener('touchmove', function (e) {
-        this.updateMouse(e.touches[0]);
+        this.updateMouse(e.changedTouches[0]);
       }.bind(this));
 
       document.addEventListener('touchend', function (e) {
