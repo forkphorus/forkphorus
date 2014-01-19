@@ -141,6 +141,12 @@
     e.preventDefault();
   }
 
+  function exitFullScreen(e) {
+    if (isFullScreen && e.keyCode === 27) {
+      fullScreenClick(e);
+    }
+  }
+
   function updateFullScreen() {
     if (isFullScreen) {
       window.scrollTo(0, 0);
@@ -256,6 +262,8 @@
       console.log(window.stage = stage = s);
       stage.start();
       stage.triggerGreenFlag();
+
+      stage.canvas.addEventListener('keydown', exitFullScreen);
 
       player.appendChild(stage.canvas);
       stage.focus();
