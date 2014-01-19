@@ -12,6 +12,7 @@
   <span class=stop></span>
   <span class=pause></span>
   <span class=flag title="Shift+click to enable turbo mode."></span>
+  <div class=turbo>Turbo Mode</div>
   <span class=full-screen></span>
 </div>
 <div class=player>
@@ -48,6 +49,7 @@
 
   var controls = document.querySelector('.controls');
   var flag = document.querySelector('.flag');
+  var turbo = document.querySelector('.turbo');
   var pause = document.querySelector('.pause');
   var stop = document.querySelector('.stop');
   var fullScreen = document.querySelector('.full-screen');
@@ -63,6 +65,7 @@
     stage.isTurbo = !stage.isTurbo;
     flag.style.textDecoration = stage.isTurbo ? 'underline' : 'none';
     flag.title = stage.isTurbo ? 'Turbo mode enabled. Shift+click to disable.' : 'Shift+click to enable turbo mode.';
+    turbo.style.display = stage.isTurbo ? 'block' : 'none';
   }
   function flagClick(e) {
     if (flagTouchTimeout === true) return;

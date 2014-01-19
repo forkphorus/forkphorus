@@ -76,6 +76,14 @@ body {
 .project-link:active {
   opacity: 1 !important;
 }
+.controls .turbo {
+  float: right;
+  display: none;
+  cursor: default;
+  color: rgba(0, 0, 0, .4);
+  font: 500 12px/32px Helvetica Neue, Helvetica, Arial, sans-serif;
+  padding: 0 8px;
+}
 .player {
   box-shadow: 0 0 0 1px rgba(0, 0, 0, .4);
   width: 480px;
