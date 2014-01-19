@@ -997,6 +997,9 @@ var P = (function() {
     if (thing === '_mouse_') {
       var d = costume.context.getImageData((this.stage.mouseX - this.scratchX) * costume.bitmapResolution + costume.rotationCenterX, (this.scratchY - this.stage.mouseY) * costume.bitmapResolution + costume.rotationCenterY, 1, 1).data;
       return d[3] !== 0;
+    } else if (thing === '_edge_') {
+      var bounds = this.rotatedBounds();
+      return bounds.left <= -240 || bounds.right >= 240 || bounds.top >= 180 || bounds.bottom <= -180;
     } else {
       var sprite = this.stage.getObject(thing);
       if (!sprite) return false;
