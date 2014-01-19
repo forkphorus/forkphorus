@@ -12,15 +12,16 @@ body {
 }
 .url {
   position: relative;
-  z-index: 1;
   background: 0;
   border: 0;
   margin: 0;
-  padding: 0;
+  padding: 0 0 0 32px;
   outline: 0;
   font: 300 24px/32px Helvetica Neue, Helvetica, Arial, sans-serif;
   display: block;
   width: 100%;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
   color: rgba(0, 0, 0, .4);
 }
 .url:focus {
@@ -43,8 +44,8 @@ body {
 }
 .project-link {
   position: absolute;
-  right: 100%;
   top: 0;
+  left: 0;
   background-position: -160px 0;
 }
 .controls {
