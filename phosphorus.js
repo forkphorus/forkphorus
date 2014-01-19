@@ -718,9 +718,10 @@ var P = (function() {
     for (var i = this.children.length; i--;) {
       if (this.children[i].isSprite && this.children[i].visible && this.children[i].touching('_mouse_')) {
         this.triggerFor(this.children[i], 'whenClicked');
-        break;
+        return;
       }
     }
+    this.triggerFor(this, 'whenClicked');
   };
 
   Stage.prototype.resetAllFilters = function() {
