@@ -1244,7 +1244,18 @@ var P = (function() {
         break;
       case 'getVar:':
         var ref = this.target.varRefs[this.param];
-        if (ref) value = ref.value;
+        if (ref) {
+          if (this.mode === 3 && this.stage.mousePressed) {
+            var x = this.stage.mouseX + 240 - this.x - 5;
+            var y = 180 - this.stage.mouseY - this.y - 20;
+            console.log(x, y);
+            if (x >= 0 && y >= 0 && x <= this.width - 5 - 5 && y <= 9) {
+              ref.value = this.sliderMin + Math.max(0, Math.min(1, (x - 2.5) / (this.width - 5 - 5 - 5))) * (this.sliderMax - this.sliderMin);
+              ref.value = this.isDiscrete ? Math.round(ref.value) : Math.round(ref.value * 100) / 100;
+            }
+          }
+          value = ref.value;
+        }
         break;
       case 'heading':
         value = this.target.direction;
@@ -1295,11 +1306,11 @@ var P = (function() {
     context.save();
     context.translate(this.x, this.y);
 
-    if (this.mode === 1) {
+    if (this.mode === 1 || this.mode === 3) {
       var dw = Math.max(41, 5 + context.measureText(value).width + 5);
       var r = 5;
-      var w = 5 + this.labelWidth + 5 + dw + 5;
-      var h = 22;
+      var w = this.width = 5 + this.labelWidth + 5 + dw + 5;
+      var h = this.mode === 1 ? 21 : 32;
 
       context.strokeStyle = 'rgb(148, 145, 145)';
       context.fillStyle = 'rgb(193, 196, 199)';
@@ -1314,7 +1325,7 @@ var P = (function() {
       context.fill();
 
       context.fillStyle = '#000';
-      context.fillText(this.label, 5, h - 8);
+      context.fillText(this.label, 5, 14);
 
       var dh = 15;
       var dx = 5 + this.labelWidth + 5;
@@ -1341,6 +1352,38 @@ var P = (function() {
       context.fillText(value, dw / 2, dh - 4);
 
       context.restore();
+
+      if (this.mode === 3) {
+        var sh = 5;
+        var sw = w - 5 - 5;
+        var sr = 1.5;
+        var br = 4.5;
+
+        context.save();
+        context.translate(5, 22);
+
+        context.strokeStyle = 'rgb(148, 145, 145)';
+        context.fillStyle = 'rgb(213, 216, 219)';
+        context.lineWidth = 2;
+        context.beginPath();
+        context.arc(sr + 1, sr + 1, sr, Math.PI, Math.PI * 3/2, false);
+        context.arc(sw - sr - 1, sr + 1, sr, Math.PI * 3/2, 0, false);
+        context.arc(sw - sr - 1, sh - sr - 1, sr, 0, Math.PI/2, false);
+        context.arc(sr + 1, sh - sr - 1, sr, Math.PI/2, Math.PI, false);
+        context.closePath();
+        context.stroke();
+        context.fill();
+
+        var x = (sw - sh) * (Number(value) || 0) / (this.sliderMax - this.sliderMin);
+        context.strokeStyle = 'rgb(108, 105, 105)';
+        context.fillStyle = 'rgb(233, 236, 239)';
+        context.beginPath();
+        context.arc(x - 1 + sh / 2, sh / 2, br - 1, 0, Math.PI * 2, false);
+        context.stroke();
+        context.fill();
+
+        context.restore();
+      }
     }
 
     context.restore();
