@@ -149,10 +149,10 @@
     stop.addEventListener('touchend', stopClick);
     fullScreen.addEventListener('touchend', fullScreenClick);
 
-    flag.addEventListener('touchmove', preventDefault);
-    pause.addEventListener('touchmove', preventDefault);
-    stop.addEventListener('touchmove', preventDefault);
-    fullScreen.addEventListener('touchmove', preventDefault);
+    flag.addEventListener('touchstart', preventDefault);
+    pause.addEventListener('touchstart', preventDefault);
+    stop.addEventListener('touchstart', preventDefault);
+    fullScreen.addEventListener('touchstart', preventDefault);
 
     document.addEventListener('touchmove', function(e) {
       if (isFullScreen) e.preventDefault();
