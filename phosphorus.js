@@ -771,8 +771,8 @@ var P = (function() {
     }
   };
 
-  Stage.prototype.draw = function(context, except) {
-    if (!context) context = this.context;
+  Stage.prototype.draw = function() {
+    var context = this.context;
 
     this.canvas.width = 480 * this.zoom; // clear
     this.canvas.height = 360 * this.zoom;
@@ -780,6 +780,12 @@ var P = (function() {
     context.save();
     context.scale(this.zoom, this.zoom);
 
+    this.drawOn(context);
+
+    context.restore();
+  };
+
+  Stage.prototype.drawOn = function(context, except) {
     var costume = this.costumes[this.currentCostumeIndex];
     context.save();
     context.scale(costume.scale, costume.scale);
@@ -794,8 +800,6 @@ var P = (function() {
         this.children[i].draw(context);
       }
     }
-
-    context.restore();
   };
 
   Stage.prototype.moveTo = function() {};
@@ -1071,7 +1075,7 @@ var P = (function() {
     collisionContext.save();
     collisionContext.translate(-(240 + b.left), -(180 - b.top));
 
-    this.stage.draw(collisionContext, this);
+    this.stage.drawOn(collisionContext, this);
     collisionContext.globalCompositeOperation = 'destination-in';
     this.draw(collisionContext);
 
