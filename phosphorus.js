@@ -998,6 +998,7 @@ var P = (function() {
 
   Sprite.prototype.touching = function(thing) {
     var costume = this.costumes[this.currentCostumeIndex];
+
     if (thing === '_mouse_') {
       var bounds = this.rotatedBounds();
       var x = this.stage.rawMouseX;
@@ -1011,8 +1012,9 @@ var P = (function() {
       var bounds = this.rotatedBounds();
       return bounds.left <= -240 || bounds.right >= 240 || bounds.top >= 180 || bounds.bottom <= -180;
     } else {
+      if (!this.visible) return false;
       var sprite = this.stage.getObject(thing);
-      if (!sprite) return false;
+      if (!sprite || !sprite.visible) return false;
       var sc = sprite.costumes[sprite.currentCostumeIndex];
 
       var mb = this.rotatedBounds();
