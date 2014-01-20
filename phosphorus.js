@@ -970,7 +970,11 @@ var P = (function() {
     context.save();
 
     context.translate(this.scratchX + 240, 180 - this.scratchY);
-    context.rotate((this.direction - 90) * Math.PI / 180);
+    if (this.rotationStyle === 'normal') {
+      context.rotate((this.direction - 90) * Math.PI / 180);
+    } else if (this.rotationStyle === 'leftRight' && this.direction < 0) {
+      context.scale(-1, 1);
+    }
     context.scale(this.scale, this.scale);
     context.scale(costume.scale, costume.scale);
     context.translate(-costume.rotationCenterX, -costume.rotationCenterY);
