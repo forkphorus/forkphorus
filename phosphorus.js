@@ -1776,7 +1776,8 @@ P.compile = (function() {
 
       } else if (block[0] === 'setRotationStyle') {
 
-        source += 'S.rotationStyle = ' + val(block[1]) + ';\n';
+        source += 'var style = ' + val(block[1]) + ';\n';
+        source += 'S.rotationStyle = style === "left-right" ? "leftRight" : style === "don\'t rotate" ? "none" : "normal";';
 
       } else if (block[0] === 'lookLike:') { /* Looks */
 
