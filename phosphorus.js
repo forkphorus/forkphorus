@@ -1801,9 +1801,11 @@ P.compile = (function() {
         } else {
 
           source += 'self.setCostume(' + val(block[1]) + ');\n';
-          source += 'sceneChange();\n';
-          source += 'waitForSceneChange(S, ' + val(block[1]) + ', ' + nextLabel() + ');\n';
-          delay();
+          source += 'R.threads = sceneChange();\n';
+          var id = label();
+          source += 'if (!running(R.threads)) {\n';
+          queue(id);
+          source += '}\n';
 
         }
 
@@ -2000,9 +2002,11 @@ P.compile = (function() {
 
       } else if (block[0] === 'doBroadcastAndWait') {
 
-        source += 'broadcast(' + val(block[1]) + ');\n';
-        source += 'waitForBroadcast(S, ' + val(block[1]) + ', ' + nextLabel() + ');\n';
-        delay();
+        source += 'R.threads = broadcast(' + val(block[1]) + ');\n';
+        var id = label();
+        source += 'if (running(R.threads)) {\n';
+        queue(id);
+        source += '}\n';
 
       } else if (block[0] === 'doForever') {
 
@@ -2337,7 +2341,7 @@ P.compile = (function() {
 P.runtime = (function() {
   'use strict';
 
-  var self, S, R, STACK, C, CALLS, TERMINATE;
+  var self, S, R, STACK, C, CALLS, BASE, THREAD, TERMINATE, STOP_THREAD = {};
 
   var bool = function(v) {
     return Number(v) !== 0 && v !== '' && v !== 'false' && v !== false;
@@ -2637,28 +2641,32 @@ P.runtime = (function() {
   };
 
   var sceneChange = function() {
-    self.trigger('whenSceneStarts', self.costumes[self.currentCostumeIndex].costumeName);
+    return self.trigger('whenSceneStarts', self.costumes[self.currentCostumeIndex].costumeName);
   };
 
   var broadcast = function(name) {
-    self.trigger('whenIReceive', name);
+    return self.trigger('whenIReceive', name);
+  };
+
+  var running = function(bases) {
+    for (var j = 0; j < self.queue.length; j++) {
+      if (self.queue[j] && bases.indexOf(self.queue[j].base) !== -1) return true;
+    }
+    for (var i = 0; i < self.children.length; i++) {
+      var c = self.children[i];
+      for (var j = 0; j < c.queue.length; j++) {
+        if (c.queue[j] && bases.indexOf(c.queue[j].base) !== -1) return true;
+      }
+    }
+    return false;
   };
 
   var queue = function(id) {
-    CALLS.push(C);
-    STACK.push(R);
-    S.queue.push({
+    S.queue[THREAD] = {
+      base: BASE,
       fn: S.fns[id],
       calls: CALLS
-    });
-  };
-
-  var waitForBroadcast = function(sprite, message, id) {
-    sprite.wait.push({
-      fn: sprite.fns[id],
-      'for': 'broadcast',
-      'message': message
-    });
+    };
   };
 
   // Internal definition
@@ -2669,7 +2677,24 @@ P.runtime = (function() {
 
     P.Base.prototype.initRuntime = function() {
       this.queue = [];
-      this.wait = [];
+    };
+
+    P.Base.prototype.startThread = function(base) {
+      var thread = {
+        base: base,
+        fn: base,
+        calls: [{ args:{}, stack: [{}] }]
+      };
+      for (var i = 0; i < this.queue.length; i++) {
+        if (this.queue[i] && this.queue[i].base === base) {
+          this.queue[i] = thread;
+          if (S === this && THREAD === i) {
+            throw STOP_THREAD;
+          }
+          return;
+        }
+      }
+      this.queue.push(thread);
     };
 
     P.Stage.prototype.triggerFor = function(sprite, event, arg) {
@@ -2689,21 +2714,21 @@ P.runtime = (function() {
       }
       if (threads) {
         for (var i = 0; i < threads.length; i++) {
-          sprite.queue.push({
-            fn: threads[i],
-            calls: [{ args:{}, stack: [{}] }]
-          });
+          sprite.startThread(threads[i]);
         }
+        return threads;
       }
+      return [];
     };
 
     P.Stage.prototype.trigger = function(event, arg) {
-      this.triggerFor(this, event, arg);
+      var result = this.triggerFor(this, event, arg);
       for (var i = 0; i < this.children.length; i++) {
         if (this.children[i].isSprite) {
-          this.triggerFor(this.children[i], event, arg);
+          result = result.concat(this.triggerFor(this.children[i], event, arg));
         }
       }
+      return result;
     };
 
     P.Stage.prototype.triggerGreenFlag = function() {
@@ -2728,7 +2753,6 @@ P.runtime = (function() {
 
     P.Stage.prototype.stopAll = function() {
       this.queue = [];
-      this.wait = [];
       this.resetFilters();
       for (var i = 0; i < this.children.length; i++) {
         var c = this.children[i];
@@ -2737,7 +2761,6 @@ P.runtime = (function() {
           i -= 1;
         } else if (c.isSprite) {
           c.queue = [];
-          c.wait = [];
           c.resetFilters();
         }
       }
@@ -2746,17 +2769,28 @@ P.runtime = (function() {
     P.Stage.prototype.runFor = function(sprite) {
       S = sprite;
       var queue = sprite.queue;
-      sprite.queue = [];
       TERMINATE = false;
-      for (var i = 0; i < queue.length; i++) {
-        CALLS = queue[i].calls;
+      for (THREAD = 0; THREAD < queue.length; THREAD++) {
+        var fn = queue[THREAD].fn;
+        BASE = queue[THREAD].base;
+        CALLS = queue[THREAD].calls;
         C = CALLS.pop();
         STACK = C.stack;
         R = STACK.pop();
-        queue[i].fn();
+        queue[THREAD] = undefined;
+        try {
+          fn();
+        } catch (e) {
+          if (e !== STOP_THREAD) throw e;
+          queue[THREAD] = undefined;
+          continue;
+        }
         STACK.push(R);
         CALLS.push(C);
         if (TERMINATE) return;
+      }
+      for (var i = queue.length; i--;) {
+        if (!queue[i]) queue.splice(i, 1);
       }
     };
 
@@ -2777,6 +2811,7 @@ P.runtime = (function() {
           }
         } while (self.isTurbo && Date.now() - start < 1000 / this.framerate);
         this.draw();
+        S = null;
       } catch (e) {
         this.handleError(e);
         clearInterval(this.interval);
