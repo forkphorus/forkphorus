@@ -771,8 +771,8 @@ var P = (function() {
     }
   };
 
-  Stage.prototype.draw = function() {
-    var context = this.context;
+  Stage.prototype.draw = function(context, except) {
+    if (!context) context = this.context;
 
     this.canvas.width = 480 * this.zoom; // clear
     this.canvas.height = 360 * this.zoom;
@@ -790,7 +790,7 @@ var P = (function() {
     context.drawImage(this.penCanvas, 0, 0);
 
     for (var i = 0; i < this.children.length; i++) {
-      if (this.children[i].visible) {
+      if (this.children[i].visible && this.children[i] !== except) {
         this.children[i].draw(context);
       }
     }
@@ -1061,6 +1061,33 @@ var P = (function() {
       }
       return false;
     }
+  };
+
+  Sprite.prototype.touchingColor = function(rgb) {
+    var b = this.rotatedBounds();
+    collisionCanvas.width = b.right - b.left;
+    collisionCanvas.height = b.top - b.bottom;
+
+    collisionContext.save();
+    collisionContext.translate(-(240 + b.left), -(180 - b.top));
+
+    this.stage.draw(collisionContext, this);
+    collisionContext.globalCompositeOperation = 'destination-in';
+    this.draw(collisionContext);
+
+    collisionContext.restore();
+
+    var data = collisionContext.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
+
+    rgb = rgb & 0xffffff;
+    var length = (b.right - b.left) * (b.top - b.bottom) * 4;
+    for (var i = 0; i < length; i += 4) {
+      if ((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) === rgb) {
+        return true;
+      }
+    }
+
+    return false;
   };
 
   Sprite.prototype.bounceOffEdge = function() {
@@ -1671,7 +1698,9 @@ P.compile = (function() {
 
         return 'S.touching(' + val(e[1]) + ')';
 
-      // } else if (e[0] === 'touchingColor:') {
+      } else if (e[0] === 'touchingColor:') {
+
+        return 'S.touchingColor(' + val(e[1]) + ')';
 
       // } else if (e[0] === 'color:sees:') {
 
