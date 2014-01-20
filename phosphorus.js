@@ -1163,6 +1163,7 @@ var P = (function() {
     this.rotationCenterY = data.rotationCenterY;
 
     this.image = document.createElement('canvas');
+    this.context = this.image.getContext('2d');
 
     if (this.baseLayer.width) {
       this.render();
@@ -1178,7 +1179,6 @@ var P = (function() {
     this.image.width = this.baseLayer.width;
     this.image.height = this.baseLayer.height;
 
-    this.context = this.image.getContext('2d');
     this.context.drawImage(this.baseLayer, 0, 0);
   };
 
