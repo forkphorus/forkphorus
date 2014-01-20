@@ -33,6 +33,7 @@
   var defaultId = '10000160';
 
   var projectId = defaultId;
+  var projectTitle = '';
   var turbo = false;
   var fullScreen = false;
 
@@ -75,7 +76,7 @@
 
   function showError(e) {
     error.style.display = 'table';
-    bugLink.href = 'https://github.com/nathan/phosphorus/issues/new?body=' + encodeURIComponent('\n\n\nhttp://scratch.mit.edu/projects/' + projectId + '\nhttp://phosphorus.herokuapp.com/#' + projectId + (e.stack ? '\n\n```\n' + e.stack + '\n```' : ''));
+    bugLink.href = 'https://github.com/nathan/phosphorus/issues/new?title=' + encodeURIComponent(projectTitle || '') + '&body=' + encodeURIComponent('\n\n\nhttp://scratch.mit.edu/projects/' + projectId + '\nhttp://phosphorus.herokuapp.com/#' + projectId + (e.stack ? '\n\n```\n' + e.stack + '\n```' : ''));
     console.error(e.stack);
   }
 
@@ -111,11 +112,8 @@
     progressBar.style.width = (10 + e.loaded / e.total * 90) + '%';
   };
 
-  P.IO.load('http://scratch.mit.edu/projects/' + projectId + '/').onload = function(data) {
-    var m = /<title>\s*(.+?)(\s+on\s+Scratch)?\s*<\/title>/.exec(data);
-    if (m) {
-      document.querySelector('title').innerHTML = m[1];
-    }
+  P.IO.loadScratchr2ProjectTitle(projectId, function(title) {
+    document.title = projectTitle = title;
   };
 
 }());

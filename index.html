@@ -54,6 +54,8 @@
   var defaultId = '10000160';
 
   var projectId = location.hash ? location.hash.substr(1) : defaultId;
+  var projectTitle;
+  var projectURL;
 
   if (projectId === 'zip') projectId = '';
 
@@ -272,20 +274,38 @@
   });
 
   function load(id) {
-    projectLink.href = id && id !== 'zip' ? 'http://scratch.mit.edu/projects/' + id + '/' : 'http://scratch.mit.edu/';
-    bugLink.href = id ? 'https://github.com/nathan/phosphorus/issues/new?body=' + encodeURIComponent('\n\n\nhttp://scratch.mit.edu/projects/' + projectId + '/\nhttp://phosphorus.herokuapp.com/#' + projectId) : 'https://github.com/nathan/phosphorus/issues/new';
+    projectURL = '';
+    if (!id || id === 'zip') {
+      projectLink.href = 'about:blank';
+    }
+    updateBugLink();
     updatePackageLink();
+
     if (id === 'zip') return;
     player.innerHTML = '';
     progressBar.style.display = 'none';
+
     if (!id) return;
+    projectLink.href = projectURL = prefix + projectId + '/';
+    projectTitle = '';
+
     showProgress(P.IO.loadScratchr2Project(id));
+
+    P.IO.loadScratchr2ProjectTitle(id, function(title) {
+      projectTitle = title;
+      document.title = title + ' \xb7 phosphorus';
+      updateBugLink();
+    });
   }
 
   function showError(e) {
     error.style.display = 'block';
-    errorBugLink.href = 'https://github.com/nathan/phosphorus/issues/new?body=' + encodeURIComponent('\n\n\nhttp://scratch.mit.edu/projects/' + projectId + '\nhttp://phosphorus.herokuapp.com/#' + projectId + (e.stack ? '\n\n```\n' + e.stack + '\n```' : ''));
+    errorBugLink.href = 'https://github.com/nathan/phosphorus/issues/new?title=' + encodeURIComponent(projectTitle || projectURL) + '&body=' + encodeURIComponent('\n\n\n' + projectURL + '\nhttp://phosphorus.herokuapp.com/#' + projectId + (e.stack ? '\n\n```\n' + e.stack + '\n```' : ''));
     console.error(e.stack);
+  }
+
+  function updateBugLink() {
+    bugLink.href = projectId ? 'https://github.com/nathan/phosphorus/issues/new?title=' + encodeURIComponent(projectTitle || projectURL) + '&body=' + encodeURIComponent('\n\n\n' + projectURL + '\nhttp://phosphorus.herokuapp.com/#' + projectId) : 'https://github.com/nathan/phosphorus/issues/new';
   }
 
   function updatePackageLink() {

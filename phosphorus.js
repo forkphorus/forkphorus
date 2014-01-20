@@ -249,25 +249,42 @@ var P = (function() {
     IO.init(request);
 
     request.defer = true;
-    request.add(
-      IO.load(IO.PROJECT_URL + id + '/get/?' + Math.random().toString().slice(2))
-        .addEventListener('load', function(contents) {
-          try {
-            var json = JSON.parse(contents);
-            IO.loadProject(json);
-            if (callback) request.onLoad(callback.bind(self));
-            if (request.isDone) {
-              request.load(new Stage().fromJSON(json));
-            } else {
-              request.defer = false;
-              request.getResult = function() {
-                return new Stage().fromJSON(json);
-              };
-            }
-          } catch (e) {
-            request.error(e);
-          }
-        }));
+    request.add(IO.load(IO.PROJECT_URL + id + '/get/?' + Math.random().toString().slice(2)).onLoad(function(contents) {
+      try {
+        var json = JSON.parse(contents);
+        IO.loadProject(json);
+        if (callback) request.onLoad(callback.bind(self));
+        if (request.isDone) {
+          request.load(new Stage().fromJSON(json));
+        } else {
+          request.defer = false;
+          request.getResult = function() {
+            return new Stage().fromJSON(json);
+          };
+        }
+      } catch (e) {
+        request.error(e);
+      }
+    }));
+
+    return request;
+  };
+
+  IO.loadScratchr2ProjectTitle = function(id, callback, self) {
+    var request = new CompositeRequest;
+
+    request.defer = true;
+    request.add(P.IO.load('http://scratch.mit.edu/projects/' + id + '/').onLoad(function(data) {
+      var m = /<title>\s*(.+?)(\s+on\s+Scratch)?\s*<\/title>/.exec(data);
+      if (callback) request.onLoad(callback.bind(self));
+      if (m) {
+        var d = document.createElement('div');
+        d.innerHTML = m[1];
+        request.load(d.innerText);
+      } else {
+        request.error(new Error('No title'));
+      }
+    }));
 
     return request;
   };
