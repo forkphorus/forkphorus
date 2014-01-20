@@ -555,17 +555,16 @@ var P = (function() {
   };
 
   Base.prototype.setCostume = function(costume) {
-    costume = '' + costume;
-    var costumes = this.costumes;
-    var i = costumes.length;
-    while (i--) {
-      var c = costumes[i];
-      if (c.costumeName === costume) {
-        this.currentCostumeIndex = i;
-        return;
+    if (typeof costume !== 'number') {
+      costume = '' + costume;
+      for (var i = 0; i < this.costumes.length; i++) {
+        if (this.costumes[i].costumeName === costume) {
+          this.currentCostumeIndex = i;
+          return;
+        }
       }
     }
-    i = ((Number(costume) || 0) - 1) % costumes.length;
+    i = (Math.floor(Number(costume) || 0) - 1) % this.costumes.length;
     if (i < 0) i += costumes.length;
     this.currentCostumeIndex = i;
   };
@@ -1028,23 +1027,25 @@ var P = (function() {
       this.moveTo(this.dragOffsetX + this.stage.mouseX, this.dragOffsetY + this.stage.mouseY);
     }
 
-    context.save();
+    if (costume) {
+      context.save();
 
-    context.translate(this.scratchX + 240, 180 - this.scratchY);
-    if (this.rotationStyle === 'normal') {
-      context.rotate((this.direction - 90) * Math.PI / 180);
-    } else if (this.rotationStyle === 'leftRight' && this.direction < 0) {
-      context.scale(-1, 1);
+      context.translate(this.scratchX + 240, 180 - this.scratchY);
+      if (this.rotationStyle === 'normal') {
+        context.rotate((this.direction - 90) * Math.PI / 180);
+      } else if (this.rotationStyle === 'leftRight' && this.direction < 0) {
+        context.scale(-1, 1);
+      }
+      context.scale(this.scale, this.scale);
+      context.scale(costume.scale, costume.scale);
+      context.translate(-costume.rotationCenterX, -costume.rotationCenterY);
+
+      context.globalAlpha = Math.max(0, Math.min(1, 1 - this.filters.ghost / 100));
+
+      context.drawImage(costume.image, 0, 0);
+
+      context.restore();
     }
-    context.scale(this.scale, this.scale);
-    context.scale(costume.scale, costume.scale);
-    context.translate(-costume.rotationCenterX, -costume.rotationCenterY);
-
-    context.globalAlpha = Math.max(0, Math.min(1, 1 - this.filters.ghost / 100));
-
-    context.drawImage(costume.image, 0, 0);
-
-    context.restore();
   };
 
   Sprite.prototype.keepOnStage = function() {
