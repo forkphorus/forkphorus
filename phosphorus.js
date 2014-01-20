@@ -386,35 +386,7 @@ var P = (function() {
 
   IO.loadMD5 = function(md5, callback, zip, index) {
     var ext = md5.split('.').pop();
-    if (ext === 'png') {
-      if (IO.zip) {
-        var image = IO.images;
-        IO.images += 1;
-
-        var request = new Request;
-        setTimeout(function() {
-          var f = IO.zip.file(image + '.png');
-
-          var reader = new FileReader;
-          reader.onloadend = function() {
-            console.log(reader.result);
-            var image = new Image;
-            image.onload = function() {
-              if (callback) callback(image);
-              request.load();
-            };
-            image.src = reader.result;
-          };
-          reader.readAsDataURL(f);
-          IO.projectRequest.add(request);
-        });
-      } else {
-        IO.projectRequest.add(
-          IO.loadImage(IO.PROXY_URL + encodeURIComponent(IO.ASSET_URL + md5 + '/get/'), function(result) {
-            callback(result);
-          }));
-      }
-    } else if (ext === 'svg') {
+    if (ext === 'svg') {
       var cb = function(source) {
         var canvas = document.createElement('canvas');
         var context = canvas.getContext('2d');
@@ -441,6 +413,34 @@ var P = (function() {
         IO.projectRequest.add(request);
       } else {
         IO.projectRequest.add(IO.load(IO.ASSET_URL + md5 + '/get/', cb));
+      }
+    } else {
+      if (IO.zip) {
+        var image = IO.images;
+        IO.images += 1;
+
+        var request = new Request;
+        setTimeout(function() {
+          var f = IO.zip.file(image + '.' + ext);
+
+          var reader = new FileReader;
+          reader.onloadend = function() {
+            console.log(reader.result);
+            var image = new Image;
+            image.onload = function() {
+              if (callback) callback(image);
+              request.load();
+            };
+            image.src = reader.result;
+          };
+          reader.readAsDataURL(f);
+          IO.projectRequest.add(request);
+        });
+      } else {
+        IO.projectRequest.add(
+          IO.loadImage(IO.PROXY_URL + encodeURIComponent(IO.ASSET_URL + md5 + '/get/'), function(result) {
+            callback(result);
+          }));
       }
     }
   };
