@@ -607,6 +607,8 @@ var P = (function() {
     this.penContext = this.penCanvas.getContext('2d');
 
     this.keys = {};
+    this.rawMouseX = 0;
+    this.rawMouseY = 0;
     this.mouseX = 0;
     this.mouseY = 0;
     this.mousePressed = false;
@@ -714,6 +716,8 @@ var P = (function() {
     var bb = this.canvas.getBoundingClientRect();
     var x = (e.clientX - bb.left) / this.zoom - 240;
     var y = 180 - (e.clientY - bb.top) / this.zoom;
+    this.rawMouseX = x;
+    this.rawMouseY = y;
     if (x < -240) x = -240;
     if (x > 240) x = 240;
     if (y < -180) y = -180;
@@ -995,7 +999,13 @@ var P = (function() {
   Sprite.prototype.touching = function(thing) {
     var costume = this.costumes[this.currentCostumeIndex];
     if (thing === '_mouse_') {
-      var d = costume.context.getImageData((this.stage.mouseX - this.scratchX) * costume.bitmapResolution + costume.rotationCenterX, (this.scratchY - this.stage.mouseY) * costume.bitmapResolution + costume.rotationCenterY, 1, 1).data;
+      var bounds = this.rotatedBounds();
+      var x = this.stage.rawMouseX;
+      var y = this.stage.rawMouseY;
+      if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top) {
+        return false;
+      }
+      var d = costume.context.getImageData((x - this.scratchX) * costume.bitmapResolution + costume.rotationCenterX, (this.scratchY - y) * costume.bitmapResolution + costume.rotationCenterY, 1, 1).data;
       return d[3] !== 0;
     } else if (thing === '_edge_') {
       var bounds = this.rotatedBounds();
