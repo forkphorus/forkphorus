@@ -2342,6 +2342,14 @@ P.runtime = (function() {
     return xs < ys ? -1 : xs === ys ? 0 : 1;
   };
 
+  var mod = function(x, y) {
+    var r = x % y;
+    if (r / y < 0) {
+      r += y;
+    }
+    return r;
+  };
+
   var random = function(x, y) {
     x = Number(x) || 0;
     y = Number(y) || 0;
