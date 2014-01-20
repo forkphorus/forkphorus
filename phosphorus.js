@@ -938,7 +938,7 @@ var P = (function() {
         x -= .5;
         y -= .5;
       }
-      context.strokeStyle = 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + this.penLightness + '%)';
+      context.strokeStyle = 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
       context.lineWidth = this.penSize;
       context.lineCap = 'round';
       context.beginPath();
@@ -956,7 +956,7 @@ var P = (function() {
       x -= .5;
       y -= .5;
     }
-    context.strokeStyle = 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + this.penLightness + '%)';
+    context.strokeStyle = 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
     context.lineWidth = this.penSize;
     context.lineCap = 'round';
     context.beginPath();
@@ -1946,14 +1946,12 @@ P.compile = (function() {
 
         source += 'S.penLightness = ' + num(block[1]) + ' % 200;\n';
         source += 'if (S.penLightness < 0) S.penLightness += 200;\n';
-        source += 'if (S.penLightness > 100) S.penLightness = 100 - S.penLightness;\n';
         source += 'S.penSaturation = 100;\n';
 
       } else if (block[0] === 'changePenShadeBy:') {
 
-        source += 'S.penLightness += ' + num(block[1]) + ' % 200;\n';
+        source += 'S.penLightness = (S.penLightness + ' + num(block[1]) + ') % 200;\n';
         source += 'if (S.penLightness < 0) S.penLightness += 200;\n';
-        source += 'if (S.penLightness > 100) S.penLightness = 100 - S.penLightness;\n';
         source += 'S.penSaturation = 100;\n';
 
       } else if (block[0] === 'penSize:') {
