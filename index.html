@@ -316,6 +316,7 @@
       stage.canvas.addEventListener('keydown', exitFullScreen);
       stage.canvas.addEventListener('blur', forceFocus);
       stage.handleError = showError;
+      turbo.style.display = 'none';
 
       player.appendChild(stage.canvas);
       stage.focus();
