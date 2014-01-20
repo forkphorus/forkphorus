@@ -378,6 +378,11 @@ var P = (function() {
     IO.loadMD5(data.baseLayerMD5, function(asset) {
       data.$image = asset;
     });
+    if (data.textLayerMD5) {
+      IO.loadMD5(data.textLayerMD5, function(asset) {
+        data.$text = asset;
+      });
+    }
   };
 
   IO.loadSound = function() {
@@ -1177,25 +1182,32 @@ var P = (function() {
     this.costumeName = data.costumeName;
     this.rotationCenterX = data.rotationCenterX;
     this.rotationCenterY = data.rotationCenterY;
+    this.textLayer = data.$text;
 
     this.image = document.createElement('canvas');
     this.context = this.image.getContext('2d');
 
-    if (this.baseLayer.width) {
+    this.render();
+    this.baseLayer.onload = function() {
       this.render();
-    } else {
-      this.baseLayer.onload = function() {
-        this.render();
-      }.bind(this);
+    }.bind(this);
+    if (this.textLayer) {
+      this.textLayer.onload = this.baseLayer.onload;
     }
   };
   addEvents(Costume, 'load');
 
   Costume.prototype.render = function() {
+    if (!this.baseLayer.width || this.textLayer && !this.textLayer.width) {
+      return;
+    }
     this.image.width = this.baseLayer.width;
     this.image.height = this.baseLayer.height;
 
     this.context.drawImage(this.baseLayer, 0, 0);
+    if (this.textLayer) {
+      this.context.drawImage(this.textLayer, 0, 0);
+    }
   };
 
   var Watcher = function(stage) {
