@@ -15,7 +15,7 @@
 <div class=error>
 <div>
   <h1>phosphorus</h1>
-  <p>An error has occurred. Please file a bug report on <a href=https://github.com/nathan/phosphorus/issues/new>GitHub</a></p>
+  <p>An error has occurred. <a id=bug-link href=https://github.com/nathan/phosphorus/issues/new>Click here</a> to file a bug report on GitHub.</p>
 </div>
 </div>
 <script src=//canvg.googlecode.com/svn/trunk/rgbcolor.js></script>
@@ -57,6 +57,7 @@
   var splash = document.querySelector('.splash');
   var progressBar = document.querySelector('.progress-bar');
   var error = document.querySelector('.error');
+  var bugLink = document.querySelector('#bug-link');
   var player = document.querySelector('.player');
 
   var stage;
@@ -70,6 +71,11 @@
     player.style.top = (window.innerHeight - h) / 2 + 'px';
     stage.zoom = w / 480;
     stage.draw();
+  }
+
+  function showError(e) {
+    error.style.display = 'table';
+    bugLink.href = 'https://github.com/nathan/phosphorus/issues/new?body=' + encodeURIComponent('\n\n\nhttp://scratch.mit.edu/projects/' + projectId + '\nhttp://phosphorus.herokuapp.com/#' + projectId + (e.stack ? '\n\n```\n' + e.stack + '\n```' : ''));
   }
 
   window.addEventListener('resize', layout);
@@ -97,11 +103,9 @@
     s.canvas.addEventListener('blur', function() {
       s.canvas.focus();
     });
+    s.handleError = showError;
   };
-  request.onerror = function (e) {
-    error.style.display = 'table';
-    console.error(e.stack);
-  };
+  request.onerror = showError;
   request.onprogress = function (e) {
     progressBar.style.width = (10 + e.loaded / e.total * 90) + '%';
   };

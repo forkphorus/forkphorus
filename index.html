@@ -11,6 +11,9 @@
   <span class=full-screen></span>
 </div>
 <div class=player></div>
+<div class=error>
+  An internal error occurred. <a id=error-bug-link target=_blank href=https://github.com/nathan/phosphorus/issues/new>Click here</a> to file a bug report.
+</div>
 <div class=title>
   <div class=progress-bar></div>
   <input class=url value=http://scratch.mit.edu/projects/>
@@ -29,7 +32,7 @@
 </section>
 <section>
   <h1>Report a problem</h1>
-  <p>Phosphorus is still in development. Report any issues on <a href=https://github.com/nathan/phosphorus/issues/new>GitHub</a>.</p>
+  <p>Phosphorus is still in development. <a id=bug-link target=_blank href=https://github.com/nathan/phosphorus/issues/new>Click here</a> to report a problem with this project.</p>
 </section>
 <script src=lib/jszip/jszip.js></script>
 <script src=lib/jszip/jszip-deflate.js></script>
@@ -60,6 +63,7 @@
   var progressBar = document.querySelector('.progress-bar');
   var player = document.querySelector('.player');
   var projectLink = document.querySelector('.project-link');
+  var bugLink = document.querySelector('#bug-link');
 
   var controls = document.querySelector('.controls');
   var flag = document.querySelector('.flag');
@@ -71,6 +75,9 @@
   var packageLink = document.querySelector('#package-link');
   var packageTurbo = document.querySelector('#package-turbo');
   var packageFullScreen = document.querySelector('#package-full-screen');
+
+  var error = document.querySelector('.error');
+  var errorBugLink = document.querySelector('#error-bug-link');
 
   var flagTouchTimeout;
   function flagTouchStart() {
@@ -236,12 +243,18 @@
 
   function load(id) {
     projectLink.href = id && id !== 'zip' ? 'http://scratch.mit.edu/projects/' + id + '/' : 'http://scratch.mit.edu/';
+    bugLink.href = id ? 'https://github.com/nathan/phosphorus/issues/new?body=' + encodeURIComponent('\n\n\nhttp://scratch.mit.edu/projects/' + projectId + '/\nhttp://phosphorus.herokuapp.com/#' + projectId) : 'https://github.com/nathan/phosphorus/issues/new';
     updatePackageLink();
     if (id === 'zip') return;
     player.innerHTML = '';
     progressBar.style.display = 'none';
     if (!id) return;
     showProgress(P.IO.loadScratchr2Project(id));
+  }
+
+  function showError(e) {
+    error.style.display = 'block';
+    errorBugLink.href = 'https://github.com/nathan/phosphorus/issues/new?body=' + encodeURIComponent('\n\n\nhttp://scratch.mit.edu/projects/' + projectId + '\nhttp://phosphorus.herokuapp.com/#' + projectId + (e.stack ? '\n\n```\n' + e.stack + '\n```' : ''));
   }
 
   function updatePackageLink() {
@@ -271,6 +284,7 @@
 
       stage.canvas.addEventListener('keydown', exitFullScreen);
       stage.canvas.addEventListener('blur', forceFocus);
+      stage.handleError = showError;
 
       player.appendChild(stage.canvas);
       stage.focus();

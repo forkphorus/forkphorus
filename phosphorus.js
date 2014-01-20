@@ -2778,9 +2778,13 @@ P.runtime = (function() {
         } while (self.isTurbo && Date.now() - start < 1000 / this.framerate);
         this.draw();
       } catch (e) {
-        console.error(e.stack);
+        this.handleError(e);
         clearInterval(this.interval);
       }
+    };
+
+    P.Stage.prototype.handleError = function() {
+      console.error(e.stack);
     };
 
   }());
