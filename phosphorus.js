@@ -2820,23 +2820,25 @@ P.runtime = (function() {
       var queue = sprite.queue;
       TERMINATE = false;
       for (THREAD = 0; THREAD < queue.length; THREAD++) {
-        var fn = queue[THREAD].fn;
-        BASE = queue[THREAD].base;
-        CALLS = queue[THREAD].calls;
-        C = CALLS.pop();
-        STACK = C.stack;
-        R = STACK.pop();
-        queue[THREAD] = undefined;
-        try {
-          fn();
-        } catch (e) {
-          if (e !== STOP_THREAD) throw e;
+        if (queue[THREAD]) {
+          var fn = queue[THREAD].fn;
+          BASE = queue[THREAD].base;
+          CALLS = queue[THREAD].calls;
+          C = CALLS.pop();
+          STACK = C.stack;
+          R = STACK.pop();
           queue[THREAD] = undefined;
-          continue;
+          try {
+            fn();
+          } catch (e) {
+            if (e !== STOP_THREAD) throw e;
+            queue[THREAD] = undefined;
+            continue;
+          }
+          STACK.push(R);
+          CALLS.push(C);
+          if (TERMINATE) return;
         }
-        STACK.push(R);
-        CALLS.push(C);
-        if (TERMINATE) return;
       }
       for (var i = queue.length; i--;) {
         if (!queue[i]) queue.splice(i, 1);
