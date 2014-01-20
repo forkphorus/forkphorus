@@ -255,6 +255,7 @@
   function showError(e) {
     error.style.display = 'block';
     errorBugLink.href = 'https://github.com/nathan/phosphorus/issues/new?body=' + encodeURIComponent('\n\n\nhttp://scratch.mit.edu/projects/' + projectId + '\nhttp://phosphorus.herokuapp.com/#' + projectId + (e.stack ? '\n\n```\n' + e.stack + '\n```' : ''));
+    console.error(e.stack);
   }
 
   function updatePackageLink() {
