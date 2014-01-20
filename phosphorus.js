@@ -761,7 +761,7 @@ var P = (function() {
         return this.children[i];
       }
     }
-    if (this.objName === name) {
+    if (name === '_stage_' || name === this.objName) {
       return this;
     }
   };
@@ -1670,7 +1670,9 @@ P.compile = (function() {
 
         return 'S.distanceTo(' + val(e[1]) + ')';
 
-      // } else if (e[0] === 'getAttribute:of:') {
+      } else if (e[0] === 'getAttribute:of:') {
+
+        return 'attribute(' + val(e[1]) + ', ' + val(e[2]) + ')';
 
       // } else if (e[0] === 'getUserId') {
 
@@ -2566,6 +2568,34 @@ P.runtime = (function() {
     if (ref && ref.watcher) {
       ref.watcher.visible = visible;
     }
+  };
+
+  var attribute = function(attr, objName) {
+    var o = self.getObject(objName);
+    if (!o) return 0;
+    if (o.isSprite) {
+      switch (attr) {
+        case 'x position': return o.scratchX;
+        case 'y position': return o.scratchY;
+        case 'direction': return o.direction;
+        case 'costume #': return o.currentCostumeIndex + 1;
+        case 'costume name': return o.costumes[o.currentCostumeIndex].costumeName;
+        case 'size': return o.scale * 100;
+        case 'volume': return 0; // TODO
+      }
+    } else {
+      switch (attr) {
+        case 'background #':
+        case 'backdrop #': return o.currentCostumeIndex + 1;
+        case 'backdrop name': return o.costumes[o.currentCostumeIndex].costumeName;
+        case 'volume': return 0; // TODO
+      }
+    }
+    var ref = o.varRefs[attr];
+    if (ref) {
+      return ref.value;
+    }
+    return 0;
   };
 
   var save = function() {
