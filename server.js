@@ -28,7 +28,8 @@ http.createServer(function(req, res) {
       var cache = r.headers['content-type'] === 'application/json' ? 'max-age=0, no-cache' : 'public, max-age=31536000';
       res.writeHead(r.statusCode, {
         'Content-Type': r.headers['content-type'],
-        'Cache-Control': cache
+        'Cache-Control': cache,
+        'Access-Control-Allow-Origin': '*'
       });
       r.on('data', function (chunk) {
         res.write(chunk);
