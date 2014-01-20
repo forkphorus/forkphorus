@@ -1478,7 +1478,7 @@ P.compile = (function() {
     };
 
     var val = function(e) {
-      if (typeof e === 'number') {
+      if (typeof e === 'number' || typeof e === 'boolean') {
 
         return '' + e;
 
