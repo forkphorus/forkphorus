@@ -665,7 +665,7 @@ var P = (function() {
       }.bind(this));
 
       document.addEventListener('touchend', function(e) {
-        this.mousePressed = false;
+        this.releaseMouse();
       }.bind(this));
 
     } else {
@@ -687,7 +687,7 @@ var P = (function() {
 
       document.addEventListener('mouseup', function(e) {
         this.updateMouse(e);
-        this.mousePressed = false;
+        this.releaseMouse();
       }.bind(this));
     }
 
@@ -732,13 +732,27 @@ var P = (function() {
   };
 
   Stage.prototype.clickMouse = function() {
+    this.mouseSprite = undefined;
     for (var i = this.children.length; i--;) {
       if (this.children[i].isSprite && this.children[i].visible && this.children[i].touching('_mouse_')) {
-        this.triggerFor(this.children[i], 'whenClicked');
+        if (this.children[i].isDraggable) {
+          this.mouseSprite = this.children[i];
+          this.children[i].mouseDown();
+        } else {
+          this.triggerFor(this.children[i], 'whenClicked');
+        }
         return;
       }
     }
     this.triggerFor(this, 'whenClicked');
+  };
+
+  Stage.prototype.releaseMouse = function() {
+    this.mousePressed = false;
+    if (this.mouseSprite) {
+      this.mouseSprite.mouseUp();
+      this.mouseSprite = undefined;
+    }
   };
 
   Stage.prototype.resetAllFilters = function() {
@@ -827,6 +841,7 @@ var P = (function() {
     this.direction = 90;
     this.indexInLibrary = -1;
     this.isDraggable = false;
+    this.isDragging = false;
     this.rotationStyle = 'normal';
     this.scale = 1;
     this.scratchX = 0;
@@ -922,6 +937,21 @@ var P = (function() {
     return c;
   };
 
+  Sprite.prototype.mouseDown = function() {
+    this.dragStartX = this.scratchX;
+    this.dragStartY = this.scratchY;
+    this.dragOffsetX = this.scratchX - this.stage.mouseX;
+    this.dragOffsetY = this.scratchY - this.stage.mouseY;
+    this.isDragging = true;
+  };
+
+  Sprite.prototype.mouseUp = function() {
+    if (this.isDragging && this.scratchX === this.dragStartX && this.scratchY === this.dragStartY) {
+      this.stage.triggerFor(this, 'whenClicked');
+    }
+    this.isDragging = false;
+  };
+
   Sprite.prototype.forward = function(steps) {
     var d = (90 - this.direction) * Math.PI / 180;
     this.moveTo(this.scratchX + steps * Math.cos(d), this.scratchY + steps * Math.sin(d));
@@ -976,6 +1006,10 @@ var P = (function() {
 
   Sprite.prototype.draw = function(context) {
     var costume = this.costumes[this.currentCostumeIndex];
+
+    if (this.isDragging) {
+      this.moveTo(this.dragOffsetX + this.stage.mouseX, this.dragOffsetY + this.stage.mouseY);
+    }
 
     context.save();
 
