@@ -783,6 +783,7 @@ var P = (function() {
     var costume = this.costumes[this.currentCostumeIndex];
     context.save();
     context.scale(costume.scale, costume.scale);
+    context.globalAlpha = Math.max(0, Math.min(1, 1 - this.filters.ghost / 100));
     context.drawImage(costume.image, 0, 0);
     context.restore();
 
