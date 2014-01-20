@@ -2674,8 +2674,10 @@ P.runtime = (function() {
     }
     for (var i = 0; i < self.children.length; i++) {
       var c = self.children[i];
-      for (var j = 0; j < c.queue.length; j++) {
-        if (c.queue[j] && bases.indexOf(c.queue[j].base) !== -1) return true;
+      if (c.isSprite) {
+        for (var j = 0; j < c.queue.length; j++) {
+          if (c.queue[j] && bases.indexOf(c.queue[j].base) !== -1) return true;
+        }
       }
     }
     return false;
