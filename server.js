@@ -4,7 +4,10 @@ var url = require('url');
 var querystring = require('querystring');
 
 var MIME_TYPES = {
-
+  html: 'text/html',
+  js: 'application/javascript',
+  css: 'text/css',
+  svg: 'image/svg+xml'
 };
 
 http.createServer(function(req, res) {
@@ -52,7 +55,9 @@ http.createServer(function(req, res) {
       res.writeHead(404);
       return res.end();
     }
-    res.writeHead(200);
+    res.writeHead(200, {
+      'Content-Type': MIME_TYPES[u.pathname.split('.').pop()] || 'text/plain'
+    });
     return res.end(data);
   });
 
