@@ -2093,7 +2093,7 @@ P.compile = (function() {
 
       } else if (block[0] === 'call') {
 
-        source += 'call(' + val(block[1]) + ', ' + nextLabel() + ', [';
+        source += 'call(' + val(block[1]) + ', ' + (warp ? null : nextLabel()) + ', [';
         for (var i = 2; i < block.length; i++) {
           if (i > 2) {
             source += ', ';
@@ -2101,7 +2101,7 @@ P.compile = (function() {
           source += val(block[i]);
         }
         source += ']);\n';
-        delay();
+        if (!warp) delay();
 
       } else if (block[0] === 'doBroadcastAndWait') {
 
@@ -2739,7 +2739,9 @@ P.runtime = (function() {
       C = CALLS.pop();
       STACK = C.stack;
       R = STACK.pop();
-      fn();
+      if (fn != null) fn();
+    } else {
+      throw STOP_THREAD;
     }
   };
 
