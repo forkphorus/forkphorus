@@ -565,7 +565,7 @@ var P = (function() {
       }
     }
     i = (Math.floor(Number(costume) || 0) - 1) % this.costumes.length;
-    if (i < 0) i += costumes.length;
+    if (i < 0) i += this.costumes.length;
     this.currentCostumeIndex = i;
   };
 
