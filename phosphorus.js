@@ -2948,9 +2948,10 @@ P.runtime = (function() {
         var start = Date.now();
         do {
           this.runFor(this);
-          for (var i = 0; i < this.children.length; i++) {
-            if (this.children[i].isSprite) {
-              this.runFor(this.children[i]);
+          var children = this.children.slice(0);
+          for (var i = 0; i < children.length; i++) {
+            if (children[i].isSprite) {
+              this.runFor(children[i]);
             }
           }
         } while (self.isTurbo && Date.now() - start < 1000 / this.framerate);
