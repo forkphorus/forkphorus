@@ -1397,9 +1397,8 @@ var P = (function() {
     }
     value = String(value);
 
-    context.font = 'bold 11px sans-serif';
-
     if (this.labelWidth == null) {
+      context.font = 'bold 11px sans-serif';
       this.labelWidth = context.measureText(this.label).width;
     }
 
@@ -1407,6 +1406,8 @@ var P = (function() {
     context.translate(this.x, this.y);
 
     if (this.mode === 1 || this.mode === 3) {
+      context.font = 'bold 11px sans-serif';
+
       var dw = Math.max(41, 5 + context.measureText(value).width + 5);
       var r = 5;
       var w = this.width = 5 + this.labelWidth + 5 + dw + 5;
@@ -1484,6 +1485,28 @@ var P = (function() {
 
         context.restore();
       }
+    } else if (this.mode === 2) {
+      context.font = 'bold 15px sans-serif';
+
+      dh = 21;
+      dw = Math.max(41, 5 + context.measureText(value).width + 5);
+      dr = 4;
+
+      context.strokeStyle = '#fff';
+      context.fillStyle = this.color;
+      context.lineWidth = 2;
+      context.beginPath();
+      context.arc(dr + 1, dr + 1, dr, Math.PI, Math.PI * 3/2, false);
+      context.arc(dw - dr - 1, dr + 1, dr, Math.PI * 3/2, 0, false);
+      context.arc(dw - dr - 1, dh - dr - 1, dr, 0, Math.PI/2, false);
+      context.arc(dr + 1, dh - dr - 1, dr, Math.PI/2, Math.PI, false);
+      context.closePath();
+      context.stroke();
+      context.fill();
+
+      context.fillStyle = '#fff';
+      context.textAlign = 'center';
+      context.fillText(value, dw / 2, dh - 5);
     }
 
     context.restore();
