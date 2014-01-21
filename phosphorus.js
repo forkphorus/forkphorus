@@ -365,8 +365,8 @@ var P = (function() {
   };
 
   IO.loadProject = function(data) {
-    IO.loadBase(data);
     IO.loadArray(data.children, IO.loadObject);
+    IO.loadBase(data);
   };
 
   IO.loadBase = function(data) {
