@@ -282,7 +282,14 @@
     updatePackageLink();
 
     if (id === 'zip') return;
+
+    if (stage) {
+      stage.stop();
+    }
     player.innerHTML = '';
+    turbo.style.display = 'none';
+    error.style.display = 'none';
+    pause.className = 'pause';
     progressBar.style.display = 'none';
 
     if (!id) return;
@@ -336,9 +343,6 @@
       stage.canvas.addEventListener('keydown', exitFullScreen);
       stage.canvas.addEventListener('blur', forceFocus);
       stage.handleError = showError;
-      turbo.style.display = 'none';
-      error.style.display = 'none';
-      pause.className = 'pause';
 
       player.appendChild(stage.canvas);
       stage.focus();
