@@ -1380,7 +1380,7 @@ var P = (function() {
         value = this.timeAndDate(this.param);
         break;
       case 'timer':
-        value = (this.stage.now - this.stage.timerStart) / 1000;
+        value = Math.round((this.stage.now() - this.stage.timerStart) / 100) / 10;
         break;
       case 'volume':
         // TODO
@@ -2874,6 +2874,7 @@ P.runtime = (function() {
     };
 
     P.Stage.prototype.triggerGreenFlag = function() {
+      this.timerStart = this.now();
       this.trigger('whenGreenFlag');
     };
 
@@ -2886,7 +2887,7 @@ P.runtime = (function() {
 
     P.Stage.prototype.pause = function() {
       if (this.interval) {
-        self.baseNow = self.now();
+        this.baseNow = this.now();
         clearInterval(this.interval);
         delete this.interval;
       }
@@ -2939,7 +2940,7 @@ P.runtime = (function() {
     };
 
     P.Stage.prototype.now = function() {
-      return self.baseNow + Date.now() - self.baseTime;
+      return this.baseNow + Date.now() - this.baseTime;
     };
 
     P.Stage.prototype.step = function() {
