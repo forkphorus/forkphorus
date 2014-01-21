@@ -2498,8 +2498,9 @@ P.runtime = (function() {
   };
 
   var clone = function(name) {
-    var c = (name === '_myself_' ? S : self.getObject(name)).clone();
-    self.children.push(c);
+    var parent = name === '_myself_' ? S : self.getObject(name);
+    var c = parent.clone();
+    self.children.splice(self.children.indexOf(parent), 0, c);
     self.triggerFor(c, 'whenCloned');
   };
 
