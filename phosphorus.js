@@ -606,6 +606,7 @@ var P = (function() {
     this.tempoBPM = 60;
     this.videoAlpha = 1;
     this.zoom = 1;
+    this.maxZoom = 1;
     this.baseNow = 0;
     this.baseTime = 0;
     this.timerStart = 0;
@@ -736,6 +737,20 @@ var P = (function() {
     this.mouseY = y;
   };
 
+  Stage.prototype.setZoom = function(zoom) {
+    if (this.maxZoom < zoom) {
+      this.maxZoom = zoom;
+      var canvas = this.penCanvas;
+      this.penCanvas = document.createElement('canvas');
+      this.penCanvas.width = 480 * zoom;
+      this.penCanvas.height = 360 * zoom;
+      this.penContext = this.penCanvas.getContext('2d');
+      this.penContext.drawImage(canvas, 0, 0, 480 * zoom, 360 * zoom);
+      this.penContext.scale(this.maxZoom, this.maxZoom);
+    }
+    this.zoom = zoom;
+  };
+
   Stage.prototype.clickMouse = function() {
     this.mouseSprite = undefined;
     for (var i = this.children.length; i--;) {
@@ -812,7 +827,10 @@ var P = (function() {
     context.drawImage(costume.image, 0, 0);
     context.restore();
 
+    context.save();
+    context.scale(1 / this.maxZoom, 1 / this.maxZoom);
     context.drawImage(this.penCanvas, 0, 0);
+    context.restore();
 
     for (var i = 0; i < this.children.length; i++) {
       if (this.children[i].visible && this.children[i] !== except) {
@@ -2016,7 +2034,8 @@ P.compile = (function() {
 
       } else if (block[0] === 'clearPenTrails') { /* Pen */
 
-        source += 'self.penCanvas.width = 480;\n';
+        source += 'self.penCanvas.width = 480 * self.maxZoom;\n';
+        source += 'self.penContext.scale(self.maxZoom, self.maxZoom);\n';
 
       } else if (block[0] === 'putPenDown') {
 

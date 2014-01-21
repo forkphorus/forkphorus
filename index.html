@@ -196,9 +196,9 @@
       document.body.style.marginTop = (window.innerHeight - h - padding) / 2 + 'px';
       stage.canvas.style.width = w + 'px';
       stage.canvas.style.height = .75 * w + 'px';
-      stage.zoom = w / 480;
+      stage.setZoom(w / 480);
     } else {
-      stage.zoom = 1;
+      stage.setZoom(1);
     }
   }
 
