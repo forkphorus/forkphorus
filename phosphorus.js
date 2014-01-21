@@ -2717,6 +2717,8 @@ P.runtime = (function() {
       };
       R = {};
       procedure.fn();
+    } else {
+      S.fns[id]();
     }
   };
 
