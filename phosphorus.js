@@ -2487,7 +2487,7 @@ P.runtime = (function() {
     var max = Math.max(r, g, b);
 
     if (min === max) {
-      return [0, 0, r];
+      return [0, 0, r * 100];
     }
 
     var c = max - min;
