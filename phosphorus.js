@@ -1372,7 +1372,7 @@ var P = (function() {
         // TODO
         break;
       case 'tempo':
-        // TODO
+        value = this.stage.tempoBPM;
         break;
       case 'timeAndDate':
         value = this.timeAndDate(this.param);
@@ -1623,7 +1623,9 @@ P.compile = (function() {
 
       // } else if (e[0] === 'volume') { /* Sound */
 
-      // } else if (e[0] === 'tempo') {
+      } else if (e[0] === 'tempo') {
+
+        return 'self.tempoBPM';
 
       } else if (e[0] === 'getParam') { /* Data */
 
@@ -1979,9 +1981,13 @@ P.compile = (function() {
 
       // } else if (block[0] === 'setVolumeTo:') {
 
-      // } else if (block[0] === 'changeTempoBy:') {
+      } else if (block[0] === 'changeTempoBy:') {
 
-      // } else if (block[0] === 'setTempoTo:') {
+        source += 'self.tempoBPM += ' + num(block[1]) + ';\n';
+
+      } else if (block[0] === 'setTempoTo:') {
+
+        source += 'self.tempoBPM = ' + num(block[1]) + ';\n';
 
       } else if (block[0] === 'clearPenTrails') { /* Pen */
 
