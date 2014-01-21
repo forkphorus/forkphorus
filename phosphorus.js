@@ -599,6 +599,8 @@ var P = (function() {
     Stage.parent.call(this);
 
     this.children = [];
+    this.defaultWatcherX = 10;
+    this.defaultWatcherY = 10;
 
     this.info = {};
     this.tempoBPM = 60;
@@ -2666,7 +2668,21 @@ P.runtime = (function() {
 
   var showVariable = function(name, visible) {
     var ref = S.varRefs[name];
-    if (ref && ref.watcher) {
+    if (ref) {
+      if (!ref.watcher) {
+        ref.watcher = new P.Watcher(self);
+        ref.watcher.x = self.defaultWatcherX;
+        ref.watcher.y = self.defaultWatcherY;
+        self.defaultWatcherY += 26;
+        if (self.defaultWatcherY >= 450) {
+          self.defaultWatcherY = 10;
+          self.defaultWatcherX += 150;
+        }
+        ref.watcher.target = S.variables.indexOf(ref) !== -1 ? S : self;
+        ref.watcher.label = (ref.watcher.target === self ? '' : ref.watcher.target.objName + ': ') + name;
+        ref.watcher.param = name;
+        self.children.push(ref.watcher);
+      }
       ref.watcher.visible = visible;
     }
   };
