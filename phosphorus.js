@@ -1303,7 +1303,7 @@ var P = (function() {
   Watcher.prototype.fromJSON = function(data) {
     this.cmd = data.cmd || 'getVar:';
     if (data.color) {
-      var c = data.color.toString(16);
+      var c = (data.color < 0 ? data.color + 0x1000000 : data.color).toString(16);
       this.color = '#000000'.slice(0, -c.length) + c;
     }
     this.isDiscrete = data.isDiscrete == null ? true : data.isDiscrete;
