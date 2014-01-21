@@ -427,12 +427,7 @@ var P = (function() {
         var image = IO.images;
         IO.images += 1;
 
-        var request = new Request;
-        setTimeout(function() {
-          cb(IO.zip.file(image + '.svg').asText());
-          request.load();
-        });
-        IO.projectRequest.add(request);
+        cb(IO.zip.file(image + '.svg').asText());
       } else {
         IO.projectRequest.add(IO.load(IO.ASSET_URL + md5 + '/get/', cb));
       }
@@ -442,22 +437,14 @@ var P = (function() {
         IO.images += 1;
 
         var request = new Request;
-        setTimeout(function() {
-          var f = IO.zip.file(image + '.' + ext);
-
-          var reader = new FileReader;
-          reader.onloadend = function() {
-            console.log(reader.result);
-            var image = new Image;
-            image.onload = function() {
-              if (callback) callback(image);
-              request.load();
-            };
-            image.src = reader.result;
-          };
-          reader.readAsDataURL(f);
-          IO.projectRequest.add(request);
-        });
+        var f = IO.zip.file(image + '.' + ext).asBinary();
+        var img = new Image;
+        img.onload = function() {
+          if (callback) callback(img);
+          request.load();
+        };
+        img.src = 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(f);
+        IO.projectRequest.add(request);
       } else {
         IO.projectRequest.add(
           IO.loadImage(IO.PROXY_URL + encodeURIComponent(IO.ASSET_URL + md5 + '/get/'), function(result) {
