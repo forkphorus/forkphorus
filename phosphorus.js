@@ -655,6 +655,7 @@ var P = (function() {
 
     this.root = document.createElement('div');
     this.root.style.position = 'absolute';
+    this.root.style.overflow = 'hidden';
     this.root.style.width = '480px';
     this.root.style.height = '360px';
     this.root.style.fontSize = '1px';
@@ -785,7 +786,7 @@ var P = (function() {
     this.promptButton.style.right = '4em';
     this.promptButton.style.bottom = '4em';
     this.promptButton.style.background = 'url(icons.svg) -165em -37em';
-    this.promptButton.style.backgroundSize = '192em 64em';
+    this.promptButton.style.backgroundSize = '256em 64em';
 
     this.prompt.addEventListener('keydown', function(e) {
       if (e.keyCode === 13) {
@@ -896,6 +897,7 @@ var P = (function() {
     var i = this.children.length;
     while (i--) {
       if (this.children[i].isClone) {
+        this.children[i].remove();
         this.children.splice(i, 1);
       }
     }
@@ -1003,6 +1005,9 @@ var P = (function() {
     this.penSize = 1;
     this.isPenDown = false;
     this.isSprite = true;
+    this.bubble = null;
+    this.saying = false;
+    this.thinking = false;
   };
   inherits(Sprite, Base);
 
@@ -1127,6 +1132,9 @@ var P = (function() {
       context.lineTo(240 + x, 180 - y);
       context.stroke();
     }
+    if (this.saying) {
+      this.updateBubble();
+    }
   };
 
   Sprite.prototype.dotPen = function() {
@@ -1188,6 +1196,7 @@ var P = (function() {
     if (d > 180) d -= 360;
     if (d <= -180) d += 360;
     this.direction = d;
+    if (this.saying) this.updateBubble();
   };
 
   var collisionCanvas = document.createElement('canvas');
@@ -1299,6 +1308,7 @@ var P = (function() {
     }
 
     this.direction = Math.atan2(dy, dx) * 180 / Math.PI + 90;
+    if (this.saying) this.updateBubble();
 
     b = this.rotatedBounds();
     var x = this.scratchX;
@@ -1386,6 +1396,69 @@ var P = (function() {
       y = sprite.scratchY;
     }
     this.direction = Math.atan2(x - this.scratchX, y - this.scratchY) * 180 / Math.PI;
+    if (this.saying) this.updateBubble();
+  };
+
+  Sprite.prototype.say = function(text, thinking) {
+    if (!text) {
+      this.saying = false;
+      if (!this.bubble) return;
+      this.bubble.style.display = 'none';
+      return;
+    }
+    this.saying = true;
+    this.thinking = thinking;
+    if (!this.bubble) {
+      this.bubble = document.createElement('div');
+      this.bubble.style.maxWidth = ''+(127/14)+'em';
+      this.bubble.style.padding = ''+(8/14)+'em '+(10/14)+'em';
+      this.bubble.style.border = ''+(3/14)+'em solid rgb(160, 160, 160)'
+      this.bubble.style.borderRadius = ''+(10/14)+'em'
+      this.bubble.style.position = 'absolute';
+      this.bubble.style.font = 'bold 14em sans-serif';
+      this.bubble.style.whiteSpace = 'pre-wrap';
+      this.bubble.style.wordWrap = 'break-word';
+      this.bubble.appendChild(this.bubbleText = document.createTextNode(''));
+      this.bubble.appendChild(this.bubblePointer = document.createElement('div'));
+      this.bubblePointer.style.position = 'absolute';
+      this.bubblePointer.style.height = ''+(21/14)+'em';
+      this.bubblePointer.style.width = ''+(44/14)+'em';
+      this.bubblePointer.style.background = 'url(icons.svg) '+(-195/14)+'em '+(-4/14)+'em';
+      this.bubblePointer.style.backgroundSize = ''+(256/14)+'em '+(64/14)+'em';
+      this.stage.root.appendChild(this.bubble);
+    }
+    this.bubble.style.display = 'block';
+    this.bubbleText.nodeValue = text;
+    this.updateBubble();
+  };
+
+  Sprite.prototype.updateBubble = function() {
+    var b = this.rotatedBounds();
+    var left = 240 + b.right;
+    var bottom = 180 + b.top;
+    var width = this.bubble.offsetWidth / this.stage.zoom;
+    var height = this.bubble.offsetHeight / this.stage.zoom;
+    this.bubblePointer.style.top = ((height - 6) / 14) + 'em';
+    if (left + width + 2 > 480) {
+      this.bubble.style.right = ((240 - b.left) / 14) + 'em';
+      this.bubble.style.left = 'auto';
+      this.bubblePointer.style.right = (3/14)+'em';
+      this.bubblePointer.style.left = 'auto';
+      this.bubblePointer.style.backgroundPositionY = (-36/14)+'em';
+    } else {
+      this.bubble.style.left = (left / 14) + 'em';
+      this.bubble.style.right = 'auto';
+      this.bubblePointer.style.left = (3/14)+'em';
+      this.bubblePointer.style.right = 'auto';
+      this.bubblePointer.style.backgroundPositionY = (-4/14)+'em';
+    }
+    if (bottom + height + 2 > 360) {
+      bottom = 360 - height - 2;
+    }
+    if (bottom < 19) {
+      bottom = 19;
+    }
+    this.bubble.style.bottom = (bottom / 14) + 'em';
   };
 
   var Costume = function(data) {
@@ -2072,15 +2145,43 @@ P.compile = (function() {
 
         }
 
-      // } else if (block[0] === 'say:duration:elapsed:from:') {
+      } else if (block[0] === 'say:duration:elapsed:from:') {
+
+        source += 'S.say(' + val(block[1]) + ', false);\n';
+
+        source += 'save();\n';
+        source += 'R.start = self.now();\n';
+        source += 'R.duration = ' + num(block[2]) + ';\n';
+
+        var id = label();
+        source += 'if (self.now() - R.start < R.duration * 1000) {\n';
+        queue(id);
+        source += '}\n';
+
+        source += 'restore();\n';
 
       } else if (block[0] === 'say:') {
 
-        source += 'console.log(' + val(block[1]) + ');\n';
+        source += 'S.say(' + val(block[1]) + ', false);\n';
 
-      // } else if (block[0] === 'think:duration:elapsed:from:') {
+      } else if (block[0] === 'think:duration:elapsed:from:') {
 
-      // } else if (block[0] === 'think:') {
+        source += 'S.say(' + val(block[1]) + ', true);\n';
+
+        source += 'save();\n';
+        source += 'R.start = self.now();\n';
+        source += 'R.duration = ' + num(block[2]) + ';\n';
+
+        var id = label();
+        source += 'if (self.now() - R.start < R.duration * 1000) {\n';
+        queue(id);
+        source += '}\n';
+
+        source += 'restore();\n';
+
+      } else if (block[0] === 'think:') {
+
+        source + 'S.say(' + val(block[1]) + ', true);\n';
 
       } else if (block[0] === 'changeGraphicEffect:by:') {
 
@@ -3062,11 +3163,13 @@ P.runtime = (function() {
       for (var i = 0; i < this.children.length; i++) {
         var c = this.children[i];
         if (c.isClone) {
+          c.remove();
           this.children.splice(i, 1);
           i -= 1;
         } else if (c.isSprite) {
           c.queue = [];
           c.resetFilters();
+          if (c.saying) c.say('');
         }
       }
     };
