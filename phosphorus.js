@@ -2502,7 +2502,7 @@ P.compile = (function() {
     var fns = [0];
     var warp = 0;
 
-    if (script[0][0] === 'procDef') {
+    if (script[0][0] === 'procDef' && script[0][4]) {
       warp += 1;
     }
 
