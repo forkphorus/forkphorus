@@ -780,15 +780,11 @@ var P = (function() {
 
     this.prompt.addEventListener('keydown', function(e) {
       if (e.keyCode === 13) {
-        if (this.promptId < this.nextPromptId) {
-          this.answer = this.prompt.value;
-          this.promptId += 1;
-          if (this.promptId >= this.nextPromptId) {
-            this.hidePrompt = true;
-          }
-        }
+        this.submitPrompt();
       }
     }.bind(this));
+
+    this.promptButton.addEventListener(hasTouchEvents ? 'touchstart' : 'mousedown', this.submitPrompt.bind(this));
 
   };
   inherits(Stage, Base);
@@ -943,6 +939,16 @@ var P = (function() {
   };
 
   Stage.prototype.moveTo = function() {};
+
+  Stage.prototype.submitPrompt = function() {
+    if (this.promptId < this.nextPromptId) {
+      this.answer = this.prompt.value;
+      this.promptId += 1;
+      if (this.promptId >= this.nextPromptId) {
+        this.hidePrompt = true;
+      }
+    }
+  };
 
   var KEY_CODES = {
     'space': 32,
