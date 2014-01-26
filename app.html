@@ -102,9 +102,6 @@
 
     player.appendChild(s.root);
     s.focus();
-    s.canvas.addEventListener('blur', function() {
-      s.canvas.focus();
-    });
     s.handleError = showError;
   };
   request.onerror = showError;

@@ -174,12 +174,6 @@
     }
   }
 
-  function forceFocus(e) {
-    if (isFullScreen) {
-      stage.focus();
-    }
-  }
-
   function updateFullScreen() {
     if (isFullScreen) {
       window.scrollTo(0, 0);
@@ -337,7 +331,6 @@
       stage.triggerGreenFlag();
 
       stage.canvas.addEventListener('keydown', exitFullScreen);
-      stage.canvas.addEventListener('blur', forceFocus);
       stage.handleError = showError;
 
       player.appendChild(stage.root);
