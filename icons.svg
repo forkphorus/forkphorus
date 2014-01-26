@@ -24,15 +24,15 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="31.672166"
-     inkscape:cx="172.7518"
-     inkscape:cy="46.467615"
+     inkscape:zoom="15.836083"
+     inkscape:cx="178.80087"
+     inkscape:cy="23.229272"
      inkscape:current-layer="layer1"
      showgrid="true"
      inkscape:grid-bbox="true"
      inkscape:document-units="px"
-     inkscape:window-width="1276"
-     inkscape:window-height="756"
+     inkscape:window-width="1916"
+     inkscape:window-height="1036"
      inkscape:window-x="4"
      inkscape:window-y="0"
      inkscape:window-maximized="1">
@@ -203,5 +203,21 @@
        id="path4011"
        d="m 145,17 5.5,0 -2,2 2.5,2.5 -0.65587,0.65587 L 149.5,23 147,20.5 l -2,2 z"
        style="fill:#ffffff;fill-opacity:1;stroke:none" />
+    <path
+       sodipodi:type="arc"
+       style="fill:#2eaedf;fill-opacity:1;stroke:none"
+       id="path2987"
+       sodipodi:cx="10"
+       sodipodi:cy="10"
+       sodipodi:rx="10"
+       sodipodi:ry="10"
+       d="M 20,10 A 10,10 0 1 1 0,10 10,10 0 1 1 20,10 z"
+       transform="translate(166,6)" />
+    <path
+       style="fill:#ffffff;fill-opacity:1;stroke:none"
+       d="m 170,17.5 4,4 7,-7 0,-4 -7,7 -2,-2 z"
+       id="path3757"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="ccccccc" />
   </g>
 </svg>

@@ -593,6 +593,24 @@ var P = (function() {
     };
   };
 
+  Base.prototype.ask = function(question) {
+    var stage = this.stage;
+    if (question) {
+      if (this.isSprite && this.visible) {
+        stage.promptTitle.style.display = 'none';
+      } else {
+        stage.promptTitle.style.display = 'block';
+        stage.promptTitle.textContent = question;
+      }
+    } else {
+      stage.promptTitle.style.display = 'none';
+    }
+    stage.hidePrompt = false;
+    stage.prompter.style.display = 'block';
+    stage.prompt.value = '';
+    stage.prompt.focus();
+  };
+
   var Stage = function() {
     this.stage = this;
 
@@ -603,6 +621,9 @@ var P = (function() {
     this.defaultWatcherY = 10;
 
     this.info = {};
+    this.answer = '';
+    this.promptId = 0;
+    this.nextPromptId = 0;
     this.tempoBPM = 60;
     this.videoAlpha = 1;
     this.zoom = 1;
@@ -612,11 +633,6 @@ var P = (function() {
     this.timerStart = 0;
     this.cloneCount = 0;
 
-    this.penCanvas = document.createElement('canvas');
-    this.penCanvas.width = 480;
-    this.penCanvas.height = 360;
-    this.penContext = this.penCanvas.getContext('2d');
-
     this.keys = {};
     this.rawMouseX = 0;
     this.rawMouseY = 0;
@@ -624,7 +640,22 @@ var P = (function() {
     this.mouseY = 0;
     this.mousePressed = false;
 
+    this.penCanvas = document.createElement('canvas');
+    this.penCanvas.width = 480;
+    this.penCanvas.height = 360;
+    this.penContext = this.penCanvas.getContext('2d');
+
+    this.root = document.createElement('div');
+    this.root.style.position = 'absolute';
+    this.root.style.width = '480px';
+    this.root.style.height = '360px';
+    this.root.style.WebkitUserSelect =
+    this.root.style.MozUserSelect =
+    this.root.style.MSUserSelect =
+    this.root.style.WebkitUserSelect = 'none';
+
     this.canvas = document.createElement('canvas');
+    this.root.appendChild(this.canvas);
     this.canvas.width = 480;
     this.canvas.height = 360;
     this.context = this.canvas.getContext('2d');
@@ -697,6 +728,63 @@ var P = (function() {
       }.bind(this));
     }
 
+    this.prompter = document.createElement('div');
+    this.root.appendChild(this.prompter);
+    this.prompter.style.position = 'absolute';
+    this.prompter.style.left =
+    this.prompter.style.right = '14px';
+    this.prompter.style.bottom = '6px';
+    this.prompter.style.padding = '5px 30px 5px 5px';
+    this.prompter.style.border = '3px solid rgb(46, 174, 223)';
+    this.prompter.style.borderRadius = '8px';
+    this.prompter.style.display = 'none';
+
+    this.promptTitle = document.createElement('div');
+    this.prompter.appendChild(this.promptTitle);
+    this.promptTitle.textContent = 'What\'s your name? aesfnaseu fihaosiefhoi uaesfhiouas ehfiha eofsh oiaesfoi seaof ho iaefshoi ufaeshiou afeshio aseof ';
+    this.promptTitle.style.cursor = 'default';
+    this.promptTitle.style.font = 'bold 13px sans-serif';
+    this.promptTitle.style.margin = '0 -25px 5px 0';
+    this.promptTitle.style.whiteSpace = 'pre';
+    this.promptTitle.style.overflow = 'hidden';
+    this.promptTitle.style.textOverflow = 'ellipsis';
+
+    this.prompt = document.createElement('input');
+    this.prompter.appendChild(this.prompt);
+    this.prompt.style.border = '0';
+    this.prompt.style.background = '#eee';
+    this.prompt.style.MozBoxSizing =
+    this.prompt.style.boxSizing = 'border-box';
+    this.prompt.style.padding = '0 3px';
+    this.prompt.style.outline = '0';
+    this.prompt.style.margin = '0';
+    this.prompt.style.width = '100%';
+    this.prompt.style.height = '20px';
+    this.prompt.style.display = 'block';
+    this.prompt.style.boxShadow = 'inset 1px 1px 2px rgba(0, 0, 0, .2), inset -1px -1px 1px rgba(255, 255, 255, .2)';
+    this.prompt.style.font = '13px sans-serif';
+
+    this.promptButton = document.createElement('div');
+    this.prompter.appendChild(this.promptButton);
+    this.promptButton.style.width = '20px';
+    this.promptButton.style.height = '20px';
+    this.promptButton.style.position = 'absolute';
+    this.promptButton.style.right = '5px';
+    this.promptButton.style.bottom = '5px';
+    this.promptButton.style.background = 'url(icons.svg) -166px -38px';
+
+    this.prompt.addEventListener('keydown', function(e) {
+      if (e.keyCode === 13) {
+        if (this.promptId < this.nextPromptId) {
+          this.answer = this.prompt.value;
+          this.promptId += 1;
+          if (this.promptId >= this.nextPromptId) {
+            this.hidePrompt = true;
+          }
+        }
+      }
+    }.bind(this));
+
   };
   inherits(Stage, Base);
 
@@ -738,6 +826,7 @@ var P = (function() {
   };
 
   Stage.prototype.setZoom = function(zoom) {
+    if (this.zoom === zoom) return;
     if (this.maxZoom < zoom) {
       this.maxZoom = zoom;
       var canvas = this.penCanvas;
@@ -748,6 +837,10 @@ var P = (function() {
       this.penContext.drawImage(canvas, 0, 0, 480 * zoom, 360 * zoom);
       this.penContext.scale(this.maxZoom, this.maxZoom);
     }
+    this.root.style.width =
+    this.canvas.style.width = 480 * zoom + 'px';
+    this.root.style.height =
+    this.canvas.style.height = 360 * zoom + 'px';
     this.zoom = zoom;
   };
 
@@ -817,6 +910,11 @@ var P = (function() {
     this.drawOn(context);
 
     context.restore();
+
+    if (this.hidePrompt) {
+      this.hidePrompt = false;
+      this.prompter.style.display = 'none';
+    }
   };
 
   Stage.prototype.drawOn = function(context, except) {
@@ -1353,7 +1451,7 @@ var P = (function() {
     if (!this.target) return;
     switch (this.cmd) {
       case 'answer':
-        // TODO
+        value = this.stage.answer;
         break;
       case 'backgroundIndex':
         value = this.stage.currentCostumeIndex + 1;
@@ -1792,7 +1890,9 @@ P.compile = (function() {
 
       // } else if (e[0] === 'color:sees:') {
 
-      // } else if (e[0] === 'answer') {
+      } else if (e[0] === 'answer') {
+
+        return 'self.answer';
 
       } else if (e[0] === 'timer') {
 
@@ -2352,7 +2452,21 @@ P.compile = (function() {
         source += 'TERMINATE = true;\n';
         source += 'return;\n';
 
-      // } else if (block[0] === 'doAsk') { /* Sensing */
+      } else if (block[0] === 'doAsk') { /* Sensing */
+
+        source += 'R.id = self.nextPromptId++;\n';
+
+        var id = label();
+        source += 'if (self.promptId < R.id) {\n';
+        queue(id);
+        source += '}\n';
+
+        source += 'S.ask(' + val(block[1]) + ');';
+
+        var id = label();
+        source += 'if (self.promptId === R.id) {\n';
+        queue(id);
+        source += '}\n';
 
       } else if (block[0] === 'timerReset') {
 
@@ -2967,13 +3081,13 @@ P.runtime = (function() {
         self = this;
         var start = Date.now();
         do {
-          this.runFor(this);
           var children = this.children.slice(0);
           for (var i = 0; i < children.length; i++) {
             if (children[i].isSprite) {
               this.runFor(children[i]);
             }
           }
+          this.runFor(this);
         } while (self.isTurbo && Date.now() - start < 1000 / this.framerate);
         this.draw();
         S = null;

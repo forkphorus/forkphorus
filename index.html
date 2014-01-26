@@ -159,8 +159,6 @@
       document.body.style.height =
       document.body.style.marginLeft =
       document.body.style.marginTop = '';
-      stage.canvas.style.width = '480px';
-      stage.canvas.style.height = '360px';
     }
     updateFullScreen();
     if (!stage.isRunning) {
@@ -194,8 +192,6 @@
       document.body.style.height = h + 'px';
       document.body.style.marginLeft = (window.innerWidth - w) / 2 + 'px';
       document.body.style.marginTop = (window.innerHeight - h - padding) / 2 + 'px';
-      stage.canvas.style.width = w + 'px';
-      stage.canvas.style.height = .75 * w + 'px';
       stage.setZoom(w / 480);
     } else {
       stage.setZoom(1);
@@ -344,7 +340,7 @@
       stage.canvas.addEventListener('blur', forceFocus);
       stage.handleError = showError;
 
-      player.appendChild(stage.canvas);
+      player.appendChild(stage.root);
       stage.focus();
     };
     request.onerror = function(e) {
