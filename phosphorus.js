@@ -649,6 +649,7 @@ var P = (function() {
     this.root.style.position = 'absolute';
     this.root.style.width = '480px';
     this.root.style.height = '360px';
+    this.root.style.fontSize = '1px';
     this.root.style.WebkitUserSelect =
     this.root.style.MozUserSelect =
     this.root.style.MSUserSelect =
@@ -732,19 +733,19 @@ var P = (function() {
     this.root.appendChild(this.prompter);
     this.prompter.style.position = 'absolute';
     this.prompter.style.left =
-    this.prompter.style.right = '14px';
-    this.prompter.style.bottom = '6px';
-    this.prompter.style.padding = '5px 30px 5px 5px';
-    this.prompter.style.border = '3px solid rgb(46, 174, 223)';
-    this.prompter.style.borderRadius = '8px';
+    this.prompter.style.right = '14em';
+    this.prompter.style.bottom = '6em';
+    this.prompter.style.padding = '5em 30em 5em 5em';
+    this.prompter.style.border = '3em solid rgb(46, 174, 223)';
+    this.prompter.style.borderRadius = '8em';
     this.prompter.style.display = 'none';
 
     this.promptTitle = document.createElement('div');
     this.prompter.appendChild(this.promptTitle);
     this.promptTitle.textContent = 'What\'s your name? aesfnaseu fihaosiefhoi uaesfhiouas ehfiha eofsh oiaesfoi seaof ho iaefshoi ufaeshiou afeshio aseof ';
     this.promptTitle.style.cursor = 'default';
-    this.promptTitle.style.font = 'bold 13px sans-serif';
-    this.promptTitle.style.margin = '0 -25px 5px 0';
+    this.promptTitle.style.font = 'bold 13em sans-serif';
+    this.promptTitle.style.margin = '0 '+(-25/13)+'em '+(5/13)+'em 0';
     this.promptTitle.style.whiteSpace = 'pre';
     this.promptTitle.style.overflow = 'hidden';
     this.promptTitle.style.textOverflow = 'ellipsis';
@@ -755,28 +756,28 @@ var P = (function() {
     this.prompt.style.background = '#eee';
     this.prompt.style.MozBoxSizing =
     this.prompt.style.boxSizing = 'border-box';
-    this.prompt.style.padding = '0 3px';
+    this.prompt.style.font = '13em sans-serif';
+    this.prompt.style.padding = '0 '+(3/13)+'em';
     this.prompt.style.outline = '0';
     this.prompt.style.margin = '0';
     this.prompt.style.width = '100%';
-    this.prompt.style.height = '20px';
+    this.prompt.style.height = ''+(20/13)+'em';
     this.prompt.style.display = 'block';
     this.prompt.style.WebkitBorderRadius =
     this.prompt.style.borderRadius = '0';
     this.prompt.style.WebkitBoxShadow =
-    this.prompt.style.boxShadow = 'inset 1px 1px 2px rgba(0, 0, 0, .2), inset -1px -1px 1px rgba(255, 255, 255, .2)';
-    '0 0 0 2px #f00';
+    this.prompt.style.boxShadow = 'inset '+(1/13)+'em '+(1/13)+'em '+(2/13)+'em rgba(0, 0, 0, .2), inset '+(-1/13)+'em '+(-1/13)+'em '+(1/13)+'em rgba(255, 255, 255, .2)';
     this.prompt.style.WebkitAppearance = 'none';
-    this.prompt.style.font = '13px sans-serif';
 
     this.promptButton = document.createElement('div');
     this.prompter.appendChild(this.promptButton);
-    this.promptButton.style.width = '20px';
-    this.promptButton.style.height = '20px';
+    this.promptButton.style.width = '22em';
+    this.promptButton.style.height = '22em';
     this.promptButton.style.position = 'absolute';
-    this.promptButton.style.right = '5px';
-    this.promptButton.style.bottom = '5px';
-    this.promptButton.style.background = 'url(icons.svg) -166px -38px';
+    this.promptButton.style.right = '4em';
+    this.promptButton.style.bottom = '4em';
+    this.promptButton.style.background = 'url(icons.svg) -166em -38em';
+    this.promptButton.style.backgroundSize = '192em 64em';
 
     this.prompt.addEventListener('keydown', function(e) {
       if (e.keyCode === 13) {
@@ -842,6 +843,7 @@ var P = (function() {
     this.canvas.style.width = 480 * zoom + 'px';
     this.root.style.height =
     this.canvas.style.height = 360 * zoom + 'px';
+    this.root.style.fontSize = zoom + 'px';
     this.zoom = zoom;
   };
 
