@@ -1462,6 +1462,13 @@ var P = (function() {
     this.bubble.style.bottom = (bottom / 14) + 'em';
   };
 
+  Sprite.prototype.remove = function() {
+    if (this.bubble) {
+      this.stage.root.removeChild(this.bubble);
+      this.bubble = null;
+    }
+  };
+
   var Costume = function(data) {
     this.baseLayerID = data.baseLayerID;
     this.baseLayerMD5 = data.baseLayerMD5;
