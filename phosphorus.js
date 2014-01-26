@@ -751,6 +751,7 @@ var P = (function() {
     this.prompter.style.padding = '5em 30em 5em 5em';
     this.prompter.style.border = '3em solid rgb(46, 174, 223)';
     this.prompter.style.borderRadius = '8em';
+    this.prompter.style.background = '#fff';
     this.prompter.style.display = 'none';
 
     this.promptTitle = document.createElement('div');
