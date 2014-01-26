@@ -328,7 +328,7 @@
       stage.start();
       stage.triggerGreenFlag();
 
-      stage.canvas.addEventListener('keydown', exitFullScreen);
+      stage.root.addEventListener('keydown', exitFullScreen);
       stage.handleError = showError;
 
       player.appendChild(stage.root);
