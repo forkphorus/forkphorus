@@ -550,6 +550,14 @@ var P = (function() {
           return;
         }
       }
+      if (costume === (this.isSprite ? 'next costume' : 'next backdrop')) {
+        this.showNextCostume();
+        return;
+      }
+      if (costume === (this.isSprite ? 'previous costume' : 'previous backdrop')) {
+        this.showPreviousCostume();
+        return;
+      }
     }
     i = (Math.floor(Number(costume) || 0) - 1) % this.costumes.length;
     if (i < 0) i += this.costumes.length;
