@@ -1414,6 +1414,7 @@ var P = (function() {
       this.bubble.style.padding = ''+(8/14)+'em '+(10/14)+'em';
       this.bubble.style.border = ''+(3/14)+'em solid rgb(160, 160, 160)'
       this.bubble.style.borderRadius = ''+(10/14)+'em'
+      this.bubble.style.background = '#fff';
       this.bubble.style.position = 'absolute';
       this.bubble.style.font = 'bold 14em sans-serif';
       this.bubble.style.whiteSpace = 'pre-wrap';
