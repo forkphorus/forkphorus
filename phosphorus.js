@@ -761,7 +761,12 @@ var P = (function() {
     this.prompt.style.width = '100%';
     this.prompt.style.height = '20px';
     this.prompt.style.display = 'block';
+    this.prompt.style.WebkitBorderRadius =
+    this.prompt.style.borderRadius = '0';
+    this.prompt.style.WebkitBoxShadow =
     this.prompt.style.boxShadow = 'inset 1px 1px 2px rgba(0, 0, 0, .2), inset -1px -1px 1px rgba(255, 255, 255, .2)';
+    '0 0 0 2px #f00';
+    this.prompt.style.WebkitAppearance = 'none';
     this.prompt.style.font = '13px sans-serif';
 
     this.promptButton = document.createElement('div');
