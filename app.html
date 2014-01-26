@@ -100,7 +100,7 @@
     s.start();
     s.triggerGreenFlag();
 
-    player.appendChild(s.canvas);
+    player.appendChild(s.root);
     s.focus();
     s.canvas.addEventListener('blur', function() {
       s.canvas.focus();
