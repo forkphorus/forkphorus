@@ -915,6 +915,7 @@ var P = (function() {
     if (this.hidePrompt) {
       this.hidePrompt = false;
       this.prompter.style.display = 'none';
+      this.canvas.focus();
     }
   };
 
