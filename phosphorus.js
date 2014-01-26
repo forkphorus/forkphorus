@@ -810,7 +810,11 @@ var P = (function() {
   };
 
   Stage.prototype.focus = function() {
-    this.canvas.focus();
+    if (this.promptId < this.nextPromptId) {
+      this.prompt.focus();
+    } else {
+      this.canvas.focus();
+    }
   };
 
   Stage.prototype.updateMouse = function(e) {
