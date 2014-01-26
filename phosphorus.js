@@ -2341,7 +2341,7 @@ P.compile = (function() {
 
         if (warp) {
 
-          source += 'if (!' + bool(block[1]) + ') {\n';
+          source += 'while (!' + bool(block[1]) + ') {\n';
           seq(block[2]);
           source += '}\n';
 
