@@ -776,7 +776,7 @@ var P = (function() {
     this.promptButton.style.position = 'absolute';
     this.promptButton.style.right = '4em';
     this.promptButton.style.bottom = '4em';
-    this.promptButton.style.background = 'url(icons.svg) -166em -38em';
+    this.promptButton.style.background = 'url(icons.svg) -165em -37em';
     this.promptButton.style.backgroundSize = '192em 64em';
 
     this.prompt.addEventListener('keydown', function(e) {
