@@ -530,11 +530,13 @@ var P = (function() {
 
   Base.prototype.showNextCostume = function() {
     this.currentCostumeIndex = (this.currentCostumeIndex + 1) % this.costumes.length;
+    if (this.saying) this.updateBubble();
   };
 
   Base.prototype.showPreviousCostume = function() {
     var length = this.costumes.length;
     this.currentCostumeIndex = (this.currentCostumeIndex + length - 1) % length;
+    if (this.saying) this.updateBubble();
   };
 
   Base.prototype.getCostumeName = function() {
@@ -547,6 +549,7 @@ var P = (function() {
       for (var i = 0; i < this.costumes.length; i++) {
         if (this.costumes[i].costumeName === costume) {
           this.currentCostumeIndex = i;
+          if (this.saying) this.updateBubble();
           return;
         }
       }
@@ -562,6 +565,7 @@ var P = (function() {
     i = (Math.floor(Number(costume) || 0) - 1) % this.costumes.length;
     if (i < 0) i += this.costumes.length;
     this.currentCostumeIndex = i;
+    if (this.saying) this.updateBubble();
   };
 
   Base.prototype.setFilter = function(name, value) {
@@ -1435,6 +1439,10 @@ var P = (function() {
   };
 
   Sprite.prototype.updateBubble = function() {
+    if (!this.visible || !this.saying) {
+      this.bubble.style.display = 'none';
+      return;
+    }
     var b = this.rotatedBounds();
     var left = 240 + b.right;
     var bottom = 180 + b.top;
@@ -2215,10 +2223,12 @@ P.compile = (function() {
       } else if (block[0] === 'show') {
 
         source += 'S.visible = true;\n';
+        source += 'if (S.saying) S.updateBubble();\n';
 
       } else if (block[0] === 'hide') {
 
         source += 'S.visible = false;\n';
+        source += 'if (S.saying) S.updateBubble();\n';
 
       } else if (block[0] === 'comeToFront') {
 
