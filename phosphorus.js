@@ -497,6 +497,27 @@ var P = (function() {
   };
 
   Base.prototype.setCostume = function(costume) {
+    if (!this.isSprite) {
+      if (costume === 'next backdrop') {
+        costume = this.costumes[(this.currentCostumeIndex + 1) % this.costumes.length].costumeName;
+      }
+      if (costume === 'previous backdrop') {
+        costume = this.costumes[(this.currentCostumeIndex + this.costumes.length - 1) % this.costumes.length].costumeName;
+      }
+      var n = Number(costume);
+      if (n === n) {
+        n = (Math.round(n) - 1) % this.costumes.length;
+        if (n < 0) n += this.costumes.length;
+        costume = this.costumes[n].costumeName;
+      }
+      for (var i = 0; i < this.costumes.length; i++) {
+        if (this.costumes[i].costumeName === costume) {
+          this.currentCostumeIndex = i;
+          return;
+        }
+      }
+      return;
+    }
     if (typeof costume !== 'number') {
       costume = '' + costume;
       for (var i = 0; i < this.costumes.length; i++) {
@@ -506,11 +527,11 @@ var P = (function() {
           return;
         }
       }
-      if (costume === (this.isSprite ? 'next costume' : 'next backdrop')) {
+      if (costume === 'next costume') {
         this.showNextCostume();
         return;
       }
-      if (costume === (this.isSprite ? 'previous costume' : 'previous backdrop')) {
+      if (costume === 'previous costume') {
         this.showPreviousCostume();
         return;
       }
