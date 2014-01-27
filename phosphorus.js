@@ -493,7 +493,7 @@ var P = (function() {
   };
 
   Base.prototype.getCostumeName = function() {
-    return this.costumes[this.currentCostumeIndex] ? this.costumes[this.currentCostumeIndex].objName : '';
+    return this.costumes[this.currentCostumeIndex] ? this.costumes[this.currentCostumeIndex].costumeName : '';
   };
 
   Base.prototype.setCostume = function(costume) {
@@ -1542,8 +1542,7 @@ var P = (function() {
         value = this.target.scale * 100;
         break;
       case 'sceneName':
-        ref = this.stage.costumes[this.stage.currentCostumeIndex];
-        if (ref) value = ref.costumeName;
+        value = this.stage.getCostumeName();
         break;
       case 'senseVideoMotion':
         // TODO
