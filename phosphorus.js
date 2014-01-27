@@ -379,23 +379,18 @@ var P = (function() {
     var ext = md5.split('.').pop();
     if (ext === 'svg') {
       var cb = function(source) {
-        var request = new Request;
         var canvas = document.createElement('canvas');
         var context = canvas.getContext('2d');
         var image = new Image;
+        callback(image);
         canvg(canvas, source, {
           ignoreMouse: true,
           ignoreAnimation: true,
           ignoreClear: true,
           renderCallback: function() {
-            image.onload = function() {
-              if (callback) callback(image);
-              request.load();
-            };
             image.src = canvas.toDataURL();
           }
-        });
-        IO.projectRequest.add(request);
+        })
       };
       if (IO.zip) {
         cb(IO.zip.file(id + '.svg').asText());
@@ -403,7 +398,22 @@ var P = (function() {
         IO.projectRequest.add(IO.load(IO.ASSET_URL + md5 + '/get/', cb));
       }
     } else {
-      IO.projectRequest.add(IO.loadImage(IO.zip ? 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(IO.zip.file(id + '.' + ext).asBinary()) : IO.PROXY_URL + encodeURIComponent(IO.ASSET_URL + md5 + '/get/'), callback));
+      if (IO.zip) {
+        var request = new Request;
+        var f = IO.zip.file(id + '.' + ext).asBinary();
+        var image = new Image;
+        image.onload = function() {
+          if (callback) callback(image);
+          request.load();
+        };
+        image.src = 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(f);
+        IO.projectRequest.add(request);
+      } else {
+        IO.projectRequest.add(
+          IO.loadImage(IO.PROXY_URL + encodeURIComponent(IO.ASSET_URL + md5 + '/get/'), function(result) {
+            callback(result);
+          }));
+      }
     }
   };
 
@@ -1469,10 +1479,19 @@ var P = (function() {
     this.context = this.image.getContext('2d');
 
     this.render();
+    this.baseLayer.onload = function() {
+      this.render();
+    }.bind(this);
+    if (this.textLayer) {
+      this.textLayer.onload = this.baseLayer.onload;
+    }
   };
   addEvents(Costume, 'load');
 
   Costume.prototype.render = function() {
+    if (!this.baseLayer.width || this.textLayer && !this.textLayer.width) {
+      return;
+    }
     this.image.width = this.baseLayer.width;
     this.image.height = this.baseLayer.height;
 
