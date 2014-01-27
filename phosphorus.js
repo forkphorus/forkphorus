@@ -179,6 +179,13 @@ var P = (function() {
     IO.zip = null;
   };
 
+  IO.parseJSONish = function(json) {
+    if (/[^,:{}\[\]0-9\.\-+EINaefilnr-uy \n\r\t]/.test(json.replace(/"(\\.|[^"\\])*"/g, ''))) {
+      throw new SyntaxError('Bad JSON');
+    }
+    return (1, eval)('(' + json + ')');
+  };
+
   IO.load = function(url, callback, self) {
     var request = new Request;
     var xhr = new XMLHttpRequest;
@@ -223,7 +230,7 @@ var P = (function() {
     request.defer = true;
     request.add(IO.load(IO.PROJECT_URL + id + '/get/?' + Math.random().toString().slice(2)).onLoad(function(contents) {
       try {
-        var json = JSON.parse(contents);
+        var json = IO.parseJSONish(contents);
         IO.loadProject(json);
         if (callback) request.onLoad(callback.bind(self));
         if (request.isDone) {
@@ -289,7 +296,7 @@ var P = (function() {
 
     try {
       IO.zip = new JSZip(ab);
-      var json = JSON.parse(IO.zip.file('project.json').asText());
+      var json = IO.parseJSONish(IO.zip.file('project.json').asText());
 
       IO.loadProject(json);
       if (callback) request.onLoad(callback.bind(self));
