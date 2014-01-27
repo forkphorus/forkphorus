@@ -2153,12 +2153,14 @@ P.compile = (function() {
 
         } else {
 
+          source += 'save();\n';
           source += 'self.setCostume(' + val(block[1]) + ');\n';
           source += 'R.threads = sceneChange();\n';
           var id = label();
           source += 'if (!running(R.threads)) {\n';
           queue(id);
           source += '}\n';
+          source += 'restore();\n';
 
         }
 
@@ -2388,11 +2390,13 @@ P.compile = (function() {
 
       } else if (block[0] === 'doBroadcastAndWait') {
 
+        source += 'save();\n';
         source += 'R.threads = broadcast(' + val(block[1]) + ');\n';
         var id = label();
         source += 'if (running(R.threads)) {\n';
         queue(id);
         source += '}\n';
+        source += 'restore();\n';
 
       } else if (block[0] === 'doForever') {
 
