@@ -1401,6 +1401,7 @@ var P = (function() {
     if (!this.bubble) {
       this.bubble = document.createElement('div');
       this.bubble.style.maxWidth = ''+(127/14)+'em';
+      this.bubble.style.minWidth = ''+(48/14)+'em';
       this.bubble.style.padding = ''+(8/14)+'em '+(10/14)+'em';
       this.bubble.style.border = ''+(3/14)+'em solid rgb(160, 160, 160)'
       this.bubble.style.borderRadius = ''+(10/14)+'em'
@@ -1409,6 +1410,7 @@ var P = (function() {
       this.bubble.style.font = 'bold 14em sans-serif';
       this.bubble.style.whiteSpace = 'pre-wrap';
       this.bubble.style.wordWrap = 'break-word';
+      this.bubble.style.textAlign = 'center';
       this.bubble.appendChild(this.bubbleText = document.createTextNode(''));
       this.bubble.appendChild(this.bubblePointer = document.createElement('div'));
       this.bubblePointer.style.position = 'absolute';
