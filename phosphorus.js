@@ -2068,6 +2068,10 @@ P.compile = (function() {
         source += 'console.log(' + val(block[0]) + ');\n';
       }
 
+      if (['forward:', 'turnRight:', 'turnLeft:', 'heading:', 'pointTowards:', 'gotoX:y:', 'gotoSpriteOrMouse:', 'changeXposBy:', 'xpos:', 'changeYposBy:', 'ypos:', 'bounceOffEdge', 'setRotationStyle', 'lookLike:', 'nextCostume', 'showBackground:', 'startScene', 'nextBackground', 'nextScene', 'startSceneAndWait', 'say:duration:elapsed:from:', 'say:', 'think:duration:elapsed:from:', 'think:', 'changeGraphicEffect:by:', 'setGraphicEffect:to:', 'filterReset', 'changeSizeBy:', 'setSizeTo:', 'show', 'hide', 'comeToFront', 'goBackByLayers:', 'putPenDown', 'stampCostume', 'showVariable:', 'hideVariable:', 'glideSecs:toX:y:elapsed:from:', 'createCloneOf', 'deleteClone', 'doAsk'].indexOf(block[0]) > -1) {
+        source += 'VISUAL = true;\n';
+      }
+
       if (block[0] === 'forward:') { /* Motion */
 
         source += 'S.forward(' + num(block[1]) + ');\n';
@@ -2737,7 +2741,7 @@ P.compile = (function() {
 P.runtime = (function() {
   'use strict';
 
-  var self, S, R, STACK, C, CALLS, BASE, THREAD, TERMINATE, STOP_THREAD = {};
+  var self, S, R, STACK, C, CALLS, BASE, THREAD, TERMINATE, VISUAL, STOP_THREAD = {};
 
   var bool = function(v) {
     return Number(v) !== 0 && v !== '' && v !== 'false' && v !== false;
@@ -3210,6 +3214,7 @@ P.runtime = (function() {
     P.Stage.prototype.step = function() {
       try {
         self = this;
+        VISUAL = false;
         var start = Date.now();
         do {
           var children = this.children.slice(0);
@@ -3219,7 +3224,7 @@ P.runtime = (function() {
             }
           }
           this.runFor(this);
-        } while (self.isTurbo && Date.now() - start < 1000 / this.framerate);
+        } while ((self.isTurbo || !VISUAL) && Date.now() - start < 1000 / this.framerate);
         this.draw();
         S = null;
       } catch (e) {
