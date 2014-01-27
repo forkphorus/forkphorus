@@ -2914,33 +2914,17 @@ P.runtime = (function() {
       case 'ceiling':
         return Math.ceil(x);
       case 'cos':
-        x = 90 - x;
+        return Math.cos(x * Math.PI / 180);
       case 'sin':
-        // 0 <= x <= 45 for degrees->radians to work well
-        var neg = false;
-        x = x % 360;
-        if (x < 0) x += 360;
-        if (x > 180) {
-          neg = !neg;
-          x -= 180;
-        }
-        if (x > 90) {
-          x = 180 - x;
-        }
-        var z = x > 45 ?
-          Math.cos((90 - x) * Math.PI / 180) :
-          Math.sin(x * Math.PI / 180);
-        return neg ? -z : z;
+        return Math.sin(x * Math.PI / 180);
       case 'tan':
-        x = x % 180;
-        if (x < 0) x += 180;
-        return x > 90 ?
-          -Math.tan((90 - x) * Math.PI / 180) :
-          Math.tan(x * Math.PI / 180);
+        return Math.tan(x * Math.PI / 180);
       case 'asin':
+        return Math.asin(x) * 180 / Math.PI;
       case 'acos':
+        return Math.acos(x) * 180 / Math.PI;
       case 'atan':
-        return Math[f](x) * 180 / Math.PI;
+        return Math.atan(x) * 180 / Math.PI;
       case 'ln':
         return Math.log(x);
       case 'log':
