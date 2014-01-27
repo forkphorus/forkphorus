@@ -1956,7 +1956,7 @@ P.compile = (function() {
 
       } else if (e[0] === 'letter:of:') {
 
-        return '(("" + ' + val(e[2]) + ')[Math.floor(' + num(e[1]) + ')] || "")';
+        return '(("" + ' + val(e[2]) + ')[Math.floor(' + num(e[1]) + ') - 1] || "")';
 
       } else if (e[0] === 'stringLength:') {
 
