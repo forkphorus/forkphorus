@@ -1358,6 +1358,7 @@ var P = (function() {
   };
 
   Sprite.prototype.say = function(text, thinking) {
+    text = '' + text;
     if (!text) {
       this.saying = false;
       if (!this.bubble) return;
