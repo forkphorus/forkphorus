@@ -2420,11 +2420,11 @@ P.compile = (function() {
 
       } else if (block[0] === 'doIfElse') {
 
-        source += 'if (' + bool(block[1]) + ') {';
+        source += 'if (' + bool(block[1]) + ') {\n';
         seq(block[2]);
-        source += '} else {';
+        source += '} else {\n';
         seq(block[3]);
-        source += '}';
+        source += '}\n';
 
       } else if (block[0] === 'doRepeat') {
 
