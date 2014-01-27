@@ -1806,7 +1806,8 @@ P.compile = (function() {
       }
     };
 
-    var val = function(e) {
+    var val = function(e, usenum, usebool) {
+      var v;
       if (typeof e === 'number' || typeof e === 'boolean') {
 
         return '' + e;
@@ -1819,43 +1820,17 @@ P.compile = (function() {
           .replace(/\r/g, '\\r')
           .replace(/"/g, '\\"') + '"';
 
-      } else if (e[0] === 'xpos') { /* Motion */
+      } else if ((v = numval(e)) != null || (v = boolval(e)) != null) {
 
-        return 'S.scratchX';
-
-      } else if (e[0] === 'ypos') {
-
-        return 'S.scratchY';
-
-      } else if (e[0] === 'heading') {
-
-        return 'S.direction';
-
-      } else if (e[0] === 'costumeIndex') { /* Looks */
-
-        return '(S.currentCostumeIndex + 1)';
+        return v;
 
       } else if (e[0] === 'costumeName') {
 
         return 'S.getCostumeName()';
 
-      } else if (e[0] === 'backgroundIndex') {
-
-        return '(self.currentCostumeIndex + 1)';
-
       } else if (e[0] === 'sceneName') {
 
         return 'self.getCostumeName()';
-
-      } else if (e[0] === 'scale') {
-
-        return 'S.scale';
-
-      // } else if (e[0] === 'volume') { /* Sound */
-
-      } else if (e[0] === 'tempo') {
-
-        return 'self.tempoBPM';
 
       } else if (e[0] === 'getParam') { /* Data */
 
@@ -1873,13 +1848,68 @@ P.compile = (function() {
 
         return 'getLineOfList(' + val(e[2]) + ', ' + val(e[1]) + ')';
 
-      } else if (e[0] === 'lineCountOfList:') {
+      } else if (e[0] === 'concatenate:with:') {
+
+        return '("" + ' + val(e[1]) + ' + ' + val(e[2]) + ')';
+
+      } else if (e[0] === 'letter:of:') {
+
+        return '(("" + ' + val(e[2]) + ')[Math.floor(' + num(e[1]) + ') - 1] || "")';
+
+      } else if (e[0] === 'answer') { /* Sensing */
+
+        return 'self.answer';
+
+      } else if (e[0] === 'getAttribute:of:') {
+
+        return 'attribute(' + val(e[1]) + ', ' + val(e[2]) + ')';
+
+      // } else if (e[0] === 'getUserId') {
+
+      // } else if (e[0] === 'getUserName') {
+
+      } else {
+
+        warn('Undefined val: ' + e[0]);
+
+      }
+    };
+
+    var numval = function(e) {
+
+      if (e[0] === 'xpos') { /* Motion */
+
+        return 'S.scratchX';
+
+      } else if (e[0] === 'ypos') {
+
+        return 'S.scratchY';
+
+      } else if (e[0] === 'heading') {
+
+        return 'S.direction';
+
+      } else if (e[0] === 'costumeIndex') { /* Looks */
+
+        return '(S.currentCostumeIndex + 1)';
+
+      } else if (e[0] === 'backgroundIndex') {
+
+        return '(self.currentCostumeIndex + 1)';
+
+      } else if (e[0] === 'scale') {
+
+        return 'S.scale';
+
+      // } else if (e[0] === 'volume') { /* Sound */
+
+      } else if (e[0] === 'tempo') {
+
+        return 'self.tempoBPM';
+
+      } else if (e[0] === 'lineCountOfList:') { /* Data */
 
         return 'lineCountOfList(' + val(e[1]) + ')';
-
-      } else if (e[0] === 'list:contains:') {
-
-        return 'listContains(' + val(e[1]) + ', ' + val(e[2]) + ')';
 
       } else if (e[0] === '+') { /* Operators */
 
@@ -1901,7 +1931,68 @@ P.compile = (function() {
 
         return 'random(' + num(e[1]) + ', ' + num(e[2]) + ')';
 
-      } else if (e[0] === '<') {
+      } else if (e[0] === 'abs') {
+
+        return 'Math.abs(' + num(e[1]) + ')';
+
+      } else if (e[0] === 'sqrt') {
+
+        return 'Math.sqrt(' + num(e[1]) + ')';
+
+      } else if (e[0] === 'stringLength:') {
+
+        return '("" + ' + val(e[1]) + ').length';
+
+      } else if (e[0] === '%' || e[0] === '\\') {
+
+        return 'mod(' + num(e[1]) + ', ' + num(e[2]) + ')';
+
+      } else if (e[0] === 'rounded') {
+
+        return 'Math.round(' + num(e[1]) + ')';
+
+      } else if (e[0] === 'computeFunction:of:') {
+
+        return 'mathFunc(' + val(e[1]) + ', ' + num(e[2]) + ')';
+
+      } else if (e[0] === 'mouseX') { /* Sensing */
+
+        return 'self.mouseX';
+
+      } else if (e[0] === 'mouseY') {
+
+        return 'self.mouseY';
+
+      } else if (e[0] === 'timer') {
+
+        return '(self.now() - self.timerStart) / 1000';
+
+      } else if (e[0] === 'distanceTo:') {
+
+        return 'S.distanceTo(' + val(e[1]) + ')';
+
+      // } else if (e[0] === 'soundLevel') {
+
+      } else if (e[0] === 'timestamp') {
+
+        return '((Date.now() - epoch) / 86400000)';
+
+      } else if (e[0] === 'timeAndDate') {
+
+        return 'timeAndDate(' + val(e[1]) + ')';
+
+      // } else if (e[0] === 'sensor:') {
+
+      }
+    };
+
+    var boolval = function(e) {
+
+      if (e[0] === 'list:contains:') { /* Data */
+
+        return 'listContains(' + val(e[1]) + ', ' + val(e[2]) + ')';
+
+      } else if (e[0] === '<') { /* Operators */
 
         return '(compare(' + val(e[1]) + ', ' + val(e[2]) + ') === -1)';
 
@@ -1925,51 +2016,11 @@ P.compile = (function() {
 
         return '!' + bool(e[1]) + '';
 
-      } else if (e[0] === 'abs') {
-
-        return 'Math.abs(' + num(e[1]) + ')';
-
-      } else if (e[0] === 'sqrt') {
-
-        return 'Math.sqrt(' + num(e[1]) + ')';
-
-      } else if (e[0] === 'concatenate:with:') {
-
-        return '("" + ' + val(e[1]) + ' + ' + val(e[2]) + ')';
-
-      } else if (e[0] === 'letter:of:') {
-
-        return '(("" + ' + val(e[2]) + ')[Math.floor(' + num(e[1]) + ') - 1] || "")';
-
-      } else if (e[0] === 'stringLength:') {
-
-        return '("" + ' + val(e[1]) + ').length';
-
-      } else if (e[0] === '%' || e[0] === '\\') {
-
-        return 'mod(' + num(e[1]) + ', ' + num(e[2]) + ')';
-
-      } else if (e[0] === 'rounded') {
-
-        return 'Math.round(' + num(e[1]) + ')';
-
-      } else if (e[0] === 'computeFunction:of:') {
-
-        return 'mathFunc(' + val(e[1]) + ', ' + num(e[2]) + ')';
-
-      } else if (e[0] === 'mousePressed') {
+      } else if (e[0] === 'mousePressed') { /* Sensing */
 
         return 'self.mousePressed';
 
-      } else if (e[0] === 'mouseX') {
-
-        return 'self.mouseX';
-
-      } else if (e[0] === 'mouseY') {
-
-        return 'self.mouseY';
-
-      } else if (e[0] === 'touching:') { /* Sensing */
+      } else if (e[0] === 'touching:') {
 
         return 'S.touching(' + val(e[1]) + ')';
 
@@ -1979,55 +2030,26 @@ P.compile = (function() {
 
       // } else if (e[0] === 'color:sees:') {
 
-      } else if (e[0] === 'answer') {
-
-        return 'self.answer';
-
-      } else if (e[0] === 'timer') {
-
-        return '(self.now() - self.timerStart) / 1000';
-
       } else if (e[0] === 'keyPressed:') {
 
         return '!!self.keys[P.getKeyCode(' + val(e[1]) + ')]';
 
-      } else if (e[0] === 'distanceTo:') {
-
-        return 'S.distanceTo(' + val(e[1]) + ')';
-
-      } else if (e[0] === 'getAttribute:of:') {
-
-        return 'attribute(' + val(e[1]) + ', ' + val(e[2]) + ')';
-
-      // } else if (e[0] === 'getUserId') {
-
-      // } else if (e[0] === 'getUserName') {
-
-      // } else if (e[0] === 'soundLevel') {
-
       // } else if (e[0] === 'isLoud') {
 
-      } else if (e[0] === 'timestamp') {
-
-        return '((Date.now() - epoch) / 86400000)';
-
-      } else if (e[0] === 'timeAndDate') {
-
-        return 'timeAndDate(' + val(e[1]) + ')';
-
-      // } else if (e[0] === 'sensor:') {
-
       // } else if (e[0] === 'sensorPressed:') {
-
-      } else {
-
-        warn('Undefined val: ' + e[0]);
 
       }
     };
 
     var bool = function(e) {
-      return 'bool(' + val(e) + ')';
+      if (typeof e === 'boolean') {
+        return e;
+      }
+      if (typeof e === 'number' || typeof e === 'string') {
+        return Number(e) !== 0 && e !== '' && e !== 'false' && e !== false;
+      }
+      var v = boolval(e);
+      return v != null ? v : 'bool(' + val(e, false, true) + ')';
     };
 
     var num = function(e) {
@@ -2037,7 +2059,8 @@ P.compile = (function() {
       if (typeof e === 'boolean' || typeof e === 'string') {
         return Number(e) || 0;
       }
-      return '(Number(' + val(e) + ') || 0)';
+      var v = numval(e);
+      return v != null ? v : '(Number(' + val(e, true) + ') || 0)';
     };
 
     var compile = function(block) {
