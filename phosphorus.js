@@ -2738,8 +2738,8 @@ P.runtime = (function() {
     if (nx === nx && ny === ny) {
       return nx < ny ? -1 : nx === ny ? 0 : 1;
     }
-    var xs = String(x);
-    var ys = String(y);
+    var xs = String(x).toLowerCase();
+    var ys = String(y).toLowerCase();
     return xs < ys ? -1 : xs === ys ? 0 : 1;
   };
 
