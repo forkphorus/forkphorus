@@ -212,32 +212,6 @@ var P = (function() {
     image.onerror = function() {
       request.error(new Error('Failed to load image'));
     };
-    // var xhr = new XMLHttpRequest;
-    // xhr.open('GET', IO.PROXY_URL + encodeURIComponent(url), true);
-    // xhr.responseType = 'blob';
-    // xhr.onprogress = function(e) {
-    //   request.progress(e.loaded, e.total, e.lengthComputable);
-    // };
-    // xhr.onload = function(e) {
-    //   if (xhr.status === 200) {
-    //     var reader = new FileReader;
-    //     reader.addEventListener('loadend', function() {
-    //       var image = new Image;
-    //       image.src = reader.result;
-    //       image.onload = function() {
-    //         request.load(image);
-    //       };
-    //     });
-    //     reader.readAsDataURL(xhr.response);
-    //   } else {
-    //     request.error(new Error('HTTP ' + xhr.status + ': ' + xhr.statusText));
-    //   }
-    // };
-    // xhr.onerror = function() {
-    //   request.error(new Image('Failed to load image'));
-    // };
-    // xhr.send();
-
     if (callback) request.onLoad(callback.bind(self));
     return request;
   };
