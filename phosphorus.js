@@ -177,8 +177,6 @@ var P = (function() {
   IO.init = function(request) {
     IO.projectRequest = request;
     IO.zip = null;
-    IO.costumes = null;
-    IO.images = null;
   };
 
   IO.load = function(url, callback, self) {
@@ -319,9 +317,6 @@ var P = (function() {
       IO.zip = new JSZip(ab);
       var json = JSON.parse(IO.zip.file('project.json').asText());
 
-      IO.images = 1; // ignore pen trails
-      IO.sounds = 0;
-
       IO.loadProject(json);
       if (callback) request.onLoad(callback.bind(self));
       if (request.isDone) {
@@ -392,11 +387,11 @@ var P = (function() {
   };
 
   IO.loadCostume = function(data) {
-    IO.loadMD5(data.baseLayerMD5, function(asset) {
+    IO.loadMD5(data.baseLayerMD5, data.baseLayerID, function(asset) {
       data.$image = asset;
     });
     if (data.textLayerMD5) {
-      IO.loadMD5(data.textLayerMD5, function(asset) {
+      IO.loadMD5(data.textLayerMD5, data.textLayerID, function(asset) {
         data.$text = asset;
       });
     }
@@ -406,7 +401,7 @@ var P = (function() {
     // TODO
   };
 
-  IO.loadMD5 = function(md5, callback, zip, index) {
+  IO.loadMD5 = function(md5, id, callback) {
     var ext = md5.split('.').pop();
     if (ext === 'svg') {
       var cb = function(source) {
@@ -424,26 +419,20 @@ var P = (function() {
         })
       };
       if (IO.zip) {
-        var image = IO.images;
-        IO.images += 1;
-
-        cb(IO.zip.file(image + '.svg').asText());
+        cb(IO.zip.file(id + '.svg').asText());
       } else {
         IO.projectRequest.add(IO.load(IO.ASSET_URL + md5 + '/get/', cb));
       }
     } else {
       if (IO.zip) {
-        var image = IO.images;
-        IO.images += 1;
-
         var request = new Request;
-        var f = IO.zip.file(image + '.' + ext).asBinary();
-        var img = new Image;
-        img.onload = function() {
-          if (callback) callback(img);
+        var f = IO.zip.file(id + '.' + ext).asBinary();
+        var image = new Image;
+        image.onload = function() {
+          if (callback) callback(image);
           request.load();
         };
-        img.src = 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(f);
+        image.src = 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(f);
         IO.projectRequest.add(request);
       } else {
         IO.projectRequest.add(
