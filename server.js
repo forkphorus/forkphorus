@@ -30,12 +30,7 @@ http.createServer(function(req, res) {
         'Content-Type': r.headers['content-type'],
         'Cache-Control': cache
       });
-      r.on('data', function (chunk) {
-        res.write(chunk);
-      });
-      r.on('end', function() {
-        res.end();
-      });
+      r.pipe(res);
     });
     q.on('error', function(e) {
       res.writeHead(500);
