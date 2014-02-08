@@ -3115,11 +3115,11 @@ P.runtime = (function() {
       } else if (event === 'whenGreenFlag') {
         threads = sprite.listeners.whenGreenFlag;
       } else if (event === 'whenIReceive') {
-        threads = sprite.listeners.whenIReceive[arg.toLowerCase()]
+        threads = sprite.listeners.whenIReceive[('' + arg).toLowerCase()]
       } else if (event === 'whenKeyPressed') {
         threads = sprite.listeners.whenKeyPressed[arg];
       } else if (event === 'whenSceneStarts') {
-        threads = sprite.listeners.whenSceneStarts[arg.toLowerCase()];
+        threads = sprite.listeners.whenSceneStarts[('' + arg).toLowerCase()];
       }
       if (threads) {
         for (var i = 0; i < threads.length; i++) {
