@@ -1253,7 +1253,7 @@ var P = (function() {
     rgb = rgb & 0xffffff;
     var length = (b.right - b.left) * (b.top - b.bottom) * 4;
     for (var i = 0; i < length; i += 4) {
-      if ((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) === rgb) {
+      if ((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) === rgb && data[i + 3]) {
         return true;
       }
     }
