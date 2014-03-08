@@ -1397,6 +1397,7 @@ var P = (function() {
       this.bubble.style.whiteSpace = 'pre-wrap';
       this.bubble.style.wordWrap = 'break-word';
       this.bubble.style.textAlign = 'center';
+      this.bubble.style.cursor = 'default';
       this.bubble.appendChild(this.bubbleText = document.createTextNode(''));
       this.bubble.appendChild(this.bubblePointer = document.createElement('div'));
       this.bubblePointer.style.position = 'absolute';
