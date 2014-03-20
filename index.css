@@ -177,3 +177,16 @@ h1 {
 .package input {
   margin: 0 0 0 16px;
 }
+
+@font-face {
+  font-family: 'Donegal';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Donegal One'), local('DonegalOne-Regular'), url(http://themes.googleusercontent.com/static/fonts/donegalone/v2/LIom94sU9XlcGbVvjBz0oIbN6UDyHWBl620a-IRfuBk.woff) format('woff');
+}
+@font-face {
+  font-family: 'Gloria';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Gloria Hallelujah'), local('GloriaHallelujah'), url(http://themes.googleusercontent.com/static/fonts/gloriahallelujah/v5/CA1k7SlXcY5kvI81M_R28Y5mSNQmgKshuii2YddNQzE.woff) format('woff');
+}
