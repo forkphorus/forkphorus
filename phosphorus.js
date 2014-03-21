@@ -174,6 +174,13 @@ var P = (function() {
 
   IO.PROXY_URL = 'proxy.php?u=';
 
+  IO.FONTS = {
+    'Donegal': 'Donegal One',
+    'Gloria': 'Gloria Hallelujah',
+    'Marker': 'Permanent Marker',
+    'Mystery': 'Mystery Quest'
+  };
+
   IO.init = function(request) {
     IO.projectRequest = request;
     IO.zip = null;
@@ -386,11 +393,31 @@ var P = (function() {
     var ext = md5.split('.').pop();
     if (ext === 'svg') {
       var cb = function(source) {
+        var div = document.createElement('div');
+        div.innerHTML = source;
+        var svg = div.firstChild;
+        (function fix(element) {
+          if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
+            element.setAttribute('x', 0);
+            element.setAttribute('y', 0);
+          }
+          if (element.nodeName == 'text') {
+            var font = IO.FONTS[element.getAttribute('font-family')];
+            if (font) {
+              element.setAttribute('font-family', font);
+            }
+            document.body.appendChild(svg);
+            element.setAttribute('y', +element.getAttribute('y') + element.getBBox().height);
+            document.body.removeChild(svg);
+          }
+          [].forEach.call(element.children, fix);
+        })(svg);
+
         var canvas = document.createElement('canvas');
         var context = canvas.getContext('2d');
         var image = new Image;
         callback(image);
-        canvg(canvas, source, {
+        canvg(canvas, svg.outerHTML, {
           ignoreMouse: true,
           ignoreAnimation: true,
           ignoreClear: true,
