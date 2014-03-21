@@ -389,29 +389,31 @@ var P = (function() {
     // TODO
   };
 
+  IO.fixSVG = function(svg, element) {
+    if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
+      element.setAttribute('x', 0);
+      element.setAttribute('y', 0);
+    }
+    if (element.nodeName == 'text') {
+      var font = IO.FONTS[element.getAttribute('font-family')];
+      if (font) {
+        element.setAttribute('font-family', font);
+      }
+      document.body.appendChild(svg);
+      element.setAttribute('y', +element.getAttribute('y') + element.getBBox().height);
+      document.body.removeChild(svg);
+    }
+    [].forEach.call(element.children, IO.fixSVG.bind(null, svg));
+  };
+
   IO.loadMD5 = function(md5, id, callback) {
     var ext = md5.split('.').pop();
     if (ext === 'svg') {
       var cb = function(source) {
         var div = document.createElement('div');
         div.innerHTML = source;
-        var svg = div.firstChild;
-        (function fix(element) {
-          if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
-            element.setAttribute('x', 0);
-            element.setAttribute('y', 0);
-          }
-          if (element.nodeName == 'text') {
-            var font = IO.FONTS[element.getAttribute('font-family')];
-            if (font) {
-              element.setAttribute('font-family', font);
-            }
-            document.body.appendChild(svg);
-            element.setAttribute('y', +element.getAttribute('y') + element.getBBox().height);
-            document.body.removeChild(svg);
-          }
-          [].forEach.call(element.children, fix);
-        })(svg);
+        var svg = div.getElementsByTagName('svg')[0];
+        IO.fixSVG(svg, svg);
 
         var canvas = document.createElement('canvas');
         var context = canvas.getContext('2d');
