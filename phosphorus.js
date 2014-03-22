@@ -2581,7 +2581,6 @@ P.compile = (function() {
       } else if (block[0] === 'stopAll') {
 
         source += 'self.stopAll();\n';
-        source += 'TERMINATE = true;\n';
         source += 'return;\n';
 
       } else if (block[0] === 'stopScripts') {
@@ -2589,15 +2588,17 @@ P.compile = (function() {
         source += 'switch (' + val(block[1]) + ') {\n';
         source += '  case "all":\n'
         source += '    self.stopAll();\n';
-        source += '    TERMINATE = true;\n';
         source += '    return;\n';
         source += '  case "this script":\n';
         source += '    endCall();\n';
         source += '    return;\n';
         source += '  case "other scripts in sprite":\n';
         source += '  case "other scripts in stage":\n';
-        source += '    S.queue = [];\n';
-        source += '    TERMINATE = true;\n';
+        source += '    for (var i = THREAD + 1; i < self.queue.length; i++) {\n';
+        source += '      if (self.queue[i] && self.queue[i].sprite === S) {\n';
+        source += '        self.queue[i] = undefined;\n';
+        source += '      }\n';
+        source += '    }\n';
         source += '    break;\n';
         source += '}\n';
 
@@ -2606,9 +2607,11 @@ P.compile = (function() {
         source += 'save();\n';
         source += 'R.start = self.now();\n';
         source += 'R.duration = ' + num(block[1]) + ';\n';
+        source += 'R.first = true;\n';
 
         var id = label();
-        source += 'if (self.now() - R.start < R.duration * 1000) {\n';
+        source += 'if (self.now() - R.start < R.duration * 1000 || R.first) {\n';
+        source += '  R.first = false;\n';
         queue(id);
         source += '}\n';
 
@@ -3089,19 +3092,12 @@ P.runtime = (function() {
     for (var j = 0; j < self.queue.length; j++) {
       if (self.queue[j] && bases.indexOf(self.queue[j].base) !== -1) return true;
     }
-    for (var i = 0; i < self.children.length; i++) {
-      var c = self.children[i];
-      if (c.isSprite) {
-        for (var j = 0; j < c.queue.length; j++) {
-          if (c.queue[j] && bases.indexOf(c.queue[j].base) !== -1) return true;
-        }
-      }
-    }
     return false;
   };
 
   var queue = function(id) {
-    S.queue[THREAD] = {
+    self.queue[THREAD] = {
+      sprite: S,
       base: BASE,
       fn: S.fns[id],
       calls: CALLS
@@ -3118,14 +3114,16 @@ P.runtime = (function() {
       this.queue = [];
     };
 
-    P.Base.prototype.startThread = function(base) {
+    P.Stage.prototype.startThread = function(sprite, base) {
       var thread = {
+        sprite: sprite,
         base: base,
         fn: base,
         calls: [{ args:{}, stack: [{}] }]
       };
       for (var i = 0; i < this.queue.length; i++) {
-        if (this.queue[i] && this.queue[i].base === base) {
+        var q = this.queue[i];
+        if (q && q.sprite === sprite && q.base === base) {
           this.queue[i] = thread;
           if (S === this && THREAD === i) {
             throw STOP_THREAD;
@@ -3153,7 +3151,7 @@ P.runtime = (function() {
       }
       if (threads) {
         for (var i = 0; i < threads.length; i++) {
-          sprite.startThread(threads[i]);
+          this.startThread(sprite, threads[i]);
         }
         return threads;
       }
@@ -3161,13 +3159,13 @@ P.runtime = (function() {
     };
 
     P.Stage.prototype.trigger = function(event, arg) {
-      var result = this.triggerFor(this, event, arg);
-      for (var i = 0; i < this.children.length; i++) {
+      var result = [];
+      for (var i = this.children.length; i--;) {
         if (this.children[i].isSprite) {
           result = result.concat(this.triggerFor(this.children[i], event, arg));
         }
       }
-      return result;
+      return result.concat(this.triggerFor(this, event, arg));
     };
 
     P.Stage.prototype.triggerGreenFlag = function() {
@@ -3204,40 +3202,9 @@ P.runtime = (function() {
           this.children.splice(i, 1);
           i -= 1;
         } else if (c.isSprite) {
-          c.queue = [];
           c.resetFilters();
           if (c.saying) c.say('');
         }
-      }
-    };
-
-    P.Stage.prototype.runFor = function(sprite) {
-      S = sprite;
-      var queue = sprite.queue;
-      TERMINATE = false;
-      for (THREAD = 0; THREAD < queue.length; THREAD++) {
-        if (queue[THREAD]) {
-          var fn = queue[THREAD].fn;
-          BASE = queue[THREAD].base;
-          CALLS = queue[THREAD].calls;
-          C = CALLS.pop();
-          STACK = C.stack;
-          R = STACK.pop();
-          queue[THREAD] = undefined;
-          try {
-            fn();
-          } catch (e) {
-            if (e !== STOP_THREAD) throw e;
-            queue[THREAD] = undefined;
-            continue;
-          }
-          STACK.push(R);
-          CALLS.push(C);
-          if (TERMINATE) return;
-        }
-      }
-      for (var i = queue.length; i--;) {
-        if (!queue[i]) queue.splice(i, 1);
       }
     };
 
@@ -3251,13 +3218,31 @@ P.runtime = (function() {
         VISUAL = false;
         var start = Date.now();
         do {
-          var children = this.children.slice(0);
-          for (var i = 0; i < children.length; i++) {
-            if (children[i].isSprite) {
-              this.runFor(children[i]);
+          var queue = this.queue;
+          for (THREAD = 0; THREAD < queue.length; THREAD++) {
+            if (queue[THREAD]) {
+              S = queue[THREAD].sprite;
+              var fn = queue[THREAD].fn;
+              BASE = queue[THREAD].base;
+              CALLS = queue[THREAD].calls;
+              C = CALLS.pop();
+              STACK = C.stack;
+              R = STACK.pop();
+              queue[THREAD] = undefined;
+              try {
+                fn();
+              } catch (e) {
+                if (e !== STOP_THREAD) throw e;
+                queue[THREAD] = undefined;
+                continue;
+              }
+              STACK.push(R);
+              CALLS.push(C);
             }
           }
-          this.runFor(this);
+          for (var i = queue.length; i--;) {
+            if (!queue[i]) queue.splice(i, 1);
+          }
         } while ((self.isTurbo || !VISUAL) && Date.now() - start < 1000 / this.framerate);
         this.draw();
         S = null;
