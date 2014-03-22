@@ -3051,7 +3051,7 @@ P.runtime = (function() {
     var procedure = S.procedures[spec];
     if (procedure) {
       var args = {};
-      for (var i = 0; i < values.length; i++) {
+      for (var i = values.length; i--;) {
         args[procedure.inputs[i]] = values[i];
       }
       STACK.push(R);
