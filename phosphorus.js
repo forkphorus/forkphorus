@@ -578,8 +578,6 @@ var P = (function() {
         min = -Infinity;
         max = Infinity;
         break;
-        max = Infinity;
-        break;
       case 'color':
         value = value % 200;
         if (value < 0) value += 200;
