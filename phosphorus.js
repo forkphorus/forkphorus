@@ -561,7 +561,7 @@ var P = (function() {
         return;
       }
     }
-    i = (Math.floor(Number(costume) || 0) - 1) % this.costumes.length;
+    i = (Math.floor(Number(costume)) - 1 || 0) % this.costumes.length;
     if (i < 0) i += this.costumes.length;
     this.currentCostumeIndex = i;
     if (this.saying) this.updateBubble();
