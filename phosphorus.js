@@ -390,18 +390,18 @@ var P = (function() {
   };
 
   IO.fixSVG = function(svg, element) {
-    if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
-      element.setAttribute('x', 0);
-      element.setAttribute('y', 0);
-    }
     if (element.nodeName == 'text') {
       var font = IO.FONTS[element.getAttribute('font-family')];
       if (font) {
         element.setAttribute('font-family', font);
       }
-      document.body.appendChild(svg);
-      element.setAttribute('y', +element.getAttribute('y') + element.getBBox().height);
-      document.body.removeChild(svg);
+      element.setAttribute('y', element.getAttribute('font-size'));
+      element.setAttribute('x', 4 - .6 * element.transform.baseVal.consolidate().matrix.a);
+      // svg.style.cssText = '';
+      // console.log(element.textContent, 'data:image/svg+xml;base64,' + btoa(svg.outerHTML));
+    } else if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
+      element.setAttribute('x', 0);
+      element.setAttribute('y', 0);
     }
     [].forEach.call(element.children, IO.fixSVG.bind(null, svg));
   };
@@ -413,7 +413,14 @@ var P = (function() {
         var div = document.createElement('div');
         div.innerHTML = source;
         var svg = div.getElementsByTagName('svg')[0];
+        svg.style.visibility = 'hidden';
+        svg.style.position = 'absolute';
+        svg.style.left = '-10000px';
+        svg.style.top = '-10000px';
+        document.body.appendChild(svg);
         IO.fixSVG(svg, svg);
+        document.body.removeChild(svg);
+        svg.style.visibility = 'visible';
 
         var canvas = document.createElement('canvas');
         var context = canvas.getContext('2d');
