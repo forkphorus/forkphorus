@@ -395,7 +395,8 @@ var P = (function() {
       if (font) {
         element.setAttribute('font-family', font);
       }
-      element.setAttribute('y', element.getAttribute('font-size'));
+      var bb = element.getBBox();
+      element.setAttribute('y', (element.getAttribute('y') - bb.y) * 1.1);
       element.setAttribute('x', 4 - .6 * element.transform.baseVal.consolidate().matrix.a);
       // svg.style.cssText = '';
       // console.log(element.textContent, 'data:image/svg+xml;base64,' + btoa(svg.outerHTML));
