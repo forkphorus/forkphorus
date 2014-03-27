@@ -2790,11 +2790,14 @@ P.runtime = (function() {
     return Number(v) !== 0 && v !== '' && v !== 'false' && v !== false;
   };
 
+  var DIGIT = /\d/;
   var compare = function(x, y) {
-    var nx = Number(x);
-    var ny = Number(y);
-    if (nx === nx && ny === ny) {
-      return nx < ny ? -1 : nx === ny ? 0 : 1;
+    if ((typeof x === 'number' || DIGIT.test(x)) && (typeof y === 'number' || DIGIT.test(y))) {
+      var nx = Number(x);
+      var ny = Number(y);
+      if (nx === nx && ny === ny) {
+        return nx < ny ? -1 : nx === ny ? 0 : 1;
+      }
     }
     var xs = String(x).toLowerCase();
     var ys = String(y).toLowerCase();
