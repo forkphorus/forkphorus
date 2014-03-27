@@ -1935,7 +1935,7 @@ P.compile = (function() {
 
       } else if (e[0] === 'scale') {
 
-        return 'S.scale';
+        return '(S.scale * 100)';
 
       // } else if (e[0] === 'volume') { /* Sound */
 
