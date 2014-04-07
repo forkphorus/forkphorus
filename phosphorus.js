@@ -2635,11 +2635,13 @@ P.compile = (function() {
 
       } else if (block[0] === 'deleteClone') {
 
-        source += 'var i = self.children.indexOf(S);\n';
-        source += 'if (i > -1) self.children.splice(i, 1);\n';
-        source += 'S.queue = [];\n';
-        source += 'TERMINATE = true;\n';
-        source += 'return;\n';
+        source += 'if (S.isClone) {\n';
+        source += '  var i = self.children.indexOf(S);\n';
+        source += '  if (i > -1) self.children.splice(i, 1);\n';
+        source += '  S.queue = [];\n';
+        source += '  TERMINATE = true;\n';
+        source += '  return;\n';
+        source += '}\n';
 
       } else if (block[0] === 'doAsk') { /* Sensing */
 
