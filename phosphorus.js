@@ -2479,7 +2479,7 @@ P.compile = (function() {
 
         if (warp) {
 
-          source += 'while (R.count > 0) {\n';
+          source += 'while (R.count >= 0.5) {\n';
           source += '  R.count -= 1;\n';
           seq(block[2]);
           source += '}\n';
@@ -2490,7 +2490,7 @@ P.compile = (function() {
 
           var id = label();
 
-          source += 'if (R.count > 0) {\n';
+          source += 'if (R.count >= 0.5) {\n';
           source += '  R.count -= 1;\n';
           seq(block[2]);
           queue(id);
