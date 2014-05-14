@@ -390,6 +390,7 @@ var P = (function() {
   };
 
   IO.fixSVG = function(svg, element) {
+    if (element.nodeType !== 1) return;
     if (element.nodeName == 'text') {
       var font = IO.FONTS[element.getAttribute('font-family')];
       if (font) {
@@ -404,7 +405,7 @@ var P = (function() {
       element.setAttribute('x', 0);
       element.setAttribute('y', 0);
     }
-    [].forEach.call(element.children, IO.fixSVG.bind(null, svg));
+    [].forEach.call(element.childNodes, IO.fixSVG.bind(null, svg));
   };
 
   IO.loadMD5 = function(md5, id, callback) {
@@ -420,14 +421,14 @@ var P = (function() {
         svg.style.top = '-10000px';
         document.body.appendChild(svg);
         IO.fixSVG(svg, svg);
-        document.body.removeChild(svg);
+        div.appendChild(svg);
         svg.style.visibility = 'visible';
 
         var canvas = document.createElement('canvas');
         var context = canvas.getContext('2d');
         var image = new Image;
         callback(image);
-        canvg(canvas, svg.outerHTML, {
+        canvg(canvas, div.innerHTML, {
           ignoreMouse: true,
           ignoreAnimation: true,
           ignoreClear: true,
