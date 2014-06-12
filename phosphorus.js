@@ -224,7 +224,7 @@ var P = (function() {
       request.load(image);
     };
     image.onerror = function() {
-      request.error(new Error('Failed to load image'));
+      request.error(new Error('Failed to load image: ' + url));
     };
     if (callback) request.onLoad(callback.bind(self));
     return request;
