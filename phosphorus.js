@@ -762,7 +762,7 @@ var P = (function() {
 
     this.promptTitle = document.createElement('div');
     this.prompter.appendChild(this.promptTitle);
-    this.promptTitle.textContent = 'What\'s your name? aesfnaseu fihaosiefhoi uaesfhiouas ehfiha eofsh oiaesfoi seaof ho iaefshoi ufaeshiou afeshio aseof ';
+    this.promptTitle.textContent = '';
     this.promptTitle.style.cursor = 'default';
     this.promptTitle.style.font = 'bold 13em sans-serif';
     this.promptTitle.style.margin = '0 '+(-25/13)+'em '+(5/13)+'em 0';
