@@ -172,8 +172,6 @@ var P = (function() {
   IO.PROJECT_URL = 'http://projects.scratch.mit.edu/internalapi/project/';
   IO.ASSET_URL = 'http://cdn.scratch.mit.edu/internalapi/asset/';
 
-  IO.PROXY_URL = 'proxy.php?u=';
-
   IO.FONTS = {
     'Donegal': 'Donegal One',
     'Gloria': 'Gloria Hallelujah',
@@ -196,7 +194,7 @@ var P = (function() {
   IO.load = function(url, callback, self) {
     var request = new Request;
     var xhr = new XMLHttpRequest;
-    xhr.open('GET', IO.PROXY_URL + encodeURIComponent(url), true);
+    xhr.open('GET', url, true);
     xhr.onprogress = function(e) {
       request.progress(e.loaded, e.total, e.lengthComputable);
     };
@@ -220,6 +218,7 @@ var P = (function() {
     var request = new Request;
     var image = new Image;
     image.src = url;
+    image.crossOrigin = 'anonymous';
     image.onload = function() {
       request.load(image);
     };
@@ -455,7 +454,7 @@ var P = (function() {
         IO.projectRequest.add(request);
       } else {
         IO.projectRequest.add(
-          IO.loadImage(IO.PROXY_URL + encodeURIComponent(IO.ASSET_URL + md5 + '/get/'), function(result) {
+          IO.loadImage(IO.ASSET_URL + md5 + '/get/', function(result) {
             callback(result);
           }));
       }
