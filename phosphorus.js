@@ -428,7 +428,7 @@ var P = (function() {
         var context = canvas.getContext('2d');
         var image = new Image;
         callback(image);
-        canvg(canvas, div.innerHTML, {
+        canvg(canvas, div.innerHTML.trim(), {
           ignoreMouse: true,
           ignoreAnimation: true,
           ignoreClear: true,
