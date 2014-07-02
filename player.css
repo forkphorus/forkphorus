@@ -1,0 +1,121 @@
+.progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 0;
+  background: #cde;
+  -webkit-transition: .3s;
+  -moz-transition: .3s;
+  -o-transition: .3s;
+  transition: .3s;
+}
+.light-content .progress-bar {
+  background: #468;
+}
+.progress-bar.error {
+  background: #ecc;
+}
+.light-content .progress-bar.error {
+  background: #844;
+}
+.controls {
+  position: relative;
+  height: 32px;
+}
+.controls span,
+.project-link {
+  width: 32px;
+  height: 32px;
+  float: right;
+  cursor: pointer;
+  text-align: center;
+  opacity: .4;
+  background-image: url(icons.svg);
+  text-decoration: none;
+}
+.controls .flag {
+  background-position: 0 0;
+}
+.controls .stop {
+  background-position: -96px 0;
+}
+.controls .pause {
+  background-position: -32px 0;
+}
+.controls .play {
+  background-position: -64px 0;
+}
+.controls .full-screen {
+  float: left;
+  background-position: -128px 0;
+}
+.controls span:active,
+.project-link:active {
+  opacity: 1 !important;
+}
+.controls .turbo {
+  float: right;
+  display: none;
+  cursor: default;
+  color: rgba(0, 0, 0, .4);
+  font: 500 12px/32px Helvetica Neue, Helvetica, Arial, sans-serif;
+  padding: 0 8px;
+}
+.player {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .4);
+  width: 480px;
+  height: 360px;
+  position: relative;
+  -webkit-transform-origin: 0 0;
+  -moz-transform-origin: 0 0;
+  -ms-transform-origin: 0 0;
+  -o-transform-origin: 0 0;
+  transform-origin: 0 0;
+}
+.light-content .player {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .4);
+}
+
+.error {
+  color: rgba(128, 0, 0, .6);
+  font: 500 12px Helvetica Neue, Helvetica, Arial, sans-serif;
+  padding: 8px;
+  display: none;
+}
+.error a {
+  color: rgba(128, 0, 0, .8);
+}
+
+.fs {
+  background: #000;
+  width: 100%;
+  height: 100%;
+}
+.fs body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+.fs .title,
+.fs section {
+  display: none;
+}
+.fs .controls span,
+.light-content .controls span {
+  background-position-y: -32px;
+  opacity: .6;
+}
+.light-content .controls .full-screen {
+  background-position-y: -64px;
+}
+.fs .light-content .controls .full-screen {
+  background-position-y: -32px;
+}
+.fs .controls .turbo,
+.light-content .controls .turbo {
+  color: rgba(255, 255, 255, .6);
+}
+.fs .player {
+  box-shadow: none;
+}

@@ -2,8 +2,8 @@
 <meta charset=utf-8>
 <meta name=viewport content="width=device-width, initial-scale=1.0">
 <title>phosphorus</title>
+<link rel=stylesheet href=player.css>
 <link rel=stylesheet href=index.css>
-<script src=fonts.js></script>
 <div class=controls>
   <span class=stop></span>
   <span class=pause></span>
@@ -31,10 +31,22 @@
     <label for=package-full-screen>Full screen</label>
   </p>
 </section>
+<section class=package>
+  <h1>Embed this project</h1>
+  <p>Include the phosphorus player in your web site.</p>
+  <p>
+    <input readonly id=embed-code>
+    <input type=checkbox id=embed-auto-start checked>
+    <label for=embed-auto-start>Start automatically</label>
+    <input type=checkbox id=embed-light-content>
+    <label for=embed-light-content>Use light buttons</label>
+  </p>
+</section>
 <section>
   <h1>Report a problem</h1>
   <p>Phosphorus is still in development. <a id=bug-link target=_blank href=https://github.com/nathan/phosphorus/issues/new>Click here</a> to report a problem with this project.</p>
 </section>
+<script src=fonts.js></script>
 <script src=lib/jszip/jszip.js></script>
 <script src=lib/jszip/jszip-deflate.js></script>
 <script src=lib/jszip/jszip-inflate.js></script>
@@ -43,194 +55,33 @@
 <script src=//canvg.googlecode.com/svn/trunk/StackBlur.js></script>
 <script src=//canvg.googlecode.com/svn/trunk/canvg.js></script>
 <script src=phosphorus.js></script>
+<script src=player.js></script>
 <script>
 
 (function() {
   'use strict';
 
-  var stage;
-  var isFullScreen = false;
-
   var prefix = 'http://scratch.mit.edu/projects/';
   var defaultId = '17088932';
 
-  var projectId = location.hash ? location.hash.substr(1) : defaultId;
-  var projectTitle;
-  var projectURL;
-
-  if (projectId === 'zip') projectId = '';
+  var initialId = location.hash ? location.hash.substr(1) : defaultId;
+  if (initialId === 'zip') initialId = '';
 
   var urlInput = document.querySelector('.url');
-  urlInput.value = prefix + projectId;
+  urlInput.value = prefix + initialId;
 
   var progressBar = document.querySelector('.progress-bar');
   var player = document.querySelector('.player');
   var projectLink = document.querySelector('.project-link');
   var bugLink = document.querySelector('#bug-link');
 
-  var controls = document.querySelector('.controls');
-  var flag = document.querySelector('.flag');
-  var turbo = document.querySelector('.turbo');
-  var pause = document.querySelector('.pause');
-  var stop = document.querySelector('.stop');
-  var fullScreen = document.querySelector('.full-screen');
-
   var packageLink = document.querySelector('#package-link');
   var packageTurbo = document.querySelector('#package-turbo');
   var packageFullScreen = document.querySelector('#package-full-screen');
 
-  var error = document.querySelector('.error');
-  var errorBugLink = document.querySelector('#error-bug-link');
-
-  var flagTouchTimeout;
-  function flagTouchStart() {
-    flagTouchTimeout = setTimeout(function() {
-      turboClick();
-      flagTouchTimeout = true;
-    }, 500);
-  }
-  function turboClick() {
-    stage.isTurbo = !stage.isTurbo;
-    flag.style.textDecoration = stage.isTurbo ? 'underline' : 'none';
-    flag.title = stage.isTurbo ? 'Turbo mode enabled. Shift+click to disable.' : 'Shift+click to enable turbo mode.';
-    turbo.style.display = stage.isTurbo ? 'block' : 'none';
-  }
-  function flagClick(e) {
-    if (flagTouchTimeout === true) return;
-    if (flagTouchTimeout) {
-      clearTimeout(flagTouchTimeout);
-    }
-    if (e.shiftKey) {
-      turboClick();
-    } else {
-      stage.start();
-      pause.className = 'pause';
-      stage.stopAll();
-      stage.triggerGreenFlag();
-    }
-    stage.focus();
-    e.preventDefault();
-  }
-
-  function pauseClick(e) {
-    if (stage.isRunning) {
-      stage.pause();
-      pause.className = 'play';
-    } else {
-      stage.start();
-      pause.className = 'pause';
-    }
-    stage.focus();
-    e.preventDefault();
-  }
-
-  function stopClick(e) {
-    stage.start();
-    pause.className = 'pause';
-    stage.stopAll();
-    stage.focus();
-    e.preventDefault();
-  }
-
-  function fullScreenClick(e) {
-    document.documentElement.classList.toggle('fs');
-    isFullScreen = !isFullScreen;
-    if (!e || !e.shiftKey) {
-      if (isFullScreen) {
-        var el = document.documentElement;
-        if (el.requestFullScreenWithKeys) {
-          el.requestFullScreenWithKeys();
-        } else if (el.webkitRequestFullScreen) {
-          el.webkitRequestFullScreen(Element.ALLOW_KEYBOARD_INPUT);
-        }
-      } else {
-        if (document.exitFullscreen) {
-          document.exitFullscreen();
-        } else if (document.mozCancelFullScreen) {
-          document.mozCancelFullScreen();
-        } else if (document.webkitCancelFullScreen) {
-          document.webkitCancelFullScreen();
-        }
-      }
-    }
-    if (!isFullScreen) {
-      document.body.style.width =
-      document.body.style.height =
-      document.body.style.marginLeft =
-      document.body.style.marginTop = '';
-    }
-    updateFullScreen();
-    if (!stage.isRunning) {
-      stage.draw();
-    }
-    stage.focus();
-    if (e) e.preventDefault();
-  }
-
-  function exitFullScreen(e) {
-    if (isFullScreen && e.keyCode === 27) {
-      fullScreenClick(e);
-    }
-  }
-
-  function updateFullScreen() {
-    if (!stage) return;
-    if (isFullScreen) {
-      window.scrollTo(0, 0);
-      var padding = 8;
-      var w = window.innerWidth - padding * 2;
-      var h = window.innerHeight - padding - controls.offsetHeight;
-      w = Math.min(w, h / .75);
-      h = w * .75 + controls.offsetHeight;
-      document.body.style.width = w + 'px';
-      document.body.style.height = h + 'px';
-      document.body.style.marginLeft = (window.innerWidth - w) / 2 + 'px';
-      document.body.style.marginTop = (window.innerHeight - h - padding) / 2 + 'px';
-      stage.setZoom(w / 480);
-    } else {
-      stage.setZoom(1);
-    }
-  }
-
-  function preventDefault(e) {
-    e.preventDefault();
-  }
-
-  window.addEventListener('resize', updateFullScreen);
-  packageTurbo.addEventListener('change', updatePackageLink);
-  packageFullScreen.addEventListener('change', updatePackageLink);
-
-  if (P.hasTouchEvents) {
-    flag.addEventListener('touchstart', flagTouchStart);
-    flag.addEventListener('touchend', flagClick);
-    pause.addEventListener('touchend', pauseClick);
-    stop.addEventListener('touchend', stopClick);
-    fullScreen.addEventListener('touchend', fullScreenClick);
-
-    flag.addEventListener('touchstart', preventDefault);
-    pause.addEventListener('touchstart', preventDefault);
-    stop.addEventListener('touchstart', preventDefault);
-    fullScreen.addEventListener('touchstart', preventDefault);
-
-    document.addEventListener('touchmove', function(e) {
-      if (isFullScreen) e.preventDefault();
-    });
-  } else {
-    flag.addEventListener('click', flagClick);
-    pause.addEventListener('click', pauseClick);
-    stop.addEventListener('click', stopClick);
-    fullScreen.addEventListener('click', fullScreenClick);
-  }
-
-  document.addEventListener("fullscreenchange", function () {
-    if (isFullScreen !== document.fullscreen) fullScreenClick();
-  });
-  document.addEventListener("mozfullscreenchange", function () {
-    if (isFullScreen !== document.mozFullScreen) fullScreenClick();
-  });
-  document.addEventListener("webkitfullscreenchange", function () {
-    if (isFullScreen !== document.webkitIsFullScreen) fullScreenClick();
-  });
+  var embedCode = document.querySelector('#embed-code');
+  var embedAutoStart = document.querySelector('#embed-auto-start');
+  var embedLightContent = document.querySelector('#embed-light-content');
 
   var timeout;
   urlInput.addEventListener('input', function() {
@@ -238,16 +89,15 @@
     var se = urlInput.selectionEnd;
     var url = urlInput.value;
     var id = url.match(/\d+/g) || [''];
-    while (id.length > 1 && id.indexOf(projectId) > -1) {
-      id.splice(id.indexOf(projectId), 1);
+    while (id.length > 1 && id.indexOf(P.player.projectId) > -1) {
+      id.splice(id.indexOf(P.player.projectId), 1);
     }
     id = id[0];
     urlInput.value = url = prefix + id;
     urlInput.selectionStart = urlInput.selectionEnd = Math.max(prefix.length, ss);
     clearTimeout(timeout);
-    if (projectId !== id) {
+    if (P.player.projectId !== id) {
       timeout = setTimeout(function() {
-        projectId = id;
         location.hash = '#' + id;
       }, 300);
     }
@@ -257,96 +107,55 @@
     var id = location.hash.substr(1);
     if (id !== 'zip') {
       if (+id !== +id) id = '';
-      projectId = id;
       urlInput.value = prefix + id;
     }
     load(id);
   });
 
   function load(id) {
-    projectURL = '';
-    if (!id || id === 'zip') {
-      projectLink.href = 'about:blank';
-    }
-    updateBugLink();
-    updatePackageLink();
+    if (id === 'zip') id = '';
 
-    if (id === 'zip') return;
-
-    if (stage) {
-      stage.pause();
-    }
-    player.innerHTML = '';
-    turbo.style.display = 'none';
-    error.style.display = 'none';
-    pause.className = 'pause';
-    progressBar.style.display = 'none';
-
-    if (!id) return;
-    projectLink.href = projectURL = prefix + projectId + '/';
-    projectTitle = '';
-
-    showProgress(P.IO.loadScratchr2Project(id));
-
-    P.IO.loadScratchr2ProjectTitle(id, function(title) {
-      projectTitle = title;
-      document.title = title + ' \xb7 phosphorus';
+    document.title = 'phosphorus';
+    P.player.load(id, function(stage) {
+      stage.triggerGreenFlag();
+    }, function(title) {
+      document.title = title ? title + ' \xb7 phosphorus' : 'phosphorus';
       updateBugLink();
     });
-  }
 
-  function showError(e) {
-    error.style.display = 'block';
-    errorBugLink.href = 'https://github.com/nathan/phosphorus/issues/new?title=' + encodeURIComponent(projectTitle || projectURL) + '&body=' + encodeURIComponent('\n\n\n' + projectURL + '\nhttp://phosphorus.herokuapp.com/#' + projectId + (e.stack ? '\n\n```\n' + e.stack + '\n```' : ''));
-    console.error(e.stack);
+    projectLink.href = P.player.projectURL;
+    updateBugLink();
+    updatePackageLink();
+    updateEmbedCode();
   }
 
   function updateBugLink() {
-    bugLink.href = projectId ? 'https://github.com/nathan/phosphorus/issues/new?title=' + encodeURIComponent(projectTitle || projectURL) + '&body=' + encodeURIComponent('\n\n\n' + projectURL + '\nhttp://phosphorus.herokuapp.com/#' + projectId) : 'https://github.com/nathan/phosphorus/issues/new';
+    bugLink.href = P.player.projectId ? 'https://github.com/nathan/phosphorus/issues/new?title=' + encodeURIComponent(P.player.projectTitle || P.player.projectURL) + '&body=' + encodeURIComponent('\n\n\n' + P.player.projectURL + '\nhttp://phosphorus.herokuapp.com/#' + P.player.projectId) : 'https://github.com/nathan/phosphorus/issues/new';
   }
 
   function updatePackageLink() {
-    packageLink.href = '/app.html?id=' + projectId + '&turbo=' + packageTurbo.checked + '&full-screen=' + packageFullScreen.checked;
+    packageLink.href = P.player.projectId ? '/app.html?id=' + P.player.projectId + '&turbo=' + packageTurbo.checked + '&full-screen=' + packageFullScreen.checked : 'about:blank';
   }
 
-  function showProgress(request) {
-    progressBar.style.display = 'none';
+  packageTurbo.addEventListener('change', updatePackageLink);
+  packageFullScreen.addEventListener('change', updatePackageLink);
+
+  function updateEmbedCode() {
+    embedCode.value = P.player.projectId ? '<script src=' + location.protocol + '//' + location.host + '/embed.js?id=' + P.player.projectId + '&auto-start=' + embedAutoStart.checked + '&light-content=' + embedLightContent.checked + '></' + 'script>' : '';
+  }
+
+  function selectEmbedCode() {
     setTimeout(function() {
-      progressBar.style.width = '10%';
-      progressBar.className = 'progress-bar';
-      progressBar.style.opacity = 1;
-      progressBar.style.display = 'block';
+      embedCode.select();
     });
-    request.onload = function(s) {
-      progressBar.style.width = '100%';
-      setTimeout(function() {
-        progressBar.style.opacity = 0;
-        setTimeout(function() {
-          progressBar.style.display = 'none';
-        }, 300);
-      }, 100);
-
-      window.stage = stage = s;
-      stage.start();
-      stage.triggerGreenFlag();
-
-      stage.root.addEventListener('keydown', exitFullScreen);
-      stage.handleError = showError;
-
-      player.appendChild(stage.root);
-      stage.focus();
-    };
-    request.onerror = function(e) {
-      progressBar.style.width = '100%';
-      progressBar.className = 'progress-bar error';
-      console.error(e.stack);
-    };
-    request.onprogress = function(e) {
-      progressBar.style.width = (10 + e.loaded / e.total * 90) + '%';
-    };
   }
 
-  load(projectId);
+  embedCode.addEventListener('focus', selectEmbedCode);
+  embedCode.addEventListener('click', selectEmbedCode);
+  embedAutoStart.addEventListener('change', updateEmbedCode);
+  embedLightContent.addEventListener('change', updateEmbedCode);
+
+  load(initialId);
 
   function cancel(e) {
     e.preventDefault();
@@ -369,10 +178,9 @@
         request = P.IO.loadJSONFile(f);
       }
       if (request) {
-        showProgress(request);
+        P.player.showProgress(request);
       }
     }
-
   });
 
 }());
