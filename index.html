@@ -39,7 +39,9 @@
     <input type=checkbox id=embed-auto-start checked>
     <label for=embed-auto-start>Start automatically</label>
     <input type=checkbox id=embed-light-content>
-    <label for=embed-light-content>Use light buttons</label>
+    <label for=embed-light-content>Light controls</label>
+    <input type=checkbox id=embed-hide-controls>
+    <label for=embed-hide-controls>Hide UI</label>
   </p>
 </section>
 <section>
@@ -82,6 +84,7 @@
   var embedCode = document.querySelector('#embed-code');
   var embedAutoStart = document.querySelector('#embed-auto-start');
   var embedLightContent = document.querySelector('#embed-light-content');
+  var embedHideControls = document.querySelector('#embed-hide-controls');
 
   var timeout;
   urlInput.addEventListener('input', function() {
@@ -141,7 +144,10 @@
   packageFullScreen.addEventListener('change', updatePackageLink);
 
   function updateEmbedCode() {
-    embedCode.value = P.player.projectId ? '<script src=https://' + location.host + '/embed.js?id=' + P.player.projectId + '&auto-start=' + embedAutoStart.checked + '&light-content=' + embedLightContent.checked + '></' + 'script>' : '';
+    embedCode.value = P.player.projectId ? '<script src=https://' + location.host + '/embed.js?id=' + P.player.projectId + (embedHideControls.checked ? '&ui=false' : '&auto-start=' + embedAutoStart.checked + '&light-content=' + embedLightContent.checked) + '></' + 'script>' : '';
+    embedAutoStart.disabled =
+    embedLightContent.disabled = embedHideControls.checked;
+    if (embedHideControls.checked) embedAutoStart.checked = true;
   }
 
   function selectEmbedCode() {
@@ -152,6 +158,7 @@
 
   embedCode.addEventListener('focus', selectEmbedCode);
   embedCode.addEventListener('click', selectEmbedCode);
+  embedHideControls.addEventListener('change', updateEmbedCode);
   embedAutoStart.addEventListener('change', updateEmbedCode);
   embedLightContent.addEventListener('change', updateEmbedCode);
 

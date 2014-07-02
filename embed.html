@@ -30,6 +30,7 @@
   var projectId = 17088932;
   var autoStart = false;
   var lightContent = false;
+  var hasUI = true;
 
   var params = location.search.substr(1).split('&');
   params.forEach(function(p) {
@@ -45,15 +46,19 @@
         case 'light-content':
           lightContent = parts[1] !== 'false';
           break;
+        case 'ui':
+          hasUI = parts[1] !== 'false';
+          break;
       }
     }
   });
 
-  if (lightContent) document.body.className = 'light-content';
+  if (lightContent) document.body.className += ' light-content';
+  if (!hasUI) document.body.className += ' hide-ui';
 
   document.title = 'phosphorus';
   P.player.load(projectId, function(stage) {
-    if (autoStart) stage.triggerGreenFlag();
+    if (autoStart || !hasUI) stage.triggerGreenFlag();
   }, function(title) {
     document.title = title ? title + ' \xb7 phosphorus' : 'phosphorus';
   });
