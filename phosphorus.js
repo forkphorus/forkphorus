@@ -2105,7 +2105,9 @@ P.compile = (function() {
         source += 'console.log(' + val(block[0]) + ');\n';
       }
 
-      if (['forward:', 'turnRight:', 'turnLeft:', 'heading:', 'pointTowards:', 'gotoX:y:', 'gotoSpriteOrMouse:', 'changeXposBy:', 'xpos:', 'changeYposBy:', 'ypos:', 'bounceOffEdge', 'setRotationStyle', 'lookLike:', 'nextCostume', 'showBackground:', 'startScene', 'nextBackground', 'nextScene', 'startSceneAndWait', 'say:duration:elapsed:from:', 'say:', 'think:duration:elapsed:from:', 'think:', 'changeGraphicEffect:by:', 'setGraphicEffect:to:', 'filterReset', 'changeSizeBy:', 'setSizeTo:', 'show', 'hide', 'comeToFront', 'goBackByLayers:', 'putPenDown', 'stampCostume', 'showVariable:', 'hideVariable:', 'glideSecs:toX:y:elapsed:from:', 'createCloneOf', 'deleteClone', 'doAsk'].indexOf(block[0]) > -1) {
+      if (['forward:', 'turnRight:', 'turnLeft:', 'heading:', 'pointTowards:', 'gotoX:y:', 'gotoSpriteOrMouse:', 'changeXposBy:', 'xpos:', 'changeYposBy:', 'ypos:', 'bounceOffEdge', 'setRotationStyle', 'lookLike:', 'nextCostume', 'say:duration:elapsed:from:', 'say:', 'think:duration:elapsed:from:', 'think:', 'changeGraphicEffect:by:', 'setGraphicEffect:to:', 'filterReset', 'changeSizeBy:', 'setSizeTo:', 'comeToFront', 'goBackByLayers:', 'glideSecs:toX:y:elapsed:from:'].indexOf(block[0]) > -1) {
+        source += 'if (S.visible) VISUAL = true;\n';
+      } else if (['showBackground:', 'startScene', 'nextBackground', 'nextScene', 'startSceneAndWait', 'show', 'hide', 'putPenDown', 'stampCostume', 'showVariable:', 'hideVariable:', 'createCloneOf', 'deleteClone', 'doAsk'].indexOf(block[0]) > -1) {
         source += 'VISUAL = true;\n';
       }
 
