@@ -141,7 +141,7 @@
   packageFullScreen.addEventListener('change', updatePackageLink);
 
   function updateEmbedCode() {
-    embedCode.value = P.player.projectId ? '<script src=' + location.protocol + '//' + location.host + '/embed.js?id=' + P.player.projectId + '&auto-start=' + embedAutoStart.checked + '&light-content=' + embedLightContent.checked + '></' + 'script>' : '';
+    embedCode.value = P.player.projectId ? '<script src=https://' + location.host + '/embed.js?id=' + P.player.projectId + '&auto-start=' + embedAutoStart.checked + '&light-content=' + embedLightContent.checked + '></' + 'script>' : '';
   }
 
   function selectEmbedCode() {
