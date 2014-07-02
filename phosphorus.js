@@ -193,7 +193,7 @@ var P = (function() {
     return (1, eval)('(' + json + ')');
   };
 
-  IO.load = function(url, callback, self) {
+  IO.load = function(url, callback, self, type) {
     var request = new Request;
     var xhr = new XMLHttpRequest;
     xhr.open('GET', IO.PROXY_URL + encodeURIComponent(url), true);
@@ -202,7 +202,7 @@ var P = (function() {
     };
     xhr.onload = function() {
       if (xhr.status === 200) {
-        request.load(xhr.responseText);
+        request.load(xhr.response);
       } else {
         request.error(new Error('HTTP ' + xhr.status + ': ' + xhr.statusText));
       }
@@ -210,6 +210,7 @@ var P = (function() {
     xhr.onerror = function() {
       request.error(new Error('XHR Error'));
     };
+    xhr.responseType = type;
     setTimeout(xhr.send.bind(xhr));
 
     if (callback) request.onLoad(callback.bind(self));
@@ -235,9 +236,25 @@ var P = (function() {
     IO.init(request);
 
     request.defer = true;
-    request.add(IO.load(IO.PROJECT_URL + id + '/get/?' + Math.random().toString().slice(2)).onLoad(function(contents) {
+    var url = IO.PROJECT_URL + id + '/get/?' + Math.random().toString().slice(2);
+    request.add(IO.load(url).onLoad(function(contents) {
       try {
         var json = IO.parseJSONish(contents);
+      } catch (e) {
+        request.add(IO.load(url, null, null, 'arraybuffer').onLoad(function(ab) {
+          var request2 = new Request;
+          request.add(request2);
+          request.add(IO.loadSB2Project(ab, function(stage) {
+            request.getResult = function() {
+              return stage;
+            };
+            request2.load();
+          }));
+          request.defer = false;
+        }));
+        return;
+      }
+      try {
         IO.loadProject(json);
         if (callback) request.onLoad(callback.bind(self));
         if (request.isDone) {
