@@ -1,3 +1,1 @@
-# phosphorus
-
-Compiles Scratch projects into JavaScript and runs them. https://phosphorus.herokuapp.com
+# [phosphorus.herokuapp.com](https://phosphorus.herokuapp.com)
