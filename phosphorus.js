@@ -797,7 +797,7 @@ var P = (function() {
     this.promptButton.style.right = '4em';
     this.promptButton.style.bottom = '4em';
     this.promptButton.style.background = 'url(icons.svg) -165em -37em';
-    this.promptButton.style.backgroundSize = '320em 64em';
+    this.promptButton.style.backgroundSize = '320em 96em';
 
     this.prompt.addEventListener('keydown', function(e) {
       if (e.keyCode === 13) {
@@ -1440,7 +1440,7 @@ var P = (function() {
       this.bubblePointer.style.height = ''+(21/14)+'em';
       this.bubblePointer.style.width = ''+(44/14)+'em';
       this.bubblePointer.style.background = 'url(icons.svg) '+(-195/14)+'em '+(-4/14)+'em';
-      this.bubblePointer.style.backgroundSize = ''+(320/14)+'em '+(64/14)+'em';
+      this.bubblePointer.style.backgroundSize = ''+(320/14)+'em '+(96/14)+'em';
       this.stage.root.appendChild(this.bubble);
     }
     this.bubblePointer.style.backgroundPositionX = ((thinking ? -259 : -195)/14)+'em';
