@@ -1875,7 +1875,7 @@ P.compile = (function() {
 
       } else if (e[0] === 'readVariable') {
 
-        return 'S.varRefs[' + val(e[1]) + '].value';
+        return 'getVar(' + val(e[1]) + ').value';
 
       } else if (e[0] === 'contentsOfList:') {
 
@@ -2375,11 +2375,11 @@ P.compile = (function() {
 
       } else if (block[0] === 'setVar:to:') { /* Data */
 
-        source += 'if (S.varRefs[' + val(block[1]) + ']) S.varRefs[' + val(block[1]) + '].value = ' + val(block[2]) + ';\n';
+        source += 'getVar(' + val(block[1]) + ').value = ' + val(block[2]) + ';\n';
 
       } else if (block[0] === 'changeVar:by:') {
 
-        source += 'if (S.varRefs[' + val(block[1]) + ']) S.varRefs[' + val(block[1]) + '].value = (Number(S.varRefs[' + val(block[1]) + '].value) || 0) + ' + num(block[2]) + ';\n';
+        source += 'var v = getVar(' + val(block[1]) + '); v.value = (Number(v.value) || 0) + ' + num(block[2]) + ';\n';
 
       } else if (block[0] === 'append:toList:') {
 
@@ -2883,6 +2883,12 @@ P.runtime = (function() {
         return new Date().getSeconds();
     }
     return 0;
+  };
+
+  var getVar = function(name) {
+    var v = S.varRefs[name];
+    if (!v) S.variables.push(S.varRefs[name] = v = {name: name, value: 0, isPeristent: false});
+    return v;
   };
 
   var listIndex = function(list, index, length) {
