@@ -175,6 +175,7 @@ var P = (function() {
   IO.PROXY_URL = 'proxy.php?u=';
 
   IO.FONTS = {
+    '': 'Helvetica',
     'Donegal': 'Donegal One',
     'Gloria': 'Gloria Hallelujah',
     'Marker': 'Permanent Marker',
@@ -409,9 +410,12 @@ var P = (function() {
   IO.fixSVG = function(svg, element) {
     if (element.nodeType !== 1) return;
     if (element.nodeName == 'text') {
-      var font = IO.FONTS[element.getAttribute('font-family')];
+      var font = IO.FONTS[element.getAttribute('font-family') || ''];
       if (font) {
         element.setAttribute('font-family', font);
+      }
+      if (!element.getAttribute('font-size')) {
+        element.setAttribute('font-size', 18);
       }
       var bb = element.getBBox();
       element.setAttribute('y', (element.getAttribute('y') - bb.y) * 1.1);
