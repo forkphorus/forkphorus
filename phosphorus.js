@@ -2033,7 +2033,7 @@ P.compile = (function() {
 
       } else if (e[0] === 'timer') {
 
-        return '(self.now() - self.timerStart) / 1000';
+        return '((self.now() - self.timerStart) / 1000)';
 
       } else if (e[0] === 'distanceTo:') {
 
