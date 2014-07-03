@@ -34,6 +34,7 @@ P.player = (function() {
     turbo.style.display = stage.isTurbo ? 'block' : 'none';
   }
   function flagClick(e) {
+    if (!stage) return;
     if (flagTouchTimeout === true) return;
     if (flagTouchTimeout) {
       clearTimeout(flagTouchTimeout);
@@ -51,6 +52,7 @@ P.player = (function() {
   }
 
   function pauseClick(e) {
+    if (!stage) return;
     if (stage.isRunning) {
       stage.pause();
       pause.className = 'play';
@@ -63,6 +65,7 @@ P.player = (function() {
   }
 
   function stopClick(e) {
+    if (!stage) return;
     stage.start();
     pause.className = 'pause';
     stage.stopAll();
@@ -71,6 +74,8 @@ P.player = (function() {
   }
 
   function fullScreenClick(e) {
+    if (e) e.preventDefault();
+    if (!stage) return;
     document.documentElement.classList.toggle('fs');
     isFullScreen = !isFullScreen;
     if (!e || !e.shiftKey) {
@@ -102,7 +107,6 @@ P.player = (function() {
       stage.draw();
     }
     stage.focus();
-    if (e) e.preventDefault();
   }
 
   function exitFullScreen(e) {
