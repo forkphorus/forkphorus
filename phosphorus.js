@@ -2955,13 +2955,13 @@ P.runtime = (function() {
 
   var listContains = function(name, value) {
     var list = S.listRefs[name];
-    return list ? list.contents.indexOf(value) > -1 : 0;
+    return list ? list.contents.indexOf(String(value)) > -1 : 0;
   };
 
   var appendToList = function(name, value) {
     var list = S.listRefs[name];
     if (list) {
-      list.contents.push(value);
+      list.contents.push(String(value));
     }
   };
 
@@ -2984,9 +2984,9 @@ P.runtime = (function() {
     if (list) {
       var i = listIndex(list, index, list.contents.length + 1);
       if (i === list.contents.length) {
-        list.contents.push(value);
+        list.contents.push(String(value));
       } else if (i > -1) {
-        list.contents.splice(i, 0, value);
+        list.contents.splice(i, 0, String(value));
       }
     }
   };
@@ -2996,7 +2996,7 @@ P.runtime = (function() {
     if (list) {
       var i = listIndex(list, index, list.contents.length);
       if (i > -1) {
-        list.contents[i] = value;
+        list.contents[i] = String(value);
       }
     }
   };
