@@ -2,7 +2,6 @@ P.player = (function() {
   'use strict';
 
   var stage;
-  var loadCallback = null;
   var frameId = null;
   var isFullScreen = false;
 
@@ -183,8 +182,7 @@ P.player = (function() {
     progressBar.style.display = 'none';
 
     if (id) {
-      if (cb) loadCallback = cb;
-      showProgress(P.IO.loadScratchr2Project(id));
+      showProgress(P.IO.loadScratchr2Project(id), cb);
       P.IO.loadScratchr2ProjectTitle(id, function(title) {
         if (titleCallback) titleCallback(P.player.projectTitle = title);
       });
@@ -201,7 +199,7 @@ P.player = (function() {
     console.error(e.stack);
   }
 
-  function showProgress(request) {
+  function showProgress(request, loadCallback) {
     progressBar.style.display = 'none';
     setTimeout(function() {
       progressBar.style.width = '10%';

@@ -185,7 +185,9 @@
         request = P.IO.loadJSONFile(f);
       }
       if (request) {
-        P.player.showProgress(request);
+        P.player.showProgress(request, function(stage) {
+          stage.triggerGreenFlag();
+        });
       }
     }
   });
