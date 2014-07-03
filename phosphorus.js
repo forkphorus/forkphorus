@@ -624,7 +624,10 @@ var P = (function() {
     if (value < min) value = min;
     if (value > max) value = max;
     this.filters[name] = value;
-    this.updateFilters();
+  };
+
+  Base.prototype.changeFilter = function(name, value) {
+    this.setFilter(name, this.filters[name] + value);
   };
 
   Base.prototype.resetFilters = function() {
@@ -2271,11 +2274,11 @@ P.compile = (function() {
 
       } else if (block[0] === 'changeGraphicEffect:by:') {
 
-        source += 'S.filters[' + val(block[1]) + '] += ' + num(block[2]) + ';\n';
+        source += 'S.changeFilter(' + val(block[1]) + ', ' + num(block[2]) + ');\n';
 
       } else if (block[0] === 'setGraphicEffect:to:') {
 
-        source += 'S.filters[' + val(block[1]) + '] = ' + num(block[2]) + ';\n';
+        source += 'S.setFilter(' + val(block[1]) + ', ' + num(block[2]) + ');\n';
 
       } else if (block[0] === 'filterReset') {
 
