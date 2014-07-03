@@ -437,6 +437,13 @@ var P = (function() {
         svg.style.left = '-10000px';
         svg.style.top = '-10000px';
         document.body.appendChild(svg);
+        var viewBox = svg.viewBox.baseVal;
+        if (viewBox.x || viewBox.y) {
+          viewBox.x = 0;
+          viewBox.y = 0;
+          viewBox.width = 0;
+          viewBox.height = 0;
+        }
         IO.fixSVG(svg, svg);
         div.appendChild(svg);
         svg.style.visibility = 'visible';
