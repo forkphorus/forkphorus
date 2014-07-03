@@ -2997,9 +2997,11 @@ P.runtime = (function() {
   var mathFunc = function(f, x) {
     switch (f) {
       case 'abs':
+        return Math.abs(x);
       case 'floor':
+        return Math.floor(x);
       case 'sqrt':
-        return Math[f](x);
+        return Math.sqrt(x);
       case 'ceiling':
         return Math.ceil(x);
       case 'cos':
