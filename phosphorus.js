@@ -1050,6 +1050,7 @@ var P = (function() {
     this.bubble = null;
     this.saying = false;
     this.thinking = false;
+    this.sayId = 0;
   };
   inherits(Sprite, Base);
 
@@ -1447,7 +1448,7 @@ var P = (function() {
       this.saying = false;
       if (!this.bubble) return;
       this.bubble.style.display = 'none';
-      return;
+      return ++this.sayId;
     }
     this.saying = true;
     this.thinking = thinking;
@@ -1478,6 +1479,7 @@ var P = (function() {
     this.bubble.style.display = 'block';
     this.bubbleText.nodeValue = text;
     this.updateBubble();
+    return ++this.sayId;
   };
 
   Sprite.prototype.updateBubble = function() {
@@ -2236,9 +2238,8 @@ P.compile = (function() {
 
       } else if (block[0] === 'say:duration:elapsed:from:') {
 
-        source += 'S.say(' + val(block[1]) + ', false);\n';
-
         source += 'save();\n';
+        source += 'R.id = S.say(' + val(block[1]) + ', false);\n';
         source += 'R.start = self.now();\n';
         source += 'R.duration = ' + num(block[2]) + ';\n';
 
@@ -2247,6 +2248,9 @@ P.compile = (function() {
         queue(id);
         source += '}\n';
 
+        source += 'if (S.sayId === R.id) {\n';
+        source += '  S.say("");\n';
+        source += '}\n';
         source += 'restore();\n';
 
       } else if (block[0] === 'say:') {
@@ -2255,9 +2259,8 @@ P.compile = (function() {
 
       } else if (block[0] === 'think:duration:elapsed:from:') {
 
-        source += 'S.say(' + val(block[1]) + ', true);\n';
-
         source += 'save();\n';
+        source += 'R.id = S.say(' + val(block[1]) + ', true);\n';
         source += 'R.start = self.now();\n';
         source += 'R.duration = ' + num(block[2]) + ';\n';
 
@@ -2266,6 +2269,9 @@ P.compile = (function() {
         queue(id);
         source += '}\n';
 
+        source += 'if (S.sayId === R.id) {\n';
+        source += '  S.say("");\n';
+        source += '}\n';
         source += 'restore();\n';
 
       } else if (block[0] === 'think:') {
