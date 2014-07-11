@@ -449,6 +449,7 @@ var P = (function() {
           viewBox.height = 0;
         }
         IO.fixSVG(svg, svg);
+        while (div.firstChild) div.removeChild(div.lastChild);
         div.appendChild(svg);
         svg.style.visibility = 'visible';
 
