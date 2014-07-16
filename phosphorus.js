@@ -1618,6 +1618,39 @@ var P = (function() {
         ref.watcher = this;
       }
     }
+    if (!this.label) {
+      this.label = this.getLabel();
+      if (this.target.isSprite) this.label = this.target.objName + ': ' + this.label;
+    }
+  };
+
+  var WATCHER_LABELS = {
+    'costumeIndex': 'costume #',
+    'xpos': 'x position',
+    'ypos': 'y position',
+    'heading': 'direction',
+    'scale': 'size',
+    'backgroundIndex': 'background #',
+    'sceneName': 'background name',
+    'tempo': 'tempo',
+    'volume': 'volume',
+    'answer': 'answer',
+    'timer': 'timer',
+    'soundLevel': 'loudness',
+    'isLoud': 'loud?',
+    'xScroll': 'x scroll',
+    'yScroll': 'y scroll'
+  };
+
+  Watcher.prototype.getLabel = function() {
+    switch (this.cmd) {
+      case 'getVar:': return this.param;
+      case 'sensor:': return this.param + ' sensor value';
+      case 'sensorPressed': return 'sensor ' + this.param + '?';
+      case 'timeAndDate': return this.param;
+      case 'senseVideoMotion': return 'video ' + this.param;
+    }
+    return WATCHER_LABELS[this.cmd] || '';
   };
 
   Watcher.prototype.draw = function(context) {
