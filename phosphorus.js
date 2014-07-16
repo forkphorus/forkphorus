@@ -959,6 +959,16 @@ var P = (function() {
     }
   };
 
+  Stage.prototype.getObjects = function(name) {
+    var result = [];
+    for (var i = 0; i < this.children.length; i++) {
+      if (this.children[i].objName === name) {
+        result.push(this.children[i]);
+      }
+    }
+    return result;
+  };
+
   Stage.prototype.draw = function() {
     var context = this.context;
 
@@ -1264,40 +1274,42 @@ var P = (function() {
       return bounds.left <= -240 || bounds.right >= 240 || bounds.top >= 180 || bounds.bottom <= -180;
     } else {
       if (!this.visible) return false;
-      var sprite = this.stage.getObject(thing);
-      if (!sprite || !sprite.visible) return false;
-      var sc = sprite.costumes[sprite.currentCostumeIndex];
+      var sprites = this.stage.getObjects(thing);
+      for (var i = sprites.length; i--;) {
+        var sprite = sprites[i];
+        var sc = sprite.costumes[sprite.currentCostumeIndex];
 
-      var mb = this.rotatedBounds();
-      var ob = sprite.rotatedBounds();
+        var mb = this.rotatedBounds();
+        var ob = sprite.rotatedBounds();
 
-      if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
-        return false;
-      }
+        if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
+          continue;
+        }
 
-      var left = Math.max(mb.left, ob.left);
-      var top = Math.min(mb.top, ob.top);
-      var right = Math.min(mb.right, ob.right);
-      var bottom = Math.max(mb.bottom, ob.bottom);
+        var left = Math.max(mb.left, ob.left);
+        var top = Math.min(mb.top, ob.top);
+        var right = Math.min(mb.right, ob.right);
+        var bottom = Math.max(mb.bottom, ob.bottom);
 
-      collisionCanvas.width = right - left;
-      collisionCanvas.height = top - bottom;
+        collisionCanvas.width = right - left;
+        collisionCanvas.height = top - bottom;
 
-      collisionContext.save();
-      collisionContext.translate(-(left + 240), -(180 - top));
+        collisionContext.save();
+        collisionContext.translate(-(left + 240), -(180 - top));
 
-      this.draw(collisionContext);
-      collisionContext.globalCompositeOperation = 'source-in';
-      sprite.draw(collisionContext);
+        this.draw(collisionContext);
+        collisionContext.globalCompositeOperation = 'source-in';
+        sprite.draw(collisionContext);
 
-      collisionContext.restore();
+        collisionContext.restore();
 
-      var data = collisionContext.getImageData(0, 0, right - left, top - bottom).data;
+        var data = collisionContext.getImageData(0, 0, right - left, top - bottom).data;
 
-      var length = (right - left) * (top - bottom) * 4;
-      for (var i = 0; i < length; i += 4) {
-        if (data[i + 3]) {
-          return true;
+        var length = (right - left) * (top - bottom) * 4;
+        for (var j = 0; j < length; j += 4) {
+          if (data[j + 3]) {
+            return true;
+          }
         }
       }
       return false;
