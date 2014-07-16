@@ -457,6 +457,7 @@ var P = (function() {
         var context = canvas.getContext('2d');
         var image = new Image;
         callback(image);
+        // console.log(md5, 'data:image/svg+xml;base64,' + btoa(div.innerHTML.trim()));
         canvg(canvas, div.innerHTML.trim(), {
           ignoreMouse: true,
           ignoreAnimation: true,
