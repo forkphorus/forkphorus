@@ -1277,6 +1277,8 @@ var P = (function() {
       var sprites = this.stage.getObjects(thing);
       for (var i = sprites.length; i--;) {
         var sprite = sprites[i];
+        if (!sprite.visible) continue;
+
         var sc = sprite.costumes[sprite.currentCostumeIndex];
 
         var mb = this.rotatedBounds();
