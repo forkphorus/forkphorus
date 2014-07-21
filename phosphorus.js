@@ -168,7 +168,6 @@ var P = (function() {
 
   var IO = {};
 
-  IO.BASE_URL = 'http://scratch.mit.edu/internalapi/'
   IO.PROJECT_URL = 'http://projects.scratch.mit.edu/internalapi/project/';
   IO.ASSET_URL = 'http://cdn.scratch.mit.edu/internalapi/asset/';
 
