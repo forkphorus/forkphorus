@@ -170,7 +170,7 @@ var P = (function() {
 
   IO.BASE_URL = 'http://scratch.mit.edu/internalapi/'
   IO.PROJECT_URL = 'http://projects.scratch.mit.edu/internalapi/project/';
-  IO.ASSET_URL = 'http://cdn.scratch.mit.edu/internalapi/asset/';
+  IO.ASSET_URL = 'http://scratch.mit.edu/internalapi/asset/';
 
   IO.PROXY_URL = 'proxy.php?u=';
 
