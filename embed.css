@@ -7,7 +7,7 @@ body {
   padding: 0;
 }
 
-.error {
+.internal-error {
   position: absolute;
   left: 1px;
   bottom: 1px;
