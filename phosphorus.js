@@ -408,7 +408,7 @@ var P = (function() {
 
   IO.fixSVG = function(svg, element) {
     if (element.nodeType !== 1) return;
-    if (element.nodeName == 'text') {
+    if (element.nodeName === 'text') {
       var font = element.getAttribute('font-family') || '';
       font = IO.FONTS[font] || font;
       if (font) {
