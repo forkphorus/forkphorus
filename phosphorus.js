@@ -949,8 +949,9 @@ var P = (function() {
 
   Stage.prototype.getObject = function(name) {
     for (var i = 0; i < this.children.length; i++) {
-      if (this.children[i].objName === name) {
-        return this.children[i];
+      var c = this.children[i];
+      if (c.objName === name && !c.isClone) {
+        return c;
       }
     }
     if (name === '_stage_' || name === this.objName) {
