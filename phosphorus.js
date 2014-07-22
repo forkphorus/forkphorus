@@ -409,9 +409,11 @@ var P = (function() {
   IO.fixSVG = function(svg, element) {
     if (element.nodeType !== 1) return;
     if (element.nodeName == 'text') {
-      var font = IO.FONTS[element.getAttribute('font-family') || ''];
+      var font = element.getAttribute('font-family') || '';
+      font = IO.FONTS[font] || font;
       if (font) {
         element.setAttribute('font-family', font);
+        if (font === 'Helvetica') element.style.fontWeight = 'bold';
       }
       if (!element.getAttribute('font-size')) {
         element.setAttribute('font-size', 18);
