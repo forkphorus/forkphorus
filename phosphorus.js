@@ -647,6 +647,7 @@ var P = (function() {
     var stage = this.stage;
     if (question) {
       if (this.isSprite && this.visible) {
+        this.say(question);
         stage.promptTitle.style.display = 'none';
       } else {
         stage.promptTitle.style.display = 'block';
