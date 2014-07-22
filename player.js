@@ -29,7 +29,6 @@ P.player = (function() {
   }
   function turboClick() {
     stage.isTurbo = !stage.isTurbo;
-    flag.style.textDecoration = stage.isTurbo ? 'underline' : 'none';
     flag.title = stage.isTurbo ? 'Turbo mode enabled. Shift+click to disable.' : 'Shift+click to enable turbo mode.';
     turbo.style.display = stage.isTurbo ? 'block' : 'none';
   }
