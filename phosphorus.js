@@ -2688,8 +2688,8 @@ P.compile = (function() {
         source += '    return;\n';
         source += '  case "other scripts in sprite":\n';
         source += '  case "other scripts in stage":\n';
-        source += '    for (var i = THREAD + 1; i < self.queue.length; i++) {\n';
-        source += '      if (self.queue[i] && self.queue[i].sprite === S) {\n';
+        source += '    for (var i = 0; i < self.queue.length; i++) {\n';
+        source += '      if (i !== THREAD && self.queue[i] && self.queue[i].sprite === S) {\n';
         source += '        self.queue[i] = undefined;\n';
         source += '      }\n';
         source += '    }\n';
