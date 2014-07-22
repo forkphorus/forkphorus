@@ -1104,7 +1104,7 @@ var P = (function() {
     for (var i = 0; i < this.lists.length; i++) {
       var l = this.lists[i];
       c.listRefs[l.listName] = c.lists[i] = {
-        contents: l.contents,
+        contents: l.contents.slice(0),
         listName: l.listName
       };
     }
