@@ -599,7 +599,7 @@ var P = (function() {
         return;
       }
     }
-    i = (Math.floor(Number(costume)) - 1 || 0) % this.costumes.length;
+    i = (Math.floor(costume) - 1 || 0) % this.costumes.length;
     if (i < 0) i += this.costumes.length;
     this.currentCostumeIndex = i;
     if (this.saying) this.updateBubble();
@@ -1799,7 +1799,7 @@ var P = (function() {
         context.stroke();
         context.fill();
 
-        var x = (sw - sh) * ((Number(value) || 0) - this.sliderMin) / (this.sliderMax - this.sliderMin);
+        var x = (sw - sh) * ((+value || 0) - this.sliderMin) / (this.sliderMax - this.sliderMin);
         context.strokeStyle = 'rgb(108, 105, 105)';
         context.fillStyle = 'rgb(233, 236, 239)';
         context.beginPath();
@@ -2165,7 +2165,7 @@ P.compile = (function() {
         return e;
       }
       if (typeof e === 'number' || typeof e === 'string') {
-        return Number(e) !== 0 && e !== '' && e !== 'false' && e !== false;
+        return +e !== 0 && e !== '' && e !== 'false' && e !== false;
       }
       var v = boolval(e);
       return v != null ? v : 'bool(' + val(e, false, true) + ')';
@@ -2176,10 +2176,10 @@ P.compile = (function() {
         return e;
       }
       if (typeof e === 'boolean' || typeof e === 'string') {
-        return Number(e) || 0;
+        return +e || 0;
       }
       var v = numval(e);
-      return v != null ? v : '(Number(' + val(e, true) + ') || 0)';
+      return v != null ? v : '(+' + val(e, true) + ' || 0)';
     };
 
     var compile = function(block) {
@@ -2467,7 +2467,7 @@ P.compile = (function() {
 
       } else if (block[0] === 'changeVar:by:') {
 
-        source += 'var v = getVar(' + val(block[1]) + '); v.value = (Number(v.value) || 0) + ' + num(block[2]) + ';\n';
+        source += 'var v = getVar(' + val(block[1]) + '); v.value = (+v.value || 0) + ' + num(block[2]) + ';\n';
 
       } else if (block[0] === 'append:toList:') {
 
@@ -2878,14 +2878,14 @@ P.runtime = (function() {
   var self, S, R, STACK, C, CALLS, BASE, THREAD, TERMINATE, VISUAL, STOP_THREAD = {};
 
   var bool = function(v) {
-    return Number(v) !== 0 && v !== '' && v !== 'false' && v !== false;
+    return +v !== 0 && v !== '' && v !== 'false' && v !== false;
   };
 
   var DIGIT = /\d/;
   var compare = function(x, y) {
     if ((typeof x === 'number' || DIGIT.test(x)) && (typeof y === 'number' || DIGIT.test(y))) {
-      var nx = Number(x);
-      var ny = Number(y);
+      var nx = +x;
+      var ny = +y;
       if (nx === nx && ny === ny) {
         return nx < ny ? -1 : nx === ny ? 0 : 1;
       }
@@ -2904,8 +2904,8 @@ P.runtime = (function() {
   };
 
   var random = function(x, y) {
-    x = Number(x) || 0;
-    y = Number(y) || 0;
+    x = +x || 0;
+    y = +y || 0;
     if (x > y) {
       var tmp = y;
       y = x;
