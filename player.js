@@ -17,7 +17,7 @@ P.player = (function() {
   var stop = document.querySelector('.stop');
   var fullScreen = document.querySelector('.full-screen');
 
-  var error = document.querySelector('.error');
+  var error = document.querySelector('.internal-error');
   var errorBugLink = document.querySelector('#error-bug-link');
 
   var flagTouchTimeout;

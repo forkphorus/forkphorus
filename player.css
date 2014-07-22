@@ -77,13 +77,13 @@
   box-shadow: 0 0 0 1px rgba(255, 255, 255, .4);
 }
 
-.error {
+.internal-error {
   color: rgba(128, 0, 0, .6);
   font: 500 12px Helvetica Neue, Helvetica, Arial, sans-serif;
   padding: 8px;
   display: none;
 }
-.error a {
+.internal-error a {
   color: rgba(128, 0, 0, .8);
 }
 
