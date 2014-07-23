@@ -181,6 +181,14 @@ var P = (function() {
     'Mystery': 'Mystery Quest'
   };
 
+  IO.LINE_HEIGHTS = {
+    Helvetica: 1.13,
+    'Donegal One': 1.25,
+    'Gloria Hallelujah': 1.97,
+    'Permanent Marker': 1.43,
+    'Mystery Quest': 1.37
+  };
+
   IO.init = function(request) {
     IO.projectRequest = request;
     IO.zip = null;
@@ -415,12 +423,27 @@ var P = (function() {
         element.setAttribute('font-family', font);
         if (font === 'Helvetica') element.style.fontWeight = 'bold';
       }
-      if (!element.getAttribute('font-size')) {
-        element.setAttribute('font-size', 18);
+      var size = +element.getAttribute('font-size');
+      if (!size) {
+        element.setAttribute('font-size', size = 18);
       }
       var bb = element.getBBox();
-      element.setAttribute('y', (element.getAttribute('y') - bb.y) * 1.1);
-      element.setAttribute('x', 4 - .6 * element.transform.baseVal.consolidate().matrix.a);
+      var x = 4 - .6 * element.transform.baseVal.consolidate().matrix.a;
+      var y = (element.getAttribute('y') - bb.y) * 1.1;
+      element.setAttribute('x', x);
+      element.setAttribute('y', y);
+      var lines = element.textContent.split('\n');
+      if (lines.length > 1) {
+        element.textContent = lines[0];
+        var lineHeight = IO.LINE_HEIGHTS[font] || 1;
+        for (var i = 1, l = lines.length; i < l; i++) {
+          var tspan = document.createElementNS(null, 'tspan');
+          tspan.textContent = lines[i];
+          tspan.setAttribute('x', x);
+          tspan.setAttribute('y', y + size * i * lineHeight);
+          element.appendChild(tspan);
+        }
+      }
       // svg.style.cssText = '';
       // console.log(element.textContent, 'data:image/svg+xml;base64,' + btoa(svg.outerHTML));
     } else if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
