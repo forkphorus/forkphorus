@@ -2284,32 +2284,27 @@ P.compile = (function() {
                  block[0] === 'startScene') {
 
         source += 'self.setCostume(' + val(block[1]) + ');\n';
-        source += 'sceneChange();\n';
+        source += 'var threads = sceneChange();\n';
+        source += 'if (threads.indexOf(BASE) !== -1) return;\n'
 
       } else if (block[0] === 'nextBackground' ||
                  block[0] === 'nextScene') {
 
         source += 'S.currentCostumeIndex = (S.currentCostumeIndex + 1) % S.costumes.length;\n';
-        source += 'sceneChange();\n';
+        source += 'var threads = sceneChange();\n';
+          source += 'if (threads.indexOf(BASE) !== -1) return;\n'
 
       } else if (block[0] === 'startSceneAndWait') {
 
-        if (warp) {
-
-          warn('Cannot be used at warp speed: ' + block);
-
-        } else {
-
-          source += 'save();\n';
-          source += 'self.setCostume(' + val(block[1]) + ');\n';
-          source += 'R.threads = sceneChange();\n';
-          var id = label();
-          source += 'if (!running(R.threads)) {\n';
-          queue(id);
-          source += '}\n';
-          source += 'restore();\n';
-
-        }
+        source += 'save();\n';
+        source += 'self.setCostume(' + val(block[1]) + ');\n';
+        source += 'R.threads = sceneChange();\n';
+        source += 'if (R.threads.indexOf(BASE) !== -1) return;\n'
+        var id = label();
+        source += 'if (!running(R.threads)) {\n';
+        queue(id);
+        source += '}\n';
+        source += 'restore();\n';
 
       } else if (block[0] === 'say:duration:elapsed:from:') {
 
@@ -2525,11 +2520,12 @@ P.compile = (function() {
 
       } else if (block[0] === 'broadcast:') { /* Control */
 
-        source += 'broadcast(' + val(block[1]) + ');';
+        source += 'var threads = broadcast(' + val(block[1]) + ');\n';
+        source += 'if (threads.indexOf(BASE) !== -1) return;\n';
 
       } else if (block[0] === 'call') {
 
-        source += 'call(' + val(block[1]) + ', ' + (warp ? null : nextLabel()) + ', [';
+        source += 'call(' + val(block[1]) + ', ' + nextLabel() + ', [';
         for (var i = 2; i < block.length; i++) {
           if (i > 2) {
             source += ', ';
@@ -2537,12 +2533,13 @@ P.compile = (function() {
           source += val(block[i]);
         }
         source += ']);\n';
-        if (!warp) delay();
+        delay();
 
       } else if (block[0] === 'doBroadcastAndWait') {
 
         source += 'save();\n';
         source += 'R.threads = broadcast(' + val(block[1]) + ');\n';
+        source += 'if (R.threads.indexOf(BASE) !== -1) return;\n';
         var id = label();
         source += 'if (running(R.threads)) {\n';
         queue(id);
@@ -2557,19 +2554,13 @@ P.compile = (function() {
 
       } else if (block[0] === 'doForeverIf') {
 
-        if (warp) {
-          warn('Cannot be used at warp speed: ' + block);
-        } else {
+        var id = label();
 
-          var id = label();
+        source += 'if (' + bool(block[1]) + ') {\n';
+        seq(block[2]);
+        source += '}\n';
 
-          source += 'if (' + bool(block[1]) + ') {\n';
-          seq(block[2]);
-          source += '}\n';
-
-          queue(id);
-
-        }
+        queue(id);
 
       // } else if (block[0] === 'doForLoop') {
 
@@ -2592,28 +2583,15 @@ P.compile = (function() {
         source += 'save();\n';
         source += 'R.count = ' + num(block[1]) + ';\n';
 
-        if (warp) {
+        var id = label();
 
-          source += 'while (R.count >= 0.5) {\n';
-          source += '  R.count -= 1;\n';
-          seq(block[2]);
-          source += '}\n';
-
-          source += 'restore();\n';
-
-        } else {
-
-          var id = label();
-
-          source += 'if (R.count >= 0.5) {\n';
-          source += '  R.count -= 1;\n';
-          seq(block[2]);
-          queue(id);
-          source += '} else {\n';
-          source += '  restore();\n';
-          source += '}\n';
-
-        }
+        source += 'if (R.count >= 0.5) {\n';
+        source += '  R.count -= 1;\n';
+        seq(block[2]);
+        queue(id);
+        source += '} else {\n';
+        source += '  restore();\n';
+        source += '}\n';
 
       } else if (block[0] === 'doReturn') {
 
@@ -2622,82 +2600,46 @@ P.compile = (function() {
 
       } else if (block[0] === 'doUntil') {
 
-        if (warp) {
-
-          source += 'while (!' + bool(block[1]) + ') {\n';
-          seq(block[2]);
-          source += '}\n';
-
-        } else {
-
-          var id = label();
-          source += 'if (!' + bool(block[1]) + ') {\n';
-          seq(block[2]);
-          queue(id);
-          source += '}\n';
-
-        }
+        var id = label();
+        source += 'if (!' + bool(block[1]) + ') {\n';
+        seq(block[2]);
+        queue(id);
+        source += '}\n';
 
       } else if (block[0] === 'doWhile') {
 
-        if (warp) {
-
-          source += 'while (' + bool(block[1]) + ') {\n';
-          seq(block[2]);
-          source += '}\n';
-
-        } else {
-
-          var id = label();
-          source += 'if (' + bool(block[1]) + ') {\n';
-          seq(block[2]);
-          queue(id);
-          source += '}\n';
-
-        }
+        var id = label();
+        source += 'if (' + bool(block[1]) + ') {\n';
+        seq(block[2]);
+        queue(id);
+        source += '}\n';
 
       } else if (block[0] === 'doWaitUntil') {
 
-        if (warp) {
-
-          warn('Cannot be used at warp speed: ' + block);
-
-        } else {
-
-          var id = label();
-          source += 'if (!' + bool(block[1]) + ') {\n';
-          queue(id);
-          source += '}\n';
-
-        }
+        var id = label();
+        source += 'if (!' + bool(block[1]) + ') {\n';
+        queue(id);
+        source += '}\n';
 
       } else if (block[0] === 'glideSecs:toX:y:elapsed:from:') {
 
-        if (warp) {
+        source += 'save();\n';
+        source += 'R.start = self.now();\n';
+        source += 'R.duration = ' + num(block[1]) + ';\n';
+        source += 'R.baseX = S.scratchX;\n';
+        source += 'R.baseY = S.scratchY;\n';
+        source += 'R.deltaX = ' + num(block[2]) + ' - S.scratchX;\n';
+        source += 'R.deltaY = ' + num(block[3]) + ' - S.scratchY;\n';
 
-          warn('Cannot be used at warp speed: ' + block);
+        var id = label();
+        source += 'var f = (self.now() - R.start) / (R.duration * 1000);\n';
+        source += 'if (f > 1) f = 1;\n';
+        source += 'S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
 
-        } else {
-
-          source += 'save();\n';
-          source += 'R.start = self.now();\n';
-          source += 'R.duration = ' + num(block[1]) + ';\n';
-          source += 'R.baseX = S.scratchX;\n';
-          source += 'R.baseY = S.scratchY;\n';
-          source += 'R.deltaX = ' + num(block[2]) + ' - S.scratchX;\n';
-          source += 'R.deltaY = ' + num(block[3]) + ' - S.scratchY;\n';
-
-          var id = label();
-          source += 'var f = (self.now() - R.start) / (R.duration * 1000);\n';
-          source += 'if (f > 1) f = 1;\n';
-          source += 'S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
-
-          source += 'if (f < 1) {\n';
-          queue(id);
-          source += '}\n';
-          source += 'restore();\n';
-
-        }
+        source += 'if (f < 1) {\n';
+        queue(id);
+        source += '}\n';
+        source += 'restore();\n';
 
       } else if (block[0] === 'stopAll') {
 
@@ -2740,9 +2682,9 @@ P.compile = (function() {
 
       } else if (block[0] === 'warpSpeed') {
 
-        warp += 1;
+        source += 'WARP++;\n';
         seq(block[1]);
-        warp -= 1;
+        source += 'WARP--;\n';
 
       } else if (block[0] === 'createCloneOf') {
 
@@ -2753,8 +2695,11 @@ P.compile = (function() {
         source += 'if (S.isClone) {\n';
         source += '  var i = self.children.indexOf(S);\n';
         source += '  if (i > -1) self.children.splice(i, 1);\n';
-        source += '  S.queue = [];\n';
-        source += '  TERMINATE = true;\n';
+        source += '  for (var i = 0; i < self.queue.length; i++) {\n';
+        source += '    if (self.queue[i] && self.queue[i].sprite === S) {\n';
+        source += '      self.queue[i] = undefined;\n';
+        source += '    }\n';
+        source += '  }\n';
         source += '  return;\n';
         source += '}\n';
 
@@ -2788,11 +2733,6 @@ P.compile = (function() {
     var source = '';
     var startfn = object.fns.length;
     var fns = [0];
-    var warp = 0;
-
-    if (script[0][0] === 'procDef' && script[0][4]) {
-      warp += 1;
-    }
 
     for (var i = 1; i < script.length; i++) {
       compile(script[i]);
@@ -2871,6 +2811,7 @@ P.compile = (function() {
     } else if (script[0][0] === 'procDef') {
       object.procedures[script[0][1]] = {
         inputs: script[0][2],
+        warp: script[0][4],
         fn: f
       };
     } else {
@@ -2901,7 +2842,7 @@ P.compile = (function() {
 P.runtime = (function() {
   'use strict';
 
-  var self, S, R, STACK, C, CALLS, BASE, THREAD, TERMINATE, VISUAL, STOP_THREAD = {};
+  var self, S, R, STACK, C, WARP, CALLS, BASE, THREAD, IMMEDIATE, VISUAL;
 
   var bool = function(v) {
     return +v !== 0 && v !== '' && v !== 'false' && v !== false;
@@ -3193,24 +3134,24 @@ P.runtime = (function() {
       C = {
         fn: S.fns[id],
         args: args,
-        stack: STACK = []
+        stack: STACK = [],
+        warp: procedure.warp
       };
+      if (C.warp) WARP++;
       R = {};
-      procedure.fn();
+      IMMEDIATE = procedure.fn;
     } else {
-      S.fns[id]();
+      IMMEDIATE = S.fns[id];
     }
   };
 
   var endCall = function() {
     if (CALLS.length) {
-      var fn = C.fn;
+      if (C.warp) WARP--;
+      IMMEDIATE = C.fn;
       C = CALLS.pop();
       STACK = C.stack;
       R = STACK.pop();
-      if (fn != null) fn();
-    } else {
-      throw STOP_THREAD;
     }
   };
 
@@ -3230,12 +3171,16 @@ P.runtime = (function() {
   };
 
   var queue = function(id) {
-    self.queue[THREAD] = {
-      sprite: S,
-      base: BASE,
-      fn: S.fns[id],
-      calls: CALLS
-    };
+    if (WARP) {
+      IMMEDIATE = S.fns[id];
+    } else {
+      self.queue[THREAD] = {
+        sprite: S,
+        base: BASE,
+        fn: S.fns[id],
+        calls: CALLS
+      };
+    }
   };
 
   // Internal definition
@@ -3259,9 +3204,6 @@ P.runtime = (function() {
         var q = this.queue[i];
         if (q && q.sprite === sprite && q.base === base) {
           this.queue[i] = thread;
-          if (S === this && THREAD === i) {
-            throw STOP_THREAD;
-          }
           return;
         }
       }
@@ -3287,19 +3229,18 @@ P.runtime = (function() {
         for (var i = 0; i < threads.length; i++) {
           this.startThread(sprite, threads[i]);
         }
-        return threads;
       }
-      return [];
+      return threads || [];
     };
 
     P.Stage.prototype.trigger = function(event, arg) {
-      var result = [];
+      var threads = [];
       for (var i = this.children.length; i--;) {
         if (this.children[i].isSprite) {
-          result = result.concat(this.triggerFor(this.children[i], event, arg));
+          threads = threads.concat(this.triggerFor(this.children[i], event, arg));
         }
       }
-      return result.concat(this.triggerFor(this, event, arg));
+      return threads.concat(this.triggerFor(this, event, arg));
     };
 
     P.Stage.prototype.triggerGreenFlag = function() {
@@ -3356,19 +3297,18 @@ P.runtime = (function() {
           for (THREAD = 0; THREAD < queue.length; THREAD++) {
             if (queue[THREAD]) {
               S = queue[THREAD].sprite;
-              var fn = queue[THREAD].fn;
+              IMMEDIATE = queue[THREAD].fn;
               BASE = queue[THREAD].base;
               CALLS = queue[THREAD].calls;
               C = CALLS.pop();
               STACK = C.stack;
               R = STACK.pop();
               queue[THREAD] = undefined;
-              try {
+              WARP = 0;
+              while (IMMEDIATE) {
+                var fn = IMMEDIATE;
+                IMMEDIATE = null;
                 fn();
-              } catch (e) {
-                if (e !== STOP_THREAD) throw e;
-                queue[THREAD] = undefined;
-                continue;
               }
               STACK.push(R);
               CALLS.push(C);
