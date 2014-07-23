@@ -1409,13 +1409,27 @@ var P = (function() {
   Sprite.prototype.rotatedBounds = function() {
     var costume = this.costumes[this.currentCostumeIndex];
 
+    var s = costume.scale * this.scale;
+    var left = -costume.rotationCenterX * s;
+    var top = costume.rotationCenterY * s;
+    var right = left + costume.image.width * s;
+    var bottom = top - costume.image.height * s;
+
+    if (this.rotationStyle !== 'normal') {
+      if (this.rotationStyle === 'leftRight' && this.direction < 0) {
+        right = -left;
+        left = right - costume.image.width * costume.scale * this.scale;
+      }
+      return {
+        left: this.scratchX + left,
+        right: this.scratchX + right,
+        top: this.scratchY + top,
+        bottom: this.scratchY + bottom
+      };
+    }
+
     var mSin = Math.sin(this.direction * Math.PI / 180);
     var mCos = Math.cos(this.direction * Math.PI / 180);
-
-    var left = -costume.rotationCenterX * costume.scale * this.scale;
-    var top = costume.rotationCenterY * costume.scale * this.scale;
-    var right = left + costume.image.width * costume.scale * this.scale;
-    var bottom = top - costume.image.height * costume.scale * this.scale;
 
     var tlX = mSin * left - mCos * top;
     var tlY = mCos * left + mSin * top;
