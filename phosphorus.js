@@ -175,10 +175,10 @@ var P = (function() {
 
   IO.FONTS = {
     '': 'Helvetica',
-    'Donegal': 'Donegal One',
-    'Gloria': 'Gloria Hallelujah',
-    'Marker': 'Permanent Marker',
-    'Mystery': 'Mystery Quest'
+    Donegal: 'Donegal One',
+    Gloria: 'Gloria Hallelujah',
+    Marker: 'Permanent Marker',
+    Mystery: 'Mystery Quest'
   };
 
   IO.LINE_HEIGHTS = {
