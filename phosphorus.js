@@ -1238,11 +1238,6 @@ var P = (function() {
     context.stroke();
   };
 
-  Sprite.prototype.stamp = function() {
-    var context = this.stage.penContext;
-    this.draw(context);
-  };
-
   Sprite.prototype.draw = function(context) {
     var costume = this.costumes[this.currentCostumeIndex];
 
