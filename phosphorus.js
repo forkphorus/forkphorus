@@ -454,6 +454,10 @@ var P = (function() {
   };
 
   IO.loadMD5 = function(md5, id, callback) {
+    if (IO.zip) {
+      var f = IO.zip.file(id + '.gif') || IO.zip.file(id + '.png') || IO.zip.file(id + '.jpg') || IO.zip.file(id + '.svg');
+      md5 = f.name;
+    }
     var ext = md5.split('.').pop();
     if (ext === 'svg') {
       var cb = function(source) {
@@ -495,20 +499,19 @@ var P = (function() {
         })
       };
       if (IO.zip) {
-        cb(IO.zip.file(id + '.svg').asText());
+        cb(f.asText());
       } else {
         IO.projectRequest.add(IO.load(IO.ASSET_URL + md5 + '/get/', cb));
       }
     } else {
       if (IO.zip) {
         var request = new Request;
-        var f = IO.zip.file(id + '.' + ext).asBinary();
         var image = new Image;
         image.onload = function() {
           if (callback) callback(image);
           request.load();
         };
-        image.src = 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(f);
+        image.src = 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(f.asBinary());
         IO.projectRequest.add(request);
       } else {
         IO.projectRequest.add(
