@@ -3140,7 +3140,7 @@ P.runtime = (function() {
       };
       if (C.warp) WARP++;
       R = {};
-      for (var i = CALLS.length; i--;) {
+      for (var i = CALLS.length, j = 5; i-- && j--;) {
         if (CALLS[i].base === procedure.fn) {
           var recursive = true;
           break;
