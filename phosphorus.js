@@ -1238,7 +1238,7 @@ var P = (function() {
     context.stroke();
   };
 
-  Sprite.prototype.draw = function(context) {
+  Sprite.prototype.draw = function(context, noEffects) {
     var costume = this.costumes[this.currentCostumeIndex];
 
     if (this.isDragging) {
@@ -1258,7 +1258,7 @@ var P = (function() {
       context.scale(costume.scale, costume.scale);
       context.translate(-costume.rotationCenterX, -costume.rotationCenterY);
 
-      context.globalAlpha = Math.max(0, Math.min(1, 1 - this.filters.ghost / 100));
+      if (!noEffects) context.globalAlpha = Math.max(0, Math.min(1, 1 - this.filters.ghost / 100));
 
       context.drawImage(costume.image, 0, 0);
 
@@ -1323,9 +1323,9 @@ var P = (function() {
         collisionContext.save();
         collisionContext.translate(-(left + 240), -(180 - top));
 
-        this.draw(collisionContext);
+        this.draw(collisionContext, true);
         collisionContext.globalCompositeOperation = 'source-in';
-        sprite.draw(collisionContext);
+        sprite.draw(collisionContext, true);
 
         collisionContext.restore();
 
@@ -1352,7 +1352,7 @@ var P = (function() {
 
     this.stage.drawOn(collisionContext, this);
     collisionContext.globalCompositeOperation = 'destination-in';
-    this.draw(collisionContext);
+    this.draw(collisionContext, true);
 
     collisionContext.restore();
 
