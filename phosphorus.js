@@ -3132,6 +3132,7 @@ P.runtime = (function() {
       STACK.push(R);
       CALLS.push(C);
       C = {
+        base: procedure.fn,
         fn: S.fns[id],
         args: args,
         stack: STACK = [],
@@ -3139,7 +3140,22 @@ P.runtime = (function() {
       };
       if (C.warp) WARP++;
       R = {};
-      IMMEDIATE = procedure.fn;
+      for (var i = CALLS.length; i--;) {
+        if (CALLS[i].base === procedure.fn) {
+          var recursive = true;
+          break;
+        }
+      }
+      if (recursive) {
+        self.queue[THREAD] = {
+          sprite: S,
+          base: BASE,
+          fn: procedure.fn,
+          calls: CALLS
+        };
+      } else {
+        IMMEDIATE = procedure.fn;
+      }
     } else {
       IMMEDIATE = S.fns[id];
     }
