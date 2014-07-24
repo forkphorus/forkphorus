@@ -3239,7 +3239,7 @@ P.runtime = (function() {
         sprite: sprite,
         base: base,
         fn: base,
-        calls: [{ args:{}, stack: [{}] }]
+        calls: [{args: {}, stack: [{}]}]
       };
       for (var i = 0; i < this.queue.length; i++) {
         var q = this.queue[i];
