@@ -3138,23 +3138,27 @@ P.runtime = (function() {
         stack: STACK = [],
         warp: procedure.warp
       };
-      if (C.warp) WARP++;
       R = {};
-      for (var i = CALLS.length, j = 5; i-- && j--;) {
-        if (CALLS[i].base === procedure.fn) {
-          var recursive = true;
-          break;
-        }
-      }
-      if (recursive) {
-        self.queue[THREAD] = {
-          sprite: S,
-          base: BASE,
-          fn: procedure.fn,
-          calls: CALLS
-        };
-      } else {
+      if (C.warp) {
+        WARP++;
         IMMEDIATE = procedure.fn;
+      } else {
+        for (var i = CALLS.length, j = 5; i-- && j--;) {
+          if (CALLS[i].base === procedure.fn) {
+            var recursive = true;
+            break;
+          }
+        }
+        if (recursive) {
+          self.queue[THREAD] = {
+            sprite: S,
+            base: BASE,
+            fn: procedure.fn,
+            calls: CALLS
+          };
+        } else {
+          IMMEDIATE = procedure.fn;
+        }
       }
     } else {
       IMMEDIATE = S.fns[id];
