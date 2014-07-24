@@ -1944,6 +1944,11 @@ P.compile = (function() {
       source += 'return;\n';
     };
 
+    var forceQueue = function(id) {
+      source += 'forceQueue(' + id + ');\n';
+      source += 'return;\n';
+    };
+
     var seq = function(script) {
       if (!script) return;
       for (var i = 0; i < script.length; i++) {
@@ -2302,7 +2307,7 @@ P.compile = (function() {
         source += 'if (R.threads.indexOf(BASE) !== -1) return;\n'
         var id = label();
         source += 'if (!running(R.threads)) {\n';
-        queue(id);
+        forceQueue(id);
         source += '}\n';
         source += 'restore();\n';
 
@@ -2315,7 +2320,7 @@ P.compile = (function() {
 
         var id = label();
         source += 'if (self.now() - R.start < R.duration * 1000) {\n';
-        queue(id);
+        forceQueue(id);
         source += '}\n';
 
         source += 'if (S.sayId === R.id) {\n';
@@ -2336,7 +2341,7 @@ P.compile = (function() {
 
         var id = label();
         source += 'if (self.now() - R.start < R.duration * 1000) {\n';
-        queue(id);
+        forceQueue(id);
         source += '}\n';
 
         source += 'if (S.sayId === R.id) {\n';
@@ -2542,7 +2547,7 @@ P.compile = (function() {
         source += 'if (R.threads.indexOf(BASE) !== -1) return;\n';
         var id = label();
         source += 'if (running(R.threads)) {\n';
-        queue(id);
+        forceQueue(id);
         source += '}\n';
         source += 'restore();\n';
 
@@ -2550,7 +2555,7 @@ P.compile = (function() {
 
         var id = label();
         seq(block[1]);
-        queue(id);
+        forceQueue(id);
 
       } else if (block[0] === 'doForeverIf') {
 
@@ -2560,7 +2565,7 @@ P.compile = (function() {
         seq(block[2]);
         source += '}\n';
 
-        queue(id);
+        forceQueue(id);
 
       // } else if (block[0] === 'doForLoop') {
 
@@ -2637,7 +2642,7 @@ P.compile = (function() {
         source += 'S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
 
         source += 'if (f < 1) {\n';
-        queue(id);
+        forceQueue(id);
         source += '}\n';
         source += 'restore();\n';
 
@@ -2675,7 +2680,7 @@ P.compile = (function() {
         var id = label();
         source += 'if (self.now() - R.start < R.duration * 1000 || R.first) {\n';
         source += '  R.first = false;\n';
-        queue(id);
+        forceQueue(id);
         source += '}\n';
 
         source += 'restore();\n';
@@ -2709,14 +2714,14 @@ P.compile = (function() {
 
         var id = label();
         source += 'if (self.promptId < R.id) {\n';
-        queue(id);
+        forceQueue(id);
         source += '}\n';
 
         source += 'S.ask(' + val(block[1]) + ');';
 
         var id = label();
         source += 'if (self.promptId === R.id) {\n';
-        queue(id);
+        forceQueue(id);
         source += '}\n';
 
       } else if (block[0] === 'timerReset') {
@@ -3194,13 +3199,17 @@ P.runtime = (function() {
     if (WARP) {
       IMMEDIATE = S.fns[id];
     } else {
-      self.queue[THREAD] = {
-        sprite: S,
-        base: BASE,
-        fn: S.fns[id],
-        calls: CALLS
-      };
+      forceQueue(id);
     }
+  };
+
+  var forceQueue = function(id) {
+    self.queue[THREAD] = {
+      sprite: S,
+      base: BASE,
+      fn: S.fns[id],
+      calls: CALLS
+    };
   };
 
   // Internal definition
