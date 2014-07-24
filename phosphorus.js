@@ -2297,7 +2297,7 @@ P.compile = (function() {
 
         source += 'S.currentCostumeIndex = (S.currentCostumeIndex + 1) % S.costumes.length;\n';
         source += 'var threads = sceneChange();\n';
-          source += 'if (threads.indexOf(BASE) !== -1) return;\n'
+        source += 'if (threads.indexOf(BASE) !== -1) return;\n'
 
       } else if (block[0] === 'startSceneAndWait') {
 
