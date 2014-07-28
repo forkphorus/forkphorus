@@ -2105,7 +2105,7 @@ P.compile = (function() {
 
         return '("" + ' + val(e[1]) + ').length';
 
-      } else if (e[0] === '%' || e[0] === '\\') {
+      } else if (e[0] === '%' || e[0] === '\\\\') {
 
         return 'mod(' + num(e[1]) + ', ' + num(e[2]) + ')';
 
