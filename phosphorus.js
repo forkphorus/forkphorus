@@ -2287,7 +2287,7 @@ P.compile = (function() {
       } else if (block[0] === 'setRotationStyle') {
 
         source += 'var style = ' + val(block[1]) + ';\n';
-        source += 'S.rotationStyle = style === "left-right" ? "leftRight" : style === "don\'t rotate" ? "none" : "normal";';
+        source += 'S.rotationStyle = style === "left-right" ? "leftRight" : style === "don\'t rotate" ? "none" : "normal";\n';
 
       } else if (block[0] === 'lookLike:') { /* Looks */
 
@@ -2525,11 +2525,11 @@ P.compile = (function() {
 
       } else if (block[0] === 'showVariable:') {
 
-        source += 'showVariable(' + val(block[1]) + ', true);';
+        source += 'showVariable(' + val(block[1]) + ', true);\n';
 
       } else if (block[0] === 'hideVariable:') {
 
-        source += 'showVariable(' + val(block[1]) + ', false);';
+        source += 'showVariable(' + val(block[1]) + ', false);\n';
 
       // } else if (block[0] === 'showList:') {
 
@@ -2729,7 +2729,7 @@ P.compile = (function() {
         forceQueue(id);
         source += '}\n';
 
-        source += 'S.ask(' + val(block[1]) + ');';
+        source += 'S.ask(' + val(block[1]) + ');\n';
 
         var id = label();
         source += 'if (self.promptId === R.id) {\n';
