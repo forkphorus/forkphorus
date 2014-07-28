@@ -1914,25 +1914,6 @@ P.compile = (function() {
     warnings[message] = (warnings[message] || 0) + 1;
   };
 
-  var name = 'a';
-  function varn() {
-    var i, s;
-    s = '';
-    i = name.length - 1;
-    while (i >= 0 && name[i] === 'z') {
-      s = 'a' + s;
-      --i;
-    }
-    if (i === -1) {
-      s = 'a' + s;
-    } else {
-      s = String.fromCharCode(name.charCodeAt(i) + 1) + s;
-    }
-    s = name.substr(0, i) + s;
-    name = s;
-    return '$tmp_' + s;
-  }
-
   var compileListener = function(object, script) {
     if (!script[0] || EVENT_SELECTORS.indexOf(script[0][0]) === -1) return;
 
