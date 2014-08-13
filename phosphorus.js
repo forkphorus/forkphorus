@@ -2546,9 +2546,13 @@ P.compile = (function() {
 
       // } else if (block[0] === 'instrument:') {
 
-      // } else if (block[0] === 'changeVolumeBy:') {
+      } else if (block[0] === 'changeVolumeBy:') {
 
-      // } else if (block[0] === 'setVolumeTo:') {
+        source += 'S.volume = Math.min(1, Math.max(0, S.volume + ' + num(block[1]) + ' / 100));\n';
+
+      } else if (block[0] === 'setVolumeTo:') {
+
+        source += 'S.volume = Math.min(1, Math.max(0, ' + num(block[1]) + ' / 100));\n';
 
       } else if (block[0] === 'changeTempoBy:') {
 
