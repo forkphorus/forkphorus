@@ -1210,6 +1210,7 @@ var P = (function() {
     c.isDraggable = this.isDraggable;
     c.rotationStyle = this.rotationStyle;
     c.scale = this.scale;
+    c.volume = this.volume;
     c.scratchX = this.scratchX;
     c.scratchY = this.scratchY;
     c.visible = this.visible;
