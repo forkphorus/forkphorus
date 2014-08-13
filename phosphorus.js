@@ -1132,6 +1132,7 @@ var P = (function() {
     this.isDragging = false;
     this.rotationStyle = 'normal';
     this.scale = 1;
+    this.volume = 1;
     this.scratchX = 0;
     this.scratchY = 0;
     this.spriteInfo = {};
@@ -1791,7 +1792,7 @@ var P = (function() {
         value = Math.round((this.stage.now() - this.stage.timerStart) / 100) / 10;
         break;
       case 'volume':
-        // TODO
+        value = this.target.volume * 100;
         break;
       case 'xpos':
         value = this.target.scratchX;
@@ -2144,7 +2145,9 @@ P.compile = (function() {
 
         return '(S.scale * 100)';
 
-      // } else if (e[0] === 'volume') { /* Sound */
+      } else if (e[0] === 'volume') { /* Sound */
+
+        return '(S.volume * 100)';
 
       } else if (e[0] === 'tempo') {
 
