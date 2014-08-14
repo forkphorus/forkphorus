@@ -550,6 +550,8 @@ var P = (function() {
     this.costumes = [];
     this.currentCostumeIndex = 0;
     this.objName = '';
+
+    this.soundRefs = Object.create(null);
     this.sounds = [];
 
     this.vars = Object.create(null);
@@ -590,13 +592,19 @@ var P = (function() {
     this.costumes = data.costumes.map(function(d, i) {
       return new Costume(d, i, this);
     }, this);
-    // this.sounds = data.sounds.map(function(d) {
-    //   return new Sound(d);
-    // });
+    this.addSounds(data.sounds);
     this.addLists(data.lists);
     this.addVariables(data.variables);
 
     return this;
+  };
+
+  Base.prototype.addSounds = function(sounds) {
+    for (var i = 0; i < sounds.length; i++) {
+      var s = new Sound(sounds[i]);
+      this.sounds.push(s);
+      this.soundRefs[s.name] = s;
+    }
   };
 
   Base.prototype.addVariables = function(variables) {
@@ -1693,6 +1701,11 @@ var P = (function() {
         this.base.updateBackdrop();
       }.bind(this));
     }
+  };
+
+  var Sound = function(data) {
+    this.name = data.soundName;
+    this.audio = data.$audio;
   };
 
   var Watcher = function(stage) {
