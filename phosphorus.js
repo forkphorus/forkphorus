@@ -237,6 +237,24 @@ var P = (function() {
     return request;
   };
 
+  IO.loadAudio = function(url, callback, self) {
+    var request = new Request;
+    IO.load(url, function(blob) {
+      var audio = new Audio;
+      var url = audio.src = URL.createObjectURL(blob);
+      audio.oncanplaythrough = function() {
+        audio.oncanplaythrough = null;
+        request.load(audio);
+        URL.revokeObjectURL(url);
+      };
+      audio.onerror = function() {
+        request.error(new Error('Failed to load audio: ' + url));
+      };
+    }, null, 'blob');
+    if (callback) request.onLoad(callback.bind(self));
+    return request;
+  };
+
   IO.loadScratchr2Project = function(id, callback, self) {
     var request = new CompositeRequest;
     IO.init(request);
@@ -408,8 +426,10 @@ var P = (function() {
     }
   };
 
-  IO.loadSound = function() {
-    // TODO
+  IO.loadSound = function(data) {
+    IO.loadMD5(data.md5, data.soundID, function(asset) {
+      data.$audio = asset;
+    });
   };
 
   IO.fixSVG = function(svg, element) {
@@ -495,6 +515,15 @@ var P = (function() {
         cb(IO.zip.file(id + '.svg').asText());
       } else {
         IO.projectRequest.add(IO.load(IO.ASSET_URL + md5 + '/get/', cb));
+      }
+    } else if (ext === 'wav') {
+      if (IO.zip) {
+        // TODO
+      } else {
+        IO.projectRequest.add(
+          IO.loadAudio(IO.ASSET_URL + md5 + '/get/', function(result) {
+            callback(result);
+          }));
       }
     } else {
       if (IO.zip) {
