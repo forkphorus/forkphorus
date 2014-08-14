@@ -1709,11 +1709,12 @@ var P = (function() {
     this.audio = data.$audio;
   };
 
-  Sound.prototype.play = function() {
+  Sound.prototype.play = function(volume) {
     if (!this.audio.paused) {
       this.audio.pause();
       this.audio.currentTime = 0;
     }
+    this.audio.volume = volume;
     this.audio.play();
   };
 
@@ -2582,7 +2583,7 @@ P.compile = (function() {
       } else if (block[0] === 'playSound:') { /* Sound */
 
         source += 'var sound = S.soundRefs[' + val(block[1]) + '];\n';
-        source += 'if (sound) sound.play();\n';
+        source += 'if (sound) sound.play(S.volume);\n';
 
       // } else if (block[0] === 'doPlaySoundAndWait') {
 
