@@ -228,7 +228,7 @@ var P = (function() {
   IO.loadImage = function(url, callback, self) {
     var request = new Request;
     var image = new Image;
-    image.src = url;
+    image.src = IO.PROXY_URL + encodeURIComponent(url);
     image.onload = function() {
       request.load(image);
     };
@@ -512,7 +512,7 @@ var P = (function() {
         IO.projectRequest.add(request);
       } else {
         IO.projectRequest.add(
-          IO.loadImage(IO.PROXY_URL + encodeURIComponent(IO.ASSET_URL + md5 + '/get/'), function(result) {
+          IO.loadImage(IO.ASSET_URL + md5 + '/get/', function(result) {
             callback(result);
           }));
       }
