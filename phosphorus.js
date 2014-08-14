@@ -2602,10 +2602,16 @@ P.compile = (function() {
       } else if (block[0] === 'changeVolumeBy:') {
 
         source += 'S.volume = Math.min(1, Math.max(0, S.volume + ' + num(block[1]) + ' / 100));\n';
+        source += 'for (var sounds = S.sounds, i = sounds.length; i--;) {\n';
+        source += '  sounds[i].audio.volume = S.volume;\n';
+        source += '}\n';
 
       } else if (block[0] === 'setVolumeTo:') {
 
         source += 'S.volume = Math.min(1, Math.max(0, ' + num(block[1]) + ' / 100));\n';
+        source += 'for (var sounds = S.sounds, i = sounds.length; i--;) {\n';
+        source += '  sounds[i].audio.volume = S.volume;\n';
+        source += '}\n';
 
       } else if (block[0] === 'changeTempoBy:') {
 
