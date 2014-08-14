@@ -526,8 +526,8 @@ var P = (function() {
     this.objName = '';
     this.sounds = [];
 
-    this.varRefs = {};
-    this.listRefs = {};
+    this.varRefs = Object.create(null);
+    this.listRefs = Object.create(null);
 
     this.procedures = {};
     this.listeners = {
