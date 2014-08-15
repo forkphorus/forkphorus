@@ -480,7 +480,6 @@ var P = (function() {
         svg.style.visibility = 'visible';
 
         var canvas = document.createElement('canvas');
-        var context = canvas.getContext('2d');
         var image = new Image;
         callback(image);
         // svg.style.cssText = '';
