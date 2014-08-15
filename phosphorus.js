@@ -3367,7 +3367,7 @@ P.runtime = (function() {
       }
     };
 
-    P.Stage.prototype.handleError = function() {
+    P.Stage.prototype.handleError = function(e) {
       console.error(e.stack);
     };
 
