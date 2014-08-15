@@ -2302,21 +2302,21 @@ P.compile = (function() {
 
         source += 'self.setCostume(' + val(block[1]) + ');\n';
         source += 'var threads = sceneChange();\n';
-        source += 'if (threads.indexOf(BASE) !== -1) return;\n'
+        source += 'if (threads.indexOf(BASE) !== -1) return;\n';
 
       } else if (block[0] === 'nextBackground' ||
                  block[0] === 'nextScene') {
 
         source += 'S.currentCostumeIndex = (S.currentCostumeIndex + 1) % S.costumes.length;\n';
         source += 'var threads = sceneChange();\n';
-        source += 'if (threads.indexOf(BASE) !== -1) return;\n'
+        source += 'if (threads.indexOf(BASE) !== -1) return;\n';
 
       } else if (block[0] === 'startSceneAndWait') {
 
         source += 'save();\n';
         source += 'self.setCostume(' + val(block[1]) + ');\n';
         source += 'R.threads = sceneChange();\n';
-        source += 'if (R.threads.indexOf(BASE) !== -1) return;\n'
+        source += 'if (R.threads.indexOf(BASE) !== -1) return;\n';
         var id = label();
         source += 'if (!running(R.threads)) {\n';
         forceQueue(id);
@@ -2666,7 +2666,7 @@ P.compile = (function() {
       } else if (block[0] === 'stopScripts') {
 
         source += 'switch (' + val(block[1]) + ') {\n';
-        source += '  case "all":\n'
+        source += '  case "all":\n';
         source += '    self.stopAll();\n';
         source += '    return;\n';
         source += '  case "this script":\n';
@@ -2705,7 +2705,7 @@ P.compile = (function() {
 
       } else if (block[0] === 'createCloneOf') {
 
-        source += 'clone(' + val(block[1]) + ');\n'
+        source += 'clone(' + val(block[1]) + ');\n';
 
       } else if (block[0] === 'deleteClone') {
 
@@ -3076,7 +3076,7 @@ P.runtime = (function() {
       case 'e ^':
         return Math.exp(x);
       case '10 ^':
-        return Math.exp(x * Math.LN10)
+        return Math.exp(x * Math.LN10);
     }
     return 0;
   };
@@ -3260,7 +3260,7 @@ P.runtime = (function() {
       } else if (event === 'whenGreenFlag') {
         threads = sprite.listeners.whenGreenFlag;
       } else if (event === 'whenIReceive') {
-        threads = sprite.listeners.whenIReceive[('' + arg).toLowerCase()]
+        threads = sprite.listeners.whenIReceive[('' + arg).toLowerCase()];
       } else if (event === 'whenKeyPressed') {
         threads = sprite.listeners.whenKeyPressed[arg];
       } else if (event === 'whenSceneStarts') {
