@@ -1303,8 +1303,6 @@ var P = (function() {
         var sprite = sprites[i];
         if (!sprite.visible) continue;
 
-        var sc = sprite.costumes[sprite.currentCostumeIndex];
-
         var mb = this.rotatedBounds();
         var ob = sprite.rotatedBounds();
 
