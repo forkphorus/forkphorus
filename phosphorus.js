@@ -1003,12 +1003,8 @@ var P = (function() {
     this.canvas.width = 480 * this.zoom; // clear
     this.canvas.height = 360 * this.zoom;
 
-    context.save();
     context.scale(this.zoom, this.zoom);
-
     this.drawOn(context);
-
-    context.restore();
 
     if (this.hidePrompt) {
       this.hidePrompt = false;
