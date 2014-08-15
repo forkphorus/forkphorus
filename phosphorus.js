@@ -492,7 +492,7 @@ var P = (function() {
           renderCallback: function() {
             image.src = canvas.toDataURL();
           }
-        })
+        });
       };
       if (IO.zip) {
         cb(IO.zip.file(id + '.svg').asText());
