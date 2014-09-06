@@ -934,12 +934,13 @@ var P = (function() {
   Stage.prototype.clickMouse = function() {
     this.mouseSprite = undefined;
     for (var i = this.children.length; i--;) {
-      if (this.children[i].isSprite && this.children[i].visible && this.children[i].touching('_mouse_')) {
-        if (this.children[i].isDraggable) {
-          this.mouseSprite = this.children[i];
-          this.children[i].mouseDown();
+      var c = this.children[i];
+      if (c.isSprite && c.visible && c.filters.ghost < 100 && c.touching('_mouse_')) {
+        if (c.isDraggable) {
+          this.mouseSprite = c;
+          c.mouseDown();
         } else {
-          this.triggerFor(this.children[i], 'whenClicked');
+          this.triggerFor(c, 'whenClicked');
         }
         return;
       }
