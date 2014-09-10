@@ -3350,7 +3350,7 @@ P.runtime = (function() {
           for (var i = queue.length; i--;) {
             if (!queue[i]) queue.splice(i, 1);
           }
-        } while ((self.isTurbo || !VISUAL) && Date.now() - start < 1000 / this.framerate);
+        } while ((self.isTurbo || !VISUAL) && Date.now() - start < 1000 / this.framerate && queue.length);
         this.draw();
         S = null;
       } catch (e) {
