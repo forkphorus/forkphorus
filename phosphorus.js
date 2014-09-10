@@ -1,8 +1,6 @@
 var P = (function() {
   'use strict';
 
-  var hasOwnProperty = {}.hasOwnProperty;
-
   var hasTouchEvents = 'ontouchstart' in document;
 
   var inherits = function(cla, sup) {
