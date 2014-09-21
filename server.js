@@ -28,6 +28,8 @@ http.createServer(function(req, res) {
       var cache = r.headers['content-type'] === 'application/json' ? 'max-age=0, no-cache' : 'public, max-age=31536000';
       res.writeHead(r.statusCode, {
         'Content-Type': r.headers['content-type'],
+        'Content-Length': r.headers['content-length'],
+        'Content-Encoding': r.headers['content-encoding'],
         'Cache-Control': cache
       });
       r.pipe(res);
