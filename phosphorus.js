@@ -1242,7 +1242,7 @@ var P = (function() {
     if (costume) {
       context.save();
 
-      context.translate(this.scratchX + 240, 180 - this.scratchY);
+      context.translate(this.scratchX + 240 | 0, 180 - this.scratchY | 0);
       if (this.rotationStyle === 'normal') {
         context.rotate((this.direction - 90) * Math.PI / 180);
       } else if (this.rotationStyle === 'leftRight' && this.direction < 0) {
