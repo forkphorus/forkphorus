@@ -523,7 +523,8 @@ var P = (function() {
     this.objName = '';
     this.sounds = [];
 
-    this.varRefs = Object.create(null);
+    this.vars = Object.create(null);
+    this.watchers = Object.create(null);
     this.listRefs = Object.create(null);
 
     this.procedures = {};
@@ -564,7 +565,7 @@ var P = (function() {
     //   return new Sound(d);
     // });
     this.addLists(this.lists = data.lists);
-    this.addVariables(this.variables = data.variables);
+    this.addVariables(data.variables);
 
     return this;
   };
@@ -574,7 +575,7 @@ var P = (function() {
       if (variables[i].isPeristent) {
         throw new Error('Cloud variables are not supported');
       }
-      this.varRefs[variables[i].name] = variables[i];
+      this.vars[variables[i].name] = variables[i].value;
     }
   };
 
@@ -586,6 +587,32 @@ var P = (function() {
       this.listRefs[lists[i].listName] = lists[i];
       // TODO list watchers
     }
+  };
+
+  Base.prototype.showVariable = function(name, visible) {
+    var watcher = this.watchers[name];
+    var stage = this.stage;
+    if (!watcher) {
+      watcher = this.watchers[name] = new P.Watcher(stage);
+      watcher.x = stage.defaultWatcherX;
+      watcher.y = stage.defaultWatcherY;
+      stage.defaultWatcherY += 26;
+      if (stage.defaultWatcherY >= 450) {
+        stage.defaultWatcherY = 10;
+        stage.defaultWatcherX += 150;
+      }
+      watcher.target = this;
+      watcher.label = (watcher.target === stage ? '' : watcher.target.objName + ': ') + name;
+      watcher.param = name;
+      stage.children.push(watcher);
+    } else {
+      var i = stage.children.indexOf(watcher);
+      if (i !== stage.children.length - 1) {
+        stage.children.splice(i, 1);
+        stage.children.push(watcher);
+      }
+    }
+    watcher.visible = visible;
   };
 
   Base.prototype.showNextCostume = function() {
@@ -1060,7 +1087,6 @@ var P = (function() {
 
     Sprite.parent.call(this);
 
-    this.addVariables(stage.variables);
     this.addLists(stage.lists);
 
     this.direction = 90;
@@ -1113,15 +1139,12 @@ var P = (function() {
     c.currentCostumeIndex = this.currentCostumeIndex;
     c.objName = this.objName;
     c.sounds = this.sounds;
-    c.variables = [];
     c.lists = [];
 
-    for (var i = 0; i < this.variables.length; i++) {
-      var v = this.variables[i];
-      c.varRefs[v.name] = c.variables[i] = {
-        name: v.name,
-        value: v.value
-      };
+    var keys = Object.keys(this.vars);
+    for (var i = keys.length; i--;) {
+      var k = keys[i];
+      c.vars[k] = this.vars[k];
     }
 
     for (var i = 0; i < this.lists.length; i++) {
@@ -1642,10 +1665,7 @@ var P = (function() {
   Watcher.prototype.resolve = function() {
     this.target = this.stage.getObject(this.targetName);
     if (this.target && this.cmd === 'getVar:') {
-      var ref = this.target.varRefs[this.param];
-      if (ref) {
-        ref.watcher = this;
-      }
+      this.target.watchers[this.param] = this;
     }
     if (!this.label) {
       this.label = this.getLabel();
@@ -1696,17 +1716,15 @@ var P = (function() {
         value = this.target.currentCostumeIndex + 1;
         break;
       case 'getVar:':
-        var ref = this.target.varRefs[this.param];
-        if (ref) {
-          if (this.mode === 3 && this.stage.mousePressed) {
-            var x = this.stage.mouseX + 240 - this.x - 5;
-            var y = 180 - this.stage.mouseY - this.y - 20;
-            if (x >= 0 && y >= 0 && x <= this.width - 5 - 5 && y <= 9) {
-              ref.value = this.sliderMin + Math.max(0, Math.min(1, (x - 2.5) / (this.width - 5 - 5 - 5))) * (this.sliderMax - this.sliderMin);
-              ref.value = this.isDiscrete ? Math.round(ref.value) : Math.round(ref.value * 100) / 100;
-            }
+        value = this.target.vars[this.param];
+        if (this.mode === 3 && this.stage.mousePressed) {
+          var x = this.stage.mouseX + 240 - this.x - 5;
+          var y = 180 - this.stage.mouseY - this.y - 20;
+          if (x >= 0 && y >= 0 && x <= this.width - 5 - 5 && y <= 9) {
+            value = this.sliderMin + Math.max(0, Math.min(1, (x - 2.5) / (this.width - 5 - 5 - 5))) * (this.sliderMax - this.sliderMin);
+            value = this.isDiscrete ? Math.round(value) : Math.round(value * 100) / 100;
+            this.target.vars[this.param] = value;
           }
-          value = ref.value;
         }
         break;
       case 'heading':
@@ -1957,6 +1975,14 @@ P.compile = (function() {
       }
     };
 
+    var varRef = function(name) {
+      if (typeof name !== 'string') {
+        throw new Error('Dynamic variables are not supported');
+      }
+      var o = object.stage.vars[name] !== undefined ? 'self' : 'S';
+      return o + '.vars[' + val(name) + ']';
+    };
+
     var val = function(e, usenum, usebool) {
       var v;
       if (typeof e === 'number' || typeof e === 'boolean') {
@@ -1989,7 +2015,7 @@ P.compile = (function() {
 
       } else if (e[0] === 'readVariable') {
 
-        return 'getVar(' + val(e[1]) + ').value';
+        return varRef(e[1]);
 
       } else if (e[0] === 'contentsOfList:') {
 
@@ -2490,11 +2516,12 @@ P.compile = (function() {
 
       } else if (block[0] === 'setVar:to:') { /* Data */
 
-        source += 'getVar(' + val(block[1]) + ').value = ' + val(block[2]) + ';\n';
+        source += varRef(block[1]) + ' = ' + val(block[2]) + ';\n';
 
       } else if (block[0] === 'changeVar:by:') {
 
-        source += 'var v = getVar(' + val(block[1]) + '); v.value = (+v.value || 0) + ' + num(block[2]) + ';\n';
+        var ref = varRef(block[1]);
+        source += ref + ' = (+' + ref + ' || 0) + ' + num(block[2]) + ';\n';
 
       } else if (block[0] === 'append:toList:') {
 
@@ -2512,13 +2539,14 @@ P.compile = (function() {
 
         source += 'setLineOfList(' + val(block[2]) + ', ' + val(block[1]) + ', '+ val(block[3]) + ');\n';
 
-      } else if (block[0] === 'showVariable:') {
+      } else if (block[0] === 'showVariable:' || block[0] === 'hideVariable:') {
 
-        source += 'showVariable(' + val(block[1]) + ', true);\n';
-
-      } else if (block[0] === 'hideVariable:') {
-
-        source += 'showVariable(' + val(block[1]) + ', false);\n';
+        var isShow = block[0] === 'showVariable:';
+        if (typeof block[1] !== 'string') {
+          throw new Error('Dynamic variables are not supported');
+        }
+        var o = object.vars[block[1]] !== undefined ? 'S' : 'self';
+        source += o + '.showVariable(' + val(block[1]) + ', ' + isShow + ');\n';
 
       // } else if (block[0] === 'showList:') {
 
@@ -2946,12 +2974,6 @@ P.runtime = (function() {
     return 0;
   };
 
-  var getVar = function(name) {
-    var v = S.varRefs[name];
-    if (!v) S.variables.push(S.varRefs[name] = v = {name: name, value: 0, isPeristent: false});
-    return v;
-  };
-
   var listIndex = function(list, index, length) {
     if (index === 'random' || index === 'any') {
       return Math.floor(Math.random() * length);
@@ -3070,27 +3092,6 @@ P.runtime = (function() {
     return 0;
   };
 
-  var showVariable = function(name, visible) {
-    var ref = S.varRefs[name];
-    if (ref) {
-      if (!ref.watcher) {
-        ref.watcher = new P.Watcher(self);
-        ref.watcher.x = self.defaultWatcherX;
-        ref.watcher.y = self.defaultWatcherY;
-        self.defaultWatcherY += 26;
-        if (self.defaultWatcherY >= 450) {
-          self.defaultWatcherY = 10;
-          self.defaultWatcherX += 150;
-        }
-        ref.watcher.target = S.variables.indexOf(ref) !== -1 ? S : self;
-        ref.watcher.label = (ref.watcher.target === self ? '' : ref.watcher.target.objName + ': ') + name;
-        ref.watcher.param = name;
-        self.children.push(ref.watcher);
-      }
-      ref.watcher.visible = visible;
-    }
-  };
-
   var attribute = function(attr, objName) {
     var o = self.getObject(objName);
     if (!o) return 0;
@@ -3112,9 +3113,9 @@ P.runtime = (function() {
         case 'volume': return 0; // TODO
       }
     }
-    var ref = o.varRefs[attr];
-    if (ref) {
-      return ref.value;
+    var value = o.vars[attr];
+    if (value !== undefined) {
+      return value;
     }
     return 0;
   };
