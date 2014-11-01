@@ -1979,7 +1979,7 @@ P.compile = (function() {
       if (typeof name !== 'string') {
         throw new Error('Dynamic variables are not supported');
       }
-      var o = object.vars[name] !== undefined ? 'S' : 'self';
+      var o = object.stage.vars[name] !== undefined ? 'self' : 'S';
       return o + '.vars[' + val(name) + ']';
     };
 
