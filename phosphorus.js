@@ -1985,13 +1985,15 @@ P.compile = (function() {
 
       } else if (e[0] === 'getParam') { /* Data */
 
-        if (typeof e[1] === 'string') {
-          if (inputs.indexOf(e[1]) === -1) {
-            return '0';
-          }
-          return 'C.args[' + val(e[1]) + ']';
+        if (typeof e[1] !== 'string') {
+          throw new Error('Dynamic parameters are not supported');
         }
-        return '(C && C.args[' + val(e[1]) + '] != null ? C.args[' + val(e[1]) + '] : 0)';
+
+        var i = inputs.indexOf(e[1]);
+        if (i === -1) {
+          return '0';
+        }
+        return 'C.args[' + i + ']';
 
       } else if (e[0] === 'readVariable') {
 
@@ -3141,16 +3143,12 @@ P.runtime = (function() {
   var call = function(spec, id, values) {
     var procedure = S.procedures[spec];
     if (procedure) {
-      var args = {};
-      for (var i = values.length; i--;) {
-        args[procedure.inputs[i]] = values[i];
-      }
       STACK.push(R);
       CALLS.push(C);
       C = {
         base: procedure.fn,
         fn: S.fns[id],
-        args: args,
+        args: values,
         stack: STACK = [],
         warp: procedure.warp
       };
@@ -3239,7 +3237,7 @@ P.runtime = (function() {
         sprite: sprite,
         base: base,
         fn: base,
-        calls: [{args: {}, stack: [{}]}]
+        calls: [{args: [], stack: [{}]}]
       };
       for (var i = 0; i < this.queue.length; i++) {
         var q = this.queue[i];
