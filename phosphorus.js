@@ -591,19 +591,26 @@ var P = (function() {
 
   Base.prototype.showVariable = function(name, visible) {
     var watcher = this.watchers[name];
+    var stage = this.stage;
     if (!watcher) {
-      watcher = this.watchers[name] = new P.Watcher(self);
-      watcher.x = self.defaultWatcherX;
-      watcher.y = self.defaultWatcherY;
-      self.defaultWatcherY += 26;
-      if (self.defaultWatcherY >= 450) {
-        self.defaultWatcherY = 10;
-        self.defaultWatcherX += 150;
+      watcher = this.watchers[name] = new P.Watcher(stage);
+      watcher.x = stage.defaultWatcherX;
+      watcher.y = stage.defaultWatcherY;
+      stage.defaultWatcherY += 26;
+      if (stage.defaultWatcherY >= 450) {
+        stage.defaultWatcherY = 10;
+        stage.defaultWatcherX += 150;
       }
       watcher.target = this;
-      watcher.label = (watcher.target === self ? '' : watcher.target.objName + ': ') + name;
+      watcher.label = (watcher.target === stage ? '' : watcher.target.objName + ': ') + name;
       watcher.param = name;
-      self.children.push(watcher);
+      stage.children.push(watcher);
+    } else {
+      var i = stage.children.indexOf(watcher);
+      if (i !== stage.children.length - 1) {
+        stage.children.splice(i, 1);
+        stage.children.push(watcher);
+      }
     }
     watcher.visible = visible;
   };
