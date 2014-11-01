@@ -2011,7 +2011,15 @@ P.compile = (function() {
 
       } else if (e[0] === 'getParam') { /* Data */
 
-        return '(C && C.args[' + val(e[1]) + '] != null ? C.args[' + val(e[1]) + '] : 0)';
+        if (typeof e[1] !== 'string') {
+          throw new Error('Dynamic parameters are not supported');
+        }
+
+        var i = inputs.indexOf(e[1]);
+        if (i === -1) {
+          return '0';
+        }
+        return 'C.args[' + i + ']';
 
       } else if (e[0] === 'readVariable') {
 
@@ -2768,6 +2776,10 @@ P.compile = (function() {
     var startfn = object.fns.length;
     var fns = [0];
 
+    if (script[0][0] === 'procDef') {
+      var inputs = script[0][2];
+    }
+
     for (var i = 1; i < script.length; i++) {
       compile(script[i]);
     }
@@ -2844,7 +2856,7 @@ P.compile = (function() {
       (object.listeners.whenSceneStarts[key] || (object.listeners.whenSceneStarts[key] = [])).push(f);
     } else if (script[0][0] === 'procDef') {
       object.procedures[script[0][1]] = {
-        inputs: script[0][2],
+        inputs: inputs,
         warp: script[0][4],
         fn: f
       };
@@ -3132,16 +3144,12 @@ P.runtime = (function() {
   var call = function(spec, id, values) {
     var procedure = S.procedures[spec];
     if (procedure) {
-      var args = {};
-      for (var i = values.length; i--;) {
-        args[procedure.inputs[i]] = values[i];
-      }
       STACK.push(R);
       CALLS.push(C);
       C = {
         base: procedure.fn,
         fn: S.fns[id],
-        args: args,
+        args: values,
         stack: STACK = [],
         warp: procedure.warp
       };
@@ -3230,7 +3238,7 @@ P.runtime = (function() {
         sprite: sprite,
         base: base,
         fn: base,
-        calls: [{args: {}, stack: [{}]}]
+        calls: [{args: [], stack: [{}]}]
       };
       for (var i = 0; i < this.queue.length; i++) {
         var q = this.queue[i];
