@@ -559,8 +559,8 @@ var P = (function() {
     this.scripts = data.scripts;
     this.currentCostumeIndex = data.currentCostumeIndex || 0;
     this.costumes = data.costumes.map(function(d) {
-      return new Costume(d);
-    });
+      return new Costume(d, this);
+    }, this);
     // this.sounds = data.sounds.map(function(d) {
     //   return new Sound(d);
     // });
@@ -617,12 +617,14 @@ var P = (function() {
 
   Base.prototype.showNextCostume = function() {
     this.currentCostumeIndex = (this.currentCostumeIndex + 1) % this.costumes.length;
+    if (this.isStage) this.updateBackdrop();
     if (this.saying) this.updateBubble();
   };
 
   Base.prototype.showPreviousCostume = function() {
     var length = this.costumes.length;
     this.currentCostumeIndex = (this.currentCostumeIndex + length - 1) % length;
+    if (this.isStage) this.updateBackdrop();
     if (this.saying) this.updateBubble();
   };
 
@@ -636,6 +638,7 @@ var P = (function() {
       for (var i = 0; i < this.costumes.length; i++) {
         if (this.costumes[i].costumeName === costume) {
           this.currentCostumeIndex = i;
+          if (this.isStage) this.updateBackdrop();
           if (this.saying) this.updateBubble();
           return;
         }
@@ -652,6 +655,7 @@ var P = (function() {
     var i = (Math.floor(costume) - 1 || 0) % this.costumes.length;
     if (i < 0) i += this.costumes.length;
     this.currentCostumeIndex = i;
+    if (this.isStage) this.updateBackdrop();
     if (this.saying) this.updateBubble();
   };
 
@@ -675,6 +679,7 @@ var P = (function() {
     if (value < min) value = min;
     if (value > max) value = max;
     this.filters[name] = value;
+    if (this.isStage) this.updateFilters();
   };
 
   Base.prototype.changeFilter = function(name, value) {
@@ -741,21 +746,29 @@ var P = (function() {
     this.mouseY = 0;
     this.mousePressed = false;
 
-    this.penCanvas = document.createElement('canvas');
-    this.penCanvas.width = 480;
-    this.penCanvas.height = 360;
-    this.penContext = this.penCanvas.getContext('2d');
-
     this.root = document.createElement('div');
     this.root.style.position = 'absolute';
     this.root.style.overflow = 'hidden';
     this.root.style.width = '480px';
     this.root.style.height = '360px';
     this.root.style.fontSize = '1px';
+    this.root.style.background = '#fff';
     this.root.style.WebkitUserSelect =
     this.root.style.MozUserSelect =
     this.root.style.MSUserSelect =
     this.root.style.WebkitUserSelect = 'none';
+
+    this.backdropCanvas = document.createElement('canvas');
+    this.root.appendChild(this.backdropCanvas);
+    this.backdropCanvas.width = 480;
+    this.backdropCanvas.height = 360;
+    this.backdropContext = this.backdropCanvas.getContext('2d');
+
+    this.penCanvas = document.createElement('canvas');
+    this.root.appendChild(this.penCanvas);
+    this.penCanvas.width = 480;
+    this.penCanvas.height = 360;
+    this.penContext = this.penCanvas.getContext('2d');
 
     this.canvas = document.createElement('canvas');
     this.root.appendChild(this.canvas);
@@ -765,11 +778,12 @@ var P = (function() {
 
     this.canvas.tabIndex = 0;
     this.canvas.style.outline = 'none';
+    this.backdropCanvas.style.position =
+    this.penCanvas.style.position =
     this.canvas.style.position = 'absolute';
-    this.canvas.style.background = '#fff';
 
     // hardware acceleration
-    this.canvas.style.WebkitTransform = 'translateZ(0)';
+    this.root.style.WebkitTransform = 'translateZ(0)';
 
     this.canvas.addEventListener('keydown', function(e) {
       if (e.ctrlKey || e.altKey || e.metaKey) {
@@ -935,24 +949,43 @@ var P = (function() {
     this.mouseY = y;
   };
 
+  Stage.prototype.updateBackdrop = function() {
+    this.backdropCanvas.width = this.zoom * 480;
+    this.backdropCanvas.height = this.zoom * 360;
+    var costume = this.costumes[this.currentCostumeIndex];
+    this.backdropContext.save();
+    var s = this.zoom * costume.scale;
+    this.backdropContext.scale(s, s);
+    this.backdropContext.drawImage(costume.image, 0, 0);
+    this.backdropContext.restore();
+  };
+
+  Stage.prototype.updateFilters = function() {
+    this.backdropCanvas.style.opacity = Math.max(0, Math.min(1, 1 - this.filters.ghost / 100));
+  };
+
   Stage.prototype.setZoom = function(zoom) {
     if (this.zoom === zoom) return;
     if (this.maxZoom < zoom) {
       this.maxZoom = zoom;
-      var canvas = this.penCanvas;
-      this.penCanvas = document.createElement('canvas');
+      var canvas = document.createElement('canvas');
+      canvas.width = this.penCanvas.width;
+      canvas.height = this.penCanvas.height;
+      canvas.getContext('2d').drawImage(this.penCanvas, 0, 0);
       this.penCanvas.width = 480 * zoom;
       this.penCanvas.height = 360 * zoom;
-      this.penContext = this.penCanvas.getContext('2d');
       this.penContext.drawImage(canvas, 0, 0, 480 * zoom, 360 * zoom);
       this.penContext.scale(this.maxZoom, this.maxZoom);
     }
     this.root.style.width =
-    this.canvas.style.width = 480 * zoom + 'px';
+    this.canvas.style.width =
+    this.penCanvas.style.width = (480 * zoom | 0) + 'px';
     this.root.style.height =
-    this.canvas.style.height = 360 * zoom + 'px';
+    this.canvas.style.height =
+    this.penCanvas.style.height = (360 * zoom | 0) + 'px';
     this.root.style.fontSize = zoom + 'px';
     this.zoom = zoom;
+    this.updateBackdrop();
   };
 
   Stage.prototype.clickMouse = function() {
@@ -1039,6 +1072,14 @@ var P = (function() {
   };
 
   Stage.prototype.drawOn = function(context, except) {
+    for (var i = 0; i < this.children.length; i++) {
+      if (this.children[i].visible && this.children[i] !== except) {
+        this.children[i].draw(context);
+      }
+    }
+  };
+
+  Stage.prototype.drawAllOn = function(context, except) {
     var costume = this.costumes[this.currentCostumeIndex];
     context.save();
     context.scale(costume.scale, costume.scale);
@@ -1051,11 +1092,7 @@ var P = (function() {
     context.drawImage(this.penCanvas, 0, 0);
     context.restore();
 
-    for (var i = 0; i < this.children.length; i++) {
-      if (this.children[i].visible && this.children[i] !== except) {
-        this.children[i].draw(context);
-      }
-    }
+    this.drawOn(context, except);
   };
 
   Stage.prototype.moveTo = function() {};
@@ -1362,7 +1399,7 @@ var P = (function() {
     collisionContext.save();
     collisionContext.translate(-(240 + b.left), -(180 - b.top));
 
-    this.stage.drawOn(collisionContext, this);
+    this.stage.drawAllOn(collisionContext, this);
     collisionContext.globalCompositeOperation = 'destination-in';
     this.draw(collisionContext, true);
 
@@ -1588,7 +1625,8 @@ var P = (function() {
     }
   };
 
-  var Costume = function(data) {
+  var Costume = function(data, base) {
+    this.base = base;
     this.baseLayerID = data.baseLayerID;
     this.baseLayerMD5 = data.baseLayerMD5;
     this.baseLayer = data.$image;
@@ -1622,6 +1660,9 @@ var P = (function() {
     this.context.drawImage(this.baseLayer, 0, 0);
     if (this.textLayer) {
       this.context.drawImage(this.textLayer, 0, 0);
+    }
+    if (this.base.isStage) {
+      this.base.updateBackdrop();
     }
   };
 
@@ -2318,7 +2359,7 @@ P.compile = (function() {
 
       } else if (block[0] === 'nextCostume') {
 
-        source += 'S.currentCostumeIndex = (S.currentCostumeIndex + 1) % S.costumes.length;\n';
+        source += 'S.showNextCostume();\n';
 
       } else if (block[0] === 'showBackground:' ||
                  block[0] === 'startScene') {
@@ -2330,7 +2371,7 @@ P.compile = (function() {
       } else if (block[0] === 'nextBackground' ||
                  block[0] === 'nextScene') {
 
-        source += 'S.currentCostumeIndex = (S.currentCostumeIndex + 1) % S.costumes.length;\n';
+        source += 'S.showNextCostume();\n';
         source += 'var threads = sceneChange();\n';
         source += 'if (threads.indexOf(BASE) !== -1) return;\n';
 
