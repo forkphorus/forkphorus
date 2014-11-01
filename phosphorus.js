@@ -559,8 +559,8 @@ var P = (function() {
     this.scripts = data.scripts;
     this.currentCostumeIndex = data.currentCostumeIndex || 0;
     this.costumes = data.costumes.map(function(d) {
-      return new Costume(d);
-    });
+      return new Costume(d, this);
+    }, this);
     // this.sounds = data.sounds.map(function(d) {
     //   return new Sound(d);
     // });
@@ -912,7 +912,6 @@ var P = (function() {
 
   Stage.prototype.fromJSON = function(data) {
     Stage.parent.prototype.fromJSON.call(this, data);
-    this.updateBackdrop();
 
     data.children.forEach(function(d) {
       if (d.listName) return;
@@ -954,7 +953,11 @@ var P = (function() {
     this.backdropCanvas.width = this.zoom * 480;
     this.backdropCanvas.height = this.zoom * 360;
     var costume = this.costumes[this.currentCostumeIndex];
-    this.backdropContext.drawImage(costume.image, 0, 0, this.zoom * 480, this.zoom * 360);
+    this.backdropContext.save();
+    var s = this.zoom * costume.scale;
+    this.backdropContext.scale(s, s);
+    this.backdropContext.drawImage(costume.image, 0, 0);
+    this.backdropContext.restore();
   };
 
   Stage.prototype.updateFilters = function() {
@@ -1622,7 +1625,8 @@ var P = (function() {
     }
   };
 
-  var Costume = function(data) {
+  var Costume = function(data, base) {
+    this.base = base;
     this.baseLayerID = data.baseLayerID;
     this.baseLayerMD5 = data.baseLayerMD5;
     this.baseLayer = data.$image;
@@ -1656,6 +1660,9 @@ var P = (function() {
     this.context.drawImage(this.baseLayer, 0, 0);
     if (this.textLayer) {
       this.context.drawImage(this.textLayer, 0, 0);
+    }
+    if (this.base.isStage) {
+      this.base.updateBackdrop();
     }
   };
 
