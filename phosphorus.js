@@ -551,8 +551,6 @@ var P = (function() {
       brightness: 0,
       ghost: 0
     };
-
-    this.initRuntime();
   };
 
   Base.prototype.fromJSON = function(data) {
@@ -865,6 +863,7 @@ var P = (function() {
 
     this.promptButton.addEventListener(hasTouchEvents ? 'touchstart' : 'mousedown', this.submitPrompt.bind(this));
 
+    this.initRuntime();
   };
   inherits(Stage, Base);
 
@@ -1161,8 +1160,6 @@ var P = (function() {
     c.penLightness = this.penLightness;
     c.penSize = this.penSize;
     c.isPenDown = this.isPenDown;
-
-    c.initRuntime();
 
     return c;
   };
@@ -3222,8 +3219,9 @@ P.runtime = (function() {
 
     P.Stage.prototype.framerate = 30;
 
-    P.Base.prototype.initRuntime = function() {
+    P.Stage.prototype.initRuntime = function() {
       this.queue = [];
+      this.onError = this.onError.bind(this);
     };
 
     P.Stage.prototype.startThread = function(sprite, base) {
@@ -3284,6 +3282,7 @@ P.runtime = (function() {
     P.Stage.prototype.start = function() {
       this.isRunning = true;
       if (this.interval) return;
+      addEventListener('error', this.onError);
       this.baseTime = Date.now();
       this.interval = setInterval(this.step.bind(this), 1000 / this.framerate);
     };
@@ -3293,6 +3292,7 @@ P.runtime = (function() {
         this.baseNow = this.now();
         clearInterval(this.interval);
         delete this.interval;
+        removeEventListener('error', this.onError);
       }
       this.isRunning = false;
     };
@@ -3321,42 +3321,42 @@ P.runtime = (function() {
     };
 
     P.Stage.prototype.step = function() {
-      try {
-        self = this;
-        VISUAL = false;
-        var start = Date.now();
-        do {
-          var queue = this.queue;
-          for (THREAD = 0; THREAD < queue.length; THREAD++) {
-            if (queue[THREAD]) {
-              S = queue[THREAD].sprite;
-              IMMEDIATE = queue[THREAD].fn;
-              BASE = queue[THREAD].base;
-              CALLS = queue[THREAD].calls;
-              C = CALLS.pop();
-              STACK = C.stack;
-              R = STACK.pop();
-              queue[THREAD] = undefined;
-              WARP = 0;
-              while (IMMEDIATE) {
-                var fn = IMMEDIATE;
-                IMMEDIATE = null;
-                fn();
-              }
-              STACK.push(R);
-              CALLS.push(C);
+      self = this;
+      VISUAL = false;
+      var start = Date.now();
+      do {
+        var queue = this.queue;
+        for (THREAD = 0; THREAD < queue.length; THREAD++) {
+          if (queue[THREAD]) {
+            S = queue[THREAD].sprite;
+            IMMEDIATE = queue[THREAD].fn;
+            BASE = queue[THREAD].base;
+            CALLS = queue[THREAD].calls;
+            C = CALLS.pop();
+            STACK = C.stack;
+            R = STACK.pop();
+            queue[THREAD] = undefined;
+            WARP = 0;
+            while (IMMEDIATE) {
+              var fn = IMMEDIATE;
+              IMMEDIATE = null;
+              fn();
             }
+            STACK.push(R);
+            CALLS.push(C);
           }
-          for (var i = queue.length; i--;) {
-            if (!queue[i]) queue.splice(i, 1);
-          }
-        } while ((self.isTurbo || !VISUAL) && Date.now() - start < 1000 / this.framerate && queue.length);
-        this.draw();
-        S = null;
-      } catch (e) {
-        this.handleError(e);
-        clearInterval(this.interval);
-      }
+        }
+        for (var i = queue.length; i--;) {
+          if (!queue[i]) queue.splice(i, 1);
+        }
+      } while ((self.isTurbo || !VISUAL) && Date.now() - start < 1000 / this.framerate && queue.length);
+      this.draw();
+      S = null;
+    };
+
+    P.Stage.prototype.onError = function(e) {
+      this.handleError(e.error);
+      clearInterval(this.interval);
     };
 
     P.Stage.prototype.handleError = function(e) {
