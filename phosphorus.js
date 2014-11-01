@@ -558,8 +558,8 @@ var P = (function() {
     this.objName = data.objName;
     this.scripts = data.scripts;
     this.currentCostumeIndex = data.currentCostumeIndex || 0;
-    this.costumes = data.costumes.map(function(d) {
-      return new Costume(d, this);
+    this.costumes = data.costumes.map(function(d, i) {
+      return new Costume(d, i, this);
     }, this);
     // this.sounds = data.sounds.map(function(d) {
     //   return new Sound(d);
@@ -1625,7 +1625,8 @@ var P = (function() {
     }
   };
 
-  var Costume = function(data, base) {
+  var Costume = function(data, index, base) {
+    this.index = index;
     this.base = base;
     this.baseLayerID = data.baseLayerID;
     this.baseLayerMD5 = data.baseLayerMD5;
@@ -1661,7 +1662,7 @@ var P = (function() {
     if (this.textLayer) {
       this.context.drawImage(this.textLayer, 0, 0);
     }
-    if (this.base.isStage && this.base.costumes[this.base.currentCostumeIndex] === this) {
+    if (this.base.isStage && this.index == this.base.currentCostumeIndex) {
       setTimeout(function() {
         this.base.updateBackdrop();
       }.bind(this));
