@@ -1985,6 +1985,12 @@ P.compile = (function() {
 
       } else if (e[0] === 'getParam') { /* Data */
 
+        if (typeof e[1] === 'string') {
+          if (inputs.indexOf(e[1]) === -1) {
+            return '0';
+          }
+          return 'C.args[' + val(e[1]) + ']';
+        }
         return '(C && C.args[' + val(e[1]) + '] != null ? C.args[' + val(e[1]) + '] : 0)';
 
       } else if (e[0] === 'readVariable') {
@@ -2740,6 +2746,10 @@ P.compile = (function() {
     var startfn = object.fns.length;
     var fns = [0];
 
+    if (script[0][0] === 'procDef') {
+      var inputs = script[0][2];
+    }
+
     for (var i = 1; i < script.length; i++) {
       compile(script[i]);
     }
@@ -2816,7 +2826,7 @@ P.compile = (function() {
       (object.listeners.whenSceneStarts[key] || (object.listeners.whenSceneStarts[key] = [])).push(f);
     } else if (script[0][0] === 'procDef') {
       object.procedures[script[0][1]] = {
-        inputs: script[0][2],
+        inputs: inputs,
         warp: script[0][4],
         fn: f
       };
