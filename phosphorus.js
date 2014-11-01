@@ -1661,8 +1661,10 @@ var P = (function() {
     if (this.textLayer) {
       this.context.drawImage(this.textLayer, 0, 0);
     }
-    if (this.base.isStage) {
-      this.base.updateBackdrop();
+    if (this.base.isStage && this.base.costumes[this.base.currentCostumeIndex] === this) {
+      setTimeout(function() {
+        this.base.updateBackdrop();
+      }.bind(this));
     }
   };
 
