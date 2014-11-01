@@ -954,10 +954,7 @@ var P = (function() {
     this.backdropCanvas.width = this.zoom * 480;
     this.backdropCanvas.height = this.zoom * 360;
     var costume = this.costumes[this.currentCostumeIndex];
-    this.backdropContext.save();
-    this.backdropContext.scale(costume.scale, costume.scale);
-    this.backdropContext.drawImage(costume.image, 0, 0);
-    this.backdropContext.restore();
+    this.backdropContext.drawImage(costume.image, 0, 0, this.zoom * 480, this.zoom * 360);
   };
 
   Stage.prototype.updateFilters = function() {
@@ -968,20 +965,24 @@ var P = (function() {
     if (this.zoom === zoom) return;
     if (this.maxZoom < zoom) {
       this.maxZoom = zoom;
-      var canvas = this.penCanvas;
-      this.penCanvas = document.createElement('canvas');
+      var canvas = document.createElement('canvas');
+      canvas.width = this.penCanvas.width;
+      canvas.height = this.penCanvas.height;
+      canvas.getContext('2d').drawImage(this.penCanvas, 0, 0);
       this.penCanvas.width = 480 * zoom;
       this.penCanvas.height = 360 * zoom;
-      this.penContext = this.penCanvas.getContext('2d');
       this.penContext.drawImage(canvas, 0, 0, 480 * zoom, 360 * zoom);
       this.penContext.scale(this.maxZoom, this.maxZoom);
     }
     this.root.style.width =
-    this.canvas.style.width = 480 * zoom + 'px';
+    this.canvas.style.width =
+    this.penCanvas.style.width = (480 * zoom | 0) + 'px';
     this.root.style.height =
-    this.canvas.style.height = 360 * zoom + 'px';
+    this.canvas.style.height =
+    this.penCanvas.style.height = (360 * zoom | 0) + 'px';
     this.root.style.fontSize = zoom + 'px';
     this.zoom = zoom;
+    this.updateBackdrop();
   };
 
   Stage.prototype.clickMouse = function() {
