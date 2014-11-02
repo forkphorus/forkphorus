@@ -3066,7 +3066,7 @@ P.runtime = (function() {
 
   var getLineOfList = function(list, index) {
     var i = listIndex(list, index, list.length);
-    return i > -1 ? list[i] : 0;
+    return i > -1 ? list[i] : '';
   };
 
   var listContains = function(list, value) {
