@@ -525,7 +525,7 @@ var P = (function() {
 
     this.vars = Object.create(null);
     this.watchers = Object.create(null);
-    this.listRefs = Object.create(null);
+    this.lists = Object.create(null);
 
     this.procedures = {};
     this.listeners = {
@@ -564,7 +564,7 @@ var P = (function() {
     // this.sounds = data.sounds.map(function(d) {
     //   return new Sound(d);
     // });
-    this.addLists(this.lists = data.lists);
+    this.addLists(data.lists);
     this.addVariables(data.variables);
 
     return this;
@@ -584,7 +584,7 @@ var P = (function() {
       if (lists[i].isPeristent) {
         throw new Error('Cloud lists are not supported');
       }
-      this.listRefs[lists[i].listName] = lists[i];
+      this.lists[lists[i].listName] = lists[i].contents;
       // TODO list watchers
     }
   };
@@ -1124,8 +1124,6 @@ var P = (function() {
 
     Sprite.parent.call(this);
 
-    this.addLists(stage.lists);
-
     this.direction = 90;
     this.indexInLibrary = -1;
     this.isDraggable = false;
@@ -1176,7 +1174,6 @@ var P = (function() {
     c.currentCostumeIndex = this.currentCostumeIndex;
     c.objName = this.objName;
     c.sounds = this.sounds;
-    c.lists = [];
 
     var keys = Object.keys(this.vars);
     for (var i = keys.length; i--;) {
@@ -1184,12 +1181,10 @@ var P = (function() {
       c.vars[k] = this.vars[k];
     }
 
-    for (var i = 0; i < this.lists.length; i++) {
-      var l = this.lists[i];
-      c.listRefs[l.listName] = c.lists[i] = {
-        contents: l.contents.slice(0),
-        listName: l.listName
-      };
+    var keys = Object.keys(this.lists);
+    for (var i = keys.length; i--;) {
+      var k = keys[i];
+      c.lists[k] = this.lists[k].slice(0);
     }
 
     c.procedures = this.procedures;
@@ -2029,6 +2024,17 @@ P.compile = (function() {
       return o + '.vars[' + val(name) + ']';
     };
 
+    var listRef = function(name) {
+      if (typeof name !== 'string') {
+        throw new Error('Dynamic lists are not supported');
+      }
+      var o = object.stage.lists[name] !== undefined ? 'self' : 'S';
+      if (o === 'S' && !object.lists[name]) {
+        object.lists[name] = [];
+      }
+      return o + '.lists[' + val(name) + ']';
+    };
+
     var val = function(e, usenum, usebool) {
       var v;
       if (typeof e === 'number' || typeof e === 'boolean') {
@@ -2073,11 +2079,11 @@ P.compile = (function() {
 
       } else if (e[0] === 'contentsOfList:') {
 
-        return 'contentsOfList(' + val(e[1]) + ')';
+        return 'contentsOfList(' + listRef(e[1]) + ')';
 
       } else if (e[0] === 'getLine:ofList:') {
 
-        return 'getLineOfList(' + val(e[2]) + ', ' + val(e[1]) + ')';
+        return 'getLineOfList(' + listRef(e[2]) + ', ' + val(e[1]) + ')';
 
       } else if (e[0] === 'concatenate:with:') {
 
@@ -2140,7 +2146,7 @@ P.compile = (function() {
 
       } else if (e[0] === 'lineCountOfList:') { /* Data */
 
-        return 'lineCountOfList(' + val(e[1]) + ')';
+        return listRef(e[1]) + '.length';
 
       } else if (e[0] === '+') { /* Operators */
 
@@ -2579,19 +2585,19 @@ P.compile = (function() {
 
       } else if (block[0] === 'append:toList:') {
 
-        source += 'appendToList(' + val(block[2]) + ', ' + val(block[1]) + ');\n';
+        source += 'appendToList(' + listRef(block[2]) + ', ' + val(block[1]) + ');\n';
 
       } else if (block[0] === 'deleteLine:ofList:') {
 
-        source += 'deleteLineOfList(' + val(block[2]) + ', ' + val(block[1]) + ');\n';
+        source += 'deleteLineOfList(' + listRef(block[2]) + ', ' + val(block[1]) + ');\n';
 
       } else if (block[0] === 'insert:at:ofList:') {
 
-        source += 'insertInList(' + val(block[3]) + ', ' + val(block[2]) + ', '+ val(block[1]) + ');\n';
+        source += 'insertInList(' + listRef(block[3]) + ', ' + val(block[2]) + ', '+ val(block[1]) + ');\n';
 
       } else if (block[0] === 'setLine:ofList:to:') {
 
-        source += 'setLineOfList(' + val(block[2]) + ', ' + val(block[1]) + ', '+ val(block[3]) + ');\n';
+        source += 'setLineOfList(' + listRef(block[2]) + ', ' + val(block[1]) + ', '+ val(block[3]) + ');\n';
 
       } else if (block[0] === 'showVariable:' || block[0] === 'hideVariable:') {
 
@@ -3047,76 +3053,56 @@ P.runtime = (function() {
     return i === i && i >= 0 && i < length ? i : -1;
   };
 
-  var contentsOfList = function(name) {
-    var list = S.listRefs[name];
-    if (!list) return '';
+  var contentsOfList = function(list) {
     var isSingle = true;
-    for (var i = 0; i < list.contents.length; i++) {
-      if (list.contents[i].length !== 1) {
+    for (var i = list.length; i--;) {
+      if (list[i].length !== 1) {
         isSingle = false;
         break;
       }
     }
-    return list.contents.join(isSingle ? '' : ' ');
+    return list.join(isSingle ? '' : ' ');
   };
 
-  var getLineOfList = function(name, index) {
-    var list = S.listRefs[name];
-    if (!list) return 0;
-    var i = listIndex(list, index, list.contents.length);
-    return list && i > -1 ? list.contents[i] : 0;
+  var getLineOfList = function(list, index) {
+    var i = listIndex(list, index, list.length);
+    return i > -1 ? list[i] : 0;
   };
 
-  var lineCountOfList = function(name) {
-    var list = S.listRefs[name];
-    return list ? list.contents.length : 0;
+  var listContains = function(list, value) {
+    return list.indexOf(String(value)) !== -1;
   };
 
-  var listContains = function(name, value) {
-    var list = S.listRefs[name];
-    return list ? list.contents.indexOf(String(value)) > -1 : 0;
+  var appendToList = function(list, value) {
+    list.push(String(value));
   };
 
-  var appendToList = function(name, value) {
-    var list = S.listRefs[name];
-    if (list) {
-      list.contents.push(String(value));
-    }
-  };
-
-  var deleteLineOfList = function(name, index) {
-    var list = S.listRefs[name];
-    if (list) {
-      if (index === 'all') {
-        list.contents = [];
-      } else {
-        var i = listIndex(list, index, list.contents.length);
-        if (i > -1) {
-          list.contents.splice(i, 1);
-        }
-      }
-    }
-  };
-
-  var insertInList = function(name, index, value) {
-    var list = S.listRefs[name];
-    if (list) {
-      var i = listIndex(list, index, list.contents.length + 1);
-      if (i === list.contents.length) {
-        list.contents.push(String(value));
+  var deleteLineOfList = function(list, index) {
+    if (index === 'all') {
+      list.length = 0;
+    } else {
+      var i = listIndex(list, index, list.length);
+      if (i === list.length - 1) {
+        list.pop();
       } else if (i > -1) {
-        list.contents.splice(i, 0, String(value));
+        list.splice(i, 1);
       }
     }
   };
 
-  var setLineOfList = function(name, index, value) {
-    var list = S.listRefs[name];
-    if (list) {
-      var i = listIndex(list, index, list.contents.length);
-      if (i > -1) {
-        list.contents[i] = String(value);
-      }
+  var insertInList = function(list, index, value) {
+    var i = listIndex(list, index, list.length + 1);
+    if (i === list.length) {
+      list.push(String(value));
+    } else if (i > -1) {
+      list.splice(i, 0, String(value));
+    }
+  };
+
+  var setLineOfList = function(list, index, value) {
+    var i = listIndex(list, index, list.length);
+    if (i > -1) {
+      list[i] = String(value);
     }
   };
 
