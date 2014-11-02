@@ -1941,7 +1941,9 @@ P.compile = (function() {
   'use strict';
 
   var LOG_PRIMITIVES;
+  var DEBUG;
   // LOG_PRIMITIVES = true;
+  // DEBUG = true;
 
   var EVENT_SELECTORS = [
     'procDef',
@@ -2611,15 +2613,19 @@ P.compile = (function() {
 
       } else if (block[0] === 'call') {
 
-        source += 'call(' + val(block[1]) + ', ' + nextLabel() + ', [';
-        for (var i = 2; i < block.length; i++) {
-          if (i > 2) {
-            source += ', ';
+        if (DEBUG && block[1] === 'phosphorus: debug') {
+          source += 'debugger;\n';
+        } else {
+          source += 'call(' + val(block[1]) + ', ' + nextLabel() + ', [';
+          for (var i = 2; i < block.length; i++) {
+            if (i > 2) {
+              source += ', ';
+            }
+            source += val(block[i]);
           }
-          source += val(block[i]);
+          source += ']);\n';
+          delay();
         }
-        source += ']);\n';
-        delay();
 
       } else if (block[0] === 'doBroadcastAndWait') {
 
