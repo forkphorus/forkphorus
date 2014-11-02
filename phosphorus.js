@@ -1803,7 +1803,7 @@ var P = (function() {
     if (typeof value === 'number' && (value < 0.001 || value > 0.001)) {
       value = Math.round(value * 1000) / 1000;
     }
-    value = String(value);
+    value = "" + value;
 
     if (this.labelWidth == null) {
       context.font = 'bold 11px sans-serif';
@@ -2970,8 +2970,8 @@ P.runtime = (function() {
         return nx < ny ? -1 : nx === ny ? 0 : 1;
       }
     }
-    var xs = String(x).toLowerCase();
-    var ys = String(y).toLowerCase();
+    var xs = ("" + x).toLowerCase();
+    var ys = ("" + y).toLowerCase();
     return xs < ys ? -1 : xs === ys ? 0 : 1;
   };
 
@@ -3081,11 +3081,11 @@ P.runtime = (function() {
   };
 
   var listContains = function(list, value) {
-    return list.indexOf(String(value)) !== -1;
+    return list.indexOf("" + value) !== -1;
   };
 
   var appendToList = function(list, value) {
-    list.push(String(value));
+    list.push("" + value);
   };
 
   var deleteLineOfList = function(list, index) {
@@ -3104,16 +3104,16 @@ P.runtime = (function() {
   var insertInList = function(list, index, value) {
     var i = listIndex(list, index, list.length + 1);
     if (i === list.length) {
-      list.push(String(value));
+      list.push("" + value);
     } else if (i > -1) {
-      list.splice(i, 0, String(value));
+      list.splice(i, 0, "" + value);
     }
   };
 
   var setLineOfList = function(list, index, value) {
     var i = listIndex(list, index, list.length);
     if (i > -1) {
-      list[i] = String(value);
+      list[i] = "" + value;
     }
   };
 
