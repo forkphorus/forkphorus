@@ -3190,7 +3190,7 @@ P.runtime = (function() {
         warp: procedure.warp
       };
       R = {};
-      if (C.warp) {
+      if (C.warp || WARP) {
         WARP++;
         IMMEDIATE = procedure.fn;
       } else {
