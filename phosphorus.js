@@ -1254,7 +1254,7 @@ var P = (function() {
         x -= .5;
         y -= .5;
       }
-      context.strokeStyle = 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
+      context.strokeStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
       context.lineWidth = this.penSize;
       context.lineCap = 'round';
       context.beginPath();
@@ -1275,7 +1275,7 @@ var P = (function() {
       x -= .5;
       y -= .5;
     }
-    context.strokeStyle = 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
+    context.strokeStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
     context.lineWidth = this.penSize;
     context.lineCap = 'round';
     context.beginPath();
@@ -2300,6 +2300,15 @@ P.compile = (function() {
       return v != null ? v : '(+' + val(e, true) + ' || 0)';
     };
 
+    var noRGB = '';
+    noRGB += 'if (S.penCSS) {\n';
+    noRGB += '  var hsl = rgb2hsl(S.penColor);\n';
+    noRGB += '  S.penHue = hsl[0];\n';
+    noRGB += '  S.penSaturation = hsl[1];\n';
+    noRGB += '  S.penLightness = hsl[2];\n';
+    noRGB += '  S.penCSS = null;';
+    noRGB += '}\n';
+
     var compile = function(block) {
       if (LOG_PRIMITIVES) {
         source += 'console.log(' + val(block[0]) + ');\n';
@@ -2535,29 +2544,31 @@ P.compile = (function() {
 
       } else if (block[0] === 'penColor:') {
 
-        source += 'var hsl = rgb2hsl(' + num(block[1]) + ');\n';
-        source += 'S.penHue = hsl[0];\n';
-        source += 'S.penSaturation = hsl[1];\n';
-        source += 'S.penLightness = hsl[2];\n';
+        source += 'var c = S.penColor = ' + num(block[1]) + ' & 0xffffff;\n'
+        source += 'S.penCSS = "rgb(" + (c >> 16) + "," + (c >> 8 & 0xff) + "," + (c & 0xff) + ")";\n'
 
       } else if (block[0] === 'setPenHueTo:') {
 
+        source += noRGB;
         source += 'S.penHue = ' + num(block[1]) + ' * 360 / 200;\n';
         source += 'S.penSaturation = 100;\n';
 
       } else if (block[0] === 'changePenHueBy:') {
 
+        source += noRGB;
         source += 'S.penHue += ' + num(block[1]) + ' * 360 / 200;\n';
         source += 'S.penSaturation = 100;\n';
 
       } else if (block[0] === 'setPenShadeTo:') {
 
+        source += noRGB;
         source += 'S.penLightness = ' + num(block[1]) + ' % 200;\n';
         source += 'if (S.penLightness < 0) S.penLightness += 200;\n';
         source += 'S.penSaturation = 100;\n';
 
       } else if (block[0] === 'changePenShadeBy:') {
 
+        source += noRGB;
         source += 'S.penLightness = (S.penLightness + ' + num(block[1]) + ') % 200;\n';
         source += 'if (S.penLightness < 0) S.penLightness += 200;\n';
         source += 'S.penSaturation = 100;\n';
