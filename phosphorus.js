@@ -2018,7 +2018,7 @@ P.compile = (function() {
 
     var varRef = function(name) {
       if (typeof name !== 'string') {
-        throw new Error('Dynamic variables are not supported');
+        return 'getVars(' + val(name) + ')[' + val(name) + ']';
       }
       var o = object.stage.vars[name] !== undefined ? 'self' : 'S';
       return o + '.vars[' + val(name) + ']';
@@ -2026,7 +2026,7 @@ P.compile = (function() {
 
     var listRef = function(name) {
       if (typeof name !== 'string') {
-        throw new Error('Dynamic lists are not supported');
+        return 'getLists(' + val(name) + ')[' + val(name) + ']';
       }
       var o = object.stage.lists[name] !== undefined ? 'self' : 'S';
       if (o === 'S' && !object.lists[name]) {
@@ -3082,6 +3082,18 @@ P.runtime = (function() {
         return new Date().getSeconds();
     }
     return 0;
+  };
+
+  var getVars = function(name) {
+    self.vars[name] !== undefined ? self.vars : S.vars;
+  };
+
+  var getLists = function(name) {
+    if (self.lists[name] !== undefined) return self.lists;
+    if (S.lists[name] === undefined) {
+      S.lists[name] = [];
+    }
+    return S.lists;
   };
 
   var listIndex = function(list, index, length) {
