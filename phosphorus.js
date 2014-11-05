@@ -2091,7 +2091,7 @@ P.compile = (function() {
 
       } else if (e[0] === 'letter:of:') {
 
-        return '("" + ' + val(e[2]) + ').charAt(' + num(e[1]) + ' - 1)';
+        return '(("" + ' + val(e[2]) + ')[(' + num(e[1]) + ' | 0) - 1] || "")';
 
       } else if (e[0] === 'answer') { /* Sensing */
 
