@@ -2040,6 +2040,8 @@ P.compile = (function() {
         throw new Error('Dynamic parameters are not supported');
       }
 
+      if (!inputs) return '0';
+
       var i = inputs.indexOf(name);
       if (i === -1) {
         return '0';
