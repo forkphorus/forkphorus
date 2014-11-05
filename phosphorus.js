@@ -769,6 +769,7 @@ var P = (function() {
     this.penCanvas.width = 480;
     this.penCanvas.height = 360;
     this.penContext = this.penCanvas.getContext('2d');
+    this.penContext.lineCap = 'round';
 
     this.canvas = document.createElement('canvas');
     this.root.appendChild(this.canvas);
@@ -976,6 +977,7 @@ var P = (function() {
       this.penCanvas.height = 360 * zoom;
       this.penContext.drawImage(canvas, 0, 0, 480 * zoom, 360 * zoom);
       this.penContext.scale(this.maxZoom, this.maxZoom);
+      this.penContext.lineCap = 'round';
     }
     this.root.style.width =
     this.canvas.style.width =
@@ -1256,7 +1258,6 @@ var P = (function() {
       }
       context.strokeStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
       context.lineWidth = this.penSize;
-      context.lineCap = 'round';
       context.beginPath();
       context.moveTo(240 + ox, 180 - oy);
       context.lineTo(240 + x, 180 - y);
@@ -1277,7 +1278,6 @@ var P = (function() {
     }
     context.strokeStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
     context.lineWidth = this.penSize;
-    context.lineCap = 'round';
     context.beginPath();
     context.moveTo(240 + x, 180 - y);
     context.lineTo(240.01 + x, 180 - y);
@@ -2531,6 +2531,7 @@ P.compile = (function() {
 
         source += 'self.penCanvas.width = 480 * self.maxZoom;\n';
         source += 'self.penContext.scale(self.maxZoom, self.maxZoom);\n';
+        source += 'self.penContext.lineCap = "round";\n'
 
       } else if (block[0] === 'putPenDown') {
 
