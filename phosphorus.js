@@ -2035,6 +2035,18 @@ P.compile = (function() {
       return o + '.lists[' + val(name) + ']';
     };
 
+    var param = function(name) {
+      if (typeof name !== 'string') {
+        throw new Error('Dynamic parameters are not supported');
+      }
+
+      var i = inputs.indexOf(name);
+      if (i === -1) {
+        return '0';
+      }
+      return 'C.args[' + i + ']';
+    };
+
     var val = function(e, usenum, usebool) {
       var v;
       if (typeof e === 'number' || typeof e === 'boolean') {
@@ -2060,18 +2072,6 @@ P.compile = (function() {
       } else if (e[0] === 'sceneName') {
 
         return 'self.getCostumeName()';
-
-      } else if (e[0] === 'getParam') { /* Data */
-
-        if (typeof e[1] !== 'string') {
-          throw new Error('Dynamic parameters are not supported');
-        }
-
-        var i = inputs.indexOf(e[1]);
-        if (i === -1) {
-          return '0';
-        }
-        return 'C.args[' + i + ']';
 
       } else if (e[0] === 'readVariable') {
 
@@ -2114,7 +2114,11 @@ P.compile = (function() {
 
     var numval = function(e) {
 
-      if (e[0] === 'xpos') { /* Motion */
+      if (e[0] === 'getParam') { /* Data */
+
+        return param(e[1]);
+
+      } else if (e[0] === 'xpos') { /* Motion */
 
         return 'S.scratchX';
 
@@ -2225,7 +2229,11 @@ P.compile = (function() {
 
     var boolval = function(e) {
 
-      if (e[0] === 'list:contains:') { /* Data */
+      if (e[0] === 'getParam') { /* Data */
+
+        return param(e[1]);
+
+      } else if (e[0] === 'list:contains:') { /* Data */
 
         return 'listContains(' + val(e[1]) + ', ' + val(e[2]) + ')';
 
@@ -2846,6 +2854,15 @@ P.compile = (function() {
 
     if (script[0][0] === 'procDef') {
       var inputs = script[0][2];
+      var types = script[0][1].match(/%[snmdcb]/g) || [];
+      for (var i = types.length; i--;) {
+        var t = types[i];
+        if (t === '%d' || t === '%n' || t === '%c') {
+          source += 'C.args[' + i + '] = +C.args[' + i + '] || 0;\n';
+        } else if (t === '%b') {
+          source += 'C.args[' + i + '] = bool(C.args[' + i + ']);\n';
+        }
+      }
     }
 
     for (var i = 1; i < script.length; i++) {
