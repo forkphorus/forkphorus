@@ -769,6 +769,7 @@ var P = (function() {
     this.penCanvas.width = 480;
     this.penCanvas.height = 360;
     this.penContext = this.penCanvas.getContext('2d');
+    this.penContext.lineCap = 'round';
 
     this.canvas = document.createElement('canvas');
     this.root.appendChild(this.canvas);
@@ -976,6 +977,7 @@ var P = (function() {
       this.penCanvas.height = 360 * zoom;
       this.penContext.drawImage(canvas, 0, 0, 480 * zoom, 360 * zoom);
       this.penContext.scale(this.maxZoom, this.maxZoom);
+      this.penContext.lineCap = 'round';
     }
     this.root.style.width =
     this.canvas.style.width =
@@ -1256,7 +1258,6 @@ var P = (function() {
       }
       context.strokeStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
       context.lineWidth = this.penSize;
-      context.lineCap = 'round';
       context.beginPath();
       context.moveTo(240 + ox, 180 - oy);
       context.lineTo(240 + x, 180 - y);
@@ -1277,7 +1278,6 @@ var P = (function() {
     }
     context.strokeStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
     context.lineWidth = this.penSize;
-    context.lineCap = 'round';
     context.beginPath();
     context.moveTo(240 + x, 180 - y);
     context.lineTo(240.01 + x, 180 - y);
@@ -1803,7 +1803,7 @@ var P = (function() {
     if (typeof value === 'number' && (value < 0.001 || value > 0.001)) {
       value = Math.round(value * 1000) / 1000;
     }
-    value = String(value);
+    value = "" + value;
 
     if (this.labelWidth == null) {
       context.font = 'bold 11px sans-serif';
@@ -2035,6 +2035,18 @@ P.compile = (function() {
       return o + '.lists[' + val(name) + ']';
     };
 
+    var param = function(name) {
+      if (typeof name !== 'string') {
+        throw new Error('Dynamic parameters are not supported');
+      }
+
+      var i = inputs.indexOf(name);
+      if (i === -1) {
+        return '0';
+      }
+      return 'C.args[' + i + ']';
+    };
+
     var val = function(e, usenum, usebool) {
       var v;
       if (typeof e === 'number' || typeof e === 'boolean') {
@@ -2061,18 +2073,6 @@ P.compile = (function() {
 
         return 'self.getCostumeName()';
 
-      } else if (e[0] === 'getParam') { /* Data */
-
-        if (typeof e[1] !== 'string') {
-          throw new Error('Dynamic parameters are not supported');
-        }
-
-        var i = inputs.indexOf(e[1]);
-        if (i === -1) {
-          return '0';
-        }
-        return 'C.args[' + i + ']';
-
       } else if (e[0] === 'readVariable') {
 
         return varRef(e[1]);
@@ -2091,7 +2091,7 @@ P.compile = (function() {
 
       } else if (e[0] === 'letter:of:') {
 
-        return '(("" + ' + val(e[2]) + ')[Math.floor(' + num(e[1]) + ') - 1] || "")';
+        return '(("" + ' + val(e[2]) + ')[(' + num(e[1]) + ' | 0) - 1] || "")';
 
       } else if (e[0] === 'answer') { /* Sensing */
 
@@ -2114,7 +2114,11 @@ P.compile = (function() {
 
     var numval = function(e) {
 
-      if (e[0] === 'xpos') { /* Motion */
+      if (e[0] === 'getParam') { /* Data */
+
+        return param(e[1]);
+
+      } else if (e[0] === 'xpos') { /* Motion */
 
         return 'S.scratchX';
 
@@ -2225,7 +2229,11 @@ P.compile = (function() {
 
     var boolval = function(e) {
 
-      if (e[0] === 'list:contains:') { /* Data */
+      if (e[0] === 'getParam') { /* Data */
+
+        return param(e[1]);
+
+      } else if (e[0] === 'list:contains:') { /* Data */
 
         return 'listContains(' + val(e[1]) + ', ' + val(e[2]) + ')';
 
@@ -2235,7 +2243,7 @@ P.compile = (function() {
 
       } else if (e[0] === '=') {
 
-        return '(compare(' + val(e[1]) + ', ' + val(e[2]) + ') === 0)';
+        return '(equal(' + val(e[1]) + ', ' + val(e[2]) + '))';
 
       } else if (e[0] === '>') {
 
@@ -2531,6 +2539,7 @@ P.compile = (function() {
 
         source += 'self.penCanvas.width = 480 * self.maxZoom;\n';
         source += 'self.penContext.scale(self.maxZoom, self.maxZoom);\n';
+        source += 'self.penContext.lineCap = "round";\n'
 
       } else if (block[0] === 'putPenDown') {
 
@@ -2845,6 +2854,15 @@ P.compile = (function() {
 
     if (script[0][0] === 'procDef') {
       var inputs = script[0][2];
+      var types = script[0][1].match(/%[snmdcb]/g) || [];
+      for (var i = types.length; i--;) {
+        var t = types[i];
+        if (t === '%d' || t === '%n' || t === '%c') {
+          source += 'C.args[' + i + '] = +C.args[' + i + '] || 0;\n';
+        } else if (t === '%b') {
+          source += 'C.args[' + i + '] = bool(C.args[' + i + ']);\n';
+        }
+      }
     }
 
     for (var i = 1; i < script.length; i++) {
@@ -2970,9 +2988,22 @@ P.runtime = (function() {
         return nx < ny ? -1 : nx === ny ? 0 : 1;
       }
     }
-    var xs = String(x).toLowerCase();
-    var ys = String(y).toLowerCase();
+    var xs = ("" + x).toLowerCase();
+    var ys = ("" + y).toLowerCase();
     return xs < ys ? -1 : xs === ys ? 0 : 1;
+  };
+
+  var equal = function(x, y) {
+    if ((typeof x === 'number' || DIGIT.test(x)) && (typeof y === 'number' || DIGIT.test(y))) {
+      var nx = +x;
+      var ny = +y;
+      if (nx === nx && ny === ny) {
+        return nx === ny;
+      }
+    }
+    var xs = ("" + x).toLowerCase();
+    var ys = ("" + y).toLowerCase();
+    return xs === ys;
   };
 
   var mod = function(x, y) {
@@ -3081,11 +3112,11 @@ P.runtime = (function() {
   };
 
   var listContains = function(list, value) {
-    return list.indexOf(String(value)) !== -1;
+    return list.indexOf("" + value) !== -1;
   };
 
   var appendToList = function(list, value) {
-    list.push(String(value));
+    list.push("" + value);
   };
 
   var deleteLineOfList = function(list, index) {
@@ -3104,16 +3135,16 @@ P.runtime = (function() {
   var insertInList = function(list, index, value) {
     var i = listIndex(list, index, list.length + 1);
     if (i === list.length) {
-      list.push(String(value));
+      list.push("" + value);
     } else if (i > -1) {
-      list.splice(i, 0, String(value));
+      list.splice(i, 0, "" + value);
     }
   };
 
   var setLineOfList = function(list, index, value) {
     var i = listIndex(list, index, list.length);
     if (i > -1) {
-      list[i] = String(value);
+      list[i] = "" + value;
     }
   };
 
