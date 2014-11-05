@@ -2237,7 +2237,7 @@ P.compile = (function() {
 
       } else if (e[0] === 'list:contains:') { /* Data */
 
-        return 'listContains(' + val(e[1]) + ', ' + val(e[2]) + ')';
+        return 'listContains(' + listRef(e[1]) + ', ' + val(e[2]) + ')';
 
       } else if (e[0] === '<') { /* Operators */
 
