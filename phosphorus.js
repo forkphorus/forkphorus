@@ -2103,9 +2103,13 @@ P.compile = (function() {
 
         return 'attribute(' + val(e[1]) + ', ' + val(e[2]) + ')';
 
-      // } else if (e[0] === 'getUserId') {
+      } else if (e[0] === 'getUserId') {
 
-      // } else if (e[0] === 'getUserName') {
+        return '0';
+
+      } else if (e[0] === 'getUserName') {
+
+        return '""';
 
       } else {
 
