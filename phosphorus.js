@@ -2235,7 +2235,7 @@ P.compile = (function() {
 
       } else if (e[0] === '=') {
 
-        return '(compare(' + val(e[1]) + ', ' + val(e[2]) + ') === 0)';
+        return '(equal(' + val(e[1]) + ', ' + val(e[2]) + '))';
 
       } else if (e[0] === '>') {
 
@@ -2974,6 +2974,19 @@ P.runtime = (function() {
     var xs = ("" + x).toLowerCase();
     var ys = ("" + y).toLowerCase();
     return xs < ys ? -1 : xs === ys ? 0 : 1;
+  };
+
+  var equal = function(x, y) {
+    if ((typeof x === 'number' || DIGIT.test(x)) && (typeof y === 'number' || DIGIT.test(y))) {
+      var nx = +x;
+      var ny = +y;
+      if (nx === nx && ny === ny) {
+        return nx === ny;
+      }
+    }
+    var xs = ("" + x).toLowerCase();
+    var ys = ("" + y).toLowerCase();
+    return xs === ys;
   };
 
   var mod = function(x, y) {
