@@ -3126,15 +3126,14 @@ P.runtime = (function() {
   };
 
   var listContains = function(list, value) {
-    value = ("" + value).toLowerCase();
     for (var i = list.length; i--;) {
-      if (list[i].toLowerCase() === value) return true;
+      if (equal(list[i], value)) return true;
     }
     return false;
   };
 
   var appendToList = function(list, value) {
-    list.push("" + value);
+    list.push(value);
   };
 
   var deleteLineOfList = function(list, index) {
@@ -3153,16 +3152,16 @@ P.runtime = (function() {
   var insertInList = function(list, index, value) {
     var i = listIndex(list, index, list.length + 1);
     if (i === list.length) {
-      list.push("" + value);
+      list.push(value);
     } else if (i > -1) {
-      list.splice(i, 0, "" + value);
+      list.splice(i, 0, value);
     }
   };
 
   var setLineOfList = function(list, index, value) {
     var i = listIndex(list, index, list.length);
     if (i > -1) {
-      list[i] = "" + value;
+      list[i] = value;
     }
   };
 
