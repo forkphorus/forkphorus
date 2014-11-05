@@ -3237,7 +3237,10 @@ P.runtime = (function() {
     R = STACK.pop();
   };
 
+  // var lastCalls = [];
   var call = function(spec, id, values) {
+    // lastCalls.push(spec);
+    // if (lastCalls.length > 10000) lastCalls.shift();
     var procedure = S.procedures[spec];
     if (procedure) {
       STACK.push(R);
