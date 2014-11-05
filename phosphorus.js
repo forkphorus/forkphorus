@@ -3087,7 +3087,7 @@ P.runtime = (function() {
   };
 
   var getVars = function(name) {
-    self.vars[name] !== undefined ? self.vars : S.vars;
+    return self.vars[name] !== undefined ? self.vars : S.vars;
   };
 
   var getLists = function(name) {
