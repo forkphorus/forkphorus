@@ -3126,7 +3126,11 @@ P.runtime = (function() {
   };
 
   var listContains = function(list, value) {
-    return list.indexOf("" + value) !== -1;
+    value = ("" + value).toLowerCase();
+    for (var i = list.length; i--;) {
+      if (list[i].toLowerCase() === value) return true;
+    }
+    return false;
   };
 
   var appendToList = function(list, value) {
