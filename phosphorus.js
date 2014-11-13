@@ -2243,17 +2243,35 @@ P.compile = (function() {
 
         return 'listContains(' + listRef(e[1]) + ', ' + val(e[2]) + ')';
 
-      } else if (e[0] === '<') { /* Operators */
+      } else if (e[0] === '<' || e[0] === '>') { /* Operators */
 
-        return '(compare(' + val(e[1]) + ', ' + val(e[2]) + ') === -1)';
+        var result, x, y;
+        if (typeof e[1] === 'string' && /\d/.test(e[1]) || typeof e[1] === 'number') {
+          result = e[0] === '<' ? '-1' : '1';
+          x = +e[1];
+          y = e[2];
+        } else if (typeof e[2] === 'string' && /\d/.test(e[2]) || typeof e[2] === 'number') {
+          result = e[0] === '<' ? '1' : '-1';
+          x = +e[2];
+          y = e[1];
+        } else {
+          return '(compare(' + val(e[1]) + ', ' + val(e[2]) + ') === ' + (e[0] === '<' ? '-1' : '1') + ')';
+        }
+        return '(compareNumber(' + x + ', ' + val(y) + ') === ' + result + ')';
 
       } else if (e[0] === '=') {
 
-        return '(equal(' + val(e[1]) + ', ' + val(e[2]) + '))';
-
-      } else if (e[0] === '>') {
-
-        return '(compare(' + val(e[1]) + ', ' + val(e[2]) + ') === 1)';
+        var result, x, y;
+        if (typeof e[1] === 'string' && /\d/.test(e[1]) || typeof e[1] === 'number') {
+          x = +e[1];
+          y = e[2];
+        } else if (typeof e[2] === 'string' && /\d/.test(e[2]) || typeof e[2] === 'number') {
+          x = +e[2];
+          y = e[1];
+        } else {
+          return '(equal(' + val(e[1]) + ', ' + val(e[2]) + '))';
+        }
+        return '(equalNumber(' + x + ', ' + val(y) + '))';
 
       } else if (e[0] === '&') {
 
@@ -2998,6 +3016,17 @@ P.runtime = (function() {
     var ys = ("" + y).toLowerCase();
     return xs < ys ? -1 : xs === ys ? 0 : 1;
   };
+  var compareNumber = function(x, y) {
+    if (typeof y === 'number' || DIGIT.test(y)) {
+      var ny = +y;
+      if (ny === ny) {
+        return x < ny ? -1 : x === ny ? 0 : 1;
+      }
+    }
+    var xs = ("" + x).toLowerCase();
+    var ys = ("" + y).toLowerCase();
+    return xs < ys ? -1 : xs === ys ? 0 : 1;
+  };
 
   var equal = function(x, y) {
     if ((typeof x === 'number' || DIGIT.test(x)) && (typeof y === 'number' || DIGIT.test(y))) {
@@ -3005,6 +3034,17 @@ P.runtime = (function() {
       var ny = +y;
       if (nx === nx && ny === ny) {
         return nx === ny;
+      }
+    }
+    var xs = ("" + x).toLowerCase();
+    var ys = ("" + y).toLowerCase();
+    return xs === ys;
+  };
+  var equalNumber = function(x, y) {
+    if (typeof y === 'number' || DIGIT.test(y)) {
+      var ny = +y;
+      if (ny === ny) {
+        return x === ny;
       }
     }
     var xs = ("" + x).toLowerCase();
