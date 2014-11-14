@@ -2819,6 +2819,7 @@ P.compile = (function() {
         source += 'if (S.isClone) {\n';
         source += '  var i = self.children.indexOf(S);\n';
         source += '  if (i > -1) self.children.splice(i, 1);\n';
+        source += '  if (S.bubble) self.root.removeChild(S.bubble);\n';
         source += '  for (var i = 0; i < self.queue.length; i++) {\n';
         source += '    if (self.queue[i] && self.queue[i].sprite === S) {\n';
         source += '      self.queue[i] = undefined;\n';
