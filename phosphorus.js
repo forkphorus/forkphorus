@@ -2053,10 +2053,10 @@ P.compile = (function() {
         '%c': 'Number',
         '%b': 'Boolean',
       })[types[i]];
-      if ((type === 'Number' && usenum)) {
+      if (type === 'Number' && usenum) {
         return 'C.args' + type + '[' + i + ']';
       }
-      if ((type === 'Boolean' && usebool)) {
+      if (type === 'Boolean' && usebool) {
         return 'C.args' + type + '[' + i + ']';
       }
       if (usenum) return '(+C.args[' + i + '] || 0)';
