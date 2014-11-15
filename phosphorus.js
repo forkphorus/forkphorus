@@ -2035,7 +2035,7 @@ P.compile = (function() {
       return o + '.lists[' + val(name) + ']';
     };
 
-    var param = function(name) {
+    var param = function(name, usenum, usebool) {
       if (typeof name !== 'string') {
         throw new Error('Dynamic parameters are not supported');
       }
@@ -2046,6 +2046,21 @@ P.compile = (function() {
       if (i === -1) {
         return '0';
       }
+
+      var t = types[i];
+      var kind =
+        t === '%n' || t === '%d' || t === '%c' ? 'num' :
+        t === '%b' ? 'bool' : '';
+
+      if (kind === 'num' && usenum) {
+        return 'C.numargs[' + i + ']';
+      }
+      if (kind === 'bool' && usebool) {
+        return 'C.boolargs[' + i + ']';
+      }
+
+      if (usenum) return '(+C.args[' + i + '] || 0)';
+      if (usebool) return 'bool(C.args[' + i + '])';
       return 'C.args[' + i + ']';
     };
 
@@ -2062,6 +2077,10 @@ P.compile = (function() {
           .replace(/\n/g, '\\n')
           .replace(/\r/g, '\\r')
           .replace(/"/g, '\\"') + '"';
+
+      } else if (e[0] === 'getParam') { /* Data */
+
+        return param(e[1], usenum, usebool);
 
       } else if ((v = numval(e)) != null || (v = boolval(e)) != null) {
 
@@ -2120,11 +2139,7 @@ P.compile = (function() {
 
     var numval = function(e) {
 
-      if (e[0] === 'getParam') { /* Data */
-
-        return param(e[1]);
-
-      } else if (e[0] === 'xpos') { /* Motion */
+      if (e[0] === 'xpos') { /* Motion */
 
         return 'S.scratchX';
 
@@ -2235,11 +2250,7 @@ P.compile = (function() {
 
     var boolval = function(e) {
 
-      if (e[0] === 'getParam') { /* Data */
-
-        return param(e[1]);
-
-      } else if (e[0] === 'list:contains:') { /* Data */
+      if (e[0] === 'list:contains:') { /* Data */
 
         return 'listContains(' + listRef(e[1]) + ', ' + val(e[2]) + ')';
 
@@ -2865,9 +2876,9 @@ P.compile = (function() {
       for (var i = types.length; i--;) {
         var t = types[i];
         if (t === '%d' || t === '%n' || t === '%c') {
-          source += 'C.args[' + i + '] = +C.args[' + i + '] || 0;\n';
+          source += 'C.numargs[' + i + '] = +C.args[' + i + '] || 0;\n';
         } else if (t === '%b') {
-          source += 'C.args[' + i + '] = bool(C.args[' + i + ']);\n';
+          source += 'C.boolargs[' + i + '] = bool(C.args[' + i + ']);\n';
         }
       }
     }
@@ -3254,6 +3265,8 @@ P.runtime = (function() {
         base: procedure.fn,
         fn: S.fns[id],
         args: values,
+        numargs: [],
+        boolargs: [],
         stack: STACK = [],
         warp: procedure.warp
       };
