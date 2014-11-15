@@ -2046,19 +2046,19 @@ P.compile = (function() {
       if (i === -1) {
         return '0';
       }
-      var type = ({
-        '%s': '',
-        '%n': 'Number',
-        '%d': 'Number',
-        '%c': 'Number',
-        '%b': 'Boolean',
-      })[types[i]];
-      if (type === 'Number' && usenum) {
-        return 'C.args' + type + '[' + i + ']';
+
+      var t = types[i];
+      var kind =
+        t === '%n' || t === '%d' || t === '%c' ? 'num' :
+        t === '%b' ? 'bool' : '';
+
+      if (kind === 'num' && usenum) {
+        return 'C.numargs[' + i + ']';
       }
-      if (type === 'Boolean' && usebool) {
-        return 'C.args' + type + '[' + i + ']';
+      if (kind === 'bool' && usebool) {
+        return 'C.boolargs[' + i + ']';
       }
+
       if (usenum) return '(+C.args[' + i + '] || 0)';
       if (usebool) return 'bool(C.args[' + i + '])';
       return 'C.args[' + i + ']';
@@ -2875,9 +2875,9 @@ P.compile = (function() {
       for (var i = types.length; i--;) {
         var t = types[i];
         if (t === '%d' || t === '%n' || t === '%c') {
-          source += 'C.argsNumber[' + i + '] = +C.args[' + i + '] || 0;\n';
+          source += 'C.numargs[' + i + '] = +C.args[' + i + '] || 0;\n';
         } else if (t === '%b') {
-          source += 'C.argsBoolean[' + i + '] = bool(C.args[' + i + ']);\n';
+          source += 'C.boolargs[' + i + '] = bool(C.args[' + i + ']);\n';
         }
       }
     }
@@ -3264,8 +3264,8 @@ P.runtime = (function() {
         base: procedure.fn,
         fn: S.fns[id],
         args: values,
-        argsNumber: [],
-        argsBoolean: [],
+        numargs: [],
+        boolargs: [],
         stack: STACK = [],
         warp: procedure.warp
       };
