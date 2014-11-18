@@ -2251,7 +2251,7 @@ P.compile = (function() {
         if (x == null || nx !== nx) {
           return '(compare(' + val(e[1]) + ', ' + val(e[2]) + ') === ' + order + ')';
         }
-        return '(numCompare(' + nx + ', ' + val(("" + x).toLowerCase()) + ', ' + val(y) + ') === ' + (invert ? -order : order) + ')';
+        return '(numCompare(' + nx + ', ' + val(y) + ') === ' + (invert ? -order : order) + ')';
 
       } else if (e[0] === '=') {
 
@@ -2266,7 +2266,7 @@ P.compile = (function() {
         if (x == null || nx !== nx) {
           return '(equal(' + val(e[1]) + ', ' + val(e[2]) + '))';
         }
-        return '(numEqual(' + nx + ', ' + val("" + x) + ', ' + val(y) + '))';
+        return '(numEqual(' + nx + ', ' + val(y) + '))';
 
       } else if (e[0] === '&') {
 
@@ -3012,7 +3012,7 @@ P.runtime = (function() {
     var ys = ("" + y).toLowerCase();
     return xs < ys ? -1 : xs === ys ? 0 : 1;
   };
-  var numCompare = function(nx, xs, y) {
+  var numCompare = function(nx, y) {
     if (typeof y === 'number' || DIGIT.test(y)) {
       var ny = +y;
       if (ny === ny) {
@@ -3020,7 +3020,7 @@ P.runtime = (function() {
       }
     }
     var ys = ("" + y).toLowerCase();
-    return xs < ys ? -1 : xs === ys ? 0 : 1;
+    return "" + nx < ys ? -1 : 1;
   };
 
   var equal = function(x, y) {
@@ -3035,15 +3035,12 @@ P.runtime = (function() {
     var ys = ("" + y).toLowerCase();
     return xs === ys;
   };
-  var numEqual = function(nx, xs, y) {
+  var numEqual = function(nx, y) {
     if (typeof y === 'number' || DIGIT.test(y)) {
       var ny = +y;
-      if (ny === ny) {
-        return nx === ny;
-      }
+      return ny === ny && nx === ny;
     }
-    var ys = ("" + y).toLowerCase();
-    return xs === ys;
+    return false;
   };
 
   var mod = function(x, y) {
