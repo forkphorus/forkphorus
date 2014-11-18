@@ -2238,20 +2238,20 @@ P.compile = (function() {
 
       } else if (e[0] === '<' || e[0] === '>') { /* Operators */
 
-        var order = e[0] === '<' ? -1 : 1;
         if (typeof e[1] === 'string' && DIGIT.test(e[1]) || typeof e[1] === 'number') {
+          var less = e[0] === '<';
           var x = e[1];
           var y = e[2];
         } else if (typeof e[2] === 'string' && DIGIT.test(e[2]) || typeof e[2] === 'number') {
-          var invert = true;
+          var less = e[0] === '>';
           var x = e[2];
           var y = e[1];
         }
         var nx = +x;
         if (x == null || nx !== nx) {
-          return '(compare(' + val(e[1]) + ', ' + val(e[2]) + ') === ' + order + ')';
+          return '(compare(' + val(e[1]) + ', ' + val(e[2]) + ') === ' + (e[0] === '<' ? -1 : 1) + ')';
         }
-        return '(numCompare(' + nx + ', ' + val(y) + ') === ' + (invert ? -order : order) + ')';
+        return (less ? 'numLess' : 'numGreater') + '(' + nx + ', ' + val(y) + ')';
 
       } else if (e[0] === '=') {
 
@@ -3012,15 +3012,25 @@ P.runtime = (function() {
     var ys = ("" + y).toLowerCase();
     return xs < ys ? -1 : xs === ys ? 0 : 1;
   };
-  var numCompare = function(nx, y) {
+  var numLess = function(nx, y) {
     if (typeof y === 'number' || DIGIT.test(y)) {
       var ny = +y;
       if (ny === ny) {
-        return nx < ny ? -1 : nx === ny ? 0 : 1;
+        return nx < ny;
       }
     }
     var ys = ("" + y).toLowerCase();
-    return "" + nx < ys ? -1 : 1;
+    return "" + nx < ys;
+  };
+  var numGreater = function(nx, y) {
+    if (typeof y === 'number' || DIGIT.test(y)) {
+      var ny = +y;
+      if (ny === ny) {
+        return nx > ny;
+      }
+    }
+    var ys = ("" + y).toLowerCase();
+    return "" + nx > ys;
   };
 
   var equal = function(x, y) {
