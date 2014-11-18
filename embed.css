@@ -16,6 +16,14 @@ body {
   box-shadow: 0 -1px rgba(0, 0, 0, .4);
 }
 
+.controls {
+  display: none;
+}
+
+.has-ui .controls {
+  display: block;
+}
+
 .hide-ui .controls {
   position: absolute;
   width: 100%;

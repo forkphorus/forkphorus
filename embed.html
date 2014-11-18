@@ -58,7 +58,7 @@
   });
 
   if (lightContent) document.body.className += ' light-content';
-  if (!hasUI) document.body.className += ' hide-ui';
+  document.body.className += hasUI ? ' has-ui' : ' hide-ui';
 
   document.title = 'phosphorus';
   P.player.load(projectId, function(stage) {
