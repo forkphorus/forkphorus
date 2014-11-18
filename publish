@@ -1,5 +1,0 @@
-#!/bin/sh
-
-git push
-git checkout heroku && git merge master --no-edit && git push heroku heroku:master
-git checkout master
