@@ -2258,7 +2258,7 @@ P.compile = (function() {
         if (typeof e[1] === 'string' && DIGIT.test(e[1]) || typeof e[1] === 'number') {
           var x = e[1];
           var y = e[2];
-        } else if (typeof e[1] === 'string' && DIGIT.test(e[2]) || typeof e[2] === 'number') {
+        } else if (typeof e[2] === 'string' && DIGIT.test(e[2]) || typeof e[2] === 'number') {
           var x = e[2];
           var y = e[1];
         }
