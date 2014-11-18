@@ -1,0 +1,22 @@
+{
+  "name": "phosphorus",
+  "version": "0.0.0",
+  "description": "JavaScript compiler for Scratch projects.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/nathan/phosphorus"
+  },
+  "author": "Nathan Dinsmore",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/nathan/phosphorus/issues"
+  },
+  "homepage": "https://phosphorus.herokuapp.com",
+  "engines": {
+    "node": "0.10.x"
+  }
+}
