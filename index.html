@@ -147,11 +147,12 @@
   packageTurbo.addEventListener('change', updatePackageLink);
   packageFullScreen.addEventListener('change', updatePackageLink);
 
-  function updateEmbedCode() {
+  function updateEmbedCode(e) {
     embedCode.value = P.player.projectId ? '<script src=https://' + location.host + '/embed.js?id=' + P.player.projectId + (embedHideControls.checked ? '&ui=false' : '&auto-start=' + embedAutoStart.checked + '&light-content=' + embedLightContent.checked) + '></' + 'script>' : '';
     embedAutoStart.disabled =
     embedLightContent.disabled = embedHideControls.checked;
     if (embedHideControls.checked) embedAutoStart.checked = true;
+    if (e) embedCode.focus();
   }
 
   function selectEmbedCode() {
