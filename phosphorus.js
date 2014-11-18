@@ -3138,12 +3138,12 @@ P.runtime = (function() {
 
   var listIndex = function(list, index, length) {
     if (index === 'random' || index === 'any') {
-      return Math.floor(Math.random() * length);
+      return Math.random() * length | 0;
     }
     if (index === 'last') {
       return length - 1;
     }
-    var i = Math.floor(index) - 1;
+    var i = (index | 0) - 1;
     return i === i && i >= 0 && i < length ? i : -1;
   };
 
