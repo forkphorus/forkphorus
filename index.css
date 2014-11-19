@@ -31,6 +31,16 @@ body {
   background-position: -160px 0;
 }
 
+a {
+  color: #25d;
+  text-decoration: underline;
+}
+a:visited {
+  color: #73c;
+}
+a:active {
+  color: #03a;
+}
 .dropdown {
   display: inline-block;
   position: relative;

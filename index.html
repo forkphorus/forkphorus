@@ -7,7 +7,7 @@
 
 <div class=area id=title-area>
 <h1 class=title>phosphorus</h1>
-<p>phosphorus runs your Scratch projects really fast by compiling them to JavaScript. Try it out by pasting a URL or project ID into the field below or <a href=# class=dropdown>choosing an example<select id=examples>
+<p>phosphorus runs your Scratch projects really fast by compiling them to JavaScript. Try it out by pasting a URL or project ID into the field below or <a class=dropdown>choosing an example<select id=examples>
   <option value>
   <option value=11397100>3D Remix by DadOfMrLog
   <option value=15945630>O by DCPU-16
@@ -143,6 +143,7 @@
   });
 
   examples.addEventListener('change', function() {
+    console.log(examples.value);
     if (examples.value) {
       location.hash = '#' + examples.value;
       examples.selectedIndex = 0;
