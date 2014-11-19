@@ -564,6 +564,7 @@ var P = (function() {
     this.costumes = [];
     this.currentCostumeIndex = 0;
     this.objName = '';
+    this.volume = 1;
 
     this.soundRefs = Object.create(null);
     this.sounds = [];
@@ -1183,7 +1184,6 @@ var P = (function() {
     this.isDragging = false;
     this.rotationStyle = 'normal';
     this.scale = 1;
-    this.volume = 1;
     this.scratchX = 0;
     this.scratchY = 0;
     this.spriteInfo = {};
