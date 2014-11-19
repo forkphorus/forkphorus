@@ -1672,6 +1672,11 @@ var P = (function() {
       this.stage.root.removeChild(this.bubble);
       this.bubble = null;
     }
+    if (this.node) {
+      this.node.disconnect();
+      this.node = null;
+      this.source = null;
+    }
   };
 
   var Costume = function(data, index, base) {
@@ -1988,9 +1993,12 @@ var P = (function() {
     context.restore();
   };
 
+  var AudioContext = window.AudioContext || window.webkitAudioContext;
+
   return {
     hasTouchEvents: hasTouchEvents,
     getKeyCode: getKeyCode,
+    AudioContext: AudioContext,
     IO: IO,
     Base: Base,
     Stage: Stage,
@@ -2597,7 +2605,7 @@ P.compile = (function() {
       } else if (block[0] === 'playSound:') { /* Sound */
 
         source += 'var sound = S.soundRefs[' + val(block[1]) + '];\n';
-        source += 'if (sound) sound.play(S.volume);\n';
+        source += 'if (sound) sound.play(S.volume * VOLUME);\n';
 
       // } else if (block[0] === 'doPlaySoundAndWait') {
 
@@ -2609,25 +2617,38 @@ P.compile = (function() {
 
       // } else if (block[0] === 'rest:elapsed:from:') {
 
-      // } else if (block[0] === 'noteOn:duration:elapsed:from:') {
+      } else if (block[0] === 'noteOn:duration:elapsed:from:') {
+
+        if (P.AudioContext) {
+          source += 'save();\n';
+          source += 'R.start = self.now();\n';
+          source += 'R.duration = ' + num(block[2]) + ';\n';
+          source += 'R.first = true;\n';
+          source += 'playNote(' + num(block[1]) + ', R.duration);\n';
+
+          var id = label();
+          source += 'if (self.now() - R.start < R.duration * 1000 || R.first) {\n';
+          source += '  R.first = false;\n';
+          forceQueue(id);
+          source += '}\n';
+
+          source += 'restore();\n';
+        }
 
       // } else if (block[0] === 'midiInstrument:') {
 
       // } else if (block[0] === 'instrument:') {
 
-      } else if (block[0] === 'changeVolumeBy:') {
+      } else if (block[0] === 'changeVolumeBy:' || block[0] === 'setVolumeTo:') {
 
-        source += 'S.volume = Math.min(1, Math.max(0, S.volume + ' + num(block[1]) + ' / 100));\n';
+        source += 'S.volume = Math.min(1, Math.max(0, ' + (block[0] === 'changeVolumeBy:' ? 'S.volume + ' : '') + num(block[1]) + ' / 100));\n';
         source += 'for (var sounds = S.sounds, i = sounds.length; i--;) {\n';
-        source += '  sounds[i].audio.volume = S.volume;\n';
+        source += '  sounds[i].audio.volume = S.volume * VOLUME;\n';
         source += '}\n';
-
-      } else if (block[0] === 'setVolumeTo:') {
-
-        source += 'S.volume = Math.min(1, Math.max(0, ' + num(block[1]) + ' / 100));\n';
-        source += 'for (var sounds = S.sounds, i = sounds.length; i--;) {\n';
-        source += '  sounds[i].audio.volume = S.volume;\n';
-        source += '}\n';
+        source += 'if (S.node) S.node.gain.value = S.volume * VOLUME;\n';
+        // source += 'for (var nodes = S.nodes, i = nodes.length; i--;) {\n';
+        // source += '  nodes[i].gain.value = S.volume;\n';
+        // source += '}\n';
 
       } else if (block[0] === 'changeTempoBy:') {
 
@@ -2913,9 +2934,9 @@ P.compile = (function() {
       } else if (block[0] === 'deleteClone') {
 
         source += 'if (S.isClone) {\n';
+        source += '  S.remove();\n';
         source += '  var i = self.children.indexOf(S);\n';
         source += '  if (i > -1) self.children.splice(i, 1);\n';
-        source += '  if (S.bubble) self.root.removeChild(S.bubble);\n';
         source += '  for (var i = 0; i < self.queue.length; i++) {\n';
         source += '    if (self.queue[i] && self.queue[i].sprite === S) {\n';
         source += '      self.queue[i] = undefined;\n';
@@ -3354,6 +3375,35 @@ P.runtime = (function() {
     }
     return 0;
   };
+
+  var VOLUME = 0.1;
+
+  var audioContext = AudioContext && new AudioContext;
+  var compressor = audioContext.createDynamicsCompressor();
+  compressor.connect(audioContext.destination);
+
+  if (audioContext) {
+    var playNote = function(id, duration) {
+      if (!S.node) {
+        S.node = audioContext.createGain();
+        S.node.gain.value = S.volume * VOLUME;
+        S.node.connect(compressor);
+      }
+
+      var source = audioContext.createOscillator();
+      source.type = 'triangle';
+      source.frequency.value = 440 * Math.pow(2, (id - 69) / 12);
+
+      source.start(audioContext.currentTime - 1);
+      source.stop(audioContext.currentTime + duration);
+      source.connect(S.node);
+
+      if (S.source) {
+        S.source.disconnect();
+      }
+      S.source = source;
+    };
+  }
 
   var save = function() {
     STACK.push(R);
