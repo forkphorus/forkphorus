@@ -4,6 +4,13 @@
 <title>phosphorus</title>
 <link rel=stylesheet href=player.css>
 <link rel=stylesheet href=index.css>
+
+<div class=area id=title-area>
+<h1 class=title>phosphorus</h1>
+<p>phosphorus plays your Scratch projects really fast by compiling them to JavaScript. Try it out by pasting a URL or project ID into the field below:</p>
+</div>
+
+<div class=area id=player-area>
 <div class=controls>
   <span class=stop></span>
   <span class=pause></span>
@@ -15,11 +22,15 @@
 <div class=internal-error>
   An internal error occurred. <a id=error-bug-link target=_blank href=https://github.com/nathan/phosphorus/issues/new>Click here</a> to file a bug report.
 </div>
+</div>
+
 <div class=title>
   <div class=progress-bar></div>
   <input class=url value=http://scratch.mit.edu/projects/>
   <a target=_blank class=project-link title="View project on Scratch"></a>
 </div>
+
+<div class=area id=project-area>
 <section class=package>
   <h1>Package this project</h1>
   <p>Make a web page that automatically runs your project.</p>
@@ -48,6 +59,7 @@
   <h1>Report a problem</h1>
   <p>phosphorus is still in development. <a id=bug-link target=_blank href=https://github.com/nathan/phosphorus/issues/new>Click here</a> to report a problem with this project.</p>
 </section>
+</div>
 <section>
   <h1>Credits</h1>
   <p>phosphorus was created by <a href=https://github.com/nathan>Nathan Dinsmore</a>. Its CPS-style compilation and overall design was inspired by <a href=https://github.com/RHY3756547>Rhys Simpson</a>'s <a href=https://code.google.com/p/sb2-js/>sb2.js</a>. It would have more bugs if not for <a href=https://github.com/MathWizz>Truman Kilen</a>. It uses the <a href=http://stuk.github.io/jszip/>JSZip</a> library, created by <a href=https://github.com/stuk>Stuart Knightley</a>, <a href=https://github.com/dduponchel>David Duponchel</a>, Franz Buchinger, and <a href=https://github.com/aadsm>António Afonso</a>, to read <code>.sb2</code> files and compressed projects, and the <a href=https://code.google.com/p/canvg/>canvg</a> library, created by <a href=https://code.google.com/u/gabelerner@gmail.com/>Gabe Lerner</a>, to render SVGs in <code>&lt;canvas&gt;</code> elements.
@@ -68,10 +80,19 @@
   'use strict';
 
   var prefix = 'http://scratch.mit.edu/projects/';
-  var defaultId = '17088932';
 
-  var initialId = location.hash ? location.hash.substr(1) : defaultId;
+  var initialId = location.hash.substr(1);
   if (initialId === 'zip') initialId = '';
+
+  var titleArea = document.querySelector('#title-area');
+  var playerArea = document.querySelector('#player-area');
+  var projectArea = document.querySelector('#project-area');
+
+  playerArea.style.height = projectArea.style.height = 'auto';
+  var titleAreaHeight = titleArea.offsetHeight;
+  var playerAreaHeight = playerArea.offsetHeight;
+  var projectAreaHeight = projectArea.offsetHeight;
+  playerArea.style.height = projectArea.style.height = 0;
 
   var urlInput = document.querySelector('.url');
   urlInput.value = prefix + initialId;
@@ -122,6 +143,10 @@
   function load(id) {
     if (id === 'zip') id = '';
 
+    titleArea.style.height = id ? 0 : titleAreaHeight + 'px';
+    playerArea.style.height = id ? playerAreaHeight + 'px' : 0
+    projectArea.style.height = id ? projectAreaHeight + 'px' : 0;
+
     document.title = 'phosphorus';
     P.player.load(id, function(stage) {
       stage.triggerGreenFlag();
@@ -168,6 +193,19 @@
   embedLightContent.addEventListener('change', updateEmbedCode);
 
   load(initialId);
+
+  setTimeout(function() {
+    function setTransition(el) {
+      el.style.WebkitTransition =
+      el.style.MozTransition =
+      el.style.OTransition =
+      el.style.transition = 'height 0.2s';
+    }
+    setTransition(titleArea);
+    setTransition(playerArea);
+    setTransition(projectArea);
+    urlInput.focus();
+  });
 
   function cancel(e) {
     e.preventDefault();
