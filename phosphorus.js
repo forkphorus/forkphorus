@@ -242,14 +242,14 @@ var P = (function() {
     IO.load(url, function(blob) {
       var audio = new Audio;
       var url = audio.src = URL.createObjectURL(blob);
-      audio.oncanplaythrough = function() {
+      audio.oncanplaythrough = audio.onerror = function() {
         audio.oncanplaythrough = null;
         request.load(audio);
         URL.revokeObjectURL(url);
       };
-      audio.onerror = function() {
-        request.error(new Error('Failed to load audio: ' + url));
-      };
+      // audio.onerror = function() {
+      //   request.error(new Error('Failed to load audio: ' + url));
+      // };
     }, null, 'blob');
     if (callback) request.onLoad(callback.bind(self));
     return request;
@@ -523,15 +523,15 @@ var P = (function() {
         var ab = IO.zip.file(id + '.wav').asArrayBuffer();
         var blob = new Blob([ab], {type: 'audio/wav'});
         var url = audio.src = URL.createObjectURL(blob);
-        audio.oncanplaythrough = function() {
+        audio.oncanplaythrough = audio.onerror = function() {
           audio.oncanplaythrough = null;
           callback(audio);
           request.load(audio);
           URL.revokeObjectURL(url);
         };
-        audio.onerror = function() {
-          request.error(new Error('Failed to load audio: ' + url));
-        };
+        // audio.onerror = function() {
+        //   request.error(new Error('Failed to load audio: ' + url));
+        // };
         IO.projectRequest.add(request);
       } else {
         IO.projectRequest.add(
