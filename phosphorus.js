@@ -2646,9 +2646,6 @@ P.compile = (function() {
         source += '  sounds[i].audio.volume = S.volume * VOLUME;\n';
         source += '}\n';
         source += 'if (S.node) S.node.gain.value = S.volume * VOLUME;\n';
-        // source += 'for (var nodes = S.nodes, i = nodes.length; i--;) {\n';
-        // source += '  nodes[i].gain.value = S.volume;\n';
-        // source += '}\n';
 
       } else if (block[0] === 'changeTempoBy:') {
 
