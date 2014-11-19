@@ -7,7 +7,17 @@
 
 <div class=area id=title-area>
 <h1 class=title>phosphorus</h1>
-<p>phosphorus runs your Scratch projects really fast by compiling them to JavaScript. Try it out by pasting a URL or project ID into the field below.</p>
+<p>phosphorus runs your Scratch projects really fast by compiling them to JavaScript. Try it out by pasting a URL or project ID into the field below or <a class=dropdown>choosing an example<select id=examples>
+  <option value>
+  <option value=11397100>3D Remix by DadOfMrLog
+  <option value=15945630>O by DCPU-16
+  <option value=10128407>Paper Minecraft by griffpatch
+  <option value=16207935>Alone in the depths by sticku
+  <option value=16205373>3D Framework by DadOfMrLog
+  <option value=31903442>gb.sb2 by DCPU-16
+  <option value=21554369>Epic Ninja by griffpatch
+  <option value=15832807>Pretty by blob8108
+</select></a>.</p>
 </div>
 
 <div class=area id=player-area>
@@ -94,6 +104,7 @@
   var projectAreaHeight = projectArea.offsetHeight;
   playerArea.style.height = projectArea.style.height = 0;
 
+  var examples = document.querySelector('#examples');
   var urlInput = document.querySelector('.url');
   urlInput.value = prefix + initialId;
 
@@ -128,6 +139,14 @@
       timeout = setTimeout(function() {
         location.hash = '#' + id;
       }, 300);
+    }
+  });
+
+  examples.addEventListener('change', function() {
+    console.log(examples.value);
+    if (examples.value) {
+      location.hash = '#' + examples.value;
+      examples.selectedIndex = 0;
     }
   });
 
