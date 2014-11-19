@@ -1417,7 +1417,7 @@ var P = (function() {
     if (costume) {
       context.save();
 
-      context.translate(this.scratchX + 240 | 0, 180 - this.scratchY | 0);
+      context.translate(((this.scratchX + 240) * this.stage.zoom | 0) / this.stage.zoom, ((180 - this.scratchY) * this.stage.zoom | 0) / this.stage.zoom);
       if (this.rotationStyle === 'normal') {
         context.rotate((this.direction - 90) * Math.PI / 180);
       } else if (this.rotationStyle === 'leftRight' && this.direction < 0) {
