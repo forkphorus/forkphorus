@@ -3375,11 +3375,11 @@ P.runtime = (function() {
 
   var VOLUME = 0.1;
 
-  var audioContext = AudioContext && new AudioContext;
-  var compressor = audioContext.createDynamicsCompressor();
-  compressor.connect(audioContext.destination);
-
+  var audioContext = P.AudioContext && new P.AudioContext;
   if (audioContext) {
+    var compressor = audioContext.createDynamicsCompressor();
+    compressor.connect(audioContext.destination);
+
     var playNote = function(id, duration) {
       if (!S.node) {
         S.node = audioContext.createGain();
