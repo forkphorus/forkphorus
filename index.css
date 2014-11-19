@@ -1,7 +1,7 @@
 body {
   width: 480px;
-  margin: 32px auto 0;
-  padding-bottom: 32px;
+  margin: 24px auto 0;
+  padding-bottom: 24px;
 }
 .title {
   margin: 16px 0 0;
@@ -31,8 +31,24 @@ body {
   background-position: -160px 0;
 }
 
+.area {
+  overflow: hidden;
+  margin: 0 -24px;
+  padding: 0 24px;
+}
+#player-area, #project-area {
+  height: 0;
+}
+#player-area {
+  border-bottom: 1px solid transparent;
+  margin-bottom: -1px;
+}
+.fs #player-area {
+  overflow: visible;
+}
+
 section {
-  margin: 32px 0 16px;
+  margin: 24px 0;
 }
 h1,
 p {
@@ -42,6 +58,10 @@ p {
 h1 {
   font: 300 24px/32px Helvetica Neue, Helvetica, Arial, sans-serif;
   margin: 16px 0 0;
+}
+h1.title {
+  font: 300 54px/72px Helvetica Neue, Helvetica, Arial, sans-serif;
+  margin: 0;
 }
 code {
   font: 12px Menlo, Monaco, Consolas, Courier New, monospace;
