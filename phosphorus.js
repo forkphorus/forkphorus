@@ -518,7 +518,21 @@ var P = (function() {
       }
     } else if (ext === 'wav') {
       if (IO.zip) {
-        // TODO
+        var request = new Request;
+        var audio = new Audio;
+        var ab = IO.zip.file(id + '.wav').asArrayBuffer();
+        var blob = new Blob([ab], {type: 'audio/wav'});
+        var url = audio.src = URL.createObjectURL(blob);
+        audio.oncanplaythrough = function() {
+          audio.oncanplaythrough = null;
+          callback(audio);
+          request.load(audio);
+          URL.revokeObjectURL(url);
+        };
+        audio.onerror = function() {
+          request.error(new Error('Failed to load audio: ' + url));
+        };
+        IO.projectRequest.add(request);
       } else {
         IO.projectRequest.add(
           IO.loadAudio(IO.ASSET_URL + md5 + '/get/', function(result) {
