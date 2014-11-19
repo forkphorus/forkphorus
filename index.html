@@ -143,6 +143,13 @@
       }, 300);
     }
   });
+  urlInput.addEventListener('focus', function() {
+    setTimeout(function() {
+      if (/\d/.test(urlInput.value)) {
+        urlInput.select();
+      }
+    });
+  });
 
   examples.addEventListener('change', function() {
     console.log(examples.value);
@@ -167,6 +174,7 @@
     titleArea.style.height = id ? 0 : titleAreaHeight + 'px';
     playerArea.style.height = id ? playerAreaHeight + 'px' : 0
     projectArea.style.height = id ? projectAreaHeight + 'px' : 0;
+    if (!id) urlInput.focus();
 
     document.title = 'phosphorus';
     P.player.load(id, function(stage) {
@@ -225,7 +233,6 @@
     setTransition(titleArea);
     setTransition(playerArea);
     setTransition(projectArea);
-    urlInput.focus();
   });
 
   function cancel(e) {
