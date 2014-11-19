@@ -1803,7 +1803,7 @@ var P = (function() {
     if (typeof value === 'number' && (value < 0.001 || value > 0.001)) {
       value = Math.round(value * 1000) / 1000;
     }
-    value = "" + value;
+    value = '' + value;
 
     if (this.labelWidth == null) {
       context.font = 'bold 11px sans-serif';
@@ -3008,8 +3008,8 @@ P.runtime = (function() {
         return nx < ny ? -1 : nx === ny ? 0 : 1;
       }
     }
-    var xs = ("" + x).toLowerCase();
-    var ys = ("" + y).toLowerCase();
+    var xs = ('' + x).toLowerCase();
+    var ys = ('' + y).toLowerCase();
     return xs < ys ? -1 : xs === ys ? 0 : 1;
   };
   var numLess = function(nx, y) {
@@ -3019,8 +3019,8 @@ P.runtime = (function() {
         return nx < ny;
       }
     }
-    var ys = ("" + y).toLowerCase();
-    return "" + nx < ys;
+    var ys = ('' + y).toLowerCase();
+    return '' + nx < ys;
   };
   var numGreater = function(nx, y) {
     if (typeof y === 'number' || DIGIT.test(y)) {
@@ -3029,8 +3029,8 @@ P.runtime = (function() {
         return nx > ny;
       }
     }
-    var ys = ("" + y).toLowerCase();
-    return "" + nx > ys;
+    var ys = ('' + y).toLowerCase();
+    return '' + nx > ys;
   };
 
   var equal = function(x, y) {
@@ -3041,8 +3041,8 @@ P.runtime = (function() {
         return nx === ny;
       }
     }
-    var xs = ("" + x).toLowerCase();
-    var ys = ("" + y).toLowerCase();
+    var xs = ('' + x).toLowerCase();
+    var ys = ('' + y).toLowerCase();
     return xs === ys;
   };
   var numEqual = function(nx, y) {
