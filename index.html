@@ -167,13 +167,19 @@
     load(id);
   });
 
-  function load(id) {
-    if (id === 'zip') id = '';
-
+  function show(id) {
     titleArea.style.height = id ? 0 : titleAreaHeight + 'px';
     playerArea.style.height = id ? playerAreaHeight + 'px' : 0
     projectArea.style.height = id ? projectAreaHeight + 'px' : 0;
     if (!id) urlInput.focus();
+  }
+
+  function load(id) {
+    if (id !== 'zip') {
+      show(id);
+    } else {
+      id = '';
+    }
 
     document.title = 'phosphorus';
     P.player.load(id, function(stage) {
@@ -248,6 +254,7 @@
 
     if (f) {
       location.hash = '#zip';
+      show('zip');
       var ext = f.name.split('.').pop();
       if (ext === 'sb2' || ext === 'zip') {
         var request = P.IO.loadSB2File(f);
