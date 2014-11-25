@@ -2622,7 +2622,7 @@ P.compile = (function() {
         if (P.AudioContext) {
           source += 'save();\n';
           source += 'R.start = self.now();\n';
-          source += 'R.duration = ' + num(block[2]) + ';\n';
+          source += 'R.duration = ' + num(block[2]) + ' * 60 / self.tempoBPM;\n';
           source += 'R.first = true;\n';
           source += 'playNote(' + num(block[1]) + ', R.duration);\n';
 
