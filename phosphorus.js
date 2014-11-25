@@ -164,10 +164,13 @@ var P = (function() {
     throw new Error('Users must implement getResult()');
   };
 
+  var wavFiles = {AcousticGuitar_F3:'instruments/AcousticGuitar_F3_22k.wav',AcousticPiano_As3:'instruments/AcousticPiano(5)_A%233_22k.wav',AcousticPiano_C4:'instruments/AcousticPiano(5)_C4_22k.wav',AcousticPiano_G4:'instruments/AcousticPiano(5)_G4_22k.wav',AcousticPiano_F5:'instruments/AcousticPiano(5)_F5_22k.wav',AcousticPiano_C6:'instruments/AcousticPiano(5)_C6_22k.wav',AcousticPiano_Ds6:'instruments/AcousticPiano(5)_D%236_22k.wav',AcousticPiano_D7:'instruments/AcousticPiano(5)_D7_22k.wav',AltoSax_A3:'instruments/AltoSax_A3_22K.wav',AltoSax_C6:'instruments/AltoSax(3)_C6_22k.wav',Bassoon_C3:'instruments/Bassoon_C3_22k.wav',BassTrombone_A2_2:'instruments/BassTrombone_A2(2)_22k.wav',BassTrombone_A2_3:'instruments/BassTrombone_A2(3)_22k.wav',Cello_C2:'instruments/Cello(3b)_C2_22k.wav',Cello_As2:'instruments/Cello(3)_A%232_22k.wav',Choir_F3:'instruments/Choir(4)_F3_22k.wav',Choir_F4:'instruments/Choir(4)_F4_22k.wav',Choir_F5:'instruments/Choir(4)_F5_22k.wav',Clarinet_C4:'instruments/Clarinet_C4_22k.wav',ElectricBass_G1:'instruments/ElectricBass(2)_G1_22k.wav',ElectricGuitar_F3:'instruments/ElectricGuitar(2)_F3(1)_22k.wav',ElectricPiano_C2:'instruments/ElectricPiano_C2_22k.wav',ElectricPiano_C4:'instruments/ElectricPiano_C4_22k.wav',EnglishHorn_D4:'instruments/EnglishHorn(1)_D4_22k.wav',EnglishHorn_F3:'instruments/EnglishHorn(1)_F3_22k.wav',Flute_B5_1:'instruments/Flute(3)_B5(1)_22k.wav',Flute_B5_2:'instruments/Flute(3)_B5(2)_22k.wav',Marimba_C4:'instruments/Marimba_C4_22k.wav',MusicBox_C4:'instruments/MusicBox_C4_22k.wav',Organ_G2:'instruments/Organ(2)_G2_22k.wav',Pizz_A3:'instruments/Pizz(2)_A3_22k.wav',Pizz_E4:'instruments/Pizz(2)_E4_22k.wav',Pizz_G2:'instruments/Pizz(2)_G2_22k.wav',SteelDrum_D5:'instruments/SteelDrum_D5_22k.wav',SynthLead_C4:'instruments/SynthLead(6)_C4_22k.wav',SynthLead_C6:'instruments/SynthLead(6)_C6_22k.wav',SynthPad_A3:'instruments/SynthPad(2)_A3_22k.wav',SynthPad_C6:'instruments/SynthPad(2)_C6_22k.wav',TenorSax_C3:'instruments/TenorSax(1)_C3_22k.wav',Trombone_B3:'instruments/Trombone_B3_22k.wav',Trumpet_E5:'instruments/Trumpet_E5_22k.wav',Vibraphone_C3:'instruments/Vibraphone_C3_22k.wav',Violin_D4:'instruments/Violin(2)_D4_22K.wav',Violin_A4:'instruments/Violin(3)_A4_22k.wav',Violin_E5:'instruments/Violin(3b)_E5_22k.wav',WoodenFlute_C5:'instruments/WoodenFlute_C5_22k.wav',BassDrum:'drums/BassDrum(1b)_22k.wav',Bongo:'drums/Bongo_22k.wav',Cabasa:'drums/Cabasa(1)_22k.wav',Clap:'drums/Clap(1)_22k.wav',Claves:'drums/Claves(1)_22k.wav',Conga:'drums/Conga(1)_22k.wav',Cowbell:'drums/Cowbell(3)_22k.wav',Crash:'drums/Crash(2)_22k.wav',Cuica:'drums/Cuica(2)_22k.wav',GuiroLong:'drums/GuiroLong(1)_22k.wav',GuiroShort:'drums/GuiroShort(1)_22k.wav',HiHatClosed:'drums/HiHatClosed(1)_22k.wav',HiHatOpen:'drums/HiHatOpen(2)_22k.wav',HiHatPedal:'drums/HiHatPedal(1)_22k.wav',Maracas:'drums/Maracas(1)_22k.wav',SideStick:'drums/SideStick(1)_22k.wav',SnareDrum:'drums/SnareDrum(1)_22k.wav',Tambourine:'drums/Tambourine(3)_22k.wav',Tom:'drums/Tom(1)_22k.wav',Triangle:'drums/Triangle(1)_22k.wav',Vibraslap:'drums/Vibraslap(1)_22k.wav',WoodBlock:'drums/WoodBlock(1)_22k.wav'};
+
   var IO = {};
 
   IO.PROJECT_URL = 'http://projects.scratch.mit.edu/internalapi/project/';
   IO.ASSET_URL = 'http://cdn.assets.scratch.mit.edu/internalapi/asset/';
+  IO.SOUNDBANK_URL = 'https://raw.githubusercontent.com/LLK/scratch-flash/master/src/soundbank/';
 
   IO.PROXY_URL = 'proxy.php?u=';
 
@@ -389,8 +392,39 @@ var P = (function() {
   };
 
   IO.loadProject = function(data) {
+    IO.loadWavs();
     IO.loadArray(data.children, IO.loadObject);
     IO.loadBase(data);
+  };
+
+  IO.wavBuffers = Object.create(null);
+  IO.loadWavs = function() {
+    if (!audioContext) return;
+
+    for (var name in wavFiles) {
+      if (IO.wavBuffers[name]) {
+        if (IO.wavBuffers[name] instanceof Request) {
+          IO.projectRequest.add(IO.wavBuffers[name]);
+        }
+      } else {
+        IO.projectRequest.add(IO.wavBuffers[name] = IO.loadWavBuffer(name));
+      }
+    }
+  };
+
+  IO.loadWavBuffer = function(name) {
+    var request = new Request;
+    IO.load(IO.SOUNDBANK_URL + wavFiles[name], function(ab) {
+      audioContext.decodeAudioData(ab, function(buffer) {
+        IO.wavBuffers[name] = buffer;
+        request.load();
+      }, function(err) {
+        request.error(err);
+      });
+    }, null, 'arraybuffer').onError(function(err) {
+      request.error(err);
+    });
+    return request;
   };
 
   IO.loadBase = function(data) {
@@ -564,6 +598,7 @@ var P = (function() {
     this.costumes = [];
     this.currentCostumeIndex = 0;
     this.objName = '';
+    this.instrument = 0;
     this.volume = 1;
 
     this.soundRefs = Object.create(null);
@@ -1672,10 +1707,17 @@ var P = (function() {
       this.stage.root.removeChild(this.bubble);
       this.bubble = null;
     }
+    this.stopAllSounds();
+  };
+
+  Sprite.prototype.stopAllSounds = function() {
     if (this.node) {
       this.node.disconnect();
       this.node = null;
       this.source = null;
+    }
+    for (var sounds = this.sounds, i = sounds.length; i--;) {
+      sounds[i].audio.pause();
     }
   };
 
@@ -1994,11 +2036,12 @@ var P = (function() {
   };
 
   var AudioContext = window.AudioContext || window.webkitAudioContext;
+  var audioContext = AudioContext && new AudioContext;
 
   return {
     hasTouchEvents: hasTouchEvents,
     getKeyCode: getKeyCode,
-    AudioContext: AudioContext,
+    audioContext: audioContext,
     IO: IO,
     Base: Base,
     Stage: Stage,
@@ -2619,7 +2662,7 @@ P.compile = (function() {
 
       } else if (block[0] === 'noteOn:duration:elapsed:from:') {
 
-        if (P.AudioContext) {
+        if (P.audioContext) {
           source += 'save();\n';
           source += 'R.start = self.now();\n';
           source += 'R.duration = ' + num(block[2]) + ' * 60 / self.tempoBPM;\n';
@@ -2637,7 +2680,9 @@ P.compile = (function() {
 
       // } else if (block[0] === 'midiInstrument:') {
 
-      // } else if (block[0] === 'instrument:') {
+      } else if (block[0] === 'instrument:') {
+
+        source += 'S.instrument = Math.max(0, Math.min(INSTRUMENTS.length - 1, ' + num(block[1]) + ' - 1)) | 0;';
 
       } else if (block[0] === 'changeVolumeBy:' || block[0] === 'setVolumeTo:') {
 
@@ -2645,7 +2690,7 @@ P.compile = (function() {
         source += 'for (var sounds = S.sounds, i = sounds.length; i--;) {\n';
         source += '  sounds[i].audio.volume = S.volume * VOLUME;\n';
         source += '}\n';
-        source += 'if (S.node) S.node.gain.value = S.volume * VOLUME;\n';
+        source += 'if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
 
       } else if (block[0] === 'changeTempoBy:') {
 
@@ -3373,32 +3418,79 @@ P.runtime = (function() {
     return 0;
   };
 
-  var VOLUME = 0.1;
+  var VOLUME = 0.3;
 
-  var audioContext = P.AudioContext && new P.AudioContext;
+  var audioContext = P.audioContext;
   if (audioContext) {
-    var compressor = audioContext.createDynamicsCompressor();
-    compressor.connect(audioContext.destination);
+    var wavBuffers = P.IO.wavBuffers;
+
+    var volumeNode = audioContext.createGain();
+    volumeNode.gain.value = VOLUME;
+    volumeNode.connect(audioContext.destination);
 
     var playNote = function(id, duration) {
       if (!S.node) {
         S.node = audioContext.createGain();
-        S.node.gain.value = S.volume * VOLUME;
-        S.node.connect(compressor);
+        S.node.gain.value = S.volume;
+        S.node.connect(volumeNode);
       }
 
-      var source = audioContext.createOscillator();
-      source.type = 'triangle';
-      source.frequency.value = 440 * Math.pow(2, (id - 69) / 12);
-
-      source.start(audioContext.currentTime - 1);
-      source.stop(audioContext.currentTime + duration);
-      source.connect(S.node);
-
-      if (S.source) {
-        S.source.disconnect();
+      var spans = INSTRUMENTS[S.instrument];
+      for (var i = 0, l = spans.length; i < l; i++) {
+        var span = spans[i];
+        if (span.top >= id || span.top === 128) break;
       }
-      S.source = source;
+
+      var source = audioContext.createBufferSource();
+      var note = audioContext.createGain();
+      var buffer = source.buffer = wavBuffers[span.name];
+
+      var basePitch = 440 * Math.pow(2, (span.base - 69) / 12);
+      if (source.loop = span.loopStart !== -1) {
+        source.loopStart = span.loopStart / (buffer.sampleRate / 2);
+        source.loopEnd = span.loopEnd / (buffer.sampleRate / 2);
+        var length = span.loopEnd - span.loopStart;
+        basePitch = 22050 * Math.round(length * basePitch / 22050) / length;
+      }
+      var attackEnd = span.attack * 0.001;
+      var holdEnd = attackEnd + span.hold * 0.001;
+      var decayEnd = holdEnd + span.decay;
+      var pitch = 440 * Math.pow(2, (id - 69) / 12);
+      var rate = pitch / basePitch;
+
+      source.connect(note);
+      note.connect(S.node);
+
+      var time = audioContext.currentTime;
+      source.playbackRate.value = rate;
+      source.playbackRate.setValueAtTime(rate, time + source.loopStart);
+
+      note.gain.value = 0;
+      note.gain.setValueAtTime(0, time);
+      if (attackEnd < duration) {
+        note.gain.linearRampToValueAtTime(1, time + attackEnd);
+        if (span.decay > 0 && holdEnd < duration) {
+          note.gain.linearRampToValueAtTime(1, time + holdEnd);
+          if (decayEnd < duration) {
+            note.gain.linearRampToValueAtTime(0, time + decayEnd);
+          } else {
+            note.gain.linearRampToValueAtTime(1 - (duration - holdEnd) / (decayEnd - holdEnd), time + duration);
+          }
+        } else {
+          note.gain.linearRampToValueAtTime(1, time + duration);
+        }
+      } else {
+        note.gain.linearRampToValueAtTime(1, time + duration);
+      }
+      note.gain.linearRampToValueAtTime(0, time + duration + 0.02267573696);
+
+      source.start(time);
+      source.stop(time + duration + 0.02267573696);
+
+      if (S.note) {
+        S.note.disconnect();
+      }
+      S.note = note;
     };
   }
 
@@ -3596,6 +3688,7 @@ P.runtime = (function() {
         } else if (c.isSprite) {
           c.resetFilters();
           if (c.saying) c.say('');
+          c.stopAllSounds();
         }
       }
     };
@@ -3648,6 +3741,9 @@ P.runtime = (function() {
     };
 
   }());
+
+  // copy(JSON.stringify(instruments.map(function(g){return g.map(function(r){return{name:r[1],base:r[2],top:r[0],loopStart:r[3],loopEnd:r[4],envelope:!!r[5],attack:r[5]?r[5][0]:0,hold:r[5]?r[5][1]:0,decay:r[5]?r[5][2]:0}})})).replace(/"(\w+)":/g,'$1:').replace(/"/g, '\''));
+  var INSTRUMENTS = [[{name:'AcousticPiano_As3',base:58,top:38,loopStart:10266,loopEnd:17053,envelope:true,attack:0,hold:100,decay:22},{name:'AcousticPiano_C4',base:60,top:44,loopStart:13968,loopEnd:18975,envelope:true,attack:0,hold:100,decay:20},{name:'AcousticPiano_G4',base:67,top:51,loopStart:12200,loopEnd:12370,envelope:true,attack:0,hold:80,decay:18},{name:'AcousticPiano_C6',base:84,top:62,loopStart:13042,loopEnd:13276,envelope:true,attack:0,hold:80,decay:16},{name:'AcousticPiano_F5',base:77,top:70,loopStart:12425,loopEnd:12965,envelope:true,attack:0,hold:40,decay:14},{name:'AcousticPiano_Ds6',base:87,top:77,loopStart:12368,loopEnd:12869,envelope:true,attack:0,hold:20,decay:10},{name:'AcousticPiano_Ds6',base:87,top:85,loopStart:12368,loopEnd:12869,envelope:true,attack:0,hold:0,decay:8},{name:'AcousticPiano_Ds6',base:87,top:90,loopStart:12368,loopEnd:12869,envelope:true,attack:0,hold:0,decay:6},{name:'AcousticPiano_D7',base:98,top:96,loopStart:7454,loopEnd:7606,envelope:true,attack:0,hold:0,decay:3},{name:'AcousticPiano_D7',base:98,top:128,loopStart:7454,loopEnd:7606,envelope:true,attack:0,hold:0,decay:2}],[{name:'ElectricPiano_C2',base:36,top:48,loopStart:15338,loopEnd:17360,envelope:true,attack:0,hold:80,decay:10},{name:'ElectricPiano_C4',base:60,top:74,loopStart:11426,loopEnd:12016,envelope:true,attack:0,hold:40,decay:8},{name:'ElectricPiano_C4',base:60,top:128,loopStart:11426,loopEnd:12016,envelope:true,attack:0,hold:0,decay:6}],[{name:'Organ_G2',base:43,top:128,loopStart:1306,loopEnd:3330,envelope:false,attack:0,hold:0,decay:0}],[{name:'AcousticGuitar_F3',base:53,top:40,loopStart:36665,loopEnd:36791,envelope:true,attack:0,hold:0,decay:15},{name:'AcousticGuitar_F3',base:53,top:56,loopStart:36665,loopEnd:36791,envelope:true,attack:0,hold:0,decay:13.5},{name:'AcousticGuitar_F3',base:53,top:60,loopStart:36665,loopEnd:36791,envelope:true,attack:0,hold:0,decay:12},{name:'AcousticGuitar_F3',base:53,top:67,loopStart:36665,loopEnd:36791,envelope:true,attack:0,hold:0,decay:8.5},{name:'AcousticGuitar_F3',base:53,top:72,loopStart:36665,loopEnd:36791,envelope:true,attack:0,hold:0,decay:7},{name:'AcousticGuitar_F3',base:53,top:83,loopStart:36665,loopEnd:36791,envelope:true,attack:0,hold:0,decay:5.5},{name:'AcousticGuitar_F3',base:53,top:128,loopStart:36665,loopEnd:36791,envelope:true,attack:0,hold:0,decay:4.5}],[{name:'ElectricGuitar_F3',base:53,top:40,loopStart:34692,loopEnd:34945,envelope:true,attack:0,hold:0,decay:15},{name:'ElectricGuitar_F3',base:53,top:56,loopStart:34692,loopEnd:34945,envelope:true,attack:0,hold:0,decay:13.5},{name:'ElectricGuitar_F3',base:53,top:60,loopStart:34692,loopEnd:34945,envelope:true,attack:0,hold:0,decay:12},{name:'ElectricGuitar_F3',base:53,top:67,loopStart:34692,loopEnd:34945,envelope:true,attack:0,hold:0,decay:8.5},{name:'ElectricGuitar_F3',base:53,top:72,loopStart:34692,loopEnd:34945,envelope:true,attack:0,hold:0,decay:7},{name:'ElectricGuitar_F3',base:53,top:83,loopStart:34692,loopEnd:34945,envelope:true,attack:0,hold:0,decay:5.5},{name:'ElectricGuitar_F3',base:53,top:128,loopStart:34692,loopEnd:34945,envelope:true,attack:0,hold:0,decay:4.5}],[{name:'ElectricBass_G1',base:31,top:34,loopStart:41912,loopEnd:42363,envelope:true,attack:0,hold:0,decay:17},{name:'ElectricBass_G1',base:31,top:48,loopStart:41912,loopEnd:42363,envelope:true,attack:0,hold:0,decay:14},{name:'ElectricBass_G1',base:31,top:64,loopStart:41912,loopEnd:42363,envelope:true,attack:0,hold:0,decay:12},{name:'ElectricBass_G1',base:31,top:128,loopStart:41912,loopEnd:42363,envelope:true,attack:0,hold:0,decay:10}],[{name:'Pizz_G2',base:43,top:38,loopStart:8554,loopEnd:8782,envelope:true,attack:0,hold:0,decay:5},{name:'Pizz_G2',base:43,top:45,loopStart:8554,loopEnd:8782,envelope:true,attack:0,hold:12,decay:4},{name:'Pizz_A3',base:57,top:56,loopStart:11460,loopEnd:11659,envelope:true,attack:0,hold:0,decay:4},{name:'Pizz_A3',base:57,top:64,loopStart:11460,loopEnd:11659,envelope:true,attack:0,hold:0,decay:3.2},{name:'Pizz_E4',base:64,top:72,loopStart:17525,loopEnd:17592,envelope:true,attack:0,hold:0,decay:2.8},{name:'Pizz_E4',base:64,top:80,loopStart:17525,loopEnd:17592,envelope:true,attack:0,hold:0,decay:2.2},{name:'Pizz_E4',base:64,top:128,loopStart:17525,loopEnd:17592,envelope:true,attack:0,hold:0,decay:1.5}],[{name:'Cello_C2',base:36,top:41,loopStart:8548,loopEnd:8885,envelope:false,attack:0,hold:0,decay:0},{name:'Cello_As2',base:46,top:52,loopStart:7465,loopEnd:7845,envelope:false,attack:0,hold:0,decay:0},{name:'Violin_D4',base:62,top:62,loopStart:10608,loopEnd:11360,envelope:false,attack:0,hold:0,decay:0},{name:'Violin_A4',base:69,top:75,loopStart:3111,loopEnd:3314,envelope:true,attack:70,hold:0,decay:0},{name:'Violin_E5',base:76,top:128,loopStart:2383,loopEnd:2484,envelope:false,attack:0,hold:0,decay:0}],[{name:'BassTrombone_A2_3',base:45,top:30,loopStart:1357,loopEnd:2360,envelope:false,attack:0,hold:0,decay:0},{name:'BassTrombone_A2_2',base:45,top:40,loopStart:1893,loopEnd:2896,envelope:false,attack:0,hold:0,decay:0},{name:'Trombone_B3',base:59,top:55,loopStart:2646,loopEnd:3897,envelope:false,attack:0,hold:0,decay:0},{name:'Trombone_B3',base:59,top:88,loopStart:2646,loopEnd:3897,envelope:true,attack:50,hold:0,decay:0},{name:'Trumpet_E5',base:76,top:128,loopStart:2884,loopEnd:3152,envelope:false,attack:0,hold:0,decay:0}],[{name:'Clarinet_C4',base:60,top:128,loopStart:14540,loopEnd:15468,envelope:false,attack:0,hold:0,decay:0}],[{name:'TenorSax_C3',base:48,top:40,loopStart:8939,loopEnd:10794,envelope:false,attack:0,hold:0,decay:0},{name:'TenorSax_C3',base:48,top:50,loopStart:8939,loopEnd:10794,envelope:true,attack:20,hold:0,decay:0},{name:'TenorSax_C3',base:48,top:59,loopStart:8939,loopEnd:10794,envelope:true,attack:40,hold:0,decay:0},{name:'AltoSax_A3',base:57,top:67,loopStart:8546,loopEnd:9049,envelope:false,attack:0,hold:0,decay:0},{name:'AltoSax_A3',base:57,top:75,loopStart:8546,loopEnd:9049,envelope:true,attack:20,hold:0,decay:0},{name:'AltoSax_A3',base:57,top:80,loopStart:8546,loopEnd:9049,envelope:true,attack:20,hold:0,decay:0},{name:'AltoSax_C6',base:84,top:128,loopStart:1258,loopEnd:1848,envelope:false,attack:0,hold:0,decay:0}],[{name:'Flute_B5_2',base:83,top:61,loopStart:1859,loopEnd:2259,envelope:false,attack:0,hold:0,decay:0},{name:'Flute_B5_1',base:83,top:128,loopStart:2418,loopEnd:2818,envelope:false,attack:0,hold:0,decay:0}],[{name:'WoodenFlute_C5',base:72,top:128,loopStart:11426,loopEnd:15724,envelope:false,attack:0,hold:0,decay:0}],[{name:'Bassoon_C3',base:48,top:57,loopStart:2428,loopEnd:4284,envelope:false,attack:0,hold:0,decay:0},{name:'Bassoon_C3',base:48,top:67,loopStart:2428,loopEnd:4284,envelope:true,attack:40,hold:0,decay:0},{name:'Bassoon_C3',base:48,top:76,loopStart:2428,loopEnd:4284,envelope:true,attack:80,hold:0,decay:0},{name:'EnglishHorn_F3',base:53,top:84,loopStart:7538,loopEnd:8930,envelope:true,attack:40,hold:0,decay:0},{name:'EnglishHorn_D4',base:62,top:128,loopStart:4857,loopEnd:5231,envelope:false,attack:0,hold:0,decay:0}],[{name:'Choir_F3',base:53,top:39,loopStart:14007,loopEnd:41281,envelope:false,attack:0,hold:0,decay:0},{name:'Choir_F3',base:53,top:50,loopStart:14007,loopEnd:41281,envelope:true,attack:40,hold:0,decay:0},{name:'Choir_F3',base:53,top:61,loopStart:14007,loopEnd:41281,envelope:true,attack:60,hold:0,decay:0},{name:'Choir_F4',base:65,top:72,loopStart:16351,loopEnd:46436,envelope:false,attack:0,hold:0,decay:0},{name:'Choir_F5',base:77,top:128,loopStart:18440,loopEnd:45391,envelope:false,attack:0,hold:0,decay:0}],[{name:'Vibraphone_C3',base:48,top:38,loopStart:6202,loopEnd:6370,envelope:true,attack:0,hold:100,decay:8},{name:'Vibraphone_C3',base:48,top:48,loopStart:6202,loopEnd:6370,envelope:true,attack:0,hold:100,decay:7.5},{name:'Vibraphone_C3',base:48,top:59,loopStart:6202,loopEnd:6370,envelope:true,attack:0,hold:60,decay:7},{name:'Vibraphone_C3',base:48,top:70,loopStart:6202,loopEnd:6370,envelope:true,attack:0,hold:40,decay:6},{name:'Vibraphone_C3',base:48,top:78,loopStart:6202,loopEnd:6370,envelope:true,attack:0,hold:20,decay:5},{name:'Vibraphone_C3',base:48,top:86,loopStart:6202,loopEnd:6370,envelope:true,attack:0,hold:0,decay:4},{name:'Vibraphone_C3',base:48,top:128,loopStart:6202,loopEnd:6370,envelope:true,attack:0,hold:0,decay:3}],[{name:'MusicBox_C4',base:60,top:128,loopStart:14278,loopEnd:14700,envelope:true,attack:0,hold:0,decay:2}],[{name:'SteelDrum_D5',base:74.4,top:128,loopStart:-1,loopEnd:-1,envelope:true,attack:0,hold:0,decay:2}],[{name:'Marimba_C4',base:60,top:128,loopStart:-1,loopEnd:-1,envelope:false,attack:0,hold:0,decay:0}],[{name:'SynthLead_C4',base:60,top:80,loopStart:135,loopEnd:1400,envelope:false,attack:0,hold:0,decay:0},{name:'SynthLead_C6',base:84,top:128,loopStart:124,loopEnd:356,envelope:false,attack:0,hold:0,decay:0}],[{name:'SynthPad_A3',base:57,top:38,loopStart:4212,loopEnd:88017,envelope:true,attack:50,hold:0,decay:0},{name:'SynthPad_A3',base:57,top:50,loopStart:4212,loopEnd:88017,envelope:true,attack:80,hold:0,decay:0},{name:'SynthPad_A3',base:57,top:62,loopStart:4212,loopEnd:88017,envelope:true,attack:110,hold:0,decay:0},{name:'SynthPad_A3',base:57,top:74,loopStart:4212,loopEnd:88017,envelope:true,attack:150,hold:0,decay:0},{name:'SynthPad_A3',base:57,top:86,loopStart:4212,loopEnd:88017,envelope:true,attack:200,hold:0,decay:0},{name:'SynthPad_C6',base:84,top:128,loopStart:2575,loopEnd:9202,envelope:false,attack:0,hold:0,decay:0}]];
 
   return {
     scopedEval: function(source) {
