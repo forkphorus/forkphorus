@@ -790,6 +790,20 @@ var P = (function() {
     }
   };
 
+  Base.prototype.stopAllSounds = function() {
+    if (this.node) {
+      this.node.disconnect();
+      this.node = null;
+    }
+    for (var i = this.sounds.length; i--;) {
+      var s = this.sounds[i];
+      if (s.node) {
+        s.node.disconnect();
+        s.node = null;
+      }
+    }
+  };
+
   Base.prototype.ask = function(question) {
     var stage = this.stage;
     if (question) {
@@ -1719,20 +1733,6 @@ var P = (function() {
     if (this.node) {
       this.node.disconnect();
       this.node = null;
-    }
-  };
-
-  Sprite.prototype.stopAllSounds = function() {
-    if (this.node) {
-      this.node.disconnect();
-      this.node = null;
-    }
-    for (var i = this.sounds.length; i--;) {
-      var s = this.sounds[i];
-      if (s.node) {
-        s.node.disconnect();
-        s.node = null;
-      }
     }
   };
 
@@ -3735,6 +3735,7 @@ P.runtime = (function() {
       this.promptId = this.nextPromptId = 0;
       this.queue = [];
       this.resetFilters();
+      this.stopAllSounds();
       for (var i = 0; i < this.children.length; i++) {
         var c = this.children[i];
         if (c.isClone) {
