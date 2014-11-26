@@ -415,7 +415,7 @@ var P = (function() {
   IO.loadWavBuffer = function(name) {
     var request = new Request;
     IO.load(IO.SOUNDBANK_URL + wavFiles[name], function(ab) {
-      audioContext.decodeAudioData(ab, function(buffer) {
+      IO.decodeAudio(ab, function(buffer) {
         IO.wavBuffers[name] = buffer;
         request.load();
       }, function(err) {
@@ -425,6 +425,18 @@ var P = (function() {
       request.error(err);
     });
     return request;
+  };
+
+  IO.decodeAudio = function(ab, cb, cbe) {
+    if (audioContext) {
+      audioContext.decodeAudioData(ab, function(buffer) {
+        cb(buffer);
+      }, function(err) {
+        cbe(err);
+      });
+    } else {
+      setTimeout(cb);
+    }
   };
 
   IO.loadBase = function(data) {
@@ -462,7 +474,7 @@ var P = (function() {
 
   IO.loadSound = function(data) {
     IO.loadMD5(data.md5, data.soundID, function(asset) {
-      data.$audio = asset;
+      data.$buffer = asset;
     });
   };
 
@@ -551,27 +563,22 @@ var P = (function() {
         IO.projectRequest.add(IO.load(IO.ASSET_URL + md5 + '/get/', cb));
       }
     } else if (ext === 'wav') {
+      var request = new Request;
+      var cb = function(ab) {
+        IO.decodeAudio(ab, function(buffer) {
+          callback(buffer);
+          request.load(buffer);
+        }, function() {
+          request.error(new Error('Failed to load audio: ' + url));
+        });
+      }
+      IO.projectRequest.add(request);
       if (IO.zip) {
-        var request = new Request;
         var audio = new Audio;
         var ab = IO.zip.file(id + '.wav').asArrayBuffer();
-        var blob = new Blob([ab], {type: 'audio/wav'});
-        var url = audio.src = URL.createObjectURL(blob);
-        audio.oncanplaythrough = function() {
-          audio.oncanplaythrough = null;
-          callback(audio);
-          request.load(audio);
-          URL.revokeObjectURL(url);
-        };
-        audio.onerror = function() {
-          request.error(new Error('Failed to load audio: ' + url));
-        };
-        IO.projectRequest.add(request);
+        cb(ab);
       } else {
-        IO.projectRequest.add(
-          IO.loadAudio(IO.ASSET_URL + md5 + '/get/', function(result) {
-            callback(result);
-          }));
+        IO.projectRequest.add(IO.load(IO.ASSET_URL + md5 + '/get/', cb, null, 'arraybuffer'));
       }
     } else {
       if (IO.zip) {
@@ -1766,16 +1773,7 @@ var P = (function() {
 
   var Sound = function(data) {
     this.name = data.soundName;
-    this.audio = data.$audio;
-  };
-
-  Sound.prototype.play = function(volume) {
-    if (!this.audio.paused) {
-      this.audio.pause();
-      this.audio.currentTime = 0;
-    }
-    this.audio.volume = volume;
-    this.audio.play();
+    this.buffer = data.$buffer;
   };
 
   var Watcher = function(stage) {
@@ -2464,6 +2462,21 @@ P.compile = (function() {
         source += 'restore();\n';
     };
 
+    var wait = function(dur) {
+      source += 'save();\n';
+      source += 'R.start = self.now();\n';
+      source += 'R.duration = ' + dur + ';\n';
+      source += 'R.first = true;\n';
+
+      var id = label();
+      source += 'if (self.now() - R.start < R.duration * 1000 || R.first) {\n';
+      source += '  R.first = false;\n';
+      forceQueue(id);
+      source += '}\n';
+
+      source += 'restore();\n';
+    };
+
     var noRGB = '';
     noRGB += 'if (S.penCSS) {\n';
     noRGB += '  var hsl = rgb2hsl(S.penColor);\n';
@@ -2663,12 +2676,26 @@ P.compile = (function() {
 
       } else if (block[0] === 'playSound:') { /* Sound */
 
-        source += 'var sound = S.soundRefs[' + val(block[1]) + '];\n';
-        source += 'if (sound) sound.play(S.volume * VOLUME);\n';
+        if (P.audioContext) {
+          source += 'var sound = S.soundRefs[' + val(block[1]) + '];\n';
+          source += 'if (sound) playSound(sound);\n';
+        }
 
-      // } else if (block[0] === 'doPlaySoundAndWait') {
+      } else if (block[0] === 'doPlaySoundAndWait') {
 
-      // } else if (block[0] === 'stopAllSounds') {
+        if (P.audioContext) {
+          source += 'var sound = S.soundRefs[' + val(block[1]) + '];\n';
+          source += 'if (sound) {\n';
+          source += '  playSound(sound);\n';
+          wait('sound.buffer.duration');
+          source += '}\n';
+        }
+
+      } else if (block[0] === 'stopAllSounds') {
+
+        if (P.audioContext) {
+          source += 'S.stopAllSounds();\n';
+        }
 
       // } else if (block[0] === 'drum:duration:elapsed:from:') {
 
@@ -2702,9 +2729,6 @@ P.compile = (function() {
       } else if (block[0] === 'changeVolumeBy:' || block[0] === 'setVolumeTo:') {
 
         source += 'S.volume = Math.min(1, Math.max(0, ' + (block[0] === 'changeVolumeBy:' ? 'S.volume + ' : '') + num(block[1]) + ' / 100));\n';
-        source += 'for (var sounds = S.sounds, i = sounds.length; i--;) {\n';
-        source += '  sounds[i].audio.volume = S.volume * VOLUME;\n';
-        source += '}\n';
         source += 'if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
 
       } else if (block[0] === 'changeTempoBy:') {
@@ -2965,18 +2989,7 @@ P.compile = (function() {
 
       } else if (block[0] === 'wait:elapsed:from:') {
 
-        source += 'save();\n';
-        source += 'R.start = self.now();\n';
-        source += 'R.duration = ' + num(block[1]) + ';\n';
-        source += 'R.first = true;\n';
-
-        var id = label();
-        source += 'if (self.now() - R.start < R.duration * 1000 || R.first) {\n';
-        source += '  R.first = false;\n';
-        forceQueue(id);
-        source += '}\n';
-
-        source += 'restore();\n';
+        wait(num(block[1]));
 
       } else if (block[0] === 'warpSpeed') {
 
@@ -3496,6 +3509,23 @@ P.runtime = (function() {
 
       source.start(time);
       source.stop(time + duration + 0.02267573696);
+    };
+
+    var playSound = function(sound) {
+      if (!S.node) {
+        S.node = audioContext.createGain();
+        S.node.gain.value = S.volume;
+        S.node.connect(volumeNode);
+      }
+
+      if (sound.node) {
+        sound.node.disconnect();
+      }
+      sound.node = audioContext.createBufferSource();
+      sound.node.buffer = sound.buffer;
+      sound.node.connect(S.node);
+
+      sound.node.start(audioContext.currentTime);
     };
   }
 
