@@ -240,24 +240,6 @@ var P = (function() {
     return request;
   };
 
-  IO.loadAudio = function(url, callback, self) {
-    var request = new Request;
-    IO.load(url, function(blob) {
-      var audio = new Audio;
-      var url = audio.src = URL.createObjectURL(blob);
-      audio.oncanplaythrough = function() {
-        audio.oncanplaythrough = null;
-        request.load(audio);
-        URL.revokeObjectURL(url);
-      };
-      audio.onerror = function() {
-        request.error(new Error('Failed to load audio: ' + url));
-      };
-    }, null, 'blob');
-    if (callback) request.onLoad(callback.bind(self));
-    return request;
-  };
-
   IO.loadScratchr2Project = function(id, callback, self) {
     var request = new CompositeRequest;
     IO.init(request);
