@@ -250,12 +250,12 @@ var P = (function() {
     IO.init(request);
 
     request.defer = true;
-    var url = IO.PROJECT_URL + id + '/get/?' + Math.random().toString().slice(2);
-    request.add(IO.loadProxy(url).onLoad(function(contents) {
+    var url = IO.PROJECT_URL + id + '/get/';
+    request.add(IO.load(url).onLoad(function(contents) {
       try {
         var json = IO.parseJSONish(contents);
       } catch (e) {
-        request.add(IO.loadProxy(url, null, null, 'arraybuffer').onLoad(function(ab) {
+        request.add(IO.load(url, null, null, 'arraybuffer').onLoad(function(ab) {
           var request2 = new Request;
           request.add(request2);
           request.add(IO.loadSB2Project(ab, function(stage) {
