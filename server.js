@@ -1,5 +1,6 @@
 var fs = require('fs');
 var http = require('http');
+var https = require('https');
 var url = require('url');
 var querystring = require('querystring');
 
@@ -24,7 +25,7 @@ http.createServer(function(req, res) {
 
     var proxyURL = url.parse(params.u);
 
-    var q = http.request(proxyURL, function(r) {
+    var q = (proxyURL.protocol === 'https:' ? https : http).request(proxyURL, function(r) {
       var cache = r.headers['content-type'] === 'application/json' ? 'max-age=0, no-cache' : 'public, max-age=31536000';
       res.writeHead(r.statusCode, {
         'Content-Type': r.headers['content-type'],

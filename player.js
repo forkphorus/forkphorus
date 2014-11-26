@@ -176,6 +176,7 @@ P.player = (function() {
     P.player.projectURL = id ? 'http://scratch.mit.edu/projects/' + id + '/' : '';
 
     if (stage) {
+      stage.stopAll();
       stage.pause();
     }
     while (player.firstChild) player.removeChild(player.lastChild);
