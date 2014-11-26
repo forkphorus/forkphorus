@@ -2181,7 +2181,9 @@ P.compile = (function() {
           .replace(/\\/g, '\\\\')
           .replace(/\n/g, '\\n')
           .replace(/\r/g, '\\r')
-          .replace(/"/g, '\\"') + '"';
+          .replace(/"/g, '\\"')
+          .replace(/\{/g, '\\x7b')
+          .replace(/\}/g, '\\x7d') + '"';
 
       } else if (e[0] === 'getParam') { /* Data */
 
