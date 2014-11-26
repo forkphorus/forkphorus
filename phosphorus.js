@@ -1722,9 +1722,6 @@ var P = (function() {
       this.node.disconnect();
       this.node = null;
     }
-    for (var sounds = this.sounds, i = sounds.length; i--;) {
-      sounds[i].audio.pause();
-    }
   };
 
   var Costume = function(data, index, base) {
