@@ -1706,6 +1706,10 @@ var P = (function() {
       this.stage.root.removeChild(this.bubble);
       this.bubble = null;
     }
+    if (this.node) {
+      this.node.disconnect();
+      this.node = null;
+    }
   };
 
   Sprite.prototype.stopAllSounds = function() {
