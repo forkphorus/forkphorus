@@ -790,7 +790,7 @@ var P = (function() {
     }
   };
 
-  Base.prototype.stopAllSounds = function() {
+  Base.prototype.stopSounds = function() {
     if (this.node) {
       this.node.disconnect();
       this.node = null;
@@ -1125,13 +1125,11 @@ var P = (function() {
     }
   };
 
-  Stage.prototype.resetAllFilters = function() {
-    var children = this.children;
-    var i = children.length;
-    while (i--) {
-      children[i].resetFilters();
+  Stage.prototype.stopAllSounds = function() {
+    for (var children = this.children, i = children.length; i--;) {
+      children[i].stopSounds();
     }
-    this.resetFilters();
+    this.stopSounds();
   };
 
   Stage.prototype.removeAllClones = function() {
@@ -2704,7 +2702,7 @@ P.compile = (function() {
       } else if (block[0] === 'stopAllSounds') {
 
         if (P.audioContext) {
-          source += 'S.stopAllSounds();\n';
+          source += 'self.stopAllSounds();\n';
         }
 
       // } else if (block[0] === 'drum:duration:elapsed:from:') {
@@ -3735,7 +3733,7 @@ P.runtime = (function() {
       this.promptId = this.nextPromptId = 0;
       this.queue = [];
       this.resetFilters();
-      this.stopAllSounds();
+      this.stopSounds();
       for (var i = 0; i < this.children.length; i++) {
         var c = this.children[i];
         if (c.isClone) {
@@ -3745,7 +3743,7 @@ P.runtime = (function() {
         } else if (c.isSprite) {
           c.resetFilters();
           if (c.saying) c.say('');
-          c.stopAllSounds();
+          c.stopSounds();
         }
       }
     };
