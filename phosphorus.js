@@ -3439,16 +3439,16 @@ P.runtime = (function() {
     volumeNode.connect(audioContext.destination);
 
     var playNote = function(id, duration) {
-      if (!S.node) {
-        S.node = audioContext.createGain();
-        S.node.gain.value = S.volume;
-        S.node.connect(volumeNode);
-      }
-
       var spans = INSTRUMENTS[S.instrument];
       for (var i = 0, l = spans.length; i < l; i++) {
         var span = spans[i];
         if (span.top >= id || span.top === 128) break;
+      }
+
+      if (!S.node) {
+        S.node = audioContext.createGain();
+        S.node.gain.value = S.volume;
+        S.node.connect(volumeNode);
       }
 
       var source = audioContext.createBufferSource();
@@ -3457,8 +3457,8 @@ P.runtime = (function() {
 
       var basePitch = 440 * Math.pow(2, (span.base - 69) / 12);
       if (source.loop = span.loopStart !== -1) {
-        source.loopStart = span.loopStart / (buffer.sampleRate / 2);
-        source.loopEnd = span.loopEnd / (buffer.sampleRate / 2);
+        source.loopStart = span.loopStart / 22050;
+        source.loopEnd = span.loopEnd / 22050;
         var length = span.loopEnd - span.loopStart;
         basePitch = 22050 * Math.round(length * basePitch / 22050) / length;
       }
