@@ -170,7 +170,7 @@ var P = (function() {
 
   IO.PROJECT_URL = 'http://projects.scratch.mit.edu/internalapi/project/';
   IO.ASSET_URL = 'http://cdn.assets.scratch.mit.edu/internalapi/asset/';
-  IO.SOUNDBANK_URL = 'https://raw.githubusercontent.com/LLK/scratch-flash/master/src/soundbank/';
+  IO.SOUNDBANK_URL = 'https://cdn.rawgit.com/LLK/scratch-flash/v429/src/soundbank/';
 
   IO.PROXY_URL = 'proxy.php?u=';
 
@@ -205,7 +205,7 @@ var P = (function() {
   IO.load = function(url, callback, self, type) {
     var request = new Request;
     var xhr = new XMLHttpRequest;
-    xhr.open('GET', IO.PROXY_URL + encodeURIComponent(url), true);
+    xhr.open('GET', url, true);
     xhr.onprogress = function(e) {
       request.progress(e.loaded, e.total, e.lengthComputable);
     };
@@ -224,6 +224,10 @@ var P = (function() {
 
     if (callback) request.onLoad(callback.bind(self));
     return request;
+  };
+
+  IO.loadProxy = function(url, callback, self, type) {
+    return IO.load(IO.PROXY_URL + encodeURIComponent(url), callback, self, type);
   };
 
   IO.loadImage = function(url, callback, self) {
@@ -247,11 +251,11 @@ var P = (function() {
 
     request.defer = true;
     var url = IO.PROJECT_URL + id + '/get/?' + Math.random().toString().slice(2);
-    request.add(IO.load(url).onLoad(function(contents) {
+    request.add(IO.loadProxy(url).onLoad(function(contents) {
       try {
         var json = IO.parseJSONish(contents);
       } catch (e) {
-        request.add(IO.load(url, null, null, 'arraybuffer').onLoad(function(ab) {
+        request.add(IO.loadProxy(url, null, null, 'arraybuffer').onLoad(function(ab) {
           var request2 = new Request;
           request.add(request2);
           request.add(IO.loadSB2Project(ab, function(stage) {
@@ -287,7 +291,7 @@ var P = (function() {
     var request = new CompositeRequest;
 
     request.defer = true;
-    request.add(P.IO.load('http://scratch.mit.edu/projects/' + id + '/').onLoad(function(data) {
+    request.add(P.IO.loadProxy('http://scratch.mit.edu/projects/' + id + '/').onLoad(function(data) {
       var m = /<title>\s*(.+?)(\s+on\s+Scratch)?\s*<\/title>/.exec(data);
       if (callback) request.onLoad(callback.bind(self));
       if (m) {
