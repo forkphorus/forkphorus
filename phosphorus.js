@@ -878,20 +878,24 @@ var P = (function() {
     // hardware acceleration
     this.root.style.WebkitTransform = 'translateZ(0)';
 
-    this.canvas.addEventListener('keydown', function(e) {
+    this.root.addEventListener('keydown', function(e) {
       if (e.ctrlKey || e.altKey || e.metaKey) {
         return;
       }
       this.keys[e.keyCode] = true;
-      this.trigger('whenKeyPressed', e.keyCode);
       e.stopPropagation();
-      e.preventDefault();
+      if (e.target === this.canvas) {
+        e.preventDefault();
+        this.trigger('whenKeyPressed', e.keyCode);
+      }
     }.bind(this));
 
-    this.canvas.addEventListener('keyup', function(e) {
+    this.root.addEventListener('keyup', function(e) {
       this.keys[e.keyCode] = false;
       e.stopPropagation();
-      e.preventDefault();
+      if (e.target === this.canvas) {
+        e.preventDefault();
+      }
     }.bind(this));
 
     if (hasTouchEvents) {
