@@ -2448,6 +2448,23 @@ P.compile = (function() {
       return v != null ? v : '(+' + val(e, true) + ' || 0)';
     };
 
+    var beatHead = function(dur) {
+      source += 'save();\n';
+      source += 'R.start = self.now();\n';
+      source += 'R.duration = ' + num(dur) + ' * 60 / self.tempoBPM;\n';
+      source += 'R.first = true;\n';
+    };
+
+    var beatTail = function(dur) {
+        var id = label();
+        source += 'if (self.now() - R.start < R.duration * 1000 || R.first) {\n';
+        source += '  R.first = false;\n';
+        forceQueue(id);
+        source += '}\n';
+
+        source += 'restore();\n';
+    };
+
     var noRGB = '';
     noRGB += 'if (S.penCSS) {\n';
     noRGB += '  var hsl = rgb2hsl(S.penColor);\n';
@@ -2658,25 +2675,18 @@ P.compile = (function() {
 
       // } else if (block[0] === 'playDrum') {
 
-      // } else if (block[0] === 'rest:elapsed:from:') {
+      } else if (block[0] === 'rest:elapsed:from:') {
+
+        beatHead(block[1]);
+        beatTail();
 
       } else if (block[0] === 'noteOn:duration:elapsed:from:') {
 
+        beatHead(block[2]);
         if (P.audioContext) {
-          source += 'save();\n';
-          source += 'R.start = self.now();\n';
-          source += 'R.duration = ' + num(block[2]) + ' * 60 / self.tempoBPM;\n';
-          source += 'R.first = true;\n';
           source += 'playNote(' + num(block[1]) + ', R.duration);\n';
-
-          var id = label();
-          source += 'if (self.now() - R.start < R.duration * 1000 || R.first) {\n';
-          source += '  R.first = false;\n';
-          forceQueue(id);
-          source += '}\n';
-
-          source += 'restore();\n';
         }
+        beatTail();
 
       // } else if (block[0] === 'midiInstrument:') {
 
