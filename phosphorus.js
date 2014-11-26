@@ -229,7 +229,8 @@ var P = (function() {
   IO.loadImage = function(url, callback, self) {
     var request = new Request;
     var image = new Image;
-    image.src = IO.PROXY_URL + encodeURIComponent(url);
+    image.crossOrigin = 'anonymous';
+    image.src = url;
     image.onload = function() {
       request.load(image);
     };
