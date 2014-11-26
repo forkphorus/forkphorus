@@ -1696,7 +1696,6 @@ var P = (function() {
       this.stage.root.removeChild(this.bubble);
       this.bubble = null;
     }
-    this.stopAllSounds();
   };
 
   Sprite.prototype.stopAllSounds = function() {
