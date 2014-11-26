@@ -3085,35 +3085,53 @@ P.compile = (function() {
       var brackets = 0;
       var delBrackets = 0;
       var shouldDelete = false;
-      for (var i = 0; i < source.length; i++) {
+      var here = 0;
+      var length = source.length;
+      while (here < length) {
+        var i = source.indexOf('{', here);
+        var j = source.indexOf('}', here);
+        if (i === -1 && j === -1) {
+          if (!shouldDelete) {
+            result += source.slice(here);
+          }
+          break;
+        }
+        if (i === -1) i = length;
+        if (j === -1) j = length;
         if (shouldDelete) {
-          if (source[i] === '{') {
-            delBrackets += 1;
-          } else if (source[i] === '}') {
-            delBrackets -= 1;
-            if (delBrackets === 0) {
+          if (i < j) {
+            delBrackets++;
+            here = i + 1;
+          } else {
+            delBrackets--;
+            if (!delBrackets) {
               shouldDelete = false;
             }
+            here = j + 1;
           }
         } else {
-          if (source.substr(i, 8) === '} else {') {
-            if (brackets > 0) {
-              result += '} else {';
-              i += 7;
-            } else {
-              shouldDelete = true;
-              delBrackets = 0;
-            }
-          } else if (source[i] === '{') {
-            brackets += 1;
-            result += '{';
-          } else if (source[i] === '}') {
-            if (brackets > 0) {
-              result += '}';
-              brackets -= 1;
-            }
+          if (i < j) {
+            result += source.slice(here, i + 1);
+            brackets++;
+            here = i + 1;
           } else {
-            result += source[i];
+            result += source.slice(here, j);
+            if (source.substr(j, 8) === '} else {') {
+              if (brackets > 0) {
+                result += '} else {';
+                here = j + 8;
+              } else {
+                shouldDelete = true;
+                delBrackets = 0;
+                here = j + 1;
+              }
+            } else {
+              if (brackets > 0) {
+                result += '}';
+                brackets--;
+              }
+              here = j + 1;
+            }
           }
         }
       }
