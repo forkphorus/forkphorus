@@ -1714,7 +1714,6 @@ var P = (function() {
     if (this.node) {
       this.node.disconnect();
       this.node = null;
-      this.source = null;
     }
     for (var sounds = this.sounds, i = sounds.length; i--;) {
       sounds[i].audio.pause();
@@ -3497,11 +3496,6 @@ P.runtime = (function() {
 
       source.start(time);
       source.stop(time + duration + 0.02267573696);
-
-      if (S.note) {
-        S.note.disconnect();
-      }
-      S.note = note;
     };
   }
 
