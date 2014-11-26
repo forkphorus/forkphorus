@@ -1703,6 +1703,13 @@ var P = (function() {
       this.node.disconnect();
       this.node = null;
     }
+    for (var i = this.sounds.length; i--;) {
+      var s = this.sounds[i];
+      if (s.node) {
+        s.node.disconnect();
+        s.node = null;
+      }
+    }
   };
 
   var Costume = function(data, index, base) {
@@ -2708,6 +2715,11 @@ P.compile = (function() {
 
         source += 'S.volume = Math.min(1, Math.max(0, ' + (block[0] === 'changeVolumeBy:' ? 'S.volume + ' : '') + num(block[1]) + ' / 100));\n';
         source += 'if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
+        source += 'for (var sounds = S.sounds, i = sounds.length; i--;) {\n';
+        source += '  var sound = sounds[i];\n';
+        source += '  if (sound.node && sound.target === S) sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
+        source += '  }\n';
+        source += '}\n';
 
       } else if (block[0] === 'changeTempoBy:') {
 
@@ -3490,20 +3502,22 @@ P.runtime = (function() {
     };
 
     var playSound = function(sound) {
-      if (!S.node) {
-        S.node = audioContext.createGain();
-        S.node.gain.value = S.volume;
-        S.node.connect(volumeNode);
+      if (!sound.node) {
+        sound.node = audioContext.createGain();
+        sound.node.gain.value = S.volume;
+        sound.node.connect(volumeNode);
       }
+      sound.target = S;
+      sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);
 
-      if (sound.node) {
-        sound.node.disconnect();
+      if (sound.source) {
+        sound.source.disconnect();
       }
-      sound.node = audioContext.createBufferSource();
-      sound.node.buffer = sound.buffer;
-      sound.node.connect(S.node);
+      sound.source = audioContext.createBufferSource();
+      sound.source.buffer = sound.buffer;
+      sound.source.connect(sound.node);
 
-      sound.node.start(audioContext.currentTime);
+      sound.source.start(audioContext.currentTime);
     };
   }
 
