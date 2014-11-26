@@ -2732,7 +2732,8 @@ P.compile = (function() {
         source += 'if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
         source += 'for (var sounds = S.sounds, i = sounds.length; i--;) {\n';
         source += '  var sound = sounds[i];\n';
-        source += '  if (sound.node && sound.target === S) sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
+        source += '  if (sound.node && sound.target === S) {\n';
+        source += '    sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
         source += '  }\n';
         source += '}\n';
 
