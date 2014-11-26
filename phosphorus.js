@@ -3136,11 +3136,7 @@ P.compile = (function() {
         }
       }
       result += '})';
-      try {
-        return P.runtime.scopedEval(result);
-      } catch (e) {
-        debugger;
-      }
+      return P.runtime.scopedEval(result);
     };
 
     for (var i = 0; i < fns.length; i++) {
