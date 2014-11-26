@@ -638,7 +638,7 @@ var P = (function() {
     for (var i = 0; i < sounds.length; i++) {
       var s = new Sound(sounds[i]);
       this.sounds.push(s);
-      if (s.buffer) this.soundRefs[s.name] = s;
+      this.soundRefs[s.name] = s;
     }
   };
 
@@ -768,6 +768,20 @@ var P = (function() {
       brightness: 0,
       ghost: 0
     };
+  };
+
+  Base.prototype.getSound = function(name) {
+    if (typeof name === 'string') {
+      var s = this.soundRefs[name];
+      if (s) return s;
+      name = +name;
+    }
+    var l = this.sounds.length;
+    if (l && typeof name === 'number' && name === name) {
+      var i = Math.round(name - 1) % l;
+      if (i < 0) i += l;
+      return this.sounds[i];
+    }
   };
 
   Base.prototype.ask = function(question) {
@@ -1755,6 +1769,7 @@ var P = (function() {
   var Sound = function(data) {
     this.name = data.soundName;
     this.buffer = data.$buffer;
+    this.duration = this.buffer ? this.buffer.duration : 0;
   };
 
   var Watcher = function(stage) {
@@ -2658,17 +2673,17 @@ P.compile = (function() {
       } else if (block[0] === 'playSound:') { /* Sound */
 
         if (P.audioContext) {
-          source += 'var sound = S.soundRefs[' + val(block[1]) + '];\n';
+          source += 'var sound = S.getSound(' + val(block[1]) + ');\n';
           source += 'if (sound) playSound(sound);\n';
         }
 
       } else if (block[0] === 'doPlaySoundAndWait') {
 
         if (P.audioContext) {
-          source += 'var sound = S.soundRefs[' + val(block[1]) + '];\n';
+          source += 'var sound = S.getSound(' + val(block[1]) + ');\n';
           source += 'if (sound) {\n';
           source += '  playSound(sound);\n';
-          wait('sound.buffer.duration');
+          wait('sound.duration');
           source += '}\n';
         }
 
@@ -3500,6 +3515,7 @@ P.runtime = (function() {
     };
 
     var playSound = function(sound) {
+      if (!sound.buffer) return;
       if (!sound.node) {
         sound.node = audioContext.createGain();
         sound.node.gain.value = S.volume;
