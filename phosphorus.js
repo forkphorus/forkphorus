@@ -3450,7 +3450,7 @@ P.runtime = (function() {
         var span = spans[i];
         if (span.top >= id || span.top === 128) break;
       }
-      playSpan(span, id);
+      playSpan(span, Math.max(0, Math.min(127, id)));
     };
 
     var playSpan = function(span, id, duration) {
