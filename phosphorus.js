@@ -400,8 +400,6 @@ var P = (function() {
       IO.decodeAudio(ab, function(buffer) {
         IO.wavBuffers[name] = buffer;
         request.load();
-      }, function(err) {
-        request.error(err);
       });
     }, null, 'arraybuffer').onError(function(err) {
       request.error(err);
@@ -409,12 +407,12 @@ var P = (function() {
     return request;
   };
 
-  IO.decodeAudio = function(ab, cb, cbe) {
+  IO.decodeAudio = function(ab, cb) {
     if (audioContext) {
       audioContext.decodeAudioData(ab, function(buffer) {
         cb(buffer);
       }, function(err) {
-        cbe(err);
+        cb(null);
       });
     } else {
       setTimeout(cb);
@@ -550,8 +548,6 @@ var P = (function() {
         IO.decodeAudio(ab, function(buffer) {
           callback(buffer);
           request.load(buffer);
-        }, function() {
-          request.error(new Error('Failed to load audio: ' + url));
         });
       }
       IO.projectRequest.add(request);
@@ -642,7 +638,7 @@ var P = (function() {
     for (var i = 0; i < sounds.length; i++) {
       var s = new Sound(sounds[i]);
       this.sounds.push(s);
-      this.soundRefs[s.name] = s;
+      if (s.buffer) this.soundRefs[s.name] = s;
     }
   };
 
@@ -3464,8 +3460,10 @@ P.runtime = (function() {
 
       var source = audioContext.createBufferSource();
       var note = audioContext.createGain();
-      var buffer = source.buffer = wavBuffers[span.name];
+      var buffer = wavBuffers[span.name];
+      if (!buffer) return;
 
+      source.buffer = buffer;
       if (source.loop = span.loop) {
         source.loopStart = span.loopStart;
         source.loopEnd = span.loopEnd;
