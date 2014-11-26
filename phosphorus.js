@@ -3473,7 +3473,6 @@ P.runtime = (function() {
 
       var time = audioContext.currentTime;
       source.playbackRate.value = rate;
-      source.playbackRate.setValueAtTime(rate, time + source.loopStart);
 
       note.gain.value = 0;
       note.gain.setValueAtTime(0, time);
