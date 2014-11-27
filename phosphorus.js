@@ -2017,7 +2017,7 @@ var P = (function() {
         context.stroke();
         context.fill();
 
-        var x = (sw - sh) * ((+value || 0) - this.sliderMin) / (this.sliderMax - this.sliderMin);
+        var x = (sw - sh) * Math.max(0, Math.min(1, ((+value || 0) - this.sliderMin) / (this.sliderMax - this.sliderMin)));
         context.strokeStyle = 'rgb(108, 105, 105)';
         context.fillStyle = 'rgb(233, 236, 239)';
         context.beginPath();
