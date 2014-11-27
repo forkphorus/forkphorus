@@ -3116,6 +3116,7 @@ P.compile = (function() {
             here = i + 1;
           } else {
             result += source.slice(here, j);
+            here = j + 1;
             if (source.substr(j, 8) === '} else {') {
               if (brackets > 0) {
                 result += '} else {';
@@ -3123,14 +3124,12 @@ P.compile = (function() {
               } else {
                 shouldDelete = true;
                 delBrackets = 0;
-                here = j + 1;
               }
             } else {
               if (brackets > 0) {
                 result += '}';
                 brackets--;
               }
-              here = j + 1;
             }
           }
         }
