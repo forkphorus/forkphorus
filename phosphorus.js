@@ -198,6 +198,10 @@ var P = (function() {
   };
 
   IO.parseJSONish = function(json) {
+    if (!/^\s*\{/.test(json)) throw new SyntaxError('Bad JSON');
+    try {
+      return JSON.parse(json);
+    } catch (e) {}
     if (/[^,:{}\[\]0-9\.\-+EINaefilnr-uy \n\r\t]/.test(json.replace(/"(\\.|[^"\\])*"/g, ''))) {
       throw new SyntaxError('Bad JSON');
     }
