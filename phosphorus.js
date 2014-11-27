@@ -1073,6 +1073,9 @@ var P = (function() {
     this.backdropCanvas.width = this.zoom * SCALE * 480;
     this.backdropCanvas.height = this.zoom * SCALE * 360;
     var costume = this.costumes[this.currentCostumeIndex];
+    if (this.zoom * SCALE > costume.renderScale) {
+      costume.renderAt(this.zoom * SCALE);
+    }
     this.backdropContext.save();
     var s = this.zoom * SCALE * costume.scale;
     this.backdropContext.scale(s, s);
@@ -1203,7 +1206,7 @@ var P = (function() {
   Stage.prototype.drawAllOn = function(context, except) {
     var costume = this.costumes[this.currentCostumeIndex];
     context.save();
-    if (this.zoom > costume.renderScale) costume.renderAt(this.zoom);
+    if (this.zoom * SCALE > costume.renderScale) costume.renderAt(this.zoom * SCALE);
     context.scale(costume.scale, costume.scale);
     context.globalAlpha = Math.max(0, Math.min(1, 1 - this.filters.ghost / 100));
     context.scale(costume.renderScale, costume.renderScale);
@@ -1423,7 +1426,7 @@ var P = (function() {
       } else if (this.rotationStyle === 'leftRight' && this.direction < 0) {
         context.scale(-1, 1);
       }
-      var s = this.scale * this.stage.zoom;
+      var s = this.scale * this.stage.zoom * SCALE;
       context.scale(this.scale, this.scale);
       if (costume.isSVG && s > costume.renderResolution) costume.renderAt(s);
       context.scale(costume.scale, costume.scale);
