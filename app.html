@@ -32,6 +32,10 @@
 (function () {
   'use strict';
 
+  if (location.protocol === 'https:') {
+    location.replace(('' + location).replace(/^https:/, 'http:'));
+  }
+
   var stage;
 
   var projectId = 17088932;
