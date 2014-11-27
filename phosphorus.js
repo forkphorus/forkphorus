@@ -463,7 +463,7 @@ var P = (function() {
   IO.loadSound = function(data) {
     IO.loadMD5(data.md5, data.soundID, function(asset) {
       data.$buffer = asset;
-    });
+    }, true);
   };
 
   IO.fixSVG = function(svg, element) {
@@ -505,7 +505,11 @@ var P = (function() {
     [].forEach.call(element.childNodes, IO.fixSVG.bind(null, svg));
   };
 
-  IO.loadMD5 = function(md5, id, callback) {
+  IO.loadMD5 = function(md5, id, callback, isAudio) {
+    if (IO.zip) {
+      var f = isAudio ? IO.zip.file(id + '.wav') : IO.zip.file(id + '.gif') || IO.zip.file(id + '.png') || IO.zip.file(id + '.jpg') || IO.zip.file(id + '.svg');
+      md5 = f.name;
+    }
     var ext = md5.split('.').pop();
     if (ext === 'svg') {
       var cb = function(source) {
@@ -546,7 +550,7 @@ var P = (function() {
         });
       };
       if (IO.zip) {
-        cb(IO.zip.file(id + '.svg').asText());
+        cb(f.asText());
       } else {
         IO.projectRequest.add(IO.load(IO.ASSET_URL + md5 + '/get/', cb));
       }
@@ -561,7 +565,7 @@ var P = (function() {
       IO.projectRequest.add(request);
       if (IO.zip) {
         var audio = new Audio;
-        var ab = IO.zip.file(id + '.wav').asArrayBuffer();
+        var ab = f.asArrayBuffer();
         cb(ab);
       } else {
         IO.projectRequest.add(IO.load(IO.ASSET_URL + md5 + '/get/', cb, null, 'arraybuffer'));
@@ -569,13 +573,12 @@ var P = (function() {
     } else {
       if (IO.zip) {
         var request = new Request;
-        var f = IO.zip.file(id + '.' + ext).asBinary();
         var image = new Image;
         image.onload = function() {
           if (callback) callback(image);
           request.load();
         };
-        image.src = 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(f);
+        image.src = 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(f.asBinary());
         IO.projectRequest.add(request);
       } else {
         IO.projectRequest.add(
