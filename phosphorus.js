@@ -1073,11 +1073,11 @@ var P = (function() {
   };
 
   Stage.prototype.updateBackdrop = function() {
-    this.backdropCanvas.width = this.zoom * 480;
-    this.backdropCanvas.height = this.zoom * 360;
+    this.backdropCanvas.width = this.zoom * SCALE * 480;
+    this.backdropCanvas.height = this.zoom * SCALE * 360;
     var costume = this.costumes[this.currentCostumeIndex];
     this.backdropContext.save();
-    var s = this.zoom * costume.scale;
+    var s = this.zoom * SCALE * costume.scale;
     this.backdropContext.scale(s, s);
     this.backdropContext.drawImage(costume.image, 0, 0);
     this.backdropContext.restore();
@@ -1103,9 +1103,11 @@ var P = (function() {
     }
     this.root.style.width =
     this.canvas.style.width =
+    this.backdropCanvas.style.width =
     this.penCanvas.style.width = (480 * zoom | 0) + 'px';
     this.root.style.height =
     this.canvas.style.height =
+    this.backdropCanvas.style.height =
     this.penCanvas.style.height = (360 * zoom | 0) + 'px';
     this.root.style.fontSize = zoom + 'px';
     this.zoom = zoom;
