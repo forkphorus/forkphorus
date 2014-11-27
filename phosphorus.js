@@ -174,8 +174,6 @@ var P = (function() {
   IO.ASSET_URL = 'http://cdn.assets.scratch.mit.edu/internalapi/asset/';
   IO.SOUNDBANK_URL = 'https://cdn.rawgit.com/LLK/scratch-flash/v429/src/soundbank/';
 
-  IO.PROXY_URL = 'proxy.php?u=';
-
   IO.FONTS = {
     '': 'Helvetica',
     Donegal: 'Donegal One',
@@ -230,10 +228,6 @@ var P = (function() {
 
     if (callback) request.onLoad(callback.bind(self));
     return request;
-  };
-
-  IO.loadProxy = function(url, callback, self, type) {
-    return IO.load(IO.PROXY_URL + encodeURIComponent(url), callback, self, type);
   };
 
   IO.loadImage = function(url, callback, self) {
@@ -297,7 +291,7 @@ var P = (function() {
     var request = new CompositeRequest;
 
     request.defer = true;
-    request.add(P.IO.loadProxy('http://scratch.mit.edu/projects/' + id + '/').onLoad(function(data) {
+    request.add(P.IO.load('http://www.corsproxy.com/scratch.mit.edu/projects/' + id + '/').onLoad(function(data) {
       var m = /<title>\s*(.+?)(\s+on\s+Scratch)?\s*<\/title>/.exec(data);
       if (callback) request.onLoad(callback.bind(self));
       if (m) {
