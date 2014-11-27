@@ -1936,8 +1936,7 @@ var P = (function() {
     Base: Base,
     Stage: Stage,
     Sprite: Sprite,
-    Watcher: Watcher,
-    SCALE: SCALE
+    Watcher: Watcher
   };
 
 }());
