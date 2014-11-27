@@ -454,8 +454,9 @@ var P = (function() {
   };
 
   IO.loadCostume = function(data) {
-    IO.loadMD5(data.baseLayerMD5, data.baseLayerID, function(asset) {
+    IO.loadMD5(data.baseLayerMD5, data.baseLayerID, function(asset, source) {
       data.$image = asset;
+      data.$source = source;
     });
     if (data.textLayerMD5) {
       IO.loadMD5(data.textLayerMD5, data.textLayerID, function(asset) {
@@ -540,18 +541,10 @@ var P = (function() {
         svg.style.visibility = 'visible';
 
         var canvas = document.createElement('canvas');
-        var image = new Image;
-        callback(image);
+        var source = div.innerHTML.trim();
+        callback(null, source);
         // svg.style.cssText = '';
-        // console.log(md5, 'data:image/svg+xml;base64,' + btoa(div.innerHTML.trim()));
-        canvg(canvas, div.innerHTML.trim(), {
-          ignoreMouse: true,
-          ignoreAnimation: true,
-          ignoreClear: true,
-          renderCallback: function() {
-            image.src = canvas.toDataURL();
-          }
-        });
+        // console.log(md5, 'data:image/svg+xml;base64,' + btoa(source));
       };
       if (IO.zip) {
         cb(f.asText());
@@ -1210,8 +1203,10 @@ var P = (function() {
   Stage.prototype.drawAllOn = function(context, except) {
     var costume = this.costumes[this.currentCostumeIndex];
     context.save();
+    if (this.zoom > costume.renderScale) costume.renderAt(this.zoom);
     context.scale(costume.scale, costume.scale);
     context.globalAlpha = Math.max(0, Math.min(1, 1 - this.filters.ghost / 100));
+    context.scale(costume.renderScale, costume.renderScale);
     context.drawImage(costume.image, 0, 0);
     context.restore();
 
@@ -1428,9 +1423,12 @@ var P = (function() {
       } else if (this.rotationStyle === 'leftRight' && this.direction < 0) {
         context.scale(-1, 1);
       }
+      var s = this.scale * this.stage.zoom;
       context.scale(this.scale, this.scale);
+      if (costume.isSVG && s > costume.renderResolution) costume.renderAt(s);
       context.scale(costume.scale, costume.scale);
       context.translate(-costume.rotationCenterX, -costume.rotationCenterY);
+      context.scale(costume.renderScale, costume.renderScale);
 
       if (!noEffects) context.globalAlpha = Math.max(0, Math.min(1, 1 - this.filters.ghost / 100));
 
@@ -1461,7 +1459,7 @@ var P = (function() {
       if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top) {
         return false;
       }
-      var d = costume.context.getImageData((x - this.scratchX) * costume.bitmapResolution + costume.rotationCenterX, (this.scratchY - y) * costume.bitmapResolution + costume.rotationCenterY, 1, 1).data;
+      var d = costume.context.getImageData(((x - this.scratchX) * costume.bitmapResolution + costume.rotationCenterX) * costume.renderResolution, ((this.scratchY - y) * costume.bitmapResolution + costume.rotationCenterY) * costume.renderResolution, 1, 1).data;
       return d[3] !== 0;
     } else if (thing === '_edge_') {
       var bounds = this.rotatedBounds();
@@ -1753,9 +1751,12 @@ var P = (function() {
     this.base = base;
     this.baseLayerID = data.baseLayerID;
     this.baseLayerMD5 = data.baseLayerMD5;
+    this.baseLayerSource = data.$source;
     this.baseLayer = data.$image;
     this.bitmapResolution = data.bitmapResolution || 1;
     this.scale = 1 / this.bitmapResolution;
+    this.renderResolution = 1;
+    this.isSVG = !!this.baseLayerSource;
     this.costumeName = data.costumeName;
     this.rotationCenterX = data.rotationCenterX;
     this.rotationCenterY = data.rotationCenterY;
@@ -1764,12 +1765,16 @@ var P = (function() {
     this.image = document.createElement('canvas');
     this.context = this.image.getContext('2d');
 
-    this.render();
-    this.baseLayer.onload = function() {
+    if (this.baseLayerSource) {
+      this.renderAt();
+    } else {
       this.render();
-    }.bind(this);
-    if (this.textLayer) {
-      this.textLayer.onload = this.baseLayer.onload;
+      this.baseLayer.onload = function() {
+        this.render();
+      }.bind(this);
+      if (this.textLayer) {
+        this.textLayer.onload = this.baseLayer.onload;
+      }
     }
   };
   addEvents(Costume, 'load');
@@ -1796,6 +1801,31 @@ var P = (function() {
     this.name = data.soundName;
     this.buffer = data.$buffer;
     this.duration = this.buffer ? this.buffer.duration : 0;
+  };
+
+  Costume.prototype.renderAt = function(resolution) {
+    if (resolution != null) {
+      while (this.renderResolution < resolution) {
+        this.renderResolution *= 2;
+      }
+    }
+    var options = {
+      ignoreMouse: true,
+      ignoreAnimation: true,
+      ignoreClear: !resolution
+    };
+    this.renderScale = 1 / this.renderResolution;
+    if (resolution) {
+      options.ignoreDimensions = true;
+      options.scaleWidth = this.image.width = this.renderResolution * this.width;
+      options.scaleHeight = this.image.height = this.renderResolution * this.height;
+    } else {
+      options.renderCallback = function() {
+        this.width = this.image.width;
+        this.height = this.image.height;
+      }.bind(this);
+    }
+    canvg(this.image, this.baseLayerSource, options);
   };
 
   var Watcher = function(stage) {
