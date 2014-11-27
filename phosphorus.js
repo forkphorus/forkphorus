@@ -196,7 +196,7 @@ var P = (function() {
   };
 
   IO.parseJSONish = function(json) {
-    if (json[0] !== '{') throw new SyntaxError('Bad JSON');
+    if (!/^\s*\{/.test(json)) throw new SyntaxError('Bad JSON');
     try {
       return JSON.parse(json);
     } catch (e) {}
