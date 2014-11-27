@@ -1,1 +1,1 @@
-# [phosphorus.herokuapp.com](https://phosphorus.herokuapp.com)
+# [phosphorus.github.io](http://phosphorus.github.io)
