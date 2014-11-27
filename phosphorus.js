@@ -1425,7 +1425,7 @@ var P = (function() {
       }
       var s = this.scale * this.stage.zoom;
       context.scale(this.scale, this.scale);
-      if (s > costume.renderResolution) costume.renderAt(s);
+      if (costume.isSVG && s > costume.renderResolution) costume.renderAt(s);
       context.scale(costume.scale, costume.scale);
       context.translate(-costume.rotationCenterX, -costume.rotationCenterY);
       context.scale(costume.renderScale, costume.renderScale);
@@ -1755,7 +1755,8 @@ var P = (function() {
     this.baseLayer = data.$image;
     this.bitmapResolution = data.bitmapResolution || 1;
     this.scale = 1 / this.bitmapResolution;
-    this.renderResolution = this.baseLayerSource ? 1 : Infinity;
+    this.renderResolution = 1;
+    this.isSVG = !!this.baseLayerSource;
     this.costumeName = data.costumeName;
     this.rotationCenterX = data.rotationCenterX;
     this.rotationCenterY = data.rotationCenterY;
