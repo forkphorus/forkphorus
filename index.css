@@ -1,7 +1,7 @@
 body {
   width: 480px;
-  margin: 32px auto 0;
-  padding-bottom: 32px;
+  margin: 24px auto 0;
+  padding-bottom: 24px;
 }
 .title {
   margin: 16px 0 0;
@@ -31,8 +31,50 @@ body {
   background-position: -160px 0;
 }
 
+a {
+  color: #25d;
+  text-decoration: underline;
+}
+a:visited {
+  color: #73c;
+}
+a:active {
+  color: #03a;
+}
+.dropdown {
+  display: inline-block;
+  position: relative;
+}
+.dropdown > select {
+  -webkit-appearance: none;
+  font: inherit;
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.area {
+  overflow: hidden;
+  margin: 0 -24px;
+  padding: 0 24px;
+}
+#player-area, #project-area {
+  height: 0;
+}
+#player-area {
+  border-bottom: 1px solid transparent;
+  margin-bottom: -1px;
+}
+.fs #player-area {
+  overflow: visible;
+}
+
 section {
-  margin: 32px 0 16px;
+  margin: 24px 0;
 }
 h1,
 p {
@@ -42,6 +84,16 @@ p {
 h1 {
   font: 300 24px/32px Helvetica Neue, Helvetica, Arial, sans-serif;
   margin: 16px 0 0;
+}
+h1.title {
+  font: 300 54px/72px Helvetica Neue, Helvetica, Arial, sans-serif;
+  margin: 0;
+}
+code {
+  font: 12px Menlo, Monaco, Consolas, Courier New, monospace;
+  background: #f5f5f5;
+  border-radius: 3px;
+  padding: 3px;
 }
 .package a {
   padding: 2px 8px;

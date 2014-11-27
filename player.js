@@ -176,6 +176,7 @@ P.player = (function() {
     P.player.projectURL = id ? 'http://scratch.mit.edu/projects/' + id + '/' : '';
 
     if (stage) {
+      stage.stopAll();
       stage.pause();
     }
     while (player.firstChild) player.removeChild(player.lastChild);
@@ -219,8 +220,10 @@ P.player = (function() {
         }, 300);
       }, 100);
 
+      var zoom = stage ? stage.zoom : 1;
       window.stage = stage = s;
       stage.start();
+      stage.setZoom(zoom);
 
       stage.root.addEventListener('keydown', exitFullScreen);
       stage.handleError = showError;
