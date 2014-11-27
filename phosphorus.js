@@ -1371,7 +1371,6 @@ var P = (function() {
     if (ox === x && oy === y && !this.isPenDown) return;
     this.scratchX = x;
     this.scratchY = y;
-    this.keepOnStage();
     if (this.isPenDown) {
       var context = this.stage.penContext;
       if (this.penSize % 2 > .5 && this.penSize % 2 < 1.5) {
@@ -1434,10 +1433,6 @@ var P = (function() {
 
       context.restore();
     }
-  };
-
-  Sprite.prototype.keepOnStage = function() {
-    // TODO
   };
 
   Sprite.prototype.setDirection = function(degrees) {
