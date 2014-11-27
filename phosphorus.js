@@ -1,6 +1,8 @@
 var P = (function() {
   'use strict';
 
+  var SCALE = window.devicePixelRatio || 1;
+
   var hasTouchEvents = 'ontouchstart' in document;
 
   var inherits = function(cla, sup) {
@@ -839,7 +841,7 @@ var P = (function() {
     this.tempoBPM = 60;
     this.videoAlpha = 1;
     this.zoom = 1;
-    this.maxZoom = 1;
+    this.maxZoom = SCALE;
     this.baseNow = 0;
     this.baseTime = 0;
     this.timerStart = 0;
@@ -866,21 +868,22 @@ var P = (function() {
 
     this.backdropCanvas = document.createElement('canvas');
     this.root.appendChild(this.backdropCanvas);
-    this.backdropCanvas.width = 480;
-    this.backdropCanvas.height = 360;
+    this.backdropCanvas.width = SCALE * 480;
+    this.backdropCanvas.height = SCALE * 360;
     this.backdropContext = this.backdropCanvas.getContext('2d');
 
     this.penCanvas = document.createElement('canvas');
     this.root.appendChild(this.penCanvas);
-    this.penCanvas.width = 480;
-    this.penCanvas.height = 360;
+    this.penCanvas.width = SCALE * 480;
+    this.penCanvas.height = SCALE * 360;
     this.penContext = this.penCanvas.getContext('2d');
     this.penContext.lineCap = 'round';
+    this.penContext.scale(SCALE, SCALE);
 
     this.canvas = document.createElement('canvas');
     this.root.appendChild(this.canvas);
-    this.canvas.width = 480;
-    this.canvas.height = 360;
+    this.canvas.width = SCALE * 480;
+    this.canvas.height = SCALE * 360;
     this.context = this.canvas.getContext('2d');
 
     this.canvas.tabIndex = 0;
@@ -888,6 +891,12 @@ var P = (function() {
     this.backdropCanvas.style.position =
     this.penCanvas.style.position =
     this.canvas.style.position = 'absolute';
+    this.backdropCanvas.style.width =
+    this.penCanvas.style.width =
+    this.canvas.style.width = '480px';
+    this.backdropCanvas.style.height =
+    this.penCanvas.style.height =
+    this.canvas.style.height = '360px';
 
     // hardware acceleration
     this.root.style.WebkitTransform = 'translateZ(0)';
@@ -1077,15 +1086,15 @@ var P = (function() {
 
   Stage.prototype.setZoom = function(zoom) {
     if (this.zoom === zoom) return;
-    if (this.maxZoom < zoom) {
-      this.maxZoom = zoom;
+    if (this.maxZoom < zoom * SCALE) {
+      this.maxZoom = zoom * SCALE;
       var canvas = document.createElement('canvas');
       canvas.width = this.penCanvas.width;
       canvas.height = this.penCanvas.height;
       canvas.getContext('2d').drawImage(this.penCanvas, 0, 0);
-      this.penCanvas.width = 480 * zoom;
-      this.penCanvas.height = 360 * zoom;
-      this.penContext.drawImage(canvas, 0, 0, 480 * zoom, 360 * zoom);
+      this.penCanvas.width = 480 * zoom * SCALE;
+      this.penCanvas.height = 360 * zoom * SCALE;
+      this.penContext.drawImage(canvas, 0, 0, 480 * zoom * SCALE, 360 * zoom * SCALE);
       this.penContext.scale(this.maxZoom, this.maxZoom);
       this.penContext.lineCap = 'round';
     }
@@ -1168,10 +1177,10 @@ var P = (function() {
   Stage.prototype.draw = function() {
     var context = this.context;
 
-    this.canvas.width = 480 * this.zoom; // clear
-    this.canvas.height = 360 * this.zoom;
+    this.canvas.width = 480 * this.zoom * SCALE; // clear
+    this.canvas.height = 360 * this.zoom * SCALE;
 
-    context.scale(this.zoom, this.zoom);
+    context.scale(this.zoom * SCALE, this.zoom * SCALE);
     this.drawOn(context);
 
     if (this.hidePrompt) {
