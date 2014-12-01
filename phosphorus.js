@@ -520,7 +520,7 @@ var P = (function() {
         svg.style.top = '-10000px';
         document.body.appendChild(svg);
         var viewBox = svg.viewBox.baseVal;
-        if (viewBox.x || viewBox.y) {
+        if (viewBox && (viewBox.x || viewBox.y)) {
           svg.width.baseVal.value = viewBox.width - viewBox.x;
           svg.height.baseVal.value = viewBox.height - viewBox.y;
           viewBox.x = 0;
