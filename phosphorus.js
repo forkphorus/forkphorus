@@ -1139,7 +1139,9 @@ var P = (function() {
 
   Stage.prototype.stopAllSounds = function() {
     for (var children = this.children, i = children.length; i--;) {
-      children[i].stopSounds();
+      if (children[i].isSprite) {
+        children[i].stopSounds();
+      }
     }
     this.stopSounds();
   };
