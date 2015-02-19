@@ -206,6 +206,7 @@ var P = (function() {
     return (1, eval)('(' + json + ')');
   };
 
+
   IO.load = function(url, callback, self, type) {
     var request = new Request;
     var xhr = new XMLHttpRequest;
@@ -291,7 +292,7 @@ var P = (function() {
     var request = new CompositeRequest;
 
     request.defer = true;
-    request.add(P.IO.load('http://www.corsproxy.com/scratch.mit.edu/projects/' + id + '/').onLoad(function(data) {
+    request.add(P.IO.load('http://crossorigin.me/http://scratch.mit.edu/projects/' + id + '/').onLoad(function(data) {
       var m = /<title>\s*(.+?)(\s+on\s+Scratch)?\s*<\/title>/.exec(data);
       if (callback) request.onLoad(callback.bind(self));
       if (m) {
