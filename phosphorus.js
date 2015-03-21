@@ -3358,14 +3358,15 @@ P.runtime = (function() {
   };
 
   var listIndex = function(list, index, length) {
+    var i = index | 0;
+    if (i === index) return i > 0 && i <= length ? i - 1 : -1;
     if (index === 'random' || index === 'any') {
       return Math.random() * length | 0;
     }
     if (index === 'last') {
       return length - 1;
     }
-    var i = (index | 0) - 1;
-    return i === i && i >= 0 && i < length ? i : -1;
+    return i > 0 && i <= length ? i - 1 : -1;
   };
 
   var contentsOfList = function(list) {
