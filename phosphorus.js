@@ -32,7 +32,7 @@ var P = (function() {
       var listeners = this['$' + event];
       if (listeners) {
         var i = listeners.indexOf(listener);
-        if (i > -1) {
+        if (i !== -1) {
           listeners.splice(i, 1);
         }
       }
@@ -2512,9 +2512,9 @@ P.compile = (function() {
         source += 'console.log(' + val(block[0]) + ');\n';
       }
 
-      if (['forward:', 'turnRight:', 'turnLeft:', 'heading:', 'pointTowards:', 'gotoX:y:', 'gotoSpriteOrMouse:', 'changeXposBy:', 'xpos:', 'changeYposBy:', 'ypos:', 'bounceOffEdge', 'setRotationStyle', 'lookLike:', 'nextCostume', 'say:duration:elapsed:from:', 'say:', 'think:duration:elapsed:from:', 'think:', 'changeGraphicEffect:by:', 'setGraphicEffect:to:', 'filterReset', 'changeSizeBy:', 'setSizeTo:', 'comeToFront', 'goBackByLayers:', 'glideSecs:toX:y:elapsed:from:'].indexOf(block[0]) > -1) {
+      if (['forward:', 'turnRight:', 'turnLeft:', 'heading:', 'pointTowards:', 'gotoX:y:', 'gotoSpriteOrMouse:', 'changeXposBy:', 'xpos:', 'changeYposBy:', 'ypos:', 'bounceOffEdge', 'setRotationStyle', 'lookLike:', 'nextCostume', 'say:duration:elapsed:from:', 'say:', 'think:duration:elapsed:from:', 'think:', 'changeGraphicEffect:by:', 'setGraphicEffect:to:', 'filterReset', 'changeSizeBy:', 'setSizeTo:', 'comeToFront', 'goBackByLayers:', 'glideSecs:toX:y:elapsed:from:'].indexOf(block[0]) !== -1) {
         source += 'if (S.visible) VISUAL = true;\n';
-      } else if (['showBackground:', 'startScene', 'nextBackground', 'nextScene', 'startSceneAndWait', 'show', 'hide', 'putPenDown', 'stampCostume', 'showVariable:', 'hideVariable:', 'doAsk', 'setVolumeTo:', 'changeVolumeBy:', 'setTempoTo:', 'changeTempoBy:'].indexOf(block[0]) > -1) {
+      } else if (['showBackground:', 'startScene', 'nextBackground', 'nextScene', 'startSceneAndWait', 'show', 'hide', 'putPenDown', 'stampCostume', 'showVariable:', 'hideVariable:', 'doAsk', 'setVolumeTo:', 'changeVolumeBy:', 'setTempoTo:', 'changeTempoBy:'].indexOf(block[0]) !== -1) {
         source += 'VISUAL = true;\n';
       }
 
@@ -2680,13 +2680,13 @@ P.compile = (function() {
       } else if (block[0] === 'comeToFront') {
 
         source += 'var i = self.children.indexOf(S);\n';
-        source += 'if (i > -1) self.children.splice(i, 1);\n';
+        source += 'if (i !== -1) self.children.splice(i, 1);\n';
         source += 'self.children.push(S);\n';
 
       } else if (block[0] === 'goBackByLayers:') {
 
         source += 'var i = self.children.indexOf(S);\n';
-        source += 'if (i > -1) {\n';
+        source += 'if (i !== -1) {\n';
         source += '  self.children.splice(i, 1);\n';
         source += '  self.children.splice(Math.max(0, i - ' + num(block[1]) + '), 0, S);\n';
         source += '}\n';
@@ -3033,7 +3033,7 @@ P.compile = (function() {
         source += 'if (S.isClone) {\n';
         source += '  S.remove();\n';
         source += '  var i = self.children.indexOf(S);\n';
-        source += '  if (i > -1) self.children.splice(i, 1);\n';
+        source += '  if (i !== -1) self.children.splice(i, 1);\n';
         source += '  for (var i = 0; i < self.queue.length; i++) {\n';
         source += '    if (self.queue[i] && self.queue[i].sprite === S) {\n';
         source += '      self.queue[i] = undefined;\n';
@@ -3382,7 +3382,7 @@ P.runtime = (function() {
 
   var getLineOfList = function(list, index) {
     var i = listIndex(list, index, list.length);
-    return i > -1 ? list[i] : '';
+    return i !== -1 ? list[i] : '';
   };
 
   var listContains = function(list, value) {
@@ -3403,7 +3403,7 @@ P.runtime = (function() {
       var i = listIndex(list, index, list.length);
       if (i === list.length - 1) {
         list.pop();
-      } else if (i > -1) {
+      } else if (i !== -1) {
         list.splice(i, 1);
       }
     }
@@ -3413,14 +3413,14 @@ P.runtime = (function() {
     var i = listIndex(list, index, list.length + 1);
     if (i === list.length) {
       list.push(value);
-    } else if (i > -1) {
+    } else if (i !== -1) {
       list.splice(i, 0, value);
     }
   };
 
   var setLineOfList = function(list, index, value) {
     var i = listIndex(list, index, list.length);
-    if (i > -1) {
+    if (i !== -1) {
       list[i] = value;
     }
   };
