@@ -2457,13 +2457,13 @@ P.compile = (function() {
 
     var num = function(e) {
       if (typeof e === 'number') {
-        return e;
+        return e || 0;
       }
       if (typeof e === 'boolean' || typeof e === 'string') {
         return +e || 0;
       }
       var v = numval(e);
-      return v != null ? v : '(+' + val(e, true) + ' || 0)';
+      return v != null ? '(' + v + ' || 0)' : '(+' + val(e, true) + ' || 0)';
     };
 
     var beatHead = function(dur) {
