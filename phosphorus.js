@@ -1263,6 +1263,7 @@ var P = (function() {
     this.penHue = 240;
     this.penSaturation = 100;
     this.penLightness = 50;
+    this.penAlpha = 1;
 
     this.penSize = 1;
     this.isPenDown = false;
@@ -1337,9 +1338,12 @@ var P = (function() {
     c.scratchX = this.scratchX;
     c.scratchY = this.scratchY;
     c.visible = this.visible;
+    c.penColor = this.penColor;
+    c.penCSS = this.penCSS;
     c.penHue = this.penHue;
     c.penSaturation = this.penSaturation;
     c.penLightness = this.penLightness;
+    c.penAlpha = this.penAlpha;
     c.penSize = this.penSize;
     c.isPenDown = this.isPenDown;
 
@@ -1380,7 +1384,7 @@ var P = (function() {
         x -= .5;
         y -= .5;
       }
-      context.strokeStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
+      context.strokeStyle = this.penCSS || 'hsla(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%,' + this.penAlpha + ')';
       context.lineWidth = this.penSize;
       context.beginPath();
       context.moveTo(240 + ox, 180 - oy);
@@ -1400,7 +1404,7 @@ var P = (function() {
       x -= .5;
       y -= .5;
     }
-    context.strokeStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
+    context.strokeStyle = this.penCSS || 'hsla(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%,' + this.penAlpha + ')';
     context.lineWidth = this.penSize;
     context.beginPath();
     context.moveTo(240 + x, 180 - y);
@@ -2504,6 +2508,7 @@ P.compile = (function() {
     noRGB += '  S.penHue = hsl[0];\n';
     noRGB += '  S.penSaturation = hsl[1];\n';
     noRGB += '  S.penLightness = hsl[2];\n';
+    noRGB += '  S.penAlpha = (S.penColor >> 24 & 0xff) / 0xff;\n';
     noRGB += '  S.penCSS = null;';
     noRGB += '}\n';
 
@@ -2784,8 +2789,11 @@ P.compile = (function() {
 
       } else if (block[0] === 'penColor:') {
 
-        source += 'var c = S.penColor = ' + num(block[1]) + ' & 0xffffff;\n'
-        source += 'S.penCSS = "rgb(" + (c >> 16) + "," + (c >> 8 & 0xff) + "," + (c & 0xff) + ")";\n'
+        source += 'S.penColor = ' + num(block[1]) + ' & 0xffffffff;\n'
+        source += 'if (!(S.penColor >> 24 & 0xff)) S.penColor |= 0xff000000;\n';
+        source += 'var c = S.penColor;\n';
+        source += 'S.penCSS = "rgba(" + (c >> 16 & 0xff) + "," + (c >> 8 & 0xff) + "," + (c & 0xff) + "," + (c >> 24 & 0xff) / 0xff + ")";\n';
+        source += 'debugger;\n';
 
       } else if (block[0] === 'setPenHueTo:') {
 
