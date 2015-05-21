@@ -2295,19 +2295,19 @@ P.compile = (function() {
 
       } else if (e[0] === '+') { /* Operators */
 
-        return '(' + num(e[1]) + ' + ' + num(e[2]) + ')';
+        return '(' + num(e[1]) + ' + ' + num(e[2]) + ' || 0)';
 
       } else if (e[0] === '-') {
 
-        return '(' + num(e[1]) + ' - ' + num(e[2]) + ')';
+        return '(' + num(e[1]) + ' - ' + num(e[2]) + ' || 0)';
 
       } else if (e[0] === '*') {
 
-        return '(' + num(e[1]) + ' * ' + num(e[2]) + ')';
+        return '(' + num(e[1]) + ' * ' + num(e[2]) + ' || 0)';
 
       } else if (e[0] === '/') {
 
-        return '(' + num(e[1]) + ' / ' + num(e[2]) + ')';
+        return '(' + num(e[1]) + ' / ' + num(e[2]) + ' || 0)';
 
       } else if (e[0] === 'randomFrom:to:') {
 
@@ -2463,7 +2463,7 @@ P.compile = (function() {
         return +e || 0;
       }
       var v = numval(e);
-      return v != null ? '(' + v + ' || 0)' : '(+' + val(e, true) + ' || 0)';
+      return v != null ? v : '(+' + val(e, true) + ' || 0)';
     };
 
     var beatHead = function(dur) {
