@@ -2295,19 +2295,19 @@ P.compile = (function() {
 
       } else if (e[0] === '+') { /* Operators */
 
-        return '(' + num(e[1]) + ' + ' + num(e[2]) + ')';
+        return '(' + num(e[1]) + ' + ' + num(e[2]) + ' || 0)';
 
       } else if (e[0] === '-') {
 
-        return '(' + num(e[1]) + ' - ' + num(e[2]) + ')';
+        return '(' + num(e[1]) + ' - ' + num(e[2]) + ' || 0)';
 
       } else if (e[0] === '*') {
 
-        return '(' + num(e[1]) + ' * ' + num(e[2]) + ')';
+        return '(' + num(e[1]) + ' * ' + num(e[2]) + ' || 0)';
 
       } else if (e[0] === '/') {
 
-        return '(' + num(e[1]) + ' / ' + num(e[2]) + ')';
+        return '(' + num(e[1]) + ' / ' + num(e[2]) + ' || 0)';
 
       } else if (e[0] === 'randomFrom:to:') {
 
@@ -2457,7 +2457,7 @@ P.compile = (function() {
 
     var num = function(e) {
       if (typeof e === 'number') {
-        return e;
+        return e || 0;
       }
       if (typeof e === 'boolean' || typeof e === 'string') {
         return +e || 0;
