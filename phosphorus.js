@@ -1385,6 +1385,7 @@ var P = (function() {
       context.beginPath();
       context.moveTo(240 + ox, 180 - oy);
       context.lineTo(240 + x, 180 - y);
+      context.closePath();
       context.stroke();
     }
     if (this.saying) {
@@ -1396,16 +1397,12 @@ var P = (function() {
     var context = this.stage.penContext;
     var x = this.scratchX;
     var y = this.scratchY;
-    if (this.penSize % 2 > .5 && this.penSize % 2 < 1.5) {
-      x -= .5;
-      y -= .5;
-    }
-    context.strokeStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
-    context.lineWidth = this.penSize;
     context.beginPath();
-    context.moveTo(240 + x, 180 - y);
-    context.lineTo(240.01 + x, 180 - y);
-    context.stroke();
+    context.lineWidth = 0;
+    context.fillStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
+    context.arc(240 + x, 180 - y, this.penSize / 2, 0, 2 * Math.PI, false);
+    context.closePath();
+    context.fill();
   };
 
   Sprite.prototype.draw = function(context, noEffects) {
@@ -2784,8 +2781,11 @@ P.compile = (function() {
 
       } else if (block[0] === 'penColor:') {
 
-        source += 'var c = S.penColor = ' + num(block[1]) + ' & 0xffffff;\n'
-        source += 'S.penCSS = "rgb(" + (c >> 16) + "," + (c >> 8 & 0xff) + "," + (c & 0xff) + ")";\n'
+        source += 'var c = ' + num(block[1]) + ' & 0xffffffff;\n'
+        source += 'S.penColor = c & 0xffffff;\n'
+        source += 'var ca = (0xFF & (c >> 24)) / 255;\n'
+        source += 'if (ca === 0) ca = 1;\n'
+        source += 'S.penCSS = "rgba(" + (c >> 16 & 0xff) + "," + (c >> 8 & 0xff) + "," + (c & 0xff) + ", "+ca+")";\n'
 
       } else if (block[0] === 'setPenHueTo:') {
 
