@@ -224,7 +224,7 @@ var P = (function() {
     xhr.onerror = function() {
       request.error(new Error('XHR Error'));
     };
-    xhr.responseType = type;
+    xhr.responseType = type || '';
     setTimeout(xhr.send.bind(xhr));
 
     if (callback) request.onLoad(callback.bind(self));
