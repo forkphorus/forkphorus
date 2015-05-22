@@ -1385,7 +1385,6 @@ var P = (function() {
       context.beginPath();
       context.moveTo(240 + ox, 180 - oy);
       context.lineTo(240 + x, 180 - y);
-      context.closePath();
       context.stroke();
     }
     if (this.saying) {
@@ -1398,10 +1397,8 @@ var P = (function() {
     var x = this.scratchX;
     var y = this.scratchY;
     context.beginPath();
-    context.lineWidth = 0;
     context.fillStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
     context.arc(240 + x, 180 - y, this.penSize / 2, 0, 2 * Math.PI, false);
-    context.closePath();
     context.fill();
   };
 
