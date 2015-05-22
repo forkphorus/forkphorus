@@ -2494,7 +2494,7 @@ P.compile = (function() {
 
     var noRGB = '';
     noRGB += 'if (S.penCSS) {\n';
-    noRGB += '  var hsl = rgb2hsl(S.penColor);\n';
+    noRGB += '  var hsl = rgb2hsl(S.penColor & 0xffffff);\n';
     noRGB += '  S.penHue = hsl[0];\n';
     noRGB += '  S.penSaturation = hsl[1];\n';
     noRGB += '  S.penLightness = hsl[2];\n';
@@ -2778,11 +2778,10 @@ P.compile = (function() {
 
       } else if (block[0] === 'penColor:') {
 
-        source += 'var c = ' + num(block[1]) + ' & 0xffffffff;\n'
-        source += 'S.penColor = c & 0xffffff;\n'
-        source += 'var ca = (0xFF & (c >> 24)) / 255;\n'
-        source += 'if (ca === 0) ca = 1;\n'
-        source += 'S.penCSS = "rgba(" + (c >> 16 & 0xff) + "," + (c >> 8 & 0xff) + "," + (c & 0xff) + ", "+ca+")";\n'
+        source += 'var c = ' + num(block[1]) + ';\n';
+        source += 'S.penColor = c;\n';
+        source += 'var a = (c >> 24 & 0xff) / 0xff;\n';
+        source += 'S.penCSS = "rgba(" + (c >> 16 & 0xff) + "," + (c >> 8 & 0xff) + "," + (c & 0xff) + ", " + (a || 1) + ")";\n';
 
       } else if (block[0] === 'setPenHueTo:') {
 
