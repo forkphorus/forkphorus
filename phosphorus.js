@@ -1396,16 +1396,10 @@ var P = (function() {
     var context = this.stage.penContext;
     var x = this.scratchX;
     var y = this.scratchY;
-    if (this.penSize % 2 > .5 && this.penSize % 2 < 1.5) {
-      x -= .5;
-      y -= .5;
-    }
-    context.strokeStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
-    context.lineWidth = this.penSize;
     context.beginPath();
-    context.moveTo(240 + x, 180 - y);
-    context.lineTo(240.01 + x, 180 - y);
-    context.stroke();
+    context.fillStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
+    context.arc(240 + x, 180 - y, this.penSize / 2, 0, 2 * Math.PI, false);
+    context.fill();
   };
 
   Sprite.prototype.draw = function(context, noEffects) {
@@ -2500,7 +2494,7 @@ P.compile = (function() {
 
     var noRGB = '';
     noRGB += 'if (S.penCSS) {\n';
-    noRGB += '  var hsl = rgb2hsl(S.penColor);\n';
+    noRGB += '  var hsl = rgb2hsl(S.penColor & 0xffffff);\n';
     noRGB += '  S.penHue = hsl[0];\n';
     noRGB += '  S.penSaturation = hsl[1];\n';
     noRGB += '  S.penLightness = hsl[2];\n';
@@ -2784,8 +2778,10 @@ P.compile = (function() {
 
       } else if (block[0] === 'penColor:') {
 
-        source += 'var c = S.penColor = ' + num(block[1]) + ' & 0xffffff;\n'
-        source += 'S.penCSS = "rgb(" + (c >> 16) + "," + (c >> 8 & 0xff) + "," + (c & 0xff) + ")";\n'
+        source += 'var c = ' + num(block[1]) + ';\n';
+        source += 'S.penColor = c;\n';
+        source += 'var a = (c >> 24 & 0xff) / 0xff;\n';
+        source += 'S.penCSS = "rgba(" + (c >> 16 & 0xff) + "," + (c >> 8 & 0xff) + "," + (c & 0xff) + ", " + (a || 1) + ")";\n';
 
       } else if (block[0] === 'setPenHueTo:') {
 
