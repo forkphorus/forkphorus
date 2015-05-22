@@ -1337,6 +1337,8 @@ var P = (function() {
     c.scratchX = this.scratchX;
     c.scratchY = this.scratchY;
     c.visible = this.visible;
+    c.penColor = this.penColor;
+    c.penCSS = this.penCSS;
     c.penHue = this.penHue;
     c.penSaturation = this.penSaturation;
     c.penLightness = this.penLightness;
@@ -1396,8 +1398,8 @@ var P = (function() {
     var context = this.stage.penContext;
     var x = this.scratchX;
     var y = this.scratchY;
-    context.beginPath();
     context.fillStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
+    context.beginPath();
     context.arc(240 + x, 180 - y, this.penSize / 2, 0, 2 * Math.PI, false);
     context.fill();
   };
