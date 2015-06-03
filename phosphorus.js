@@ -3628,7 +3628,7 @@ P.runtime = (function() {
 
   var endCall = function() {
     if (CALLS.length) {
-      if (C.warp) WARP--;
+      if (WARP) WARP--;
       IMMEDIATE = C.fn;
       C = CALLS.pop();
       STACK = C.stack;
