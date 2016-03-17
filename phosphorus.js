@@ -1318,7 +1318,7 @@ var P = (function() {
     c.fns = this.fns;
     c.scripts = this.scripts;
 
-    this.filters = {
+    c.filters = {
       color: this.filters.color,
       fisheye: this.filters.fisheye,
       whirl: this.filters.whirl,
