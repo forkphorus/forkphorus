@@ -847,7 +847,6 @@ var P = (function() {
     this.baseNow = 0;
     this.baseTime = 0;
     this.timerStart = 0;
-    this.cloneCount = 0;
 
     this.keys = {};
     this.rawMouseX = 0;
@@ -1155,7 +1154,6 @@ var P = (function() {
         this.children.splice(i, 1);
       }
     }
-    this.cloneCount = 0;
   };
 
   Stage.prototype.getObject = function(name) {
