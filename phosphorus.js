@@ -1653,11 +1653,7 @@ var P = (function() {
     }
     var dx = x - this.scratchX;
     var dy = y - this.scratchY;
-    if (dx === 0 && dy === 0) {
-      this.direction = 90;
-    } else {
-      this.direction = Math.atan2(dx, dy) * 180 / Math.PI;
-    }
+    this.direction = dx === 0 && dy === 0 ? 90 : Math.atan2(dx, dy) * 180 / Math.PI;
     if (this.saying) this.updateBubble();
   };
 
