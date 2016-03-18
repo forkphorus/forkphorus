@@ -2812,12 +2812,12 @@ P.compile = (function() {
       } else if (block[0] === 'penSize:') {
 
         source += 'var f = ' + num(block[1]) + ';\n';
-        source += 'S.penSize = f < 0 ? 0 : f;\n';
+        source += 'S.penSize = f < 1 ? 1 : f;\n';
 
       } else if (block[0] === 'changePenSizeBy:') {
 
         source += 'var f = S.penSize + ' + num(block[1]) + ';\n';
-        source += 'S.penSize = f < 0 ? 0 : f;\n';
+        source += 'S.penSize = f < 1 ? 1 : f;\n';
 
       } else if (block[0] === 'stampCostume') {
 
