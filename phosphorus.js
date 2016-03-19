@@ -1452,7 +1452,18 @@ var P = (function() {
       if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top) {
         return false;
       }
-      var d = costume.context.getImageData((x - this.scratchX) * costume.bitmapResolution + costume.rotationCenterX, (this.scratchY - y) * costume.bitmapResolution + costume.rotationCenterY, 1, 1).data;
+      var cx = (x - this.scratchX) / this.scale
+      var cy = (this.scratchY - y) / this.scale
+      if (this.rotationStyle === 'normal' && this.direction !== 90) {
+        var d = (90 - this.direction) * Math.PI / 180
+        var ox = cx
+        var s = Math.sin(d), c = Math.cos(d)
+        cx = c * ox - s * cy
+        cy = s * ox + c * cy
+      } else if (this.rotationStyle === 'leftRight' && this.direction < 0) {
+        cx = -cx
+      }
+      var d = costume.context.getImageData(cx * costume.bitmapResolution + costume.rotationCenterX, cy * costume.bitmapResolution + costume.rotationCenterY, 1, 1).data;
       return d[3] !== 0;
     } else if (thing === '_edge_') {
       var bounds = this.rotatedBounds();
