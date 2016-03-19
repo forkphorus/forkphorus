@@ -1636,6 +1636,10 @@ var P = (function() {
   Sprite.prototype.gotoObject = function(thing) {
     if (thing === '_mouse_') {
       this.moveTo(this.stage.mouseX, this.stage.mouseY);
+    } else if (thing === '_random_') {
+      var x = Math.round(480 * Math.random() - 240);
+      var y = Math.round(360 * Math.random() - 180);
+      this.moveTo(x, y);
     } else {
       var sprite = this.stage.getObject(thing);
       if (!sprite) return 0;
