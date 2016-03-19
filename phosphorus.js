@@ -3758,7 +3758,7 @@ P.runtime = (function() {
       this.hidePrompt = false;
       this.prompter.style.display = 'none';
       this.promptId = this.nextPromptId = 0;
-      this.queue = [];
+      this.queue.length = 0;
       this.resetFilters();
       this.stopSounds();
       for (var i = 0; i < this.children.length; i++) {
