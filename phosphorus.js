@@ -613,7 +613,7 @@ var P = (function() {
       whenSceneStarts: [],
       whenSensorGreaterThan: []
     };
-    for (var i = 0; i < 256; i++) {
+    for (var i = 0; i < 128; i++) {
       this.listeners.whenKeyPressed.push([]);
     }
     this.fns = [];
@@ -848,7 +848,8 @@ var P = (function() {
     this.baseTime = 0;
     this.timerStart = 0;
 
-    this.keys = {};
+    this.keys = []
+    this.keys[128] = 0;
     this.rawMouseX = 0;
     this.rawMouseY = 0;
     this.mouseX = 0;
@@ -906,6 +907,7 @@ var P = (function() {
       if (e.ctrlKey || e.altKey || e.metaKey) {
         return;
       }
+      if (!this.keys[e.keyCode]) this.keys[128]++
       this.keys[e.keyCode] = true;
       e.stopPropagation();
       if (e.target === this.canvas) {
@@ -915,6 +917,7 @@ var P = (function() {
     }.bind(this));
 
     this.root.addEventListener('keyup', function(e) {
+      if (this.keys[e.keyCode]) this.keys[128]--
       this.keys[e.keyCode] = false;
       e.stopPropagation();
       if (e.target === this.canvas) {
@@ -1235,7 +1238,8 @@ var P = (function() {
     'left arrow': 37,
     'up arrow': 38,
     'right arrow': 39,
-    'down arrow': 40
+    'down arrow': 40,
+    'any': 128
   };
 
   var getKeyCode = function(keyName) {
@@ -3184,7 +3188,13 @@ P.compile = (function() {
       var key = script[0][1].toLowerCase();
       (object.listeners.whenIReceive[key] || (object.listeners.whenIReceive[key] = [])).push(f);
     } else if (script[0][0] === 'whenKeyPressed') {
-      object.listeners.whenKeyPressed[P.getKeyCode(script[0][1])].push(f);
+      if (script[0][1] === 'any') {
+        for (var i = 0; i < 128; i++) {
+          object.listeners.whenKeyPressed[i].push(f);
+        }
+      } else {
+        object.listeners.whenKeyPressed[P.getKeyCode(script[0][1])].push(f);
+      }
     } else if (script[0][0] === 'whenSceneStarts') {
       var key = script[0][1].toLowerCase();
       (object.listeners.whenSceneStarts[key] || (object.listeners.whenSceneStarts[key] = [])).push(f);
