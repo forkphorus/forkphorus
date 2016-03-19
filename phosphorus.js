@@ -3189,7 +3189,7 @@ P.compile = (function() {
       (object.listeners.whenIReceive[key] || (object.listeners.whenIReceive[key] = [])).push(f);
     } else if (script[0][0] === 'whenKeyPressed') {
       if (script[0][1] === 'any') {
-        for (var i = 0; i < 128; i++) {
+        for (var i = 128; i--;) {
           object.listeners.whenKeyPressed[i].push(f);
         }
       } else {
