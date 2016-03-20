@@ -502,7 +502,6 @@ var P = (function() {
           channel[j++] = sample / 32768;
         }
       }
-      out.position = 0;
       return cb(buffer);
     } else {
       console.warn('Unrecognized WAV format ' + format);
