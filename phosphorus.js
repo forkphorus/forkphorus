@@ -465,7 +465,6 @@ var P = (function() {
       var sample, index = 0;
       var step, code, delta;
       var lastByte = -1;
-      var out = [];
 
       var offset = blocks.data + 8;
       i = offset;
