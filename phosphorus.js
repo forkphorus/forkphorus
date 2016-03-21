@@ -502,10 +502,8 @@ var P = (function() {
         }
       }
       return cb(buffer);
-    } else {
-      console.warn('Unrecognized WAV format ' + format);
-      return cb(null);
     }
+    console.warn('Unrecognized WAV format ' + format);
     cb(null);
   };
 
