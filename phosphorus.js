@@ -904,7 +904,7 @@ var P = (function() {
     this.root.style.WebkitTransform = 'translateZ(0)';
 
     this.root.addEventListener('keydown', function(e) {
-      if (e.ctrlKey || e.altKey || e.metaKey) {
+      if (e.ctrlKey || e.altKey || e.metaKey || e.keyCode === 27) {
         return;
       }
       if (!this.keys[e.keyCode]) this.keys[128]++
