@@ -537,7 +537,7 @@ var P = (function() {
         callback(image);
         // svg.style.cssText = '';
         // console.log(md5, 'data:image/svg+xml;base64,' + btoa(div.innerHTML.trim()));
-        canvg(canvas, svg.outerHTML, {
+        canvg(canvas, new XMLSerializer().serializeToString(svg), {
           ignoreMouse: true,
           ignoreAnimation: true,
           ignoreClear: true,
