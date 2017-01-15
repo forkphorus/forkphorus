@@ -2614,21 +2614,21 @@ P.compile = (function() {
 
         source += 'self.setCostume(' + val(block[1]) + ');\n';
         source += 'var threads = sceneChange();\n';
-        source += 'if (threads.indexOf(BASE) !== -1) return;\n';
+        source += 'if (threads.indexOf(BASE) !== -1) {return;}\n';
 
       } else if (block[0] === 'nextBackground' ||
                  block[0] === 'nextScene') {
 
         source += 'S.showNextCostume();\n';
         source += 'var threads = sceneChange();\n';
-        source += 'if (threads.indexOf(BASE) !== -1) return;\n';
+        source += 'if (threads.indexOf(BASE) !== -1) {return;}\n';
 
       } else if (block[0] === 'startSceneAndWait') {
 
         source += 'save();\n';
         source += 'self.setCostume(' + val(block[1]) + ');\n';
         source += 'R.threads = sceneChange();\n';
-        source += 'if (R.threads.indexOf(BASE) !== -1) return;\n';
+        source += 'if (R.threads.indexOf(BASE) !== -1) {return;}\n';
         var id = label();
         source += 'if (!running(R.threads)) {\n';
         forceQueue(id);
@@ -2902,7 +2902,7 @@ P.compile = (function() {
       } else if (block[0] === 'broadcast:') { /* Control */
 
         source += 'var threads = broadcast(' + val(block[1]) + ');\n';
-        source += 'if (threads.indexOf(BASE) !== -1) return;\n';
+        source += 'if (threads.indexOf(BASE) !== -1) {return;}\n';
 
       } else if (block[0] === 'call') {
 
@@ -2924,7 +2924,7 @@ P.compile = (function() {
 
         source += 'save();\n';
         source += 'R.threads = broadcast(' + val(block[1]) + ');\n';
-        source += 'if (R.threads.indexOf(BASE) !== -1) return;\n';
+        source += 'if (R.threads.indexOf(BASE) !== -1) {return;}\n';
         var id = label();
         source += 'if (running(R.threads)) {\n';
         forceQueue(id);
@@ -3141,9 +3141,11 @@ P.compile = (function() {
       while (here < length) {
         var i = source.indexOf('{', here);
         var j = source.indexOf('}', here);
+        var k = source.indexOf('return;', here);
+        if (k === -1) k = length;
         if (i === -1 && j === -1) {
           if (!shouldDelete) {
-            result += source.slice(here);
+            result += source.slice(here, k);
           }
           break;
         }
@@ -3161,6 +3163,10 @@ P.compile = (function() {
             here = j + 1;
           }
         } else {
+          if (brackets === 0 && k < i && k < j) {
+            result += source.slice(here, k);
+            break;
+          }
           if (i < j) {
             result += source.slice(here, i + 1);
             brackets++;
