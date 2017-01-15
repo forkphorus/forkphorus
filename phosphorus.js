@@ -1993,10 +1993,10 @@ var P = (function() {
 
     if (this.mode === 2) {
       this.el.appendChild(this.readout = document.createElement('div'));
-      this.readout.style.minWidth = (47/15)+'em';
+      this.readout.style.minWidth = (38/15)+'em';
       this.readout.style.font = 'bold 1.5em/'+(19/15)+' sans-serif';
       this.readout.style.height = (19/15)+'em';
-      this.readout.style.borderRadius = (3/15)+'em';
+      this.readout.style.borderRadius = (4/15)+'em';
       this.readout.style.margin = (3/15)+'em 0 0 0';
       this.readout.style.padding = '0 '+(3/10)+'em';
     } else {
