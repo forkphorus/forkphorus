@@ -529,7 +529,8 @@ var P = (function() {
           viewBox.height = 0;
         }
         IO.fixSVG(svg, svg);
-        svg.style.visibility = '';
+        document.body.removeChild(svg);
+        svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
 
         var canvas = document.createElement('canvas');
         var image = new Image;
