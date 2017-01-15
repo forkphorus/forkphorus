@@ -512,9 +512,8 @@ var P = (function() {
     var ext = md5.split('.').pop();
     if (ext === 'svg') {
       var cb = function(source) {
-        var div = document.createElement('div');
-        div.innerHTML = source;
-        var svg = div.getElementsByTagName('svg')[0];
+        var doc = new DOMParser().parseFromString(source, 'image/svg+xml');
+        var svg = doc.documentElement;
         svg.style.visibility = 'hidden';
         svg.style.position = 'absolute';
         svg.style.left = '-10000px';
@@ -530,16 +529,14 @@ var P = (function() {
           viewBox.height = 0;
         }
         IO.fixSVG(svg, svg);
-        while (div.firstChild) div.removeChild(div.lastChild);
-        div.appendChild(svg);
-        svg.style.visibility = 'visible';
+        svg.style.visibility = '';
 
         var canvas = document.createElement('canvas');
         var image = new Image;
         callback(image);
         // svg.style.cssText = '';
         // console.log(md5, 'data:image/svg+xml;base64,' + btoa(div.innerHTML.trim()));
-        canvg(canvas, div.innerHTML.trim(), {
+        canvg(canvas, svg.outerHTML, {
           ignoreMouse: true,
           ignoreAnimation: true,
           ignoreClear: true,
