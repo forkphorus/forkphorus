@@ -1045,6 +1045,7 @@ var P = (function() {
     var value = w.sliderMin + Math.max(0, Math.min(1, (e.clientX + this.dragOffsetX) / (sw - bw))) * (w.sliderMax - w.sliderMin);
     w.target.vars[w.param] = w.isDiscrete ? Math.round(value) : Math.round(value * 100) / 100;
     w.update();
+    e.preventDefault();
   };
   Stage.prototype.watcherEnd = function(id, e) {
     this.watcherMove(id, e);
