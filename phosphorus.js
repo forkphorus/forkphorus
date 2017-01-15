@@ -2221,6 +2221,7 @@ P.compile = (function() {
           .replace(/\n/g, '\\n')
           .replace(/\r/g, '\\r')
           .replace(/"/g, '\\"')
+          .replace(/;/g, '\\x3b')
           .replace(/\{/g, '\\x7b')
           .replace(/\}/g, '\\x7d') + '"';
 
