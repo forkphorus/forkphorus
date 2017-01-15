@@ -16,6 +16,7 @@ body {
   background: #000;
   display: table;
   color: #fff;
+  cursor: default;
 }
 .error {
   display: none;
