@@ -683,15 +683,9 @@ var P = (function() {
       watcher.target = this;
       watcher.label = (watcher.target === stage ? '' : watcher.target.objName + ': ') + name;
       watcher.param = name;
-      stage.children.push(watcher);
-    } else {
-      var i = stage.children.indexOf(watcher);
-      if (i !== stage.children.length - 1) {
-        stage.children.splice(i, 1);
-        stage.children.push(watcher);
-      }
     }
     watcher.visible = visible;
+    watcher.layout();
   };
 
   Base.prototype.showNextCostume = function() {
@@ -830,6 +824,7 @@ var P = (function() {
     Stage.parent.call(this);
 
     this.children = [];
+    this.watchers = [];
     this.defaultWatcherX = 10;
     this.defaultWatcherY = 10;
 
@@ -953,16 +948,20 @@ var P = (function() {
           this.clickMouse();
           e.preventDefault();
           this.canvas.focus();
+        } else if (e.target.dataset.button != null || e.target.dataset.slider != null) {
+          this.watcherStart('mouse', e);
         }
       }.bind(this));
 
       document.addEventListener('mousemove', function(e) {
         this.updateMouse(e);
+        if (this.dragWatcher) this.watcherMove('mouse', e);
       }.bind(this));
 
       document.addEventListener('mouseup', function(e) {
         this.updateMouse(e);
         this.releaseMouse();
+        if (this.dragWatcher) this.watcherEnd('mouse', e);
       }.bind(this));
     }
 
@@ -1031,16 +1030,38 @@ var P = (function() {
 
   Stage.prototype.isStage = true;
 
+  Stage.prototype.watcherStart = function(id, e) {
+    var p = e.target;
+    while (p && p.dataset.watcher == null) p = p.parentElement;
+    if (!p) return;
+    var w = this.dragWatcher = this.watchers[p.dataset.watcher]
+    this.dragOffsetX = (e.target.dataset.button == null ? -w.button.offsetWidth / 2 | 0 : w.button.getBoundingClientRect().left - e.clientX) - w.slider.getBoundingClientRect().left;
+  };
+  Stage.prototype.watcherMove = function(id, e) {
+    var w = this.dragWatcher;
+    if (!w) return;
+    var sw = w.slider.offsetWidth;
+    var bw = w.button.offsetWidth;
+    var value = w.sliderMin + Math.max(0, Math.min(1, (e.clientX + this.dragOffsetX) / (sw - bw))) * (w.sliderMax - w.sliderMin);
+    w.target.vars[w.param] = w.isDiscrete ? Math.round(value) : Math.round(value * 100) / 100;
+    w.update();
+  };
+  Stage.prototype.watcherEnd = function(id, e) {
+    this.watcherMove(id, e);
+    this.dragWatcher = null;
+  }
+
   Stage.prototype.fromJSON = function(data) {
     Stage.parent.prototype.fromJSON.call(this, data);
 
     data.children.forEach(function(d) {
       if (d.listName) return;
-      this.children.push(new (d.cmd ? Watcher : Sprite)(this).fromJSON(d));
+      if (d.cmd) this.watchers.push(new Watcher(this).fromJSON(d));
+      else this.children.push(new Sprite(this).fromJSON(d));
     }, this);
 
-    this.children.forEach(function(child) {
-      if (child.resolve) child.resolve();
+    this.watchers.forEach(function(child) {
+      child.resolve();
     }, this);
 
     P.compile(this);
@@ -1186,6 +1207,10 @@ var P = (function() {
 
     context.scale(this.zoom * SCALE, this.zoom * SCALE);
     this.drawOn(context);
+    for (var i = this.watchers.length; i--;) {
+      var w = this.watchers[i];
+      if (w.visible) w.update();
+    }
 
     if (this.hidePrompt) {
       this.hidePrompt = false;
@@ -1823,6 +1848,12 @@ var P = (function() {
     this.visible = true;
     this.x = 0;
     this.y = 0;
+
+    this.el = null;
+    this.labelEl = null;
+    this.readout = null;
+    this.slider = null;
+    this.button = null;
   };
 
   Watcher.prototype.fromJSON = function(data) {
@@ -1854,6 +1885,7 @@ var P = (function() {
       this.label = this.getLabel();
       if (this.target.isSprite) this.label = this.target.objName + ': ' + this.label;
     }
+    this.layout();
   };
 
   var WATCHER_LABELS = {
@@ -1885,7 +1917,7 @@ var P = (function() {
     return WATCHER_LABELS[this.cmd] || '';
   };
 
-  Watcher.prototype.draw = function(context) {
+  Watcher.prototype.update = function(context) {
     var value = 0;
     if (!this.target) return;
     switch (this.cmd) {
@@ -1900,15 +1932,6 @@ var P = (function() {
         break;
       case 'getVar:':
         value = this.target.vars[this.param];
-        if (this.mode === 3 && this.stage.mousePressed) {
-          var x = this.stage.mouseX + 240 - this.x - 5;
-          var y = 180 - this.stage.mouseY - this.y - 20;
-          if (x >= 0 && y >= 0 && x <= this.width - 5 - 5 && y <= 9) {
-            value = this.sliderMin + Math.max(0, Math.min(1, (x - 2.5) / (this.width - 5 - 5 - 5))) * (this.sliderMax - this.sliderMin);
-            value = this.isDiscrete ? Math.round(value) : Math.round(value * 100) / 100;
-            this.target.vars[this.param] = value;
-          }
-        }
         break;
       case 'heading':
         value = this.target.direction;
@@ -1947,121 +1970,95 @@ var P = (function() {
     if (typeof value === 'number' && (value < 0.001 || value > 0.001)) {
       value = Math.round(value * 1000) / 1000;
     }
-    value = '' + value;
+    this.readout.textContent = '' + value;
+    if (this.slider) {
+      this.buttonWrap.style.transform = 'translate('+((+value || 0) - this.sliderMin) / (this.sliderMax - this.sliderMin)*100+'%,0)';
+    }
+  };
 
-    if (this.labelWidth == null) {
-      context.font = 'bold 11px sans-serif';
-      this.labelWidth = context.measureText(this.label).width;
+  Watcher.prototype.layout = function() {
+    if (this.el) {
+      this.el.style.display = this.visible ? 'block' : 'none';
+      return;
+    }
+    if (!this.visible) return;
+
+    this.el = document.createElement('div');
+    this.el.dataset.watcher = this.stage.watchers.indexOf(this);
+    this.el.style.whiteSpace = 'pre';
+    this.el.style.position = 'absolute';
+    this.el.style.left = this.el.style.top = '0';
+    this.el.style.transform = 'translate('+(this.x|0)/10+'em,'+(this.y|0)/10+'em)';
+    this.el.style.cursor = 'default';
+
+    if (this.mode === 2) {
+      this.el.appendChild(this.readout = document.createElement('div'));
+      this.readout.style.minWidth = (47/15)+'em';
+      this.readout.style.font = 'bold 1.5em/'+(19/15)+' sans-serif';
+      this.readout.style.height = (19/15)+'em';
+      this.readout.style.borderRadius = (3/15)+'em';
+      this.readout.style.margin = (3/15)+'em 0 0 0';
+      this.readout.style.padding = '0 '+(3/10)+'em';
+    } else {
+      this.el.appendChild(this.labelEl = document.createElement('div'), this.el.firstChild);
+      this.el.appendChild(this.readout = document.createElement('div'));
+
+      this.el.style.border = '.1em solid rgb(148,145,145)';
+      this.el.style.borderRadius = '.4em';
+      this.el.style.background = 'rgb(193,196,199)';
+      this.el.style.padding = '.2em .6em .3em .5em';
+
+      this.labelEl.textContent = this.label;
+      // this.labelEl.style.marginTop = (1/11)+'em';
+      this.labelEl.style.font = 'bold 1.1em/1 sans-serif';
+      this.labelEl.style.display = 'inline-block';
+
+      this.labelEl.style.verticalAlign =
+      this.readout.style.verticalAlign = 'middle';
+
+      this.readout.style.minWidth = (37/10)+'em';
+      this.readout.style.padding = '0 '+(1/10)+'em';
+      this.readout.style.font = 'bold 1.0em/'+(13/10)+' sans-serif';
+      this.readout.style.height = (13/10)+'em';
+      this.readout.style.borderRadius = (4/10)+'em';
+      this.readout.style.marginLeft = (6/10)+'em';
+    }
+    this.readout.style.color = '#fff';
+    var f = 1 / (this.mode === 2 ? 15 : 10);
+    this.readout.style.border = f+'em solid #fff';
+    this.readout.style.boxShadow = 'inset '+f+'em '+f+'em '+f+'em rgba(0,0,0,.5), inset -'+f+'em -'+f+'em '+f+'em rgba(255,255,255,.5)';
+    this.readout.style.textAlign = 'center';
+    this.readout.style.background = this.color;
+    this.readout.style.display = 'inline-block';
+
+    if (this.mode === 3) {
+      this.el.appendChild(this.slider = document.createElement('div'));
+      this.slider.appendChild(this.buttonWrap = document.createElement('div'));
+      this.buttonWrap.appendChild(this.button = document.createElement('div'));
+
+      this.slider.style.height =
+      this.slider.style.borderRadius = '.5em';
+      this.slider.style.background = 'rgb(192,192,192)';
+      this.slider.style.margin = '.4em 0 .1em';
+      this.slider.style.boxShadow = 'inset .125em .125em .125em rgba(0,0,0,.5), inset -.125em -.125em .125em rgba(255,255,255,.5)';
+      this.slider.style.position = 'relative';
+      this.slider.dataset.slider = '';
+
+      this.buttonWrap.style.transform = 'translate(100%,0)';
+
+      this.slider.style.paddingRight =
+      this.button.style.width =
+      this.button.style.height =
+      this.button.style.borderRadius = '1.1em';
+      this.button.style.position = 'absolute';
+      this.button.style.left = '0';
+      this.button.style.top = '-.3em';
+      this.button.style.background = '#fff';
+      this.button.style.boxShadow = 'inset .3em .3em .2em -.2em rgba(255,255,255,.9), inset -.3em -.3em .2em -.2em rgba(0,0,0,.9), inset 0 0 0 .1em #777';
+      this.button.dataset.button = '';
     }
 
-    context.save();
-    context.translate(this.x, this.y);
-
-    if (this.mode === 1 || this.mode === 3) {
-      context.font = 'bold 11px sans-serif';
-
-      var dw = Math.max(41, 5 + context.measureText(value).width + 5);
-      var r = 5;
-      var w = this.width = 5 + this.labelWidth + 5 + dw + 5;
-      var h = this.mode === 1 ? 21 : 32;
-
-      context.strokeStyle = 'rgb(148, 145, 145)';
-      context.fillStyle = 'rgb(193, 196, 199)';
-      context.lineWidth = 2;
-      context.beginPath();
-      context.arc(r + 1, r + 1, r, Math.PI, Math.PI * 3/2, false);
-      context.arc(w - r - 1, r + 1, r, Math.PI * 3/2, 0, false);
-      context.arc(w - r - 1, h - r - 1, r, 0, Math.PI/2, false);
-      context.arc(r + 1, h - r - 1, r, Math.PI/2, Math.PI, false);
-      context.closePath();
-      context.stroke();
-      context.fill();
-
-      context.fillStyle = '#000';
-      context.fillText(this.label, 5, 14);
-
-      var dh = 15;
-      var dx = 5 + this.labelWidth + 5;
-      var dy = 3;
-      var dr = 4;
-
-      context.save();
-      context.translate(dx, dy);
-
-      context.strokeStyle = '#fff';
-      context.fillStyle = this.color;
-      context.lineWidth = 2;
-      context.beginPath();
-      context.arc(dr + 1, dr + 1, dr, Math.PI, Math.PI * 3/2, false);
-      context.arc(dw - dr - 1, dr + 1, dr, Math.PI * 3/2, 0, false);
-      context.arc(dw - dr - 1, dh - dr - 1, dr, 0, Math.PI/2, false);
-      context.arc(dr + 1, dh - dr - 1, dr, Math.PI/2, Math.PI, false);
-      context.closePath();
-      context.stroke();
-      context.fill();
-
-      context.fillStyle = '#fff';
-      context.textAlign = 'center';
-      context.fillText(value, dw / 2, dh - 4);
-
-      context.restore();
-
-      if (this.mode === 3) {
-        var sh = 5;
-        var sw = w - 5 - 5;
-        var sr = 1.5;
-        var br = 4.5;
-
-        context.save();
-        context.translate(5, 22);
-
-        context.strokeStyle = 'rgb(148, 145, 145)';
-        context.fillStyle = 'rgb(213, 216, 219)';
-        context.lineWidth = 2;
-        context.beginPath();
-        context.arc(sr + 1, sr + 1, sr, Math.PI, Math.PI * 3/2, false);
-        context.arc(sw - sr - 1, sr + 1, sr, Math.PI * 3/2, 0, false);
-        context.arc(sw - sr - 1, sh - sr - 1, sr, 0, Math.PI/2, false);
-        context.arc(sr + 1, sh - sr - 1, sr, Math.PI/2, Math.PI, false);
-        context.closePath();
-        context.stroke();
-        context.fill();
-
-        var x = (sw - sh) * Math.max(0, Math.min(1, ((+value || 0) - this.sliderMin) / (this.sliderMax - this.sliderMin)));
-        context.strokeStyle = 'rgb(108, 105, 105)';
-        context.fillStyle = 'rgb(233, 236, 239)';
-        context.beginPath();
-        context.arc(x + sh / 2, sh / 2, br - 1, 0, Math.PI * 2, false);
-        context.stroke();
-        context.fill();
-
-        context.restore();
-      }
-    } else if (this.mode === 2) {
-      context.font = 'bold 15px sans-serif';
-
-      dh = 21;
-      dw = Math.max(41, 5 + context.measureText(value).width + 5);
-      dr = 4;
-
-      context.strokeStyle = '#fff';
-      context.fillStyle = this.color;
-      context.lineWidth = 2;
-      context.beginPath();
-      context.arc(dr + 1, dr + 1, dr, Math.PI, Math.PI * 3/2, false);
-      context.arc(dw - dr - 1, dr + 1, dr, Math.PI * 3/2, 0, false);
-      context.arc(dw - dr - 1, dh - dr - 1, dr, 0, Math.PI/2, false);
-      context.arc(dr + 1, dh - dr - 1, dr, Math.PI/2, Math.PI, false);
-      context.closePath();
-      context.stroke();
-      context.fill();
-
-      context.fillStyle = '#fff';
-      context.textAlign = 'center';
-      context.fillText(value, dw / 2, dh - 5);
-    }
-
-    context.restore();
+    this.stage.root.appendChild(this.el);
   };
 
   var AudioContext = window.AudioContext || window.webkitAudioContext;
