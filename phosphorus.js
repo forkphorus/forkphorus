@@ -734,24 +734,20 @@ var P = (function() {
   };
 
   Base.prototype.setFilter = function(name, value) {
-    var min = 0;
-    var max = 100;
     switch (name) {
-      case 'whirl':
-      case 'fisheye':
-      case 'pixelate': // absolute value
-      case 'mosaic': // absolute value
-        min = -Infinity;
-        max = Infinity;
+      case 'ghost':
+        if (value < 0) value = 0;
+        if (value > 100) value = 100;
+        break;
+      case 'brightness':
+        if (value < -100) value = -100;
+        if (value > 100) value = 100;
         break;
       case 'color':
         value = value % 200;
         if (value < 0) value += 200;
-        max = 200;
         break;
     }
-    if (value < min) value = min;
-    if (value > max) value = max;
     this.filters[name] = value;
     if (this.isStage) this.updateFilters();
   };
