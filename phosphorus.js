@@ -418,12 +418,16 @@ var P = (function() {
 
   IO.decodeAudio = function(ab, cb) {
     if (audioContext) {
-      var p = audioContext.decodeAudioData(ab, function(buffer) {
-        cb(buffer);
-      }, function(err) {
-        IO.decodeADPCMAudio(ab, cb);
+      IO.decodeADPCMAudio(ab, function(err, buffer) {
+        if (buffer) return setTimeout(function() {cb(buffer)});
+        var p = audioContext.decodeAudioData(ab, function(buffer) {
+          cb(buffer);
+        }, function(err2) {
+          console.warn(err, err2);
+          cb(null);
+        });
+        if (p.catch) p.catch(function() {});
       });
-      if (p.catch) p.catch(function() {});
     } else {
       setTimeout(cb);
     }
@@ -432,8 +436,7 @@ var P = (function() {
   IO.decodeADPCMAudio = function(ab, cb) {
     var dv = new DataView(ab);
     if (dv.getUint32(0) !== 0x52494646 || dv.getUint32(8) !== 0x57415645) {
-      console.warn('Unrecognized audio format');
-      return cb(null);
+      return cb(new Error('Unrecognized audio format'));
     }
 
     var blocks = {};
@@ -502,10 +505,9 @@ var P = (function() {
           channel[j++] = sample / 32768;
         }
       }
-      return cb(buffer);
+      return cb(null, buffer);
     }
-    console.warn('Unrecognized WAV format ' + format);
-    cb(null);
+    cb(new Error('Unrecognized WAV format ' + format));
   };
 
   IO.loadBase = function(data) {
