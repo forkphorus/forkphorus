@@ -773,6 +773,7 @@ var P = (function() {
       watcher.target = this;
       watcher.label = (watcher.target === stage ? '' : watcher.target.objName + ': ') + name;
       watcher.param = name;
+      stage.allWatchers.push(watcher);
     }
     watcher.visible = visible;
     watcher.layout();
