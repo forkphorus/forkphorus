@@ -418,15 +418,16 @@ var P = (function() {
 
   IO.decodeAudio = function(ab, cb) {
     if (audioContext) {
-      var p = audioContext.decodeAudioData(ab, function(buffer) {
-        cb(buffer);
-      }, function(err) {
-        IO.decodeADPCMAudio(ab, function(err, buffer) {
-          if (err) console.warn(err);
+      IO.decodeADPCMAudio(ab, function(err, buffer) {
+        if (buffer) return setTimeout(function() {cb(buffer)});
+        var p = audioContext.decodeAudioData(ab, function(buffer) {
           cb(buffer);
+        }, function(err2) {
+          console.warn(err, err2);
+          cb(null);
         });
+        if (p.catch) p.catch(function() {});
       });
-      if (p.catch) p.catch(function() {});
     } else {
       setTimeout(cb);
     }
