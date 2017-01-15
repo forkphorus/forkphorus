@@ -442,11 +442,11 @@ var P = (function() {
     var blocks = {};
     var i = 12;
     while (i < dv.byteLength) {
-      blocks[
-        String.fromCharCode(dv.getUint8(i)) +
-        String.fromCharCode(dv.getUint8(i + 1)) +
-        String.fromCharCode(dv.getUint8(i + 2)) +
-        String.fromCharCode(dv.getUint8(i + 3))] = i;
+      blocks[String.fromCharCode(
+        dv.getUint8(i),
+        dv.getUint8(i + 1),
+        dv.getUint8(i + 2),
+        dv.getUint8(i + 3))] = i;
       i += 8 + dv.getUint32(i + 4, true);
     }
 
