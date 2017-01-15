@@ -824,8 +824,8 @@ var P = (function() {
     Stage.parent.call(this);
 
     this.children = [];
-    this.watchers = [];
-    this.dragging = {};
+    this.allWatchers = [];
+    this.dragging = Object.create(null);
     this.defaultWatcherX = 10;
     this.defaultWatcherY = 10;
 
@@ -1046,7 +1046,7 @@ var P = (function() {
     var p = e.target;
     while (p && p.dataset.watcher == null) p = p.parentElement;
     if (!p) return;
-    var w = this.watchers[p.dataset.watcher]
+    var w = this.allWatchers[p.dataset.watcher]
     this.dragging[id] = {
       watcher: w,
       offset: (e.target.dataset.button == null ? -w.button.offsetWidth / 2 | 0 : w.button.getBoundingClientRect().left - t.clientX) - w.slider.getBoundingClientRect().left
@@ -1073,11 +1073,11 @@ var P = (function() {
 
     data.children.forEach(function(d) {
       if (d.listName) return;
-      if (d.cmd) this.watchers.push(new Watcher(this).fromJSON(d));
+      if (d.cmd) this.allWatchers.push(new Watcher(this).fromJSON(d));
       else this.children.push(new Sprite(this).fromJSON(d));
     }, this);
 
-    this.watchers.forEach(function(child) {
+    this.allWatchers.forEach(function(child) {
       child.resolve();
     }, this);
 
@@ -1224,8 +1224,8 @@ var P = (function() {
 
     context.scale(this.zoom * SCALE, this.zoom * SCALE);
     this.drawOn(context);
-    for (var i = this.watchers.length; i--;) {
-      var w = this.watchers[i];
+    for (var i = this.allWatchers.length; i--;) {
+      var w = this.allWatchers[i];
       if (w.visible) w.update();
     }
 
@@ -2001,7 +2001,7 @@ var P = (function() {
     if (!this.visible) return;
 
     this.el = document.createElement('div');
-    this.el.dataset.watcher = this.stage.watchers.indexOf(this);
+    this.el.dataset.watcher = this.stage.allWatchers.indexOf(this);
     this.el.style.whiteSpace = 'pre';
     this.el.style.position = 'absolute';
     this.el.style.left = this.el.style.top = '0';
