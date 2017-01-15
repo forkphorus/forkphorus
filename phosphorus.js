@@ -825,6 +825,7 @@ var P = (function() {
 
     this.children = [];
     this.watchers = [];
+    this.dragging = {};
     this.defaultWatcherX = 10;
     this.defaultWatcherY = 10;
 
@@ -935,21 +936,17 @@ var P = (function() {
 
       document.addEventListener('touchmove', function(e) {
         this.updateMouse(e.changedTouches[0]);
-        if (this.dragWatcher) {
-          for (var i = 0; i < e.changedTouches.length; i++) {
-            var t = e.changedTouches[i];
-            this.watcherMove(t.identifier, t, e);
-          }
+        for (var i = 0; i < e.changedTouches.length; i++) {
+          var t = e.changedTouches[i];
+          this.watcherMove(t.identifier, t, e);
         }
       }.bind(this));
 
       document.addEventListener('touchend', function(e) {
         this.releaseMouse();
-        if (this.dragWatcher) {
-          for (var i = 0; i < e.changedTouches.length; i++) {
-            var t = e.changedTouches[i];
-            this.watcherEnd(t.identifier, t, e);
-          }
+        for (var i = 0; i < e.changedTouches.length; i++) {
+          var t = e.changedTouches[i];
+          this.watcherEnd(t.identifier, t, e);
         }
       }.bind(this));
 
@@ -970,13 +967,13 @@ var P = (function() {
 
       document.addEventListener('mousemove', function(e) {
         this.updateMouse(e);
-        if (this.dragWatcher) this.watcherMove('mouse', e, e);
+        this.watcherMove('mouse', e, e);
       }.bind(this));
 
       document.addEventListener('mouseup', function(e) {
         this.updateMouse(e);
         this.releaseMouse();
-        if (this.dragWatcher) this.watcherEnd('mouse', e, e);
+        this.watcherEnd('mouse', e, e);
       }.bind(this));
     }
 
@@ -1049,22 +1046,26 @@ var P = (function() {
     var p = e.target;
     while (p && p.dataset.watcher == null) p = p.parentElement;
     if (!p) return;
-    var w = this.dragWatcher = this.watchers[p.dataset.watcher]
-    this.dragOffsetX = (e.target.dataset.button == null ? -w.button.offsetWidth / 2 | 0 : w.button.getBoundingClientRect().left - t.clientX) - w.slider.getBoundingClientRect().left;
+    var w = this.watchers[p.dataset.watcher]
+    this.dragging[id] = {
+      watcher: w,
+      offset: (e.target.dataset.button == null ? -w.button.offsetWidth / 2 | 0 : w.button.getBoundingClientRect().left - t.clientX) - w.slider.getBoundingClientRect().left
+    };
   };
   Stage.prototype.watcherMove = function(id, t, e) {
-    var w = this.dragWatcher;
-    if (!w) return;
+    var d = this.dragging[id];
+    if (!d) return;
+    var w = d.watcher
     var sw = w.slider.offsetWidth;
     var bw = w.button.offsetWidth;
-    var value = w.sliderMin + Math.max(0, Math.min(1, (t.clientX + this.dragOffsetX) / (sw - bw))) * (w.sliderMax - w.sliderMin);
+    var value = w.sliderMin + Math.max(0, Math.min(1, (t.clientX + d.offset) / (sw - bw))) * (w.sliderMax - w.sliderMin);
     w.target.vars[w.param] = w.isDiscrete ? Math.round(value) : Math.round(value * 100) / 100;
     w.update();
     e.preventDefault();
   };
   Stage.prototype.watcherEnd = function(id, t, e) {
     this.watcherMove(id, t, e);
-    this.dragWatcher = null;
+    delete this.dragging[id];
   }
 
   Stage.prototype.fromJSON = function(data) {
