@@ -3862,6 +3862,7 @@ P.runtime = (function() {
       addEventListener('error', this.onError);
       this.baseTime = Date.now();
       this.interval = setInterval(this.step.bind(this), 1000 / this.framerate);
+      if (audioContext) audioContext.resume();
     };
 
     P.Stage.prototype.pause = function() {
@@ -3870,6 +3871,7 @@ P.runtime = (function() {
         clearInterval(this.interval);
         delete this.interval;
         removeEventListener('error', this.onError);
+        if (audioContext) audioContext.suspend();
       }
       this.isRunning = false;
     };
