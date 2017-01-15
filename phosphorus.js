@@ -1331,6 +1331,7 @@ var P = (function() {
     };
 
     c.direction = this.direction;
+    c.instrument = this.instrument;
     c.indexInLibrary = this.indexInLibrary;
     c.isDraggable = this.isDraggable;
     c.rotationStyle = this.rotationStyle;
