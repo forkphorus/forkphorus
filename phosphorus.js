@@ -901,7 +901,7 @@ var P = (function() {
       if (e.ctrlKey || e.altKey || e.metaKey || e.keyCode === 27) {
         return;
       }
-      if (!this.keys[e.keyCode]) this.keys[128]++
+      if (!this.keys[e.keyCode]) this.keys[128]++;
       this.keys[e.keyCode] = true;
       e.stopPropagation();
       if (e.target === this.canvas) {
@@ -911,7 +911,7 @@ var P = (function() {
     }.bind(this));
 
     this.root.addEventListener('keyup', function(e) {
-      if (this.keys[e.keyCode]) this.keys[128]--
+      if (this.keys[e.keyCode]) this.keys[128]--;
       this.keys[e.keyCode] = false;
       e.stopPropagation();
       if (e.target === this.canvas) {
