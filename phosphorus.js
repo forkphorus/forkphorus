@@ -440,8 +440,8 @@ var P = (function() {
     }
 
     var blocks = {};
-    var i = 12;
-    while (i < dv.byteLength) {
+    var i = 12, l = dv.byteLength - 8;
+    while (i < l) {
       blocks[String.fromCharCode(
         dv.getUint8(i),
         dv.getUint8(i + 1),
