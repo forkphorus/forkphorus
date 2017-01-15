@@ -334,7 +334,7 @@ var P = (function() {
     IO.init(request);
 
     try {
-      IO.zip = new JSZip(ab);
+      IO.zip = Object.prototype.toString.call(ab) === '[object ArrayBuffer]' ? new JSZip(ab) : ab;
       var json = IO.parseJSONish(IO.zip.file('project.json').asText());
 
       IO.loadProject(json);
