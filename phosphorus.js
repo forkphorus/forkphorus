@@ -922,9 +922,12 @@ var P = (function() {
       document.addEventListener('touchstart', function(e) {
         this.mousePressed = true;
         for (var i = 0; i < e.changedTouches.length; i++) {
-          this.updateMouse(e.changedTouches[i]);
+          var t = e.changedTouches[i];
+          this.updateMouse(t);
           if (e.target === this.canvas) {
             this.clickMouse();
+          } else if (e.target.dataset.button != null || e.target.dataset.slider != null) {
+            this.watcherStart(t.identifier, t, e);
           }
         }
         if (e.target === this.canvas) e.preventDefault();
@@ -932,10 +935,22 @@ var P = (function() {
 
       document.addEventListener('touchmove', function(e) {
         this.updateMouse(e.changedTouches[0]);
+        if (this.dragWatcher) {
+          for (var i = 0; i < e.changedTouches.length; i++) {
+            var t = e.changedTouches[i];
+            this.watcherMove(t.identifier, t, e);
+          }
+        }
       }.bind(this));
 
       document.addEventListener('touchend', function(e) {
         this.releaseMouse();
+        if (this.dragWatcher) {
+          for (var i = 0; i < e.changedTouches.length; i++) {
+            var t = e.changedTouches[i];
+            this.watcherEnd(t.identifier, t, e);
+          }
+        }
       }.bind(this));
 
     } else {
@@ -949,19 +964,19 @@ var P = (function() {
           e.preventDefault();
           this.canvas.focus();
         } else if (e.target.dataset.button != null || e.target.dataset.slider != null) {
-          this.watcherStart('mouse', e);
+          this.watcherStart('mouse', e, e);
         }
       }.bind(this));
 
       document.addEventListener('mousemove', function(e) {
         this.updateMouse(e);
-        if (this.dragWatcher) this.watcherMove('mouse', e);
+        if (this.dragWatcher) this.watcherMove('mouse', e, e);
       }.bind(this));
 
       document.addEventListener('mouseup', function(e) {
         this.updateMouse(e);
         this.releaseMouse();
-        if (this.dragWatcher) this.watcherEnd('mouse', e);
+        if (this.dragWatcher) this.watcherEnd('mouse', e, e);
       }.bind(this));
     }
 
@@ -1030,25 +1045,25 @@ var P = (function() {
 
   Stage.prototype.isStage = true;
 
-  Stage.prototype.watcherStart = function(id, e) {
+  Stage.prototype.watcherStart = function(id, t, e) {
     var p = e.target;
     while (p && p.dataset.watcher == null) p = p.parentElement;
     if (!p) return;
     var w = this.dragWatcher = this.watchers[p.dataset.watcher]
-    this.dragOffsetX = (e.target.dataset.button == null ? -w.button.offsetWidth / 2 | 0 : w.button.getBoundingClientRect().left - e.clientX) - w.slider.getBoundingClientRect().left;
+    this.dragOffsetX = (e.target.dataset.button == null ? -w.button.offsetWidth / 2 | 0 : w.button.getBoundingClientRect().left - t.clientX) - w.slider.getBoundingClientRect().left;
   };
-  Stage.prototype.watcherMove = function(id, e) {
+  Stage.prototype.watcherMove = function(id, t, e) {
     var w = this.dragWatcher;
     if (!w) return;
     var sw = w.slider.offsetWidth;
     var bw = w.button.offsetWidth;
-    var value = w.sliderMin + Math.max(0, Math.min(1, (e.clientX + this.dragOffsetX) / (sw - bw))) * (w.sliderMax - w.sliderMin);
+    var value = w.sliderMin + Math.max(0, Math.min(1, (t.clientX + this.dragOffsetX) / (sw - bw))) * (w.sliderMax - w.sliderMin);
     w.target.vars[w.param] = w.isDiscrete ? Math.round(value) : Math.round(value * 100) / 100;
     w.update();
     e.preventDefault();
   };
-  Stage.prototype.watcherEnd = function(id, e) {
-    this.watcherMove(id, e);
+  Stage.prototype.watcherEnd = function(id, t, e) {
+    this.watcherMove(id, t, e);
     this.dragWatcher = null;
   }
 
