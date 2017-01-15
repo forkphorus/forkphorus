@@ -2692,12 +2692,12 @@ P.compile = (function() {
       } else if (block[0] === 'changeSizeBy:') {
 
         source += 'var f = S.scale + ' + num(block[1]) + ' / 100;\n';
-        source += 'S.scale = f < 0.01 ? 0.01 : f;\n';
+        source += 'S.scale = f < 0 ? 0 : f;\n';
 
       } else if (block[0] === 'setSizeTo:') {
 
         source += 'var f = ' + num(block[1]) + ' / 100;\n';
-        source += 'S.scale = f < 0.01 ? 0.01 : f;\n';
+        source += 'S.scale = f < 0 ? 0 : f;\n';
 
       } else if (block[0] === 'show') {
 
