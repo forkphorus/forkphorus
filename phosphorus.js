@@ -1238,7 +1238,7 @@ var P = (function() {
     this.mouseSprite = undefined;
     for (var i = this.children.length; i--;) {
       var c = this.children[i];
-      if (c.isSprite && c.visible && c.filters.ghost < 100 && c.touching('_mouse_')) {
+      if (c.visible && c.filters.ghost < 100 && c.touching('_mouse_')) {
         if (c.isDraggable) {
           this.mouseSprite = c;
           c.mouseDown();
@@ -1261,9 +1261,7 @@ var P = (function() {
 
   Stage.prototype.stopAllSounds = function() {
     for (var children = this.children, i = children.length; i--;) {
-      if (children[i].isSprite) {
-        children[i].stopSounds();
-      }
+      children[i].stopSounds();
     }
     this.stopSounds();
   };
@@ -1322,8 +1320,9 @@ var P = (function() {
 
   Stage.prototype.drawOn = function(context, except) {
     for (var i = 0; i < this.children.length; i++) {
-      if (this.children[i].visible && this.children[i] !== except) {
-        this.children[i].draw(context);
+      var c = this.children[i];
+      if (c.visible && c !== except) {
+        c.draw(context);
       }
     }
   };
@@ -3316,9 +3315,7 @@ P.compile = (function() {
     compileScripts(stage);
 
     for (var i = 0; i < stage.children.length; i++) {
-      if (!stage.children[i].cmd) {
-        compileScripts(stage.children[i]);
-      }
+      compileScripts(stage.children[i]);
     }
 
     for (var key in warnings) {
@@ -3849,9 +3846,7 @@ P.runtime = (function() {
     P.Stage.prototype.trigger = function(event, arg) {
       var threads = [];
       for (var i = this.children.length; i--;) {
-        if (this.children[i].isSprite) {
-          threads = threads.concat(this.triggerFor(this.children[i], event, arg));
-        }
+        threads = threads.concat(this.triggerFor(this.children[i], event, arg));
       }
       return threads.concat(this.triggerFor(this, event, arg));
     };
@@ -3892,7 +3887,7 @@ P.runtime = (function() {
           c.remove();
           this.children.splice(i, 1);
           i -= 1;
-        } else if (c.isSprite) {
+        } else {
           c.resetFilters();
           if (c.saying) c.say('');
           c.stopSounds();
