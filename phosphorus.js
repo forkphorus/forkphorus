@@ -594,8 +594,13 @@ var P = (function() {
     var ext = md5.split('.').pop();
     if (ext === 'svg') {
       var cb = function(source) {
-        var doc = new DOMParser().parseFromString(source, 'image/svg+xml');
+        var parser = new DOMParser();
+        var doc = parser.parseFromString(source, 'image/svg+xml');
         var svg = doc.documentElement;
+        if (!svg.style) {
+          doc = parser.parseFromString('<body>'+source, 'text/html');
+          svg = doc.querySelector('svg');
+        }
         svg.style.visibility = 'hidden';
         svg.style.position = 'absolute';
         svg.style.left = '-10000px';
