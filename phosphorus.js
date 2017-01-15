@@ -858,7 +858,7 @@ var P = (function() {
     this.root.style.overflow = 'hidden';
     this.root.style.width = '480px';
     this.root.style.height = '360px';
-    this.root.style.fontSize = '1px';
+    this.root.style.fontSize = '10px';
     this.root.style.background = '#fff';
     this.root.style.WebkitUserSelect =
     this.root.style.MozUserSelect =
@@ -970,11 +970,11 @@ var P = (function() {
     this.root.appendChild(this.prompter);
     this.prompter.style.position = 'absolute';
     this.prompter.style.left =
-    this.prompter.style.right = '14em';
-    this.prompter.style.bottom = '6em';
-    this.prompter.style.padding = '5em 30em 5em 5em';
-    this.prompter.style.border = '3em solid rgb(46, 174, 223)';
-    this.prompter.style.borderRadius = '8em';
+    this.prompter.style.right = '1.4em';
+    this.prompter.style.bottom = '.6em';
+    this.prompter.style.padding = '.5em 3.0em .5em .5em';
+    this.prompter.style.border = '.3em solid rgb(46, 174, 223)';
+    this.prompter.style.borderRadius = '.8em';
     this.prompter.style.background = '#fff';
     this.prompter.style.display = 'none';
 
@@ -982,7 +982,7 @@ var P = (function() {
     this.prompter.appendChild(this.promptTitle);
     this.promptTitle.textContent = '';
     this.promptTitle.style.cursor = 'default';
-    this.promptTitle.style.font = 'bold 13em sans-serif';
+    this.promptTitle.style.font = 'bold 1.3em sans-serif';
     this.promptTitle.style.margin = '0 '+(-25/13)+'em '+(5/13)+'em 0';
     this.promptTitle.style.whiteSpace = 'pre';
     this.promptTitle.style.overflow = 'hidden';
@@ -994,7 +994,7 @@ var P = (function() {
     this.prompt.style.background = '#eee';
     this.prompt.style.MozBoxSizing =
     this.prompt.style.boxSizing = 'border-box';
-    this.prompt.style.font = '13em sans-serif';
+    this.prompt.style.font = '1.3em sans-serif';
     this.prompt.style.padding = '0 '+(3/13)+'em';
     this.prompt.style.outline = '0';
     this.prompt.style.margin = '0';
@@ -1009,13 +1009,13 @@ var P = (function() {
 
     this.promptButton = document.createElement('div');
     this.prompter.appendChild(this.promptButton);
-    this.promptButton.style.width = '22em';
-    this.promptButton.style.height = '22em';
+    this.promptButton.style.width = '2.2em';
+    this.promptButton.style.height = '2.2em';
     this.promptButton.style.position = 'absolute';
-    this.promptButton.style.right = '4em';
-    this.promptButton.style.bottom = '4em';
-    this.promptButton.style.background = 'url(icons.svg) -165em -37em';
-    this.promptButton.style.backgroundSize = '320em 96em';
+    this.promptButton.style.right = '.4em';
+    this.promptButton.style.bottom = '.4em';
+    this.promptButton.style.background = 'url(icons.svg) -16.5em -3.7em';
+    this.promptButton.style.backgroundSize = '32.0em 9.6em';
 
     this.prompt.addEventListener('keydown', function(e) {
       if (e.keyCode === 13) {
@@ -1107,7 +1107,7 @@ var P = (function() {
     this.canvas.style.height =
     this.backdropCanvas.style.height =
     this.penCanvas.style.height = (360 * zoom | 0) + 'px';
-    this.root.style.fontSize = zoom + 'px';
+    this.root.style.fontSize = (zoom*10) + 'px';
     this.zoom = zoom;
     this.updateBackdrop();
   };
@@ -1693,7 +1693,7 @@ var P = (function() {
       this.bubble.style.borderRadius = ''+(10/14)+'em';
       this.bubble.style.background = '#fff';
       this.bubble.style.position = 'absolute';
-      this.bubble.style.font = 'bold 14em sans-serif';
+      this.bubble.style.font = 'bold 1.4em sans-serif';
       this.bubble.style.whiteSpace = 'pre-wrap';
       this.bubble.style.wordWrap = 'break-word';
       this.bubble.style.textAlign = 'center';
