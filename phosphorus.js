@@ -2459,6 +2459,39 @@ P.compile = (function() {
 
       } else if (e[0] === 'computeFunction:of:') {
 
+        if (typeof e[1] !== 'object') {
+          switch ('' + e[1]) {
+            case 'abs':
+              return 'Math.abs(' + num(e[2]) + ')';
+            case 'floor':
+              return 'Math.floor(' + num(e[2]) + ')';
+            case 'sqrt':
+              return 'Math.sqrt(' + num(e[2]) + ')';
+            case 'ceiling':
+              return 'Math.ceil(' + num(e[2]) + ')';
+            case 'cos':
+              return 'Math.cos(' + num(e[2]) + ' * Math.PI / 180)';
+            case 'sin':
+              return 'Math.sin(' + num(e[2]) + ' * Math.PI / 180)';
+            case 'tan':
+              return 'Math.tan(' + num(e[2]) + ' * Math.PI / 180)';
+            case 'asin':
+              return 'Math.asin(' + num(e[2]) + ') * 180 / Math.PI';
+            case 'acos':
+              return 'Math.acos(' + num(e[2]) + ') * 180 / Math.PI';
+            case 'atan':
+              return 'Math.atan(' + num(e[2]) + ') * 180 / Math.PI';
+            case 'ln':
+              return 'Math.log(' + num(e[2]) + ')';
+            case 'log':
+              return 'Math.log(' + num(e[2]) + ') / Math.LN10';
+            case 'e ^':
+              return 'Math.exp(' + num(e[2]) + ')';
+            case '10 ^':
+              return 'Math.exp(' + num(e[2]) + ' * Math.LN10)';
+          }
+          return '0';
+        }
         return 'mathFunc(' + val(e[1]) + ', ' + num(e[2]) + ')';
 
       } else if (e[0] === 'mouseX') { /* Sensing */
