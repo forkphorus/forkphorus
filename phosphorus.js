@@ -2299,36 +2299,15 @@ P.compile = (function() {
         return 'C.boolargs[' + i + ']';
       }
 
-      if (usenum) return '(+C.args[' + i + '] || 0)';
-      if (usebool) return 'bool(C.args[' + i + '])';
-      return 'C.args[' + i + ']';
+      var v = 'C.args[' + i + ']';
+      if (usenum) return '(+' + v + ' || 0)';
+      if (usebool) return 'bool(' + v + ')';
+      return v;
     };
 
-    var val = function(e, usenum, usebool) {
+    var val2 = function(e) {
       var v;
-      if (typeof e === 'number' || typeof e === 'boolean') {
-
-        return '' + e;
-
-      } else if (typeof e === 'string') {
-
-        return '"' + e
-          .replace(/\\/g, '\\\\')
-          .replace(/\n/g, '\\n')
-          .replace(/\r/g, '\\r')
-          .replace(/"/g, '\\"')
-          .replace(/\{/g, '\\x7b')
-          .replace(/\}/g, '\\x7d') + '"';
-
-      } else if (e[0] === 'getParam') { /* Data */
-
-        return param(e[1], usenum, usebool);
-
-      } else if ((v = numval(e)) != null || (v = boolval(e)) != null) {
-
-        return v;
-
-      } else if (e[0] === 'costumeName') {
+      if (e[0] === 'costumeName') {
 
         return 'S.getCostumeName()';
 
@@ -2375,6 +2354,41 @@ P.compile = (function() {
       } else {
 
         warn('Undefined val: ' + e[0]);
+
+      }
+    };
+
+    var val = function(e, usenum, usebool) {
+      var v;
+
+      if (typeof e === 'number' || typeof e === 'boolean') {
+
+        return '' + e;
+
+      } else if (typeof e === 'string') {
+
+        return '"' + e
+          .replace(/\\/g, '\\\\')
+          .replace(/\n/g, '\\n')
+          .replace(/\r/g, '\\r')
+          .replace(/"/g, '\\"')
+          .replace(/\{/g, '\\x7b')
+          .replace(/\}/g, '\\x7d') + '"';
+
+      } else if (e[0] === 'getParam') {
+
+        return param(e[1], usenum, usebool);
+
+      } else if ((v = numval(e)) != null || (v = boolval(e)) != null) {
+
+        return v;
+
+      } else {
+
+        v = val2(e);
+        if (usenum) return '(+' + v + ' || 0)';
+        if (usebool) return 'bool(' + v + ')';
+        return v;
 
       }
     };
@@ -2609,7 +2623,7 @@ P.compile = (function() {
         return +e !== 0 && e !== '' && e !== 'false' && e !== false;
       }
       var v = boolval(e);
-      return v != null ? v : 'bool(' + val(e, false, true) + ')';
+      return v != null ? v : val(e, false, true);
     };
 
     var num = function(e) {
@@ -2620,7 +2634,7 @@ P.compile = (function() {
         return +e || 0;
       }
       var v = numval(e);
-      return v != null ? v : '(+' + val(e, true) + ' || 0)';
+      return v != null ? v : val(e, true);
     };
 
     var beatHead = function(dur) {
