@@ -2641,13 +2641,13 @@ P.compile = (function() {
       source += 'save();\n';
       source += 'R.start = self.now;\n';
       source += 'R.duration = ' + num(dur) + ' * 60 / self.tempoBPM;\n';
-      source += 'R.first = true;\n';
+      source += 'var first = true;\n';
     };
 
     var beatTail = function(dur) {
         var id = label();
-        source += 'if (self.now - R.start < R.duration * 1000 || R.first) {\n';
-        source += '  R.first = false;\n';
+        source += 'if (self.now - R.start < R.duration * 1000 || first) {\n';
+        source += '  var first;\n';
         forceQueue(id);
         source += '}\n';
 
@@ -2658,11 +2658,11 @@ P.compile = (function() {
       source += 'save();\n';
       source += 'R.start = self.now;\n';
       source += 'R.duration = ' + dur + ';\n';
-      source += 'R.first = true;\n';
+      source += 'var first = true;\n';
 
       var id = label();
-      source += 'if (self.now - R.start < R.duration * 1000 || R.first) {\n';
-      source += '  R.first = false;\n';
+      source += 'if (self.now - R.start < R.duration * 1000 || first) {\n';
+      source += '  var first;\n';
       forceQueue(id);
       source += '}\n';
 
