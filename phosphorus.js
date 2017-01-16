@@ -3052,7 +3052,7 @@ P.compile = (function() {
         if (DEBUG && block[1] === 'phosphorus: debug') {
           source += 'debugger;\n';
         } else {
-          source += 'call(' + val(block[1]) + ', ' + nextLabel() + ', [';
+          source += 'call(S.procedures[' + val(block[1]) + '], ' + nextLabel() + ', [';
           for (var i = 2; i < block.length; i++) {
             if (i > 2) {
               source += ', ';
@@ -3768,10 +3768,9 @@ P.runtime = (function() {
   };
 
   // var lastCalls = [];
-  var call = function(spec, id, values) {
+  var call = function(procedure, id, values) {
     // lastCalls.push(spec);
     // if (lastCalls.length > 10000) lastCalls.shift();
-    var procedure = S.procedures[spec];
     if (procedure) {
       STACK.push(R);
       CALLS.push(C);
