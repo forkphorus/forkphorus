@@ -1007,7 +1007,7 @@ var P = (function() {
 
     if (hasTouchEvents) {
 
-      document.addEventListener('touchstart', function(e) {
+      document.addEventListener('touchstart', this.onTouchStart = function(e) {
         this.mousePressed = true;
         for (var i = 0; i < e.changedTouches.length; i++) {
           var t = e.changedTouches[i];
@@ -1021,7 +1021,7 @@ var P = (function() {
         if (e.target === this.canvas) e.preventDefault();
       }.bind(this));
 
-      document.addEventListener('touchmove', function(e) {
+      document.addEventListener('touchmove', this.onTouchMove = function(e) {
         this.updateMouse(e.changedTouches[0]);
         for (var i = 0; i < e.changedTouches.length; i++) {
           var t = e.changedTouches[i];
@@ -1029,7 +1029,7 @@ var P = (function() {
         }
       }.bind(this));
 
-      document.addEventListener('touchend', function(e) {
+      document.addEventListener('touchend', this.onTouchEnd = function(e) {
         this.releaseMouse();
         for (var i = 0; i < e.changedTouches.length; i++) {
           var t = e.changedTouches[i];
@@ -1039,7 +1039,7 @@ var P = (function() {
 
     } else {
 
-      document.addEventListener('mousedown', function(e) {
+      document.addEventListener('mousedown', this.onMouseDown = function(e) {
         this.updateMouse(e);
         this.mousePressed = true;
 
@@ -1052,12 +1052,12 @@ var P = (function() {
         }
       }.bind(this));
 
-      document.addEventListener('mousemove', function(e) {
+      document.addEventListener('mousemove', this.onMouseMove = function(e) {
         this.updateMouse(e);
         this.watcherMove('mouse', e, e);
       }.bind(this));
 
-      document.addEventListener('mouseup', function(e) {
+      document.addEventListener('mouseup', this.onMouseUp = function(e) {
         this.updateMouse(e);
         this.releaseMouse();
         this.watcherEnd('mouse', e, e);
@@ -1153,7 +1153,18 @@ var P = (function() {
   Stage.prototype.watcherEnd = function(id, t, e) {
     this.watcherMove(id, t, e);
     delete this.dragging[id];
-  }
+  };
+
+  Stage.prototype.destroy = function() {
+    this.stopAll();
+    this.pause();
+    if (this.onTouchStart) document.removeEventListener('touchstart', this.onTouchStart);
+    if (this.onTouchMove) document.removeEventListener('touchmove', this.onTouchMove);
+    if (this.onTouchEnd) document.removeEventListener('touchend', this.onTouchEnd);
+    if (this.onMouseDown) document.removeEventListener('mousedown', this.onMouseDown);
+    if (this.onMouseMove) document.removeEventListener('mousemove', this.onMouseMove);
+    if (this.onMouseUp) document.removeEventListener('mouseup', this.onMouseUp);
+  };
 
   Stage.prototype.fromJSON = function(data) {
     Stage.parent.prototype.fromJSON.call(this, data);

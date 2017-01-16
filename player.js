@@ -175,10 +175,7 @@ P.player = (function() {
     P.player.projectId = id;
     P.player.projectURL = id ? 'https://scratch.mit.edu/projects/' + id + '/' : '';
 
-    if (stage) {
-      stage.stopAll();
-      stage.pause();
-    }
+    if (stage) stage.destroy();
     while (player.firstChild) player.removeChild(player.lastChild);
     turbo.style.display = 'none';
     error.style.display = 'none';
