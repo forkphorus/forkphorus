@@ -1047,8 +1047,13 @@ var P = (function() {
           this.clickMouse();
           e.preventDefault();
           this.canvas.focus();
-        } else if (e.target.dataset.button != null || e.target.dataset.slider != null) {
-          this.watcherStart('mouse', e, e);
+        } else {
+          if (e.target.dataset.button != null || e.target.dataset.slider != null) {
+            this.watcherStart('mouse', e, e);
+          }
+          if (e.target !== this.prompt) setTimeout(function() {
+            this.canvas.focus();
+          }.bind(this));
         }
       }.bind(this));
 
