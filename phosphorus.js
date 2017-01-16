@@ -2069,7 +2069,7 @@ var P = (function() {
         value = this.timeAndDate(this.param);
         break;
       case 'timer':
-        value = Math.round((this.stage.now() - this.stage.timerStart) / 100) / 10;
+        value = Math.round((this.stage.rightNow() - this.stage.timerStart) / 100) / 10;
         break;
       case 'volume':
         value = this.target.volume * 100;
@@ -2471,7 +2471,7 @@ P.compile = (function() {
 
       } else if (e[0] === 'timer') {
 
-        return '((self.now() - self.timerStart) / 1000)';
+        return '((self.now - self.timerStart) / 1000)';
 
       } else if (e[0] === 'distanceTo:') {
 
@@ -2592,14 +2592,14 @@ P.compile = (function() {
 
     var beatHead = function(dur) {
       source += 'save();\n';
-      source += 'R.start = self.now();\n';
+      source += 'R.start = self.now;\n';
       source += 'R.duration = ' + num(dur) + ' * 60 / self.tempoBPM;\n';
       source += 'R.first = true;\n';
     };
 
     var beatTail = function(dur) {
         var id = label();
-        source += 'if (self.now() - R.start < R.duration * 1000 || R.first) {\n';
+        source += 'if (self.now - R.start < R.duration * 1000 || R.first) {\n';
         source += '  R.first = false;\n';
         forceQueue(id);
         source += '}\n';
@@ -2609,12 +2609,12 @@ P.compile = (function() {
 
     var wait = function(dur) {
       source += 'save();\n';
-      source += 'R.start = self.now();\n';
+      source += 'R.start = self.now;\n';
       source += 'R.duration = ' + dur + ';\n';
       source += 'R.first = true;\n';
 
       var id = label();
-      source += 'if (self.now() - R.start < R.duration * 1000 || R.first) {\n';
+      source += 'if (self.now - R.start < R.duration * 1000 || R.first) {\n';
       source += '  R.first = false;\n';
       forceQueue(id);
       source += '}\n';
@@ -2735,11 +2735,11 @@ P.compile = (function() {
 
         source += 'save();\n';
         source += 'R.id = S.say(' + val(block[1]) + ', false);\n';
-        source += 'R.start = self.now();\n';
+        source += 'R.start = self.now;\n';
         source += 'R.duration = ' + num(block[2]) + ';\n';
 
         var id = label();
-        source += 'if (self.now() - R.start < R.duration * 1000) {\n';
+        source += 'if (self.now - R.start < R.duration * 1000) {\n';
         forceQueue(id);
         source += '}\n';
 
@@ -2756,11 +2756,11 @@ P.compile = (function() {
 
         source += 'save();\n';
         source += 'R.id = S.say(' + val(block[1]) + ', true);\n';
-        source += 'R.start = self.now();\n';
+        source += 'R.start = self.now;\n';
         source += 'R.duration = ' + num(block[2]) + ';\n';
 
         var id = label();
-        source += 'if (self.now() - R.start < R.duration * 1000) {\n';
+        source += 'if (self.now - R.start < R.duration * 1000) {\n';
         forceQueue(id);
         source += '}\n';
 
@@ -3105,7 +3105,7 @@ P.compile = (function() {
       } else if (block[0] === 'glideSecs:toX:y:elapsed:from:') {
 
         source += 'save();\n';
-        source += 'R.start = self.now();\n';
+        source += 'R.start = self.now;\n';
         source += 'R.duration = ' + num(block[1]) + ';\n';
         source += 'R.baseX = S.scratchX;\n';
         source += 'R.baseY = S.scratchY;\n';
@@ -3113,7 +3113,7 @@ P.compile = (function() {
         source += 'R.deltaY = ' + num(block[3]) + ' - S.scratchY;\n';
 
         var id = label();
-        source += 'var f = (self.now() - R.start) / (R.duration * 1000);\n';
+        source += 'var f = (self.now - R.start) / (R.duration * 1000);\n';
         source += 'if (f > 1) f = 1;\n';
         source += 'S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
 
@@ -3192,7 +3192,7 @@ P.compile = (function() {
 
       } else if (block[0] === 'timerReset') {
 
-        source += 'self.timerStart = self.now();\n';
+        source += 'self.timerStart = self.now;\n';
 
       } else {
 
@@ -3866,7 +3866,7 @@ P.runtime = (function() {
     };
 
     P.Stage.prototype.triggerGreenFlag = function() {
-      this.timerStart = this.now();
+      this.timerStart = this.rightNow();
       this.trigger('whenGreenFlag');
     };
 
@@ -3881,7 +3881,7 @@ P.runtime = (function() {
 
     P.Stage.prototype.pause = function() {
       if (this.interval) {
-        this.baseNow = this.now();
+        this.baseNow = this.rightNow();
         clearInterval(this.interval);
         delete this.interval;
         removeEventListener('error', this.onError);
@@ -3911,7 +3911,7 @@ P.runtime = (function() {
       }
     };
 
-    P.Stage.prototype.now = function() {
+    P.Stage.prototype.rightNow = function() {
       return this.baseNow + Date.now() - this.baseTime;
     };
 
@@ -3921,6 +3921,7 @@ P.runtime = (function() {
       var start = Date.now();
       do {
         var queue = this.queue;
+        this.now = this.rightNow();
         for (THREAD = 0; THREAD < queue.length; THREAD++) {
           if (queue[THREAD]) {
             S = queue[THREAD].sprite;
