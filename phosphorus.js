@@ -2606,7 +2606,9 @@ P.compile = (function() {
 
       } else if (e[0] === 'keyPressed:') {
 
-        return '!!self.keys[P.getKeyCode(' + val(e[1]) + ')]';
+        var v = typeof e[1] === 'object' ?
+          'P.getKeyCode(' + val(e[1]) + ')' : P.getKeyCode(e[1]);
+        return '!!self.keys[' + v + ']';
 
       // } else if (e[0] === 'isLoud') {
 
