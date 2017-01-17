@@ -928,8 +928,8 @@ var P = (function() {
     this.baseTime = 0;
     this.timerStart = 0;
 
-    this.keys = []
-    this.keys[128] = 0;
+    this.keys = [];
+    this.keys.any = 0;
     this.rawMouseX = 0;
     this.rawMouseY = 0;
     this.mouseX = 0;
@@ -1003,21 +1003,21 @@ var P = (function() {
     this.ui.style.transform = 'translateZ(0)';
 
     this.root.addEventListener('keydown', function(e) {
-      if (e.ctrlKey || e.altKey || e.metaKey || e.keyCode === 27) {
-        return;
-      }
-      if (!this.keys[e.keyCode]) this.keys[128]++;
-      this.keys[e.keyCode] = true;
+      var c = e.keyCode;
+      if (!this.keys[c]) this.keys.any++;
+      this.keys[c] = true;
+      if (e.ctrlKey || e.altKey || e.metaKey || c === 27) return;
       e.stopPropagation();
       if (e.target === this.canvas) {
         e.preventDefault();
-        this.trigger('whenKeyPressed', e.keyCode);
+        this.trigger('whenKeyPressed', c);
       }
     }.bind(this));
 
     this.root.addEventListener('keyup', function(e) {
-      if (this.keys[e.keyCode]) this.keys[128]--;
-      this.keys[e.keyCode] = false;
+      var c = e.keyCode;
+      if (this.keys[c]) this.keys.any--;
+      this.keys[c] = false;
       e.stopPropagation();
       if (e.target === this.canvas) {
         e.preventDefault();
@@ -1397,12 +1397,12 @@ var P = (function() {
   };
 
   var KEY_CODES = {
-    'space': 32,
+    space: 32,
     'left arrow': 37,
     'up arrow': 38,
     'right arrow': 39,
     'down arrow': 40,
-    'any': 128
+    any: 'any'
   };
 
   var getKeyCode = function(keyName) {
@@ -2637,7 +2637,7 @@ P.compile = (function() {
       } else if (e[0] === 'keyPressed:') {
 
         var v = typeof e[1] === 'object' ?
-          'P.getKeyCode(' + val(e[1]) + ')' : P.getKeyCode(e[1]);
+          'P.getKeyCode(' + val(e[1]) + ')' : val(P.getKeyCode(e[1]));
         return '!!self.keys[' + v + ']';
 
       // } else if (e[0] === 'isLoud') {
