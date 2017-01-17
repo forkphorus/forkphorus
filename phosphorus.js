@@ -2298,9 +2298,11 @@ P.compile = (function() {
         t === '%b' ? 'bool' : '';
 
       if (kind === 'num' && usenum) {
+        used[i] = true;
         return 'C.numargs[' + i + ']';
       }
       if (kind === 'bool' && usebool) {
+        used[i] = true;
         return 'C.boolargs[' + i + ']';
       }
 
@@ -3262,14 +3264,7 @@ P.compile = (function() {
     if (script[0][0] === 'procDef') {
       var inputs = script[0][2];
       var types = script[0][1].match(/%[snmdcb]/g) || [];
-      for (var i = types.length; i--;) {
-        var t = types[i];
-        if (t === '%d' || t === '%n' || t === '%c') {
-          source += 'C.numargs[' + i + '] = +C.args[' + i + '] || 0;\n';
-        } else if (t === '%b') {
-          source += 'C.boolargs[' + i + '] = bool(C.args[' + i + ']);\n';
-        }
-      }
+      var used = [];
     }
 
     for (var i = 1; i < script.length; i++) {
@@ -3277,6 +3272,19 @@ P.compile = (function() {
     }
 
     if (script[0][0] === 'procDef') {
+      var pre = '';
+      for (var i = types.length; i--;) if (used[i]) {
+        var t = types[i];
+        if (t === '%d' || t === '%n' || t === '%c') {
+          pre += 'C.numargs[' + i + '] = +C.args[' + i + '] || 0;\n';
+        } else if (t === '%b') {
+          pre += 'C.boolargs[' + i + '] = bool(C.args[' + i + ']);\n';
+        }
+      }
+      source = pre + source;
+      for (var i = 1, l = fns.length; i < l; ++i) {
+        fns[i] += pre.length;
+      }
       source += 'endCall();\n';
       source += 'return;\n';
     }
