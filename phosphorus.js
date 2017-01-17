@@ -2258,6 +2258,7 @@ P.compile = (function() {
     var label = function() {
       var id = nextLabel();
       fns.push(source.length);
+      visual = 0;
       return id;
     };
 
@@ -2709,17 +2710,27 @@ P.compile = (function() {
     noRGB += '  S.penCSS = null;';
     noRGB += '}\n';
 
+    var visual = 0;
     var compile = function(block) {
       if (LOG_PRIMITIVES) {
         source += 'console.log(' + val(block[0]) + ');\n';
       }
 
       if (['turnRight:', 'turnLeft:', 'heading:', 'pointTowards:', 'setRotationStyle', 'lookLike:', 'nextCostume', 'say:duration:elapsed:from:', 'say:', 'think:duration:elapsed:from:', 'think:', 'changeGraphicEffect:by:', 'setGraphicEffect:to:', 'filterReset', 'changeSizeBy:', 'setSizeTo:', 'comeToFront', 'goBackByLayers:'].indexOf(block[0]) !== -1) {
-        source += 'if (S.visible) VISUAL = true;\n';
+        if (visual < 2) {
+          source += 'if (S.visible) VISUAL = true;\n';
+          visual = 2;
+        } else if (DEBUG) source += '/* visual: 2 */\n';
       } else if (['forward:', 'gotoX:y:', 'gotoSpriteOrMouse:', 'changeXposBy:', 'xpos:', 'changeYposBy:', 'ypos:', 'bounceOffEdge', 'glideSecs:toX:y:elapsed:from:'].indexOf(block[0]) !== -1) {
-        source += 'if (S.visible || S.isPenDown) VISUAL = true;\n';
+        if (visual < 1) {
+          source += 'if (S.visible || S.isPenDown) VISUAL = true;\n';
+          visual = 1;
+        } else if (DEBUG) source += '/* visual: 1 */\n';
       } else if (['showBackground:', 'startScene', 'nextBackground', 'nextScene', 'startSceneAndWait', 'show', 'hide', 'putPenDown', 'stampCostume', 'showVariable:', 'hideVariable:', 'doAsk', 'setVolumeTo:', 'changeVolumeBy:', 'setTempoTo:', 'changeTempoBy:'].indexOf(block[0]) !== -1) {
-        source += 'VISUAL = true;\n';
+        if (visual < 3) {
+          source += 'VISUAL = true;\n';
+          visual = 3;
+        } else if (DEBUG) source += '/* visual: 3 */\n';
       }
 
       if (block[0] === 'forward:') { /* Motion */
