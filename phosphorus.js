@@ -943,6 +943,7 @@ var P = (function() {
     this.root.style.height = '360px';
     this.root.style.fontSize = '10px';
     this.root.style.background = '#fff';
+    this.root.style.contain = 'strict';
     this.root.style.WebkitUserSelect =
     this.root.style.MozUserSelect =
     this.root.style.MSUserSelect =
@@ -968,20 +969,38 @@ var P = (function() {
     this.canvas.height = SCALE * 360;
     this.context = this.canvas.getContext('2d');
 
+    this.ui = document.createElement('div');
+    this.root.appendChild(this.ui);
+    this.ui.style.pointerEvents = 'none';
+    this.ui.style.contain = 'strict';
+
     this.canvas.tabIndex = 0;
     this.canvas.style.outline = 'none';
     this.backdropCanvas.style.position =
     this.penCanvas.style.position =
-    this.canvas.style.position = 'absolute';
+    this.canvas.style.position =
+    this.ui.style.position = 'absolute';
+    this.backdropCanvas.style.left =
+    this.penCanvas.style.left =
+    this.canvas.style.left =
+    this.ui.style.left =
+    this.backdropCanvas.style.top =
+    this.penCanvas.style.top =
+    this.canvas.style.top =
+    this.ui.style.top = 0;
     this.backdropCanvas.style.width =
     this.penCanvas.style.width =
-    this.canvas.style.width = '480px';
+    this.canvas.style.width =
+    this.ui.style.width = '480px';
     this.backdropCanvas.style.height =
     this.penCanvas.style.height =
-    this.canvas.style.height = '360px';
+    this.canvas.style.height =
+    this.ui.style.height = '360px';
 
-    // hardware acceleration
-    this.root.style.WebkitTransform = 'translateZ(0)';
+    this.backdropCanvas.style.transform =
+    this.penCanvas.style.transform =
+    this.canvas.style.transform =
+    this.ui.style.transform = 'translateZ(0)';
 
     this.root.addEventListener('keydown', function(e) {
       if (e.ctrlKey || e.altKey || e.metaKey || e.keyCode === 27) {
@@ -1070,7 +1089,8 @@ var P = (function() {
     }
 
     this.prompter = document.createElement('div');
-    this.root.appendChild(this.prompter);
+    this.ui.appendChild(this.prompter);
+    this.prompter.style.pointerEvents = 'auto';
     this.prompter.style.position = 'absolute';
     this.prompter.style.left =
     this.prompter.style.right = '1.4em';
@@ -1243,11 +1263,13 @@ var P = (function() {
     this.root.style.width =
     this.canvas.style.width =
     this.backdropCanvas.style.width =
-    this.penCanvas.style.width = (480 * zoom | 0) + 'px';
+    this.penCanvas.style.width =
+    this.ui.style.width = (480 * zoom | 0) + 'px';
     this.root.style.height =
     this.canvas.style.height =
     this.backdropCanvas.style.height =
-    this.penCanvas.style.height = (360 * zoom | 0) + 'px';
+    this.penCanvas.style.height =
+    this.ui.style.height = (360 * zoom | 0) + 'px';
     this.root.style.fontSize = (zoom*10) + 'px';
     this.zoom = zoom;
     this.updateBackdrop();
@@ -1842,6 +1864,7 @@ var P = (function() {
       this.bubble.style.wordWrap = 'break-word';
       this.bubble.style.textAlign = 'center';
       this.bubble.style.cursor = 'default';
+      this.bubble.style.pointerEvents = 'auto';
       this.bubble.appendChild(this.bubbleText = document.createTextNode(''));
       this.bubble.appendChild(this.bubblePointer = document.createElement('div'));
       this.bubblePointer.style.position = 'absolute';
@@ -1849,7 +1872,7 @@ var P = (function() {
       this.bubblePointer.style.width = ''+(44/14)+'em';
       this.bubblePointer.style.background = 'url(icons.svg) '+(-195/14)+'em '+(-4/14)+'em';
       this.bubblePointer.style.backgroundSize = ''+(320/14)+'em '+(96/14)+'em';
-      this.stage.root.appendChild(this.bubble);
+      this.stage.ui.appendChild(this.bubble);
     }
     this.bubblePointer.style.backgroundPositionX = ((thinking ? -259 : -195)/14)+'em';
     this.bubble.style.display = 'block';
@@ -1893,7 +1916,7 @@ var P = (function() {
 
   Sprite.prototype.remove = function() {
     if (this.bubble) {
-      this.stage.root.removeChild(this.bubble);
+      this.stage.ui.removeChild(this.bubble);
       this.bubble = null;
     }
     if (this.node) {
@@ -2109,6 +2132,7 @@ var P = (function() {
     this.el.style.left = this.el.style.top = '0';
     this.el.style.transform = 'translate('+(this.x|0)/10+'em,'+(this.y|0)/10+'em)';
     this.el.style.cursor = 'default';
+    this.el.style.pointerEvents = 'auto';
 
     if (this.mode === 2) {
       this.el.appendChild(this.readout = document.createElement('div'));
@@ -2163,8 +2187,6 @@ var P = (function() {
       this.slider.style.position = 'relative';
       this.slider.dataset.slider = '';
 
-      this.buttonWrap.style.transform = 'translate(100%,0)';
-
       this.slider.style.paddingRight =
       this.button.style.width =
       this.button.style.height =
@@ -2177,7 +2199,7 @@ var P = (function() {
       this.button.dataset.button = '';
     }
 
-    this.stage.root.appendChild(this.el);
+    this.stage.ui.appendChild(this.el);
   };
 
   var AudioContext = window.AudioContext || window.webkitAudioContext;
