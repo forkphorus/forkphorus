@@ -1090,6 +1090,7 @@ var P = (function() {
 
     this.prompter = document.createElement('div');
     this.ui.appendChild(this.prompter);
+    this.prompter.style.zIndex = '1';
     this.prompter.style.pointerEvents = 'auto';
     this.prompter.style.position = 'absolute';
     this.prompter.style.left =
