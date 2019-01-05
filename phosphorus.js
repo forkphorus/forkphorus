@@ -197,6 +197,63 @@ P.utils = (function(exports) {
   return exports;
 })({});
 
+// Methods for rendering sprites and eventually other objects
+P.renderers = {};
+
+// Renders sprites using a 2D canvas context.
+P.renderers.canvas2d = (function(renderer) {
+  var Renderer = renderer.Renderer = function(canvas) {
+    this.ctx = canvas.getContext("2d");
+    this.canvas = canvas;
+  };
+
+  Renderer.prototype.reset = function(scale) {
+    // resizes and clears the canvas
+    this.canvas.width = 480 * scale * P.config.scale;
+    this.canvas.height = 360 * scale * P.config.scale;
+
+    this.ctx.scale(scale * P.config.scale, scale * P.config.scale);
+  };
+
+  Renderer.prototype.drawImage = function(image, x, y) {
+    this.ctx.drawImage(image, x, y);
+  };
+
+  Renderer.prototype.drawChild = function(c, noEffects) {
+    // debugger;
+    if (c.isDragging) {
+      c.moveTo(c.dragOffsetX + c.stage.mouseX, c.dragOffsetY + c.stage.mouseY);
+    }
+
+    var costume = c.costumes[c.currentCostumeIndex];
+    if (costume) {
+      this.ctx.save();
+
+      var z = c.stage.zoom * P.config.scale;
+      this.ctx.translate(((c.scratchX + 240) * z | 0) / z, ((180 - c.scratchY) * z | 0) / z);
+      if (this.rotationStyle === 'normal') {
+        this.ctx.rotate((c.direction - 90) * Math.PI / 180);
+      } else if (c.rotationStyle === 'leftRight' && c.direction < 0) {
+        this.ctx.scale(-1, 1);
+      }
+      this.ctx.scale(c.scale, c.scale);
+      this.ctx.scale(costume.scale, costume.scale);
+      this.ctx.translate(-costume.rotationCenterX, -costume.rotationCenterY);
+
+      if (!noEffects) {
+        this.ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
+        // todo: other effects
+      }
+
+      this.ctx.drawImage(costume.image, 0, 0);
+
+      this.ctx.restore();
+    }
+  };
+
+  return renderer;
+}({}));
+
 // Phosphorus Core
 P.core = (function(core) {
   var AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -471,10 +528,11 @@ P.core = (function(core) {
     this.root.style.fontSize = '10px';
     this.root.style.background = '#fff';
     this.root.style.contain = 'strict';
+
     this.root.style.WebkitUserSelect =
-    this.root.style.MozUserSelect =
-    this.root.style.MSUserSelect =
-    this.root.style.WebkitUserSelect = 'none';
+      this.root.style.MozUserSelect =
+      this.root.style.MSUserSelect =
+      this.root.style.WebkitUserSelect = 'none';
 
     var scale = P.config.scale;
 
@@ -494,9 +552,7 @@ P.core = (function(core) {
 
     this.canvas = document.createElement('canvas');
     this.root.appendChild(this.canvas);
-    this.canvas.width = scale * 480;
-    this.canvas.height = scale * 360;
-    this.context = this.canvas.getContext('2d');
+    this.renderer = new P.renderers.canvas2d.Renderer(this.canvas);
 
     this.ui = document.createElement('div');
     this.root.appendChild(this.ui);
@@ -505,31 +561,35 @@ P.core = (function(core) {
 
     this.canvas.tabIndex = 0;
     this.canvas.style.outline = 'none';
+
     this.backdropCanvas.style.position =
-    this.penCanvas.style.position =
-    this.canvas.style.position =
-    this.ui.style.position = 'absolute';
+      this.penCanvas.style.position =
+      this.canvas.style.position =
+      this.ui.style.position = 'absolute';
+
     this.backdropCanvas.style.left =
-    this.penCanvas.style.left =
-    this.canvas.style.left =
-    this.ui.style.left =
-    this.backdropCanvas.style.top =
-    this.penCanvas.style.top =
-    this.canvas.style.top =
-    this.ui.style.top = 0;
+      this.penCanvas.style.left =
+      this.canvas.style.left =
+      this.ui.style.left =
+      this.backdropCanvas.style.top =
+      this.penCanvas.style.top =
+      this.canvas.style.top =
+      this.ui.style.top = 0;
+
     this.backdropCanvas.style.width =
-    this.penCanvas.style.width =
-    this.canvas.style.width =
-    this.ui.style.width = '480px';
+      this.penCanvas.style.width =
+      this.canvas.style.width =
+      this.ui.style.width = '480px';
+
     this.backdropCanvas.style.height =
-    this.penCanvas.style.height =
-    this.canvas.style.height =
-    this.ui.style.height = '360px';
+      this.penCanvas.style.height =
+      this.canvas.style.height =
+      this.ui.style.height = '360px';
 
     this.backdropCanvas.style.transform =
-    this.penCanvas.style.transform =
-    this.canvas.style.transform =
-    this.ui.style.transform = 'translateZ(0)';
+      this.penCanvas.style.transform =
+      this.canvas.style.transform =
+      this.ui.style.transform = 'translateZ(0)';
 
     this.root.addEventListener('keydown', function(e) {
       var c = e.keyCode;
@@ -734,7 +794,7 @@ P.core = (function(core) {
       child.resolve();
     }, this);
 
-    P.compiler.sb2(this);
+    P.compilers.sb2(this);
 
     return this;
   };
@@ -871,16 +931,15 @@ P.core = (function(core) {
   };
 
   Stage.prototype.draw = function() {
-    var context = this.context;
+    this.renderer.reset(this.zoom);
 
-    this.canvas.width = 480 * this.zoom * P.config.scale; // clear
-    this.canvas.height = 360 * this.zoom * P.config.scale;
+    this.drawChildren(this.renderer, false);
 
-    context.scale(this.zoom * P.config.scale, this.zoom * P.config.scale);
-    this.drawOn(context);
     for (var i = this.allWatchers.length; i--;) {
       var w = this.allWatchers[i];
-      if (w.visible) w.update();
+      if (w.visible) {
+        w.update();
+      }
     }
 
     if (this.hidePrompt) {
@@ -890,32 +949,24 @@ P.core = (function(core) {
     }
   };
 
-  Stage.prototype.drawOn = function(context, except) {
+  Stage.prototype.drawChildren = function(renderer, noEffects, skip) {
     for (var i = 0; i < this.children.length; i++) {
       var c = this.children[i];
-      if (c.visible && c !== except) {
-        c.draw(context);
+      if (c.visible && c !== skip) {
+        renderer.drawChild(c, noEffects);
       }
     }
   };
 
-  Stage.prototype.drawAllOn = function(context, except) {
-    var costume = this.costumes[this.currentCostumeIndex];
-    context.save();
-    context.scale(costume.scale, costume.scale);
-    context.globalAlpha = Math.max(0, Math.min(1, 1 - this.filters.ghost / 100));
-    context.drawImage(costume.image, 0, 0);
-    context.restore();
+  Stage.prototype.drawAll = function(renderer, noEffects, skip) {
+    renderer.drawImage(this.backdropCanvas, 0, 0);
+    renderer.drawImage(this.penCanvas, 0, 0);
+    this.drawChildren(renderer, noEffects, skip);
+  }
 
-    context.save();
-    context.scale(1 / this.maxZoom, 1 / this.maxZoom);
-    context.drawImage(this.penCanvas, 0, 0);
-    context.restore();
-
-    this.drawOn(context, except);
+  Stage.prototype.moveTo = function() {
+    // do nothing -- stage cannot be moved
   };
-
-  Stage.prototype.moveTo = function() {};
 
   Stage.prototype.submitPrompt = function() {
     if (this.promptId < this.nextPromptId) {
@@ -925,19 +976,6 @@ P.core = (function(core) {
         this.hidePrompt = true;
       }
     }
-  };
-
-  var KEY_CODES = {
-    space: 32,
-    'left arrow': 37,
-    'up arrow': 38,
-    'right arrow': 39,
-    'down arrow': 40,
-    any: 'any'
-  };
-
-  var getKeyCode = function(keyName) {
-    return KEY_CODES[keyName.toLowerCase()] || keyName.toUpperCase().charCodeAt(0);
   };
 
   var Sprite = core.Sprite = function(stage) {
@@ -1128,35 +1166,6 @@ P.core = (function(core) {
     context.fill();
   };
 
-  Sprite.prototype.draw = function(context, noEffects) {
-    var costume = this.costumes[this.currentCostumeIndex];
-
-    if (this.isDragging) {
-      this.moveTo(this.dragOffsetX + this.stage.mouseX, this.dragOffsetY + this.stage.mouseY);
-    }
-
-    if (costume) {
-      context.save();
-
-      var z = this.stage.zoom * P.config.scale;
-      context.translate(((this.scratchX + 240) * z | 0) / z, ((180 - this.scratchY) * z | 0) / z);
-      if (this.rotationStyle === 'normal') {
-        context.rotate((this.direction - 90) * Math.PI / 180);
-      } else if (this.rotationStyle === 'leftRight' && this.direction < 0) {
-        context.scale(-1, 1);
-      }
-      context.scale(this.scale, this.scale);
-      context.scale(costume.scale, costume.scale);
-      context.translate(-costume.rotationCenterX, -costume.rotationCenterY);
-
-      if (!noEffects) context.globalAlpha = Math.max(0, Math.min(1, 1 - this.filters.ghost / 100));
-
-      context.drawImage(costume.image, 0, 0);
-
-      context.restore();
-    }
-  };
-
   Sprite.prototype.setDirection = function(degrees) {
     var d = degrees % 360;
     if (d > 180) d -= 360;
@@ -1165,8 +1174,9 @@ P.core = (function(core) {
     if (this.saying) this.updateBubble();
   };
 
+  // Canvases used for collision detection in the following methods
   var collisionCanvas = document.createElement('canvas');
-  var collisionContext = collisionCanvas.getContext('2d');
+  var collisionRenderer = new P.renderers.canvas2d.Renderer(collisionCanvas);
 
   Sprite.prototype.touching = function(thing) {
     var costume = this.costumes[this.currentCostumeIndex];
@@ -1217,19 +1227,19 @@ P.core = (function(core) {
           continue;
         }
 
-        collisionCanvas.width = right - left;
-        collisionCanvas.height = top - bottom;
+        collisionRenderer.ctx.width = right - left;
+        collisionRenderer.ctx.height = top - bottom;
 
-        collisionContext.save();
-        collisionContext.translate(-(left + 240), -(180 - top));
+        collisionRenderer.ctx.save();
+        collisionRenderer.ctx.translate(-(left + 240), -(180 - top));
 
-        this.draw(collisionContext, true);
-        collisionContext.globalCompositeOperation = 'source-in';
-        sprite.draw(collisionContext, true);
+        collisionRenderer.drawChild(this, true);
+        collisionRenderer.ctx.globalCompositeOperation = 'source-in';
+        collisionRenderer.drawChild(sprite, true);
 
-        collisionContext.restore();
+        collisionRenderer.ctx.restore();
 
-        var data = collisionContext.getImageData(0, 0, right - left, top - bottom).data;
+        var data = collisionRenderer.ctx.getImageData(0, 0, right - left, top - bottom).data;
 
         var length = (right - left) * (top - bottom) * 4;
         for (var j = 0; j < length; j += 4) {
@@ -1244,24 +1254,65 @@ P.core = (function(core) {
 
   Sprite.prototype.touchingColor = function(rgb) {
     var b = this.rotatedBounds();
+
     collisionCanvas.width = b.right - b.left;
     collisionCanvas.height = b.top - b.bottom;
 
-    collisionContext.save();
-    collisionContext.translate(-(240 + b.left), -(180 - b.top));
+    collisionRenderer.ctx.save();
+    collisionRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
 
-    this.stage.drawAllOn(collisionContext, this);
-    collisionContext.globalCompositeOperation = 'destination-in';
-    this.draw(collisionContext, true);
+    this.stage.drawAll(collisionRenderer, true, this);
+    collisionRenderer.ctx.globalCompositeOperation = 'destination-in';
+    collisionRenderer.drawChild(this, true);
 
-    collisionContext.restore();
+    collisionRenderer.ctx.restore();
 
-    var data = collisionContext.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
+    var data = collisionRenderer.ctx.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
 
     rgb = rgb & 0xffffff;
     var length = (b.right - b.left) * (b.top - b.bottom) * 4;
     for (var i = 0; i < length; i += 4) {
       if ((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) === rgb && data[i + 3]) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  // Implements the "<color [a] is touching [b]?>" block
+  Sprite.prototype.colorTouchingColor = function(sourceColor, touchingColor) {
+    // TODO: this is very messy and slow
+    // there is likely some easy thing you can do with the canvas's composite operation I do not know about.
+
+    var rb = this.rotatedBounds();
+
+    var secondaryRenderer = new P.renderers.canvas2d.Renderer(document.createElement("canvas"));
+
+    collisionCanvas.width = secondaryRenderer.canvas.width = rb.right - rb.left;
+    collisionCanvas.height = secondaryRenderer.canvas.height = rb.top - rb.bottom;
+
+    collisionRenderer.ctx.save();
+    secondaryRenderer.ctx.save();
+    collisionRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
+    secondaryRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
+
+    this.stage.drawAll(collisionRenderer, true, this);
+    secondaryRenderer.drawChild(this, true);
+
+    collisionRenderer.ctx.restore();
+
+    var dataA = collisionRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
+    var dataB = secondaryRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
+
+    sourceColor = sourceColor & 0xffffff;
+    touchingColor = touchingColor & 0xffffff;
+
+    var length = dataA.length;
+    for (var i = 0; i < length; i += 4) {
+      var touchesSource = (dataB[i] << 16 | dataB[i + 1] << 8 | dataB[i + 2]) === sourceColor && dataB[i + 3];
+      var touchesOther = (dataA[i] << 16 | dataA[i + 1] << 8 | dataA[i + 2]) === touchingColor && dataA[i + 3];
+      if (touchesSource && touchesOther) {
         return true;
       }
     }
@@ -2279,10 +2330,9 @@ P.IO = (function(IO) {
   return IO;
 })({});
 
-P.compiler = {};
-
+P.compilers = {};
 // Compiles a Scratch 2 project to javascript
-P.compiler.sb2 = (function() {
+P.compilers.sb2 = (function() {
   var LOG_PRIMITIVES;
   var DEBUG;
   // LOG_PRIMITIVES = true;
@@ -2694,7 +2744,9 @@ P.compiler.sb2 = (function() {
 
         return 'S.touchingColor(' + val(e[1]) + ')';
 
-      // } else if (e[0] === 'color:sees:') {
+      } else if (e[0] === 'color:sees:') {
+
+        return 'S.colorTouchingColor(' + val(e[1]) + ', ' + val(e[2]) + ')';
 
       } else if (e[0] === 'keyPressed:') {
 
@@ -3507,6 +3559,7 @@ P.compiler.sb2 = (function() {
 P.runtime = (function() {
   var self, S, R, STACK, C, WARP, CALLS, BASE, THREAD, IMMEDIATE, VISUAL;
 
+  // Converts a value to its boolean equivalent
   var bool = function(v) {
     return +v !== 0 && v !== '' && v !== 'false' && v !== false;
   };
