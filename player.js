@@ -235,7 +235,7 @@ P.player = (function() {
     request.onerror = function(e) {
       progressBar.style.width = '100%';
       progressBar.className = 'progress-bar error';
-      console.error(e.stack);
+      console.error(e);
     };
     request.onprogress = function(e) {
       progressBar.style.width = (10 + e.loaded / e.total * 90) + '%';

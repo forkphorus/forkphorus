@@ -1,10 +1,16 @@
-var P = (function() {
-  'use strict';
+'use strict';
 
-  var SCALE = window.devicePixelRatio || 1;
+var P = {};
 
-  var hasTouchEvents = 'ontouchstart' in document;
+P.config = (function(exports) {
+  exports.scale = window.devicePixelRatio || 1;
+  exports.hasTouchEvents = 'ontouchstart' in document;;
 
+  return exports;
+}({}));
+
+// Utility methods
+P.utils = (function(exports) {
   var inherits = function(cla, sup) {
     cla.prototype = Object.create(sup.prototype);
     cla.parent = sup;
@@ -65,6 +71,7 @@ var P = (function() {
   };
 
   var Request = function() {
+    // console.log("P.utils.Request is deprecated");
     this.loaded = 0;
   };
   addEvents(Request, 'load', 'progress', 'error');
@@ -94,6 +101,7 @@ var P = (function() {
   };
 
   var CompositeRequest = function() {
+    // console.log("P.utils.CompositeRequest is deprecated");
     this.requests = [];
     this.isDone = true;
     this.update = this.update.bind(this);
@@ -166,516 +174,34 @@ var P = (function() {
     throw new Error('Users must implement getResult()');
   };
 
-  var wavFiles = {AcousticGuitar_F3:'instruments/AcousticGuitar_F3_22k.wav',AcousticPiano_As3:'instruments/AcousticPiano(5)_A%233_22k.wav',AcousticPiano_C4:'instruments/AcousticPiano(5)_C4_22k.wav',AcousticPiano_G4:'instruments/AcousticPiano(5)_G4_22k.wav',AcousticPiano_F5:'instruments/AcousticPiano(5)_F5_22k.wav',AcousticPiano_C6:'instruments/AcousticPiano(5)_C6_22k.wav',AcousticPiano_Ds6:'instruments/AcousticPiano(5)_D%236_22k.wav',AcousticPiano_D7:'instruments/AcousticPiano(5)_D7_22k.wav',AltoSax_A3:'instruments/AltoSax_A3_22K.wav',AltoSax_C6:'instruments/AltoSax(3)_C6_22k.wav',Bassoon_C3:'instruments/Bassoon_C3_22k.wav',BassTrombone_A2_2:'instruments/BassTrombone_A2(2)_22k.wav',BassTrombone_A2_3:'instruments/BassTrombone_A2(3)_22k.wav',Cello_C2:'instruments/Cello(3b)_C2_22k.wav',Cello_As2:'instruments/Cello(3)_A%232_22k.wav',Choir_F3:'instruments/Choir(4)_F3_22k.wav',Choir_F4:'instruments/Choir(4)_F4_22k.wav',Choir_F5:'instruments/Choir(4)_F5_22k.wav',Clarinet_C4:'instruments/Clarinet_C4_22k.wav',ElectricBass_G1:'instruments/ElectricBass(2)_G1_22k.wav',ElectricGuitar_F3:'instruments/ElectricGuitar(2)_F3(1)_22k.wav',ElectricPiano_C2:'instruments/ElectricPiano_C2_22k.wav',ElectricPiano_C4:'instruments/ElectricPiano_C4_22k.wav',EnglishHorn_D4:'instruments/EnglishHorn(1)_D4_22k.wav',EnglishHorn_F3:'instruments/EnglishHorn(1)_F3_22k.wav',Flute_B5_1:'instruments/Flute(3)_B5(1)_22k.wav',Flute_B5_2:'instruments/Flute(3)_B5(2)_22k.wav',Marimba_C4:'instruments/Marimba_C4_22k.wav',MusicBox_C4:'instruments/MusicBox_C4_22k.wav',Organ_G2:'instruments/Organ(2)_G2_22k.wav',Pizz_A3:'instruments/Pizz(2)_A3_22k.wav',Pizz_E4:'instruments/Pizz(2)_E4_22k.wav',Pizz_G2:'instruments/Pizz(2)_G2_22k.wav',SteelDrum_D5:'instruments/SteelDrum_D5_22k.wav',SynthLead_C4:'instruments/SynthLead(6)_C4_22k.wav',SynthLead_C6:'instruments/SynthLead(6)_C6_22k.wav',SynthPad_A3:'instruments/SynthPad(2)_A3_22k.wav',SynthPad_C6:'instruments/SynthPad(2)_C6_22k.wav',TenorSax_C3:'instruments/TenorSax(1)_C3_22k.wav',Trombone_B3:'instruments/Trombone_B3_22k.wav',Trumpet_E5:'instruments/Trumpet_E5_22k.wav',Vibraphone_C3:'instruments/Vibraphone_C3_22k.wav',Violin_D4:'instruments/Violin(2)_D4_22K.wav',Violin_A4:'instruments/Violin(3)_A4_22k.wav',Violin_E5:'instruments/Violin(3b)_E5_22k.wav',WoodenFlute_C5:'instruments/WoodenFlute_C5_22k.wav',BassDrum:'drums/BassDrum(1b)_22k.wav',Bongo:'drums/Bongo_22k.wav',Cabasa:'drums/Cabasa(1)_22k.wav',Clap:'drums/Clap(1)_22k.wav',Claves:'drums/Claves(1)_22k.wav',Conga:'drums/Conga(1)_22k.wav',Cowbell:'drums/Cowbell(3)_22k.wav',Crash:'drums/Crash(2)_22k.wav',Cuica:'drums/Cuica(2)_22k.wav',GuiroLong:'drums/GuiroLong(1)_22k.wav',GuiroShort:'drums/GuiroShort(1)_22k.wav',HiHatClosed:'drums/HiHatClosed(1)_22k.wav',HiHatOpen:'drums/HiHatOpen(2)_22k.wav',HiHatPedal:'drums/HiHatPedal(1)_22k.wav',Maracas:'drums/Maracas(1)_22k.wav',SideStick:'drums/SideStick(1)_22k.wav',SnareDrum:'drums/SnareDrum(1)_22k.wav',Tambourine:'drums/Tambourine(3)_22k.wav',Tom:'drums/Tom(1)_22k.wav',Triangle:'drums/Triangle(1)_22k.wav',Vibraslap:'drums/Vibraslap(1)_22k.wav',WoodBlock:'drums/WoodBlock(1)_22k.wav'};
-
-  var IO = {};
-
-  IO.PROJECT_URL = 'https://projects.scratch.mit.edu/internalapi/project/';
-  IO.ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
-  IO.SOUNDBANK_URL = 'https://cdn.rawgit.com/LLK/scratch-flash/v429/src/soundbank/';
-
-  IO.FONTS = {
-    '': 'Helvetica',
-    Donegal: 'Donegal One',
-    Gloria: 'Gloria Hallelujah',
-    Marker: 'Permanent Marker',
-    Mystery: 'Mystery Quest'
+  var KEY_CODES = {
+    space: 32,
+    'left arrow': 37,
+    'up arrow': 38,
+    'right arrow': 39,
+    'down arrow': 40,
+    any: 'any'
   };
 
-  IO.LINE_HEIGHTS = {
-    Helvetica: 1.13,
-    'Donegal One': 1.25,
-    'Gloria Hallelujah': 1.97,
-    'Permanent Marker': 1.43,
-    'Mystery Quest': 1.37
+  var getKeyCode = function(keyName) {
+    return KEY_CODES[keyName.toLowerCase()] || keyName.toUpperCase().charCodeAt(0);
   };
 
-  IO.ADPCM_STEPS = [7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 19, 21, 23, 25, 28, 31, 34, 37, 41, 45, 50, 55, 60, 66, 73, 80, 88, 97, 107, 118, 130, 143, 157, 173, 190, 209, 230, 253, 279, 307, 337, 371, 408, 449, 494, 544, 598, 658, 724, 796, 876, 963, 1060, 1166, 1282, 1411, 1552, 1707, 1878, 2066, 2272, 2499, 2749, 3024, 3327, 3660, 4026, 4428, 4871, 5358, 5894, 6484, 7132, 7845, 8630, 9493, 10442, 11487, 12635, 13899, 15289, 16818, 18500, 20350, 22385, 24623, 27086, 29794, 32767];
-  IO.ADPCM_INDEX = [-1, -1, -1, -1, 2, 4, 6, 8, -1, -1, -1, -1, 2, 4, 6, 8];
+  exports.Request = Request;
+  exports.CompositeRequest = CompositeRequest;
+  exports.inherits = inherits;
+  exports.addEvents = addEvents;
+  exports.getKeyCode = getKeyCode;
 
-  IO.init = function(request) {
-    IO.projectRequest = request;
-    IO.zip = null;
-  };
+  return exports;
+})({});
 
-  IO.parseJSONish = function(json) {
-    if (!/^\s*\{/.test(json)) throw new SyntaxError('Bad JSON');
-    try {
-      return JSON.parse(json);
-    } catch (e) {}
-    if (/[^,:{}\[\]0-9\.\-+EINaefilnr-uy \n\r\t]/.test(json.replace(/"(\\.|[^"\\])*"/g, ''))) {
-      throw new SyntaxError('Bad JSON');
-    }
-    return (1, eval)('(' + json + ')');
-  };
+// Phosphorus Core
+P.core = (function(core) {
+  var AudioContext = window.AudioContext || window.webkitAudioContext;
+  var audioContext = core.audioContext = AudioContext && new AudioContext;
 
-
-  IO.load = function(url, callback, self, type) {
-    var request = new Request;
-    var xhr = new XMLHttpRequest;
-    xhr.open('GET', url, true);
-    xhr.onprogress = function(e) {
-      request.progress(e.loaded, e.total, e.lengthComputable);
-    };
-    xhr.onload = function() {
-      if (xhr.status === 200) {
-        request.load(xhr.response);
-      } else {
-        request.error(new Error('HTTP ' + xhr.status + ': ' + xhr.statusText));
-      }
-    };
-    xhr.onerror = function() {
-      request.error(new Error('XHR Error'));
-    };
-    xhr.responseType = type || '';
-    setTimeout(xhr.send.bind(xhr));
-
-    if (callback) request.onLoad(callback.bind(self));
-    return request;
-  };
-
-  IO.loadImage = function(url, callback, self) {
-    var request = new Request;
-    var image = new Image;
-    image.crossOrigin = 'anonymous';
-    image.src = url;
-    image.onload = function() {
-      request.load(image);
-    };
-    image.onerror = function() {
-      request.error(new Error('Failed to load image: ' + url));
-    };
-    if (callback) request.onLoad(callback.bind(self));
-    return request;
-  };
-
-  IO.loadScratchr2Project = function(id, callback, self) {
-    var request = new CompositeRequest;
-    IO.init(request);
-
-    request.defer = true;
-    var url = IO.PROJECT_URL + id + '/get/';
-    request.add(IO.load(url).onLoad(function(contents) {
-      try {
-        var json = IO.parseJSONish(contents);
-      } catch (e) {
-        request.add(IO.load(url, null, null, 'arraybuffer').onLoad(function(ab) {
-          var request2 = new Request;
-          request.add(request2);
-          request.add(IO.loadSB2Project(ab, function(stage) {
-            request.getResult = function() {
-              return stage;
-            };
-            request2.load();
-          }));
-          request.defer = false;
-        }));
-        return;
-      }
-      try {
-        IO.loadProject(json);
-        if (callback) request.onLoad(callback.bind(self));
-        if (request.isDone) {
-          request.load(new Stage().fromJSON(json));
-        } else {
-          request.defer = false;
-          request.getResult = function() {
-            return new Stage().fromJSON(json);
-          };
-        }
-      } catch (e) {
-        request.error(e);
-      }
-    }));
-
-    return request;
-  };
-
-  IO.loadScratchr2ProjectTitle = function(id, callback, self) {
-    var request = new CompositeRequest;
-
-    request.defer = true;
-    request.add(P.IO.load('https://scratch.mit.edu/projects/' + id + '/').onLoad(function(data) {
-      var m = /<title>\s*(.+?)(\s+on\s+Scratch)?\s*<\/title>/.exec(data);
-      if (callback) request.onLoad(callback.bind(self));
-      if (m) {
-        var d = document.createElement('div');
-        d.innerHTML = m[1];
-        request.load(d.innerText);
-      } else {
-        request.error(new Error('No title'));
-      }
-    }));
-
-    return request;
-  };
-
-  IO.loadJSONProject = function(json, callback, self) {
-    var request = new CompositeRequest;
-    IO.init(request);
-
-    try {
-      IO.loadProject(json);
-      if (callback) request.onLoad(callback.bind(self));
-      if (request.isDone) {
-        request.load(new Stage().fromJSON(json));
-      } else {
-        request.defer = false;
-        request.getResult = function() {
-          return new Stage().fromJSON(json);
-        };
-      }
-    } catch (e) {
-      request.error(e);
-    }
-
-    return request;
-  };
-
-  IO.loadSB2Project = function(ab, callback, self) {
-    var request = new CompositeRequest;
-    IO.init(request);
-
-    try {
-      IO.zip = Object.prototype.toString.call(ab) === '[object ArrayBuffer]' ? new JSZip(ab) : ab;
-      var json = IO.parseJSONish(IO.zip.file('project.json').asText());
-
-      IO.loadProject(json);
-      if (callback) request.onLoad(callback.bind(self));
-      if (request.isDone) {
-        request.load(new Stage().fromJSON(json));
-      } else {
-        request.defer = false;
-        request.getResult = function() {
-          return new Stage().fromJSON(json);
-        };
-      }
-    } catch (e) {
-      request.error(e);
-    }
-
-    return request;
-  };
-
-  IO.loadSB2File = function(f, callback, self) {
-    var cr = new CompositeRequest;
-    cr.defer = true;
-    var request = new Request;
-    cr.add(request);
-    var reader = new FileReader;
-    reader.onloadend = function() {
-      cr.defer = true;
-      cr.add(IO.loadSB2Project(reader.result, function(result) {
-        cr.defer = false;
-        cr.getResult = function() {
-          return result;
-        };
-        cr.update();
-      }));
-      request.load();
-    };
-    reader.onprogress = function(e) {
-      request.progress(e.loaded, e.total, e.lengthComputable);
-    };
-    reader.readAsArrayBuffer(f);
-    if (callback) cr.onLoad(callback.bind(self));
-    return cr;
-  };
-
-  IO.loadProject = function(data) {
-    IO.loadWavs();
-    IO.loadArray(data.children, IO.loadObject);
-    IO.loadBase(data);
-  };
-
-  IO.wavBuffers = Object.create(null);
-  IO.loadWavs = function() {
-    if (!audioContext) return;
-
-    for (var name in wavFiles) {
-      if (IO.wavBuffers[name]) {
-        if (IO.wavBuffers[name] instanceof Request) {
-          IO.projectRequest.add(IO.wavBuffers[name]);
-        }
-      } else {
-        IO.projectRequest.add(IO.wavBuffers[name] = IO.loadWavBuffer(name));
-      }
-    }
-  };
-
-  IO.loadWavBuffer = function(name) {
-    var request = new Request;
-    IO.load(IO.SOUNDBANK_URL + wavFiles[name], function(ab) {
-      IO.decodeAudio(ab, function(buffer) {
-        IO.wavBuffers[name] = buffer;
-        request.load();
-      });
-    }, null, 'arraybuffer').onError(function(err) {
-      request.error(err);
-    });
-    return request;
-  };
-
-  IO.decodeAudio = function(ab, cb) {
-    if (audioContext) {
-      IO.decodeADPCMAudio(ab, function(err, buffer) {
-        if (buffer) return setTimeout(function() {cb(buffer)});
-        var p = audioContext.decodeAudioData(ab, function(buffer) {
-          cb(buffer);
-        }, function(err2) {
-          console.warn(err, err2);
-          cb(null);
-        });
-        if (p.catch) p.catch(function() {});
-      });
-    } else {
-      setTimeout(cb);
-    }
-  };
-
-  IO.decodeADPCMAudio = function(ab, cb) {
-    var dv = new DataView(ab);
-    if (dv.getUint32(0) !== 0x52494646 || dv.getUint32(8) !== 0x57415645) {
-      return cb(new Error('Unrecognized audio format'));
-    }
-
-    var blocks = {};
-    var i = 12, l = dv.byteLength - 8;
-    while (i < l) {
-      blocks[String.fromCharCode(
-        dv.getUint8(i),
-        dv.getUint8(i + 1),
-        dv.getUint8(i + 2),
-        dv.getUint8(i + 3))] = i;
-      i += 8 + dv.getUint32(i + 4, true);
-    }
-
-    var format        = dv.getUint16(20, true);
-    var channels      = dv.getUint16(22, true);
-    var sampleRate    = dv.getUint32(24, true);
-    var byteRate      = dv.getUint32(28, true);
-    var blockAlign    = dv.getUint16(32, true);
-    var bitsPerSample = dv.getUint16(34, true);
-
-    if (format === 17) {
-      var samplesPerBlock = dv.getUint16(38, true);
-      var blockSize = ((samplesPerBlock - 1) / 2) + 4;
-
-      var frameCount = dv.getUint32(blocks.fact + 8, true);
-
-      var buffer = audioContext.createBuffer(1, frameCount, sampleRate);
-      var channel = buffer.getChannelData(0);
-
-      var sample, index = 0;
-      var step, code, delta;
-      var lastByte = -1;
-
-      var offset = blocks.data + 8;
-      i = offset;
-      var j = 0;
-      while (true) {
-        if ((((i - offset) % blockSize) == 0) && (lastByte < 0)) {
-          if (i >= dv.byteLength) break;
-          sample = dv.getInt16(i, true); i += 2;
-          index = dv.getUint8(i); i += 1;
-          i++;
-          if (index > 88) index = 88;
-          channel[j++] = sample / 32767;
-        } else {
-          if (lastByte < 0) {
-            if (i >= dv.byteLength) break;
-            lastByte = dv.getUint8(i); i += 1;
-            code = lastByte & 0xf;
-          } else {
-            code = (lastByte >> 4) & 0xf;
-            lastByte = -1;
-          }
-          step = IO.ADPCM_STEPS[index];
-          delta = 0;
-          if (code & 4) delta += step;
-          if (code & 2) delta += step >> 1;
-          if (code & 1) delta += step >> 2;
-          delta += step >> 3;
-          index += IO.ADPCM_INDEX[code];
-          if (index > 88) index = 88;
-          if (index < 0) index = 0;
-          sample += (code & 8) ? -delta : delta;
-          if (sample > 32767) sample = 32767;
-          if (sample < -32768) sample = -32768;
-          channel[j++] = sample / 32768;
-        }
-      }
-      return cb(null, buffer);
-    }
-    cb(new Error('Unrecognized WAV format ' + format));
-  };
-
-  IO.loadBase = function(data) {
-    data.scripts = data.scripts || [];
-    data.costumes = IO.loadArray(data.costumes, IO.loadCostume);
-    data.sounds = IO.loadArray(data.sounds, IO.loadSound);
-    data.variables = data.variables || [];
-    data.lists = data.lists || [];
-  };
-
-  IO.loadArray = function(data, process) {
-    if (!data) return [];
-    for (var i = 0; i < data.length; i++) {
-      process(data[i]);
-    }
-    return data;
-  };
-
-  IO.loadObject = function(data) {
-    if (!data.cmd && !data.listName) {
-      IO.loadBase(data);
-    }
-  };
-
-  IO.loadCostume = function(data) {
-    IO.loadMD5(data.baseLayerMD5, data.baseLayerID, function(asset) {
-      data.$image = asset;
-    });
-    if (data.textLayerMD5) {
-      IO.loadMD5(data.textLayerMD5, data.textLayerID, function(asset) {
-        data.$text = asset;
-      });
-    }
-  };
-
-  IO.loadSound = function(data) {
-    IO.loadMD5(data.md5, data.soundID, function(asset) {
-      data.$buffer = asset;
-    }, true);
-  };
-
-  IO.fixSVG = function(svg, element) {
-    if (element.nodeType !== 1) return;
-    if (element.nodeName === 'text') {
-      var font = element.getAttribute('font-family') || '';
-      font = IO.FONTS[font] || font;
-      if (font) {
-        element.setAttribute('font-family', font);
-        if (font === 'Helvetica') element.style.fontWeight = 'bold';
-      }
-      var size = +element.getAttribute('font-size');
-      if (!size) {
-        element.setAttribute('font-size', size = 18);
-      }
-      var bb = element.getBBox();
-      var x = 4 - .6 * element.transform.baseVal.consolidate().matrix.a;
-      var y = (element.getAttribute('y') - bb.y) * 1.1;
-      element.setAttribute('x', x);
-      element.setAttribute('y', y);
-      var lines = element.textContent.split('\n');
-      if (lines.length > 1) {
-        element.textContent = lines[0];
-        var lineHeight = IO.LINE_HEIGHTS[font] || 1;
-        for (var i = 1, l = lines.length; i < l; i++) {
-          var tspan = document.createElementNS(null, 'tspan');
-          tspan.textContent = lines[i];
-          tspan.setAttribute('x', x);
-          tspan.setAttribute('y', y + size * i * lineHeight);
-          element.appendChild(tspan);
-        }
-      }
-      // svg.style.cssText = '';
-      // console.log(element.textContent, 'data:image/svg+xml;base64,' + btoa(svg.outerHTML));
-    } else if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
-      element.setAttribute('x', 0);
-      element.setAttribute('y', 0);
-    }
-    [].forEach.call(element.childNodes, IO.fixSVG.bind(null, svg));
-  };
-
-  IO.loadMD5 = function(md5, id, callback, isAudio) {
-    if (IO.zip) {
-      var f = isAudio ? IO.zip.file(id + '.wav') : IO.zip.file(id + '.gif') || IO.zip.file(id + '.png') || IO.zip.file(id + '.jpg') || IO.zip.file(id + '.svg');
-      md5 = f.name;
-    }
-    var ext = md5.split('.').pop();
-    if (ext === 'svg') {
-      var cb = function(source) {
-        var parser = new DOMParser();
-        var doc = parser.parseFromString(source, 'image/svg+xml');
-        var svg = doc.documentElement;
-        if (!svg.style) {
-          doc = parser.parseFromString('<body>'+source, 'text/html');
-          svg = doc.querySelector('svg');
-        }
-        svg.style.visibility = 'hidden';
-        svg.style.position = 'absolute';
-        svg.style.left = '-10000px';
-        svg.style.top = '-10000px';
-        document.body.appendChild(svg);
-        var viewBox = svg.viewBox.baseVal;
-        if (viewBox && (viewBox.x || viewBox.y)) {
-          svg.width.baseVal.value = viewBox.width - viewBox.x;
-          svg.height.baseVal.value = viewBox.height - viewBox.y;
-          viewBox.x = 0;
-          viewBox.y = 0;
-          viewBox.width = 0;
-          viewBox.height = 0;
-        }
-        IO.fixSVG(svg, svg);
-        document.body.removeChild(svg);
-        svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
-
-        var canvas = document.createElement('canvas');
-        var image = new Image;
-        callback(image);
-        // svg.style.cssText = '';
-        // console.log(md5, 'data:image/svg+xml;base64,' + btoa(div.innerHTML.trim()));
-        canvg(canvas, new XMLSerializer().serializeToString(svg), {
-          ignoreMouse: true,
-          ignoreAnimation: true,
-          ignoreClear: true,
-          renderCallback: function() {
-            image.src = canvas.toDataURL();
-          }
-        });
-      };
-      if (IO.zip) {
-        cb(f.asText());
-      } else {
-        IO.projectRequest.add(IO.load(IO.ASSET_URL + md5 + '/get/', cb));
-      }
-    } else if (ext === 'wav') {
-      var request = new Request;
-      var cb = function(ab) {
-        IO.decodeAudio(ab, function(buffer) {
-          callback(buffer);
-          request.load(buffer);
-        });
-      }
-      IO.projectRequest.add(request);
-      if (IO.zip) {
-        var audio = new Audio;
-        var ab = f.asArrayBuffer();
-        cb(ab);
-      } else {
-        IO.projectRequest.add(IO.load(IO.ASSET_URL + md5 + '/get/', cb, null, 'arraybuffer'));
-      }
-    } else {
-      if (IO.zip) {
-        var request = new Request;
-        var image = new Image;
-        image.onload = function() {
-          if (callback) callback(image);
-          request.load();
-        };
-        image.src = 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(f.asBinary());
-        IO.projectRequest.add(request);
-      } else {
-        IO.projectRequest.add(
-          IO.loadImage(IO.ASSET_URL + md5 + '/get/', function(result) {
-            callback(result);
-          }));
-      }
-    }
-  };
-
-  var Base = function() {
+  var Base = core.Base = function() {
     this.isClone = false;
     this.costumes = [];
     this.currentCostumeIndex = 0;
@@ -905,7 +431,7 @@ var P = (function() {
     stage.prompt.focus();
   };
 
-  var Stage = function() {
+  var Stage = core.Stage = function() {
     this.stage = this;
 
     Stage.parent.call(this);
@@ -923,7 +449,7 @@ var P = (function() {
     this.tempoBPM = 60;
     this.videoAlpha = 1;
     this.zoom = 1;
-    this.maxZoom = SCALE;
+    this.maxZoom = P.config.scale;
     this.baseNow = 0;
     this.baseTime = 0;
     this.timerStart = 0;
@@ -949,24 +475,26 @@ var P = (function() {
     this.root.style.MSUserSelect =
     this.root.style.WebkitUserSelect = 'none';
 
+    var scale = P.config.scale;
+
     this.backdropCanvas = document.createElement('canvas');
     this.root.appendChild(this.backdropCanvas);
-    this.backdropCanvas.width = SCALE * 480;
-    this.backdropCanvas.height = SCALE * 360;
+    this.backdropCanvas.width = scale * 480;
+    this.backdropCanvas.height = scale * 360;
     this.backdropContext = this.backdropCanvas.getContext('2d');
 
     this.penCanvas = document.createElement('canvas');
     this.root.appendChild(this.penCanvas);
-    this.penCanvas.width = SCALE * 480;
-    this.penCanvas.height = SCALE * 360;
+    this.penCanvas.width = scale * 480;
+    this.penCanvas.height = scale * 360;
     this.penContext = this.penCanvas.getContext('2d');
     this.penContext.lineCap = 'round';
-    this.penContext.scale(SCALE, SCALE);
+    this.penContext.scale(scale, scale);
 
     this.canvas = document.createElement('canvas');
     this.root.appendChild(this.canvas);
-    this.canvas.width = SCALE * 480;
-    this.canvas.height = SCALE * 360;
+    this.canvas.width = scale * 480;
+    this.canvas.height = scale * 360;
     this.context = this.canvas.getContext('2d');
 
     this.ui = document.createElement('div');
@@ -1024,7 +552,7 @@ var P = (function() {
       }
     }.bind(this));
 
-    if (hasTouchEvents) {
+    if (P.config.hasTouchEvents) {
 
       document.addEventListener('touchstart', this.onTouchStart = function(e) {
         this.mousePressed = true;
@@ -1147,11 +675,11 @@ var P = (function() {
       }
     }.bind(this));
 
-    this.promptButton.addEventListener(hasTouchEvents ? 'touchstart' : 'mousedown', this.submitPrompt.bind(this));
+    this.promptButton.addEventListener(P.config.hasTouchEvents ? 'touchstart' : 'mousedown', this.submitPrompt.bind(this));
 
     this.initRuntime();
   };
-  inherits(Stage, Base);
+  P.utils.inherits(Stage, Base);
 
   Stage.prototype.isStage = true;
 
@@ -1233,12 +761,13 @@ var P = (function() {
   };
 
   Stage.prototype.updateBackdrop = function() {
-    this.backdropCanvas.width = this.zoom * SCALE * 480;
-    this.backdropCanvas.height = this.zoom * SCALE * 360;
+    this.backdropCanvas.width = this.zoom * P.config.scale * 480;
+    this.backdropCanvas.height = this.zoom * P.config.scale * 360;
     var costume = this.costumes[this.currentCostumeIndex];
     this.backdropContext.save();
-    var s = this.zoom * SCALE * costume.scale;
+    var s = this.zoom * P.config.scale * costume.scale;
     this.backdropContext.scale(s, s);
+    this.updateFilters();
     this.backdropContext.drawImage(costume.image, 0, 0);
     this.backdropContext.restore();
   };
@@ -1249,15 +778,15 @@ var P = (function() {
 
   Stage.prototype.setZoom = function(zoom) {
     if (this.zoom === zoom) return;
-    if (this.maxZoom < zoom * SCALE) {
-      this.maxZoom = zoom * SCALE;
+    if (this.maxZoom < zoom * P.config.scale) {
+      this.maxZoom = zoom * P.config.scale;
       var canvas = document.createElement('canvas');
       canvas.width = this.penCanvas.width;
       canvas.height = this.penCanvas.height;
       canvas.getContext('2d').drawImage(this.penCanvas, 0, 0);
-      this.penCanvas.width = 480 * zoom * SCALE;
-      this.penCanvas.height = 360 * zoom * SCALE;
-      this.penContext.drawImage(canvas, 0, 0, 480 * zoom * SCALE, 360 * zoom * SCALE);
+      this.penCanvas.width = 480 * zoom * P.config.scale;
+      this.penCanvas.height = 360 * zoom * P.config.scale;
+      this.penContext.drawImage(canvas, 0, 0, 480 * zoom * P.config.scale, 360 * zoom * P.config.scale);
       this.penContext.scale(this.maxZoom, this.maxZoom);
       this.penContext.lineCap = 'round';
     }
@@ -1343,10 +872,10 @@ var P = (function() {
   Stage.prototype.draw = function() {
     var context = this.context;
 
-    this.canvas.width = 480 * this.zoom * SCALE; // clear
-    this.canvas.height = 360 * this.zoom * SCALE;
+    this.canvas.width = 480 * this.zoom * P.config.scale; // clear
+    this.canvas.height = 360 * this.zoom * P.config.scale;
 
-    context.scale(this.zoom * SCALE, this.zoom * SCALE);
+    context.scale(this.zoom * P.config.scale, this.zoom * P.config.scale);
     this.drawOn(context);
     for (var i = this.allWatchers.length; i--;) {
       var w = this.allWatchers[i];
@@ -1410,7 +939,7 @@ var P = (function() {
     return KEY_CODES[keyName.toLowerCase()] || keyName.toUpperCase().charCodeAt(0);
   };
 
-  var Sprite = function(stage) {
+  var Sprite = core.Sprite = function(stage) {
     this.stage = stage;
 
     Sprite.parent.call(this);
@@ -1438,7 +967,7 @@ var P = (function() {
     this.thinking = false;
     this.sayId = 0;
   };
-  inherits(Sprite, Base);
+  P.utils.inherits(Sprite, Base);
 
   Sprite.prototype.fromJSON = function(data) {
 
@@ -1543,28 +1072,28 @@ var P = (function() {
     this.scratchY = y;
 
     // Ensure that the sprite is in view of the stage.
-    // https://github.com/LLK/scratch-flash/blob/72e4729b8189d11bbe51b6d94144b0a3c392ac9a/src/scratch/ScratchSprite.as#L191-L224
+    // See: https://github.com/LLK/scratch-flash/blob/72e4729b8189d11bbe51b6d94144b0a3c392ac9a/src/scratch/ScratchSprite.as#L191-L224
 
     var rb = this.rotatedBounds();
     var width = rb.right - rb.left;
     var height = rb.top - rb.bottom;
     // using 18 puts sprites 3 pixels too far from edges for some reason, 15 works fine
-    var inset = Math.min(15, Math.min(width, height) / 2);
+    var border = Math.min(15, Math.min(width, height) / 2);
 
-    if (rb.right < -240 + inset) {
-      var difference = rb.right - (-240 + inset);
+    if (rb.right < -240 + border) {
+      var difference = rb.right - (-240 + border);
       this.scratchX = Math.floor(this.scratchX - difference);
     }
-    if (rb.left > 240 - inset) {
-      var difference = (240 - inset) - rb.left;
+    if (rb.left > 240 - border) {
+      var difference = (240 - border) - rb.left;
       this.scratchX = Math.ceil(difference + this.scratchX);
     }
-    if (rb.bottom > 180 - inset) {
-      var difference = (180 - inset) - rb.bottom;
+    if (rb.bottom > 180 - border) {
+      var difference = (180 - border) - rb.bottom;
       this.scratchY = Math.ceil(difference + this.scratchY);
     }
-    if (rb.top < -180 + inset) {
-      var difference = rb.top - (-180 + inset);
+    if (rb.top < -180 + border) {
+      var difference = rb.top - (-180 + border);
       this.scratchY = Math.floor(this.scratchY - difference);
     }
 
@@ -1608,7 +1137,7 @@ var P = (function() {
     if (costume) {
       context.save();
 
-      var z = this.stage.zoom * SCALE;
+      var z = this.stage.zoom * P.config.scale;
       context.translate(((this.scratchX + 240) * z | 0) / z, ((180 - this.scratchY) * z | 0) / z);
       if (this.rotationStyle === 'normal') {
         context.rotate((this.direction - 90) * Math.PI / 180);
@@ -1957,7 +1486,7 @@ var P = (function() {
     }
   };
 
-  var Costume = function(data, index, base) {
+  var Costume = core.Costume = function(data, index, base) {
     this.index = index;
     this.base = base;
     this.baseLayerID = data.baseLayerID;
@@ -1981,7 +1510,7 @@ var P = (function() {
       this.textLayer.onload = this.baseLayer.onload;
     }
   };
-  addEvents(Costume, 'load');
+  P.utils.addEvents(Costume, 'load');
 
   Costume.prototype.render = function() {
     if (!this.baseLayer.width || this.textLayer && !this.textLayer.width) {
@@ -2001,13 +1530,13 @@ var P = (function() {
     }
   };
 
-  var Sound = function(data) {
+  var Sound = core.Sound = function(data) {
     this.name = data.soundName;
     this.buffer = data.$buffer;
     this.duration = this.buffer ? this.buffer.duration : 0;
   };
 
-  var Watcher = function(stage) {
+  var Watcher = core.Watcher = function(stage) {
     this.stage = stage;
 
     this.cmd = 'getVar:';
@@ -2234,25 +1763,522 @@ var P = (function() {
     this.stage.ui.appendChild(this.el);
   };
 
-  var AudioContext = window.AudioContext || window.webkitAudioContext;
-  var audioContext = AudioContext && new AudioContext;
+  return core;
+})({});
 
-  return {
-    hasTouchEvents: hasTouchEvents,
-    getKeyCode: getKeyCode,
-    audioContext: audioContext,
-    IO: IO,
-    Base: Base,
-    Stage: Stage,
-    Sprite: Sprite,
-    Watcher: Watcher
+// Related to loading files from the Scratch API
+P.IO = (function(IO) {
+  var wavFiles = {AcousticGuitar_F3:'instruments/AcousticGuitar_F3_22k.wav',AcousticPiano_As3:'instruments/AcousticPiano(5)_A%233_22k.wav',AcousticPiano_C4:'instruments/AcousticPiano(5)_C4_22k.wav',AcousticPiano_G4:'instruments/AcousticPiano(5)_G4_22k.wav',AcousticPiano_F5:'instruments/AcousticPiano(5)_F5_22k.wav',AcousticPiano_C6:'instruments/AcousticPiano(5)_C6_22k.wav',AcousticPiano_Ds6:'instruments/AcousticPiano(5)_D%236_22k.wav',AcousticPiano_D7:'instruments/AcousticPiano(5)_D7_22k.wav',AltoSax_A3:'instruments/AltoSax_A3_22K.wav',AltoSax_C6:'instruments/AltoSax(3)_C6_22k.wav',Bassoon_C3:'instruments/Bassoon_C3_22k.wav',BassTrombone_A2_2:'instruments/BassTrombone_A2(2)_22k.wav',BassTrombone_A2_3:'instruments/BassTrombone_A2(3)_22k.wav',Cello_C2:'instruments/Cello(3b)_C2_22k.wav',Cello_As2:'instruments/Cello(3)_A%232_22k.wav',Choir_F3:'instruments/Choir(4)_F3_22k.wav',Choir_F4:'instruments/Choir(4)_F4_22k.wav',Choir_F5:'instruments/Choir(4)_F5_22k.wav',Clarinet_C4:'instruments/Clarinet_C4_22k.wav',ElectricBass_G1:'instruments/ElectricBass(2)_G1_22k.wav',ElectricGuitar_F3:'instruments/ElectricGuitar(2)_F3(1)_22k.wav',ElectricPiano_C2:'instruments/ElectricPiano_C2_22k.wav',ElectricPiano_C4:'instruments/ElectricPiano_C4_22k.wav',EnglishHorn_D4:'instruments/EnglishHorn(1)_D4_22k.wav',EnglishHorn_F3:'instruments/EnglishHorn(1)_F3_22k.wav',Flute_B5_1:'instruments/Flute(3)_B5(1)_22k.wav',Flute_B5_2:'instruments/Flute(3)_B5(2)_22k.wav',Marimba_C4:'instruments/Marimba_C4_22k.wav',MusicBox_C4:'instruments/MusicBox_C4_22k.wav',Organ_G2:'instruments/Organ(2)_G2_22k.wav',Pizz_A3:'instruments/Pizz(2)_A3_22k.wav',Pizz_E4:'instruments/Pizz(2)_E4_22k.wav',Pizz_G2:'instruments/Pizz(2)_G2_22k.wav',SteelDrum_D5:'instruments/SteelDrum_D5_22k.wav',SynthLead_C4:'instruments/SynthLead(6)_C4_22k.wav',SynthLead_C6:'instruments/SynthLead(6)_C6_22k.wav',SynthPad_A3:'instruments/SynthPad(2)_A3_22k.wav',SynthPad_C6:'instruments/SynthPad(2)_C6_22k.wav',TenorSax_C3:'instruments/TenorSax(1)_C3_22k.wav',Trombone_B3:'instruments/Trombone_B3_22k.wav',Trumpet_E5:'instruments/Trumpet_E5_22k.wav',Vibraphone_C3:'instruments/Vibraphone_C3_22k.wav',Violin_D4:'instruments/Violin(2)_D4_22K.wav',Violin_A4:'instruments/Violin(3)_A4_22k.wav',Violin_E5:'instruments/Violin(3b)_E5_22k.wav',WoodenFlute_C5:'instruments/WoodenFlute_C5_22k.wav',BassDrum:'drums/BassDrum(1b)_22k.wav',Bongo:'drums/Bongo_22k.wav',Cabasa:'drums/Cabasa(1)_22k.wav',Clap:'drums/Clap(1)_22k.wav',Claves:'drums/Claves(1)_22k.wav',Conga:'drums/Conga(1)_22k.wav',Cowbell:'drums/Cowbell(3)_22k.wav',Crash:'drums/Crash(2)_22k.wav',Cuica:'drums/Cuica(2)_22k.wav',GuiroLong:'drums/GuiroLong(1)_22k.wav',GuiroShort:'drums/GuiroShort(1)_22k.wav',HiHatClosed:'drums/HiHatClosed(1)_22k.wav',HiHatOpen:'drums/HiHatOpen(2)_22k.wav',HiHatPedal:'drums/HiHatPedal(1)_22k.wav',Maracas:'drums/Maracas(1)_22k.wav',SideStick:'drums/SideStick(1)_22k.wav',SnareDrum:'drums/SnareDrum(1)_22k.wav',Tambourine:'drums/Tambourine(3)_22k.wav',Tom:'drums/Tom(1)_22k.wav',Triangle:'drums/Triangle(1)_22k.wav',Vibraslap:'drums/Vibraslap(1)_22k.wav',WoodBlock:'drums/WoodBlock(1)_22k.wav'};
+
+  IO.PROJECT_URL = 'https://projects.scratch.mit.edu/internalapi/project/';
+  IO.ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
+  IO.SOUNDBANK_URL = 'https://cdn.rawgit.com/LLK/scratch-flash/v429/src/soundbank/';
+
+  IO.FONTS = {
+    '': 'Helvetica',
+    Donegal: 'Donegal One',
+    Gloria: 'Gloria Hallelujah',
+    Marker: 'Permanent Marker',
+    Mystery: 'Mystery Quest'
   };
 
-}());
+  IO.LINE_HEIGHTS = {
+    Helvetica: 1.13,
+    'Donegal One': 1.25,
+    'Gloria Hallelujah': 1.97,
+    'Permanent Marker': 1.43,
+    'Mystery Quest': 1.37
+  };
+
+  IO.ADPCM_STEPS = [7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 19, 21, 23, 25, 28, 31, 34, 37, 41, 45, 50, 55, 60, 66, 73, 80, 88, 97, 107, 118, 130, 143, 157, 173, 190, 209, 230, 253, 279, 307, 337, 371, 408, 449, 494, 544, 598, 658, 724, 796, 876, 963, 1060, 1166, 1282, 1411, 1552, 1707, 1878, 2066, 2272, 2499, 2749, 3024, 3327, 3660, 4026, 4428, 4871, 5358, 5894, 6484, 7132, 7845, 8630, 9493, 10442, 11487, 12635, 13899, 15289, 16818, 18500, 20350, 22385, 24623, 27086, 29794, 32767];
+  IO.ADPCM_INDEX = [-1, -1, -1, -1, 2, 4, 6, 8, -1, -1, -1, -1, 2, 4, 6, 8];
+
+  IO.init = function(request) {
+    IO.projectRequest = request;
+    IO.zip = null;
+  };
+
+  IO.parseJSONish = function(json) {
+    if (!/^\s*\{/.test(json)) throw new SyntaxError('Bad JSON');
+    try {
+      return JSON.parse(json);
+    } catch (e) {}
+    if (/[^,:{}\[\]0-9\.\-+EINaefilnr-uy \n\r\t]/.test(json.replace(/"(\\.|[^"\\])*"/g, ''))) {
+      throw new SyntaxError('Bad JSON');
+    }
+    return (1, eval)('(' + json + ')');
+  };
+
+
+  IO.load = function(url, callback, self, type) {
+    var request = new P.utils.Request();
+    var xhr = new XMLHttpRequest;
+    xhr.open('GET', url, true);
+    xhr.onprogress = function(e) {
+      request.progress(e.loaded, e.total, e.lengthComputable);
+    };
+    xhr.onload = function() {
+      if (xhr.status === 200) {
+        request.load(xhr.response);
+      } else {
+        request.error(new Error('HTTP ' + xhr.status + ': ' + xhr.statusText));
+      }
+    };
+    xhr.onerror = function() {
+      request.error(new Error('XHR Error'));
+    };
+    xhr.responseType = type || '';
+    setTimeout(xhr.send.bind(xhr));
+
+    if (callback) request.onLoad(callback.bind(self));
+    return request;
+  };
+
+  IO.loadImage = function(url, callback, self) {
+    var request = new P.utils.Request();
+    var image = new Image;
+    image.crossOrigin = 'anonymous';
+    image.src = url;
+    image.onload = function() {
+      request.load(image);
+    };
+    image.onerror = function() {
+      request.error(new Error('Failed to load image: ' + url));
+    };
+    if (callback) request.onLoad(callback.bind(self));
+    return request;
+  };
+
+  IO.loadScratchr2Project = function(id, callback, self) {
+    var request = new P.utils.CompositeRequest();
+    IO.init(request);
+
+    request.defer = true;
+    var url = IO.PROJECT_URL + id + '/get/';
+    request.add(IO.load(url).onLoad(function(contents) {
+      try {
+        var json = IO.parseJSONish(contents);
+      } catch (e) {
+        request.add(IO.load(url, null, null, 'arraybuffer').onLoad(function(ab) {
+          var request2 = new P.utils.Request();
+          request.add(request2);
+          request.add(IO.loadSB2Project(ab, function(stage) {
+            request.getResult = function() {
+              return stage;
+            };
+            request2.load();
+          }));
+          request.defer = false;
+        }));
+        return;
+      }
+      try {
+        IO.loadProject(json);
+        if (callback) request.onLoad(callback.bind(self));
+        if (request.isDone) {
+          request.load(new Stage().fromJSON(json));
+        } else {
+          request.defer = false;
+          request.getResult = function() {
+            return new P.core.Stage().fromJSON(json);
+          };
+        }
+      } catch (e) {
+        request.error(e);
+      }
+    }));
+
+    return request;
+  };
+
+  IO.loadScratchr2ProjectTitle = function(id, callback, self) {
+    var request = new P.utils.CompositeRequest();
+
+    request.defer = true;
+    request.add(P.IO.load('https://scratch.mit.edu/projects/' + id + '/').onLoad(function(data) {
+      var m = /<title>\s*(.+?)(\s+on\s+Scratch)?\s*<\/title>/.exec(data);
+      if (callback) request.onLoad(callback.bind(self));
+      if (m) {
+        var d = document.createElement('div');
+        d.innerHTML = m[1];
+        request.load(d.innerText);
+      } else {
+        request.error(new Error('No title'));
+      }
+    }));
+
+    return request;
+  };
+
+  IO.loadJSONProject = function(json, callback, self) {
+    var request = new P.utils.CompositeRequest();
+    IO.init(request);
+
+    try {
+      IO.loadProject(json);
+      if (callback) request.onLoad(callback.bind(self));
+      if (request.isDone) {
+        request.load(new Stage().fromJSON(json));
+      } else {
+        request.defer = false;
+        request.getResult = function() {
+          return new Stage().fromJSON(json);
+        };
+      }
+    } catch (e) {
+      request.error(e);
+    }
+
+    return request;
+  };
+
+  IO.loadSB2Project = function(ab, callback, self) {
+    var request = new P.utils.CompositeRequest();
+    IO.init(request);
+
+    try {
+      IO.zip = Object.prototype.toString.call(ab) === '[object ArrayBuffer]' ? new JSZip(ab) : ab;
+      var json = IO.parseJSONish(IO.zip.file('project.json').asText());
+
+      IO.loadProject(json);
+      if (callback) request.onLoad(callback.bind(self));
+      if (request.isDone) {
+        request.load(new Stage().fromJSON(json));
+      } else {
+        request.defer = false;
+        request.getResult = function() {
+          return new Stage().fromJSON(json);
+        };
+      }
+    } catch (e) {
+      request.error(e);
+    }
+
+    return request;
+  };
+
+  IO.loadSB2File = function(f, callback, self) {
+    var cr = new P.utils.CompositeRequest();
+    cr.defer = true;
+    var request = new P.utils.Request();
+    cr.add(request);
+    var reader = new FileReader;
+    reader.onloadend = function() {
+      cr.defer = true;
+      cr.add(IO.loadSB2Project(reader.result, function(result) {
+        cr.defer = false;
+        cr.getResult = function() {
+          return result;
+        };
+        cr.update();
+      }));
+      request.load();
+    };
+    reader.onprogress = function(e) {
+      request.progress(e.loaded, e.total, e.lengthComputable);
+    };
+    reader.readAsArrayBuffer(f);
+    if (callback) cr.onLoad(callback.bind(self));
+    return cr;
+  };
+
+  IO.loadProject = function(data) {
+    IO.loadWavs();
+    IO.loadArray(data.children, IO.loadObject);
+    IO.loadBase(data);
+  };
+
+  IO.wavBuffers = Object.create(null);
+  IO.loadWavs = function() {
+    if (!P.core.audioContext) return;
+
+    for (var name in wavFiles) {
+      if (IO.wavBuffers[name]) {
+        if (IO.wavBuffers[name] instanceof P.utils.Request) {
+          IO.projectRequest.add(IO.wavBuffers[name]);
+        }
+      } else {
+        IO.projectRequest.add(IO.wavBuffers[name] = IO.loadWavBuffer(name));
+      }
+    }
+  };
+
+  IO.loadWavBuffer = function(name) {
+    var request = new P.utils.Request;
+    IO.load(IO.SOUNDBANK_URL + wavFiles[name], function(ab) {
+      IO.decodeAudio(ab, function(buffer) {
+        IO.wavBuffers[name] = buffer;
+        request.load();
+      });
+    }, null, 'arraybuffer').onError(function(err) {
+      request.error(err);
+    });
+    return request;
+  };
+
+  IO.decodeAudio = function(ab, cb) {
+    if (P.core.audioContext) {
+      IO.decodeADPCMAudio(ab, function(err, buffer) {
+        if (buffer) return setTimeout(function() {cb(buffer)});
+        var p = P.core.audioContext.decodeAudioData(ab, function(buffer) {
+          cb(buffer);
+        }, function(err2) {
+          console.warn(err, err2);
+          cb(null);
+        });
+        if (p.catch) p.catch(function() {});
+      });
+    } else {
+      setTimeout(cb);
+    }
+  };
+
+  IO.decodeADPCMAudio = function(ab, cb) {
+    var dv = new DataView(ab);
+    if (dv.getUint32(0) !== 0x52494646 || dv.getUint32(8) !== 0x57415645) {
+      return cb(new Error('Unrecognized audio format'));
+    }
+
+    var blocks = {};
+    var i = 12, l = dv.byteLength - 8;
+    while (i < l) {
+      blocks[String.fromCharCode(
+        dv.getUint8(i),
+        dv.getUint8(i + 1),
+        dv.getUint8(i + 2),
+        dv.getUint8(i + 3))] = i;
+      i += 8 + dv.getUint32(i + 4, true);
+    }
+
+    var format        = dv.getUint16(20, true);
+    var channels      = dv.getUint16(22, true);
+    var sampleRate    = dv.getUint32(24, true);
+    var byteRate      = dv.getUint32(28, true);
+    var blockAlign    = dv.getUint16(32, true);
+    var bitsPerSample = dv.getUint16(34, true);
+
+    if (format === 17) {
+      var samplesPerBlock = dv.getUint16(38, true);
+      var blockSize = ((samplesPerBlock - 1) / 2) + 4;
+
+      var frameCount = dv.getUint32(blocks.fact + 8, true);
+
+      var buffer = P.core.audioContext.createBuffer(1, frameCount, sampleRate);
+      var channel = buffer.getChannelData(0);
+
+      var sample, index = 0;
+      var step, code, delta;
+      var lastByte = -1;
+
+      var offset = blocks.data + 8;
+      i = offset;
+      var j = 0;
+      while (true) {
+        if ((((i - offset) % blockSize) == 0) && (lastByte < 0)) {
+          if (i >= dv.byteLength) break;
+          sample = dv.getInt16(i, true); i += 2;
+          index = dv.getUint8(i); i += 1;
+          i++;
+          if (index > 88) index = 88;
+          channel[j++] = sample / 32767;
+        } else {
+          if (lastByte < 0) {
+            if (i >= dv.byteLength) break;
+            lastByte = dv.getUint8(i); i += 1;
+            code = lastByte & 0xf;
+          } else {
+            code = (lastByte >> 4) & 0xf;
+            lastByte = -1;
+          }
+          step = IO.ADPCM_STEPS[index];
+          delta = 0;
+          if (code & 4) delta += step;
+          if (code & 2) delta += step >> 1;
+          if (code & 1) delta += step >> 2;
+          delta += step >> 3;
+          index += IO.ADPCM_INDEX[code];
+          if (index > 88) index = 88;
+          if (index < 0) index = 0;
+          sample += (code & 8) ? -delta : delta;
+          if (sample > 32767) sample = 32767;
+          if (sample < -32768) sample = -32768;
+          channel[j++] = sample / 32768;
+        }
+      }
+      return cb(null, buffer);
+    }
+    cb(new Error('Unrecognized WAV format ' + format));
+  };
+
+  IO.loadBase = function(data) {
+    data.scripts = data.scripts || [];
+    data.costumes = IO.loadArray(data.costumes, IO.loadCostume);
+    data.sounds = IO.loadArray(data.sounds, IO.loadSound);
+    data.variables = data.variables || [];
+    data.lists = data.lists || [];
+  };
+
+  IO.loadArray = function(data, process) {
+    if (!data) return [];
+    for (var i = 0; i < data.length; i++) {
+      process(data[i]);
+    }
+    return data;
+  };
+
+  IO.loadObject = function(data) {
+    if (!data.cmd && !data.listName) {
+      IO.loadBase(data);
+    }
+  };
+
+  IO.loadCostume = function(data) {
+    IO.loadMD5(data.baseLayerMD5, data.baseLayerID, function(asset) {
+      data.$image = asset;
+    });
+    if (data.textLayerMD5) {
+      IO.loadMD5(data.textLayerMD5, data.textLayerID, function(asset) {
+        data.$text = asset;
+      });
+    }
+  };
+
+  IO.loadSound = function(data) {
+    IO.loadMD5(data.md5, data.soundID, function(asset) {
+      data.$buffer = asset;
+    }, true);
+  };
+
+  IO.fixSVG = function(svg, element) {
+    if (element.nodeType !== 1) return;
+    if (element.nodeName === 'text') {
+      var font = element.getAttribute('font-family') || '';
+      font = IO.FONTS[font] || font;
+      if (font) {
+        element.setAttribute('font-family', font);
+        if (font === 'Helvetica') element.style.fontWeight = 'bold';
+      }
+      var size = +element.getAttribute('font-size');
+      if (!size) {
+        element.setAttribute('font-size', size = 18);
+      }
+      var bb = element.getBBox();
+      var x = 4 - .6 * element.transform.baseVal.consolidate().matrix.a;
+      var y = (element.getAttribute('y') - bb.y) * 1.1;
+      element.setAttribute('x', x);
+      element.setAttribute('y', y);
+      var lines = element.textContent.split('\n');
+      if (lines.length > 1) {
+        element.textContent = lines[0];
+        var lineHeight = IO.LINE_HEIGHTS[font] || 1;
+        for (var i = 1, l = lines.length; i < l; i++) {
+          var tspan = document.createElementNS(null, 'tspan');
+          tspan.textContent = lines[i];
+          tspan.setAttribute('x', x);
+          tspan.setAttribute('y', y + size * i * lineHeight);
+          element.appendChild(tspan);
+        }
+      }
+      // svg.style.cssText = '';
+      // console.log(element.textContent, 'data:image/svg+xml;base64,' + btoa(svg.outerHTML));
+    } else if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
+      element.setAttribute('x', 0);
+      element.setAttribute('y', 0);
+    }
+    [].forEach.call(element.childNodes, IO.fixSVG.bind(null, svg));
+  };
+
+  IO.loadMD5 = function(md5, id, callback, isAudio) {
+    if (IO.zip) {
+      var f = isAudio ? IO.zip.file(id + '.wav') : IO.zip.file(id + '.gif') || IO.zip.file(id + '.png') || IO.zip.file(id + '.jpg') || IO.zip.file(id + '.svg');
+      md5 = f.name;
+    }
+    var ext = md5.split('.').pop();
+    if (ext === 'svg') {
+      var cb = function(source) {
+        var parser = new DOMParser();
+        var doc = parser.parseFromString(source, 'image/svg+xml');
+        var svg = doc.documentElement;
+        if (!svg.style) {
+          doc = parser.parseFromString('<body>'+source, 'text/html');
+          svg = doc.querySelector('svg');
+        }
+        svg.style.visibility = 'hidden';
+        svg.style.position = 'absolute';
+        svg.style.left = '-10000px';
+        svg.style.top = '-10000px';
+        document.body.appendChild(svg);
+        var viewBox = svg.viewBox.baseVal;
+        if (viewBox && (viewBox.x || viewBox.y)) {
+          svg.width.baseVal.value = viewBox.width - viewBox.x;
+          svg.height.baseVal.value = viewBox.height - viewBox.y;
+          viewBox.x = 0;
+          viewBox.y = 0;
+          viewBox.width = 0;
+          viewBox.height = 0;
+        }
+        IO.fixSVG(svg, svg);
+        document.body.removeChild(svg);
+        svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
+
+        var canvas = document.createElement('canvas');
+        var image = new Image;
+        callback(image);
+        // svg.style.cssText = '';
+        // console.log(md5, 'data:image/svg+xml;base64,' + btoa(div.innerHTML.trim()));
+        canvg(canvas, new XMLSerializer().serializeToString(svg), {
+          ignoreMouse: true,
+          ignoreAnimation: true,
+          ignoreClear: true,
+          renderCallback: function() {
+            image.src = canvas.toDataURL();
+          }
+        });
+      };
+      if (IO.zip) {
+        cb(f.asText());
+      } else {
+        IO.projectRequest.add(IO.load(IO.ASSET_URL + md5 + '/get/', cb));
+      }
+    } else if (ext === 'wav') {
+      var request = new P.utils.Request();
+      var cb = function(ab) {
+        IO.decodeAudio(ab, function(buffer) {
+          callback(buffer);
+          request.load(buffer);
+        });
+      }
+      IO.projectRequest.add(request);
+      if (IO.zip) {
+        var audio = new Audio;
+        var ab = f.asArrayBuffer();
+        cb(ab);
+      } else {
+        IO.projectRequest.add(IO.load(IO.ASSET_URL + md5 + '/get/', cb, null, 'arraybuffer'));
+      }
+    } else {
+      if (IO.zip) {
+        var request = new P.utils.Request;
+        var image = new Image;
+        image.onload = function() {
+          if (callback) callback(image);
+          request.load();
+        };
+        image.src = 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(f.asBinary());
+        IO.projectRequest.add(request);
+      } else {
+        IO.projectRequest.add(
+          IO.loadImage(IO.ASSET_URL + md5 + '/get/', function(result) {
+            callback(result);
+          }));
+      }
+    }
+  };
+
+  return IO;
+})({});
 
 P.compile = (function() {
-  'use strict';
-
   var LOG_PRIMITIVES;
   var DEBUG;
   // LOG_PRIMITIVES = true;
@@ -2669,7 +2695,7 @@ P.compile = (function() {
       } else if (e[0] === 'keyPressed:') {
 
         var v = typeof e[1] === 'object' ?
-          'P.getKeyCode(' + val(e[1]) + ')' : val(P.getKeyCode(e[1]));
+          'P.utils.getKeyCode(' + val(e[1]) + ')' : val(P.utils.getKeyCode(e[1]));
         return '!!self.keys[' + v + ']';
 
       // } else if (e[0] === 'isLoud') {
@@ -2946,14 +2972,14 @@ P.compile = (function() {
 
       } else if (block[0] === 'playSound:') { /* Sound */
 
-        if (P.audioContext) {
+        if (P.core.audioContext) {
           source += 'var sound = S.getSound(' + val(block[1]) + ');\n';
           source += 'if (sound) playSound(sound);\n';
         }
 
       } else if (block[0] === 'doPlaySoundAndWait') {
 
-        if (P.audioContext) {
+        if (P.core.audioContext) {
           source += 'var sound = S.getSound(' + val(block[1]) + ');\n';
           source += 'if (sound) {\n';
           source += '  playSound(sound);\n';
@@ -2963,7 +2989,7 @@ P.compile = (function() {
 
       } else if (block[0] === 'stopAllSounds') {
 
-        if (P.audioContext) {
+        if (P.core.audioContext) {
           source += 'self.stopAllSounds();\n';
         }
 
@@ -2972,7 +2998,7 @@ P.compile = (function() {
       } else if (block[0] === 'playDrum') {
 
         beatHead(block[2]);
-        if (P.audioContext) {
+        if (P.core.audioContext) {
           source += 'playSpan(DRUMS[Math.round(' + num(block[1]) + ') - 1] || DRUMS[2], 60, 10);\n';
         }
         beatTail();
@@ -2985,7 +3011,7 @@ P.compile = (function() {
       } else if (block[0] === 'noteOn:duration:elapsed:from:') {
 
         beatHead(block[2]);
-        if (P.audioContext) {
+        if (P.core.audioContext) {
           source += 'playNote(' + num(block[1]) + ', R.duration);\n';
         }
         beatTail();
@@ -3474,8 +3500,6 @@ P.compile = (function() {
 }());
 
 P.runtime = (function() {
-  'use strict';
-
   var self, S, R, STACK, C, WARP, CALLS, BASE, THREAD, IMMEDIATE, VISUAL;
 
   var bool = function(v) {
@@ -3594,7 +3618,7 @@ P.runtime = (function() {
 
   var epoch = Date.UTC(2000, 0, 1);
 
-  var timeAndDate = P.Watcher.prototype.timeAndDate = function(format) {
+  var timeAndDate = P.core.Watcher.prototype.timeAndDate = function(format) {
     switch (format) {
       case 'year':
         return new Date().getFullYear();
@@ -3758,7 +3782,7 @@ P.runtime = (function() {
 
   var VOLUME = 0.3;
 
-  var audioContext = P.audioContext;
+  var audioContext = P.core.audioContext;
   if (audioContext) {
     var wavBuffers = P.IO.wavBuffers;
 
@@ -3942,14 +3966,14 @@ P.runtime = (function() {
   (function() {
     'use strict';
 
-    P.Stage.prototype.framerate = 30;
+    P.core.Stage.prototype.framerate = 30;
 
-    P.Stage.prototype.initRuntime = function() {
+    P.core.Stage.prototype.initRuntime = function() {
       this.queue = [];
       this.onError = this.onError.bind(this);
     };
 
-    P.Stage.prototype.startThread = function(sprite, base) {
+    P.core.Stage.prototype.startThread = function(sprite, base) {
       var thread = {
         sprite: sprite,
         base: base,
@@ -3966,7 +3990,7 @@ P.runtime = (function() {
       this.queue.push(thread);
     };
 
-    P.Stage.prototype.triggerFor = function(sprite, event, arg) {
+    P.core.Stage.prototype.triggerFor = function(sprite, event, arg) {
       var threads;
       if (event === 'whenClicked') {
         threads = sprite.listeners.whenClicked;
@@ -3989,7 +4013,7 @@ P.runtime = (function() {
       return threads || [];
     };
 
-    P.Stage.prototype.trigger = function(event, arg) {
+    P.core.Stage.prototype.trigger = function(event, arg) {
       var threads = [];
       for (var i = this.children.length; i--;) {
         threads = threads.concat(this.triggerFor(this.children[i], event, arg));
@@ -3997,12 +4021,12 @@ P.runtime = (function() {
       return threads.concat(this.triggerFor(this, event, arg));
     };
 
-    P.Stage.prototype.triggerGreenFlag = function() {
+    P.core.Stage.prototype.triggerGreenFlag = function() {
       this.timerStart = this.rightNow();
       this.trigger('whenGreenFlag');
     };
 
-    P.Stage.prototype.start = function() {
+    P.core.Stage.prototype.start = function() {
       this.isRunning = true;
       if (this.interval) return;
       addEventListener('error', this.onError);
@@ -4011,7 +4035,7 @@ P.runtime = (function() {
       if (audioContext) audioContext.resume();
     };
 
-    P.Stage.prototype.pause = function() {
+    P.core.Stage.prototype.pause = function() {
       if (this.interval) {
         this.baseNow = this.rightNow();
         clearInterval(this.interval);
@@ -4022,7 +4046,7 @@ P.runtime = (function() {
       this.isRunning = false;
     };
 
-    P.Stage.prototype.stopAll = function() {
+    P.core.Stage.prototype.stopAll = function() {
       this.hidePrompt = false;
       this.prompter.style.display = 'none';
       this.promptId = this.nextPromptId = 0;
@@ -4043,11 +4067,11 @@ P.runtime = (function() {
       }
     };
 
-    P.Stage.prototype.rightNow = function() {
+    P.core.Stage.prototype.rightNow = function() {
       return this.baseNow + Date.now() - this.baseTime;
     };
 
-    P.Stage.prototype.step = function() {
+    P.core.Stage.prototype.step = function() {
       self = this;
       VISUAL = false;
       var start = Date.now();
@@ -4082,12 +4106,12 @@ P.runtime = (function() {
       S = null;
     };
 
-    P.Stage.prototype.onError = function(e) {
+    P.core.Stage.prototype.onError = function(e) {
       this.handleError(e.error);
       clearInterval(this.interval);
     };
 
-    P.Stage.prototype.handleError = function(e) {
+    P.core.Stage.prototype.handleError = function(e) {
       console.error(e.stack);
     };
 
