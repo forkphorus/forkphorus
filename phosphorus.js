@@ -4,7 +4,8 @@ var P = {};
 
 P.config = (function(exports) {
   exports.scale = window.devicePixelRatio || 1;
-  exports.hasTouchEvents = 'ontouchstart' in document;;
+  exports.hasTouchEvents = 'ontouchstart' in document;
+  exports.framerate = 30;
 
   return exports;
 }({}));
@@ -733,7 +734,7 @@ P.core = (function(core) {
       child.resolve();
     }, this);
 
-    P.compile(this);
+    P.compiler.sb2(this);
 
     return this;
   };
@@ -1947,7 +1948,7 @@ P.IO = (function(IO) {
       } else {
         request.defer = false;
         request.getResult = function() {
-          return new Stage().fromJSON(json);
+          return new P.core.Stage().fromJSON(json);
         };
       }
     } catch (e) {
@@ -2278,7 +2279,10 @@ P.IO = (function(IO) {
   return IO;
 })({});
 
-P.compile = (function() {
+P.compiler = {};
+
+// Compiles a Scratch 2 project to javascript
+P.compiler.sb2 = (function() {
   var LOG_PRIMITIVES;
   var DEBUG;
   // LOG_PRIMITIVES = true;
@@ -3465,7 +3469,7 @@ P.compile = (function() {
           object.listeners.whenKeyPressed[i].push(f);
         }
       } else {
-        object.listeners.whenKeyPressed[P.getKeyCode(script[0][1])].push(f);
+        object.listeners.whenKeyPressed[P.utils.getKeyCode(script[0][1])].push(f);
       }
     } else if (script[0][0] === 'whenSceneStarts') {
       var key = script[0][1].toLowerCase();
@@ -3499,6 +3503,7 @@ P.compile = (function() {
 
 }());
 
+// The phosphorus Scratch runtime
 P.runtime = (function() {
   var self, S, R, STACK, C, WARP, CALLS, BASE, THREAD, IMMEDIATE, VISUAL;
 
@@ -3962,160 +3967,154 @@ P.runtime = (function() {
     };
   };
 
-  // Internal definition
-  (function() {
-    'use strict';
+  // Extend the stage with new methods related to running the project.
 
-    P.core.Stage.prototype.framerate = 30;
+  P.core.Stage.prototype.initRuntime = function() {
+    this.queue = [];
+    this.onError = this.onError.bind(this);
+  };
 
-    P.core.Stage.prototype.initRuntime = function() {
-      this.queue = [];
-      this.onError = this.onError.bind(this);
+  P.core.Stage.prototype.startThread = function(sprite, base) {
+    var thread = {
+      sprite: sprite,
+      base: base,
+      fn: base,
+      calls: [{args: [], stack: [{}]}]
     };
-
-    P.core.Stage.prototype.startThread = function(sprite, base) {
-      var thread = {
-        sprite: sprite,
-        base: base,
-        fn: base,
-        calls: [{args: [], stack: [{}]}]
-      };
-      for (var i = 0; i < this.queue.length; i++) {
-        var q = this.queue[i];
-        if (q && q.sprite === sprite && q.base === base) {
-          this.queue[i] = thread;
-          return;
-        }
+    for (var i = 0; i < this.queue.length; i++) {
+      var q = this.queue[i];
+      if (q && q.sprite === sprite && q.base === base) {
+        this.queue[i] = thread;
+        return;
       }
-      this.queue.push(thread);
-    };
+    }
+    this.queue.push(thread);
+  };
 
-    P.core.Stage.prototype.triggerFor = function(sprite, event, arg) {
-      var threads;
-      if (event === 'whenClicked') {
-        threads = sprite.listeners.whenClicked;
-      } else if (event === 'whenCloned') {
-        threads = sprite.listeners.whenCloned;
-      } else if (event === 'whenGreenFlag') {
-        threads = sprite.listeners.whenGreenFlag;
-      } else if (event === 'whenIReceive') {
-        threads = sprite.listeners.whenIReceive[('' + arg).toLowerCase()];
-      } else if (event === 'whenKeyPressed') {
-        threads = sprite.listeners.whenKeyPressed[arg];
-      } else if (event === 'whenSceneStarts') {
-        threads = sprite.listeners.whenSceneStarts[('' + arg).toLowerCase()];
+  P.core.Stage.prototype.triggerFor = function(sprite, event, arg) {
+    var threads;
+    if (event === 'whenClicked') {
+      threads = sprite.listeners.whenClicked;
+    } else if (event === 'whenCloned') {
+      threads = sprite.listeners.whenCloned;
+    } else if (event === 'whenGreenFlag') {
+      threads = sprite.listeners.whenGreenFlag;
+    } else if (event === 'whenIReceive') {
+      threads = sprite.listeners.whenIReceive[('' + arg).toLowerCase()];
+    } else if (event === 'whenKeyPressed') {
+      threads = sprite.listeners.whenKeyPressed[arg];
+    } else if (event === 'whenSceneStarts') {
+      threads = sprite.listeners.whenSceneStarts[('' + arg).toLowerCase()];
+    }
+    if (threads) {
+      for (var i = 0; i < threads.length; i++) {
+        this.startThread(sprite, threads[i]);
       }
-      if (threads) {
-        for (var i = 0; i < threads.length; i++) {
-          this.startThread(sprite, threads[i]);
-        }
-      }
-      return threads || [];
-    };
+    }
+    return threads || [];
+  };
 
-    P.core.Stage.prototype.trigger = function(event, arg) {
-      var threads = [];
-      for (var i = this.children.length; i--;) {
-        threads = threads.concat(this.triggerFor(this.children[i], event, arg));
-      }
-      return threads.concat(this.triggerFor(this, event, arg));
-    };
+  P.core.Stage.prototype.trigger = function(event, arg) {
+    var threads = [];
+    for (var i = this.children.length; i--;) {
+      threads = threads.concat(this.triggerFor(this.children[i], event, arg));
+    }
+    return threads.concat(this.triggerFor(this, event, arg));
+  };
 
-    P.core.Stage.prototype.triggerGreenFlag = function() {
-      this.timerStart = this.rightNow();
-      this.trigger('whenGreenFlag');
-    };
+  P.core.Stage.prototype.triggerGreenFlag = function() {
+    this.timerStart = this.rightNow();
+    this.trigger('whenGreenFlag');
+  };
 
-    P.core.Stage.prototype.start = function() {
-      this.isRunning = true;
-      if (this.interval) return;
-      addEventListener('error', this.onError);
-      this.baseTime = Date.now();
-      this.interval = setInterval(this.step.bind(this), 1000 / this.framerate);
-      if (audioContext) audioContext.resume();
-    };
+  P.core.Stage.prototype.start = function() {
+    this.isRunning = true;
+    if (this.interval) return;
+    addEventListener('error', this.onError);
+    this.baseTime = Date.now();
+    this.interval = setInterval(this.step.bind(this), 1000 / P.config.framerate);
+    if (audioContext) audioContext.resume();
+  };
 
-    P.core.Stage.prototype.pause = function() {
-      if (this.interval) {
-        this.baseNow = this.rightNow();
-        clearInterval(this.interval);
-        delete this.interval;
-        removeEventListener('error', this.onError);
-        if (audioContext) audioContext.suspend();
-      }
-      this.isRunning = false;
-    };
-
-    P.core.Stage.prototype.stopAll = function() {
-      this.hidePrompt = false;
-      this.prompter.style.display = 'none';
-      this.promptId = this.nextPromptId = 0;
-      this.queue.length = 0;
-      this.resetFilters();
-      this.stopSounds();
-      for (var i = 0; i < this.children.length; i++) {
-        var c = this.children[i];
-        if (c.isClone) {
-          c.remove();
-          this.children.splice(i, 1);
-          i -= 1;
-        } else {
-          c.resetFilters();
-          if (c.saying) c.say('');
-          c.stopSounds();
-        }
-      }
-    };
-
-    P.core.Stage.prototype.rightNow = function() {
-      return this.baseNow + Date.now() - this.baseTime;
-    };
-
-    P.core.Stage.prototype.step = function() {
-      self = this;
-      VISUAL = false;
-      var start = Date.now();
-      do {
-        var queue = this.queue;
-        this.now = this.rightNow();
-        for (THREAD = 0; THREAD < queue.length; THREAD++) {
-          if (queue[THREAD]) {
-            S = queue[THREAD].sprite;
-            IMMEDIATE = queue[THREAD].fn;
-            BASE = queue[THREAD].base;
-            CALLS = queue[THREAD].calls;
-            C = CALLS.pop();
-            STACK = C.stack;
-            R = STACK.pop();
-            queue[THREAD] = undefined;
-            WARP = 0;
-            while (IMMEDIATE) {
-              var fn = IMMEDIATE;
-              IMMEDIATE = null;
-              fn();
-            }
-            STACK.push(R);
-            CALLS.push(C);
-          }
-        }
-        for (var i = queue.length; i--;) {
-          if (!queue[i]) queue.splice(i, 1);
-        }
-      } while ((self.isTurbo || !VISUAL) && Date.now() - start < 1000 / this.framerate && queue.length);
-      this.draw();
-      S = null;
-    };
-
-    P.core.Stage.prototype.onError = function(e) {
-      this.handleError(e.error);
+  P.core.Stage.prototype.pause = function() {
+    if (this.interval) {
+      this.baseNow = this.rightNow();
       clearInterval(this.interval);
-    };
+      delete this.interval;
+      removeEventListener('error', this.onError);
+      if (audioContext) audioContext.suspend();
+    }
+    this.isRunning = false;
+  };
 
-    P.core.Stage.prototype.handleError = function(e) {
-      console.error(e.stack);
-    };
+  P.core.Stage.prototype.stopAll = function() {
+    this.hidePrompt = false;
+    this.prompter.style.display = 'none';
+    this.promptId = this.nextPromptId = 0;
+    this.queue.length = 0;
+    this.resetFilters();
+    this.stopSounds();
+    for (var i = 0; i < this.children.length; i++) {
+      var c = this.children[i];
+      if (c.isClone) {
+        c.remove();
+        this.children.splice(i, 1);
+        i -= 1;
+      } else {
+        c.resetFilters();
+        if (c.saying) c.say('');
+        c.stopSounds();
+      }
+    }
+  };
 
-  }());
+  P.core.Stage.prototype.rightNow = function() {
+    return this.baseNow + Date.now() - this.baseTime;
+  };
+
+  P.core.Stage.prototype.step = function() {
+    self = this;
+    VISUAL = false;
+    var start = Date.now();
+    do {
+      var queue = this.queue;
+      this.now = this.rightNow();
+      for (THREAD = 0; THREAD < queue.length; THREAD++) {
+        if (queue[THREAD]) {
+          S = queue[THREAD].sprite;
+          IMMEDIATE = queue[THREAD].fn;
+          BASE = queue[THREAD].base;
+          CALLS = queue[THREAD].calls;
+          C = CALLS.pop();
+          STACK = C.stack;
+          R = STACK.pop();
+          queue[THREAD] = undefined;
+          WARP = 0;
+          while (IMMEDIATE) {
+            var fn = IMMEDIATE;
+            IMMEDIATE = null;
+            fn();
+          }
+          STACK.push(R);
+          CALLS.push(C);
+        }
+      }
+      for (var i = queue.length; i--;) {
+        if (!queue[i]) queue.splice(i, 1);
+      }
+    } while ((self.isTurbo || !VISUAL) && Date.now() - start < 1000 / P.config.framerate && queue.length);
+    this.draw();
+    S = null;
+  };
+
+  P.core.Stage.prototype.onError = function(e) {
+    this.handleError(e.error);
+    clearInterval(this.interval);
+  };
+
+  P.core.Stage.prototype.handleError = function(e) {
+    console.error(e);
+  };
 
   /*
     copy(JSON.stringify(instruments.map(function(g) {
@@ -4166,10 +4165,11 @@ P.runtime = (function() {
   */
   var DRUMS = [{name:'SnareDrum',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'Tom',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'SideStick',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'Crash',baseRatio:0.8908987181403393,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'HiHatOpen',baseRatio:0.9438743126816935,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'HiHatClosed',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'Tambourine',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'Clap',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'Claves',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'WoodBlock',baseRatio:0.7491535384383408,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'Cowbell',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'Triangle',baseRatio:0.8514452780229479,loop:true,loopStart:0.7638548752834468,loopEnd:0.7825396825396825,attackEnd:0,holdEnd:0,decayEnd:2},{name:'Bongo',baseRatio:0.5297315471796477,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'Conga',baseRatio:0.7954545454545454,loop:true,loopStart:0.1926077097505669,loopEnd:0.20403628117913833,attackEnd:0,holdEnd:0,decayEnd:2},{name:'Cabasa',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'GuiroLong',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'Vibraslap',baseRatio:0.8408964152537145,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'Cuica',baseRatio:0.7937005259840998,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0}];
 
-  return {
-    scopedEval: function(source) {
-      return eval(source);
-    }
-  };
+  function scopedEval(source) {
+    return eval(source);
+  }
 
+  return {
+    scopedEval: scopedEval,
+  };
 }());

@@ -1,272 +1,285 @@
-<!doctype html>
-<meta charset=utf-8>
-<meta name=viewport content="width=device-width, initial-scale=1.0">
-<title>phosphorus fork</title>
-<link rel=stylesheet href=player.css>
-<link rel=stylesheet href=index.css>
+<!DOCTYPE html>
+<html>
 
-<div class=area id=title-area>
-<h1 class=title>phosphorus <span id="subtitle">(fork)</span></h1>
-<p>phosphorus runs your Scratch projects really fast by compiling them to JavaScript. Try it out by pasting a URL or project ID into the field below or <a class=dropdown>choosing an example<select id=examples>
-  <option value>
-  <option value=11397100>3D Remix by DadOfMrLog
-  <option value=15945630>O by DCPU-16
-  <option value=10128407>Paper Minecraft by griffpatch
-  <option value=16207935>Alone in the depths by sticku
-  <option value=16205373>3D Framework by DadOfMrLog
-  <option value=31903442>gb.sb2 [Dr. Mario] by DCPU-16
-  <option value=34791164>gb.sb2 [Mario Land 2] by DCPU-16
-  <option value=21554369>Epic Ninja by griffpatch
-  <option value=15832807>Pretty by blob8108
-</select></a>.</p>
-</div>
+<head>
+  <meta charset=utf-8>
+  <meta name=viewport content="width=device-width, initial-scale=1.0">
+  <title>phosphorus fork</title>
+  <link rel=stylesheet href=player.css>
+  <link rel=stylesheet href=index.css>
+</head>
 
-<div class=area id=player-area>
-<div class=controls>
-  <span class=stop></span>
-  <span class=pause></span>
-  <span class=flag title="Shift+click to enable turbo mode."></span>
-  <div class=turbo>Turbo Mode</div>
-  <span class=full-screen></span>
-</div>
-<div class=player></div>
-<div class=internal-error>
-  An internal error occurred. <a id=error-bug-link target=_blank href=https://github.com/GarboMuffin/phosphorus/issues/new>Click here</a> to file a bug report.
-</div>
-</div>
+<body>
 
-<div class=title>
-  <div class=progress-bar></div>
-  <input class=url value=https://scratch.mit.edu/projects/>
-  <a target=_blank class=project-link title="View project on Scratch"></a>
-</div>
+  <div class=area id=title-area>
+    <h1 class=title>phosphorus <span id="subtitle">(fork)</span></h1>
+    <p>phosphorus runs your Scratch projects really fast by compiling them to JavaScript. Try it out by pasting a URL or project ID into the field below or <a class=dropdown>choosing an example<select id=examples>
+      <option value></option>
+      <option value=11397100>3D Remix by DadOfMrLog</option>
+      <option value=15945630>O by DCPU-16</option>
+      <option value=10128407>Paper Minecraft by griffpatch</option>
+      <option value=16207935>Alone in the depths by sticku</option>
+      <option value=16205373>3D Framework by DadOfMrLog</option>
+      <option value=31903442>gb.sb2 [Dr. Mario] by DCPU-16</option>
+      <option value=34791164>gb.sb2 [Mario Land 2] by DCPU-16</option>
+      <option value=21554369>Epic Ninja by griffpatch</option>
+      <option value=15832807>Pretty by blob8108</option>
+    </select></a>.</p>
+  </div>
 
-<div class=area id=project-area>
-<section class=package>
-  <h1>Package this project</h1>
-  <p>Get a link to a web page that automatically runs your project.</p>
-  <p>
-    <a href=# target=_blank id=package-link>Package</a>
-    <input type=checkbox id=package-turbo>
-    <label for=package-turbo>Turbo mode</label>
-    <input type=checkbox id=package-full-screen checked>
-    <label for=package-full-screen>Full screen</label>
-  </p>
-</section>
-<section class=package>
-  <h1>Embed this project</h1>
-  <p>Include the phosphorus player in your web site.</p>
-  <p>
-    <input readonly id=embed-code>
-    <input type=checkbox id=embed-auto-start checked>
-    <label for=embed-auto-start>Start automatically</label>
-    <input type=checkbox id=embed-light-content>
-    <label for=embed-light-content>Light controls</label>
-    <input type=checkbox id=embed-hide-controls>
-    <label for=embed-hide-controls>Hide UI</label>
-  </p>
-</section>
-<section>
-  <h1>Report a problem</h1>
-  <p>phosphorus is still in development. <a id=bug-link target=_blank href=https://github.com/GarboMuffin/phosphorus/issues/new>Click here</a> to report a problem with this project.</p>
-</section>
-</div>
-<section>
-  <h1>Credits</h1>
-  <p>phosphorus was created by <a href=https://github.com/nathan>Nathan</a>. Its CPS-style compilation and overall design was inspired by <a href=https://github.com/RHY3756547>Rhys</a>'s <a href=https://code.google.com/p/sb2-js/>sb2.js</a>. It would have more bugs if not for <a href=https://github.com/trumank>Truman</a> and <a href=https://github.com/tjvr>Tim</a>. It uses the <a href=https://stuk.github.io/jszip/>JSZip</a> library, created by <a href=https://github.com/stuk>Stuart Knightley</a>, <a href=https://github.com/dduponchel>David Duponchel</a>, Franz Buchinger, and <a href=https://github.com/aadsm>António Afonso</a>, to read <code>.sb2</code> files and compressed projects, and the <a href=https://code.google.com/p/canvg/>canvg</a> library, created by <a href=https://code.google.com/u/gabelerner@gmail.com/>Gabe Lerner</a>, to render SVGs in <code>&lt;canvas&gt;</code> elements.
-  <h1>Code</h1>
-  <p>The source code for this phosphorus fork is available <a href=https://github.com/GarboMuffin/phosphorus>on GitHub</a>.</p>
-</section>
-<script src=fonts.js></script>
-<script src=//cdnjs.cloudflare.com/ajax/libs/jszip/2.4.0/jszip.js></script>
-<script src=lib/rgbcolor.js></script>
-<script src=lib/StackBlur.js></script>
-<script src=lib/canvg.js></script>
-<script src="phosphorus.js"></script>
-<script src=player.js></script>
-<script>
+  <div class=area id=player-area>
+    <div class=controls>
+      <span class=stop></span>
+      <span class=pause></span>
+      <span class=flag title="Shift+click to enable turbo mode."></span>
+      <div class=turbo>Turbo Mode</div>
+      <span class=full-screen></span>
+    </div>
+  <div class=player></div>
+    <div class=internal-error>
+      An internal error occurred. <a id=error-bug-link target=_blank href=https://github.com/GarboMuffin/phosphorus/issues/new>Click here</a> to file a bug report.
+    </div>
+  </div>
 
-(function() {
-  'use strict';
+  <div class=title>
+    <div class=progress-bar></div>
+    <input class=url value=https://scratch.mit.edu/projects/>
+    <a target=_blank class=project-link title="View project on Scratch"></a>
+  </div>
 
-  var prefix = 'https://scratch.mit.edu/projects/';
+  <div class=area id=project-area>
+    <section class=package>
+      <h1>Package this project</h1>
+      <p>Get a link to a web page that automatically runs your project.</p>
+      <p>
+        <a href=# target=_blank id=package-link>Package</a>
+        <input type=checkbox id=package-turbo>
+        <label for=package-turbo>Turbo mode</label>
+        <input type=checkbox id=package-full-screen checked>
+        <label for=package-full-screen>Full screen</label>
+      </p>
+    </section>
+    <section class=package>
+      <h1>Embed this project</h1>
+      <p>Include the phosphorus player in your web site.</p>
+      <p>
+        <input readonly id=embed-code>
+        <input type=checkbox id=embed-auto-start checked>
+        <label for=embed-auto-start>Start automatically</label>
+        <input type=checkbox id=embed-light-content>
+        <label for=embed-light-content>Light controls</label>
+        <input type=checkbox id=embed-hide-controls>
+        <label for=embed-hide-controls>Hide UI</label>
+      </p>
+    </section>
+    <section>
+      <h1>Report a problem</h1>
+      <p>phosphorus is still in development. <a id=bug-link target=_blank href=https://github.com/GarboMuffin/phosphorus/issues/new>Click here</a> to report a problem with this project.</p>
+    </section>
+  </div>
 
-  var initialId = location.hash.substr(1);
-  if (initialId === 'zip') initialId = '';
+  <section>
+    <h1>Credits</h1>
+    <p>phosphorus was created by <a href=https://github.com/nathan>Nathan</a>. Its CPS-style compilation and overall design was inspired by <a href=https://github.com/RHY3756547>Rhys</a>'s <a href=https://code.google.com/p/sb2-js/>sb2.js</a>. It would have more bugs if not for <a href=https://github.com/trumank>Truman</a> and <a href=https://github.com/tjvr>Tim</a>. It uses the <a href=https://stuk.github.io/jszip/>JSZip</a> library, created by <a href=https://github.com/stuk>Stuart Knightley</a>, <a href=https://github.com/dduponchel>David Duponchel</a>, Franz Buchinger, and <a href=https://github.com/aadsm>António Afonso</a>, to read <code>.sb2</code> files and compressed projects, and the <a href=https://code.google.com/p/canvg/>canvg</a> library, created by <a href=https://code.google.com/u/gabelerner@gmail.com/>Gabe Lerner</a>, to render SVGs in <code>&lt;canvas&gt;</code> elements.</p>
+    <h1>Code</h1>
+    <p>The source code for this phosphorus fork is available <a href=https://github.com/GarboMuffin/phosphorus>on GitHub</a>.</p>
+  </section>
 
-  var titleArea = document.querySelector('#title-area');
-  var playerArea = document.querySelector('#player-area');
-  var projectArea = document.querySelector('#project-area');
+  <script src=fonts.js></script>
+  <script src=//cdnjs.cloudflare.com/ajax/libs/jszip/2.4.0/jszip.js></script>
+  <script src=lib/rgbcolor.js></script>
+  <script src=lib/StackBlur.js></script>
+  <script src=lib/canvg.js></script>
+  <script src="phosphorus.js"></script>
+  <script src=player.js></script>
 
-  playerArea.style.height = projectArea.style.height = 'auto';
-  var titleAreaHeight = titleArea.offsetHeight;
-  var playerAreaHeight = playerArea.offsetHeight;
-  var projectAreaHeight = projectArea.offsetHeight;
-  playerArea.style.height = projectArea.style.height = 0;
+  <script>
 
-  var examples = document.querySelector('#examples');
-  var urlInput = document.querySelector('.url');
-  urlInput.value = prefix + initialId;
+  (function() {
+    'use strict';
 
-  var progressBar = document.querySelector('.progress-bar');
-  var player = document.querySelector('.player');
-  var projectLink = document.querySelector('.project-link');
-  var bugLink = document.querySelector('#bug-link');
+    var prefix = 'https://scratch.mit.edu/projects/';
 
-  var packageLink = document.querySelector('#package-link');
-  var packageTurbo = document.querySelector('#package-turbo');
-  var packageFullScreen = document.querySelector('#package-full-screen');
+    var initialId = location.hash.substr(1);
+    if (initialId === 'zip') initialId = '';
 
-  var embedCode = document.querySelector('#embed-code');
-  var embedAutoStart = document.querySelector('#embed-auto-start');
-  var embedLightContent = document.querySelector('#embed-light-content');
-  var embedHideControls = document.querySelector('#embed-hide-controls');
+    var titleArea = document.querySelector('#title-area');
+    var playerArea = document.querySelector('#player-area');
+    var projectArea = document.querySelector('#project-area');
 
-  var timeout;
-  urlInput.addEventListener('input', function() {
-    var ss = urlInput.selectionStart;
-    var se = urlInput.selectionEnd;
-    var url = urlInput.value;
-    var id = url.match(/\d+/g) || [''];
-    while (id.length > 1 && id.indexOf(P.player.projectId) > -1) {
-      id.splice(id.indexOf(P.player.projectId), 1);
-    }
-    id = id[0];
-    urlInput.value = url = prefix + id;
-    urlInput.selectionStart = urlInput.selectionEnd = Math.max(prefix.length, ss);
-    clearTimeout(timeout);
-    if (P.player.projectId !== id) {
-      timeout = setTimeout(function() {
-        location.hash = '#' + id;
-      }, 300);
-    }
-  });
-  urlInput.addEventListener('focus', function() {
-    setTimeout(function() {
-      if (/\d/.test(urlInput.value)) {
-        urlInput.select();
+    playerArea.style.height = projectArea.style.height = 'auto';
+    var titleAreaHeight = titleArea.offsetHeight;
+    var playerAreaHeight = playerArea.offsetHeight;
+    var projectAreaHeight = projectArea.offsetHeight;
+    playerArea.style.height = projectArea.style.height = 0;
+
+    var examples = document.querySelector('#examples');
+    var urlInput = document.querySelector('.url');
+    urlInput.value = prefix + initialId;
+
+    var progressBar = document.querySelector('.progress-bar');
+    var player = document.querySelector('.player');
+    var projectLink = document.querySelector('.project-link');
+    var bugLink = document.querySelector('#bug-link');
+
+    var packageLink = document.querySelector('#package-link');
+    var packageTurbo = document.querySelector('#package-turbo');
+    var packageFullScreen = document.querySelector('#package-full-screen');
+
+    var embedCode = document.querySelector('#embed-code');
+    var embedAutoStart = document.querySelector('#embed-auto-start');
+    var embedLightContent = document.querySelector('#embed-light-content');
+    var embedHideControls = document.querySelector('#embed-hide-controls');
+
+    var timeout;
+    urlInput.addEventListener('input', function() {
+      var ss = urlInput.selectionStart;
+      var se = urlInput.selectionEnd;
+      var url = urlInput.value;
+      var id = url.match(/\d+/g) || [''];
+      while (id.length > 1 && id.indexOf(P.player.projectId) > -1) {
+        id.splice(id.indexOf(P.player.projectId), 1);
+      }
+      id = id[0];
+      urlInput.value = url = prefix + id;
+      urlInput.selectionStart = urlInput.selectionEnd = Math.max(prefix.length, ss);
+      clearTimeout(timeout);
+      if (P.player.projectId !== id) {
+        timeout = setTimeout(function() {
+          location.hash = '#' + id;
+        }, 300);
       }
     });
-  });
+    urlInput.addEventListener('focus', function() {
+      setTimeout(function() {
+        if (/\d/.test(urlInput.value)) {
+          urlInput.select();
+        }
+      });
+    });
 
-  examples.addEventListener('change', function() {
-    if (examples.value) {
-      location.hash = '#' + examples.value;
-      examples.selectedIndex = 0;
+    examples.addEventListener('change', function() {
+      if (examples.value) {
+        location.hash = '#' + examples.value;
+        examples.selectedIndex = 0;
+      }
+    });
+
+    window.addEventListener('hashchange', function() {
+      var id = location.hash.substr(1);
+      if (id !== 'zip') {
+        if (+id !== +id) id = '';
+        urlInput.value = prefix + id;
+      }
+      load(id);
+    });
+
+    function show(id) {
+      titleArea.style.height = id ? 0 : titleAreaHeight + 'px';
+      playerArea.style.height = id ? playerAreaHeight + 'px' : 0
+      projectArea.style.height = id ? projectAreaHeight + 'px' : 0;
+      if (!id) urlInput.focus();
     }
-  });
 
-  window.addEventListener('hashchange', function() {
-    var id = location.hash.substr(1);
-    if (id !== 'zip') {
-      if (+id !== +id) id = '';
-      urlInput.value = prefix + id;
-    }
-    load(id);
-  });
+    function load(id) {
+      if (id !== 'zip') {
+        show(id);
+      } else {
+        id = '';
+      }
 
-  function show(id) {
-    titleArea.style.height = id ? 0 : titleAreaHeight + 'px';
-    playerArea.style.height = id ? playerAreaHeight + 'px' : 0
-    projectArea.style.height = id ? projectAreaHeight + 'px' : 0;
-    if (!id) urlInput.focus();
-  }
+      document.title = 'phosphorus';
+      P.player.load(id, function(stage) {
+        stage.triggerGreenFlag();
+      }, function(title) {
+        document.title = title ? title + ' \xb7 phosphorus' : 'phosphorus';
+        updateBugLink();
+      });
 
-  function load(id) {
-    if (id !== 'zip') {
-      show(id);
-    } else {
-      id = '';
-    }
-
-    document.title = 'phosphorus';
-    P.player.load(id, function(stage) {
-      stage.triggerGreenFlag();
-    }, function(title) {
-      document.title = title ? title + ' \xb7 phosphorus' : 'phosphorus';
+      projectLink.href = P.player.projectURL;
       updateBugLink();
-    });
+      updatePackageLink();
+      updateEmbedCode();
+    }
 
-    projectLink.href = P.player.projectURL;
-    updateBugLink();
-    updatePackageLink();
-    updateEmbedCode();
-  }
+    function updateBugLink() {
+      bugLink.href = P.player.projectId ? 'https://github.com/GarboMuffin/phosphorus/issues/new?title=' + encodeURIComponent(P.player.projectTitle || P.player.projectURL) + '&body=' + encodeURIComponent('\n\n\n' + P.player.projectURL + '\nhttps://garbomuffin.github.io/phosphorus/#' + P.player.projectId + '\n' + navigator.userAgent) : 'https://github.com/GarboMuffin/phosphorus/issues/new?body=' + encodeURIComponent('\n\n\n' + navigator.userAgent);
+    }
 
-  function updateBugLink() {
-    bugLink.href = P.player.projectId ? 'https://github.com/GarboMuffin/phosphorus/issues/new?title=' + encodeURIComponent(P.player.projectTitle || P.player.projectURL) + '&body=' + encodeURIComponent('\n\n\n' + P.player.projectURL + '\nhttps://garbomuffin.github.io/phosphorus/#' + P.player.projectId + '\n' + navigator.userAgent) : 'https://github.com/GarboMuffin/phosphorus/issues/new?body=' + encodeURIComponent('\n\n\n' + navigator.userAgent);
-  }
+    function updatePackageLink() {
+      packageLink.href = P.player.projectId ? '/app.html?id=' + P.player.projectId + '&turbo=' + packageTurbo.checked + '&full-screen=' + packageFullScreen.checked : 'about:blank';
+    }
 
-  function updatePackageLink() {
-    packageLink.href = P.player.projectId ? '/app.html?id=' + P.player.projectId + '&turbo=' + packageTurbo.checked + '&full-screen=' + packageFullScreen.checked : 'about:blank';
-  }
+    packageTurbo.addEventListener('change', updatePackageLink);
+    packageFullScreen.addEventListener('change', updatePackageLink);
 
-  packageTurbo.addEventListener('change', updatePackageLink);
-  packageFullScreen.addEventListener('change', updatePackageLink);
+    function updateEmbedCode(e) {
+      embedCode.value = P.player.projectId ? '<script src=https://' + location.host + '/embed.js?id=' + P.player.projectId + (embedHideControls.checked ? '&ui=false' : '&auto-start=' + embedAutoStart.checked + '&light-content=' + embedLightContent.checked) + '></' + 'script>' : '';
+      embedAutoStart.disabled =
+      embedLightContent.disabled = embedHideControls.checked;
+      if (embedHideControls.checked) embedAutoStart.checked = true;
+      if (e) embedCode.focus();
+    }
 
-  function updateEmbedCode(e) {
-    embedCode.value = P.player.projectId ? '<script src=https://' + location.host + '/embed.js?id=' + P.player.projectId + (embedHideControls.checked ? '&ui=false' : '&auto-start=' + embedAutoStart.checked + '&light-content=' + embedLightContent.checked) + '></' + 'script>' : '';
-    embedAutoStart.disabled =
-    embedLightContent.disabled = embedHideControls.checked;
-    if (embedHideControls.checked) embedAutoStart.checked = true;
-    if (e) embedCode.focus();
-  }
+    function selectEmbedCode() {
+      setTimeout(function() {
+        embedCode.select();
+      });
+    }
 
-  function selectEmbedCode() {
+    embedCode.addEventListener('focus', selectEmbedCode);
+    embedCode.addEventListener('click', selectEmbedCode);
+    embedHideControls.addEventListener('change', updateEmbedCode);
+    embedAutoStart.addEventListener('change', updateEmbedCode);
+    embedLightContent.addEventListener('change', updateEmbedCode);
+
+    load(initialId);
+
     setTimeout(function() {
-      embedCode.select();
+      function setTransition(el) {
+        el.style.WebkitTransition =
+        el.style.MozTransition =
+        el.style.OTransition =
+        el.style.transition = 'height 0.2s';
+      }
+      setTransition(titleArea);
+      setTransition(playerArea);
+      setTransition(projectArea);
     });
-  }
 
-  embedCode.addEventListener('focus', selectEmbedCode);
-  embedCode.addEventListener('click', selectEmbedCode);
-  embedHideControls.addEventListener('change', updateEmbedCode);
-  embedAutoStart.addEventListener('change', updateEmbedCode);
-  embedLightContent.addEventListener('change', updateEmbedCode);
-
-  load(initialId);
-
-  setTimeout(function() {
-    function setTransition(el) {
-      el.style.WebkitTransition =
-      el.style.MozTransition =
-      el.style.OTransition =
-      el.style.transition = 'height 0.2s';
+    function cancel(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
     }
-    setTransition(titleArea);
-    setTransition(playerArea);
-    setTransition(projectArea);
-  });
+    document.body.addEventListener('dragover', cancel);
+    document.body.addEventListener('dragenter', cancel);
 
-  function cancel(e) {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
-  }
-  document.body.addEventListener('dragover', cancel);
-  document.body.addEventListener('dragenter', cancel);
+    document.body.addEventListener('drop', function(e) {
+      e.preventDefault();
 
-  document.body.addEventListener('drop', function(e) {
-    e.preventDefault();
+      var f = e.dataTransfer.files[0];
 
-    var f = e.dataTransfer.files[0];
-
-    if (f) {
-      location.hash = '#zip';
-      show('zip');
-      var ext = f.name.split('.').pop();
-      if (ext === 'sb2' || ext === 'zip') {
-        var request = P.IO.loadSB2File(f);
-      } else if (ext === 'json') {
-        request = P.IO.loadJSONFile(f);
+      if (f) {
+        location.hash = '#zip';
+        show('zip');
+        var ext = f.name.split('.').pop();
+        if (ext === 'sb2' || ext === 'zip') {
+          var request = P.IO.loadSB2File(f);
+        } else if (ext === 'json') {
+          request = P.IO.loadJSONFile(f);
+        }
+        if (request) {
+          P.player.showProgress(request, function(stage) {
+            stage.triggerGreenFlag();
+          });
+        }
       }
-      if (request) {
-        P.player.showProgress(request, function(stage) {
-          stage.triggerGreenFlag();
-        });
-      }
-    }
-  });
+    });
 
-}());
+  }());
 
-</script>
+  </script>
+
+</body>
+
+</html>
