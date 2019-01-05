@@ -2,13 +2,11 @@
 
 var P = {};
 
-P.config = (function(exports) {
-  exports.scale = window.devicePixelRatio || 1;
-  exports.hasTouchEvents = 'ontouchstart' in document;
-  exports.framerate = 30;
-
-  return exports;
-}({}));
+P.config = {
+  scale: window.devicePixelRatio || 1,
+  hasTouchEvents: 'ontouchstart' in document,
+  framerate: 30,
+};
 
 // Utility methods
 P.utils = (function(exports) {
@@ -220,7 +218,6 @@ P.renderers.canvas2d = (function(renderer) {
   };
 
   Renderer.prototype.drawChild = function(c, noEffects) {
-    // debugger;
     if (c.isDragging) {
       c.moveTo(c.dragOffsetX + c.stage.mouseX, c.dragOffsetY + c.stage.mouseY);
     }
@@ -546,9 +543,9 @@ P.core = (function(core) {
     this.root.appendChild(this.penCanvas);
     this.penCanvas.width = scale * 480;
     this.penCanvas.height = scale * 360;
-    this.penContext = this.penCanvas.getContext('2d');
-    this.penContext.lineCap = 'round';
-    this.penContext.scale(scale, scale);
+    this.penRenderer = new P.renderers.canvas2d.Renderer(this.penCanvas);
+    this.penRenderer.ctx.lineCap = 'round';
+    this.penRenderer.ctx.scale(scale, scale);
 
     this.canvas = document.createElement('canvas');
     this.root.appendChild(this.canvas);
@@ -847,9 +844,9 @@ P.core = (function(core) {
       canvas.getContext('2d').drawImage(this.penCanvas, 0, 0);
       this.penCanvas.width = 480 * zoom * P.config.scale;
       this.penCanvas.height = 360 * zoom * P.config.scale;
-      this.penContext.drawImage(canvas, 0, 0, 480 * zoom * P.config.scale, 360 * zoom * P.config.scale);
-      this.penContext.scale(this.maxZoom, this.maxZoom);
-      this.penContext.lineCap = 'round';
+      this.penRenderer.drawImage(canvas, 0, 0, 480 * zoom * P.config.scale, 360 * zoom * P.config.scale);
+      this.penRenderer.reset(this.maxZoom);
+      this.penRenderer.ctx.lineCap = 'round';
     }
     this.root.style.width =
     this.canvas.style.width =
@@ -1137,7 +1134,7 @@ P.core = (function(core) {
     }
 
     if (this.isPenDown && !this.isDragging) {
-      var context = this.stage.penContext;
+      var context = this.stage.penRenderer.ctx;
       if (this.penSize % 2 > .5 && this.penSize % 2 < 1.5) {
         ox -= .5;
         oy -= .5;
@@ -1157,7 +1154,7 @@ P.core = (function(core) {
   };
 
   Sprite.prototype.dotPen = function() {
-    var context = this.stage.penContext;
+    var context = this.stage.penRenderer.ctx;
     var x = this.scratchX;
     var y = this.scratchY;
     context.fillStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
@@ -1165,6 +1162,10 @@ P.core = (function(core) {
     context.arc(240 + x, 180 - y, this.penSize / 2, 0, 2 * Math.PI, false);
     context.fill();
   };
+
+  Sprite.prototype.stamp = function() {
+    this.stage.penRenderer.drawChild(this);
+  }
 
   Sprite.prototype.setDirection = function(degrees) {
     var d = degrees % 360;
@@ -3100,8 +3101,8 @@ P.compilers.sb2 = (function() {
       } else if (block[0] === 'clearPenTrails') { /* Pen */
 
         source += 'self.penCanvas.width = 480 * self.maxZoom;\n';
-        source += 'self.penContext.scale(self.maxZoom, self.maxZoom);\n';
-        source += 'self.penContext.lineCap = "round";\n'
+        source += 'self.penRenderer.reset(self.maxZoom);\n';
+        source += 'self.penRenderer.ctx.lineCap = "round";\n'
 
       } else if (block[0] === 'putPenDown') {
 
@@ -3158,7 +3159,7 @@ P.compilers.sb2 = (function() {
 
       } else if (block[0] === 'stampCostume') {
 
-        source += 'S.draw(self.penContext);\n';
+        source += 'S.stamp();\n';
 
       } else if (block[0] === 'setVar:to:') { /* Data */
 
