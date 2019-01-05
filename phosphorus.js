@@ -1655,6 +1655,10 @@ var P = (function() {
         var top = Math.min(mb.top, ob.top);
         var right = Math.min(mb.right, ob.right);
         var bottom = Math.max(mb.bottom, ob.bottom);
+        
+        if (right - left < 1 || top - bottom < 1) {
+          continue;
+        }
 
         collisionCanvas.width = right - left;
         collisionCanvas.height = top - bottom;
