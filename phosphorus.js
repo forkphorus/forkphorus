@@ -6,6 +6,76 @@ P.config = {
   scale: window.devicePixelRatio || 1,
   hasTouchEvents: 'ontouchstart' in document,
   framerate: 30,
+  wavFiles: {
+    "AcousticGuitar_F3": "instruments/AcousticGuitar_F3_22k.wav",
+    "AcousticPiano_As3": "instruments/AcousticPiano(5)_A%233_22k.wav",
+    "AcousticPiano_C4": "instruments/AcousticPiano(5)_C4_22k.wav",
+    "AcousticPiano_G4": "instruments/AcousticPiano(5)_G4_22k.wav",
+    "AcousticPiano_F5": "instruments/AcousticPiano(5)_F5_22k.wav",
+    "AcousticPiano_C6": "instruments/AcousticPiano(5)_C6_22k.wav",
+    "AcousticPiano_Ds6": "instruments/AcousticPiano(5)_D%236_22k.wav",
+    "AcousticPiano_D7": "instruments/AcousticPiano(5)_D7_22k.wav",
+    "AltoSax_A3": "instruments/AltoSax_A3_22K.wav",
+    "AltoSax_C6": "instruments/AltoSax(3)_C6_22k.wav",
+    "Bassoon_C3": "instruments/Bassoon_C3_22k.wav",
+    "BassTrombone_A2_2": "instruments/BassTrombone_A2(2)_22k.wav",
+    "BassTrombone_A2_3": "instruments/BassTrombone_A2(3)_22k.wav",
+    "Cello_C2": "instruments/Cello(3b)_C2_22k.wav",
+    "Cello_As2": "instruments/Cello(3)_A%232_22k.wav",
+    "Choir_F3": "instruments/Choir(4)_F3_22k.wav",
+    "Choir_F4": "instruments/Choir(4)_F4_22k.wav",
+    "Choir_F5": "instruments/Choir(4)_F5_22k.wav",
+    "Clarinet_C4": "instruments/Clarinet_C4_22k.wav",
+    "ElectricBass_G1": "instruments/ElectricBass(2)_G1_22k.wav",
+    "ElectricGuitar_F3": "instruments/ElectricGuitar(2)_F3(1)_22k.wav",
+    "ElectricPiano_C2": "instruments/ElectricPiano_C2_22k.wav",
+    "ElectricPiano_C4": "instruments/ElectricPiano_C4_22k.wav",
+    "EnglishHorn_D4": "instruments/EnglishHorn(1)_D4_22k.wav",
+    "EnglishHorn_F3": "instruments/EnglishHorn(1)_F3_22k.wav",
+    "Flute_B5_1": "instruments/Flute(3)_B5(1)_22k.wav",
+    "Flute_B5_2": "instruments/Flute(3)_B5(2)_22k.wav",
+    "Marimba_C4": "instruments/Marimba_C4_22k.wav",
+    "MusicBox_C4": "instruments/MusicBox_C4_22k.wav",
+    "Organ_G2": "instruments/Organ(2)_G2_22k.wav",
+    "Pizz_A3": "instruments/Pizz(2)_A3_22k.wav",
+    "Pizz_E4": "instruments/Pizz(2)_E4_22k.wav",
+    "Pizz_G2": "instruments/Pizz(2)_G2_22k.wav",
+    "SteelDrum_D5": "instruments/SteelDrum_D5_22k.wav",
+    "SynthLead_C4": "instruments/SynthLead(6)_C4_22k.wav",
+    "SynthLead_C6": "instruments/SynthLead(6)_C6_22k.wav",
+    "SynthPad_A3": "instruments/SynthPad(2)_A3_22k.wav",
+    "SynthPad_C6": "instruments/SynthPad(2)_C6_22k.wav",
+    "TenorSax_C3": "instruments/TenorSax(1)_C3_22k.wav",
+    "Trombone_B3": "instruments/Trombone_B3_22k.wav",
+    "Trumpet_E5": "instruments/Trumpet_E5_22k.wav",
+    "Vibraphone_C3": "instruments/Vibraphone_C3_22k.wav",
+    "Violin_D4": "instruments/Violin(2)_D4_22K.wav",
+    "Violin_A4": "instruments/Violin(3)_A4_22k.wav",
+    "Violin_E5": "instruments/Violin(3b)_E5_22k.wav",
+    "WoodenFlute_C5": "instruments/WoodenFlute_C5_22k.wav",
+    "BassDrum": "drums/BassDrum(1b)_22k.wav",
+    "Bongo": "drums/Bongo_22k.wav",
+    "Cabasa": "drums/Cabasa(1)_22k.wav",
+    "Clap": "drums/Clap(1)_22k.wav",
+    "Claves": "drums/Claves(1)_22k.wav",
+    "Conga": "drums/Conga(1)_22k.wav",
+    "Cowbell": "drums/Cowbell(3)_22k.wav",
+    "Crash": "drums/Crash(2)_22k.wav",
+    "Cuica": "drums/Cuica(2)_22k.wav",
+    "GuiroLong": "drums/GuiroLong(1)_22k.wav",
+    "GuiroShort": "drums/GuiroShort(1)_22k.wav",
+    "HiHatClosed": "drums/HiHatClosed(1)_22k.wav",
+    "HiHatOpen": "drums/HiHatOpen(2)_22k.wav",
+    "HiHatPedal": "drums/HiHatPedal(1)_22k.wav",
+    "Maracas": "drums/Maracas(1)_22k.wav",
+    "SideStick": "drums/SideStick(1)_22k.wav",
+    "SnareDrum": "drums/SnareDrum(1)_22k.wav",
+    "Tambourine": "drums/Tambourine(3)_22k.wav",
+    "Tom": "drums/Tom(1)_22k.wav",
+    "Triangle": "drums/Triangle(1)_22k.wav",
+    "Vibraslap": "drums/Vibraslap(1)_22k.wav",
+    "WoodBlock": "drums/WoodBlock(1)_22k.wav"
+  },
 };
 
 // Utility methods
@@ -199,1638 +269,1648 @@ P.utils = (function(exports) {
 P.renderers = {};
 
 // Renders sprites using a 2D canvas context.
-P.renderers.canvas2d = (function(renderer) {
-  var Renderer = renderer.Renderer = function(canvas) {
-    this.ctx = canvas.getContext('2d');
-    this.canvas = canvas;
-  };
-
-  Renderer.prototype.reset = function(scale) {
-    // resizes and clears the canvas
-    this.canvas.width = 480 * scale * P.config.scale;
-    this.canvas.height = 360 * scale * P.config.scale;
-
-    this.ctx.scale(scale * P.config.scale, scale * P.config.scale);
-  };
-
-  Renderer.prototype.drawImage = function(image, x, y) {
-    this.ctx.drawImage(image, x, y);
-  };
-
-  Renderer.prototype.drawChild = function(c, noEffects) {
-    var costume = c.costumes[c.currentCostumeIndex];
-    if (costume) {
-      this.ctx.save();
-
-      var z = c.stage.zoom * P.config.scale;
-      if (c.isSprite) {
-        this.ctx.translate(((c.scratchX + 240) * z | 0) / z, ((180 - c.scratchY) * z | 0) / z);
-        if (this.rotationStyle === 'normal') {
-          this.ctx.rotate((c.direction - 90) * Math.PI / 180);
-        } else if (c.rotationStyle === 'leftRight' && c.direction < 0) {
-          this.ctx.scale(-1, 1);
-        }
-      }
-      this.ctx.scale(c.scale, c.scale);
-      this.ctx.scale(costume.scale, costume.scale);
-      if (c.isSprite) {
-        this.ctx.translate(-costume.rotationCenterX, -costume.rotationCenterY);
-      }
-
-      if (!noEffects) {
-        this.ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
-      } else {
-        this.ctx.globalAlpha = 1;
-      }
-
-      this.ctx.drawImage(costume.image, 0, 0);
-
-      this.ctx.restore();
+P.renderers.canvas2d = (function() {
+  class Renderer {
+    constructor(canvas) {
+      this.ctx = canvas.getContext('2d');
+      this.canvas = canvas;
     }
-  };
 
-  return renderer;
-}({}));
+    reset(scale) {
+      // resizes and clears the canvas
+      this.canvas.width = 480 * scale * P.config.scale;
+      this.canvas.height = 360 * scale * P.config.scale;
+
+      this.ctx.scale(scale * P.config.scale, scale * P.config.scale);
+    }
+
+    drawImage(image, x, y) {
+      this.ctx.drawImage(image, x, y);
+    }
+
+    drawChild(c, noEffects) {
+      var costume = c.costumes[c.currentCostumeIndex];
+      if (costume) {
+        this.ctx.save();
+
+        var z = c.stage.zoom * P.config.scale;
+        if (c.isSprite) {
+          this.ctx.translate(((c.scratchX + 240) * z | 0) / z, ((180 - c.scratchY) * z | 0) / z);
+          if (this.rotationStyle === 'normal') {
+            this.ctx.rotate((c.direction - 90) * Math.PI / 180);
+          } else if (c.rotationStyle === 'leftRight' && c.direction < 0) {
+            this.ctx.scale(-1, 1);
+          }
+        }
+        this.ctx.scale(c.scale, c.scale);
+        this.ctx.scale(costume.scale, costume.scale);
+        if (c.isSprite) {
+          this.ctx.translate(-costume.rotationCenterX, -costume.rotationCenterY);
+        }
+
+        if (!noEffects) {
+          this.ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
+        } else {
+          this.ctx.globalAlpha = 1;
+        }
+
+        this.ctx.drawImage(costume.image, 0, 0);
+
+        this.ctx.restore();
+      }
+    }
+  }
+
+  return {
+    Renderer: Renderer,
+  };
+}());
 
 // Phosphorus Core
 P.core = (function(core) {
   var AudioContext = window.AudioContext || window.webkitAudioContext;
   var audioContext = core.audioContext = AudioContext && new AudioContext;
 
-  var Base = core.Base = function() {
-    this.isClone = false;
-    this.costumes = [];
-    this.currentCostumeIndex = 0;
-    this.objName = '';
-    this.instrument = 0;
-    this.volume = 1;
+  class Base {
+    constructor() {
+      this.isClone = false;
+      this.costumes = [];
+      this.currentCostumeIndex = 0;
+      this.objName = '';
+      this.instrument = 0;
+      this.volume = 1;
 
-    this.soundRefs = Object.create(null);
-    this.sounds = [];
+      this.soundRefs = {};
+      this.sounds = [];
 
-    this.vars = Object.create(null);
-    this.watchers = Object.create(null);
-    this.lists = Object.create(null);
+      this.vars = {};
+      this.watchers = {};
+      this.lists = {};
 
-    this.procedures = {};
-    this.listeners = {
-      whenClicked: [],
-      whenCloned: [],
-      whenGreenFlag: [],
-      whenIReceive: {},
-      whenKeyPressed: [],
-      whenSceneStarts: [],
-      whenSensorGreaterThan: []
-    };
-    for (var i = 0; i < 128; i++) {
-      this.listeners.whenKeyPressed.push([]);
-    }
-    this.fns = [];
-    this.scripts = [];
-
-    this.filters = {
-      color: 0,
-      fisheye: 0,
-      whirl: 0,
-      pixelate: 0,
-      mosaic: 0,
-      brightness: 0,
-      ghost: 0
-    };
-  };
-
-  Base.prototype.fromJSON = function(data) {
-    this.objName = data.objName;
-    this.scripts = data.scripts;
-    this.currentCostumeIndex = data.currentCostumeIndex || 0;
-    this.costumes = data.costumes.map(function(d, i) {
-      return new Costume(d, i, this);
-    }, this);
-    this.addSounds(data.sounds);
-    this.addLists(data.lists);
-    this.addVariables(data.variables);
-
-    return this;
-  };
-
-  Base.prototype.addSounds = function(sounds) {
-    for (var i = 0; i < sounds.length; i++) {
-      var s = new Sound(sounds[i]);
-      this.sounds.push(s);
-      this.soundRefs[s.name] = s;
-    }
-  };
-
-  Base.prototype.addVariables = function(variables) {
-    for (var i = 0; i < variables.length; i++) {
-      if (variables[i].isPeristent) {
-        throw new Error('Cloud variables are not supported');
+      this.procedures = {};
+      this.listeners = {
+        whenClicked: [],
+        whenCloned: [],
+        whenGreenFlag: [],
+        whenIReceive: {},
+        whenKeyPressed: [],
+        whenSceneStarts: [],
+        whenSensorGreaterThan: []
+      };
+      for (var i = 0; i < 128; i++) {
+        this.listeners.whenKeyPressed.push([]);
       }
-      this.vars[variables[i].name] = variables[i].value;
-    }
-  };
+      this.fns = [];
+      this.scripts = [];
 
-  Base.prototype.addLists = function(lists) {
-    for (var i = 0; i < lists.length; i++) {
-      if (lists[i].isPeristent) {
-        throw new Error('Cloud lists are not supported');
+      this.filters = {
+        color: 0,
+        fisheye: 0,
+        whirl: 0,
+        pixelate: 0,
+        mosaic: 0,
+        brightness: 0,
+        ghost: 0,
+      };
+    }
+
+    fromJSON(data) {
+      this.objName = data.objName;
+      this.scripts = data.scripts;
+      this.currentCostumeIndex = data.currentCostumeIndex || 0;
+      this.costumes = data.costumes.map(function(d, i) {
+        return new Costume(d, i, this);
+      }, this);
+      this.addSounds(data.sounds);
+      this.addLists(data.lists);
+      this.addVariables(data.variables);
+
+      return this;
+    }
+
+    addSounds(sounds) {
+      for (var i = 0; i < sounds.length; i++) {
+        var s = new Sound(sounds[i]);
+        this.sounds.push(s);
+        this.soundRefs[s.name] = s;
       }
-      this.lists[lists[i].listName] = lists[i].contents;
-      // TODO list watchers
     }
-  };
 
-  Base.prototype.showVariable = function(name, visible) {
-    var watcher = this.watchers[name];
-    var stage = this.stage;
-    if (!watcher) {
-      watcher = this.watchers[name] = new P.Watcher(stage);
-      watcher.x = stage.defaultWatcherX;
-      watcher.y = stage.defaultWatcherY;
-      stage.defaultWatcherY += 26;
-      if (stage.defaultWatcherY >= 450) {
-        stage.defaultWatcherY = 10;
-        stage.defaultWatcherX += 150;
+    addVariables(variables) {
+      for (var i = 0; i < variables.length; i++) {
+        if (variables[i].isPeristent) {
+          throw new Error('Cloud variables are not supported');
+        }
+        this.vars[variables[i].name] = variables[i].value;
       }
-      watcher.target = this;
-      watcher.label = (watcher.target === stage ? '' : watcher.target.objName + ': ') + name;
-      watcher.param = name;
-      stage.allWatchers.push(watcher);
     }
-    watcher.visible = visible;
-    watcher.layout();
-  };
 
-  Base.prototype.showNextCostume = function() {
-    this.currentCostumeIndex = (this.currentCostumeIndex + 1) % this.costumes.length;
-    if (this.isStage) this.updateBackdrop();
-    if (this.saying) this.updateBubble();
-  };
+    addLists(lists) {
+      for (var i = 0; i < lists.length; i++) {
+        if (lists[i].isPeristent) {
+          throw new Error('Cloud lists are not supported');
+        }
+        this.lists[lists[i].listName] = lists[i].contents;
+        // TODO list watchers
+      }
+    }
 
-  Base.prototype.showPreviousCostume = function() {
-    var length = this.costumes.length;
-    this.currentCostumeIndex = (this.currentCostumeIndex + length - 1) % length;
-    if (this.isStage) this.updateBackdrop();
-    if (this.saying) this.updateBubble();
-  };
+    showVariable(name, visible) {
+      var watcher = this.watchers[name];
+      var stage = this.stage;
+      if (!watcher) {
+        watcher = this.watchers[name] = new P.Watcher(stage);
+        watcher.x = stage.defaultWatcherX;
+        watcher.y = stage.defaultWatcherY;
+        stage.defaultWatcherY += 26;
+        if (stage.defaultWatcherY >= 450) {
+          stage.defaultWatcherY = 10;
+          stage.defaultWatcherX += 150;
+        }
+        watcher.target = this;
+        watcher.label = (watcher.target === stage ? '' : watcher.target.objName + ': ') + name;
+        watcher.param = name;
+        stage.allWatchers.push(watcher);
+      }
+      watcher.visible = visible;
+      watcher.layout();
+    }
 
-  Base.prototype.getCostumeName = function() {
-    return this.costumes[this.currentCostumeIndex] ? this.costumes[this.currentCostumeIndex].costumeName : '';
-  };
+    showNextCostume() {
+      this.currentCostumeIndex = (this.currentCostumeIndex + 1) % this.costumes.length;
+      if (this.isStage) this.updateBackdrop();
+      if (this.saying) this.updateBubble();
+    }
 
-  Base.prototype.setCostume = function(costume) {
-    if (typeof costume !== 'number') {
-      costume = '' + costume;
-      for (var i = 0; i < this.costumes.length; i++) {
-        if (this.costumes[i].costumeName === costume) {
-          this.currentCostumeIndex = i;
-          if (this.isStage) this.updateBackdrop();
-          if (this.saying) this.updateBubble();
+    showPreviousCostume() {
+      var length = this.costumes.length;
+      this.currentCostumeIndex = (this.currentCostumeIndex + length - 1) % length;
+      if (this.isStage) this.updateBackdrop();
+      if (this.saying) this.updateBubble();
+    }
+
+    getCostumeName() {
+      return this.costumes[this.currentCostumeIndex] ? this.costumes[this.currentCostumeIndex].costumeName : '';
+    }
+
+    setCostume(costume) {
+      if (typeof costume !== 'number') {
+        costume = '' + costume;
+        for (var i = 0; i < this.costumes.length; i++) {
+          if (this.costumes[i].costumeName === costume) {
+            this.currentCostumeIndex = i;
+            if (this.isStage) this.updateBackdrop();
+            if (this.saying) this.updateBubble();
+            return;
+          }
+        }
+        if (costume === (this.isSprite ? 'next costume' : 'next backdrop')) {
+          this.showNextCostume();
+          return;
+        }
+        if (costume === (this.isSprite ? 'previous costume' : 'previous backdrop')) {
+          this.showPreviousCostume();
           return;
         }
       }
-      if (costume === (this.isSprite ? 'next costume' : 'next backdrop')) {
-        this.showNextCostume();
-        return;
+      var i = (Math.floor(costume) - 1 || 0) % this.costumes.length;
+      if (i < 0) i += this.costumes.length;
+      this.currentCostumeIndex = i;
+      if (this.isStage) this.updateBackdrop();
+      if (this.saying) this.updateBubble();
+    }
+
+    setFilter(name, value) {
+      switch (name) {
+        case 'ghost':
+          if (value < 0) value = 0;
+          if (value > 100) value = 100;
+          break;
+        case 'brightness':
+          if (value < -100) value = -100;
+          if (value > 100) value = 100;
+          break;
+        case 'color':
+          value = value % 200;
+          if (value < 0) value += 200;
+          break;
       }
-      if (costume === (this.isSprite ? 'previous costume' : 'previous backdrop')) {
-        this.showPreviousCostume();
-        return;
+      this.filters[name] = value;
+      if (this.isStage) this.updateFilters();
+    }
+
+    changeFilter(name, value) {
+      this.setFilter(name, this.filters[name] + value);
+    }
+
+    resetFilters() {
+      this.filters = {
+        color: 0,
+        fisheye: 0,
+        whirl: 0,
+        pixelate: 0,
+        mosaic: 0,
+        brightness: 0,
+        ghost: 0
+      };
+    }
+
+    getSound(name) {
+      if (typeof name === 'string') {
+        var s = this.soundRefs[name];
+        if (s) return s;
+        name = +name;
       }
-    }
-    var i = (Math.floor(costume) - 1 || 0) % this.costumes.length;
-    if (i < 0) i += this.costumes.length;
-    this.currentCostumeIndex = i;
-    if (this.isStage) this.updateBackdrop();
-    if (this.saying) this.updateBubble();
-  };
-
-  Base.prototype.setFilter = function(name, value) {
-    switch (name) {
-      case 'ghost':
-        if (value < 0) value = 0;
-        if (value > 100) value = 100;
-        break;
-      case 'brightness':
-        if (value < -100) value = -100;
-        if (value > 100) value = 100;
-        break;
-      case 'color':
-        value = value % 200;
-        if (value < 0) value += 200;
-        break;
-    }
-    this.filters[name] = value;
-    if (this.isStage) this.updateFilters();
-  };
-
-  Base.prototype.changeFilter = function(name, value) {
-    this.setFilter(name, this.filters[name] + value);
-  };
-
-  Base.prototype.resetFilters = function() {
-    this.filters = {
-      color: 0,
-      fisheye: 0,
-      whirl: 0,
-      pixelate: 0,
-      mosaic: 0,
-      brightness: 0,
-      ghost: 0
-    };
-  };
-
-  Base.prototype.getSound = function(name) {
-    if (typeof name === 'string') {
-      var s = this.soundRefs[name];
-      if (s) return s;
-      name = +name;
-    }
-    var l = this.sounds.length;
-    if (l && typeof name === 'number' && name === name) {
-      var i = Math.round(name - 1) % l;
-      if (i < 0) i += l;
-      return this.sounds[i];
-    }
-  };
-
-  Base.prototype.stopSounds = function() {
-    if (this.node) {
-      this.node.disconnect();
-      this.node = null;
-    }
-    for (var i = this.sounds.length; i--;) {
-      var s = this.sounds[i];
-      if (s.node) {
-        s.node.disconnect();
-        s.node = null;
+      var l = this.sounds.length;
+      if (l && typeof name === 'number' && name === name) {
+        var i = Math.round(name - 1) % l;
+        if (i < 0) i += l;
+        return this.sounds[i];
       }
     }
-  };
 
-  Base.prototype.ask = function(question) {
-    var stage = this.stage;
-    if (question) {
-      if (this.isSprite && this.visible) {
-        this.say(question);
-        stage.promptTitle.style.display = 'none';
+    stopSounds() {
+      if (this.node) {
+        this.node.disconnect();
+        this.node = null;
+      }
+      for (var i = this.sounds.length; i--;) {
+        var s = this.sounds[i];
+        if (s.node) {
+          s.node.disconnect();
+          s.node = null;
+        }
+      }
+    }
+
+    ask(question) {
+      var stage = this.stage;
+      if (question) {
+        if (this.isSprite && this.visible) {
+          this.say(question);
+          stage.promptTitle.style.display = 'none';
+        } else {
+          stage.promptTitle.style.display = 'block';
+          stage.promptTitle.textContent = question;
+        }
       } else {
-        stage.promptTitle.style.display = 'block';
-        stage.promptTitle.textContent = question;
+        stage.promptTitle.style.display = 'none';
       }
-    } else {
-      stage.promptTitle.style.display = 'none';
+      stage.hidePrompt = false;
+      stage.prompter.style.display = 'block';
+      stage.prompt.value = '';
+      stage.prompt.focus();
     }
-    stage.hidePrompt = false;
-    stage.prompter.style.display = 'block';
-    stage.prompt.value = '';
-    stage.prompt.focus();
-  };
+  }
 
-  var Stage = core.Stage = function() {
-    this.stage = this;
+  class Stage extends Base {
+    constructor() {
+      super();
+      this.stage = this;
+      this.isStage = true;
 
-    Stage.parent.call(this);
+      this.children = [];
+      this.allWatchers = [];
+      this.dragging = Object.create(null);
+      this.defaultWatcherX = 10;
+      this.defaultWatcherY = 10;
 
-    this.children = [];
-    this.allWatchers = [];
-    this.dragging = Object.create(null);
-    this.defaultWatcherX = 10;
-    this.defaultWatcherY = 10;
+      this.info = {};
+      this.answer = '';
+      this.promptId = 0;
+      this.nextPromptId = 0;
+      this.tempoBPM = 60;
+      this.videoAlpha = 1;
+      this.zoom = 1;
+      this.maxZoom = P.config.scale;
+      this.baseNow = 0;
+      this.baseTime = 0;
+      this.timerStart = 0;
 
-    this.info = {};
-    this.answer = '';
-    this.promptId = 0;
-    this.nextPromptId = 0;
-    this.tempoBPM = 60;
-    this.videoAlpha = 1;
-    this.zoom = 1;
-    this.maxZoom = P.config.scale;
-    this.baseNow = 0;
-    this.baseTime = 0;
-    this.timerStart = 0;
+      this.keys = [];
+      this.keys.any = 0;
+      this.rawMouseX = 0;
+      this.rawMouseY = 0;
+      this.mouseX = 0;
+      this.mouseY = 0;
+      this.mousePressed = false;
 
-    this.keys = [];
-    this.keys.any = 0;
-    this.rawMouseX = 0;
-    this.rawMouseY = 0;
-    this.mouseX = 0;
-    this.mouseY = 0;
-    this.mousePressed = false;
+      this.root = document.createElement('div');
+      this.root.style.position = 'absolute';
+      this.root.style.overflow = 'hidden';
+      this.root.style.width = '480px';
+      this.root.style.height = '360px';
+      this.root.style.fontSize = '10px';
+      this.root.style.background = '#fff';
+      this.root.style.contain = 'strict';
 
-    this.root = document.createElement('div');
-    this.root.style.position = 'absolute';
-    this.root.style.overflow = 'hidden';
-    this.root.style.width = '480px';
-    this.root.style.height = '360px';
-    this.root.style.fontSize = '10px';
-    this.root.style.background = '#fff';
-    this.root.style.contain = 'strict';
+      this.root.style.WebkitUserSelect =
+        this.root.style.MozUserSelect =
+        this.root.style.MSUserSelect =
+        this.root.style.WebkitUserSelect = 'none';
 
-    this.root.style.WebkitUserSelect =
-      this.root.style.MozUserSelect =
-      this.root.style.MSUserSelect =
-      this.root.style.WebkitUserSelect = 'none';
+      var scale = P.config.scale;
 
-    var scale = P.config.scale;
+      this.backdropCanvas = document.createElement('canvas');
+      this.root.appendChild(this.backdropCanvas);
+      this.backdropCanvas.width = scale * 480;
+      this.backdropCanvas.height = scale * 360;
+      this.backdropContext = this.backdropCanvas.getContext('2d');
 
-    this.backdropCanvas = document.createElement('canvas');
-    this.root.appendChild(this.backdropCanvas);
-    this.backdropCanvas.width = scale * 480;
-    this.backdropCanvas.height = scale * 360;
-    this.backdropContext = this.backdropCanvas.getContext('2d');
+      this.penCanvas = document.createElement('canvas');
+      this.root.appendChild(this.penCanvas);
+      this.penCanvas.width = scale * 480;
+      this.penCanvas.height = scale * 360;
+      this.penRenderer = new P.renderers.canvas2d.Renderer(this.penCanvas);
+      this.penRenderer.ctx.lineCap = 'round';
+      this.penRenderer.ctx.scale(scale, scale);
 
-    this.penCanvas = document.createElement('canvas');
-    this.root.appendChild(this.penCanvas);
-    this.penCanvas.width = scale * 480;
-    this.penCanvas.height = scale * 360;
-    this.penRenderer = new P.renderers.canvas2d.Renderer(this.penCanvas);
-    this.penRenderer.ctx.lineCap = 'round';
-    this.penRenderer.ctx.scale(scale, scale);
+      this.canvas = document.createElement('canvas');
+      this.root.appendChild(this.canvas);
+      this.renderer = new P.renderers.canvas2d.Renderer(this.canvas);
 
-    this.canvas = document.createElement('canvas');
-    this.root.appendChild(this.canvas);
-    this.renderer = new P.renderers.canvas2d.Renderer(this.canvas);
+      this.ui = document.createElement('div');
+      this.root.appendChild(this.ui);
+      this.ui.style.pointerEvents = 'none';
+      this.ui.style.contain = 'strict';
 
-    this.ui = document.createElement('div');
-    this.root.appendChild(this.ui);
-    this.ui.style.pointerEvents = 'none';
-    this.ui.style.contain = 'strict';
+      this.canvas.tabIndex = 0;
+      this.canvas.style.outline = 'none';
 
-    this.canvas.tabIndex = 0;
-    this.canvas.style.outline = 'none';
+      this.backdropCanvas.style.position =
+        this.penCanvas.style.position =
+        this.canvas.style.position =
+        this.ui.style.position = 'absolute';
 
-    this.backdropCanvas.style.position =
-      this.penCanvas.style.position =
-      this.canvas.style.position =
-      this.ui.style.position = 'absolute';
+      this.backdropCanvas.style.left =
+        this.penCanvas.style.left =
+        this.canvas.style.left =
+        this.ui.style.left =
+        this.backdropCanvas.style.top =
+        this.penCanvas.style.top =
+        this.canvas.style.top =
+        this.ui.style.top = 0;
 
-    this.backdropCanvas.style.left =
-      this.penCanvas.style.left =
-      this.canvas.style.left =
-      this.ui.style.left =
-      this.backdropCanvas.style.top =
-      this.penCanvas.style.top =
-      this.canvas.style.top =
-      this.ui.style.top = 0;
+      this.backdropCanvas.style.width =
+        this.penCanvas.style.width =
+        this.canvas.style.width =
+        this.ui.style.width = '480px';
 
-    this.backdropCanvas.style.width =
-      this.penCanvas.style.width =
-      this.canvas.style.width =
-      this.ui.style.width = '480px';
+      this.backdropCanvas.style.height =
+        this.penCanvas.style.height =
+        this.canvas.style.height =
+        this.ui.style.height = '360px';
 
-    this.backdropCanvas.style.height =
-      this.penCanvas.style.height =
-      this.canvas.style.height =
-      this.ui.style.height = '360px';
+      this.backdropCanvas.style.transform =
+        this.penCanvas.style.transform =
+        this.canvas.style.transform =
+        this.ui.style.transform = 'translateZ(0)';
 
-    this.backdropCanvas.style.transform =
-      this.penCanvas.style.transform =
-      this.canvas.style.transform =
-      this.ui.style.transform = 'translateZ(0)';
+      this.root.addEventListener('keydown', function(e) {
+        var c = e.keyCode;
+        if (!this.keys[c]) this.keys.any++;
+        this.keys[c] = true;
+        if (e.ctrlKey || e.altKey || e.metaKey || c === 27) return;
+        e.stopPropagation();
+        if (e.target === this.canvas) {
+          e.preventDefault();
+          this.trigger('whenKeyPressed', c);
+        }
+      }.bind(this));
 
-    this.root.addEventListener('keydown', function(e) {
-      var c = e.keyCode;
-      if (!this.keys[c]) this.keys.any++;
-      this.keys[c] = true;
-      if (e.ctrlKey || e.altKey || e.metaKey || c === 27) return;
-      e.stopPropagation();
-      if (e.target === this.canvas) {
-        e.preventDefault();
-        this.trigger('whenKeyPressed', c);
-      }
-    }.bind(this));
+      this.root.addEventListener('keyup', function(e) {
+        var c = e.keyCode;
+        if (this.keys[c]) this.keys.any--;
+        this.keys[c] = false;
+        e.stopPropagation();
+        if (e.target === this.canvas) {
+          e.preventDefault();
+        }
+      }.bind(this));
 
-    this.root.addEventListener('keyup', function(e) {
-      var c = e.keyCode;
-      if (this.keys[c]) this.keys.any--;
-      this.keys[c] = false;
-      e.stopPropagation();
-      if (e.target === this.canvas) {
-        e.preventDefault();
-      }
-    }.bind(this));
+      if (P.config.hasTouchEvents) {
 
-    if (P.config.hasTouchEvents) {
+        document.addEventListener('touchstart', this.onTouchStart = function(e) {
+          this.mousePressed = true;
+          for (var i = 0; i < e.changedTouches.length; i++) {
+            var t = e.changedTouches[i];
+            this.updateMouse(t);
+            if (e.target === this.canvas) {
+              this.clickMouse();
+            } else if (e.target.dataset.button != null || e.target.dataset.slider != null) {
+              this.watcherStart(t.identifier, t, e);
+            }
+          }
+          if (e.target === this.canvas) e.preventDefault();
+        }.bind(this));
 
-      document.addEventListener('touchstart', this.onTouchStart = function(e) {
-        this.mousePressed = true;
-        for (var i = 0; i < e.changedTouches.length; i++) {
-          var t = e.changedTouches[i];
-          this.updateMouse(t);
+        document.addEventListener('touchmove', this.onTouchMove = function(e) {
+          this.updateMouse(e.changedTouches[0]);
+          for (var i = 0; i < e.changedTouches.length; i++) {
+            var t = e.changedTouches[i];
+            this.watcherMove(t.identifier, t, e);
+          }
+        }.bind(this));
+
+        document.addEventListener('touchend', this.onTouchEnd = function(e) {
+          this.releaseMouse();
+          for (var i = 0; i < e.changedTouches.length; i++) {
+            var t = e.changedTouches[i];
+            this.watcherEnd(t.identifier, t, e);
+          }
+        }.bind(this));
+
+      } else {
+
+        document.addEventListener('mousedown', this.onMouseDown = function(e) {
+          this.updateMouse(e);
+          this.mousePressed = true;
+
           if (e.target === this.canvas) {
             this.clickMouse();
-          } else if (e.target.dataset.button != null || e.target.dataset.slider != null) {
-            this.watcherStart(t.identifier, t, e);
-          }
-        }
-        if (e.target === this.canvas) e.preventDefault();
-      }.bind(this));
-
-      document.addEventListener('touchmove', this.onTouchMove = function(e) {
-        this.updateMouse(e.changedTouches[0]);
-        for (var i = 0; i < e.changedTouches.length; i++) {
-          var t = e.changedTouches[i];
-          this.watcherMove(t.identifier, t, e);
-        }
-      }.bind(this));
-
-      document.addEventListener('touchend', this.onTouchEnd = function(e) {
-        this.releaseMouse();
-        for (var i = 0; i < e.changedTouches.length; i++) {
-          var t = e.changedTouches[i];
-          this.watcherEnd(t.identifier, t, e);
-        }
-      }.bind(this));
-
-    } else {
-
-      document.addEventListener('mousedown', this.onMouseDown = function(e) {
-        this.updateMouse(e);
-        this.mousePressed = true;
-
-        if (e.target === this.canvas) {
-          this.clickMouse();
-          e.preventDefault();
-          this.canvas.focus();
-        } else {
-          if (e.target.dataset.button != null || e.target.dataset.slider != null) {
-            this.watcherStart('mouse', e, e);
-          }
-          if (e.target !== this.prompt) setTimeout(function() {
+            e.preventDefault();
             this.canvas.focus();
-          }.bind(this));
+          } else {
+            if (e.target.dataset.button != null || e.target.dataset.slider != null) {
+              this.watcherStart('mouse', e, e);
+            }
+            if (e.target !== this.prompt) setTimeout(function() {
+              this.canvas.focus();
+            }.bind(this));
+          }
+        }.bind(this));
+
+        document.addEventListener('mousemove', this.onMouseMove = function(e) {
+          this.updateMouse(e);
+          this.watcherMove('mouse', e, e);
+        }.bind(this));
+
+        document.addEventListener('mouseup', this.onMouseUp = function(e) {
+          this.updateMouse(e);
+          this.releaseMouse();
+          this.watcherEnd('mouse', e, e);
+        }.bind(this));
+      }
+
+      this.prompter = document.createElement('div');
+      this.ui.appendChild(this.prompter);
+      this.prompter.style.zIndex = '1';
+      this.prompter.style.pointerEvents = 'auto';
+      this.prompter.style.position = 'absolute';
+      this.prompter.style.left =
+      this.prompter.style.right = '1.4em';
+      this.prompter.style.bottom = '.6em';
+      this.prompter.style.padding = '.5em 3.0em .5em .5em';
+      this.prompter.style.border = '.3em solid rgb(46, 174, 223)';
+      this.prompter.style.borderRadius = '.8em';
+      this.prompter.style.background = '#fff';
+      this.prompter.style.display = 'none';
+
+      this.promptTitle = document.createElement('div');
+      this.prompter.appendChild(this.promptTitle);
+      this.promptTitle.textContent = '';
+      this.promptTitle.style.cursor = 'default';
+      this.promptTitle.style.font = 'bold 1.3em sans-serif';
+      this.promptTitle.style.margin = '0 '+(-25/13)+'em '+(5/13)+'em 0';
+      this.promptTitle.style.whiteSpace = 'pre';
+      this.promptTitle.style.overflow = 'hidden';
+      this.promptTitle.style.textOverflow = 'ellipsis';
+
+      this.prompt = document.createElement('input');
+      this.prompter.appendChild(this.prompt);
+      this.prompt.style.border = '0';
+      this.prompt.style.background = '#eee';
+      this.prompt.style.MozBoxSizing =
+      this.prompt.style.boxSizing = 'border-box';
+      this.prompt.style.font = '1.3em sans-serif';
+      this.prompt.style.padding = '0 '+(3/13)+'em';
+      this.prompt.style.outline = '0';
+      this.prompt.style.margin = '0';
+      this.prompt.style.width = '100%';
+      this.prompt.style.height = ''+(20/13)+'em';
+      this.prompt.style.display = 'block';
+      this.prompt.style.WebkitBorderRadius =
+      this.prompt.style.borderRadius = '0';
+      this.prompt.style.WebkitBoxShadow =
+      this.prompt.style.boxShadow = 'inset '+(1/13)+'em '+(1/13)+'em '+(2/13)+'em rgba(0, 0, 0, .2), inset '+(-1/13)+'em '+(-1/13)+'em '+(1/13)+'em rgba(255, 255, 255, .2)';
+      this.prompt.style.WebkitAppearance = 'none';
+
+      this.promptButton = document.createElement('div');
+      this.prompter.appendChild(this.promptButton);
+      this.promptButton.style.width = '2.2em';
+      this.promptButton.style.height = '2.2em';
+      this.promptButton.style.position = 'absolute';
+      this.promptButton.style.right = '.4em';
+      this.promptButton.style.bottom = '.4em';
+      this.promptButton.style.background = 'url(icons.svg) -16.5em -3.7em';
+      this.promptButton.style.backgroundSize = '32.0em 9.6em';
+
+      this.prompt.addEventListener('keydown', function(e) {
+        if (e.keyCode === 13) {
+          this.submitPrompt();
         }
       }.bind(this));
 
-      document.addEventListener('mousemove', this.onMouseMove = function(e) {
-        this.updateMouse(e);
-        this.watcherMove('mouse', e, e);
-      }.bind(this));
+      this.promptButton.addEventListener(P.config.hasTouchEvents ? 'touchstart' : 'mousedown', this.submitPrompt.bind(this));
 
-      document.addEventListener('mouseup', this.onMouseUp = function(e) {
-        this.updateMouse(e);
-        this.releaseMouse();
-        this.watcherEnd('mouse', e, e);
-      }.bind(this));
+      this.initRuntime();
     }
 
-    this.prompter = document.createElement('div');
-    this.ui.appendChild(this.prompter);
-    this.prompter.style.zIndex = '1';
-    this.prompter.style.pointerEvents = 'auto';
-    this.prompter.style.position = 'absolute';
-    this.prompter.style.left =
-    this.prompter.style.right = '1.4em';
-    this.prompter.style.bottom = '.6em';
-    this.prompter.style.padding = '.5em 3.0em .5em .5em';
-    this.prompter.style.border = '.3em solid rgb(46, 174, 223)';
-    this.prompter.style.borderRadius = '.8em';
-    this.prompter.style.background = '#fff';
-    this.prompter.style.display = 'none';
-
-    this.promptTitle = document.createElement('div');
-    this.prompter.appendChild(this.promptTitle);
-    this.promptTitle.textContent = '';
-    this.promptTitle.style.cursor = 'default';
-    this.promptTitle.style.font = 'bold 1.3em sans-serif';
-    this.promptTitle.style.margin = '0 '+(-25/13)+'em '+(5/13)+'em 0';
-    this.promptTitle.style.whiteSpace = 'pre';
-    this.promptTitle.style.overflow = 'hidden';
-    this.promptTitle.style.textOverflow = 'ellipsis';
-
-    this.prompt = document.createElement('input');
-    this.prompter.appendChild(this.prompt);
-    this.prompt.style.border = '0';
-    this.prompt.style.background = '#eee';
-    this.prompt.style.MozBoxSizing =
-    this.prompt.style.boxSizing = 'border-box';
-    this.prompt.style.font = '1.3em sans-serif';
-    this.prompt.style.padding = '0 '+(3/13)+'em';
-    this.prompt.style.outline = '0';
-    this.prompt.style.margin = '0';
-    this.prompt.style.width = '100%';
-    this.prompt.style.height = ''+(20/13)+'em';
-    this.prompt.style.display = 'block';
-    this.prompt.style.WebkitBorderRadius =
-    this.prompt.style.borderRadius = '0';
-    this.prompt.style.WebkitBoxShadow =
-    this.prompt.style.boxShadow = 'inset '+(1/13)+'em '+(1/13)+'em '+(2/13)+'em rgba(0, 0, 0, .2), inset '+(-1/13)+'em '+(-1/13)+'em '+(1/13)+'em rgba(255, 255, 255, .2)';
-    this.prompt.style.WebkitAppearance = 'none';
-
-    this.promptButton = document.createElement('div');
-    this.prompter.appendChild(this.promptButton);
-    this.promptButton.style.width = '2.2em';
-    this.promptButton.style.height = '2.2em';
-    this.promptButton.style.position = 'absolute';
-    this.promptButton.style.right = '.4em';
-    this.promptButton.style.bottom = '.4em';
-    this.promptButton.style.background = 'url(icons.svg) -16.5em -3.7em';
-    this.promptButton.style.backgroundSize = '32.0em 9.6em';
-
-    this.prompt.addEventListener('keydown', function(e) {
-      if (e.keyCode === 13) {
-        this.submitPrompt();
-      }
-    }.bind(this));
-
-    this.promptButton.addEventListener(P.config.hasTouchEvents ? 'touchstart' : 'mousedown', this.submitPrompt.bind(this));
-
-    this.initRuntime();
-  };
-  P.utils.inherits(Stage, Base);
-
-  Stage.prototype.isStage = true;
-
-  Stage.prototype.watcherStart = function(id, t, e) {
-    var p = e.target;
-    while (p && p.dataset.watcher == null) p = p.parentElement;
-    if (!p) return;
-    var w = this.allWatchers[p.dataset.watcher]
-    this.dragging[id] = {
-      watcher: w,
-      offset: (e.target.dataset.button == null ? -w.button.offsetWidth / 2 | 0 : w.button.getBoundingClientRect().left - t.clientX) - w.slider.getBoundingClientRect().left
-    };
-  };
-  Stage.prototype.watcherMove = function(id, t, e) {
-    var d = this.dragging[id];
-    if (!d) return;
-    var w = d.watcher
-    var sw = w.slider.offsetWidth;
-    var bw = w.button.offsetWidth;
-    var value = w.sliderMin + Math.max(0, Math.min(1, (t.clientX + d.offset) / (sw - bw))) * (w.sliderMax - w.sliderMin);
-    w.target.vars[w.param] = w.isDiscrete ? Math.round(value) : Math.round(value * 100) / 100;
-    w.update();
-    e.preventDefault();
-  };
-  Stage.prototype.watcherEnd = function(id, t, e) {
-    this.watcherMove(id, t, e);
-    delete this.dragging[id];
-  };
-
-  Stage.prototype.destroy = function() {
-    this.stopAll();
-    this.pause();
-    if (this.onTouchStart) document.removeEventListener('touchstart', this.onTouchStart);
-    if (this.onTouchMove) document.removeEventListener('touchmove', this.onTouchMove);
-    if (this.onTouchEnd) document.removeEventListener('touchend', this.onTouchEnd);
-    if (this.onMouseDown) document.removeEventListener('mousedown', this.onMouseDown);
-    if (this.onMouseMove) document.removeEventListener('mousemove', this.onMouseMove);
-    if (this.onMouseUp) document.removeEventListener('mouseup', this.onMouseUp);
-  };
-
-  Stage.prototype.fromJSON = function(data) {
-    Stage.parent.prototype.fromJSON.call(this, data);
-
-    data.children.forEach(function(d) {
-      if (d.listName) return;
-      if (d.cmd) this.allWatchers.push(new Watcher(this).fromJSON(d));
-      else this.children.push(new Sprite(this).fromJSON(d));
-    }, this);
-
-    this.allWatchers.forEach(function(child) {
-      child.resolve();
-    }, this);
-
-    P.compilers.sb2(this);
-
-    return this;
-  };
-
-  Stage.prototype.focus = function() {
-    if (this.promptId < this.nextPromptId) {
-      this.prompt.focus();
-    } else {
-      this.canvas.focus();
+    watcherStart(id, t, e) {
+      var p = e.target;
+      while (p && p.dataset.watcher == null) p = p.parentElement;
+      if (!p) return;
+      var w = this.allWatchers[p.dataset.watcher]
+      this.dragging[id] = {
+        watcher: w,
+        offset: (e.target.dataset.button == null ? -w.button.offsetWidth / 2 | 0 : w.button.getBoundingClientRect().left - t.clientX) - w.slider.getBoundingClientRect().left
+      };
     }
-  };
-
-  Stage.prototype.updateMouse = function(e) {
-    var bb = this.canvas.getBoundingClientRect();
-    var x = (e.clientX - bb.left) / this.zoom - 240;
-    var y = 180 - (e.clientY - bb.top) / this.zoom;
-    this.rawMouseX = x;
-    this.rawMouseY = y;
-    if (x < -240) x = -240;
-    if (x > 240) x = 240;
-    if (y < -180) y = -180;
-    if (y > 180) y = 180;
-    this.mouseX = x;
-    this.mouseY = y;
-  };
-
-  Stage.prototype.updateBackdrop = function() {
-    this.backdropCanvas.width = this.zoom * P.config.scale * 480;
-    this.backdropCanvas.height = this.zoom * P.config.scale * 360;
-    var costume = this.costumes[this.currentCostumeIndex];
-    this.backdropContext.save();
-    var s = this.zoom * P.config.scale * costume.scale;
-    this.backdropContext.scale(s, s);
-    this.updateFilters();
-    this.backdropContext.drawImage(costume.image, 0, 0);
-    this.backdropContext.restore();
-  };
-
-  Stage.prototype.updateFilters = function() {
-    this.backdropCanvas.style.opacity = Math.max(0, Math.min(1, 1 - this.filters.ghost / 100));
-  };
-
-  Stage.prototype.setZoom = function(zoom) {
-    if (this.zoom === zoom) return;
-    if (this.maxZoom < zoom * P.config.scale) {
-      this.maxZoom = zoom * P.config.scale;
-      var canvas = document.createElement('canvas');
-      canvas.width = this.penCanvas.width;
-      canvas.height = this.penCanvas.height;
-      canvas.getContext('2d').drawImage(this.penCanvas, 0, 0);
-      this.penCanvas.width = 480 * zoom * P.config.scale;
-      this.penCanvas.height = 360 * zoom * P.config.scale;
-      this.penRenderer.drawImage(canvas, 0, 0, 480 * zoom * P.config.scale, 360 * zoom * P.config.scale);
-      this.penRenderer.reset(this.maxZoom);
-      this.penRenderer.ctx.lineCap = 'round';
+    watcherMove(id, t, e) {
+      var d = this.dragging[id];
+      if (!d) return;
+      var w = d.watcher
+      var sw = w.slider.offsetWidth;
+      var bw = w.button.offsetWidth;
+      var value = w.sliderMin + Math.max(0, Math.min(1, (t.clientX + d.offset) / (sw - bw))) * (w.sliderMax - w.sliderMin);
+      w.target.vars[w.param] = w.isDiscrete ? Math.round(value) : Math.round(value * 100) / 100;
+      w.update();
+      e.preventDefault();
     }
-    this.root.style.width =
-    this.canvas.style.width =
-    this.backdropCanvas.style.width =
-    this.penCanvas.style.width =
-    this.ui.style.width = (480 * zoom | 0) + 'px';
-    this.root.style.height =
-    this.canvas.style.height =
-    this.backdropCanvas.style.height =
-    this.penCanvas.style.height =
-    this.ui.style.height = (360 * zoom | 0) + 'px';
-    this.root.style.fontSize = (zoom*10) + 'px';
-    this.zoom = zoom;
-    this.updateBackdrop();
-  };
-
-  Stage.prototype.clickMouse = function() {
-    this.mouseSprite = undefined;
-    for (var i = this.children.length; i--;) {
-      var c = this.children[i];
-      if (c.visible && c.filters.ghost < 100 && c.touching('_mouse_')) {
-        if (c.isDraggable) {
-          this.mouseSprite = c;
-          c.mouseDown();
-        } else {
-          this.triggerFor(c, 'whenClicked');
-        }
-        return;
-      }
+    watcherEnd(id, t, e) {
+      this.watcherMove(id, t, e);
+      delete this.dragging[id];
     }
-    this.triggerFor(this, 'whenClicked');
-  };
 
-  Stage.prototype.releaseMouse = function() {
-    this.mousePressed = false;
-    if (this.mouseSprite) {
-      this.mouseSprite.mouseUp();
-      this.mouseSprite = undefined;
+    destroy() {
+      this.stopAll();
+      this.pause();
+      if (this.onTouchStart) document.removeEventListener('touchstart', this.onTouchStart);
+      if (this.onTouchMove) document.removeEventListener('touchmove', this.onTouchMove);
+      if (this.onTouchEnd) document.removeEventListener('touchend', this.onTouchEnd);
+      if (this.onMouseDown) document.removeEventListener('mousedown', this.onMouseDown);
+      if (this.onMouseMove) document.removeEventListener('mousemove', this.onMouseMove);
+      if (this.onMouseUp) document.removeEventListener('mouseup', this.onMouseUp);
     }
-  };
 
-  Stage.prototype.stopAllSounds = function() {
-    for (var children = this.children, i = children.length; i--;) {
-      children[i].stopSounds();
-    }
-    this.stopSounds();
-  };
+    fromJSON(data) {
+      super.fromJSON(data);
 
-  Stage.prototype.removeAllClones = function() {
-    var i = this.children.length;
-    while (i--) {
-      if (this.children[i].isClone) {
-        this.children[i].remove();
-        this.children.splice(i, 1);
-      }
-    }
-  };
+      data.children.forEach(function(d) {
+        if (d.listName) return;
+        if (d.cmd) this.allWatchers.push(new Watcher(this).fromJSON(d));
+        else this.children.push(new Sprite(this).fromJSON(d));
+      }, this);
 
-  Stage.prototype.getObject = function(name) {
-    for (var i = 0; i < this.children.length; i++) {
-      var c = this.children[i];
-      if (c.objName === name && !c.isClone) {
-        return c;
-      }
-    }
-    if (name === '_stage_' || name === this.objName) {
+      this.allWatchers.forEach(function(child) {
+        child.resolve();
+      }, this);
+
+      P.compilers.sb2(this);
+
       return this;
     }
-  };
 
-  Stage.prototype.getObjects = function(name) {
-    var result = [];
-    for (var i = 0; i < this.children.length; i++) {
-      if (this.children[i].objName === name) {
-        result.push(this.children[i]);
-      }
-    }
-    return result;
-  };
-
-  Stage.prototype.draw = function() {
-    this.renderer.reset(this.zoom);
-
-    this.drawChildren(this.renderer, false);
-
-    for (var i = this.allWatchers.length; i--;) {
-      var w = this.allWatchers[i];
-      if (w.visible) {
-        w.update();
+    focus() {
+      if (this.promptId < this.nextPromptId) {
+        this.prompt.focus();
+      } else {
+        this.canvas.focus();
       }
     }
 
-    if (this.hidePrompt) {
-      this.hidePrompt = false;
-      this.prompter.style.display = 'none';
-      this.canvas.focus();
+    updateMouse(e) {
+      var bb = this.canvas.getBoundingClientRect();
+      var x = (e.clientX - bb.left) / this.zoom - 240;
+      var y = 180 - (e.clientY - bb.top) / this.zoom;
+      this.rawMouseX = x;
+      this.rawMouseY = y;
+      if (x < -240) x = -240;
+      if (x > 240) x = 240;
+      if (y < -180) y = -180;
+      if (y > 180) y = 180;
+      this.mouseX = x;
+      this.mouseY = y;
     }
-  };
 
-  Stage.prototype.drawChildren = function(renderer, noEffects, skip) {
-    for (var i = 0; i < this.children.length; i++) {
-      var c = this.children[i];
-      if (c.isDragging) {
-        c.moveTo(c.dragOffsetX + c.stage.mouseX, c.dragOffsetY + c.stage.mouseY);
+    updateBackdrop() {
+      this.backdropCanvas.width = this.zoom * P.config.scale * 480;
+      this.backdropCanvas.height = this.zoom * P.config.scale * 360;
+      var costume = this.costumes[this.currentCostumeIndex];
+      this.backdropContext.save();
+      var s = this.zoom * P.config.scale * costume.scale;
+      this.backdropContext.scale(s, s);
+      this.updateFilters();
+      this.backdropContext.drawImage(costume.image, 0, 0);
+      this.backdropContext.restore();
+    }
+
+    updateFilters() {
+      this.backdropCanvas.style.opacity = Math.max(0, Math.min(1, 1 - this.filters.ghost / 100));
+    }
+
+    setZoom(zoom) {
+      if (this.zoom === zoom) return;
+      if (this.maxZoom < zoom * P.config.scale) {
+        this.maxZoom = zoom * P.config.scale;
+        var canvas = document.createElement('canvas');
+        canvas.width = this.penCanvas.width;
+        canvas.height = this.penCanvas.height;
+        canvas.getContext('2d').drawImage(this.penCanvas, 0, 0);
+        this.penCanvas.width = 480 * zoom * P.config.scale;
+        this.penCanvas.height = 360 * zoom * P.config.scale;
+        this.penRenderer.drawImage(canvas, 0, 0, 480 * zoom * P.config.scale, 360 * zoom * P.config.scale);
+        this.penRenderer.reset(this.maxZoom);
+        this.penRenderer.ctx.lineCap = 'round';
       }
-      if (c.visible && c !== skip) {
-        renderer.drawChild(c, noEffects);
+      this.root.style.width =
+      this.canvas.style.width =
+      this.backdropCanvas.style.width =
+      this.penCanvas.style.width =
+      this.ui.style.width = (480 * zoom | 0) + 'px';
+      this.root.style.height =
+      this.canvas.style.height =
+      this.backdropCanvas.style.height =
+      this.penCanvas.style.height =
+      this.ui.style.height = (360 * zoom | 0) + 'px';
+      this.root.style.fontSize = (zoom*10) + 'px';
+      this.zoom = zoom;
+      this.updateBackdrop();
+    }
+
+    clickMouse() {
+      this.mouseSprite = undefined;
+      for (var i = this.children.length; i--;) {
+        var c = this.children[i];
+        if (c.visible && c.filters.ghost < 100 && c.touching('_mouse_')) {
+          if (c.isDraggable) {
+            this.mouseSprite = c;
+            c.mouseDown();
+          } else {
+            this.triggerFor(c, 'whenClicked');
+          }
+          return;
+        }
+      }
+      this.triggerFor(this, 'whenClicked');
+    }
+
+    releaseMouse() {
+      this.mousePressed = false;
+      if (this.mouseSprite) {
+        this.mouseSprite.mouseUp();
+        this.mouseSprite = undefined;
       }
     }
-  };
 
-  Stage.prototype.drawAll = function(renderer, noEffects, skip) {
-    renderer.drawChild(this);
-    renderer.drawImage(this.penCanvas, 0, 0);
-    this.drawChildren(renderer, noEffects, skip);
+    stopAllSounds() {
+      for (var children = this.children, i = children.length; i--;) {
+        children[i].stopSounds();
+      }
+      this.stopSounds();
+    }
+
+    removeAllClones() {
+      var i = this.children.length;
+      while (i--) {
+        if (this.children[i].isClone) {
+          this.children[i].remove();
+          this.children.splice(i, 1);
+        }
+      }
+    }
+
+    getObject(name) {
+      for (var i = 0; i < this.children.length; i++) {
+        var c = this.children[i];
+        if (c.objName === name && !c.isClone) {
+          return c;
+        }
+      }
+      if (name === '_stage_' || name === this.objName) {
+        return this;
+      }
+    }
+
+    getObjects(name) {
+      var result = [];
+      for (var i = 0; i < this.children.length; i++) {
+        if (this.children[i].objName === name) {
+          result.push(this.children[i]);
+        }
+      }
+      return result;
+    }
+
+    draw() {
+      this.renderer.reset(this.zoom);
+
+      this.drawChildren(this.renderer, false);
+
+      for (var i = this.allWatchers.length; i--;) {
+        var w = this.allWatchers[i];
+        if (w.visible) {
+          w.update();
+        }
+      }
+
+      if (this.hidePrompt) {
+        this.hidePrompt = false;
+        this.prompter.style.display = 'none';
+        this.canvas.focus();
+      }
+    }
+
+    drawChildren(renderer, noEffects, skip) {
+      for (var i = 0; i < this.children.length; i++) {
+        var c = this.children[i];
+        if (c.isDragging) {
+          c.moveTo(c.dragOffsetX + c.stage.mouseX, c.dragOffsetY + c.stage.mouseY);
+        }
+        if (c.visible && c !== skip) {
+          renderer.drawChild(c, noEffects);
+        }
+      }
+    }
+
+    drawAll(renderer, noEffects, skip) {
+      renderer.drawChild(this);
+      renderer.drawImage(this.penCanvas, 0, 0);
+      this.drawChildren(renderer, noEffects, skip);
+    }
+
+    moveTo() {
+      // do nothing -- stage cannot be moved
+    }
+
+    submitPrompt() {
+      if (this.promptId < this.nextPromptId) {
+        this.answer = this.prompt.value;
+        this.promptId += 1;
+        if (this.promptId >= this.nextPromptId) {
+          this.hidePrompt = true;
+        }
+      }
+    }
   }
 
-  Stage.prototype.moveTo = function() {
-    // do nothing -- stage cannot be moved
-  };
-
-  Stage.prototype.submitPrompt = function() {
-    if (this.promptId < this.nextPromptId) {
-      this.answer = this.prompt.value;
-      this.promptId += 1;
-      if (this.promptId >= this.nextPromptId) {
-        this.hidePrompt = true;
-      }
-    }
-  };
-
-  var Sprite = core.Sprite = function(stage) {
-    this.stage = stage;
-
-    Sprite.parent.call(this);
-
-    this.direction = 90;
-    this.indexInLibrary = -1;
-    this.isDraggable = false;
-    this.isDragging = false;
-    this.rotationStyle = 'normal';
-    this.scale = 1;
-    this.scratchX = 0;
-    this.scratchY = 0;
-    this.spriteInfo = {};
-    this.visible = true;
-
-    this.penHue = 240;
-    this.penSaturation = 100;
-    this.penLightness = 50;
-
-    this.penSize = 1;
-    this.isPenDown = false;
-    this.isSprite = true;
-    this.bubble = null;
-    this.saying = false;
-    this.thinking = false;
-    this.sayId = 0;
-  };
-  P.utils.inherits(Sprite, Base);
-
-  Sprite.prototype.fromJSON = function(data) {
-
-    Sprite.parent.prototype.fromJSON.call(this, data);
-
-    this.direction = data.direction;
-    this.indexInLibrary = data.indexInLibrary;
-    this.isDraggable = data.isDraggable;
-    this.rotationStyle = data.rotationStyle;
-    this.scale = data.scale;
-    this.scratchX = data.scratchX;
-    this.scratchY = data.scratchY;
-    this.spriteInfo = data.spriteInfo;
-    this.visible = data.visible;
-
-    return this;
-  };
-
-  Sprite.prototype.clone = function() {
-    var c = new Sprite(this.stage);
-
-    c.isClone = true;
-    c.costumes = this.costumes;
-    c.currentCostumeIndex = this.currentCostumeIndex;
-    c.objName = this.objName;
-    c.soundRefs = this.soundRefs;
-    c.sounds = this.sounds;
-
-    var keys = Object.keys(this.vars);
-    for (var i = keys.length; i--;) {
-      var k = keys[i];
-      c.vars[k] = this.vars[k];
-    }
-
-    var keys = Object.keys(this.lists);
-    for (var i = keys.length; i--;) {
-      var k = keys[i];
-      c.lists[k] = this.lists[k].slice(0);
-    }
-
-    c.procedures = this.procedures;
-    c.listeners = this.listeners;
-    c.fns = this.fns;
-    c.scripts = this.scripts;
-
-    c.filters = {
-      color: this.filters.color,
-      fisheye: this.filters.fisheye,
-      whirl: this.filters.whirl,
-      pixelate: this.filters.pixelate,
-      mosaic: this.filters.mosaic,
-      brightness: this.filters.brightness,
-      ghost: this.filters.ghost
-    };
-
-    c.direction = this.direction;
-    c.instrument = this.instrument;
-    c.indexInLibrary = this.indexInLibrary;
-    c.isDraggable = this.isDraggable;
-    c.rotationStyle = this.rotationStyle;
-    c.scale = this.scale;
-    c.volume = this.volume;
-    c.scratchX = this.scratchX;
-    c.scratchY = this.scratchY;
-    c.visible = this.visible;
-    c.penColor = this.penColor;
-    c.penCSS = this.penCSS;
-    c.penHue = this.penHue;
-    c.penSaturation = this.penSaturation;
-    c.penLightness = this.penLightness;
-    c.penSize = this.penSize;
-    c.isPenDown = this.isPenDown;
-
-    return c;
-  };
-
-  Sprite.prototype.mouseDown = function() {
-    this.dragStartX = this.scratchX;
-    this.dragStartY = this.scratchY;
-    this.dragOffsetX = this.scratchX - this.stage.mouseX;
-    this.dragOffsetY = this.scratchY - this.stage.mouseY;
-    this.isDragging = true;
-  };
-
-  Sprite.prototype.mouseUp = function() {
-    if (this.isDragging && this.scratchX === this.dragStartX && this.scratchY === this.dragStartY) {
-      this.stage.triggerFor(this, 'whenClicked');
-    }
-    this.isDragging = false;
-  };
-
-  Sprite.prototype.forward = function(steps) {
-    var d = (90 - this.direction) * Math.PI / 180;
-    this.moveTo(this.scratchX + steps * Math.cos(d), this.scratchY + steps * Math.sin(d));
-  };
-
-  Sprite.prototype.moveTo = function(x, y) {
-    var ox = this.scratchX;
-    var oy = this.scratchY;
-    if (ox === x && oy === y && !this.isPenDown) return;
-    this.scratchX = x;
-    this.scratchY = y;
-
-    // Ensure that the sprite is in view of the stage.
-    // See: https://github.com/LLK/scratch-flash/blob/72e4729b8189d11bbe51b6d94144b0a3c392ac9a/src/scratch/ScratchSprite.as#L191-L224
-
-    var rb = this.rotatedBounds();
-    var width = rb.right - rb.left;
-    var height = rb.top - rb.bottom;
-    // using 18 puts sprites 3 pixels too far from edges for some reason, 15 works fine
-    var border = Math.min(15, Math.min(width, height) / 2);
-
-    if (rb.right < -240 + border) {
-      var difference = rb.right - (-240 + border);
-      this.scratchX = Math.floor(this.scratchX - difference);
-    }
-    if (rb.left > 240 - border) {
-      var difference = (240 - border) - rb.left;
-      this.scratchX = Math.ceil(difference + this.scratchX);
-    }
-    if (rb.bottom > 180 - border) {
-      var difference = (180 - border) - rb.bottom;
-      this.scratchY = Math.ceil(difference + this.scratchY);
-    }
-    if (rb.top < -180 + border) {
-      var difference = rb.top - (-180 + border);
-      this.scratchY = Math.floor(this.scratchY - difference);
-    }
-
-    if (this.isPenDown && !this.isDragging) {
-      var context = this.stage.penRenderer.ctx;
-      if (this.penSize % 2 > .5 && this.penSize % 2 < 1.5) {
-        ox -= .5;
-        oy -= .5;
-        x -= .5;
-        y -= .5;
-      }
-      context.strokeStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
-      context.lineWidth = this.penSize;
-      context.beginPath();
-      context.moveTo(240 + ox, 180 - oy);
-      context.lineTo(240 + x, 180 - y);
-      context.stroke();
-    }
-    if (this.saying) {
-      this.updateBubble();
-    }
-  };
-
-  Sprite.prototype.dotPen = function() {
-    var context = this.stage.penRenderer.ctx;
-    var x = this.scratchX;
-    var y = this.scratchY;
-    context.fillStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
-    context.beginPath();
-    context.arc(240 + x, 180 - y, this.penSize / 2, 0, 2 * Math.PI, false);
-    context.fill();
-  };
-
-  Sprite.prototype.stamp = function() {
-    this.stage.penRenderer.drawChild(this);
-  }
-
-  Sprite.prototype.setDirection = function(degrees) {
-    var d = degrees % 360;
-    if (d > 180) d -= 360;
-    if (d <= -180) d += 360;
-    this.direction = d;
-    if (this.saying) this.updateBubble();
-  };
-
-  // Canvases used for collision detection in the following methods
+  // Canvases used for various collision testing later on
   var collisionCanvas = document.createElement('canvas');
   var collisionRenderer = new P.renderers.canvas2d.Renderer(collisionCanvas);
   var secondaryCollisionCanvas = document.createElement('canvas');
   var secondaryCollisionRenderer = new P.renderers.canvas2d.Renderer(secondaryCollisionCanvas);
 
-  Sprite.prototype.touching = function(thing) {
-    var costume = this.costumes[this.currentCostumeIndex];
+  class Sprite extends Base {
+    constructor(stage) {
+      super();
+      this.stage = stage;
 
-    if (thing === '_mouse_') {
-      var bounds = this.rotatedBounds();
-      var x = this.stage.rawMouseX;
-      var y = this.stage.rawMouseY;
-      if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top) {
-        return false;
+      this.direction = 90;
+      this.indexInLibrary = -1;
+      this.isDraggable = false;
+      this.isDragging = false;
+      this.rotationStyle = 'normal';
+      this.scale = 1;
+      this.scratchX = 0;
+      this.scratchY = 0;
+      this.spriteInfo = {};
+      this.visible = true;
+
+      this.penHue = 240;
+      this.penSaturation = 100;
+      this.penLightness = 50;
+
+      this.penSize = 1;
+      this.isPenDown = false;
+      this.isSprite = true;
+      this.bubble = null;
+      this.saying = false;
+      this.thinking = false;
+      this.sayId = 0;
+    }
+
+    fromJSON(data) {
+      super.fromJSON(data);
+
+      this.direction = data.direction;
+      this.indexInLibrary = data.indexInLibrary;
+      this.isDraggable = data.isDraggable;
+      this.rotationStyle = data.rotationStyle;
+      this.scale = data.scale;
+      this.scratchX = data.scratchX;
+      this.scratchY = data.scratchY;
+      this.spriteInfo = data.spriteInfo;
+      this.visible = data.visible;
+
+      return this;
+    }
+
+    clone() {
+      var c = new Sprite(this.stage);
+
+      c.isClone = true;
+      c.costumes = this.costumes;
+      c.currentCostumeIndex = this.currentCostumeIndex;
+      c.objName = this.objName;
+      c.soundRefs = this.soundRefs;
+      c.sounds = this.sounds;
+
+      var keys = Object.keys(this.vars);
+      for (var i = keys.length; i--;) {
+        var k = keys[i];
+        c.vars[k] = this.vars[k];
       }
-      var cx = (x - this.scratchX) / this.scale
-      var cy = (this.scratchY - y) / this.scale
-      if (this.rotationStyle === 'normal' && this.direction !== 90) {
-        var d = (90 - this.direction) * Math.PI / 180
-        var ox = cx
-        var s = Math.sin(d), c = Math.cos(d)
-        cx = c * ox - s * cy
-        cy = s * ox + c * cy
-      } else if (this.rotationStyle === 'leftRight' && this.direction < 0) {
-        cx = -cx
+
+      var keys = Object.keys(this.lists);
+      for (var i = keys.length; i--;) {
+        var k = keys[i];
+        c.lists[k] = this.lists[k].slice(0);
       }
-      var d = costume.context.getImageData(cx * costume.bitmapResolution + costume.rotationCenterX, cy * costume.bitmapResolution + costume.rotationCenterY, 1, 1).data;
-      return d[3] !== 0;
-    } else if (thing === '_edge_') {
-      var bounds = this.rotatedBounds();
-      return bounds.left <= -240 || bounds.right >= 240 || bounds.top >= 180 || bounds.bottom <= -180;
-    } else {
-      if (!this.visible) return false;
-      var sprites = this.stage.getObjects(thing);
-      for (var i = sprites.length; i--;) {
-        var sprite = sprites[i];
-        if (!sprite.visible) continue;
 
-        var mb = this.rotatedBounds();
-        var ob = sprite.rotatedBounds();
+      c.procedures = this.procedures;
+      c.listeners = this.listeners;
+      c.fns = this.fns;
+      c.scripts = this.scripts;
 
-        if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
-          continue;
+      c.filters = {
+        color: this.filters.color,
+        fisheye: this.filters.fisheye,
+        whirl: this.filters.whirl,
+        pixelate: this.filters.pixelate,
+        mosaic: this.filters.mosaic,
+        brightness: this.filters.brightness,
+        ghost: this.filters.ghost
+      };
+
+      c.direction = this.direction;
+      c.instrument = this.instrument;
+      c.indexInLibrary = this.indexInLibrary;
+      c.isDraggable = this.isDraggable;
+      c.rotationStyle = this.rotationStyle;
+      c.scale = this.scale;
+      c.volume = this.volume;
+      c.scratchX = this.scratchX;
+      c.scratchY = this.scratchY;
+      c.visible = this.visible;
+      c.penColor = this.penColor;
+      c.penCSS = this.penCSS;
+      c.penHue = this.penHue;
+      c.penSaturation = this.penSaturation;
+      c.penLightness = this.penLightness;
+      c.penSize = this.penSize;
+      c.isPenDown = this.isPenDown;
+
+      return c;
+    }
+
+    mouseDown() {
+      this.dragStartX = this.scratchX;
+      this.dragStartY = this.scratchY;
+      this.dragOffsetX = this.scratchX - this.stage.mouseX;
+      this.dragOffsetY = this.scratchY - this.stage.mouseY;
+      this.isDragging = true;
+    }
+
+    mouseUp() {
+      if (this.isDragging && this.scratchX === this.dragStartX && this.scratchY === this.dragStartY) {
+        this.stage.triggerFor(this, 'whenClicked');
+      }
+      this.isDragging = false;
+    }
+
+    forward(steps) {
+      var d = (90 - this.direction) * Math.PI / 180;
+      this.moveTo(this.scratchX + steps * Math.cos(d), this.scratchY + steps * Math.sin(d));
+    }
+
+    moveTo(x, y) {
+      var ox = this.scratchX;
+      var oy = this.scratchY;
+      if (ox === x && oy === y && !this.isPenDown) return;
+      this.scratchX = x;
+      this.scratchY = y;
+
+      // Ensure that the sprite is in view of the stage.
+      // See: https://github.com/LLK/scratch-flash/blob/72e4729b8189d11bbe51b6d94144b0a3c392ac9a/src/scratch/ScratchSprite.as#L191-L224
+
+      var rb = this.rotatedBounds();
+      var width = rb.right - rb.left;
+      var height = rb.top - rb.bottom;
+      // using 18 puts sprites 3 pixels too far from edges for some reason, 15 works fine
+      var border = Math.min(15, Math.min(width, height) / 2);
+
+      if (rb.right < -240 + border) {
+        var difference = rb.right - (-240 + border);
+        this.scratchX = Math.floor(this.scratchX - difference);
+      }
+      if (rb.left > 240 - border) {
+        var difference = (240 - border) - rb.left;
+        this.scratchX = Math.ceil(difference + this.scratchX);
+      }
+      if (rb.bottom > 180 - border) {
+        var difference = (180 - border) - rb.bottom;
+        this.scratchY = Math.ceil(difference + this.scratchY);
+      }
+      if (rb.top < -180 + border) {
+        var difference = rb.top - (-180 + border);
+        this.scratchY = Math.floor(this.scratchY - difference);
+      }
+
+      if (this.isPenDown && !this.isDragging) {
+        var context = this.stage.penRenderer.ctx;
+        if (this.penSize % 2 > .5 && this.penSize % 2 < 1.5) {
+          ox -= .5;
+          oy -= .5;
+          x -= .5;
+          y -= .5;
         }
+        context.strokeStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
+        context.lineWidth = this.penSize;
+        context.beginPath();
+        context.moveTo(240 + ox, 180 - oy);
+        context.lineTo(240 + x, 180 - y);
+        context.stroke();
+      }
+      if (this.saying) {
+        this.updateBubble();
+      }
+    }
 
-        var left = Math.max(mb.left, ob.left);
-        var top = Math.min(mb.top, ob.top);
-        var right = Math.min(mb.right, ob.right);
-        var bottom = Math.max(mb.bottom, ob.bottom);
-        
-        if (right - left < 1 || top - bottom < 1) {
-          continue;
+    dotPen() {
+      var context = this.stage.penRenderer.ctx;
+      var x = this.scratchX;
+      var y = this.scratchY;
+      context.fillStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
+      context.beginPath();
+      context.arc(240 + x, 180 - y, this.penSize / 2, 0, 2 * Math.PI, false);
+      context.fill();
+    }
+
+    stamp() {
+      this.stage.penRenderer.drawChild(this);
+    }
+
+    setDirection(degrees) {
+      var d = degrees % 360;
+      if (d > 180) d -= 360;
+      if (d <= -180) d += 360;
+      this.direction = d;
+      if (this.saying) this.updateBubble();
+    }
+
+    touching(thing) {
+      var costume = this.costumes[this.currentCostumeIndex];
+
+      if (thing === '_mouse_') {
+        var bounds = this.rotatedBounds();
+        var x = this.stage.rawMouseX;
+        var y = this.stage.rawMouseY;
+        if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top) {
+          return false;
         }
+        var cx = (x - this.scratchX) / this.scale
+        var cy = (this.scratchY - y) / this.scale
+        if (this.rotationStyle === 'normal' && this.direction !== 90) {
+          var d = (90 - this.direction) * Math.PI / 180
+          var ox = cx
+          var s = Math.sin(d), c = Math.cos(d)
+          cx = c * ox - s * cy
+          cy = s * ox + c * cy
+        } else if (this.rotationStyle === 'leftRight' && this.direction < 0) {
+          cx = -cx
+        }
+        var d = costume.context.getImageData(cx * costume.bitmapResolution + costume.rotationCenterX, cy * costume.bitmapResolution + costume.rotationCenterY, 1, 1).data;
+        return d[3] !== 0;
+      } else if (thing === '_edge_') {
+        var bounds = this.rotatedBounds();
+        return bounds.left <= -240 || bounds.right >= 240 || bounds.top >= 180 || bounds.bottom <= -180;
+      } else {
+        if (!this.visible) return false;
+        var sprites = this.stage.getObjects(thing);
+        for (var i = sprites.length; i--;) {
+          var sprite = sprites[i];
+          if (!sprite.visible) continue;
 
-        collisionRenderer.ctx.width = right - left;
-        collisionRenderer.ctx.height = top - bottom;
+          var mb = this.rotatedBounds();
+          var ob = sprite.rotatedBounds();
 
-        collisionRenderer.ctx.save();
-        collisionRenderer.ctx.translate(-(left + 240), -(180 - top));
+          if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
+            continue;
+          }
 
-        collisionRenderer.drawChild(this, true);
-        collisionRenderer.ctx.globalCompositeOperation = 'source-in';
-        collisionRenderer.drawChild(sprite, true);
+          var left = Math.max(mb.left, ob.left);
+          var top = Math.min(mb.top, ob.top);
+          var right = Math.min(mb.right, ob.right);
+          var bottom = Math.max(mb.bottom, ob.bottom);
+          
+          if (right - left < 1 || top - bottom < 1) {
+            continue;
+          }
 
-        collisionRenderer.ctx.restore();
+          collisionRenderer.ctx.width = right - left;
+          collisionRenderer.ctx.height = top - bottom;
 
-        var data = collisionRenderer.ctx.getImageData(0, 0, right - left, top - bottom).data;
+          collisionRenderer.ctx.save();
+          collisionRenderer.ctx.translate(-(left + 240), -(180 - top));
 
-        var length = (right - left) * (top - bottom) * 4;
-        for (var j = 0; j < length; j += 4) {
-          if (data[j + 3]) {
-            return true;
+          collisionRenderer.drawChild(this, true);
+          collisionRenderer.ctx.globalCompositeOperation = 'source-in';
+          collisionRenderer.drawChild(sprite, true);
+
+          collisionRenderer.ctx.restore();
+
+          var data = collisionRenderer.ctx.getImageData(0, 0, right - left, top - bottom).data;
+
+          var length = (right - left) * (top - bottom) * 4;
+          for (var j = 0; j < length; j += 4) {
+            if (data[j + 3]) {
+              return true;
+            }
           }
         }
+        return false;
       }
+    }
+
+    touchingColor(rgb) {
+      var b = this.rotatedBounds();
+
+      collisionCanvas.width = b.right - b.left;
+      collisionCanvas.height = b.top - b.bottom;
+
+      collisionRenderer.ctx.save();
+      collisionRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
+
+      this.stage.drawAll(collisionRenderer, true, this);
+      collisionRenderer.ctx.globalCompositeOperation = 'destination-in';
+      collisionRenderer.drawChild(this, true);
+
+      collisionRenderer.ctx.restore();
+
+      var data = collisionRenderer.ctx.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
+
+      rgb = rgb & 0xffffff;
+      var length = (b.right - b.left) * (b.top - b.bottom) * 4;
+      for (var i = 0; i < length; i += 4) {
+        if ((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) === rgb && data[i + 3]) {
+          return true;
+        }
+      }
+
       return false;
     }
-  };
 
-  Sprite.prototype.touchingColor = function(rgb) {
-    var b = this.rotatedBounds();
+    colorTouchingColor(sourceColor, touchingColor) {
+      var rb = this.rotatedBounds();
 
-    collisionCanvas.width = b.right - b.left;
-    collisionCanvas.height = b.top - b.bottom;
+      collisionCanvas.width = secondaryCollisionCanvas.width = rb.right - rb.left;
+      collisionCanvas.height = secondaryCollisionCanvas.height = rb.top - rb.bottom;
 
-    collisionRenderer.ctx.save();
-    collisionRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
+      collisionRenderer.ctx.save();
+      secondaryCollisionRenderer.ctx.save();
+      collisionRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
+      secondaryCollisionRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
 
-    this.stage.drawAll(collisionRenderer, true, this);
-    collisionRenderer.ctx.globalCompositeOperation = 'destination-in';
-    collisionRenderer.drawChild(this, true);
+      this.stage.drawAll(collisionRenderer, true, this);
+      secondaryCollisionRenderer.drawChild(this, true);
 
-    collisionRenderer.ctx.restore();
+      collisionRenderer.ctx.restore();
 
-    var data = collisionRenderer.ctx.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
+      var dataA = collisionRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
+      var dataB = secondaryCollisionRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
 
-    rgb = rgb & 0xffffff;
-    var length = (b.right - b.left) * (b.top - b.bottom) * 4;
-    for (var i = 0; i < length; i += 4) {
-      if ((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) === rgb && data[i + 3]) {
-        return true;
+      sourceColor = sourceColor & 0xffffff;
+      touchingColor = touchingColor & 0xffffff;
+
+      var length = dataA.length;
+      for (var i = 0; i < length; i += 4) {
+        var touchesSource = (dataB[i] << 16 | dataB[i + 1] << 8 | dataB[i + 2]) === sourceColor && dataB[i + 3];
+        var touchesOther = (dataA[i] << 16 | dataA[i + 1] << 8 | dataA[i + 2]) === touchingColor && dataA[i + 3];
+        if (touchesSource && touchesOther) {
+          return true;
+        }
       }
+
+      return false;
     }
 
-    return false;
-  };
+    bounceOffEdge() {
+      var b = this.rotatedBounds();
+      var dl = 240 + b.left;
+      var dt = 180 - b.top;
+      var dr = 240 - b.right;
+      var db = 180 + b.bottom;
 
-  // Implements the "<color [a] is touching [b]?>" block
-  Sprite.prototype.colorTouchingColor = function(sourceColor, touchingColor) {
-    // TODO: this is very messy and slow
-    // there is likely some easy thing you can do with the canvas's composite operation I do not know about.
+      var d = Math.min(dl, dt, dr, db);
+      if (d > 0) return;
 
-    var rb = this.rotatedBounds();
+      var dir = this.direction * Math.PI / 180;
+      var dx = Math.sin(dir);
+      var dy = -Math.cos(dir);
 
-    collisionCanvas.width = secondaryCollisionCanvas.width = rb.right - rb.left;
-    collisionCanvas.height = secondaryCollisionCanvas.height = rb.top - rb.bottom;
-
-    collisionRenderer.ctx.save();
-    secondaryCollisionRenderer.ctx.save();
-    collisionRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
-    secondaryCollisionRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
-
-    this.stage.drawAll(collisionRenderer, true, this);
-    secondaryCollisionRenderer.drawChild(this, true);
-
-    collisionRenderer.ctx.restore();
-
-    var dataA = collisionRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
-    var dataB = secondaryCollisionRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
-
-    sourceColor = sourceColor & 0xffffff;
-    touchingColor = touchingColor & 0xffffff;
-
-    var length = dataA.length;
-    for (var i = 0; i < length; i += 4) {
-      var touchesSource = (dataB[i] << 16 | dataB[i + 1] << 8 | dataB[i + 2]) === sourceColor && dataB[i + 3];
-      var touchesOther = (dataA[i] << 16 | dataA[i + 1] << 8 | dataA[i + 2]) === touchingColor && dataA[i + 3];
-      if (touchesSource && touchesOther) {
-        return true;
+      switch (d) {
+        case dl: dx = Math.max(0.2, Math.abs(dx)); break;
+        case dt: dy = Math.max(0.2, Math.abs(dy)); break;
+        case dr: dx = -Math.max(0.2, Math.abs(dx)); break;
+        case db: dy = -Math.max(0.2, Math.abs(dy)); break;
       }
+
+      this.direction = Math.atan2(dy, dx) * 180 / Math.PI + 90;
+      if (this.saying) this.updateBubble();
+
+      b = this.rotatedBounds();
+      var x = this.scratchX;
+      var y = this.scratchY;
+      if (b.left < -240) x += -240 - b.left;
+      if (b.top > 180) y += 180 - b.top;
+      if (b.right > 240) x += 240 - b.left;
+      if (b.bottom < -180) y += -180 - b.top;
     }
 
-    return false;
-  };
+    rotatedBounds() {
+      var costume = this.costumes[this.currentCostumeIndex];
 
-  Sprite.prototype.bounceOffEdge = function() {
-    var b = this.rotatedBounds();
-    var dl = 240 + b.left;
-    var dt = 180 - b.top;
-    var dr = 240 - b.right;
-    var db = 180 + b.bottom;
+      var s = costume.scale * this.scale;
+      var left = -costume.rotationCenterX * s;
+      var top = costume.rotationCenterY * s;
+      var right = left + costume.image.width * s;
+      var bottom = top - costume.image.height * s;
 
-    var d = Math.min(dl, dt, dr, db);
-    if (d > 0) return;
-
-    var dir = this.direction * Math.PI / 180;
-    var dx = Math.sin(dir);
-    var dy = -Math.cos(dir);
-
-    switch (d) {
-      case dl: dx = Math.max(0.2, Math.abs(dx)); break;
-      case dt: dy = Math.max(0.2, Math.abs(dy)); break;
-      case dr: dx = -Math.max(0.2, Math.abs(dx)); break;
-      case db: dy = -Math.max(0.2, Math.abs(dy)); break;
-    }
-
-    this.direction = Math.atan2(dy, dx) * 180 / Math.PI + 90;
-    if (this.saying) this.updateBubble();
-
-    b = this.rotatedBounds();
-    var x = this.scratchX;
-    var y = this.scratchY;
-    if (b.left < -240) x += -240 - b.left;
-    if (b.top > 180) y += 180 - b.top;
-    if (b.right > 240) x += 240 - b.left;
-    if (b.bottom < -180) y += -180 - b.top;
-  };
-
-  Sprite.prototype.rotatedBounds = function() {
-    var costume = this.costumes[this.currentCostumeIndex];
-
-    var s = costume.scale * this.scale;
-    var left = -costume.rotationCenterX * s;
-    var top = costume.rotationCenterY * s;
-    var right = left + costume.image.width * s;
-    var bottom = top - costume.image.height * s;
-
-    if (this.rotationStyle !== 'normal') {
-      if (this.rotationStyle === 'leftRight' && this.direction < 0) {
-        right = -left;
-        left = right - costume.image.width * costume.scale * this.scale;
+      if (this.rotationStyle !== 'normal') {
+        if (this.rotationStyle === 'leftRight' && this.direction < 0) {
+          right = -left;
+          left = right - costume.image.width * costume.scale * this.scale;
+        }
+        return {
+          left: this.scratchX + left,
+          right: this.scratchX + right,
+          top: this.scratchY + top,
+          bottom: this.scratchY + bottom
+        };
       }
+
+      var mSin = Math.sin(this.direction * Math.PI / 180);
+      var mCos = Math.cos(this.direction * Math.PI / 180);
+
+      var tlX = mSin * left - mCos * top;
+      var tlY = mCos * left + mSin * top;
+
+      var trX = mSin * right - mCos * top;
+      var trY = mCos * right + mSin * top;
+
+      var blX = mSin * left - mCos * bottom;
+      var blY = mCos * left + mSin * bottom;
+
+      var brX = mSin * right - mCos * bottom;
+      var brY = mCos * right + mSin * bottom;
+
       return {
-        left: this.scratchX + left,
-        right: this.scratchX + right,
-        top: this.scratchY + top,
-        bottom: this.scratchY + bottom
+        left: this.scratchX + Math.min(tlX, trX, blX, brX),
+        right: this.scratchX + Math.max(tlX, trX, blX, brX),
+        top: this.scratchY + Math.max(tlY, trY, blY, brY),
+        bottom: this.scratchY + Math.min(tlY, trY, blY, brY)
       };
     }
 
-    var mSin = Math.sin(this.direction * Math.PI / 180);
-    var mCos = Math.cos(this.direction * Math.PI / 180);
-
-    var tlX = mSin * left - mCos * top;
-    var tlY = mCos * left + mSin * top;
-
-    var trX = mSin * right - mCos * top;
-    var trY = mCos * right + mSin * top;
-
-    var blX = mSin * left - mCos * bottom;
-    var blY = mCos * left + mSin * bottom;
-
-    var brX = mSin * right - mCos * bottom;
-    var brY = mCos * right + mSin * bottom;
-
-    return {
-      left: this.scratchX + Math.min(tlX, trX, blX, brX),
-      right: this.scratchX + Math.max(tlX, trX, blX, brX),
-      top: this.scratchY + Math.max(tlY, trY, blY, brY),
-      bottom: this.scratchY + Math.min(tlY, trY, blY, brY)
-    };
-  };
-
-  Sprite.prototype.showRotatedBounds = function() {
-    var bounds = this.rotatedBounds();
-    var div = document.createElement('div');
-    div.style.outline = '1px solid red';
-    div.style.position = 'absolute';
-    div.style.left = (240 + bounds.left) + 'px';
-    div.style.top = (180 - bounds.top) + 'px';
-    div.style.width = (bounds.right - bounds.left) + 'px';
-    div.style.height = (bounds.top - bounds.bottom) + 'px';
-    this.stage.canvas.parentNode.appendChild(div);
-  };
-
-  Sprite.prototype.distanceTo = function(thing) {
-    if (thing === '_mouse_') {
-      var x = this.stage.mouseX;
-      var y = this.stage.mouseY;
-    } else {
-      var sprite = this.stage.getObject(thing);
-      if (!sprite) return 10000;
-      x = sprite.scratchX;
-      y = sprite.scratchY;
+    showRotatedBounds() {
+      var bounds = this.rotatedBounds();
+      var div = document.createElement('div');
+      div.style.outline = '1px solid red';
+      div.style.position = 'absolute';
+      div.style.left = (240 + bounds.left) + 'px';
+      div.style.top = (180 - bounds.top) + 'px';
+      div.style.width = (bounds.right - bounds.left) + 'px';
+      div.style.height = (bounds.top - bounds.bottom) + 'px';
+      this.stage.canvas.parentNode.appendChild(div);
     }
-    return Math.sqrt((this.scratchX - x) * (this.scratchX - x) + (this.scratchY - y) * (this.scratchY - y));
-  };
 
-  Sprite.prototype.gotoObject = function(thing) {
-    if (thing === '_mouse_') {
-      this.moveTo(this.stage.mouseX, this.stage.mouseY);
-    } else if (thing === '_random_') {
-      var x = Math.round(480 * Math.random() - 240);
-      var y = Math.round(360 * Math.random() - 180);
-      this.moveTo(x, y);
-    } else {
-      var sprite = this.stage.getObject(thing);
-      if (!sprite) return 0;
-      this.moveTo(sprite.scratchX, sprite.scratchY);
+    distanceTo(thing) {
+      if (thing === '_mouse_') {
+        var x = this.stage.mouseX;
+        var y = this.stage.mouseY;
+      } else {
+        var sprite = this.stage.getObject(thing);
+        if (!sprite) return 10000;
+        x = sprite.scratchX;
+        y = sprite.scratchY;
+      }
+      return Math.sqrt((this.scratchX - x) * (this.scratchX - x) + (this.scratchY - y) * (this.scratchY - y));
     }
-  };
 
-  Sprite.prototype.pointTowards = function(thing) {
-    if (thing === '_mouse_') {
-      var x = this.stage.mouseX;
-      var y = this.stage.mouseY;
-    } else {
-      var sprite = this.stage.getObject(thing);
-      if (!sprite) return 0;
-      x = sprite.scratchX;
-      y = sprite.scratchY;
+    gotoObject(thing) {
+      if (thing === '_mouse_') {
+        this.moveTo(this.stage.mouseX, this.stage.mouseY);
+      } else if (thing === '_random_') {
+        var x = Math.round(480 * Math.random() - 240);
+        var y = Math.round(360 * Math.random() - 180);
+        this.moveTo(x, y);
+      } else {
+        var sprite = this.stage.getObject(thing);
+        if (!sprite) return 0;
+        this.moveTo(sprite.scratchX, sprite.scratchY);
+      }
     }
-    var dx = x - this.scratchX;
-    var dy = y - this.scratchY;
-    this.direction = dx === 0 && dy === 0 ? 90 : Math.atan2(dx, dy) * 180 / Math.PI;
-    if (this.saying) this.updateBubble();
-  };
 
-  Sprite.prototype.say = function(text, thinking) {
-    text = '' + text;
-    if (!text) {
-      this.saying = false;
-      if (!this.bubble) return;
-      this.bubble.style.display = 'none';
+    pointTowards(thing) {
+      if (thing === '_mouse_') {
+        var x = this.stage.mouseX;
+        var y = this.stage.mouseY;
+      } else {
+        var sprite = this.stage.getObject(thing);
+        if (!sprite) return 0;
+        x = sprite.scratchX;
+        y = sprite.scratchY;
+      }
+      var dx = x - this.scratchX;
+      var dy = y - this.scratchY;
+      this.direction = dx === 0 && dy === 0 ? 90 : Math.atan2(dx, dy) * 180 / Math.PI;
+      if (this.saying) this.updateBubble();
+    }
+
+    say(text, thinking) {
+      text = text.toString();
+      if (!text) {
+        this.saying = false;
+        if (!this.bubble) return;
+        this.bubble.style.display = 'none';
+        return ++this.sayId;
+      }
+      this.saying = true;
+      this.thinking = thinking;
+      if (!this.bubble) {
+        this.bubble = document.createElement('div');
+        this.bubble.style.maxWidth = ''+(127/14)+'em';
+        this.bubble.style.minWidth = ''+(48/14)+'em';
+        this.bubble.style.padding = ''+(8/14)+'em '+(10/14)+'em';
+        this.bubble.style.border = ''+(3/14)+'em solid rgb(160, 160, 160)';
+        this.bubble.style.borderRadius = ''+(10/14)+'em';
+        this.bubble.style.background = '#fff';
+        this.bubble.style.position = 'absolute';
+        this.bubble.style.font = 'bold 1.4em sans-serif';
+        this.bubble.style.whiteSpace = 'pre-wrap';
+        this.bubble.style.wordWrap = 'break-word';
+        this.bubble.style.textAlign = 'center';
+        this.bubble.style.cursor = 'default';
+        this.bubble.style.pointerEvents = 'auto';
+        this.bubble.appendChild(this.bubbleText = document.createTextNode(''));
+        this.bubble.appendChild(this.bubblePointer = document.createElement('div'));
+        this.bubblePointer.style.position = 'absolute';
+        this.bubblePointer.style.height = ''+(21/14)+'em';
+        this.bubblePointer.style.width = ''+(44/14)+'em';
+        this.bubblePointer.style.background = 'url(icons.svg) '+(-195/14)+'em '+(-4/14)+'em';
+        this.bubblePointer.style.backgroundSize = ''+(320/14)+'em '+(96/14)+'em';
+        this.stage.ui.appendChild(this.bubble);
+      }
+      this.bubblePointer.style.backgroundPositionX = ((thinking ? -259 : -195)/14)+'em';
+      this.bubble.style.display = 'block';
+      this.bubbleText.nodeValue = text;
+      this.updateBubble();
       return ++this.sayId;
     }
-    this.saying = true;
-    this.thinking = thinking;
-    if (!this.bubble) {
-      this.bubble = document.createElement('div');
-      this.bubble.style.maxWidth = ''+(127/14)+'em';
-      this.bubble.style.minWidth = ''+(48/14)+'em';
-      this.bubble.style.padding = ''+(8/14)+'em '+(10/14)+'em';
-      this.bubble.style.border = ''+(3/14)+'em solid rgb(160, 160, 160)';
-      this.bubble.style.borderRadius = ''+(10/14)+'em';
-      this.bubble.style.background = '#fff';
-      this.bubble.style.position = 'absolute';
-      this.bubble.style.font = 'bold 1.4em sans-serif';
-      this.bubble.style.whiteSpace = 'pre-wrap';
-      this.bubble.style.wordWrap = 'break-word';
-      this.bubble.style.textAlign = 'center';
-      this.bubble.style.cursor = 'default';
-      this.bubble.style.pointerEvents = 'auto';
-      this.bubble.appendChild(this.bubbleText = document.createTextNode(''));
-      this.bubble.appendChild(this.bubblePointer = document.createElement('div'));
-      this.bubblePointer.style.position = 'absolute';
-      this.bubblePointer.style.height = ''+(21/14)+'em';
-      this.bubblePointer.style.width = ''+(44/14)+'em';
-      this.bubblePointer.style.background = 'url(icons.svg) '+(-195/14)+'em '+(-4/14)+'em';
-      this.bubblePointer.style.backgroundSize = ''+(320/14)+'em '+(96/14)+'em';
-      this.stage.ui.appendChild(this.bubble);
-    }
-    this.bubblePointer.style.backgroundPositionX = ((thinking ? -259 : -195)/14)+'em';
-    this.bubble.style.display = 'block';
-    this.bubbleText.nodeValue = text;
-    this.updateBubble();
-    return ++this.sayId;
-  };
 
-  Sprite.prototype.updateBubble = function() {
-    if (!this.visible || !this.saying) {
-      this.bubble.style.display = 'none';
-      return;
+    updateBubble() {
+      if (!this.visible || !this.saying) {
+        this.bubble.style.display = 'none';
+        return;
+      }
+      var b = this.rotatedBounds();
+      var left = 240 + b.right;
+      var bottom = 180 + b.top;
+      var width = this.bubble.offsetWidth / this.stage.zoom;
+      var height = this.bubble.offsetHeight / this.stage.zoom;
+      this.bubblePointer.style.top = ((height - 6) / 14) + 'em';
+      if (left + width + 2 > 480) {
+        this.bubble.style.right = ((240 - b.left) / 14) + 'em';
+        this.bubble.style.left = 'auto';
+        this.bubblePointer.style.right = (3/14)+'em';
+        this.bubblePointer.style.left = 'auto';
+        this.bubblePointer.style.backgroundPositionY = (-36/14)+'em';
+      } else {
+        this.bubble.style.left = (left / 14) + 'em';
+        this.bubble.style.right = 'auto';
+        this.bubblePointer.style.left = (3/14)+'em';
+        this.bubblePointer.style.right = 'auto';
+        this.bubblePointer.style.backgroundPositionY = (-4/14)+'em';
+      }
+      if (bottom + height + 2 > 360) {
+        bottom = 360 - height - 2;
+      }
+      if (bottom < 19) {
+        bottom = 19;
+      }
+      this.bubble.style.bottom = (bottom / 14) + 'em';
     }
-    var b = this.rotatedBounds();
-    var left = 240 + b.right;
-    var bottom = 180 + b.top;
-    var width = this.bubble.offsetWidth / this.stage.zoom;
-    var height = this.bubble.offsetHeight / this.stage.zoom;
-    this.bubblePointer.style.top = ((height - 6) / 14) + 'em';
-    if (left + width + 2 > 480) {
-      this.bubble.style.right = ((240 - b.left) / 14) + 'em';
-      this.bubble.style.left = 'auto';
-      this.bubblePointer.style.right = (3/14)+'em';
-      this.bubblePointer.style.left = 'auto';
-      this.bubblePointer.style.backgroundPositionY = (-36/14)+'em';
-    } else {
-      this.bubble.style.left = (left / 14) + 'em';
-      this.bubble.style.right = 'auto';
-      this.bubblePointer.style.left = (3/14)+'em';
-      this.bubblePointer.style.right = 'auto';
-      this.bubblePointer.style.backgroundPositionY = (-4/14)+'em';
-    }
-    if (bottom + height + 2 > 360) {
-      bottom = 360 - height - 2;
-    }
-    if (bottom < 19) {
-      bottom = 19;
-    }
-    this.bubble.style.bottom = (bottom / 14) + 'em';
-  };
 
-  Sprite.prototype.remove = function() {
-    if (this.bubble) {
-      this.stage.ui.removeChild(this.bubble);
-      this.bubble = null;
+    remove() {
+      if (this.bubble) {
+        this.stage.ui.removeChild(this.bubble);
+        this.bubble = null;
+      }
+      if (this.node) {
+        this.node.disconnect();
+        this.node = null;
+      }
     }
-    if (this.node) {
-      this.node.disconnect();
-      this.node = null;
-    }
-  };
+  }
 
-  var Costume = core.Costume = function(data, index, base) {
-    this.index = index;
-    this.base = base;
-    this.baseLayerID = data.baseLayerID;
-    this.baseLayerMD5 = data.baseLayerMD5;
-    this.baseLayer = data.$image;
-    this.bitmapResolution = data.bitmapResolution || 1;
-    this.scale = 1 / this.bitmapResolution;
-    this.costumeName = data.costumeName;
-    this.rotationCenterX = data.rotationCenterX;
-    this.rotationCenterY = data.rotationCenterY;
-    this.textLayer = data.$text;
+  class Costume {
+    constructor(data, index, base) {
+      this.index = index;
+      this.base = base;
+      this.baseLayerID = data.baseLayerID;
+      this.baseLayerMD5 = data.baseLayerMD5;
+      this.baseLayer = data.$image;
+      this.bitmapResolution = data.bitmapResolution || 1;
+      this.scale = 1 / this.bitmapResolution;
+      this.costumeName = data.costumeName;
+      this.rotationCenterX = data.rotationCenterX;
+      this.rotationCenterY = data.rotationCenterY;
+      this.textLayer = data.$text;
 
-    this.image = document.createElement('canvas');
-    this.context = this.image.getContext('2d');
+      this.image = document.createElement('canvas');
+      this.context = this.image.getContext('2d');
 
-    this.render();
-    this.baseLayer.onload = function() {
       this.render();
-    }.bind(this);
-    if (this.textLayer) {
-      this.textLayer.onload = this.baseLayer.onload;
+      this.baseLayer.onload = function() {
+        this.render();
+      }.bind(this);
+      if (this.textLayer) {
+        this.textLayer.onload = this.baseLayer.onload;
+      }
     }
-  };
+
+    render() {
+      if (!this.baseLayer.width || this.textLayer && !this.textLayer.width) {
+        return;
+      }
+      this.image.width = this.baseLayer.width;
+      this.image.height = this.baseLayer.height;
+
+      this.context.drawImage(this.baseLayer, 0, 0);
+      if (this.textLayer) {
+        this.context.drawImage(this.textLayer, 0, 0);
+      }
+
+      if (this.base.isStage && this.index == this.base.currentCostumeIndex) {
+        setTimeout(function() {
+          this.base.updateBackdrop();
+        }.bind(this));
+      }
+    }
+  }
   P.utils.addEvents(Costume, 'load');
 
-  Costume.prototype.render = function() {
-    if (!this.baseLayer.width || this.textLayer && !this.textLayer.width) {
-      return;
+  class Sound {
+    constructor(data) {
+      this.name = data.soundName;
+      this.buffer = data.$buffer;
+      this.duration = this.buffer ? this.buffer.duration : 0;
     }
-    this.image.width = this.baseLayer.width;
-    this.image.height = this.baseLayer.height;
+  }
 
-    this.context.drawImage(this.baseLayer, 0, 0);
-    if (this.textLayer) {
-      this.context.drawImage(this.textLayer, 0, 0);
-    }
+  class Watcher {
+    constructor(stage) {
+      this.stage = stage;
 
-    if (this.base.isStage && this.index == this.base.currentCostumeIndex) {
-      setTimeout(function() {
-        this.base.updateBackdrop();
-      }.bind(this));
-    }
-  };
+      this.cmd = 'getVar:';
+      this.color = '#ee7d16';
+      this.isDiscrete = true;
+      this.label = 'watcher';
+      this.mode = 1;
+      this.param = 'var';
+      this.sliderMax = 100;
+      this.sliderMin = 0;
+      this.target = undefined;
+      this.visible = true;
+      this.x = 0;
+      this.y = 0;
 
-  var Sound = core.Sound = function(data) {
-    this.name = data.soundName;
-    this.buffer = data.$buffer;
-    this.duration = this.buffer ? this.buffer.duration : 0;
-  };
-
-  var Watcher = core.Watcher = function(stage) {
-    this.stage = stage;
-
-    this.cmd = 'getVar:';
-    this.color = '#ee7d16';
-    this.isDiscrete = true;
-    this.label = 'watcher';
-    this.mode = 1;
-    this.param = 'var';
-    this.sliderMax = 100;
-    this.sliderMin = 0;
-    this.target = undefined;
-    this.visible = true;
-    this.x = 0;
-    this.y = 0;
-
-    this.el = null;
-    this.labelEl = null;
-    this.readout = null;
-    this.slider = null;
-    this.button = null;
-  };
-
-  Watcher.prototype.fromJSON = function(data) {
-    this.cmd = data.cmd || 'getVar:';
-    if (data.color) {
-      var c = (data.color < 0 ? data.color + 0x1000000 : data.color).toString(16);
-      this.color = '#000000'.slice(0, -c.length) + c;
-    }
-    this.isDiscrete = data.isDiscrete == null ? true : data.isDiscrete;
-    this.label = data.label || '';
-    this.mode = data.mode || 1;
-    this.param = data.param;
-    this.sliderMax = data.sliderMax == null ? 100 : data.sliderMax;
-    this.sliderMin = data.sliderMin || 0;
-    this.targetName = data.target;
-    this.visible = data.visible == null ? true : data.visible;
-    this.x = data.x || 0;
-    this.y = data.y || 0;
-
-    return this;
-  };
-
-  Watcher.prototype.resolve = function() {
-    this.target = this.stage.getObject(this.targetName);
-    if (this.target && this.cmd === 'getVar:') {
-      this.target.watchers[this.param] = this;
-    }
-    if (!this.label) {
-      this.label = this.getLabel();
-      if (this.target.isSprite) this.label = this.target.objName + ': ' + this.label;
-    }
-    this.layout();
-  };
-
-  var WATCHER_LABELS = {
-    'costumeIndex': 'costume #',
-    'xpos': 'x position',
-    'ypos': 'y position',
-    'heading': 'direction',
-    'scale': 'size',
-    'backgroundIndex': 'background #',
-    'sceneName': 'background name',
-    'tempo': 'tempo',
-    'volume': 'volume',
-    'answer': 'answer',
-    'timer': 'timer',
-    'soundLevel': 'loudness',
-    'isLoud': 'loud?',
-    'xScroll': 'x scroll',
-    'yScroll': 'y scroll'
-  };
-
-  Watcher.prototype.getLabel = function() {
-    switch (this.cmd) {
-      case 'getVar:': return this.param;
-      case 'sensor:': return this.param + ' sensor value';
-      case 'sensorPressed': return 'sensor ' + this.param + '?';
-      case 'timeAndDate': return this.param;
-      case 'senseVideoMotion': return 'video ' + this.param;
-    }
-    return WATCHER_LABELS[this.cmd] || '';
-  };
-
-  Watcher.prototype.update = function(context) {
-    var value = 0;
-    if (!this.target) return;
-    switch (this.cmd) {
-      case 'answer':
-        value = this.stage.answer;
-        break;
-      case 'backgroundIndex':
-        value = this.stage.currentCostumeIndex + 1;
-        break;
-      case 'costumeIndex':
-        value = this.target.currentCostumeIndex + 1;
-        break;
-      case 'getVar:':
-        value = this.target.vars[this.param];
-        break;
-      case 'heading':
-        value = this.target.direction;
-        break;
-      case 'scale':
-        value = this.target.scale * 100;
-        break;
-      case 'sceneName':
-        value = this.stage.getCostumeName();
-        break;
-      case 'senseVideoMotion':
-        // TODO
-        break;
-      case 'soundLevel':
-        // TODO
-        break;
-      case 'tempo':
-        value = this.stage.tempoBPM;
-        break;
-      case 'timeAndDate':
-        value = this.timeAndDate(this.param);
-        break;
-      case 'timer':
-        value = Math.round((this.stage.rightNow() - this.stage.timerStart) / 100) / 10;
-        break;
-      case 'volume':
-        value = this.target.volume * 100;
-        break;
-      case 'xpos':
-        value = this.target.scratchX;
-        break;
-      case 'ypos':
-        value = this.target.scratchY;
-        break;
-    }
-    if (typeof value === 'number' && (value < 0.001 || value > 0.001)) {
-      value = Math.round(value * 1000) / 1000;
-    }
-    this.readout.textContent = '' + value;
-    if (this.slider) {
-      this.buttonWrap.style.transform = 'translate('+((+value || 0) - this.sliderMin) / (this.sliderMax - this.sliderMin)*100+'%,0)';
-    }
-  };
-
-  Watcher.prototype.layout = function() {
-    if (this.el) {
-      this.el.style.display = this.visible ? 'block' : 'none';
-      return;
-    }
-    if (!this.visible) return;
-
-    this.el = document.createElement('div');
-    this.el.dataset.watcher = this.stage.allWatchers.indexOf(this);
-    this.el.style.whiteSpace = 'pre';
-    this.el.style.position = 'absolute';
-    this.el.style.left = this.el.style.top = '0';
-    this.el.style.transform = 'translate('+(this.x|0)/10+'em,'+(this.y|0)/10+'em)';
-    this.el.style.cursor = 'default';
-    this.el.style.pointerEvents = 'auto';
-
-    if (this.mode === 2) {
-      this.el.appendChild(this.readout = document.createElement('div'));
-      this.readout.style.minWidth = (38/15)+'em';
-      this.readout.style.font = 'bold 1.5em/'+(19/15)+' sans-serif';
-      this.readout.style.height = (19/15)+'em';
-      this.readout.style.borderRadius = (4/15)+'em';
-      this.readout.style.margin = (3/15)+'em 0 0 0';
-      this.readout.style.padding = '0 '+(3/10)+'em';
-    } else {
-      this.el.appendChild(this.labelEl = document.createElement('div'), this.el.firstChild);
-      this.el.appendChild(this.readout = document.createElement('div'));
-
-      this.el.style.border = '.1em solid rgb(148,145,145)';
-      this.el.style.borderRadius = '.4em';
-      this.el.style.background = 'rgb(193,196,199)';
-      this.el.style.padding = '.2em .6em .3em .5em';
-
-      this.labelEl.textContent = this.label;
-      // this.labelEl.style.marginTop = (1/11)+'em';
-      this.labelEl.style.font = 'bold 1.1em/1 sans-serif';
-      this.labelEl.style.display = 'inline-block';
-
-      this.labelEl.style.verticalAlign =
-      this.readout.style.verticalAlign = 'middle';
-
-      this.readout.style.minWidth = (37/10)+'em';
-      this.readout.style.padding = '0 '+(1/10)+'em';
-      this.readout.style.font = 'bold 1.0em/'+(13/10)+' sans-serif';
-      this.readout.style.height = (13/10)+'em';
-      this.readout.style.borderRadius = (4/10)+'em';
-      this.readout.style.marginLeft = (6/10)+'em';
-    }
-    this.readout.style.color = '#fff';
-    var f = 1 / (this.mode === 2 ? 15 : 10);
-    this.readout.style.border = f+'em solid #fff';
-    this.readout.style.boxShadow = 'inset '+f+'em '+f+'em '+f+'em rgba(0,0,0,.5), inset -'+f+'em -'+f+'em '+f+'em rgba(255,255,255,.5)';
-    this.readout.style.textAlign = 'center';
-    this.readout.style.background = this.color;
-    this.readout.style.display = 'inline-block';
-
-    if (this.mode === 3) {
-      this.el.appendChild(this.slider = document.createElement('div'));
-      this.slider.appendChild(this.buttonWrap = document.createElement('div'));
-      this.buttonWrap.appendChild(this.button = document.createElement('div'));
-
-      this.slider.style.height =
-      this.slider.style.borderRadius = '.5em';
-      this.slider.style.background = 'rgb(192,192,192)';
-      this.slider.style.margin = '.4em 0 .1em';
-      this.slider.style.boxShadow = 'inset .125em .125em .125em rgba(0,0,0,.5), inset -.125em -.125em .125em rgba(255,255,255,.5)';
-      this.slider.style.position = 'relative';
-      this.slider.dataset.slider = '';
-
-      this.slider.style.paddingRight =
-      this.button.style.width =
-      this.button.style.height =
-      this.button.style.borderRadius = '1.1em';
-      this.button.style.position = 'absolute';
-      this.button.style.left = '0';
-      this.button.style.top = '-.3em';
-      this.button.style.background = '#fff';
-      this.button.style.boxShadow = 'inset .3em .3em .2em -.2em rgba(255,255,255,.9), inset -.3em -.3em .2em -.2em rgba(0,0,0,.9), inset 0 0 0 .1em #777';
-      this.button.dataset.button = '';
+      this.el = null;
+      this.labelEl = null;
+      this.readout = null;
+      this.slider = null;
+      this.button = null;
     }
 
-    this.stage.ui.appendChild(this.el);
-  };
+    fromJSON(data) {
+      this.cmd = data.cmd || 'getVar:';
+      if (data.color) {
+        var c = (data.color < 0 ? data.color + 0x1000000 : data.color).toString(16);
+        this.color = '#000000'.slice(0, -c.length) + c;
+      }
+      this.isDiscrete = data.isDiscrete == null ? true : data.isDiscrete;
+      this.label = data.label || '';
+      this.mode = data.mode || 1;
+      this.param = data.param;
+      this.sliderMax = data.sliderMax == null ? 100 : data.sliderMax;
+      this.sliderMin = data.sliderMin || 0;
+      this.targetName = data.target;
+      this.visible = data.visible == null ? true : data.visible;
+      this.x = data.x || 0;
+      this.y = data.y || 0;
+
+      return this;
+    }
+
+    resolve() {
+      this.target = this.stage.getObject(this.targetName);
+      if (this.target && this.cmd === 'getVar:') {
+        this.target.watchers[this.param] = this;
+      }
+      if (!this.label) {
+        this.label = this.getLabel();
+        if (this.target.isSprite) this.label = this.target.objName + ': ' + this.label;
+      }
+      this.layout();
+    }
+
+    getLabel() {
+      var WATCHER_LABELS = {
+        'costumeIndex': 'costume #',
+        'xpos': 'x position',
+        'ypos': 'y position',
+        'heading': 'direction',
+        'scale': 'size',
+        'backgroundIndex': 'background #',
+        'sceneName': 'background name',
+        'tempo': 'tempo',
+        'volume': 'volume',
+        'answer': 'answer',
+        'timer': 'timer',
+        'soundLevel': 'loudness',
+        'isLoud': 'loud?',
+        'xScroll': 'x scroll',
+        'yScroll': 'y scroll'
+      };
+      switch (this.cmd) {
+        case 'getVar:': return this.param;
+        case 'sensor:': return this.param + ' sensor value';
+        case 'sensorPressed': return 'sensor ' + this.param + '?';
+        case 'timeAndDate': return this.param;
+        case 'senseVideoMotion': return 'video ' + this.param;
+      }
+      return WATCHER_LABELS[this.cmd] || '';
+    }
+
+    update(context) {
+      var value = 0;
+      if (!this.target) return;
+      switch (this.cmd) {
+        case 'answer':
+          value = this.stage.answer;
+          break;
+        case 'backgroundIndex':
+          value = this.stage.currentCostumeIndex + 1;
+          break;
+        case 'costumeIndex':
+          value = this.target.currentCostumeIndex + 1;
+          break;
+        case 'getVar:':
+          value = this.target.vars[this.param];
+          break;
+        case 'heading':
+          value = this.target.direction;
+          break;
+        case 'scale':
+          value = this.target.scale * 100;
+          break;
+        case 'sceneName':
+          value = this.stage.getCostumeName();
+          break;
+        case 'senseVideoMotion':
+          // TODO
+          break;
+        case 'soundLevel':
+          // TODO
+          break;
+        case 'tempo':
+          value = this.stage.tempoBPM;
+          break;
+        case 'timeAndDate':
+          value = this.timeAndDate(this.param);
+          break;
+        case 'timer':
+          value = Math.round((this.stage.rightNow() - this.stage.timerStart) / 100) / 10;
+          break;
+        case 'volume':
+          value = this.target.volume * 100;
+          break;
+        case 'xpos':
+          value = this.target.scratchX;
+          break;
+        case 'ypos':
+          value = this.target.scratchY;
+          break;
+      }
+      if (typeof value === 'number' && (value < 0.001 || value > 0.001)) {
+        value = Math.round(value * 1000) / 1000;
+      }
+      this.readout.textContent = '' + value;
+      if (this.slider) {
+        this.buttonWrap.style.transform = 'translate('+((+value || 0) - this.sliderMin) / (this.sliderMax - this.sliderMin)*100+'%,0)';
+      }
+    }
+
+    layout() {
+      if (this.el) {
+        this.el.style.display = this.visible ? 'block' : 'none';
+        return;
+      }
+      if (!this.visible) return;
+
+      this.el = document.createElement('div');
+      this.el.dataset.watcher = this.stage.allWatchers.indexOf(this);
+      this.el.style.whiteSpace = 'pre';
+      this.el.style.position = 'absolute';
+      this.el.style.left = this.el.style.top = '0';
+      this.el.style.transform = 'translate('+(this.x|0)/10+'em,'+(this.y|0)/10+'em)';
+      this.el.style.cursor = 'default';
+      this.el.style.pointerEvents = 'auto';
+
+      if (this.mode === 2) {
+        this.el.appendChild(this.readout = document.createElement('div'));
+        this.readout.style.minWidth = (38/15)+'em';
+        this.readout.style.font = 'bold 1.5em/'+(19/15)+' sans-serif';
+        this.readout.style.height = (19/15)+'em';
+        this.readout.style.borderRadius = (4/15)+'em';
+        this.readout.style.margin = (3/15)+'em 0 0 0';
+        this.readout.style.padding = '0 '+(3/10)+'em';
+      } else {
+        this.el.appendChild(this.labelEl = document.createElement('div'), this.el.firstChild);
+        this.el.appendChild(this.readout = document.createElement('div'));
+
+        this.el.style.border = '.1em solid rgb(148,145,145)';
+        this.el.style.borderRadius = '.4em';
+        this.el.style.background = 'rgb(193,196,199)';
+        this.el.style.padding = '.2em .6em .3em .5em';
+
+        this.labelEl.textContent = this.label;
+        // this.labelEl.style.marginTop = (1/11)+'em';
+        this.labelEl.style.font = 'bold 1.1em/1 sans-serif';
+        this.labelEl.style.display = 'inline-block';
+
+        this.labelEl.style.verticalAlign =
+        this.readout.style.verticalAlign = 'middle';
+
+        this.readout.style.minWidth = (37/10)+'em';
+        this.readout.style.padding = '0 '+(1/10)+'em';
+        this.readout.style.font = 'bold 1.0em/'+(13/10)+' sans-serif';
+        this.readout.style.height = (13/10)+'em';
+        this.readout.style.borderRadius = (4/10)+'em';
+        this.readout.style.marginLeft = (6/10)+'em';
+      }
+      this.readout.style.color = '#fff';
+      var f = 1 / (this.mode === 2 ? 15 : 10);
+      this.readout.style.border = f+'em solid #fff';
+      this.readout.style.boxShadow = 'inset '+f+'em '+f+'em '+f+'em rgba(0,0,0,.5), inset -'+f+'em -'+f+'em '+f+'em rgba(255,255,255,.5)';
+      this.readout.style.textAlign = 'center';
+      this.readout.style.background = this.color;
+      this.readout.style.display = 'inline-block';
+
+      if (this.mode === 3) {
+        this.el.appendChild(this.slider = document.createElement('div'));
+        this.slider.appendChild(this.buttonWrap = document.createElement('div'));
+        this.buttonWrap.appendChild(this.button = document.createElement('div'));
+
+        this.slider.style.height =
+        this.slider.style.borderRadius = '.5em';
+        this.slider.style.background = 'rgb(192,192,192)';
+        this.slider.style.margin = '.4em 0 .1em';
+        this.slider.style.boxShadow = 'inset .125em .125em .125em rgba(0,0,0,.5), inset -.125em -.125em .125em rgba(255,255,255,.5)';
+        this.slider.style.position = 'relative';
+        this.slider.dataset.slider = '';
+
+        this.slider.style.paddingRight =
+        this.button.style.width =
+        this.button.style.height =
+        this.button.style.borderRadius = '1.1em';
+        this.button.style.position = 'absolute';
+        this.button.style.left = '0';
+        this.button.style.top = '-.3em';
+        this.button.style.background = '#fff';
+        this.button.style.boxShadow = 'inset .3em .3em .2em -.2em rgba(255,255,255,.9), inset -.3em -.3em .2em -.2em rgba(0,0,0,.9), inset 0 0 0 .1em #777';
+        this.button.dataset.button = '';
+      }
+
+      this.stage.ui.appendChild(this.el);
+    }
+  }
+
+  core.Base = Base;
+  core.Stage = Stage;
+  core.Sprite = Sprite;
+  core.Costume = Costume;
+  core.Sound = Sound;
+  core.Watcher = Watcher;
 
   return core;
 })({});
 
 // Related to loading files from the Scratch 2 API
 P.IO = (function(IO) {
-  var wavFiles = {AcousticGuitar_F3:'instruments/AcousticGuitar_F3_22k.wav',AcousticPiano_As3:'instruments/AcousticPiano(5)_A%233_22k.wav',AcousticPiano_C4:'instruments/AcousticPiano(5)_C4_22k.wav',AcousticPiano_G4:'instruments/AcousticPiano(5)_G4_22k.wav',AcousticPiano_F5:'instruments/AcousticPiano(5)_F5_22k.wav',AcousticPiano_C6:'instruments/AcousticPiano(5)_C6_22k.wav',AcousticPiano_Ds6:'instruments/AcousticPiano(5)_D%236_22k.wav',AcousticPiano_D7:'instruments/AcousticPiano(5)_D7_22k.wav',AltoSax_A3:'instruments/AltoSax_A3_22K.wav',AltoSax_C6:'instruments/AltoSax(3)_C6_22k.wav',Bassoon_C3:'instruments/Bassoon_C3_22k.wav',BassTrombone_A2_2:'instruments/BassTrombone_A2(2)_22k.wav',BassTrombone_A2_3:'instruments/BassTrombone_A2(3)_22k.wav',Cello_C2:'instruments/Cello(3b)_C2_22k.wav',Cello_As2:'instruments/Cello(3)_A%232_22k.wav',Choir_F3:'instruments/Choir(4)_F3_22k.wav',Choir_F4:'instruments/Choir(4)_F4_22k.wav',Choir_F5:'instruments/Choir(4)_F5_22k.wav',Clarinet_C4:'instruments/Clarinet_C4_22k.wav',ElectricBass_G1:'instruments/ElectricBass(2)_G1_22k.wav',ElectricGuitar_F3:'instruments/ElectricGuitar(2)_F3(1)_22k.wav',ElectricPiano_C2:'instruments/ElectricPiano_C2_22k.wav',ElectricPiano_C4:'instruments/ElectricPiano_C4_22k.wav',EnglishHorn_D4:'instruments/EnglishHorn(1)_D4_22k.wav',EnglishHorn_F3:'instruments/EnglishHorn(1)_F3_22k.wav',Flute_B5_1:'instruments/Flute(3)_B5(1)_22k.wav',Flute_B5_2:'instruments/Flute(3)_B5(2)_22k.wav',Marimba_C4:'instruments/Marimba_C4_22k.wav',MusicBox_C4:'instruments/MusicBox_C4_22k.wav',Organ_G2:'instruments/Organ(2)_G2_22k.wav',Pizz_A3:'instruments/Pizz(2)_A3_22k.wav',Pizz_E4:'instruments/Pizz(2)_E4_22k.wav',Pizz_G2:'instruments/Pizz(2)_G2_22k.wav',SteelDrum_D5:'instruments/SteelDrum_D5_22k.wav',SynthLead_C4:'instruments/SynthLead(6)_C4_22k.wav',SynthLead_C6:'instruments/SynthLead(6)_C6_22k.wav',SynthPad_A3:'instruments/SynthPad(2)_A3_22k.wav',SynthPad_C6:'instruments/SynthPad(2)_C6_22k.wav',TenorSax_C3:'instruments/TenorSax(1)_C3_22k.wav',Trombone_B3:'instruments/Trombone_B3_22k.wav',Trumpet_E5:'instruments/Trumpet_E5_22k.wav',Vibraphone_C3:'instruments/Vibraphone_C3_22k.wav',Violin_D4:'instruments/Violin(2)_D4_22K.wav',Violin_A4:'instruments/Violin(3)_A4_22k.wav',Violin_E5:'instruments/Violin(3b)_E5_22k.wav',WoodenFlute_C5:'instruments/WoodenFlute_C5_22k.wav',BassDrum:'drums/BassDrum(1b)_22k.wav',Bongo:'drums/Bongo_22k.wav',Cabasa:'drums/Cabasa(1)_22k.wav',Clap:'drums/Clap(1)_22k.wav',Claves:'drums/Claves(1)_22k.wav',Conga:'drums/Conga(1)_22k.wav',Cowbell:'drums/Cowbell(3)_22k.wav',Crash:'drums/Crash(2)_22k.wav',Cuica:'drums/Cuica(2)_22k.wav',GuiroLong:'drums/GuiroLong(1)_22k.wav',GuiroShort:'drums/GuiroShort(1)_22k.wav',HiHatClosed:'drums/HiHatClosed(1)_22k.wav',HiHatOpen:'drums/HiHatOpen(2)_22k.wav',HiHatPedal:'drums/HiHatPedal(1)_22k.wav',Maracas:'drums/Maracas(1)_22k.wav',SideStick:'drums/SideStick(1)_22k.wav',SnareDrum:'drums/SnareDrum(1)_22k.wav',Tambourine:'drums/Tambourine(3)_22k.wav',Tom:'drums/Tom(1)_22k.wav',Triangle:'drums/Triangle(1)_22k.wav',Vibraslap:'drums/Vibraslap(1)_22k.wav',WoodBlock:'drums/WoodBlock(1)_22k.wav'};
-
   IO.PROJECT_URL = 'https://projects.scratch.mit.edu/internalapi/project/';
   IO.ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
-  IO.SOUNDBANK_URL = 'https://cdn.rawgit.com/LLK/scratch-flash/v429/src/soundbank/';
+  IO.SOUNDBANK_URL = 'https://raw.githubusercontent.com/LLK/scratch-flash/v429/src/soundbank/';
 
   IO.FONTS = {
     '': 'Helvetica',
@@ -2050,7 +2130,7 @@ P.IO = (function(IO) {
   IO.loadWavs = function() {
     if (!P.core.audioContext) return;
 
-    for (var name in wavFiles) {
+    for (var name in P.config.wavFiles) {
       if (IO.wavBuffers[name]) {
         if (IO.wavBuffers[name] instanceof P.utils.Request) {
           IO.projectRequest.add(IO.wavBuffers[name]);
@@ -2063,7 +2143,7 @@ P.IO = (function(IO) {
 
   IO.loadWavBuffer = function(name) {
     var request = new P.utils.Request;
-    IO.load(IO.SOUNDBANK_URL + wavFiles[name], function(ab) {
+    IO.load(IO.SOUNDBANK_URL + P.config.wavFiles[name], function(ab) {
       IO.decodeAudio(ab, function(buffer) {
         IO.wavBuffers[name] = buffer;
         request.load();
@@ -2335,6 +2415,19 @@ P.IO = (function(IO) {
 
   return IO;
 })({});
+
+// Related to getting data from the public Scratch API
+// Will eventually replace P.IO
+P.API = (function(API) {
+
+  API.getTitle = function(projectId) {
+    return fetch("https://api.scratch.mit.edu/projects/195197851" + projectId)
+      .then(function(r) { return r.json(); })
+      .then(function(r) { return r.title; });
+  };
+
+  return API;
+}({}));
 
 P.compilers = {};
 // Compiles a Scratch 2 project to javascript
