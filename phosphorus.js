@@ -1541,6 +1541,33 @@ var P = (function() {
     if (ox === x && oy === y && !this.isPenDown) return;
     this.scratchX = x;
     this.scratchY = y;
+
+    // Ensure that the sprite is in view of the stage.
+    // https://github.com/LLK/scratch-flash/blob/72e4729b8189d11bbe51b6d94144b0a3c392ac9a/src/scratch/ScratchSprite.as#L191-L224
+
+    var rb = this.rotatedBounds();
+    var width = rb.right - rb.left;
+    var height = rb.top - rb.bottom;
+    // using 18 puts sprites 3 pixels too far from edges for some reason, 15 works fine
+    var inset = Math.min(15, Math.min(width, height) / 2);
+
+    if (rb.right < -240 + inset) {
+      var difference = rb.right - (-240 + inset);
+      this.scratchX = Math.floor(this.scratchX - difference);
+    }
+    if (rb.left > 240 - inset) {
+      var difference = (240 - inset) - rb.left;
+      this.scratchX = Math.ceil(difference + this.scratchX);
+    }
+    if (rb.bottom > 180 - inset) {
+      var difference = (180 - inset) - rb.bottom;
+      this.scratchY = Math.ceil(difference + this.scratchY);
+    }
+    if (rb.top < -180 + inset) {
+      var difference = rb.top - (-180 + inset);
+      this.scratchY = Math.floor(this.scratchY - difference);
+    }
+
     if (this.isPenDown && !this.isDragging) {
       var context = this.stage.penContext;
       if (this.penSize % 2 > .5 && this.penSize % 2 < 1.5) {
