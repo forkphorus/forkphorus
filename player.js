@@ -184,9 +184,9 @@ P.player = (function() {
 
     if (id) {
       showProgress(P.IO.loadScratchr2Project(id), cb);
-      P.IO.loadScratchr2ProjectTitle(id, function(title) {
-        if (titleCallback) titleCallback(P.player.projectTitle = title);
-      });
+      // P.IO.loadScratchr2ProjectTitle(id, function(title) {
+      //   if (titleCallback) titleCallback(P.player.projectTitle = title);
+      // });
     } else {
       if (titleCallback) setTimeout(function() {
         titleCallback('');
