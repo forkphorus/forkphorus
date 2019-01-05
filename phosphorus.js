@@ -201,7 +201,7 @@ P.renderers = {};
 // Renders sprites using a 2D canvas context.
 P.renderers.canvas2d = (function(renderer) {
   var Renderer = renderer.Renderer = function(canvas) {
-    this.ctx = canvas.getContext("2d");
+    this.ctx = canvas.getContext('2d');
     this.canvas = canvas;
   };
 
@@ -218,28 +218,29 @@ P.renderers.canvas2d = (function(renderer) {
   };
 
   Renderer.prototype.drawChild = function(c, noEffects) {
-    if (c.isDragging) {
-      c.moveTo(c.dragOffsetX + c.stage.mouseX, c.dragOffsetY + c.stage.mouseY);
-    }
-
     var costume = c.costumes[c.currentCostumeIndex];
     if (costume) {
       this.ctx.save();
 
       var z = c.stage.zoom * P.config.scale;
-      this.ctx.translate(((c.scratchX + 240) * z | 0) / z, ((180 - c.scratchY) * z | 0) / z);
-      if (this.rotationStyle === 'normal') {
-        this.ctx.rotate((c.direction - 90) * Math.PI / 180);
-      } else if (c.rotationStyle === 'leftRight' && c.direction < 0) {
-        this.ctx.scale(-1, 1);
+      if (c.isSprite) {
+        this.ctx.translate(((c.scratchX + 240) * z | 0) / z, ((180 - c.scratchY) * z | 0) / z);
+        if (this.rotationStyle === 'normal') {
+          this.ctx.rotate((c.direction - 90) * Math.PI / 180);
+        } else if (c.rotationStyle === 'leftRight' && c.direction < 0) {
+          this.ctx.scale(-1, 1);
+        }
       }
       this.ctx.scale(c.scale, c.scale);
       this.ctx.scale(costume.scale, costume.scale);
-      this.ctx.translate(-costume.rotationCenterX, -costume.rotationCenterY);
+      if (c.isSprite) {
+        this.ctx.translate(-costume.rotationCenterX, -costume.rotationCenterY);
+      }
 
       if (!noEffects) {
         this.ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
-        // todo: other effects
+      } else {
+        this.ctx.globalAlpha = 1;
       }
 
       this.ctx.drawImage(costume.image, 0, 0);
@@ -949,6 +950,9 @@ P.core = (function(core) {
   Stage.prototype.drawChildren = function(renderer, noEffects, skip) {
     for (var i = 0; i < this.children.length; i++) {
       var c = this.children[i];
+      if (c.isDragging) {
+        c.moveTo(c.dragOffsetX + c.stage.mouseX, c.dragOffsetY + c.stage.mouseY);
+      }
       if (c.visible && c !== skip) {
         renderer.drawChild(c, noEffects);
       }
@@ -956,7 +960,7 @@ P.core = (function(core) {
   };
 
   Stage.prototype.drawAll = function(renderer, noEffects, skip) {
-    renderer.drawImage(this.backdropCanvas, 0, 0);
+    renderer.drawChild(this);
     renderer.drawImage(this.penCanvas, 0, 0);
     this.drawChildren(renderer, noEffects, skip);
   }
@@ -1178,6 +1182,8 @@ P.core = (function(core) {
   // Canvases used for collision detection in the following methods
   var collisionCanvas = document.createElement('canvas');
   var collisionRenderer = new P.renderers.canvas2d.Renderer(collisionCanvas);
+  var secondaryCollisionCanvas = document.createElement('canvas');
+  var secondaryCollisionRenderer = new P.renderers.canvas2d.Renderer(secondaryCollisionCanvas);
 
   Sprite.prototype.touching = function(thing) {
     var costume = this.costumes[this.currentCostumeIndex];
@@ -1288,23 +1294,21 @@ P.core = (function(core) {
 
     var rb = this.rotatedBounds();
 
-    var secondaryRenderer = new P.renderers.canvas2d.Renderer(document.createElement("canvas"));
-
-    collisionCanvas.width = secondaryRenderer.canvas.width = rb.right - rb.left;
-    collisionCanvas.height = secondaryRenderer.canvas.height = rb.top - rb.bottom;
+    collisionCanvas.width = secondaryCollisionCanvas.width = rb.right - rb.left;
+    collisionCanvas.height = secondaryCollisionCanvas.height = rb.top - rb.bottom;
 
     collisionRenderer.ctx.save();
-    secondaryRenderer.ctx.save();
+    secondaryCollisionRenderer.ctx.save();
     collisionRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
-    secondaryRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
+    secondaryCollisionRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
 
     this.stage.drawAll(collisionRenderer, true, this);
-    secondaryRenderer.drawChild(this, true);
+    secondaryCollisionRenderer.drawChild(this, true);
 
     collisionRenderer.ctx.restore();
 
     var dataA = collisionRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
-    var dataB = secondaryRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
+    var dataB = secondaryCollisionRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
 
     sourceColor = sourceColor & 0xffffff;
     touchingColor = touchingColor & 0xffffff;
@@ -1576,6 +1580,7 @@ P.core = (function(core) {
     if (this.textLayer) {
       this.context.drawImage(this.textLayer, 0, 0);
     }
+
     if (this.base.isStage && this.index == this.base.currentCostumeIndex) {
       setTimeout(function() {
         this.base.updateBackdrop();
@@ -1819,7 +1824,7 @@ P.core = (function(core) {
   return core;
 })({});
 
-// Related to loading files from the Scratch API
+// Related to loading files from the Scratch 2 API
 P.IO = (function(IO) {
   var wavFiles = {AcousticGuitar_F3:'instruments/AcousticGuitar_F3_22k.wav',AcousticPiano_As3:'instruments/AcousticPiano(5)_A%233_22k.wav',AcousticPiano_C4:'instruments/AcousticPiano(5)_C4_22k.wav',AcousticPiano_G4:'instruments/AcousticPiano(5)_G4_22k.wav',AcousticPiano_F5:'instruments/AcousticPiano(5)_F5_22k.wav',AcousticPiano_C6:'instruments/AcousticPiano(5)_C6_22k.wav',AcousticPiano_Ds6:'instruments/AcousticPiano(5)_D%236_22k.wav',AcousticPiano_D7:'instruments/AcousticPiano(5)_D7_22k.wav',AltoSax_A3:'instruments/AltoSax_A3_22K.wav',AltoSax_C6:'instruments/AltoSax(3)_C6_22k.wav',Bassoon_C3:'instruments/Bassoon_C3_22k.wav',BassTrombone_A2_2:'instruments/BassTrombone_A2(2)_22k.wav',BassTrombone_A2_3:'instruments/BassTrombone_A2(3)_22k.wav',Cello_C2:'instruments/Cello(3b)_C2_22k.wav',Cello_As2:'instruments/Cello(3)_A%232_22k.wav',Choir_F3:'instruments/Choir(4)_F3_22k.wav',Choir_F4:'instruments/Choir(4)_F4_22k.wav',Choir_F5:'instruments/Choir(4)_F5_22k.wav',Clarinet_C4:'instruments/Clarinet_C4_22k.wav',ElectricBass_G1:'instruments/ElectricBass(2)_G1_22k.wav',ElectricGuitar_F3:'instruments/ElectricGuitar(2)_F3(1)_22k.wav',ElectricPiano_C2:'instruments/ElectricPiano_C2_22k.wav',ElectricPiano_C4:'instruments/ElectricPiano_C4_22k.wav',EnglishHorn_D4:'instruments/EnglishHorn(1)_D4_22k.wav',EnglishHorn_F3:'instruments/EnglishHorn(1)_F3_22k.wav',Flute_B5_1:'instruments/Flute(3)_B5(1)_22k.wav',Flute_B5_2:'instruments/Flute(3)_B5(2)_22k.wav',Marimba_C4:'instruments/Marimba_C4_22k.wav',MusicBox_C4:'instruments/MusicBox_C4_22k.wav',Organ_G2:'instruments/Organ(2)_G2_22k.wav',Pizz_A3:'instruments/Pizz(2)_A3_22k.wav',Pizz_E4:'instruments/Pizz(2)_E4_22k.wav',Pizz_G2:'instruments/Pizz(2)_G2_22k.wav',SteelDrum_D5:'instruments/SteelDrum_D5_22k.wav',SynthLead_C4:'instruments/SynthLead(6)_C4_22k.wav',SynthLead_C6:'instruments/SynthLead(6)_C6_22k.wav',SynthPad_A3:'instruments/SynthPad(2)_A3_22k.wav',SynthPad_C6:'instruments/SynthPad(2)_C6_22k.wav',TenorSax_C3:'instruments/TenorSax(1)_C3_22k.wav',Trombone_B3:'instruments/Trombone_B3_22k.wav',Trumpet_E5:'instruments/Trumpet_E5_22k.wav',Vibraphone_C3:'instruments/Vibraphone_C3_22k.wav',Violin_D4:'instruments/Violin(2)_D4_22K.wav',Violin_A4:'instruments/Violin(3)_A4_22k.wav',Violin_E5:'instruments/Violin(3b)_E5_22k.wav',WoodenFlute_C5:'instruments/WoodenFlute_C5_22k.wav',BassDrum:'drums/BassDrum(1b)_22k.wav',Bongo:'drums/Bongo_22k.wav',Cabasa:'drums/Cabasa(1)_22k.wav',Clap:'drums/Clap(1)_22k.wav',Claves:'drums/Claves(1)_22k.wav',Conga:'drums/Conga(1)_22k.wav',Cowbell:'drums/Cowbell(3)_22k.wav',Crash:'drums/Crash(2)_22k.wav',Cuica:'drums/Cuica(2)_22k.wav',GuiroLong:'drums/GuiroLong(1)_22k.wav',GuiroShort:'drums/GuiroShort(1)_22k.wav',HiHatClosed:'drums/HiHatClosed(1)_22k.wav',HiHatOpen:'drums/HiHatOpen(2)_22k.wav',HiHatPedal:'drums/HiHatPedal(1)_22k.wav',Maracas:'drums/Maracas(1)_22k.wav',SideStick:'drums/SideStick(1)_22k.wav',SnareDrum:'drums/SnareDrum(1)_22k.wav',Tambourine:'drums/Tambourine(3)_22k.wav',Tom:'drums/Tom(1)_22k.wav',Triangle:'drums/Triangle(1)_22k.wav',Vibraslap:'drums/Vibraslap(1)_22k.wav',WoodBlock:'drums/WoodBlock(1)_22k.wav'};
 
