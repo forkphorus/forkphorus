@@ -1,1 +1,1 @@
-[phosphorus.github.io](https://phosphorus.github.io)
+https://garbomuffin.github.io/phosphorus/
