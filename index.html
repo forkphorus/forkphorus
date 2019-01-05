@@ -1,12 +1,12 @@
 <!doctype html>
 <meta charset=utf-8>
 <meta name=viewport content="width=device-width, initial-scale=1.0">
-<title>phosphorus</title>
+<title>phosphorus fork</title>
 <link rel=stylesheet href=player.css>
 <link rel=stylesheet href=index.css>
 
 <div class=area id=title-area>
-<h1 class=title>phosphorus</h1>
+<h1 class=title>phosphorus <span id="subtitle">(fork)</span></h1>
 <p>phosphorus runs your Scratch projects really fast by compiling them to JavaScript. Try it out by pasting a URL or project ID into the field below or <a class=dropdown>choosing an example<select id=examples>
   <option value>
   <option value=11397100>3D Remix by DadOfMrLog
@@ -31,7 +31,7 @@
 </div>
 <div class=player></div>
 <div class=internal-error>
-  An internal error occurred. <a id=error-bug-link target=_blank href=https://github.com/nathan/phosphorus/issues/new>Click here</a> to file a bug report.
+  An internal error occurred. <a id=error-bug-link target=_blank href=https://github.com/GarboMuffin/phosphorus/issues/new>Click here</a> to file a bug report.
 </div>
 </div>
 
@@ -68,14 +68,14 @@
 </section>
 <section>
   <h1>Report a problem</h1>
-  <p>phosphorus is still in development. <a id=bug-link target=_blank href=https://github.com/nathan/phosphorus/issues/new>Click here</a> to report a problem with this project.</p>
+  <p>phosphorus is still in development. <a id=bug-link target=_blank href=https://github.com/GarboMuffin/phosphorus/issues/new>Click here</a> to report a problem with this project.</p>
 </section>
 </div>
 <section>
   <h1>Credits</h1>
   <p>phosphorus was created by <a href=https://github.com/nathan>Nathan</a>. Its CPS-style compilation and overall design was inspired by <a href=https://github.com/RHY3756547>Rhys</a>'s <a href=https://code.google.com/p/sb2-js/>sb2.js</a>. It would have more bugs if not for <a href=https://github.com/trumank>Truman</a> and <a href=https://github.com/tjvr>Tim</a>. It uses the <a href=https://stuk.github.io/jszip/>JSZip</a> library, created by <a href=https://github.com/stuk>Stuart Knightley</a>, <a href=https://github.com/dduponchel>David Duponchel</a>, Franz Buchinger, and <a href=https://github.com/aadsm>António Afonso</a>, to read <code>.sb2</code> files and compressed projects, and the <a href=https://code.google.com/p/canvg/>canvg</a> library, created by <a href=https://code.google.com/u/gabelerner@gmail.com/>Gabe Lerner</a>, to render SVGs in <code>&lt;canvas&gt;</code> elements.
   <h1>Code</h1>
-  <p>The source code for phosphorus is available <a href=https://github.com/nathan/phosphorus>on GitHub</a>.</p>
+  <p>The source code for this phosphorus fork is available <a href=https://github.com/GarboMuffin/phosphorus>on GitHub</a>.</p>
 </section>
 <script src=fonts.js></script>
 <script src=//cdnjs.cloudflare.com/ajax/libs/jszip/2.4.0/jszip.js></script>
@@ -194,7 +194,7 @@
   }
 
   function updateBugLink() {
-    bugLink.href = P.player.projectId ? 'https://github.com/nathan/phosphorus/issues/new?title=' + encodeURIComponent(P.player.projectTitle || P.player.projectURL) + '&body=' + encodeURIComponent('\n\n\n' + P.player.projectURL + '\nhttps://phosphorus.github.io/#' + P.player.projectId + '\n' + navigator.userAgent) : 'https://github.com/nathan/phosphorus/issues/new?body=' + encodeURIComponent('\n\n\n' + navigator.userAgent);
+    bugLink.href = P.player.projectId ? 'https://github.com/GarboMuffin/phosphorus/issues/new?title=' + encodeURIComponent(P.player.projectTitle || P.player.projectURL) + '&body=' + encodeURIComponent('\n\n\n' + P.player.projectURL + '\nhttps://garbomuffin.github.io/phosphorus/#' + P.player.projectId + '\n' + navigator.userAgent) : 'https://github.com/GarboMuffin/phosphorus/issues/new?body=' + encodeURIComponent('\n\n\n' + navigator.userAgent);
   }
 
   function updatePackageLink() {

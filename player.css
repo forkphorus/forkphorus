@@ -119,3 +119,8 @@
 .fs .player {
   box-shadow: none;
 }
+
+#subtitle {
+  float: right;
+  color: rgb(150, 150, 150);
+}
