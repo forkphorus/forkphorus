@@ -49,7 +49,7 @@
   </div>
 
   <div class=area id=project-area>
-    <section class=package>
+    <!-- <section class=package>
       <h1>Package this project</h1>
       <p>Get a link to a web page that automatically runs your project.</p>
       <p>
@@ -127,14 +127,14 @@
     var projectLink = document.querySelector('.project-link');
     var bugLink = document.querySelector('#bug-link');
 
-    var packageLink = document.querySelector('#package-link');
-    var packageTurbo = document.querySelector('#package-turbo');
-    var packageFullScreen = document.querySelector('#package-full-screen');
+    // var packageLink = document.querySelector('#package-link');
+    // var packageTurbo = document.querySelector('#package-turbo');
+    // var packageFullScreen = document.querySelector('#package-full-screen');
 
-    var embedCode = document.querySelector('#embed-code');
-    var embedAutoStart = document.querySelector('#embed-auto-start');
-    var embedLightContent = document.querySelector('#embed-light-content');
-    var embedHideControls = document.querySelector('#embed-hide-controls');
+    // var embedCode = document.querySelector('#embed-code');
+    // var embedAutoStart = document.querySelector('#embed-auto-start');
+    // var embedLightContent = document.querySelector('#embed-light-content');
+    // var embedHideControls = document.querySelector('#embed-hide-controls');
 
     var timeout;
     urlInput.addEventListener('input', function() {
@@ -204,44 +204,44 @@
 
       projectLink.href = P.player.projectURL;
       updateBugLink();
-      updatePackageLink();
-      updateEmbedCode();
+      // updatePackageLink();
+      // updateEmbedCode();
     }
 
     function updateBugLink() {
       var url = P.player.projectURL || '(no url)';
       var id = P.player.projectId || '(no id)';
       var body = encodeURIComponent('\n\n\n' + url + '\n' + location.origin + location.pathname + '#' + id + '\n' + navigator.userAgent);
-      var title = encodeURIComponent('Internal Error: ' + (P.player.projectTitle || P.player.projectURL));
+      var title = encodeURIComponent('Bug: ' + (P.player.projectTitle || P.player.projectURL));
       bugLink.href = 'https://github.com/GarboMuffin/phosphorus/issues/new?title=' + title + '&body=' + body + '&labels=bug';
     }
 
-    function updatePackageLink() {
-      packageLink.href = P.player.projectId ? '/app.html?id=' + P.player.projectId + '&turbo=' + packageTurbo.checked + '&full-screen=' + packageFullScreen.checked : 'about:blank';
-    }
+    // function updatePackageLink() {
+    //   packageLink.href = P.player.projectId ? '/app.html?id=' + P.player.projectId + '&turbo=' + packageTurbo.checked + '&full-screen=' + packageFullScreen.checked : 'about:blank';
+    // }
 
-    packageTurbo.addEventListener('change', updatePackageLink);
-    packageFullScreen.addEventListener('change', updatePackageLink);
+    // packageTurbo.addEventListener('change', updatePackageLink);
+    // packageFullScreen.addEventListener('change', updatePackageLink);
 
-    function updateEmbedCode(e) {
-      embedCode.value = P.player.projectId ? '<script src=https://' + location.host + '/embed.js?id=' + P.player.projectId + (embedHideControls.checked ? '&ui=false' : '&auto-start=' + embedAutoStart.checked + '&light-content=' + embedLightContent.checked) + '></' + 'script>' : '';
-      embedAutoStart.disabled =
-      embedLightContent.disabled = embedHideControls.checked;
-      if (embedHideControls.checked) embedAutoStart.checked = true;
-      if (e) embedCode.focus();
-    }
+    // function updateEmbedCode(e) {
+    //   embedCode.value = P.player.projectId ? '<script src=https://' + location.host + '/embed.js?id=' + P.player.projectId + (embedHideControls.checked ? '&ui=false' : '&auto-start=' + embedAutoStart.checked + '&light-content=' + embedLightContent.checked) + '></' + 'script>' : '';
+    //   embedAutoStart.disabled =
+    //   embedLightContent.disabled = embedHideControls.checked;
+    //   if (embedHideControls.checked) embedAutoStart.checked = true;
+    //   if (e) embedCode.focus();
+    // }
 
-    function selectEmbedCode() {
-      setTimeout(function() {
-        embedCode.select();
-      });
-    }
+    // function selectEmbedCode() {
+    //   setTimeout(function() {
+    //     embedCode.select();
+    //   });
+    // }
 
-    embedCode.addEventListener('focus', selectEmbedCode);
-    embedCode.addEventListener('click', selectEmbedCode);
-    embedHideControls.addEventListener('change', updateEmbedCode);
-    embedAutoStart.addEventListener('change', updateEmbedCode);
-    embedLightContent.addEventListener('change', updateEmbedCode);
+    // embedCode.addEventListener('focus', selectEmbedCode);
+    // embedCode.addEventListener('click', selectEmbedCode);
+    // embedHideControls.addEventListener('change', updateEmbedCode);
+    // embedAutoStart.addEventListener('change', updateEmbedCode);
+    // embedLightContent.addEventListener('change', updateEmbedCode);
 
     load(initialId);
 
