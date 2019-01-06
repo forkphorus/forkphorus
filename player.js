@@ -2,6 +2,7 @@ P.player = (function() {
   'use strict';
 
   var stage;
+  var error = false;
   var frameId = null;
   var isFullScreen = false;
 
@@ -183,7 +184,7 @@ P.player = (function() {
     error.style.display = 'none';
     pause.className = 'pause';
 
-    return P.IO.loadOnlineSB2(id)
+    return P.IO.loadOnlineSB2(id);
   }
 
   function startStage(s) {
@@ -197,9 +198,20 @@ P.player = (function() {
     hideProgress();
   }
 
+  function createBugLink(before, after) {
+    var url = P.player.projectURL || '(no url)';
+    var id = P.player.projectId || '(no id)';
+    var title = encodeURIComponent(P.player.projectTitle || P.player.projectURL || "Project Bug");
+    var baseBody = '\n\n\n----\nProject URL: ' + url + '\nProject ID: ' + id + '\n' + location.href + '\n' + navigator.userAgent + '\n';
+    return 'https://github.com/GarboMuffin/phosphorus/issues/new?title=' + title + '&body=' + encodeURIComponent(before + baseBody + after) + '&labels=bug';
+  }
+
   function showError(e) {
+    showProgress();
+    setProgress(1);
+    progressBar.classList.add('error');
     error.style.display = 'block';
-    errorBugLink.href = 'https://github.com/GarboMuffin/phosphorus/issues/new?title=' + encodeURIComponent(P.player.projectTitle || P.player.projectURL) + '&body=' + encodeURIComponent('\n\n\n' + P.player.projectURL + '\nhttp://phosphorus.github.io/#' + P.player.projectId + '\n' + navigator.userAgent + (e.stack ? '\n\n```\n' + e.stack + '\n```' : ''));
+    errorBugLink.href = createBugLink("Please describe what you were doing to cause this error:", '```\n' + P.utils.stringifyError(e) + '\n```');
     console.error(e);
   }
 
@@ -217,30 +229,34 @@ P.player = (function() {
   P.IO.progressHooks.set = function(progress) {
     setProgress(progress);
   };
+  P.IO.progressHooks.error = function(error) {
+    showError(error);
+  };
 
   function showProgress() {
+    if (progressBar.classList.contains('error')) return;
     progressBar.style.display = 'block';
     progressBar.style.opacity = 1;
     setProgress(0);
   }
   function hideProgress() {
+    if (progressBar.classList.contains('error')) return;
     progressBar.style.opacity = 0;
-    setTimeout(function() {
-      progressBar.style.display = 'none';
-    }, 300);
   }
   function setProgress(progress) {
+    if (progressBar.classList.contains('error')) return;
     progressBar.style.width = (10 + progress * 90) + '%';
   }
 
   return {
     load: load,
     startStage: startStage,
+    createBugLink: createBugLink,
     progress: {
-      hide: hideProgress,
-      show: showProgress,
       set: setProgress,
-    }
+      show: showProgress,
+      hide: hideProgress,
+    },
   };
 
 }());

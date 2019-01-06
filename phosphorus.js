@@ -2,10 +2,12 @@
 
 var P = {};
 
+// phosphorus runtime config
 P.config = {
   scale: window.devicePixelRatio || 1,
   hasTouchEvents: 'ontouchstart' in document,
   framerate: 30,
+  // builtin instruments and their URL
   wavFiles: {
     'AcousticGuitar_F3': 'instruments/AcousticGuitar_F3_22k.wav',
     'AcousticPiano_As3': 'instruments/AcousticPiano(5)_A%233_22k.wav',
@@ -154,6 +156,16 @@ P.utils = (function(exports) {
     }
     return (1, eval)('(' + json + ')');
   };
+
+  exports.stringifyError = function(error) {
+    if (!error) {
+      return 'unknown error';
+    }
+    if (error.stack) {
+      return 'Message: ' + error.message + '\nStack:\n' + error.stack;
+    }
+    return error.toString();
+  }
 
   exports.addEvents = addEvents;
 
@@ -1822,6 +1834,7 @@ P.IO = (function(IO) {
     'Mystery Quest': 1.37
   };
 
+  // a hooked version of fetch() that uses the progress hooks
   IO.fetch = function(url, opts) {
     IO.progressHooks.new();
     return fetch(url, opts)
@@ -1843,8 +1856,11 @@ P.IO = (function(IO) {
     end() {},
     // Sets the current progress, should override new() and end()
     set(p) {},
+    // Indicates an error has occurred and the project will likely fail to load
+    error(error) {},
   };
 
+  // loads an image from a URL
   IO.loadImage = function(url) {
     IO.progressHooks.new();
 
@@ -1864,12 +1880,15 @@ P.IO = (function(IO) {
     });
   };
 
+  // loads a scratch 2 project from the scratch.mit.edu website with its ID
   IO.loadOnlineSB2 = function(id) {
-    return IO.fetch(P.API.PROJECT_URL + id + '/get/')
+    const url = P.API.PROJECT_URL + id + '/get/';
+    return IO.fetch(url)
       .then((request) => request.json())
       .then((project) => IO.loadProject(project));
   };
 
+  // Loads a .sb2 file from an ArrayBuffer or JSZip
   IO.loadSB2Project = function(arrayBuffer) {
     const zip = arrayBuffer instanceof ArrayBuffer ? new JSZip(arrayBuffer) : arrayBuffer;
     IO.zip = zip;
@@ -1877,6 +1896,7 @@ P.IO = (function(IO) {
     return IO.loadProject(project);
   };
 
+  // Loads a .sb2 file from a File
   IO.loadSB2File = function(file) {
     const fileReader = new FileReader();
 
@@ -2216,7 +2236,6 @@ P.audio = (function(audio) {
 }({}));
 
 // Related to getting data from the public Scratch API
-// This will eventually replace P.IO
 P.API = (function(API) {
 
   API.PROJECT_URL = 'https://projects.scratch.mit.edu/internalapi/project/';

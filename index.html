@@ -10,89 +10,91 @@
 </head>
 
 <body>
-
   <div class="theme-select">
     <a class="switch-theme">switch theme</a>
   </div>
 
-  <div class=area id=title-area>
-    <h1 class=title>phosphorus <span id="subtitle">(fork)</span></h1>
-    <p>phosphorus runs your Scratch 2 projects really fast by compiling them to JavaScript. Try it out by pasting a URL or project ID into the field below, by dropping a .sb2 file on the page, or <a class=dropdown>by choosing an example<select id=examples>
-      <option value></option>
-      <option value=11397100>3D Remix by DadOfMrLog</option>
-      <option value=15945630>O by DCPU-16</option>
-      <option value=10128407>Paper Minecraft by griffpatch</option>
-      <option value=16207935>Alone in the depths by sticku</option>
-      <option value=16205373>3D Framework by DadOfMrLog</option>
-      <!-- <option value=31903442>gb.sb2 [Dr. Mario] by DCPU-16</option>
-      <option value=34791164>gb.sb2 [Mario Land 2] by DCPU-16</option> -->
-      <option value=21554369>Epic Ninja by griffpatch</option>
-      <option value=15832807>Pretty by blob8108</option>
-    </select></a>.</p>
-  </div>
+  <div id="app">
 
-  <div class=area id=player-area>
-    <div class=controls>
-      <span class=stop></span>
-      <span class=pause></span>
-      <span class=flag title="Shift+click to enable turbo mode."></span>
-      <div class=turbo>Turbo Mode</div>
-      <span class=full-screen></span>
+    <div class=area id=title-area>
+      <h1 class=title>phosphorus <span id="subtitle">(fork)</span></h1>
+      <p>phosphorus runs your Scratch 2 projects really fast by compiling them to JavaScript. Try it out by pasting a URL or project ID into the field below, by dropping a .sb2 file on the page, or <a class=dropdown>by choosing an example<select id=examples>
+        <option value></option>
+        <option value=11397100>3D Remix by DadOfMrLog</option>
+        <option value=15945630>O by DCPU-16</option>
+        <option value=10128407>Paper Minecraft by griffpatch</option>
+        <option value=16207935>Alone in the depths by sticku</option>
+        <option value=16205373>3D Framework by DadOfMrLog</option>
+        <!-- <option value=31903442>gb.sb2 [Dr. Mario] by DCPU-16</option>
+        <option value=34791164>gb.sb2 [Mario Land 2] by DCPU-16</option> -->
+        <option value=21554369>Epic Ninja by griffpatch</option>
+        <option value=15832807>Pretty by blob8108</option>
+      </select></a>.</p>
     </div>
-    <div class=player></div>
-  </div>
 
-  <div class=internal-error>
-    An internal error occurred. <a id=error-bug-link target=_blank href=https://github.com/GarboMuffin/phosphorus/issues/new>Click here</a> to file a bug report.
-  </div>
+    <div class=area id=player-area>
+      <div class=controls>
+        <span class=stop></span>
+        <span class=pause></span>
+        <span class=flag title="Shift+click to enable turbo mode."></span>
+        <div class=turbo>Turbo Mode</div>
+        <span class=full-screen></span>
+      </div>
+      <div class=player></div>
+    </div>
 
-  <div class=title>
-    <div class=progress-bar></div>
-    <input class=url value=https://scratch.mit.edu/projects/>
-    <a target=_blank class=project-link title="View project on Scratch"></a>
-  </div>
+    <div class=internal-error>
+      An internal error occurred. <a id=error-bug-link target=_blank href=https://github.com/GarboMuffin/phosphorus/issues/new>Click here</a> to file a bug report.
+    </div>
 
-  <div class=area id=project-area>
-    <!-- <section class=package>
-      <h1>Package this project</h1>
-      <p>Get a link to a web page that automatically runs your project.</p>
-      <p>
-        <a href=# target=_blank id=package-link>Package</a>
-        <input type=checkbox id=package-turbo>
-        <label for=package-turbo>Turbo mode</label>
-        <input type=checkbox id=package-full-screen checked>
-        <label for=package-full-screen>Full screen</label>
-      </p>
-    </section>
-    <section class=package>
-      <h1>Embed this project</h1>
-      <p>Include the phosphorus player in your web site.</p>
-      <p>
-        <input readonly id=embed-code>
-        <input type=checkbox id=embed-auto-start checked>
-        <label for=embed-auto-start>Start automatically</label>
-        <input type=checkbox id=embed-light-content>
-        <label for=embed-light-content>Light controls</label>
-        <input type=checkbox id=embed-hide-controls>
-        <label for=embed-hide-controls>Hide UI</label>
-      </p>
-    </section> -->
+    <div class=title>
+      <div class=progress-bar></div>
+      <input class=url value=https://scratch.mit.edu/projects/>
+      <a target=_blank class=project-link title="View project on Scratch"></a>
+    </div>
+
+    <div class=area id=project-area>
+      <!-- <section class=package>
+        <h1>Package this project</h1>
+        <p>Get a link to a web page that automatically runs your project.</p>
+        <p>
+          <a href=# target=_blank id=package-link>Package</a>
+          <input type=checkbox id=package-turbo>
+          <label for=package-turbo>Turbo mode</label>
+          <input type=checkbox id=package-full-screen checked>
+          <label for=package-full-screen>Full screen</label>
+        </p>
+      </section>
+      <section class=package>
+        <h1>Embed this project</h1>
+        <p>Include the phosphorus player in your web site.</p>
+        <p>
+          <input readonly id=embed-code>
+          <input type=checkbox id=embed-auto-start checked>
+          <label for=embed-auto-start>Start automatically</label>
+          <input type=checkbox id=embed-light-content>
+          <label for=embed-light-content>Light controls</label>
+          <input type=checkbox id=embed-hide-controls>
+          <label for=embed-hide-controls>Hide UI</label>
+        </p>
+      </section> -->
+      <section>
+        <h1>Report a problem</h1>
+        <p>phosphorus is still in development and has many bugs. <a id=bug-link target=_blank href=https://github.com/GarboMuffin/phosphorus/issues/new>Click here</a> to report a problem with this project.</p>
+      </section>
+      <section>
+        <h1>Embedding</h1>
+        <p>Embedding and packing will be available again soon.</p>
+      </section>
+    </div>
+
     <section>
-      <h1>Report a problem</h1>
-      <p>phosphorus is still in development and has many bugs. <a id=bug-link target=_blank href=https://github.com/GarboMuffin/phosphorus/issues/new>Click here</a> to report a problem with this project.</p>
-    </section>
-    <section>
-      <h1>Embedding</h1>
-      <p>Embedding and packing will be available again soon.</p>
+      <h1>Credits</h1>
+      <p>phosphorus was created by <a href=https://github.com/nathan>Nathan</a>. This fork is maintained by <a href=https://github.com/GarboMuffin>GarboMuffin</a>. Its CPS-style compilation and overall design was inspired by <a href=https://github.com/RHY3756547>Rhys</a>'s <a href=https://code.google.com/p/sb2-js/>sb2.js</a>. It would have more bugs if not for <a href=https://github.com/trumank>Truman</a> and <a href=https://github.com/tjvr>Tim</a>. It uses the <a href=https://stuk.github.io/jszip/>JSZip</a> library, created by <a href=https://github.com/stuk>Stuart Knightley</a>, <a href=https://github.com/dduponchel>David Duponchel</a>, Franz Buchinger, and <a href=https://github.com/aadsm>António Afonso</a>, to read <code>.sb2</code> files and compressed projects, and the <a href=https://code.google.com/p/canvg/>canvg</a> library, created by <a href=https://code.google.com/u/gabelerner@gmail.com/>Gabe Lerner</a>, to render SVGs in <code>&lt;canvas&gt;</code> elements.</p>
+      <h1>Code</h1>
+      <p>The source code for this phosphorus fork is available <a href=https://github.com/GarboMuffin/phosphorus>on GitHub</a>.</p>
     </section>
   </div>
-
-  <section>
-    <h1>Credits</h1>
-    <p>phosphorus was created by <a href=https://github.com/nathan>Nathan</a>. This fork is maintained by <a href=https://github.com/GarboMuffin>GarboMuffin</a>. Its CPS-style compilation and overall design was inspired by <a href=https://github.com/RHY3756547>Rhys</a>'s <a href=https://code.google.com/p/sb2-js/>sb2.js</a>. It would have more bugs if not for <a href=https://github.com/trumank>Truman</a> and <a href=https://github.com/tjvr>Tim</a>. It uses the <a href=https://stuk.github.io/jszip/>JSZip</a> library, created by <a href=https://github.com/stuk>Stuart Knightley</a>, <a href=https://github.com/dduponchel>David Duponchel</a>, Franz Buchinger, and <a href=https://github.com/aadsm>António Afonso</a>, to read <code>.sb2</code> files and compressed projects, and the <a href=https://code.google.com/p/canvg/>canvg</a> library, created by <a href=https://code.google.com/u/gabelerner@gmail.com/>Gabe Lerner</a>, to render SVGs in <code>&lt;canvas&gt;</code> elements.</p>
-    <h1>Code</h1>
-    <p>The source code for this phosphorus fork is available <a href=https://github.com/GarboMuffin/phosphorus>on GitHub</a>.</p>
-  </section>
 
   <script src=fonts.js></script>
   <script src=//cdnjs.cloudflare.com/ajax/libs/jszip/2.4.0/jszip.js></script>
@@ -100,7 +102,7 @@
   <script src=lib/StackBlur.js></script>
   <script src=lib/canvg.js></script>
   <script src="phosphorus.js"></script>
-  <script src=player.js></script>
+  <script src="player.js"></script>
 
   <script>
 
@@ -213,11 +215,7 @@
     }
 
     function updateBugLink() {
-      var url = P.player.projectURL || '(no url)';
-      var id = P.player.projectId || '(no id)';
-      var body = encodeURIComponent('\n\n\n' + url + '\n' + location.origin + location.pathname + '#' + id + '\n' + navigator.userAgent);
-      var title = encodeURIComponent('Bug: ' + (P.player.projectTitle || P.player.projectURL));
-      bugLink.href = 'https://github.com/GarboMuffin/phosphorus/issues/new?title=' + title + '&body=' + body + '&labels=bug';
+      bugLink.href = P.player.createBugLink('Please describe the issue below. Please be specific, descriptions like "it doesnt work" are not helpful.', '(manual report)');
     }
 
     // function updatePackageLink() {
@@ -279,6 +277,8 @@
         var ext = f.name.split('.').pop();
         if (ext === 'sb2' || ext === 'zip') {
           P.IO.loadSB2File(f).then((s) => {
+            P.player.projectId = 'local file';
+            updateBugLink();
             P.player.startStage(s);
           });
         }
