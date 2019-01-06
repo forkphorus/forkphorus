@@ -7,87 +7,79 @@ P.config = {
   hasTouchEvents: 'ontouchstart' in document,
   framerate: 30,
   wavFiles: {
-    "AcousticGuitar_F3": "instruments/AcousticGuitar_F3_22k.wav",
-    "AcousticPiano_As3": "instruments/AcousticPiano(5)_A%233_22k.wav",
-    "AcousticPiano_C4": "instruments/AcousticPiano(5)_C4_22k.wav",
-    "AcousticPiano_G4": "instruments/AcousticPiano(5)_G4_22k.wav",
-    "AcousticPiano_F5": "instruments/AcousticPiano(5)_F5_22k.wav",
-    "AcousticPiano_C6": "instruments/AcousticPiano(5)_C6_22k.wav",
-    "AcousticPiano_Ds6": "instruments/AcousticPiano(5)_D%236_22k.wav",
-    "AcousticPiano_D7": "instruments/AcousticPiano(5)_D7_22k.wav",
-    "AltoSax_A3": "instruments/AltoSax_A3_22K.wav",
-    "AltoSax_C6": "instruments/AltoSax(3)_C6_22k.wav",
-    "Bassoon_C3": "instruments/Bassoon_C3_22k.wav",
-    "BassTrombone_A2_2": "instruments/BassTrombone_A2(2)_22k.wav",
-    "BassTrombone_A2_3": "instruments/BassTrombone_A2(3)_22k.wav",
-    "Cello_C2": "instruments/Cello(3b)_C2_22k.wav",
-    "Cello_As2": "instruments/Cello(3)_A%232_22k.wav",
-    "Choir_F3": "instruments/Choir(4)_F3_22k.wav",
-    "Choir_F4": "instruments/Choir(4)_F4_22k.wav",
-    "Choir_F5": "instruments/Choir(4)_F5_22k.wav",
-    "Clarinet_C4": "instruments/Clarinet_C4_22k.wav",
-    "ElectricBass_G1": "instruments/ElectricBass(2)_G1_22k.wav",
-    "ElectricGuitar_F3": "instruments/ElectricGuitar(2)_F3(1)_22k.wav",
-    "ElectricPiano_C2": "instruments/ElectricPiano_C2_22k.wav",
-    "ElectricPiano_C4": "instruments/ElectricPiano_C4_22k.wav",
-    "EnglishHorn_D4": "instruments/EnglishHorn(1)_D4_22k.wav",
-    "EnglishHorn_F3": "instruments/EnglishHorn(1)_F3_22k.wav",
-    "Flute_B5_1": "instruments/Flute(3)_B5(1)_22k.wav",
-    "Flute_B5_2": "instruments/Flute(3)_B5(2)_22k.wav",
-    "Marimba_C4": "instruments/Marimba_C4_22k.wav",
-    "MusicBox_C4": "instruments/MusicBox_C4_22k.wav",
-    "Organ_G2": "instruments/Organ(2)_G2_22k.wav",
-    "Pizz_A3": "instruments/Pizz(2)_A3_22k.wav",
-    "Pizz_E4": "instruments/Pizz(2)_E4_22k.wav",
-    "Pizz_G2": "instruments/Pizz(2)_G2_22k.wav",
-    "SteelDrum_D5": "instruments/SteelDrum_D5_22k.wav",
-    "SynthLead_C4": "instruments/SynthLead(6)_C4_22k.wav",
-    "SynthLead_C6": "instruments/SynthLead(6)_C6_22k.wav",
-    "SynthPad_A3": "instruments/SynthPad(2)_A3_22k.wav",
-    "SynthPad_C6": "instruments/SynthPad(2)_C6_22k.wav",
-    "TenorSax_C3": "instruments/TenorSax(1)_C3_22k.wav",
-    "Trombone_B3": "instruments/Trombone_B3_22k.wav",
-    "Trumpet_E5": "instruments/Trumpet_E5_22k.wav",
-    "Vibraphone_C3": "instruments/Vibraphone_C3_22k.wav",
-    "Violin_D4": "instruments/Violin(2)_D4_22K.wav",
-    "Violin_A4": "instruments/Violin(3)_A4_22k.wav",
-    "Violin_E5": "instruments/Violin(3b)_E5_22k.wav",
-    "WoodenFlute_C5": "instruments/WoodenFlute_C5_22k.wav",
-    "BassDrum": "drums/BassDrum(1b)_22k.wav",
-    "Bongo": "drums/Bongo_22k.wav",
-    "Cabasa": "drums/Cabasa(1)_22k.wav",
-    "Clap": "drums/Clap(1)_22k.wav",
-    "Claves": "drums/Claves(1)_22k.wav",
-    "Conga": "drums/Conga(1)_22k.wav",
-    "Cowbell": "drums/Cowbell(3)_22k.wav",
-    "Crash": "drums/Crash(2)_22k.wav",
-    "Cuica": "drums/Cuica(2)_22k.wav",
-    "GuiroLong": "drums/GuiroLong(1)_22k.wav",
-    "GuiroShort": "drums/GuiroShort(1)_22k.wav",
-    "HiHatClosed": "drums/HiHatClosed(1)_22k.wav",
-    "HiHatOpen": "drums/HiHatOpen(2)_22k.wav",
-    "HiHatPedal": "drums/HiHatPedal(1)_22k.wav",
-    "Maracas": "drums/Maracas(1)_22k.wav",
-    "SideStick": "drums/SideStick(1)_22k.wav",
-    "SnareDrum": "drums/SnareDrum(1)_22k.wav",
-    "Tambourine": "drums/Tambourine(3)_22k.wav",
-    "Tom": "drums/Tom(1)_22k.wav",
-    "Triangle": "drums/Triangle(1)_22k.wav",
-    "Vibraslap": "drums/Vibraslap(1)_22k.wav",
-    "WoodBlock": "drums/WoodBlock(1)_22k.wav"
+    'AcousticGuitar_F3': 'instruments/AcousticGuitar_F3_22k.wav',
+    'AcousticPiano_As3': 'instruments/AcousticPiano(5)_A%233_22k.wav',
+    'AcousticPiano_C4': 'instruments/AcousticPiano(5)_C4_22k.wav',
+    'AcousticPiano_G4': 'instruments/AcousticPiano(5)_G4_22k.wav',
+    'AcousticPiano_F5': 'instruments/AcousticPiano(5)_F5_22k.wav',
+    'AcousticPiano_C6': 'instruments/AcousticPiano(5)_C6_22k.wav',
+    'AcousticPiano_Ds6': 'instruments/AcousticPiano(5)_D%236_22k.wav',
+    'AcousticPiano_D7': 'instruments/AcousticPiano(5)_D7_22k.wav',
+    'AltoSax_A3': 'instruments/AltoSax_A3_22K.wav',
+    'AltoSax_C6': 'instruments/AltoSax(3)_C6_22k.wav',
+    'Bassoon_C3': 'instruments/Bassoon_C3_22k.wav',
+    'BassTrombone_A2_2': 'instruments/BassTrombone_A2(2)_22k.wav',
+    'BassTrombone_A2_3': 'instruments/BassTrombone_A2(3)_22k.wav',
+    'Cello_C2': 'instruments/Cello(3b)_C2_22k.wav',
+    'Cello_As2': 'instruments/Cello(3)_A%232_22k.wav',
+    'Choir_F3': 'instruments/Choir(4)_F3_22k.wav',
+    'Choir_F4': 'instruments/Choir(4)_F4_22k.wav',
+    'Choir_F5': 'instruments/Choir(4)_F5_22k.wav',
+    'Clarinet_C4': 'instruments/Clarinet_C4_22k.wav',
+    'ElectricBass_G1': 'instruments/ElectricBass(2)_G1_22k.wav',
+    'ElectricGuitar_F3': 'instruments/ElectricGuitar(2)_F3(1)_22k.wav',
+    'ElectricPiano_C2': 'instruments/ElectricPiano_C2_22k.wav',
+    'ElectricPiano_C4': 'instruments/ElectricPiano_C4_22k.wav',
+    'EnglishHorn_D4': 'instruments/EnglishHorn(1)_D4_22k.wav',
+    'EnglishHorn_F3': 'instruments/EnglishHorn(1)_F3_22k.wav',
+    'Flute_B5_1': 'instruments/Flute(3)_B5(1)_22k.wav',
+    'Flute_B5_2': 'instruments/Flute(3)_B5(2)_22k.wav',
+    'Marimba_C4': 'instruments/Marimba_C4_22k.wav',
+    'MusicBox_C4': 'instruments/MusicBox_C4_22k.wav',
+    'Organ_G2': 'instruments/Organ(2)_G2_22k.wav',
+    'Pizz_A3': 'instruments/Pizz(2)_A3_22k.wav',
+    'Pizz_E4': 'instruments/Pizz(2)_E4_22k.wav',
+    'Pizz_G2': 'instruments/Pizz(2)_G2_22k.wav',
+    'SteelDrum_D5': 'instruments/SteelDrum_D5_22k.wav',
+    'SynthLead_C4': 'instruments/SynthLead(6)_C4_22k.wav',
+    'SynthLead_C6': 'instruments/SynthLead(6)_C6_22k.wav',
+    'SynthPad_A3': 'instruments/SynthPad(2)_A3_22k.wav',
+    'SynthPad_C6': 'instruments/SynthPad(2)_C6_22k.wav',
+    'TenorSax_C3': 'instruments/TenorSax(1)_C3_22k.wav',
+    'Trombone_B3': 'instruments/Trombone_B3_22k.wav',
+    'Trumpet_E5': 'instruments/Trumpet_E5_22k.wav',
+    'Vibraphone_C3': 'instruments/Vibraphone_C3_22k.wav',
+    'Violin_D4': 'instruments/Violin(2)_D4_22K.wav',
+    'Violin_A4': 'instruments/Violin(3)_A4_22k.wav',
+    'Violin_E5': 'instruments/Violin(3b)_E5_22k.wav',
+    'WoodenFlute_C5': 'instruments/WoodenFlute_C5_22k.wav',
+    'BassDrum': 'drums/BassDrum(1b)_22k.wav',
+    'Bongo': 'drums/Bongo_22k.wav',
+    'Cabasa': 'drums/Cabasa(1)_22k.wav',
+    'Clap': 'drums/Clap(1)_22k.wav',
+    'Claves': 'drums/Claves(1)_22k.wav',
+    'Conga': 'drums/Conga(1)_22k.wav',
+    'Cowbell': 'drums/Cowbell(3)_22k.wav',
+    'Crash': 'drums/Crash(2)_22k.wav',
+    'Cuica': 'drums/Cuica(2)_22k.wav',
+    'GuiroLong': 'drums/GuiroLong(1)_22k.wav',
+    'GuiroShort': 'drums/GuiroShort(1)_22k.wav',
+    'HiHatClosed': 'drums/HiHatClosed(1)_22k.wav',
+    'HiHatOpen': 'drums/HiHatOpen(2)_22k.wav',
+    'HiHatPedal': 'drums/HiHatPedal(1)_22k.wav',
+    'Maracas': 'drums/Maracas(1)_22k.wav',
+    'SideStick': 'drums/SideStick(1)_22k.wav',
+    'SnareDrum': 'drums/SnareDrum(1)_22k.wav',
+    'Tambourine': 'drums/Tambourine(3)_22k.wav',
+    'Tom': 'drums/Tom(1)_22k.wav',
+    'Triangle': 'drums/Triangle(1)_22k.wav',
+    'Vibraslap': 'drums/Vibraslap(1)_22k.wav',
+    'WoodBlock': 'drums/WoodBlock(1)_22k.wav'
   },
 };
 
 // Utility methods
 P.utils = (function(exports) {
-  var inherits = function(cla, sup) {
-    cla.prototype = Object.create(sup.prototype);
-    cla.parent = sup;
-    cla.base = function(self, method /*, args... */) {
-      return sup.prototype[method].call(self, [].slice.call(arguments, 2));
-    };
-  };
-
   var addEvents = function(cla /*, events... */) {
     [].slice.call(arguments, 1).forEach(function(event) {
       addEvent(cla, event);
@@ -139,110 +131,6 @@ P.utils = (function(exports) {
     };
   };
 
-  var Request = function() {
-    // console.log("P.utils.Request is deprecated");
-    this.loaded = 0;
-  };
-  addEvents(Request, 'load', 'progress', 'error');
-
-  Request.prototype.progress = function(loaded, total, lengthComputable) {
-    this.loaded = loaded;
-    this.total = total;
-    this.lengthComputable = lengthComputable;
-    this.dispatchProgress({
-      loaded: loaded,
-      total: total,
-      lengthComputable: lengthComputable
-    });
-  };
-
-  Request.prototype.load = function(result) {
-    this.result = result;
-    this.isDone = true;
-    this.dispatchLoad(result);
-  };
-
-  Request.prototype.error = function(error) {
-    this.result = error;
-    this.isError = true;
-    this.isDone = true;
-    this.dispatchError(error);
-  };
-
-  var CompositeRequest = function() {
-    // console.log("P.utils.CompositeRequest is deprecated");
-    this.requests = [];
-    this.isDone = true;
-    this.update = this.update.bind(this);
-    this.error = this.error.bind(this);
-  };
-  inherits(CompositeRequest, Request);
-
-  CompositeRequest.prototype.add = function(request) {
-    if (request instanceof CompositeRequest) {
-      for (var i = 0; i < request.requests.length; i++) {
-        this.add(request.requests[i]);
-      }
-    } else {
-      this.requests.push(request);
-      request.addEventListener('progress', this.update);
-      request.addEventListener('load', this.update);
-      request.addEventListener('error', this.error);
-      this.update();
-    }
-  };
-
-  CompositeRequest.prototype.update = function() {
-    if (this.isError) return;
-    var requests = this.requests;
-    var i = requests.length;
-    var total = 0;
-    var loaded = 0;
-    var lengthComputable = true;
-    var uncomputable = 0;
-    var done = 0;
-    while (i--) {
-      var r = requests[i];
-      loaded += r.loaded;
-      if (r.isDone) {
-        total += r.loaded;
-        done += 1;
-      } else if (r.lengthComputable) {
-        total += r.total;
-      } else {
-        lengthComputable = false;
-        uncomputable += 1;
-      }
-    }
-    if (!lengthComputable && uncomputable !== requests.length) {
-      var each = total / (requests.length - uncomputable) * uncomputable;
-      i = requests.length;
-      total = 0;
-      loaded = 0;
-      lengthComputable = true;
-      while (i--) {
-        var r = requests[i];
-        if (r.lengthComputable) {
-          loaded += r.loaded;
-          total += r.total;
-        } else {
-          total += each;
-          if (r.isDone) loaded += each;
-        }
-      }
-    }
-    this.progress(loaded, total, lengthComputable);
-    this.doneCount = done;
-    this.isDone = done === requests.length;
-    if (this.isDone && !this.defer) {
-      this.load(this.getResult());
-    }
-  };
-
-  CompositeRequest.prototype.getResult = function() {
-    throw new Error('Users must implement getResult()');
-  };
-
   var KEY_CODES = {
     space: 32,
     'left arrow': 37,
@@ -252,15 +140,22 @@ P.utils = (function(exports) {
     any: 'any'
   };
 
-  var getKeyCode = function(keyName) {
+  exports.getKeyCode = function(keyName) {
     return KEY_CODES[keyName.toLowerCase()] || keyName.toUpperCase().charCodeAt(0);
   };
 
-  exports.Request = Request;
-  exports.CompositeRequest = CompositeRequest;
-  exports.inherits = inherits;
+  exports.parseJSONish = function(json) {
+    if (!/^\s*\{/.test(json)) throw new SyntaxError('Bad JSON');
+    try {
+      return JSON.parse(json);
+    } catch (e) {}
+    if (/[^,:{}\[\]0-9\.\-+EINaefilnr-uy \n\r\t]/.test(json.replace(/"(\\.|[^"\\])*"/g, ''))) {
+      throw new SyntaxError('Bad JSON');
+    }
+    return (1, eval)('(' + json + ')');
+  };
+
   exports.addEvents = addEvents;
-  exports.getKeyCode = getKeyCode;
 
   return exports;
 })({});
@@ -296,7 +191,7 @@ P.renderers.canvas2d = (function() {
         var z = c.stage.zoom * P.config.scale;
         if (c.isSprite) {
           this.ctx.translate(((c.scratchX + 240) * z | 0) / z, ((180 - c.scratchY) * z | 0) / z);
-          if (this.rotationStyle === 'normal') {
+          if (c.rotationStyle === 'normal') {
             this.ctx.rotate((c.direction - 90) * Math.PI / 180);
           } else if (c.rotationStyle === 'leftRight' && c.direction < 0) {
             this.ctx.scale(-1, 1);
@@ -328,9 +223,6 @@ P.renderers.canvas2d = (function() {
 
 // Phosphorus Core
 P.core = (function(core) {
-  var AudioContext = window.AudioContext || window.webkitAudioContext;
-  var audioContext = core.audioContext = AudioContext && new AudioContext;
-
   class Base {
     constructor() {
       this.isClone = false;
@@ -566,6 +458,7 @@ P.core = (function(core) {
   class Stage extends Base {
     constructor() {
       super();
+
       this.stage = this;
       this.isStage = true;
 
@@ -1183,14 +1076,8 @@ P.core = (function(core) {
       this.moveTo(this.scratchX + steps * Math.cos(d), this.scratchY + steps * Math.sin(d));
     }
 
-    moveTo(x, y) {
-      var ox = this.scratchX;
-      var oy = this.scratchY;
-      if (ox === x && oy === y && !this.isPenDown) return;
-      this.scratchX = x;
-      this.scratchY = y;
-
-      // Ensure that the sprite is in view of the stage.
+    keepInView() {
+      // Ensures that the sprite is in view of the stage.
       // See: https://github.com/LLK/scratch-flash/blob/72e4729b8189d11bbe51b6d94144b0a3c392ac9a/src/scratch/ScratchSprite.as#L191-L224
 
       var rb = this.rotatedBounds();
@@ -1215,6 +1102,16 @@ P.core = (function(core) {
         var difference = rb.top - (-180 + border);
         this.scratchY = Math.floor(this.scratchY - difference);
       }
+    }
+
+    moveTo(x, y) {
+      var ox = this.scratchX;
+      var oy = this.scratchY;
+      if (ox === x && oy === y && !this.isPenDown) return;
+      this.scratchX = x;
+      this.scratchY = y;
+
+      this.keepInView();
 
       if (this.isPenDown && !this.isDragging) {
         var context = this.stage.penRenderer.ctx;
@@ -1908,9 +1805,6 @@ P.core = (function(core) {
 
 // Related to loading files from the Scratch 2 API
 P.IO = (function(IO) {
-  IO.PROJECT_URL = 'https://projects.scratch.mit.edu/internalapi/project/';
-  IO.ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
-  IO.SOUNDBANK_URL = 'https://raw.githubusercontent.com/LLK/scratch-flash/v429/src/soundbank/';
 
   IO.FONTS = {
     '': 'Helvetica',
@@ -1928,363 +1822,154 @@ P.IO = (function(IO) {
     'Mystery Quest': 1.37
   };
 
-  IO.ADPCM_STEPS = [7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 19, 21, 23, 25, 28, 31, 34, 37, 41, 45, 50, 55, 60, 66, 73, 80, 88, 97, 107, 118, 130, 143, 157, 173, 190, 209, 230, 253, 279, 307, 337, 371, 408, 449, 494, 544, 598, 658, 724, 796, 876, 963, 1060, 1166, 1282, 1411, 1552, 1707, 1878, 2066, 2272, 2499, 2749, 3024, 3327, 3660, 4026, 4428, 4871, 5358, 5894, 6484, 7132, 7845, 8630, 9493, 10442, 11487, 12635, 13899, 15289, 16818, 18500, 20350, 22385, 24623, 27086, 29794, 32767];
-  IO.ADPCM_INDEX = [-1, -1, -1, -1, 2, 4, 6, 8, -1, -1, -1, -1, 2, 4, 6, 8];
+  IO.fetch = function(url, opts) {
+    IO.progressHooks.new();
+    return fetch(url, opts)
+      .then((r) => {
+        IO.progressHooks.end();
+        return r;
+      })
+      .catch((err) => {
+        progressHooks.error(err);
+        throw err;
+      });
+  }
 
-  IO.init = function(request) {
-    IO.projectRequest = request;
-    IO.zip = null;
+  // Hooks that can be replaced by other scripts to hook into progress reports.
+  IO.progressHooks = {
+    // Indicates that a new task has started
+    new() {},
+    // Indicates that a task has finished successfully
+    end() {},
+    // Sets the current progress, should override new() and end()
+    set(p) {},
+    // Indicates an error has occurred
+    error(err) {},
   };
 
-  IO.parseJSONish = function(json) {
-    if (!/^\s*\{/.test(json)) throw new SyntaxError('Bad JSON');
-    try {
-      return JSON.parse(json);
-    } catch (e) {}
-    if (/[^,:{}\[\]0-9\.\-+EINaefilnr-uy \n\r\t]/.test(json.replace(/"(\\.|[^"\\])*"/g, ''))) {
-      throw new SyntaxError('Bad JSON');
-    }
-    return (1, eval)('(' + json + ')');
-  };
-
-
-  IO.load = function(url, callback, self, type) {
-    var request = new P.utils.Request();
-    var xhr = new XMLHttpRequest;
-    xhr.open('GET', url, true);
-    xhr.onprogress = function(e) {
-      request.progress(e.loaded, e.total, e.lengthComputable);
-    };
-    xhr.onload = function() {
-      if (xhr.status === 200) {
-        request.load(xhr.response);
-      } else {
-        request.error(new Error('HTTP ' + xhr.status + ': ' + xhr.statusText));
-      }
-    };
-    xhr.onerror = function() {
-      request.error(new Error('XHR Error'));
-    };
-    xhr.responseType = type || '';
-    setTimeout(xhr.send.bind(xhr));
-
-    if (callback) request.onLoad(callback.bind(self));
-    return request;
-  };
-
-  IO.loadImage = function(url, callback, self) {
-    var request = new P.utils.Request();
-    var image = new Image;
-    image.crossOrigin = 'anonymous';
+  IO.loadImage = function(url) {
+    var image = new Image();
     image.src = url;
-    image.onload = function() {
-      request.load(image);
-    };
-    image.onerror = function() {
-      request.error(new Error('Failed to load image: ' + url));
-    };
-    if (callback) request.onLoad(callback.bind(self));
-    return request;
+    // I don't know why but setting this to anonymous somehow disables the same origin policy
+    image.crossOrigin = 'anonymous';
+
+    return new Promise((resolve, reject) => {
+      image.onload = function() {
+        resolve(image);
+      };
+      image.onerror = function(err) {
+        reject(err);
+      };
+    });
   };
 
-  IO.loadScratchr2Project = function(id, callback, self) {
-    var request = new P.utils.CompositeRequest();
-    IO.init(request);
-
-    request.defer = true;
-    var url = IO.PROJECT_URL + id + '/get/';
-    request.add(IO.load(url).onLoad(function(contents) {
-      try {
-        var json = IO.parseJSONish(contents);
-      } catch (e) {
-        request.add(IO.load(url, null, null, 'arraybuffer').onLoad(function(ab) {
-          var request2 = new P.utils.Request();
-          request.add(request2);
-          request.add(IO.loadSB2Project(ab, function(stage) {
-            request.getResult = function() {
-              return stage;
-            };
-            request2.load();
-          }));
-          request.defer = false;
-        }));
-        return;
-      }
-      try {
-        IO.loadProject(json);
-        if (callback) request.onLoad(callback.bind(self));
-        if (request.isDone) {
-          request.load(new Stage().fromJSON(json));
-        } else {
-          request.defer = false;
-          request.getResult = function() {
-            return new P.core.Stage().fromJSON(json);
-          };
-        }
-      } catch (e) {
-        request.error(e);
-      }
-    }));
-
-    return request;
+  IO.loadOnlineSB2 = function(id) {
+    return IO.fetch(P.API.PROJECT_URL + id + '/get/')
+      .then((request) => request.json())
+      .then((project) => IO.loadProject(project));
   };
 
-  // IO.loadScratchr2ProjectTitle = function(id, callback, self) {
-  //   var request = new P.utils.CompositeRequest();
-
-  //   request.defer = true;
-  //   request.add(P.IO.load('https://scratch.mit.edu/projects/' + id + '/').onLoad(function(data) {
-  //     var m = /<title>\s*(.+?)(\s+on\s+Scratch)?\s*<\/title>/.exec(data);
-  //     if (callback) request.onLoad(callback.bind(self));
-  //     if (m) {
-  //       var d = document.createElement('div');
-  //       d.innerHTML = m[1];
-  //       request.load(d.innerText);
-  //     } else {
-  //       request.error(new Error('No title'));
-  //     }
-  //   }));
-
-  //   return request;
-  // };
-
-  IO.loadJSONProject = function(json, callback, self) {
-    var request = new P.utils.CompositeRequest();
-    IO.init(request);
-
-    try {
-      IO.loadProject(json);
-      if (callback) request.onLoad(callback.bind(self));
-      if (request.isDone) {
-        request.load(new Stage().fromJSON(json));
-      } else {
-        request.defer = false;
-        request.getResult = function() {
-          return new Stage().fromJSON(json);
-        };
-      }
-    } catch (e) {
-      request.error(e);
-    }
-
-    return request;
+  IO.loadSB2Project = function(arrayBuffer) {
+    const zip = arrayBuffer instanceof ArrayBuffer ? new JSZip(arrayBuffer) : arrayBuffer;
+    IO.zip = zip;
+    const project = P.utils.parseJSONish(zip.file('project.json').asText());
+    return IO.loadProject(project);
   };
 
-  IO.loadSB2Project = function(ab, callback, self) {
-    var request = new P.utils.CompositeRequest();
-    IO.init(request);
+  IO.loadSB2File = function(file) {
+    const fileReader = new FileReader();
 
-    try {
-      IO.zip = Object.prototype.toString.call(ab) === '[object ArrayBuffer]' ? new JSZip(ab) : ab;
-      var json = IO.parseJSONish(IO.zip.file('project.json').asText());
+    return new Promise((resolve, reject) => {
+      fileReader.onloadend = function() {
+        IO.loadSB2Project(fileReader.result)
+          .then((project) => resolve(project))
+          .catch((err) => reject(err));
+      };
 
-      IO.loadProject(json);
-      if (callback) request.onLoad(callback.bind(self));
-      if (request.isDone) {
-        request.load(new Stage().fromJSON(json));
-      } else {
-        request.defer = false;
-        request.getResult = function() {
-          return new P.core.Stage().fromJSON(json);
-        };
-      }
-    } catch (e) {
-      request.error(e);
-    }
+      fileReader.onerror = function(err) {
+        reject(err);
+      };
 
-    return request;
-  };
+      fileReader.onprogress = function(progress) {
+        IO.progressHooks.set(progress);
+      };
 
-  IO.loadSB2File = function(f, callback, self) {
-    var cr = new P.utils.CompositeRequest();
-    cr.defer = true;
-    var request = new P.utils.Request();
-    cr.add(request);
-    var reader = new FileReader;
-    reader.onloadend = function() {
-      cr.defer = true;
-      cr.add(IO.loadSB2Project(reader.result, function(result) {
-        cr.defer = false;
-        cr.getResult = function() {
-          return result;
-        };
-        cr.update();
-      }));
-      request.load();
-    };
-    reader.onprogress = function(e) {
-      request.progress(e.loaded, e.total, e.lengthComputable);
-    };
-    reader.readAsArrayBuffer(f);
-    if (callback) cr.onLoad(callback.bind(self));
-    return cr;
+      fileReader.readAsArrayBuffer(file);
+    });
   };
 
   IO.loadProject = function(data) {
-    IO.loadWavs();
-    IO.loadArray(data.children, IO.loadObject);
-    IO.loadBase(data);
+    return Promise.all([
+      IO.loadWavs(),
+      IO.loadArray(data.children, IO.loadObject),
+      IO.loadBase(data),
+    ]).then(() => new P.core.Stage().fromJSON(data));
   };
 
-  IO.wavBuffers = Object.create(null);
+  IO.wavBuffers = {};
   IO.loadWavs = function() {
-    if (!P.core.audioContext) return;
+    // don't bother attempting to load audio if it can't even be played
+    if (!P.audio.context) return Promise.resolve();
 
+    const assets = [];
     for (var name in P.config.wavFiles) {
       if (IO.wavBuffers[name]) {
-        if (IO.wavBuffers[name] instanceof P.utils.Request) {
-          IO.projectRequest.add(IO.wavBuffers[name]);
-        }
+        // it already exists
       } else {
-        IO.projectRequest.add(IO.wavBuffers[name] = IO.loadWavBuffer(name));
+        assets.push(
+          IO.loadWavBuffer(name)
+            .then((buffer) => IO.wavBuffers[name] = buffer)
+        );
       }
     }
+    return Promise.all(assets);
   };
 
   IO.loadWavBuffer = function(name) {
-    var request = new P.utils.Request;
-    IO.load(IO.SOUNDBANK_URL + P.config.wavFiles[name], function(ab) {
-      IO.decodeAudio(ab, function(buffer) {
-        IO.wavBuffers[name] = buffer;
-        request.load();
-      });
-    }, null, 'arraybuffer').onError(function(err) {
-      request.error(err);
-    });
-    return request;
-  };
-
-  IO.decodeAudio = function(ab, cb) {
-    if (P.core.audioContext) {
-      IO.decodeADPCMAudio(ab, function(err, buffer) {
-        if (buffer) return setTimeout(function() {cb(buffer)});
-        var p = P.core.audioContext.decodeAudioData(ab, function(buffer) {
-          cb(buffer);
-        }, function(err2) {
-          console.warn(err, err2);
-          cb(null);
-        });
-        if (p.catch) p.catch(function() {});
-      });
-    } else {
-      setTimeout(cb);
-    }
-  };
-
-  IO.decodeADPCMAudio = function(ab, cb) {
-    var dv = new DataView(ab);
-    if (dv.getUint32(0) !== 0x52494646 || dv.getUint32(8) !== 0x57415645) {
-      return cb(new Error('Unrecognized audio format'));
-    }
-
-    var blocks = {};
-    var i = 12, l = dv.byteLength - 8;
-    while (i < l) {
-      blocks[String.fromCharCode(
-        dv.getUint8(i),
-        dv.getUint8(i + 1),
-        dv.getUint8(i + 2),
-        dv.getUint8(i + 3))] = i;
-      i += 8 + dv.getUint32(i + 4, true);
-    }
-
-    var format        = dv.getUint16(20, true);
-    var channels      = dv.getUint16(22, true);
-    var sampleRate    = dv.getUint32(24, true);
-    var byteRate      = dv.getUint32(28, true);
-    var blockAlign    = dv.getUint16(32, true);
-    var bitsPerSample = dv.getUint16(34, true);
-
-    if (format === 17) {
-      var samplesPerBlock = dv.getUint16(38, true);
-      var blockSize = ((samplesPerBlock - 1) / 2) + 4;
-
-      var frameCount = dv.getUint32(blocks.fact + 8, true);
-
-      var buffer = P.core.audioContext.createBuffer(1, frameCount, sampleRate);
-      var channel = buffer.getChannelData(0);
-
-      var sample, index = 0;
-      var step, code, delta;
-      var lastByte = -1;
-
-      var offset = blocks.data + 8;
-      i = offset;
-      var j = 0;
-      while (true) {
-        if ((((i - offset) % blockSize) == 0) && (lastByte < 0)) {
-          if (i >= dv.byteLength) break;
-          sample = dv.getInt16(i, true); i += 2;
-          index = dv.getUint8(i); i += 1;
-          i++;
-          if (index > 88) index = 88;
-          channel[j++] = sample / 32767;
-        } else {
-          if (lastByte < 0) {
-            if (i >= dv.byteLength) break;
-            lastByte = dv.getUint8(i); i += 1;
-            code = lastByte & 0xf;
-          } else {
-            code = (lastByte >> 4) & 0xf;
-            lastByte = -1;
-          }
-          step = IO.ADPCM_STEPS[index];
-          delta = 0;
-          if (code & 4) delta += step;
-          if (code & 2) delta += step >> 1;
-          if (code & 1) delta += step >> 2;
-          delta += step >> 3;
-          index += IO.ADPCM_INDEX[code];
-          if (index > 88) index = 88;
-          if (index < 0) index = 0;
-          sample += (code & 8) ? -delta : delta;
-          if (sample > 32767) sample = 32767;
-          if (sample < -32768) sample = -32768;
-          channel[j++] = sample / 32768;
-        }
-      }
-      return cb(null, buffer);
-    }
-    cb(new Error('Unrecognized WAV format ' + format));
+    return IO.fetch(P.API.SOUNDBANK_URL + P.config.wavFiles[name])
+      .then((request) => request.arrayBuffer())
+      .then((arrayBuffer) => P.audio.decodeAudio(arrayBuffer))
+      .then((buffer) => IO.wavBuffers[name] = buffer);
   };
 
   IO.loadBase = function(data) {
     data.scripts = data.scripts || [];
-    data.costumes = IO.loadArray(data.costumes, IO.loadCostume);
-    data.sounds = IO.loadArray(data.sounds, IO.loadSound);
     data.variables = data.variables || [];
     data.lists = data.lists || [];
+    data.costumes = data.costumes || [];
+    data.sounds = data.sounds || [];
+
+    return Promise.all([
+      IO.loadArray(data.costumes, IO.loadCostume),
+      IO.loadArray(data.sounds, IO.loadSound),
+    ]);
   };
 
   IO.loadArray = function(data, process) {
-    if (!data) return [];
-    for (var i = 0; i < data.length; i++) {
-      process(data[i]);
-    }
-    return data;
+    return Promise.all((data || []).map((i) => process(i)));
   };
 
   IO.loadObject = function(data) {
     if (!data.cmd && !data.listName) {
-      IO.loadBase(data);
+      return IO.loadBase(data);
     }
   };
 
   IO.loadCostume = function(data) {
-    IO.loadMD5(data.baseLayerMD5, data.baseLayerID, function(asset) {
-      data.$image = asset;
-    });
+    const promises = [
+      IO.loadMD5(data.baseLayerMD5, data.baseLayerID)
+        .then((asset) => data.$image = asset)
+    ];
     if (data.textLayerMD5) {
-      IO.loadMD5(data.textLayerMD5, data.textLayerID, function(asset) {
-        data.$text = asset;
-      });
+      promises.push(IO.loadMD5(data.textLayerMD5, data.textLayerID)
+        .then((asset) => data.$text = asset));
     }
+    return Promise.all(promises);
   };
 
   IO.loadSound = function(data) {
-    IO.loadMD5(data.md5, data.soundID, function(asset) {
-      data.$buffer = asset;
-    }, true);
+    return IO.loadMD5(data.md5, data.soundID, true)
+      .then((asset) => data.$buffer = asset);
   };
 
   IO.fixSVG = function(svg, element) {
@@ -2326,89 +2011,84 @@ P.IO = (function(IO) {
     [].forEach.call(element.childNodes, IO.fixSVG.bind(null, svg));
   };
 
-  IO.loadMD5 = function(md5, id, callback, isAudio) {
+  IO.loadSVG = function(source) {
+    var parser = new DOMParser();
+    var doc = parser.parseFromString(source, 'image/svg+xml');
+    var svg = doc.documentElement;
+    if (!svg.style) {
+      doc = parser.parseFromString('<body>'+source, 'text/html');
+      svg = doc.querySelector('svg');
+    }
+    svg.style.visibility = 'hidden';
+    svg.style.position = 'absolute';
+    svg.style.left = '-10000px';
+    svg.style.top = '-10000px';
+    document.body.appendChild(svg);
+    var viewBox = svg.viewBox.baseVal;
+    if (viewBox && (viewBox.x || viewBox.y)) {
+      svg.width.baseVal.value = viewBox.width - viewBox.x;
+      svg.height.baseVal.value = viewBox.height - viewBox.y;
+      viewBox.x = 0;
+      viewBox.y = 0;
+      viewBox.width = 0;
+      viewBox.height = 0;
+    }
+    IO.fixSVG(svg, svg);
+    document.body.removeChild(svg);
+    svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
+
+    var canvas = document.createElement('canvas');
+    var image = new Image();
+
+    return new Promise((resolve, reject) => {
+      canvg(canvas, new XMLSerializer().serializeToString(svg), {
+        ignoreMouse: true,
+        ignoreAnimation: true,
+        ignoreClear: true,
+        renderCallback: function() {
+          image.src = canvas.toDataURL();
+          resolve(image);
+        }
+      });
+    });
+  }
+
+  IO.loadMD5 = function(hash, id, isAudio) {
     if (IO.zip) {
       var f = isAudio ? IO.zip.file(id + '.wav') : IO.zip.file(id + '.gif') || IO.zip.file(id + '.png') || IO.zip.file(id + '.jpg') || IO.zip.file(id + '.svg');
-      md5 = f.name;
+      hash = f.name;
     }
-    var ext = md5.split('.').pop();
-    if (ext === 'svg') {
-      var cb = function(source) {
-        var parser = new DOMParser();
-        var doc = parser.parseFromString(source, 'image/svg+xml');
-        var svg = doc.documentElement;
-        if (!svg.style) {
-          doc = parser.parseFromString('<body>'+source, 'text/html');
-          svg = doc.querySelector('svg');
-        }
-        svg.style.visibility = 'hidden';
-        svg.style.position = 'absolute';
-        svg.style.left = '-10000px';
-        svg.style.top = '-10000px';
-        document.body.appendChild(svg);
-        var viewBox = svg.viewBox.baseVal;
-        if (viewBox && (viewBox.x || viewBox.y)) {
-          svg.width.baseVal.value = viewBox.width - viewBox.x;
-          svg.height.baseVal.value = viewBox.height - viewBox.y;
-          viewBox.x = 0;
-          viewBox.y = 0;
-          viewBox.width = 0;
-          viewBox.height = 0;
-        }
-        IO.fixSVG(svg, svg);
-        document.body.removeChild(svg);
-        svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
 
-        var canvas = document.createElement('canvas');
-        var image = new Image;
-        callback(image);
-        // svg.style.cssText = '';
-        // console.log(md5, 'data:image/svg+xml;base64,' + btoa(div.innerHTML.trim()));
-        canvg(canvas, new XMLSerializer().serializeToString(svg), {
-          ignoreMouse: true,
-          ignoreAnimation: true,
-          ignoreClear: true,
-          renderCallback: function() {
-            image.src = canvas.toDataURL();
-          }
-        });
-      };
+    const ext = hash.split('.').pop();
+
+    if (ext === 'svg') {
       if (IO.zip) {
-        cb(f.asText());
+        return IO.loadSVG(f.asText());
       } else {
-        IO.projectRequest.add(IO.load(IO.ASSET_URL + md5 + '/get/', cb));
+        return IO.fetch(P.API.ASSET_URL + hash + '/get/')
+          .then((request) => request.text())
+          .then((text) => IO.loadSVG(text));
       }
     } else if (ext === 'wav') {
-      var request = new P.utils.Request();
-      var cb = function(ab) {
-        IO.decodeAudio(ab, function(buffer) {
-          callback(buffer);
-          request.load(buffer);
-        });
-      }
-      IO.projectRequest.add(request);
       if (IO.zip) {
-        var audio = new Audio;
-        var ab = f.asArrayBuffer();
-        cb(ab);
+        return P.audio.decodeAudio(f.asArrayBuffer());
       } else {
-        IO.projectRequest.add(IO.load(IO.ASSET_URL + md5 + '/get/', cb, null, 'arraybuffer'));
+        return IO.fetch(P.API.ASSET_URL + hash + '/get/')
+          .then((request) => request.arrayBuffer())
+          .then((buffer) => P.audio.decodeAudio(buffer))
       }
     } else {
+      // probably an image (.jpg, .gif, .png)
       if (IO.zip) {
-        var request = new P.utils.Request;
-        var image = new Image;
-        image.onload = function() {
-          if (callback) callback(image);
-          request.load();
-        };
-        image.src = 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(f.asBinary());
-        IO.projectRequest.add(request);
+        return new Promise((resolve, reject) => {
+          var image = new Image();
+          image.onload = function() {
+            resolve(image);
+          };
+          image.src = 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(f.asBinary());
+        });
       } else {
-        IO.projectRequest.add(
-          IO.loadImage(IO.ASSET_URL + md5 + '/get/', function(result) {
-            callback(result);
-          }));
+        return IO.loadImage(P.API.ASSET_URL + hash + '/get/');
       }
     }
   };
@@ -2416,15 +2096,136 @@ P.IO = (function(IO) {
   return IO;
 })({});
 
+// Related to playing or decoding sounds
+P.audio = (function(audio) {
+  const audioContext = audio.context = new AudioContext();
+
+  const ADPCM_STEPS = [
+    7, 8, 9, 10, 11, 12, 13, 14, 16, 17,
+    19, 21, 23, 25, 28, 31, 34, 37, 41, 45,
+    50, 55, 60, 66, 73, 80, 88, 97, 107, 118,
+    130, 143, 157, 173, 190, 209, 230, 253, 279, 307,
+    337, 371, 408, 449, 494, 544, 598, 658, 724, 796,
+    876, 963, 1060, 1166, 1282, 1411, 1552, 1707, 1878, 2066,
+    2272, 2499, 2749, 3024, 3327, 3660, 4026, 4428, 4871, 5358,
+    5894, 6484, 7132, 7845, 8630, 9493, 10442, 11487, 12635, 13899,
+    15289, 16818, 18500, 20350, 22385, 24623, 27086, 29794, 32767
+  ];
+  const ADPCM_INDEX = [-1, -1, -1, -1, 2, 4, 6, 8, -1, -1, -1, -1, 2, 4, 6, 8];
+
+  audio.decodeADPCMAudio = function(ab, cb) {
+    var dv = new DataView(ab);
+    if (dv.getUint32(0) !== 0x52494646 || dv.getUint32(8) !== 0x57415645) {
+      return cb(new Error('Unrecognized audio format'));
+    }
+
+    var blocks = {};
+    var i = 12, l = dv.byteLength - 8;
+    while (i < l) {
+      blocks[String.fromCharCode(
+        dv.getUint8(i),
+        dv.getUint8(i + 1),
+        dv.getUint8(i + 2),
+        dv.getUint8(i + 3))] = i;
+      i += 8 + dv.getUint32(i + 4, true);
+    }
+
+    var format        = dv.getUint16(20, true);
+    var channels      = dv.getUint16(22, true);
+    var sampleRate    = dv.getUint32(24, true);
+    var byteRate      = dv.getUint32(28, true);
+    var blockAlign    = dv.getUint16(32, true);
+    var bitsPerSample = dv.getUint16(34, true);
+
+    if (format === 17) {
+      var samplesPerBlock = dv.getUint16(38, true);
+      var blockSize = ((samplesPerBlock - 1) / 2) + 4;
+
+      var frameCount = dv.getUint32(blocks.fact + 8, true);
+
+      var buffer = P.audio.context.createBuffer(1, frameCount, sampleRate);
+      var channel = buffer.getChannelData(0);
+
+      var sample, index = 0;
+      var step, code, delta;
+      var lastByte = -1;
+
+      var offset = blocks.data + 8;
+      i = offset;
+      var j = 0;
+      while (true) {
+        if ((((i - offset) % blockSize) == 0) && (lastByte < 0)) {
+          if (i >= dv.byteLength) break;
+          sample = dv.getInt16(i, true); i += 2;
+          index = dv.getUint8(i); i += 1;
+          i++;
+          if (index > 88) index = 88;
+          channel[j++] = sample / 32767;
+        } else {
+          if (lastByte < 0) {
+            if (i >= dv.byteLength) break;
+            lastByte = dv.getUint8(i); i += 1;
+            code = lastByte & 0xf;
+          } else {
+            code = (lastByte >> 4) & 0xf;
+            lastByte = -1;
+          }
+          step = ADPCM_STEPS[index];
+          delta = 0;
+          if (code & 4) delta += step;
+          if (code & 2) delta += step >> 1;
+          if (code & 1) delta += step >> 2;
+          delta += step >> 3;
+          index += ADPCM_INDEX[code];
+          if (index > 88) index = 88;
+          if (index < 0) index = 0;
+          sample += (code & 8) ? -delta : delta;
+          if (sample > 32767) sample = 32767;
+          if (sample < -32768) sample = -32768;
+          channel[j++] = sample / 32768;
+        }
+      }
+      return cb(null, buffer);
+    }
+    cb(new Error('Unrecognized WAV format ' + format));
+  };
+
+  audio.decodeAudio = function(ab) {
+    if (!audioContext) {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve, reject) => {
+      // Attempt to decode it as ADPCM audio
+      audio.decodeADPCMAudio(ab, function(err, buffer) {
+        if (buffer) {
+          resolve(buffer);
+          return;
+        }
+        // Hope that the audio context will know what to do
+        return audioContext.decodeAudioData(ab)
+          .then((buffer) => resolve(buffer));
+      });
+    });
+  };
+
+  return audio;
+}({}));
+
 // Related to getting data from the public Scratch API
-// Will eventually replace P.IO
+// This will eventually replace P.IO
 P.API = (function(API) {
 
-  API.getTitle = function(projectId) {
-    return fetch("https://api.scratch.mit.edu/projects/195197851" + projectId)
-      .then(function(r) { return r.json(); })
-      .then(function(r) { return r.title; });
-  };
+  API.PROJECT_URL = 'https://projects.scratch.mit.edu/internalapi/project/';
+  API.ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
+  API.SOUNDBANK_URL = 'https://raw.githubusercontent.com/LLK/scratch-flash/v429/src/soundbank/';
+
+  // Apparently Scratch does not enable CORS on their API.
+  // API.getTitle = function(projectId) {
+  //   return IO.fetch("https://api.scratch.mit.edu/projects/" + projectId)
+  //     .then(function(r) { return r.json(); })
+  //     .then(function(r) { return r.title; });
+  // };
 
   return API;
 }({}));
@@ -2433,9 +2234,8 @@ P.compilers = {};
 // Compiles a Scratch 2 project to javascript
 P.compilers.sb2 = (function() {
   var LOG_PRIMITIVES;
-  var DEBUG;
+  var DEBUG = window.location.hostname === 'localhost' && window.location.search.includes("debug");
   // LOG_PRIMITIVES = true;
-  // DEBUG = true;
 
   var EVENT_SELECTORS = [
     'procDef',
@@ -2928,6 +2728,9 @@ P.compilers.sb2 = (function() {
       if (LOG_PRIMITIVES) {
         source += 'console.log(' + val(block[0]) + ');\n';
       }
+      // if (DEBUG) {
+      //   source += '/*' + block[0] + '*/';
+      // }
 
       if (['turnRight:', 'turnLeft:', 'heading:', 'pointTowards:', 'setRotationStyle', 'lookLike:', 'nextCostume', 'say:duration:elapsed:from:', 'say:', 'think:duration:elapsed:from:', 'think:', 'changeGraphicEffect:by:', 'setGraphicEffect:to:', 'filterReset', 'changeSizeBy:', 'setSizeTo:', 'comeToFront', 'goBackByLayers:'].indexOf(block[0]) !== -1) {
         if (visual < 2) {
@@ -3127,14 +2930,14 @@ P.compilers.sb2 = (function() {
 
       } else if (block[0] === 'playSound:') { /* Sound */
 
-        if (P.core.audioContext) {
+        if (P.audio.context) {
           source += 'var sound = S.getSound(' + val(block[1]) + ');\n';
           source += 'if (sound) playSound(sound);\n';
         }
 
       } else if (block[0] === 'doPlaySoundAndWait') {
 
-        if (P.core.audioContext) {
+        if (P.audio.context) {
           source += 'var sound = S.getSound(' + val(block[1]) + ');\n';
           source += 'if (sound) {\n';
           source += '  playSound(sound);\n';
@@ -3144,7 +2947,7 @@ P.compilers.sb2 = (function() {
 
       } else if (block[0] === 'stopAllSounds') {
 
-        if (P.core.audioContext) {
+        if (P.audio.context) {
           source += 'self.stopAllSounds();\n';
         }
 
@@ -3153,7 +2956,7 @@ P.compilers.sb2 = (function() {
       } else if (block[0] === 'playDrum') {
 
         beatHead(block[2]);
-        if (P.core.audioContext) {
+        if (P.audio.context) {
           source += 'playSpan(DRUMS[Math.round(' + num(block[1]) + ') - 1] || DRUMS[2], 60, 10);\n';
         }
         beatTail();
@@ -3166,7 +2969,7 @@ P.compilers.sb2 = (function() {
       } else if (block[0] === 'noteOn:duration:elapsed:from:') {
 
         beatHead(block[2]);
-        if (P.core.audioContext) {
+        if (P.audio.context) {
           source += 'playNote(' + num(block[1]) + ', R.duration);\n';
         }
         beatTail();
@@ -3634,14 +3437,16 @@ P.compilers.sb2 = (function() {
     } else {
       warn('Undefined event: ' + script[0][0]);
     }
+
+    if (DEBUG) {
+      console.log('[debug - compiled script] ----\n' + source.split("\n").map((i) => " " + i).join("\n"));
+    }
   };
 
   return function(stage) {
-
     warnings = Object.create(null);
 
     compileScripts(stage);
-
     for (var i = 0; i < stage.children.length; i++) {
       compileScripts(stage.children[i]);
     }
@@ -3649,12 +3454,11 @@ P.compilers.sb2 = (function() {
     for (var key in warnings) {
       console.warn(key + (warnings[key] > 1 ? ' (repeated ' + warnings[key] + ' times)' : ''));
     }
-
   };
-
 }());
 
 // The phosphorus Scratch runtime
+// Provides methods expected at runtime by scripts created by the compiler and an environment for Scratch scripts to run
 P.runtime = (function() {
   var self, S, R, STACK, C, WARP, CALLS, BASE, THREAD, IMMEDIATE, VISUAL;
 
@@ -3939,7 +3743,7 @@ P.runtime = (function() {
 
   var VOLUME = 0.3;
 
-  var audioContext = P.core.audioContext;
+  var audioContext = P.audio.context;
   if (audioContext) {
     var wavBuffers = P.IO.wavBuffers;
 

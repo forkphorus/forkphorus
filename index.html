@@ -35,10 +35,11 @@
       <div class=turbo>Turbo Mode</div>
       <span class=full-screen></span>
     </div>
-  <div class=player></div>
-    <div class=internal-error>
-      An internal error occurred. <a id=error-bug-link target=_blank href=https://github.com/GarboMuffin/phosphorus/issues/new>Click here</a> to file a bug report.
-    </div>
+    <div class=player></div>
+  </div>
+
+  <div class=internal-error>
+    An internal error occurred. <a id=error-bug-link target=_blank href=https://github.com/GarboMuffin/phosphorus/issues/new>Click here</a> to file a bug report.
   </div>
 
   <div class=title>
@@ -74,7 +75,7 @@
     </section>
     <section>
       <h1>Report a problem</h1>
-      <p>phosphorus is still in development. <a id=bug-link target=_blank href=https://github.com/GarboMuffin/phosphorus/issues/new>Click here</a> to report a problem with this project.</p>
+      <p>phosphorus is still in development and has many bugs. <a id=bug-link target=_blank href=https://github.com/GarboMuffin/phosphorus/issues/new>Click here</a> to report a problem with this project.</p>
     </section>
   </div>
 
@@ -188,13 +189,14 @@
         id = '';
       }
 
-      document.title = 'phosphorus';
-      P.player.load(id, function(stage) {
-        stage.triggerGreenFlag();
-      }, function(title) {
-        document.title = title ? title + ' \xb7 phosphorus' : 'phosphorus';
-        updateBugLink();
-      });
+      if (id === '' || id === 'zip') {
+        return;
+      }
+
+      P.player.load(id)
+        .then((s) => {
+          P.player.startStage(s);
+        });
 
       projectLink.href = P.player.projectURL;
       updateBugLink();
@@ -203,7 +205,11 @@
     }
 
     function updateBugLink() {
-      bugLink.href = P.player.projectId ? 'https://github.com/GarboMuffin/phosphorus/issues/new?title=' + encodeURIComponent(P.player.projectTitle || P.player.projectURL) + '&body=' + encodeURIComponent('\n\n\n' + P.player.projectURL + '\nhttps://garbomuffin.github.io/phosphorus/#' + P.player.projectId + '\n' + navigator.userAgent) : 'https://github.com/GarboMuffin/phosphorus/issues/new?body=' + encodeURIComponent('\n\n\n' + navigator.userAgent);
+      var url = P.player.projectURL || '(no url)';
+      var id = P.player.projectId || '(no id)';
+      var body = encodeURIComponent('\n\n\n' + url + '\n' + location.origin + location.pathname + '#' + id + '\n' + navigator.userAgent);
+      var title = encodeURIComponent('Internal Error: ' + (P.player.projectTitle || P.player.projectURL));
+      bugLink.href = 'https://github.com/GarboMuffin/phosphorus/issues/new?title=' + title + '&body=' + body + '&labels=bug';
     }
 
     function updatePackageLink() {
@@ -238,9 +244,9 @@
     setTimeout(function() {
       function setTransition(el) {
         el.style.WebkitTransition =
-        el.style.MozTransition =
-        el.style.OTransition =
-        el.style.transition = 'height 0.2s';
+          el.style.MozTransition =
+          el.style.OTransition =
+          el.style.transition = 'height 0.2s';
       }
       setTransition(titleArea);
       setTransition(playerArea);
@@ -264,13 +270,8 @@
         show('zip');
         var ext = f.name.split('.').pop();
         if (ext === 'sb2' || ext === 'zip') {
-          var request = P.IO.loadSB2File(f);
-        } else if (ext === 'json') {
-          request = P.IO.loadJSONFile(f);
-        }
-        if (request) {
-          P.player.showProgress(request, function(stage) {
-            stage.triggerGreenFlag();
+          P.IO.loadSB2File(f).then((s) => {
+            P.player.startStage(s);
           });
         }
       }

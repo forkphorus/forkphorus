@@ -172,6 +172,8 @@ P.player = (function() {
   });
 
   function load(id, cb, titleCallback) {
+    showProgress();
+
     P.player.projectId = id;
     P.player.projectURL = id ? 'https://scratch.mit.edu/projects/' + id + '/' : '';
 
@@ -180,18 +182,19 @@ P.player = (function() {
     turbo.style.display = 'none';
     error.style.display = 'none';
     pause.className = 'pause';
-    progressBar.style.display = 'none';
 
-    if (id) {
-      showProgress(P.IO.loadScratchr2Project(id), cb);
-      // P.IO.loadScratchr2ProjectTitle(id, function(title) {
-      //   if (titleCallback) titleCallback(P.player.projectTitle = title);
-      // });
-    } else {
-      if (titleCallback) setTimeout(function() {
-        titleCallback('');
-      });
-    }
+    return P.IO.loadOnlineSB2(id)
+  }
+
+  function startStage(s) {
+    stage = s;
+    player.appendChild(s.root);
+    s.setZoom(stage.zoom);
+    stage.root.addEventListener('keydown', exitFullScreen);
+    stage.handleError = showError;
+    s.start();
+    s.triggerGreenFlag();
+    hideProgress();
   }
 
   function showError(e) {
@@ -200,51 +203,44 @@ P.player = (function() {
     console.error(e);
   }
 
-  function showProgress(request, loadCallback) {
-    progressBar.style.display = 'none';
+  // Install our progress hooks
+  var totalTasks = 0;
+  var finishedTasks = 0;
+  P.IO.progressHooks.new = function() {
+    totalTasks++;
+    setProgress(finishedTasks / totalTasks);
+  };
+  P.IO.progressHooks.end = function() {
+    finishedTasks++;
+    setProgress(finishedTasks / totalTasks);
+  };
+  P.IO.progressHooks.set = function(progress) {
+    setProgress(progress);
+  };
+
+  function showProgress() {
+    progressBar.style.display = 'block';
+    progressBar.style.opacity = 1;
+    setProgress(0);
+  }
+  function hideProgress() {
+    progressBar.style.opacity = 0;
     setTimeout(function() {
-      progressBar.style.width = '10%';
-      progressBar.className = 'progress-bar';
-      progressBar.style.opacity = 1;
-      progressBar.style.display = 'block';
-    });
-    request.onload = function(s) {
-      progressBar.style.width = '100%';
-      setTimeout(function() {
-        progressBar.style.opacity = 0;
-        setTimeout(function() {
-          progressBar.style.display = 'none';
-        }, 300);
-      }, 100);
-
-      var zoom = stage ? stage.zoom : 1;
-      window.stage = stage = s;
-      stage.start();
-      stage.setZoom(zoom);
-
-      stage.root.addEventListener('keydown', exitFullScreen);
-      stage.handleError = showError;
-
-      player.appendChild(stage.root);
-      stage.focus();
-      if (loadCallback) {
-        loadCallback(stage);
-        loadCallback = null;
-      }
-    };
-    request.onerror = function(e) {
-      progressBar.style.width = '100%';
-      progressBar.className = 'progress-bar error';
-      console.error(e);
-    };
-    request.onprogress = function(e) {
-      progressBar.style.width = (10 + e.loaded / e.total * 90) + '%';
-    };
+      progressBar.style.display = 'none';
+    }, 300);
+  }
+  function setProgress(progress) {
+    progressBar.style.width = (10 + progress * 90) + '%';
   }
 
   return {
     load: load,
-    showProgress: showProgress
+    startStage: startStage,
+    progress: {
+      hide: hideProgress,
+      show: showProgress,
+      set: setProgress,
+    }
   };
 
 }());
