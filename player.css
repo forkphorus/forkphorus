@@ -10,10 +10,10 @@
   -o-transition: .3s;
   transition: .3s;
 }
-.light-content .progress-bar {
-  background: #468;
+body.dark .progress-bar {
+  background: #489;
 }
-.progress-bar.error {
+body.dark .progress-bar.error {
   background: #ecc;
 }
 .light-content .progress-bar.error {
@@ -23,8 +23,7 @@
   position: relative;
   height: 32px;
 }
-.controls span,
-.project-link {
+.controls span, .project-link {
   width: 32px;
   height: 32px;
   float: right;
@@ -33,22 +32,26 @@
   opacity: .4;
   background-image: url(icons.svg);
   text-decoration: none;
+  background-position-y: 0;
+}
+body.dark .controls span {
+  background-position-y: 64px;
 }
 .controls .flag {
-  background-position: 0 0;
+  background-position-x: 0;
 }
 .controls .stop {
-  background-position: -96px 0;
+  background-position-x: -96px;
 }
 .controls .pause {
-  background-position: -32px 0;
+  background-position-x: -32px;
 }
 .controls .play {
-  background-position: -64px 0;
+  background-position-x: -64px;
 }
 .controls .full-screen {
   float: left;
-  background-position: -128px 0;
+  background-position: -128px;
 }
 .controls span:active,
 .project-link:active {
@@ -63,6 +66,7 @@
   padding: 0 8px;
 }
 .player {
+  color: #000;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, .4);
   width: 480px;
   height: 360px;
@@ -118,9 +122,4 @@
 }
 .fs .player {
   box-shadow: none;
-}
-
-#subtitle {
-  float: right;
-  color: rgb(150, 150, 150);
 }

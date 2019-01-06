@@ -11,6 +11,10 @@
 
 <body>
 
+  <div class="theme-select">
+    <a class="switch-theme">switch theme</a>
+  </div>
+
   <div class=area id=title-area>
     <h1 class=title>phosphorus <span id="subtitle">(fork)</span></h1>
     <p>phosphorus runs your Scratch 2 projects really fast by compiling them to JavaScript. Try it out by pasting a URL or project ID into the field below, by dropping a .sb2 file on the page, or <a class=dropdown>by choosing an example<select id=examples>
@@ -280,6 +284,18 @@
         }
       }
     });
+
+    function toggleDark(dark) {
+      document.body.classList.toggle('dark', dark);
+      localStorage.setItem('userPrefersDark', document.body.classList.contains('dark'));
+    }
+
+    document.querySelector('.theme-select a').onclick = function() {
+      toggleDark();
+    };
+    if (localStorage.getItem('userPrefersDark') === 'true') {
+      toggleDark(true);
+    }
 
   }());
 

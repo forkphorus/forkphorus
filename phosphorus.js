@@ -1830,7 +1830,7 @@ P.IO = (function(IO) {
         return r;
       })
       .catch((err) => {
-        progressHooks.error(err);
+        IO.progressHooks.error(err);
         throw err;
       });
   }
@@ -1843,11 +1843,11 @@ P.IO = (function(IO) {
     end() {},
     // Sets the current progress, should override new() and end()
     set(p) {},
-    // Indicates an error has occurred
-    error(err) {},
   };
 
   IO.loadImage = function(url) {
+    IO.progressHooks.new();
+
     var image = new Image();
     image.src = url;
     // I don't know why but setting this to anonymous somehow disables the same origin policy
@@ -1855,6 +1855,7 @@ P.IO = (function(IO) {
 
     return new Promise((resolve, reject) => {
       image.onload = function() {
+        IO.progressHooks.end();
         resolve(image);
       };
       image.onerror = function(err) {
@@ -1913,9 +1914,7 @@ P.IO = (function(IO) {
 
     const assets = [];
     for (var name in P.config.wavFiles) {
-      if (IO.wavBuffers[name]) {
-        // it already exists
-      } else {
+      if (!IO.wavBuffers[name]) {
         assets.push(
           IO.loadWavBuffer(name)
             .then((buffer) => IO.wavBuffers[name] = buffer)
@@ -1972,7 +1971,8 @@ P.IO = (function(IO) {
       .then((asset) => data.$buffer = asset);
   };
 
-  IO.fixSVG = function(svg, element) {
+  // Patches an SVG to fix any problems before rendering
+  IO.patchSVG = function(svg, element) {
     if (element.nodeType !== 1) return;
     if (element.nodeName === 'text') {
       var font = element.getAttribute('font-family') || '';
@@ -2008,7 +2008,7 @@ P.IO = (function(IO) {
       element.setAttribute('x', 0);
       element.setAttribute('y', 0);
     }
-    [].forEach.call(element.childNodes, IO.fixSVG.bind(null, svg));
+    [].forEach.call(element.childNodes, IO.patchSVG.bind(null, svg));
   };
 
   IO.loadSVG = function(source) {
@@ -2033,12 +2033,14 @@ P.IO = (function(IO) {
       viewBox.width = 0;
       viewBox.height = 0;
     }
-    IO.fixSVG(svg, svg);
+    IO.patchSVG(svg, svg);
     document.body.removeChild(svg);
     svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
 
     var canvas = document.createElement('canvas');
     var image = new Image();
+
+    IO.progressHooks.new();
 
     return new Promise((resolve, reject) => {
       canvg(canvas, new XMLSerializer().serializeToString(svg), {
@@ -2046,6 +2048,7 @@ P.IO = (function(IO) {
         ignoreAnimation: true,
         ignoreClear: true,
         renderCallback: function() {
+          IO.progressHooks.end();
           image.src = canvas.toDataURL();
           resolve(image);
         }
