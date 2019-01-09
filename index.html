@@ -17,9 +17,10 @@
   <div id="app">
 
     <div class=area id=title-area>
-      <h1 class=title>phosphorus <span id="subtitle">(fork)</span></h1>
-      <p>phosphorus runs your Scratch 2 projects really fast by compiling them to JavaScript. Try it out by pasting a URL or project ID into the field below, by dropping a .sb2 file on the page, or <a class=dropdown>by choosing an example<select id=examples>
+      <h1 class=title>phosphorus</h1>
+      <p>phosphorus runs your Scratch projects really fast by compiling them to JavaScript. Try it out by pasting a URL or project ID into the field below, by dropping a project file on the page, or <a class=dropdown>by choosing an example<select id=examples>
         <option value></option>
+        <option value=276660763>Scratch 3.0 is here! by ScratchCat (3.0 project)</option>
         <option value=11397100>3D Remix by DadOfMrLog</option>
         <option value=15945630>O by DCPU-16</option>
         <option value=10128407>Paper Minecraft by griffpatch</option>
@@ -29,7 +30,7 @@
         <option value=34791164>gb.sb2 [Mario Land 2] by DCPU-16</option> -->
         <option value=21554369>Epic Ninja by griffpatch</option>
         <option value=15832807>Pretty by blob8108</option>
-      </select></a>.</p>
+      </select></a>. (now with <em>very</em> limted support for Scratch 3!)</p>
     </div>
 
     <div class=area id=player-area>
@@ -97,7 +98,7 @@
   </div>
 
   <script src=fonts.js></script>
-  <script src=//cdnjs.cloudflare.com/ajax/libs/jszip/2.4.0/jszip.js></script>
+  <script src=lib/jszip.min.js></script>
   <script src=lib/rgbcolor.js></script>
   <script src=lib/StackBlur.js></script>
   <script src=lib/canvg.js></script>
@@ -112,7 +113,7 @@
     var prefix = 'https://scratch.mit.edu/projects/';
 
     var initialId = location.hash.substr(1);
-    if (initialId === 'zip') initialId = '';
+    if (initialId[0] === '.') initialId = '';
 
     var titleArea = document.querySelector('#title-area');
     var playerArea = document.querySelector('#player-area');
@@ -178,7 +179,7 @@
 
     window.addEventListener('hashchange', function() {
       var id = location.hash.substr(1);
-      if (id !== 'zip') {
+      if (id[0] !== '.') {
         if (+id !== +id) id = '';
         urlInput.value = prefix + id;
       }
@@ -193,29 +194,22 @@
     }
 
     function load(id) {
-      if (id !== 'zip') {
-        show(id);
-      } else {
-        id = '';
-      }
 
-      if (id === '' || id === 'zip') {
+      if (id === '' || id[0] === '.') {
         return;
       }
 
-      P.player.load(id)
-        .then((s) => {
-          P.player.startStage(s);
-        });
-
+      show(id);
       projectLink.href = P.player.projectURL;
       updateBugLink();
+      P.player.load(id)
+        .then((stage) => P.player.start(stage));
       // updatePackageLink();
       // updateEmbedCode();
     }
 
     function updateBugLink() {
-      bugLink.href = P.player.createBugLink('Please describe the issue below. Please be specific, descriptions like "it doesnt work" are not helpful.', '(manual report)');
+      bugLink.href = P.player.createBugLink('Please describe the issue below. Please be specific, descriptions like "it doesnt work" are not helpful.', '');
     }
 
     // function updatePackageLink() {
@@ -245,8 +239,6 @@
     // embedAutoStart.addEventListener('change', updateEmbedCode);
     // embedLightContent.addEventListener('change', updateEmbedCode);
 
-    load(initialId);
-
     setTimeout(function() {
       function setTransition(el) {
         el.style.WebkitTransition =
@@ -270,19 +262,30 @@
       e.preventDefault();
 
       var f = e.dataTransfer.files[0];
-
-      if (f) {
-        location.hash = '#zip';
-        show('zip');
-        var ext = f.name.split('.').pop();
-        if (ext === 'sb2' || ext === 'zip') {
-          P.IO.loadSB2File(f).then((s) => {
-            P.player.projectId = 'local file';
-            updateBugLink();
-            P.player.startStage(s);
-          });
-        }
+      if (!f) {
+        return;
       }
+
+      var ext = f.name.split('.').pop();
+      if (!['sb2', 'sb3'].includes(ext)) {
+        return;
+      }
+
+      show('.' + ext);
+      P.player.projectId = 'local ' + ext;
+      location.hash = '.' + ext;
+
+      P.IO.fileAsArrayBuffer(f)
+        .then((buffer) => {
+          if (ext === 'sb2') {
+            return P.sb2.loadSB2Project(buffer);
+          } else if (ext === 'sb3') {
+            const loader = new P.sb3.SB3FileLoader(buffer);
+            return loader.load();
+          }
+        }).then((stage) => {
+          P.player.start(stage);
+        });
     });
 
     function toggleDark(dark) {
@@ -296,6 +299,8 @@
     if (localStorage.getItem('userPrefersDark') === 'true') {
       toggleDark(true);
     }
+
+    load(initialId);
 
   }());
 

@@ -172,11 +172,10 @@ P.player = (function() {
     if (isFullScreen !== document.webkitIsFullScreen) fullScreenClick();
   });
 
-  function load(id, cb, titleCallback) {
+  function load(id) {
     showProgress();
 
-    P.player.projectId = id;
-    P.player.projectURL = id ? 'https://scratch.mit.edu/projects/' + id + '/' : '';
+    id = +id;
 
     if (stage) stage.destroy();
     while (player.firstChild) player.removeChild(player.lastChild);
@@ -184,11 +183,23 @@ P.player = (function() {
     error.style.display = 'none';
     pause.className = 'pause';
 
-    return P.IO.loadOnlineSB2(id);
+    P.player.projectId = id;
+    P.player.projectURL = id ? 'https://scratch.mit.edu/projects/' + id + '/' : '';
+
+    const likelyType = P.utils.likelyProjectType(id);
+
+    if (likelyType === 3) {
+      return (new P.sb3.Scratch3Loader(id)).load();
+    } else if (likelyType === 2) {
+      return P.sb2.loadOnlineSB2(id);
+    }
   }
 
-  function startStage(s) {
+  function start(s) {
     stage = s;
+    if (P.config.debug) {
+      window.stage = stage;
+    }
     player.appendChild(s.root);
     s.setZoom(stage.zoom);
     stage.root.addEventListener('keydown', exitFullScreen);
@@ -212,7 +223,6 @@ P.player = (function() {
     progressBar.classList.add('error');
     error.style.display = 'block';
     errorBugLink.href = createBugLink("Please describe what you were doing to cause this error:", '```\n' + P.utils.stringifyError(e) + '\n```');
-    console.error(e);
   }
 
   // Install our progress hooks
@@ -250,7 +260,7 @@ P.player = (function() {
 
   return {
     load: load,
-    startStage: startStage,
+    start: start,
     createBugLink: createBugLink,
     progress: {
       set: setProgress,

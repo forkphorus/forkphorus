@@ -7,6 +7,7 @@ P.config = {
   scale: window.devicePixelRatio || 1,
   hasTouchEvents: 'ontouchstart' in document,
   framerate: 30,
+  debug: window.location.hostname === 'localhost' && window.location.search.includes("debug"),
   // builtin instruments and their URL
   wavFiles: {
     'AcousticGuitar_F3': 'instruments/AcousticGuitar_F3_22k.wav',
@@ -82,58 +83,7 @@ P.config = {
 
 // Utility methods
 P.utils = (function(exports) {
-  var addEvents = function(cla /*, events... */) {
-    [].slice.call(arguments, 1).forEach(function(event) {
-      addEvent(cla, event);
-    });
-  };
-
-  var addEvent = function(cla, event) {
-    var capital = event[0].toUpperCase() + event.substr(1);
-
-    cla.prototype.addEventListener = cla.prototype.addEventListener || function(event, listener) {
-      var listeners = this['$' + event] = this['$' + event] || [];
-      listeners.push(listener);
-      return this;
-    };
-
-    cla.prototype.removeEventListener = cla.prototype.removeEventListener || function(event, listener) {
-      var listeners = this['$' + event];
-      if (listeners) {
-        var i = listeners.indexOf(listener);
-        if (i !== -1) {
-          listeners.splice(i, 1);
-        }
-      }
-      return this;
-    };
-
-    cla.prototype.dispatchEvent = cla.prototype.dispatchEvent || function(event, arg) {
-      var listeners = this['$' + event];
-      if (listeners) {
-        listeners.forEach(function(listener) {
-          listener(arg);
-        });
-      }
-      var listener = this['on' + event];
-      if (listener) {
-        listener(arg);
-      }
-      return this;
-    };
-
-    cla.prototype['on' + capital] = function(listener) {
-      this.addEventListener(event, listener);
-      return this;
-    };
-
-    cla.prototype['dispatch' + capital] = function(arg) {
-      this.dispatchEvent(event, arg);
-      return this;
-    };
-  };
-
-  var KEY_CODES = {
+  const KEY_CODES = {
     space: 32,
     'left arrow': 37,
     'up arrow': 38,
@@ -167,7 +117,138 @@ P.utils = (function(exports) {
     return error.toString();
   }
 
-  exports.addEvents = addEvents;
+  exports.createContinuation = function(source) {
+    var result = '(function() {\n';
+    var brackets = 0;
+    var delBrackets = 0;
+    var shouldDelete = false;
+    var here = 0;
+    var length = source.length;
+    while (here < length) {
+      var i = source.indexOf('{', here);
+      var j = source.indexOf('}', here);
+      var k = source.indexOf('return;', here);
+      if (k === -1) k = length;
+      if (i === -1 && j === -1) {
+        if (!shouldDelete) {
+          result += source.slice(here, k);
+        }
+        break;
+      }
+      if (i === -1) i = length;
+      if (j === -1) j = length;
+      if (shouldDelete) {
+        if (i < j) {
+          delBrackets++;
+          here = i + 1;
+        } else {
+          delBrackets--;
+          if (!delBrackets) {
+            shouldDelete = false;
+          }
+          here = j + 1;
+        }
+      } else {
+        if (brackets === 0 && k < i && k < j) {
+          result += source.slice(here, k);
+          break;
+        }
+        if (i < j) {
+          result += source.slice(here, i + 1);
+          brackets++;
+          here = i + 1;
+        } else {
+          result += source.slice(here, j);
+          here = j + 1;
+          if (source.substr(j, 8) === '} else {') {
+            if (brackets > 0) {
+              result += '} else {';
+              here = j + 8;
+            } else {
+              shouldDelete = true;
+              delBrackets = 0;
+            }
+          } else {
+            if (brackets > 0) {
+              result += '}';
+              brackets--;
+            }
+          }
+        }
+      }
+    }
+    result += '})';
+    return P.runtime.scopedEval(result);
+  };
+
+  const FONTS = {
+    // TODO: Scratch 3
+    '': 'Helvetica',
+    Donegal: 'Donegal One',
+    Gloria: 'Gloria Hallelujah',
+    Marker: 'Permanent Marker',
+    Mystery: 'Mystery Quest'
+  };
+
+  const LINE_HEIGHTS = {
+    // TODO: Scratch 3
+    Helvetica: 1.13,
+    'Donegal One': 1.25,
+    'Gloria Hallelujah': 1.97,
+    'Permanent Marker': 1.43,
+    'Mystery Quest': 1.37
+  };
+
+  // Patches an SVG to make it behave more like Scratch.
+  exports.patchSVG = function(svg, element) {
+    if (element.nodeType !== 1) return;
+    if (element.nodeName === 'text') {
+      // Correct fonts
+      var font = element.getAttribute('font-family') || '';
+      font = FONTS[font] || font;
+      if (font) {
+        element.setAttribute('font-family', font);
+        if (font === 'Helvetica') element.style.fontWeight = 'bold';
+      }
+      var size = +element.getAttribute('font-size');
+      if (!size) {
+        element.setAttribute('font-size', size = 18);
+      }
+      var bb = element.getBBox();
+      var x = 4 - .6 * element.transform.baseVal.consolidate().matrix.a;
+      var y = (element.getAttribute('y') - bb.y) * 1.1;
+      element.setAttribute('x', x);
+      element.setAttribute('y', y);
+      var lines = element.textContent.split('\n');
+      if (lines.length > 1) {
+        element.textContent = lines[0];
+        var lineHeight = LINE_HEIGHTS[font] || 1;
+        for (var i = 1, l = lines.length; i < l; i++) {
+          var tspan = document.createElementNS(null, 'tspan');
+          tspan.textContent = lines[i];
+          tspan.setAttribute('x', x);
+          tspan.setAttribute('y', y + size * i * lineHeight);
+          element.appendChild(tspan);
+        }
+      }
+    } else if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
+      element.setAttribute('x', 0);
+      element.setAttribute('y', 0);
+    }
+    [].forEach.call(element.childNodes, exports.patchSVG.bind(null, svg));
+  };
+
+  // FIXME: terrible hack that probably works "well enough"
+  const SB3_TRANSITION = 276660763;
+
+  // Determines the likely type of a project based on its ID.
+  exports.likelyProjectType = function(id) {
+    if (id >= SB3_TRANSITION) {
+      return 3;
+    } else {
+      return 2;
+    }
+  };
 
   return exports;
 })({});
@@ -235,17 +316,31 @@ P.renderers.canvas2d = (function() {
 
 // Phosphorus Core
 P.core = (function(core) {
+
+  // Canvases used for various collision testing later on
+  var collisionCanvas = document.createElement('canvas');
+  var collisionRenderer = new P.renderers.canvas2d.Renderer(collisionCanvas);
+  var secondaryCollisionCanvas = document.createElement('canvas');
+  var secondaryCollisionRenderer = new P.renderers.canvas2d.Renderer(secondaryCollisionCanvas);
+
   class Base {
     constructor() {
+      this.stage = null;
       this.isClone = false;
+      this.isStage = false;
+      this.isSprite = false;
+
+      this.name = '';
       this.costumes = [];
       this.currentCostumeIndex = 0;
-      this.objName = '';
+
+      this.sounds = [];
+      this.soundRefs = {};
       this.instrument = 0;
       this.volume = 1;
 
-      this.soundRefs = {};
-      this.sounds = [];
+      // 'normal', 'leftRight', 'none'
+      this.rotationStyle = 'normal';
 
       this.vars = {};
       this.watchers = {};
@@ -265,7 +360,6 @@ P.core = (function(core) {
         this.listeners.whenKeyPressed.push([]);
       }
       this.fns = [];
-      this.scripts = [];
 
       this.filters = {
         color: 0,
@@ -278,62 +372,31 @@ P.core = (function(core) {
       };
     }
 
-    fromJSON(data) {
-      this.objName = data.objName;
-      this.scripts = data.scripts;
-      this.currentCostumeIndex = data.currentCostumeIndex || 0;
-      this.costumes = data.costumes.map(function(d, i) {
-        return new Costume(d, i, this);
-      }, this);
-      this.addSounds(data.sounds);
-      this.addLists(data.lists);
-      this.addVariables(data.variables);
+    // Data/Loading methods
 
-      return this;
+    addSound(sound) {
+      this.soundRefs[sound.name] = sound;
+      this.sounds.push(sound);
     }
 
-    addSounds(sounds) {
-      for (var i = 0; i < sounds.length; i++) {
-        var s = new Sound(sounds[i]);
-        this.sounds.push(s);
-        this.soundRefs[s.name] = s;
-      }
-    }
-
-    addVariables(variables) {
-      for (var i = 0; i < variables.length; i++) {
-        if (variables[i].isPeristent) {
-          throw new Error('Cloud variables are not supported');
-        }
-        this.vars[variables[i].name] = variables[i].value;
-      }
-    }
-
-    addLists(lists) {
-      for (var i = 0; i < lists.length; i++) {
-        if (lists[i].isPeristent) {
-          throw new Error('Cloud lists are not supported');
-        }
-        this.lists[lists[i].listName] = lists[i].contents;
-        // TODO list watchers
-      }
-    }
+    // Implementations of Scratch blocks
 
     showVariable(name, visible) {
       var watcher = this.watchers[name];
       var stage = this.stage;
       if (!watcher) {
-        watcher = this.watchers[name] = new P.Watcher(stage);
-        watcher.x = stage.defaultWatcherX;
-        watcher.y = stage.defaultWatcherY;
+        watcher = this.watchers[name] = new P.core.Watcher({
+          x: stage.defaultWatcherX,
+          y: stage.defaultWatcherY,
+          target: this,
+          label: (watcher.target === stage ? '' : watcher.target.objName + ': ') + name,
+          param: name,
+        }, stage);
         stage.defaultWatcherY += 26;
         if (stage.defaultWatcherY >= 450) {
           stage.defaultWatcherY = 10;
           stage.defaultWatcherX += 150;
         }
-        watcher.target = this;
-        watcher.label = (watcher.target === stage ? '' : watcher.target.objName + ': ') + name;
-        watcher.param = name;
         stage.allWatchers.push(watcher);
       }
       watcher.visible = visible;
@@ -361,7 +424,7 @@ P.core = (function(core) {
       if (typeof costume !== 'number') {
         costume = '' + costume;
         for (var i = 0; i < this.costumes.length; i++) {
-          if (this.costumes[i].costumeName === costume) {
+          if (this.costumes[i].name === costume) {
             this.currentCostumeIndex = i;
             if (this.isStage) this.updateBackdrop();
             if (this.saying) this.updateBubble();
@@ -474,9 +537,14 @@ P.core = (function(core) {
       this.stage = this;
       this.isStage = true;
 
+      // Maps broadcast display names to their ID
+      // Scratch 3 uses unique IDs for broadcasts and the visual name for different things.
+      this.broadcastReferences = {};
+
       this.children = [];
+      this.dragging = {};
+
       this.allWatchers = [];
-      this.dragging = Object.create(null);
       this.defaultWatcherX = 10;
       this.defaultWatcherY = 10;
 
@@ -758,24 +826,6 @@ P.core = (function(core) {
       if (this.onMouseUp) document.removeEventListener('mouseup', this.onMouseUp);
     }
 
-    fromJSON(data) {
-      super.fromJSON(data);
-
-      data.children.forEach(function(d) {
-        if (d.listName) return;
-        if (d.cmd) this.allWatchers.push(new Watcher(this).fromJSON(d));
-        else this.children.push(new Sprite(this).fromJSON(d));
-      }, this);
-
-      this.allWatchers.forEach(function(child) {
-        child.resolve();
-      }, this);
-
-      P.compilers.sb2(this);
-
-      return this;
-    }
-
     focus() {
       if (this.promptId < this.nextPromptId) {
         this.prompt.focus();
@@ -888,11 +938,11 @@ P.core = (function(core) {
     getObject(name) {
       for (var i = 0; i < this.children.length; i++) {
         var c = this.children[i];
-        if (c.objName === name && !c.isClone) {
+        if (c.name === name && !c.isClone) {
           return c;
         }
       }
-      if (name === '_stage_' || name === this.objName) {
+      if (name === '_stage_' || name === this.name) {
         return this;
       }
     }
@@ -900,7 +950,7 @@ P.core = (function(core) {
     getObjects(name) {
       var result = [];
       for (var i = 0; i < this.children.length; i++) {
-        if (this.children[i].objName === name) {
+        if (this.children[i].name === name) {
           result.push(this.children[i]);
         }
       }
@@ -957,69 +1007,48 @@ P.core = (function(core) {
         }
       }
     }
-  }
 
-  // Canvases used for various collision testing later on
-  var collisionCanvas = document.createElement('canvas');
-  var collisionRenderer = new P.renderers.canvas2d.Renderer(collisionCanvas);
-  var secondaryCollisionCanvas = document.createElement('canvas');
-  var secondaryCollisionRenderer = new P.renderers.canvas2d.Renderer(secondaryCollisionCanvas);
+    clearPen() {
+      this.penRenderer.reset(this.maxZoom);
+      this.penRenderer.ctx.lineCap = 'round';
+    }
+  }
 
   class Sprite extends Base {
     constructor(stage) {
       super();
-      this.stage = stage;
 
+      this.stage = stage;
+      this.isSprite = true;
+
+      // These fields should probably be overwritten by creators.
+      this.scratchX = 0;
+      this.scratchY = 0;
       this.direction = 90;
-      this.indexInLibrary = -1;
       this.isDraggable = false;
+      this.indexInLibrary = -1;
       this.isDragging = false;
       this.rotationStyle = 'normal';
       this.scale = 1;
-      this.scratchX = 0;
-      this.scratchY = 0;
-      this.spriteInfo = {};
-      this.visible = true;
+      this.visible = false;
 
+      this.spriteInfo = {};
       this.penHue = 240;
       this.penSaturation = 100;
       this.penLightness = 50;
-
       this.penSize = 1;
       this.isPenDown = false;
-      this.isSprite = true;
       this.bubble = null;
       this.saying = false;
       this.thinking = false;
       this.sayId = 0;
     }
 
-    fromJSON(data) {
-      super.fromJSON(data);
-
-      this.direction = data.direction;
-      this.indexInLibrary = data.indexInLibrary;
-      this.isDraggable = data.isDraggable;
-      this.rotationStyle = data.rotationStyle;
-      this.scale = data.scale;
-      this.scratchX = data.scratchX;
-      this.scratchY = data.scratchY;
-      this.spriteInfo = data.spriteInfo;
-      this.visible = data.visible;
-
-      return this;
-    }
-
     clone() {
       var c = new Sprite(this.stage);
-
       c.isClone = true;
-      c.costumes = this.costumes;
-      c.currentCostumeIndex = this.currentCostumeIndex;
-      c.objName = this.objName;
-      c.soundRefs = this.soundRefs;
-      c.sounds = this.sounds;
 
+      // Copy data without passing reference
       var keys = Object.keys(this.vars);
       for (var i = keys.length; i--;) {
         var k = keys[i];
@@ -1032,11 +1061,6 @@ P.core = (function(core) {
         c.lists[k] = this.lists[k].slice(0);
       }
 
-      c.procedures = this.procedures;
-      c.listeners = this.listeners;
-      c.fns = this.fns;
-      c.scripts = this.scripts;
-
       c.filters = {
         color: this.filters.color,
         fisheye: this.filters.fisheye,
@@ -1047,6 +1071,20 @@ P.core = (function(core) {
         ghost: this.filters.ghost
       };
 
+      // Copy scripts
+      c.procedures = this.procedures;
+      c.listeners = this.listeners;
+      c.fns = this.fns;
+
+      // TODO: automated loop to copy all fields?
+
+      // Copy Data
+      // Passing these by reference is fine.
+      c.name = this.name;
+      c.costumes = this.costumes;
+      c.currentCostumeIndex = this.currentCostumeIndex;
+      c.sounds = this.sounds;
+      c.soundRefs = this.soundRefs;
       c.direction = this.direction;
       c.instrument = this.instrument;
       c.indexInLibrary = this.indexInLibrary;
@@ -1523,91 +1561,52 @@ P.core = (function(core) {
   }
 
   class Costume {
-    constructor(data, index, base) {
-      this.index = index;
-      this.base = base;
-      this.baseLayerID = data.baseLayerID;
-      this.baseLayerMD5 = data.baseLayerMD5;
-      this.baseLayer = data.$image;
-      this.bitmapResolution = data.bitmapResolution || 1;
+    constructor(costumeData) {
+      this.index = costumeData.index;
+      this.bitmapResolution = costumeData.bitmapResolution;
       this.scale = 1 / this.bitmapResolution;
-      this.costumeName = data.costumeName;
-      this.rotationCenterX = data.rotationCenterX;
-      this.rotationCenterY = data.rotationCenterY;
-      this.textLayer = data.$text;
+      this.name = costumeData.name;
+      this.rotationCenterX = costumeData.rotationCenterX;
+      this.rotationCenterY = costumeData.rotationCenterY;
+      this.layers = costumeData.layers;
 
       this.image = document.createElement('canvas');
       this.context = this.image.getContext('2d');
 
       this.render();
-      this.baseLayer.onload = function() {
-        this.render();
-      }.bind(this);
-      if (this.textLayer) {
-        this.textLayer.onload = this.baseLayer.onload;
-      }
     }
 
     render() {
-      if (!this.baseLayer.width || this.textLayer && !this.textLayer.width) {
-        return;
-      }
-      this.image.width = this.baseLayer.width;
-      this.image.height = this.baseLayer.height;
+      this.image.width = Math.max(this.layers[0].width, 1);
+      this.image.height = Math.max(this.layers[0].height, 1);
 
-      this.context.drawImage(this.baseLayer, 0, 0);
-      if (this.textLayer) {
-        this.context.drawImage(this.textLayer, 0, 0);
-      }
-
-      if (this.base.isStage && this.index == this.base.currentCostumeIndex) {
-        setTimeout(function() {
-          this.base.updateBackdrop();
-        }.bind(this));
+      for (const layer of this.layers) {
+        this.context.drawImage(layer, 0, 0);
       }
     }
   }
-  P.utils.addEvents(Costume, 'load');
 
   class Sound {
     constructor(data) {
-      this.name = data.soundName;
-      this.buffer = data.$buffer;
+      this.name = data.name;
+      this.buffer = data.buffer;
       this.duration = this.buffer ? this.buffer.duration : 0;
     }
   }
 
   class Watcher {
-    constructor(stage) {
+    constructor(data, stage) {
       this.stage = stage;
 
-      this.cmd = 'getVar:';
-      this.color = '#ee7d16';
-      this.isDiscrete = true;
-      this.label = 'watcher';
-      this.mode = 1;
-      this.param = 'var';
-      this.sliderMax = 100;
-      this.sliderMin = 0;
-      this.target = undefined;
-      this.visible = true;
-      this.x = 0;
-      this.y = 0;
-
-      this.el = null;
-      this.labelEl = null;
-      this.readout = null;
-      this.slider = null;
-      this.button = null;
-    }
-
-    fromJSON(data) {
-      this.cmd = data.cmd || 'getVar:';
+      this.cmd = data.cmd;
+      this.type = data.type || 'var';
       if (data.color) {
         var c = (data.color < 0 ? data.color + 0x1000000 : data.color).toString(16);
         this.color = '#000000'.slice(0, -c.length) + c;
+      } else {
+        this.color = '#ee7d16';
       }
-      this.isDiscrete = data.isDiscrete == null ? true : data.isDiscrete;
+      this.isDiscrete = data.isDiscrete || true;
       this.label = data.label || '';
       this.mode = data.mode || 1;
       this.param = data.param;
@@ -1618,7 +1617,11 @@ P.core = (function(core) {
       this.x = data.x || 0;
       this.y = data.y || 0;
 
-      return this;
+      this.el = null;
+      this.labelEl = null;
+      this.readout = null;
+      this.slider = null;
+      this.button = null;
     }
 
     resolve() {
@@ -1661,7 +1664,7 @@ P.core = (function(core) {
       return WATCHER_LABELS[this.cmd] || '';
     }
 
-    update(context) {
+    update() {
       var value = 0;
       if (!this.target) return;
       switch (this.cmd) {
@@ -1815,39 +1818,8 @@ P.core = (function(core) {
   return core;
 })({});
 
-// Related to loading files from the Scratch 2 API
+// Generic IO helpers
 P.IO = (function(IO) {
-
-  IO.FONTS = {
-    '': 'Helvetica',
-    Donegal: 'Donegal One',
-    Gloria: 'Gloria Hallelujah',
-    Marker: 'Permanent Marker',
-    Mystery: 'Mystery Quest'
-  };
-
-  IO.LINE_HEIGHTS = {
-    Helvetica: 1.13,
-    'Donegal One': 1.25,
-    'Gloria Hallelujah': 1.97,
-    'Permanent Marker': 1.43,
-    'Mystery Quest': 1.37
-  };
-
-  // a hooked version of fetch() that uses the progress hooks
-  IO.fetch = function(url, opts) {
-    IO.progressHooks.new();
-    return fetch(url, opts)
-      .then((r) => {
-        IO.progressHooks.end();
-        return r;
-      })
-      .catch((err) => {
-        IO.progressHooks.error(err);
-        throw err;
-      });
-  }
-
   // Hooks that can be replaced by other scripts to hook into progress reports.
   IO.progressHooks = {
     // Indicates that a new task has started
@@ -1860,18 +1832,933 @@ P.IO = (function(IO) {
     error(error) {},
   };
 
+  IO.fetch = function(url, opts) {
+    P.IO.progressHooks.new();
+    return fetch(url, opts)
+      .then((r) => {
+        P.IO.progressHooks.end();
+        return r;
+      })
+      .catch((err) => {
+        P.IO.progressHooks.error(err);
+        throw err;
+      });
+  };
+
+  IO.fileAsArrayBuffer = function(file) {
+    const fileReader = new FileReader();
+
+    return new Promise((resolve, reject) => {
+      fileReader.onloadend = function() {
+        resolve(fileReader.result);
+      };
+
+      fileReader.onerror = function(err) {
+        reject(err);
+      };
+
+      fileReader.onprogress = function(progress) {
+        P.IO.progressHooks.set(progress);
+      };
+
+      fileReader.readAsArrayBuffer(file);
+    });
+  };
+
+  return IO;
+})({});
+
+// Loads Scratch 3 projects
+P.sb3 = (function() {
+  const PROJECTS_API = 'https://projects.scratch.mit.edu/$id';
+  const ASSETS_API = 'https://assets.scratch.mit.edu/internalapi/asset/$path/get/';
+
+  // Implements base SB3 loading logic.
+  // Needs to be extended to add file loading methods.
+  class BaseSB3Loader {
+    constructor(buffer) {
+      // Implementations are expected to set projectData in load() before calling super.load()
+      this.projectData = null;
+    }
+
+    getAsText(path) {
+      throw new Error('did not implement getAsText()');
+    }
+
+    getAsArrayBuffer(path) {
+      throw new Error('did not implement getAsArrayBuffer()');
+    }
+
+    getAsImage(path) {
+      throw new Error('did not implement getAsImage()');
+    }
+
+    // Loads and returns a costume from its sb3 JSON data
+    getImage(path, format) {
+      if (format === 'svg') {
+        return this.getAsText(path)
+          .then((source) => {
+            // It's magic.
+            var parser = new DOMParser();
+            var doc = parser.parseFromString(source, 'image/svg+xml');
+            var svg = doc.documentElement;
+            if (!svg.style) {
+              doc = parser.parseFromString('<body>'+source, 'text/html');
+              svg = doc.querySelector('svg');
+            }
+            svg.style.visibility = 'hidden';
+            svg.style.position = 'absolute';
+            svg.style.left = '-10000px';
+            svg.style.top = '-10000px';
+            document.body.appendChild(svg);
+            var viewBox = svg.viewBox.baseVal;
+            if (viewBox && (viewBox.x || viewBox.y)) {
+              svg.width.baseVal.value = viewBox.width - viewBox.x;
+              svg.height.baseVal.value = viewBox.height - viewBox.y;
+              viewBox.x = 0;
+              viewBox.y = 0;
+              viewBox.width = 0;
+              viewBox.height = 0;
+            }
+            P.utils.patchSVG(svg, svg);
+            document.body.removeChild(svg);
+            svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
+
+            var canvas = document.createElement('canvas');
+            var image = new Image();
+
+            return new Promise((resolve, reject) => {
+              canvg(canvas, new XMLSerializer().serializeToString(svg), {
+                ignoreMouse: true,
+                ignoreAnimation: true,
+                ignoreClear: true,
+                renderCallback: function() {
+                  if (canvas.width === 0 || canvas.height === 0) {
+                    return resolve(new Image());
+                  }
+                  image.src = canvas.toDataURL();
+                  resolve(image);
+                }
+              });
+            });
+          });
+      } else {
+        return this.getAsImage(path, format);
+      }
+    }
+
+    loadCostume(data, index) {
+      /*
+      data = {
+        "assetId":"b61b1077b0ea1931abee9dbbfa7903ff",
+        "name":"aaa",
+        "bitmapResolution":2,
+        "md5ext":"b61b1077b0ea1931abee9dbbfa7903ff.png",
+        "dataFormat":"png",
+        "rotationCenterX":480,
+        "rotationCenterY":360
+      }
+      */
+      return this.getImage(data.md5ext, data.dataFormat)
+        .then((image) => new P.core.Costume({
+          index: index,
+          bitmapResolution: data.bitmapResolution,
+          name: data.name,
+          rotationCenterX: data.rotationCenterX,
+          rotationCenterY: data.rotationCenterY,
+          layers: [image],
+        }));
+    }
+
+    getAudioBuffer(path) {
+      return this.getAsArrayBuffer(path)
+        .then((buffer) => P.audio.decodeAudio(buffer));
+    }
+
+    loadSound(data) {
+      /*
+      data = {
+        "assetId":"83a9787d4cb6f3b7632b4ddfebf74367",
+        "name":"pop",
+        "dataFormat":"wav",
+        "format":"",
+        "rate":48000,
+        "sampleCount":1124,
+        "md5ext":"83a9787d4cb6f3b7632b4ddfebf74367.wav"
+      }
+      */
+      return this.getAudioBuffer(data.md5ext)
+        .then((buffer) => new P.core.Sound({
+          name: data.name,
+          buffer: buffer,
+        }));
+    }
+
+    loadTarget(data) {
+      const variables = {};
+      for (const id of Object.keys(data.variables)) {
+        const variable = data.variables[id];
+        variables[id] = variable[1];
+      }
+
+      const broadcasts = {};
+      for (const id of Object.keys(data.broadcasts)) {
+        const name = data.broadcasts[id];
+        broadcasts[name] = id;
+      }
+
+      const x = data.x;
+      const y = data.y;
+      const visible = data.visible;
+      const direction = data.direction;
+      const size = data.size;
+      const draggable = data.draggable;
+
+      var costumes;
+      var sounds;
+
+      const loadCostumes = Promise.all(data.costumes.map((c, i) => this.loadCostume(c, i)))
+        .then((c) => costumes = c);
+
+      const loadSounds = Promise.all(data.sounds.map((c) => this.loadSound(c)))
+        .then((s) => sounds = s);
+
+      return loadCostumes
+        .then(() => loadSounds)
+        .then(() => {
+          const target = new (data.isStage ? P.core.Stage : P.core.Sprite);
+
+          target.currentCostumeIndex = data.currentCostume;
+          target.name = data.name;
+          target.costumes = costumes;
+          target.vars = variables;
+          sounds.forEach((sound) => target.addSound(sound));
+          if (data.isStage) {
+
+          } else {
+            target.scratchX = x;
+            target.scratchY = y;
+            target.direction = direction;
+            target.isDraggable = draggable;
+            // target.indexInLibrary = -1; // TODO
+            // target.rotationStyle = 'normal'; // TODO
+            target.scale = size / 100;
+            target.visible = visible;
+          }
+
+          P.sb3.compiler.compile(target, data);
+          return target;
+        });
+    }
+
+    load() {
+      return Promise.all(this.projectData.targets.map((data) => this.loadTarget(data)))
+        .then((targets) => {
+          const sprites = targets.filter((i) => i instanceof P.core.Sprite);
+          const stage = targets.filter((i) => i instanceof P.core.Stage)[0];
+          sprites.forEach((sprite) => sprite.stage = stage);
+          stage.children = sprites;
+          stage.updateBackdrop();
+          return stage;
+        });
+    }
+  }
+
+  // Loads a .sb3 file
+  class SB3FileLoader extends BaseSB3Loader {
+    constructor(buffer) {
+      super();
+      this.buffer = buffer;
+      this.zip = null;
+    }
+
+    getFile(path, type) {
+      P.IO.progressHooks.new();
+      return this.zip.file(path).async(type)
+        .then((response) => {
+          P.IO.progressHooks.end();
+          return response;
+        });
+    }
+
+    getAsText(path) {
+      return this.getFile(path, 'string');
+    }
+
+    getAsArrayBuffer(path) {
+      return this.getFile(path, 'arrayBuffer')
+    }
+
+    getAsBase64(path) {
+      return this.getFile(path, 'base64');
+    }
+
+    getAsImage(path, format) {
+      return this.getAsBase64(path)
+        .then((imageData) => {
+          return new Promise((resolve, reject) => {
+            const image = new Image();
+            image.onload = function() {
+              resolve(image);
+            };
+            image.onerror = function(error) {
+              reject(error);
+            };
+            image.src = 'data:image/' + format + ';base64,' + imageData;
+          });
+        });
+    }
+
+    load() {
+      return JSZip.loadAsync(this.buffer)
+        .then((data) => {
+          this.zip = data;
+          return this.getAsText('project.json');
+        })
+        .then((project) => {
+          this.projectData = JSON.parse(project);
+        })
+        .then(() => super.load());
+    }
+  }
+
+  // Loads a Scratch 3 project from the scratch.mit.edu website
+  class Scratch3Loader extends BaseSB3Loader {
+    constructor(id) {
+      super();
+      this.id = id;
+    }
+
+    getAsText(path) {
+      return P.IO.fetch(ASSETS_API.replace('$path', path))
+        .then((request) => request.text());
+    }
+
+    getAsArrayBuffer(path) {
+      return P.IO.fetch(ASSETS_API.replace('$path', path))
+        .then((request) => request.arrayBuffer());
+    }
+
+    getAsImage(path, format) {
+      P.IO.progressHooks.new();
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = function() {
+          P.IO.progressHooks.end();
+          resolve(image);
+        };
+        image.onerror = function(err) {
+          P.IO.progressHooks.error(err);
+          reject(err);
+        };
+        image.crossOrigin = 'anonymous';
+        image.src = ASSETS_API.replace('$path', path);
+      });
+    }
+
+    load() {
+      return P.IO.fetch(PROJECTS_API.replace('$id', this.id))
+        .then((request) => request.json())
+        .then((data) => {
+          this.projectData = data;
+        })
+        .then(() => super.load());
+    }
+  }
+
+  return {
+    SB3FileLoader: SB3FileLoader,
+    Scratch3Loader: Scratch3Loader,
+  }
+}());
+
+// Compiler for .sb3 projects
+P.sb3.compiler = (function() {
+  // State variables, used/initialized later.
+  let source;
+  let currentTarget;
+  let blocks;
+  let fns;
+
+  /*
+  Important concepts about Scratch 3 blocks:
+
+  In Scratch 3 all blocks have a unique identifier.
+  Structurally blocks have no relation to eachother (the data is structed in the way that an sb2 is)
+  but they do point to the IDs of other blocks.
+
+  Blocks have "inputs" and "fields". These are both types of data that change how blocks behave.
+  The main difference is that inputs can change at runtime while fields cannot.
+  For example in the block `set [ghost] effect to [100]` ghost is a field (cannot change) and 100 is an input (can change).
+  (In Scratch 2 'ghost' was an input and thus could be changed programatically, this is no longer the case)
+  Fields are a new concept in Scratch 3, in Scratch 2 everything was effectively an input.
+  */
+
+  const topLevelLibrary = {
+    // Events
+    event_whenflagclicked(block, f) {
+      currentTarget.listeners.whenGreenFlag.push(f);
+    },
+    event_whenthisspriteclicked(block, f) {
+      currentTarget.listeners.whenClicked.push(f);
+    },
+    event_whenbroadcastreceived(block, f) {
+      const optionId = block.fields.BROADCAST_OPTION[1];
+      if (!currentTarget.listeners.whenIReceive[optionId]) {
+        currentTarget.listeners.whenIReceive[optionId] = [];
+      }
+      currentTarget.listeners.whenIReceive[optionId].push(f);
+    },
+
+    // Control
+    control_start_as_clone(block, f) {
+      currentTarget.listeners.whenCloned.push(f);
+    }
+  };
+
+  const expressionLibrary = {
+    // Control
+    control_create_clone_of_menu(block) {
+      const option = block.fields.CLONE_OPTION;
+      return '"' + sanitize(option[0]) + '"';
+    },
+
+    // Operators
+    operator_add(block) {
+      return '(' + compileExpression(block.inputs.NUM1) + ' + ' + compileExpression(block.inputs.NUM2) + ')';
+    },
+    operator_random(block) {
+      const from = block.inputs.FROM;
+      const to = block.inputs.TO;
+      return 'random(' + compileExpression(from) + ', ' + compileExpression(to) + ')';
+    },
+    operator_or(block) {
+      const operand1 = block.inputs.OPERAND1;
+      const operand2 = block.inputs.OPERAND2;
+      return compileExpression(operand1) + ' || ' + compileExpression(operand2);
+    },
+    operator_and(block) {
+      const operand1 = block.inputs.OPERAND1;
+      const operand2 = block.inputs.OPERAND2;
+      return compileExpression(operand1) + ' && ' + compileExpression(operand2);
+    },
+    operator_equals(block) {
+      const operand1 = block.inputs.OPERAND1;
+      const operand2 = block.inputs.OPERAND2;
+      return compileExpression(operand1) + ' === ' + compileExpression(operand2);
+    },
+    operator_not(block) {
+      const operand = block.inputs.OPERAND;
+      return '!(' + compileExpression(operand) + ')';
+    },
+
+    // Sensing
+    sensing_mousedown(block) {
+      return 'self.mousePressed';
+    },
+    sensing_mousex(block) {
+      return 'self.mouseX';
+    },
+    sensing_mousey(block) {
+      return 'self.mouseY';
+    },
+    sensing_touchingobject(block) {
+      const object = block.inputs.TOUCHINGOBJECTMENU;
+      return 'S.touching(' + compileExpression(object) + ')';
+    },
+    sensing_touchingobjectmenu(block) {
+      const object = block.fields.TOUCHINGOBJECTMENU;
+      return '"' + sanitize(object[0]) + '"';
+    },
+
+    // Motion
+    motion_xposition() {
+      return 'S.scratchX';
+    },
+    motion_yposition() {
+      return 'S.scratchY';
+    },
+
+    // Looks
+    looks_costume(block) {
+      return 'S.getCostumeName()';
+    },
+
+    // Sounds
+    sound_sounds_menu(block) {
+      const sound = block.fields.SOUND_MENU[0];
+      return '"' + sanitize(sound) + '"';
+    },
+  };
+
+  const statementLibrary = {
+    // Event
+    event_broadcastandwait(block) {
+      const input = block.inputs.BROADCAST_INPUT;
+      source += 'save();\n';
+      source += 'R.threads = broadcast(' + compileExpression(input) + ');\n';
+      source += 'if (R.threads.indexOf(BASE) !== -1) {return;}\n';
+      const id = label();
+      source += 'if (running(R.threads)) {\n';
+      forceQueue(id);
+      source += '}\n';
+      source += 'restore();\n';
+    },
+
+    // Control
+    control_forever(block) {
+      const substack = block.inputs.SUBSTACK[1];
+      const id = label();
+      compile(substack);
+      forceQueue(id);
+    },
+    control_repeat(block) {
+      const times = block.inputs.TIMES;
+      const substack = block.inputs.SUBSTACK[1];
+      source += 'save();\n';
+      source += 'R.count = ' + compileExpression(times) + ';\n';
+      const id = label();
+      source += 'if (R.count >= 0.5) {\n';
+      source += '  R.count -= 1;\n';
+      compile(substack);
+      queue(id);
+      source += '} else {\n';
+      source += '  restore();\n';
+      source += '}\n';
+    },
+    control_wait(block) {
+      const duration = block.inputs.DURATION;
+      source += 'save();\n';
+      source += 'R.start = self.now;\n';
+      source += 'R.duration = ' + compileExpression(duration) + ';\n';
+      source += 'var first = true;\n';
+      const id = label();
+      source += 'if (self.now - R.start < R.duration * 1000 || first) {\n';
+      source += '  var first;\n';
+      forceQueue(id);
+      source += '}\n';
+      source += 'restore();\n';
+    },
+    control_create_clone_of(block) {
+      const option = block.inputs.CLONE_OPTION;
+      source += 'clone(' + compileExpression(option) + ');\n';
+    },
+    control_wait_until(block) {
+      const condition = block.inputs.CONDITION;
+      const id = label();
+      source += 'if (!' + compileExpression(condition) + ') {\n';
+      queue(id);
+      source += '}\n';
+    },
+    control_if(block) {
+      const condition = block.inputs.CONDITION;
+      const substack = block.inputs.SUBSTACK[1];
+      source += 'if (' + compileExpression(condition) + ') {\n';
+      compile(substack);
+      source += '}\n';
+    },
+    control_if_else(block) {
+      const condition = block.inputs.CONDITION;
+      const substack1 = block.inputs.SUBSTACK[1];
+      const substack2 = block.inputs.SUBSTACK2[1];
+      source += 'if (' + compileExpression(condition) + ') {\n';
+      compile(substack1);
+      source += '} else {\n';
+      compile(substack2);
+      source += '}\n';
+    },
+    control_delete_this_clone(block) {
+      source += 'if (S.isClone) {\n';
+      source += '  S.remove();\n';
+      source += '  var i = self.children.indexOf(S);\n';
+      source += '  if (i !== -1) self.children.splice(i, 1);\n';
+      source += '  for (var i = 0; i < self.queue.length; i++) {\n';
+      source += '    if (self.queue[i] && self.queue[i].sprite === S) {\n';
+      source += '      self.queue[i] = undefined;\n';
+      source += '    }\n';
+      source += '  }\n';
+      source += '  return;\n';
+      source += '}\n';
+    },
+
+    // Motion
+    motion_changexby(block) {
+      const dx = block.inputs.DX;
+      visualCheck();
+      source += 'S.moveTo(S.scratchX + ' + compileExpression(dx) + ', S.scratchY);\n';
+    },
+    motion_gotoxy(block) {
+      const x = block.inputs.X;
+      const y = block.inputs.Y;
+      visualCheck();
+      source += 'S.moveTo(' + compileExpression(x) + ', ' + compileExpression(y) + ');\n';
+    },
+    motion_glidesecstoxy(block) {
+      const secs = block.inputs.SECS;
+      const x = block.inputs.X;
+      const y = block.inputs.Y;
+
+      visualCheck();
+      source += 'save();\n';
+      source += 'R.start = self.now;\n';
+      source += 'R.duration = ' + compileExpression(secs) + ';\n';
+      source += 'R.baseX = S.scratchX;\n';
+      source += 'R.baseY = S.scratchY;\n';
+      source += 'R.deltaX = ' + compileExpression(x) + ' - S.scratchX;\n';
+      source += 'R.deltaY = ' + compileExpression(y) + ' - S.scratchY;\n';
+      const id = label();
+      source += 'var f = (self.now - R.start) / (R.duration * 1000);\n';
+      source += 'if (f > 1) f = 1;\n';
+      source += 'S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
+      source += 'if (f < 1) {\n';
+      forceQueue(id);
+      source += '}\n';
+      source += 'restore();\n';
+    },
+    motion_pointindirection(block) {
+      const direction = block.inputs.DIRECTION;
+      visualCheck();
+      source += 'S.direction = ' + compileExpression(direction) + ';\n';
+    },
+    motion_setrotationstyle(block) {
+      const style = block.fields.STYLE[0];
+      visualCheck();
+      // TODO: convert S.rotationStyle to an enum like
+      if (style === "normal") {
+        source += 'S.rotationStyle = "normal";\n';
+      } else if (style === 'left-right') {
+        source += 'S.rotationStyle = "leftRight";\n';
+      } else if (style === "don't rotate") {
+        source += 'S.rotationStyle = "none";\n'; 
+      } else {
+        throw new Error('unknown rotation style: ' + style)
+      }
+    },
+
+    // Looks
+    looks_seteffectto(block) {
+      const effect = block.fields.EFFECT[0];
+      const value = block.inputs.VALUE;
+      source += 'S.setFilter("' + effect + '", ' + compileExpression(value) + ');\n';
+    },
+    looks_switchcostumeto(block) {
+      const costume = block.inputs.COSTUME;
+      source += 'S.setCostume(' + compileExpression(costume) + ');\n';
+    },
+    looks_hide(block) {
+      visualCheck();
+      source += 'S.visible = false;\n';
+      updateBubble();
+    },
+    looks_show(block) {
+      visualCheck();
+      source += 'S.visible = true;\n';
+      updateBubble();
+    },
+    looks_setsizeto(block) {
+      const size = block.inputs.SIZE;
+      visualCheck();
+      source += 'var f = ' + compileExpression(size) + ' / 100;\n';
+      source += 'S.scale = f < 0 ? 0 : f;\n';
+    },
+    looks_nextcostume(block) {
+      visualCheck();
+      source += 'S.showNextCostume();\n';
+    },
+
+    // Sounds
+    sound_playuntildone(block) {
+      const sound = block.inputs.SOUND_MENU;
+      source += 'var sound = S.getSound(' + compileExpression(sound) + ');\n';
+      source += 'if (sound) {\n';
+      source += '  playSound(sound);\n';
+      wait('sound.duration');
+      source += '}\n';
+    },
+    sound_play(block) {
+      const sound = block.inputs.SOUND_MENU;
+      source += 'var sound = S.getSound(' + compileExpression(sound) + ');\n';
+      source += 'if (sound) {\n';
+      source += '  playSound(sound);\n';
+      source += '}\n';
+    },
+    // Data
+    data_setvariableto(block) {
+      const variableId = block.fields.VARIABLE[1];
+      const value = block.inputs.VALUE;
+      source += variableReference(variableId) + ' = ' + compileExpression(value) + ';\n';
+    },
+    data_changevariableby(block) {
+      const variableId = block.fields.VARIABLE[1];
+      const value = block.inputs.VALUE;
+      const ref = variableReference(variableId);
+      source += ref + ' = (+' + ref + ' + +' + compileExpression(value) + ');\n';
+    },
+
+    // Pen (extension)
+    pen_clear(block) {
+      source += 'self.clearPen();\n';
+    },
+    pen_stamp(block) {
+      source += 'S.stamp();\n';
+    },
+  };
+
+  // IDs of primative types
+  // https://github.com/LLK/scratch-vm/blob/36fe6378db930deb835e7cd342a39c23bb54dd72/src/serialization/sb3.js#L60-L79
+  const PRIMATIVE_TYPES = {
+    // Any number (???)
+    MATH_NUM: 4,
+    // Any positive number (maybe including zero?)
+    POSITIVE_NUM: 5,
+    // Any whole number, including 0
+    WHOLE_NUM: 6,
+    // Any integer
+    INTEGER_NUM: 7,
+    // An angle
+    ANGLE_NUM: 8,
+    // A color
+    COLOR_PICKER: 9,
+    // A text string
+    TEXT: 10,
+    // A broadcast
+    BROADCAST: 11,
+    // A variable reference
+    VAR: 12,
+    // A list reference
+    LIST: 13,
+  };
+
+  ///
+  /// Helpers
+  ///
+
+  // Adds JS to update the speach bubble if necessary
+  function updateBubble() {
+    source += 'if (S.saying) S.updateBubble();\n';
+  }
+  // Adds js to enable the VISUAL flag in the runtime if necessary
+  function visualCheck() {
+    source += 'if (S.visible || S.isPenDown) VISUAL = true;\n';
+  }
+  // Forcibly queues something to run
+  function forceQueue(id) {
+    source += 'forceQueue(' + id + '); return;\n';
+  }
+  // Queues somethign to run (TODO: difference from forceQueue)
+  function queue(id) {
+    source += 'queue(' + id + '); return;\n';
+  }
+  // Creates and returns a new label for the script's current state
+  function label() {
+    const id = fns.length + currentTarget.fns.length;
+    fns.push(source.length);
+    if (P.config.debug) {
+      source += '/*' + id + '*/'
+    }
+    return id;
+  }
+  // Sanitizes a string to be used in a javascript string
+  function sanitize(thing) {
+    if (typeof thing === 'string') {
+      return thing
+        .replace('\\', '\\\\')
+        .replace('\'', '\\\'')
+        .replace('"', '\\"')
+        .replace('\n', '\\n')
+        .replace('\r', '\\r');
+    } else if (typeof thing === 'number') {
+      return thing.toString();
+    } else {
+      throw new Error('cant sanitize ' + thing);
+    }
+  }
+  // Waits for a duration
+  function wait(duration) {
+    source += 'save();\n';
+    source += 'R.start = self.now;\n';
+    source += 'R.duration = ' + duration + ';\n';
+    source += 'var first = true;\n';
+    var id = label();
+    source += 'if (self.now - R.start < R.duration * 1000 || first) {\n';
+    source += '  var first;\n';
+    forceQueue(id);
+    source += '}\n';
+    source += 'restore();\n';
+  }
+  function variableReference(id) {
+    if (id in currentTarget.vars) {
+      return 'S.vars[' + compileExpression(id) + ']';
+    }
+    return 'self.vars[' + compileExpression(id) + ']';
+  }
+
+  ///
+  /// Compiling Functions
+  ///
+
+  // Compiles a constant expression to a JavaScript string
+  function compileConstant(constant) {
+    // Constants are arrays.
+    // The first value is the type of the constant, see PRIMATIVE_TYPES
+    // TODO: use another library instead?
+    const type = constant[0];
+
+    switch (type) {
+      case PRIMATIVE_TYPES.MATH_NUM:
+      case PRIMATIVE_TYPES.POSITIVE_NUM:
+      case PRIMATIVE_TYPES.WHOLE_NUM:
+      case PRIMATIVE_TYPES.INTEGER_NUM:
+      case PRIMATIVE_TYPES.ANGLE_NUM:
+      case PRIMATIVE_TYPES.COLOR_PICKER:
+        return +constant[1];
+
+      case PRIMATIVE_TYPES.TEXT:
+        return '"' + sanitize(constant[1]) + '"';
+
+      case PRIMATIVE_TYPES.VAR:
+        // For variable constants the second item is the name of the variable
+        // and the third is the ID of the variable. We only care about the ID.
+        return variableReference(constant[2]);
+
+      case PRIMATIVE_TYPES.BROADCAST:
+        return 'self.broadcasts[' + compileExpression(constant[2]) + ']';
+
+      case PRIMATIVE_TYPES.LIST:
+      default:
+        console.warn('unknown constant', type, constant);
+        return '""';
+    }
+  }
+
+  // Compiles a block and adds it to the source. (Does not return source)
+  function compile(block) {
+    if (typeof block === 'string') {
+      block = blocks[block];
+    }
+    if (!block) {
+      return;
+    }
+    while (block) {
+      const opcode = block.opcode;
+      const compiler = statementLibrary[opcode];
+      if (!compiler) {
+        console.warn('unknown statement', opcode, block);
+      } else {
+        if (P.config.debug) {
+          source += '/*' + opcode + '*/';
+        }
+        compiler(block);
+      }
+      block = blocks[block.next];
+    }
+  }
+
+  // Returns a compiled expression as a JavaScript string.
+  function compileExpression(expression) {
+    // Expressions are also known as inputs.
+
+    if (typeof expression === 'string') {
+      return '"' + sanitize(expression) + '"';
+    }
+    if (typeof expression === 'number') {
+      return exprssion;
+    }
+
+    if (Array.isArray(expression[1])) {
+      const constant = expression[1];
+      return compileConstant(constant);
+    }
+
+    const id = expression[1];
+    const block = blocks[id];
+    const opcode = block.opcode;
+
+    const compiler = expressionLibrary[opcode];
+    if (!compiler) {
+      console.warn('unknown expression', opcode, block);
+      return;
+    }
+    const result = compiler(block);
+    if (P.config.debug) {
+      return '/*' + opcode + '*/' + result;
+    }
+    return result;
+  }
+
+  function compileListener(topBlock) {
+    let block = blocks[topBlock.next];
+    source = '';
+
+    /*
+    block = {
+      "opcode": "category_block",
+      "next": "id_or_null",
+      "parent": "id_or_null",
+      "inputs": {},
+      "fields": {},
+      "shadow": false,
+      "topLevel": false
+    }
+    */
+
+    const topLevelOpCode = topBlock.opcode;
+    if (!(topLevelOpCode in topLevelLibrary)) {
+      // Warning can be caused by a top level block being anything other than a listener.
+      // Most projects have at least 1 dangling block like that.
+      // console.warn('unknown top level block', topLevelOpCode, topBlock);
+      return;
+    }
+
+    compile(block);
+
+    return source;
+  }
+
+  function compileTarget(target, data) {
+    currentTarget = target;
+    blocks = data.blocks;
+    const topLevelBlocks = Object.values(data.blocks).filter((block) => block.topLevel);
+
+    for (const block of topLevelBlocks) {
+      fns = [0];
+      const source = compileListener(block);
+      if (!source) {
+        continue;
+      }
+      const startFn = currentTarget.fns.length;
+      for (var i = 0; i < fns.length; i++) {
+        target.fns.push(P.utils.createContinuation(source.slice(fns[i])));
+      }
+      topLevelLibrary[block.opcode](block, target.fns[startFn]);
+      if (P.config.debug) {
+        console.log('compiled listener', block.opcode, source, target);
+      }
+    }
+  }
+
+  return {
+    compile: compileTarget,
+  };
+}());
+
+// Loads Scratch 2 projects
+P.sb2 = (function(sb2) {
+  sb2.PROJECT_URL = 'https://projects.scratch.mit.edu/internalapi/project/';
+  sb2.ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
+  sb2.SOUNDBANK_URL = 'https://raw.githubusercontent.com/LLK/scratch-flash/v429/src/soundbank/';
+
   // loads an image from a URL
-  IO.loadImage = function(url) {
-    IO.progressHooks.new();
+  sb2.loadImage = function(url) {
+    P.IO.progressHooks.new();
 
     var image = new Image();
     image.src = url;
-    // I don't know why but setting this to anonymous somehow disables the same origin policy
     image.crossOrigin = 'anonymous';
 
     return new Promise((resolve, reject) => {
       image.onload = function() {
-        IO.progressHooks.end();
+        P.IO.progressHooks.end();
         resolve(image);
       };
       image.onerror = function(err) {
@@ -1881,157 +2768,203 @@ P.IO = (function(IO) {
   };
 
   // loads a scratch 2 project from the scratch.mit.edu website with its ID
-  IO.loadOnlineSB2 = function(id) {
-    const url = P.API.PROJECT_URL + id + '/get/';
-    return IO.fetch(url)
-      .then((request) => request.json())
-      .then((project) => IO.loadProject(project));
-  };
-
-  // Loads a .sb2 file from an ArrayBuffer or JSZip
-  IO.loadSB2Project = function(arrayBuffer) {
-    const zip = arrayBuffer instanceof ArrayBuffer ? new JSZip(arrayBuffer) : arrayBuffer;
-    IO.zip = zip;
-    const project = P.utils.parseJSONish(zip.file('project.json').asText());
-    return IO.loadProject(project);
-  };
-
-  // Loads a .sb2 file from a File
-  IO.loadSB2File = function(file) {
-    const fileReader = new FileReader();
-
+  sb2.loadOnlineSB2 = function(id) {
+    const url = sb2.PROJECT_URL + id + '/get/';
     return new Promise((resolve, reject) => {
-      fileReader.onloadend = function() {
-        IO.loadSB2Project(fileReader.result)
-          .then((project) => resolve(project))
-          .catch((err) => reject(err));
-      };
-
-      fileReader.onerror = function(err) {
-        reject(err);
-      };
-
-      fileReader.onprogress = function(progress) {
-        IO.progressHooks.set(progress);
-      };
-
-      fileReader.readAsArrayBuffer(file);
+      return P.IO.fetch(url)
+        .then((request) => request.json())
+        .then((project) => sb2.loadProject(project))
+        .then((stage) => resolve(stage))
+        .catch((err) => {
+          if (err instanceof SyntaxError) {
+            P.IO.fetch(url)
+              .then((request) => request.arrayBuffer())
+              .then((buffer) => sb2.loadSB2Project(buffer))
+              .then((stage) => resolve(stage))
+              .catch((err) => reject(err));
+          } else {
+            reject(err);
+          }
+        })
     });
   };
 
-  IO.loadProject = function(data) {
-    return Promise.all([
-      IO.loadWavs(),
-      IO.loadArray(data.children, IO.loadObject),
-      IO.loadBase(data),
-    ]).then(() => new P.core.Stage().fromJSON(data));
+  // Loads a .sb2 file from an ArrayBuffer
+  sb2.loadSB2Project = function(arrayBuffer) {
+    return JSZip.loadAsync(arrayBuffer)
+      .then((zip) => {
+        sb2.zip = zip;
+        return zip.file('project.json').async('text');
+      })
+      .then((text) => {
+        const project = P.utils.parseJSONish(text);
+        return sb2.loadProject(project);
+      });
   };
 
-  IO.wavBuffers = {};
-  IO.loadWavs = function() {
+  sb2.loadProject = function(data) {
+    var children;
+    var stage;
+
+    return Promise.all([
+      sb2.loadWavs(),
+      sb2.loadArray(data.children, sb2.loadObject).then((c) => children = c),
+      sb2.loadBase(data, true).then((s) => stage = s),
+    ]).then(() => {
+      children = children.filter((i) => i);
+      var sprites = children.filter((i) => i instanceof P.core.Sprite);
+      var watchers = children.filter((i) => i instanceof P.core.Watcher);
+      children.forEach((c) => c.stage = stage);
+
+      stage.children = sprites;
+      stage.allWatchers = watchers;
+      stage.allWatchers.forEach((w) => w.resolve());
+      stage.updateBackdrop();
+
+      P.sb2.compiler(stage);
+      return stage;
+    });
+  };
+
+  sb2.wavBuffers = {};
+  sb2.loadWavs = function() {
     // don't bother attempting to load audio if it can't even be played
     if (!P.audio.context) return Promise.resolve();
 
     const assets = [];
     for (var name in P.config.wavFiles) {
-      if (!IO.wavBuffers[name]) {
+      if (!sb2.wavBuffers[name]) {
         assets.push(
-          IO.loadWavBuffer(name)
-            .then((buffer) => IO.wavBuffers[name] = buffer)
+          sb2.loadWavBuffer(name)
+            .then((buffer) => sb2.wavBuffers[name] = buffer)
         );
       }
     }
     return Promise.all(assets);
   };
 
-  IO.loadWavBuffer = function(name) {
-    return IO.fetch(P.API.SOUNDBANK_URL + P.config.wavFiles[name])
+  sb2.loadWavBuffer = function(name) {
+    return P.IO.fetch(sb2.SOUNDBANK_URL + P.config.wavFiles[name])
       .then((request) => request.arrayBuffer())
       .then((arrayBuffer) => P.audio.decodeAudio(arrayBuffer))
-      .then((buffer) => IO.wavBuffers[name] = buffer);
+      .then((buffer) => sb2.wavBuffers[name] = buffer);
   };
 
-  IO.loadBase = function(data) {
-    data.scripts = data.scripts || [];
-    data.variables = data.variables || [];
-    data.lists = data.lists || [];
-    data.costumes = data.costumes || [];
-    data.sounds = data.sounds || [];
+  sb2.loadBase = function(data, isStage) {
+    var costumes;
+    var sounds;
 
     return Promise.all([
-      IO.loadArray(data.costumes, IO.loadCostume),
-      IO.loadArray(data.sounds, IO.loadSound),
-    ]);
+      sb2.loadArray(data.costumes, sb2.loadCostume)
+        .then((c) => {
+          costumes = c;
+        }),
+      sb2.loadArray(data.sounds, sb2.loadSound)
+        .then((s) => {
+          sounds = s;
+        }),
+    ]).then(() => {
+      const variables = {};
+      if (data.variables) {
+        for (const variable of data.variables) {
+          if (variable.isPeristent) {
+            throw new Error('Cloud variables are not supported');
+          }
+          variables[variable.name] = variable.value;
+        }
+      }
+
+      const lists = {};
+      if (data.lists) {
+        for (const list of data.lists) {
+          if (list.isPeristent) {
+            throw new Error('Cloud lists are not supported');
+          }
+          lists[list.listName] = list.contents;
+        }
+      }
+
+      var object = new (isStage ? P.core.Stage : P.core.Sprite);
+
+      object.name = data.objName;
+      object.vars = variables;
+      object.lists = lists;
+      object.costumes = costumes;
+      object.currentCostumeIndex = data.currentCostumeIndex;
+      sounds.forEach((sound) => object.addSound(sound));
+
+      if (isStage) {
+
+      } else {
+        object.scratchX = data.scratchX;
+        object.scratchY = data.scratchY;
+        object.direction = data.direction;
+        object.isDraggable = data.isDraggable;
+        object.indexInLibrary = data.indexInLibrary;
+        object.rotationStyle = data.rotationStyle;
+        object.scale = data.scale
+        object.visible = data.visible;
+      }
+
+      // Dirty hack expected by the sb2 compiler, TODO: remove
+      object.scripts = data.scripts || [];
+
+      return object;
+    });
   };
 
-  IO.loadArray = function(data, process) {
-    return Promise.all((data || []).map((i) => process(i)));
+  // Array.map and Promise.all on steroids
+  sb2.loadArray = function(data, process) {
+    return Promise.all((data || []).map((i, ind) => process(i, ind)));
   };
 
-  IO.loadObject = function(data) {
-    if (!data.cmd && !data.listName) {
-      return IO.loadBase(data);
+  sb2.loadObject = function(data) {
+    if (data.cmd) {
+      return sb2.loadVariableWatcher(data);
+    } else if (data.listName) {
+      // list watcher TODO
+    } else {
+      return sb2.loadBase(data);
     }
   };
 
-  IO.loadCostume = function(data) {
+  sb2.loadVariableWatcher = function(data) {
+    return new P.core.Watcher(data);
+  };
+
+  sb2.loadCostume = function(data, index) {
     const promises = [
-      IO.loadMD5(data.baseLayerMD5, data.baseLayerID)
+      sb2.loadMD5(data.baseLayerMD5, data.baseLayerID)
         .then((asset) => data.$image = asset)
     ];
     if (data.textLayerMD5) {
-      promises.push(IO.loadMD5(data.textLayerMD5, data.textLayerID)
+      promises.push(sb2.loadMD5(data.textLayerMD5, data.textLayerID)
         .then((asset) => data.$text = asset));
     }
-    return Promise.all(promises);
+    return Promise.all(promises)
+      .then((layers) => {
+        return new P.core.Costume({
+          index: index,
+          bitmapResolution: data.bitmapResolution,
+          name: data.costumeName,
+          rotationCenterX: data.rotationCenterX,
+          rotationCenterY: data.rotationCenterY,
+          layers: layers,
+        });
+      });
   };
 
-  IO.loadSound = function(data) {
-    return IO.loadMD5(data.md5, data.soundID, true)
-      .then((asset) => data.$buffer = asset);
+  sb2.loadSound = function(data) {
+    return sb2.loadMD5(data.md5, data.soundID, true)
+      .then((buffer) => {
+        return new P.core.Sound({
+          name: data.soundName,
+          buffer: buffer,
+        });
+      });
   };
 
-  // Patches an SVG to fix any problems before rendering
-  IO.patchSVG = function(svg, element) {
-    if (element.nodeType !== 1) return;
-    if (element.nodeName === 'text') {
-      var font = element.getAttribute('font-family') || '';
-      font = IO.FONTS[font] || font;
-      if (font) {
-        element.setAttribute('font-family', font);
-        if (font === 'Helvetica') element.style.fontWeight = 'bold';
-      }
-      var size = +element.getAttribute('font-size');
-      if (!size) {
-        element.setAttribute('font-size', size = 18);
-      }
-      var bb = element.getBBox();
-      var x = 4 - .6 * element.transform.baseVal.consolidate().matrix.a;
-      var y = (element.getAttribute('y') - bb.y) * 1.1;
-      element.setAttribute('x', x);
-      element.setAttribute('y', y);
-      var lines = element.textContent.split('\n');
-      if (lines.length > 1) {
-        element.textContent = lines[0];
-        var lineHeight = IO.LINE_HEIGHTS[font] || 1;
-        for (var i = 1, l = lines.length; i < l; i++) {
-          var tspan = document.createElementNS(null, 'tspan');
-          tspan.textContent = lines[i];
-          tspan.setAttribute('x', x);
-          tspan.setAttribute('y', y + size * i * lineHeight);
-          element.appendChild(tspan);
-        }
-      }
-      // svg.style.cssText = '';
-      // console.log(element.textContent, 'data:image/svg+xml;base64,' + btoa(svg.outerHTML));
-    } else if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
-      element.setAttribute('x', 0);
-      element.setAttribute('y', 0);
-    }
-    [].forEach.call(element.childNodes, IO.patchSVG.bind(null, svg));
-  };
-
-  IO.loadSVG = function(source) {
+  sb2.loadSVG = function(source) {
     var parser = new DOMParser();
     var doc = parser.parseFromString(source, 'image/svg+xml');
     var svg = doc.documentElement;
@@ -2053,14 +2986,12 @@ P.IO = (function(IO) {
       viewBox.width = 0;
       viewBox.height = 0;
     }
-    IO.patchSVG(svg, svg);
+    P.utils.patchSVG(svg, svg);
     document.body.removeChild(svg);
     svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
 
     var canvas = document.createElement('canvas');
     var image = new Image();
-
-    IO.progressHooks.new();
 
     return new Promise((resolve, reject) => {
       canvg(canvas, new XMLSerializer().serializeToString(svg), {
@@ -2068,7 +2999,6 @@ P.IO = (function(IO) {
         ignoreAnimation: true,
         ignoreClear: true,
         renderCallback: function() {
-          IO.progressHooks.end();
           image.src = canvas.toDataURL();
           resolve(image);
         }
@@ -2076,187 +3006,56 @@ P.IO = (function(IO) {
     });
   }
 
-  IO.loadMD5 = function(hash, id, isAudio) {
-    if (IO.zip) {
-      var f = isAudio ? IO.zip.file(id + '.wav') : IO.zip.file(id + '.gif') || IO.zip.file(id + '.png') || IO.zip.file(id + '.jpg') || IO.zip.file(id + '.svg');
+  sb2.loadMD5 = function(hash, id, isAudio) {
+    if (sb2.zip) {
+      var f = isAudio ? sb2.zip.file(id + '.wav') : sb2.zip.file(id + '.gif') || sb2.zip.file(id + '.png') || sb2.zip.file(id + '.jpg') || sb2.zip.file(id + '.svg');
       hash = f.name;
     }
 
     const ext = hash.split('.').pop();
 
     if (ext === 'svg') {
-      if (IO.zip) {
-        return IO.loadSVG(f.asText());
+      if (sb2.zip) {
+        return f.async('text')
+          .then((text) => sb2.loadSVG(text));
       } else {
-        return IO.fetch(P.API.ASSET_URL + hash + '/get/')
+        return P.IO.fetch(sb2.ASSET_URL + hash + '/get/')
           .then((request) => request.text())
-          .then((text) => IO.loadSVG(text));
+          .then((text) => sb2.loadSVG(text));
       }
     } else if (ext === 'wav') {
-      if (IO.zip) {
-        return P.audio.decodeAudio(f.asArrayBuffer());
+      if (sb2.zip) {
+        return f.async('arrayBuffer')
+          .then((buffer) => P.audio.decodeAudio(buffer));
       } else {
-        return IO.fetch(P.API.ASSET_URL + hash + '/get/')
+        return P.IO.fetch(sb2.ASSET_URL + hash + '/get/')
           .then((request) => request.arrayBuffer())
           .then((buffer) => P.audio.decodeAudio(buffer))
       }
     } else {
-      // probably an image (.jpg, .gif, .png)
-      if (IO.zip) {
+      if (sb2.zip) {
         return new Promise((resolve, reject) => {
           var image = new Image();
           image.onload = function() {
             resolve(image);
           };
-          image.src = 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(f.asBinary());
+          const data = f.async('binarystring')
+            .then((data) => {
+              image.src = 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(data);
+            });
         });
       } else {
-        return IO.loadImage(P.API.ASSET_URL + hash + '/get/');
+        return sb2.loadImage(sb2.ASSET_URL + hash + '/get/');
       }
     }
   };
 
-  return IO;
-})({});
-
-// Related to playing or decoding sounds
-P.audio = (function(audio) {
-  const audioContext = audio.context = new AudioContext();
-
-  const ADPCM_STEPS = [
-    7, 8, 9, 10, 11, 12, 13, 14, 16, 17,
-    19, 21, 23, 25, 28, 31, 34, 37, 41, 45,
-    50, 55, 60, 66, 73, 80, 88, 97, 107, 118,
-    130, 143, 157, 173, 190, 209, 230, 253, 279, 307,
-    337, 371, 408, 449, 494, 544, 598, 658, 724, 796,
-    876, 963, 1060, 1166, 1282, 1411, 1552, 1707, 1878, 2066,
-    2272, 2499, 2749, 3024, 3327, 3660, 4026, 4428, 4871, 5358,
-    5894, 6484, 7132, 7845, 8630, 9493, 10442, 11487, 12635, 13899,
-    15289, 16818, 18500, 20350, 22385, 24623, 27086, 29794, 32767
-  ];
-  const ADPCM_INDEX = [-1, -1, -1, -1, 2, 4, 6, 8, -1, -1, -1, -1, 2, 4, 6, 8];
-
-  audio.decodeADPCMAudio = function(ab, cb) {
-    var dv = new DataView(ab);
-    if (dv.getUint32(0) !== 0x52494646 || dv.getUint32(8) !== 0x57415645) {
-      return cb(new Error('Unrecognized audio format'));
-    }
-
-    var blocks = {};
-    var i = 12, l = dv.byteLength - 8;
-    while (i < l) {
-      blocks[String.fromCharCode(
-        dv.getUint8(i),
-        dv.getUint8(i + 1),
-        dv.getUint8(i + 2),
-        dv.getUint8(i + 3))] = i;
-      i += 8 + dv.getUint32(i + 4, true);
-    }
-
-    var format        = dv.getUint16(20, true);
-    var channels      = dv.getUint16(22, true);
-    var sampleRate    = dv.getUint32(24, true);
-    var byteRate      = dv.getUint32(28, true);
-    var blockAlign    = dv.getUint16(32, true);
-    var bitsPerSample = dv.getUint16(34, true);
-
-    if (format === 17) {
-      var samplesPerBlock = dv.getUint16(38, true);
-      var blockSize = ((samplesPerBlock - 1) / 2) + 4;
-
-      var frameCount = dv.getUint32(blocks.fact + 8, true);
-
-      var buffer = P.audio.context.createBuffer(1, frameCount, sampleRate);
-      var channel = buffer.getChannelData(0);
-
-      var sample, index = 0;
-      var step, code, delta;
-      var lastByte = -1;
-
-      var offset = blocks.data + 8;
-      i = offset;
-      var j = 0;
-      while (true) {
-        if ((((i - offset) % blockSize) == 0) && (lastByte < 0)) {
-          if (i >= dv.byteLength) break;
-          sample = dv.getInt16(i, true); i += 2;
-          index = dv.getUint8(i); i += 1;
-          i++;
-          if (index > 88) index = 88;
-          channel[j++] = sample / 32767;
-        } else {
-          if (lastByte < 0) {
-            if (i >= dv.byteLength) break;
-            lastByte = dv.getUint8(i); i += 1;
-            code = lastByte & 0xf;
-          } else {
-            code = (lastByte >> 4) & 0xf;
-            lastByte = -1;
-          }
-          step = ADPCM_STEPS[index];
-          delta = 0;
-          if (code & 4) delta += step;
-          if (code & 2) delta += step >> 1;
-          if (code & 1) delta += step >> 2;
-          delta += step >> 3;
-          index += ADPCM_INDEX[code];
-          if (index > 88) index = 88;
-          if (index < 0) index = 0;
-          sample += (code & 8) ? -delta : delta;
-          if (sample > 32767) sample = 32767;
-          if (sample < -32768) sample = -32768;
-          channel[j++] = sample / 32768;
-        }
-      }
-      return cb(null, buffer);
-    }
-    cb(new Error('Unrecognized WAV format ' + format));
-  };
-
-  audio.decodeAudio = function(ab) {
-    if (!audioContext) {
-      return Promise.resolve();
-    }
-
-    return new Promise((resolve, reject) => {
-      // Attempt to decode it as ADPCM audio
-      audio.decodeADPCMAudio(ab, function(err, buffer) {
-        if (buffer) {
-          resolve(buffer);
-          return;
-        }
-        // Hope that the audio context will know what to do
-        return audioContext.decodeAudioData(ab)
-          .then((buffer) => resolve(buffer));
-      });
-    });
-  };
-
-  return audio;
+  return sb2;
 }({}));
 
-// Related to getting data from the public Scratch API
-P.API = (function(API) {
-
-  API.PROJECT_URL = 'https://projects.scratch.mit.edu/internalapi/project/';
-  API.ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
-  API.SOUNDBANK_URL = 'https://raw.githubusercontent.com/LLK/scratch-flash/v429/src/soundbank/';
-
-  // Apparently Scratch does not enable CORS on their API.
-  // API.getTitle = function(projectId) {
-  //   return IO.fetch("https://api.scratch.mit.edu/projects/" + projectId)
-  //     .then(function(r) { return r.json(); })
-  //     .then(function(r) { return r.title; });
-  // };
-
-  return API;
-}({}));
-
-P.compilers = {};
-// Compiles a Scratch 2 project to javascript
-P.compilers.sb2 = (function() {
+// Compiler for .sb2 projects
+P.sb2.compiler = (function() {
   var LOG_PRIMITIVES;
-  var DEBUG = window.location.hostname === 'localhost' && window.location.search.includes("debug");
   // LOG_PRIMITIVES = true;
 
   var EVENT_SELECTORS = [
@@ -2712,13 +3511,13 @@ P.compilers.sb2 = (function() {
     };
 
     var beatTail = function(dur) {
-        var id = label();
-        source += 'if (self.now - R.start < R.duration * 1000 || first) {\n';
-        source += '  var first;\n';
-        forceQueue(id);
-        source += '}\n';
+      var id = label();
+      source += 'if (self.now - R.start < R.duration * 1000 || first) {\n';
+      source += '  var first;\n';
+      forceQueue(id);
+      source += '}\n';
 
-        source += 'restore();\n';
+      source += 'restore();\n';
     };
 
     var wait = function(dur) {
@@ -2750,25 +3549,22 @@ P.compilers.sb2 = (function() {
       if (LOG_PRIMITIVES) {
         source += 'console.log(' + val(block[0]) + ');\n';
       }
-      // if (DEBUG) {
-      //   source += '/*' + block[0] + '*/';
-      // }
 
       if (['turnRight:', 'turnLeft:', 'heading:', 'pointTowards:', 'setRotationStyle', 'lookLike:', 'nextCostume', 'say:duration:elapsed:from:', 'say:', 'think:duration:elapsed:from:', 'think:', 'changeGraphicEffect:by:', 'setGraphicEffect:to:', 'filterReset', 'changeSizeBy:', 'setSizeTo:', 'comeToFront', 'goBackByLayers:'].indexOf(block[0]) !== -1) {
         if (visual < 2) {
           source += 'if (S.visible) VISUAL = true;\n';
           visual = 2;
-        } else if (DEBUG) source += '/* visual: 2 */\n';
+        } else if (P.config.debug) source += '/* visual: 2 */\n';
       } else if (['forward:', 'gotoX:y:', 'gotoSpriteOrMouse:', 'changeXposBy:', 'xpos:', 'changeYposBy:', 'ypos:', 'bounceOffEdge', 'glideSecs:toX:y:elapsed:from:'].indexOf(block[0]) !== -1) {
         if (visual < 1) {
           source += 'if (S.visible || S.isPenDown) VISUAL = true;\n';
           visual = 1;
-        } else if (DEBUG) source += '/* visual: 1 */\n';
+        } else if (P.config.debug) source += '/* visual: 1 */\n';
       } else if (['showBackground:', 'startScene', 'nextBackground', 'nextScene', 'startSceneAndWait', 'show', 'hide', 'putPenDown', 'stampCostume', 'showVariable:', 'hideVariable:', 'doAsk', 'setVolumeTo:', 'changeVolumeBy:', 'setTempoTo:', 'changeTempoBy:'].indexOf(block[0]) !== -1) {
         if (visual < 3) {
           source += 'VISUAL = true;\n';
           visual = 3;
-        } else if (DEBUG) source += '/* visual: 3 */\n';
+        } else if (P.config.debug) source += '/* visual: 3 */\n';
       }
 
       if (block[0] === 'forward:') { /* Motion */
@@ -3023,9 +3819,7 @@ P.compilers.sb2 = (function() {
 
       } else if (block[0] === 'clearPenTrails') { /* Pen */
 
-        source += 'self.penCanvas.width = 480 * self.maxZoom;\n';
-        source += 'self.penRenderer.reset(self.maxZoom);\n';
-        source += 'self.penRenderer.ctx.lineCap = "round";\n'
+        source += 'self.clearPen();\n';
 
       } else if (block[0] === 'putPenDown') {
 
@@ -3129,7 +3923,7 @@ P.compilers.sb2 = (function() {
 
       } else if (block[0] === 'call') {
 
-        if (DEBUG && block[1] === 'phosphorus: debug') {
+        if (P.config.debug && block[1] === 'phosphorus: debug') {
           source += 'debugger;\n';
         } else {
           source += 'call(S.procedures[' + val(block[1]) + '], ' + nextLabel() + ', [';
@@ -3360,72 +4154,8 @@ P.compilers.sb2 = (function() {
       source += 'return;\n';
     }
 
-    var createContinuation = function(source) {
-      var result = '(function() {\n';
-      var brackets = 0;
-      var delBrackets = 0;
-      var shouldDelete = false;
-      var here = 0;
-      var length = source.length;
-      while (here < length) {
-        var i = source.indexOf('{', here);
-        var j = source.indexOf('}', here);
-        var k = source.indexOf('return;', here);
-        if (k === -1) k = length;
-        if (i === -1 && j === -1) {
-          if (!shouldDelete) {
-            result += source.slice(here, k);
-          }
-          break;
-        }
-        if (i === -1) i = length;
-        if (j === -1) j = length;
-        if (shouldDelete) {
-          if (i < j) {
-            delBrackets++;
-            here = i + 1;
-          } else {
-            delBrackets--;
-            if (!delBrackets) {
-              shouldDelete = false;
-            }
-            here = j + 1;
-          }
-        } else {
-          if (brackets === 0 && k < i && k < j) {
-            result += source.slice(here, k);
-            break;
-          }
-          if (i < j) {
-            result += source.slice(here, i + 1);
-            brackets++;
-            here = i + 1;
-          } else {
-            result += source.slice(here, j);
-            here = j + 1;
-            if (source.substr(j, 8) === '} else {') {
-              if (brackets > 0) {
-                result += '} else {';
-                here = j + 8;
-              } else {
-                shouldDelete = true;
-                delBrackets = 0;
-              }
-            } else {
-              if (brackets > 0) {
-                result += '}';
-                brackets--;
-              }
-            }
-          }
-        }
-      }
-      result += '})';
-      return P.runtime.scopedEval(result);
-    };
-
     for (var i = 0; i < fns.length; i++) {
-      object.fns.push(createContinuation(source.slice(fns[i])));
+      object.fns.push(P.utils.createContinuation(source.slice(fns[i])));
     }
 
     var f = object.fns[startfn];
@@ -3460,8 +4190,8 @@ P.compilers.sb2 = (function() {
       warn('Undefined event: ' + script[0][0]);
     }
 
-    if (DEBUG) {
-      console.log('[debug - compiled script] ----\n' + source.split("\n").map((i) => " " + i).join("\n"));
+    if (P.config.debug) {
+      console.log('compiled scratch 2 script', source);
     }
   };
 
@@ -3478,6 +4208,122 @@ P.compilers.sb2 = (function() {
     }
   };
 }());
+
+// Related to playing or decoding sounds
+P.audio = (function(audio) {
+  const audioContext = audio.context = new AudioContext();
+
+  const ADPCM_STEPS = [
+    7, 8, 9, 10, 11, 12, 13, 14, 16, 17,
+    19, 21, 23, 25, 28, 31, 34, 37, 41, 45,
+    50, 55, 60, 66, 73, 80, 88, 97, 107, 118,
+    130, 143, 157, 173, 190, 209, 230, 253, 279, 307,
+    337, 371, 408, 449, 494, 544, 598, 658, 724, 796,
+    876, 963, 1060, 1166, 1282, 1411, 1552, 1707, 1878, 2066,
+    2272, 2499, 2749, 3024, 3327, 3660, 4026, 4428, 4871, 5358,
+    5894, 6484, 7132, 7845, 8630, 9493, 10442, 11487, 12635, 13899,
+    15289, 16818, 18500, 20350, 22385, 24623, 27086, 29794, 32767
+  ];
+  const ADPCM_INDEX = [-1, -1, -1, -1, 2, 4, 6, 8, -1, -1, -1, -1, 2, 4, 6, 8];
+
+  audio.decodeADPCMAudio = function(ab, cb) {
+    var dv = new DataView(ab);
+    if (dv.getUint32(0) !== 0x52494646 || dv.getUint32(8) !== 0x57415645) {
+      return cb(new Error('Unrecognized audio format'));
+    }
+
+    var blocks = {};
+    var i = 12, l = dv.byteLength - 8;
+    while (i < l) {
+      blocks[String.fromCharCode(
+        dv.getUint8(i),
+        dv.getUint8(i + 1),
+        dv.getUint8(i + 2),
+        dv.getUint8(i + 3))] = i;
+      i += 8 + dv.getUint32(i + 4, true);
+    }
+
+    var format        = dv.getUint16(20, true);
+    var channels      = dv.getUint16(22, true);
+    var sampleRate    = dv.getUint32(24, true);
+    var byteRate      = dv.getUint32(28, true);
+    var blockAlign    = dv.getUint16(32, true);
+    var bitsPerSample = dv.getUint16(34, true);
+
+    if (format === 17) {
+      var samplesPerBlock = dv.getUint16(38, true);
+      var blockSize = ((samplesPerBlock - 1) / 2) + 4;
+
+      var frameCount = dv.getUint32(blocks.fact + 8, true);
+
+      var buffer = P.audio.context.createBuffer(1, frameCount, sampleRate);
+      var channel = buffer.getChannelData(0);
+
+      var sample, index = 0;
+      var step, code, delta;
+      var lastByte = -1;
+
+      var offset = blocks.data + 8;
+      i = offset;
+      var j = 0;
+      while (true) {
+        if ((((i - offset) % blockSize) == 0) && (lastByte < 0)) {
+          if (i >= dv.byteLength) break;
+          sample = dv.getInt16(i, true); i += 2;
+          index = dv.getUint8(i); i += 1;
+          i++;
+          if (index > 88) index = 88;
+          channel[j++] = sample / 32767;
+        } else {
+          if (lastByte < 0) {
+            if (i >= dv.byteLength) break;
+            lastByte = dv.getUint8(i); i += 1;
+            code = lastByte & 0xf;
+          } else {
+            code = (lastByte >> 4) & 0xf;
+            lastByte = -1;
+          }
+          step = ADPCM_STEPS[index];
+          delta = 0;
+          if (code & 4) delta += step;
+          if (code & 2) delta += step >> 1;
+          if (code & 1) delta += step >> 2;
+          delta += step >> 3;
+          index += ADPCM_INDEX[code];
+          if (index > 88) index = 88;
+          if (index < 0) index = 0;
+          sample += (code & 8) ? -delta : delta;
+          if (sample > 32767) sample = 32767;
+          if (sample < -32768) sample = -32768;
+          channel[j++] = sample / 32768;
+        }
+      }
+      return cb(null, buffer);
+    }
+    cb(new Error('Unrecognized WAV format ' + format));
+  };
+
+  audio.decodeAudio = function(ab) {
+    if (!audioContext) {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve, reject) => {
+      // Attempt to decode it as ADPCM audio
+      audio.decodeADPCMAudio(ab, function(err, buffer) {
+        if (buffer) {
+          resolve(buffer);
+          return;
+        }
+        // Hope that the audio context will know what to do
+        return audioContext.decodeAudioData(ab)
+          .then((buffer) => resolve(buffer));
+      });
+    });
+  };
+
+  return audio;
+}({}));
 
 // The phosphorus Scratch runtime
 // Provides methods expected at runtime by scripts created by the compiler and an environment for Scratch scripts to run
@@ -3767,7 +4613,8 @@ P.runtime = (function() {
 
   var audioContext = P.audio.context;
   if (audioContext) {
-    var wavBuffers = P.IO.wavBuffers;
+    // TODO: move wavBuffers to IO
+    var wavBuffers = P.sb2.wavBuffers;
 
     var volumeNode = audioContext.createGain();
     volumeNode.gain.value = VOLUME;
@@ -4071,6 +4918,9 @@ P.runtime = (function() {
           while (IMMEDIATE) {
             var fn = IMMEDIATE;
             IMMEDIATE = null;
+            // if (P.config.debug) {
+            //   console.log('running', fn);
+            // }
             fn();
           }
           STACK.push(R);
@@ -4117,9 +4967,120 @@ P.runtime = (function() {
           decayEnd: attackTime + holdTime + decayTime
         }
       })
-    })).replace(/"(\w+)":/g,'$1:').replace(/"/g, '\''));
+    }))
   */
-  var INSTRUMENTS = [[{top:38,name:'AcousticPiano_As3',baseRatio:0.5316313272700484,loop:true,loopStart:0.465578231292517,loopEnd:0.7733786848072562,attackEnd:0,holdEnd:0.1,decayEnd:22.1},{top:44,name:'AcousticPiano_C4',baseRatio:0.5905141892259927,loop:true,loopStart:0.6334693877551021,loopEnd:0.8605442176870748,attackEnd:0,holdEnd:0.1,decayEnd:20.1},{top:51,name:'AcousticPiano_G4',baseRatio:0.8843582887700535,loop:true,loopStart:0.5532879818594104,loopEnd:0.5609977324263039,attackEnd:0,holdEnd:0.08,decayEnd:18.08},{top:62,name:'AcousticPiano_C6',baseRatio:2.3557692307692304,loop:true,loopStart:0.5914739229024943,loopEnd:0.6020861678004535,attackEnd:0,holdEnd:0.08,decayEnd:16.08},{top:70,name:'AcousticPiano_F5',baseRatio:1.5776515151515151,loop:true,loopStart:0.5634920634920635,loopEnd:0.5879818594104308,attackEnd:0,holdEnd:0.04,decayEnd:14.04},{top:77,name:'AcousticPiano_Ds6',baseRatio:2.800762112139358,loop:true,loopStart:0.560907029478458,loopEnd:0.5836281179138322,attackEnd:0,holdEnd:0.02,decayEnd:10.02},{top:85,name:'AcousticPiano_Ds6',baseRatio:2.800762112139358,loop:true,loopStart:0.560907029478458,loopEnd:0.5836281179138322,attackEnd:0,holdEnd:0,decayEnd:8},{top:90,name:'AcousticPiano_Ds6',baseRatio:2.800762112139358,loop:true,loopStart:0.560907029478458,loopEnd:0.5836281179138322,attackEnd:0,holdEnd:0,decayEnd:6},{top:96,name:'AcousticPiano_D7',baseRatio:5.275119617224881,loop:true,loopStart:0.3380498866213152,loopEnd:0.34494331065759637,attackEnd:0,holdEnd:0,decayEnd:3},{top:128,name:'AcousticPiano_D7',baseRatio:5.275119617224881,loop:true,loopStart:0.3380498866213152,loopEnd:0.34494331065759637,attackEnd:0,holdEnd:0,decayEnd:2}],[{top:48,name:'ElectricPiano_C2',baseRatio:0.14870515241435123,loop:true,loopStart:0.6956009070294784,loopEnd:0.7873015873015873,attackEnd:0,holdEnd:0.08,decayEnd:10.08},{top:74,name:'ElectricPiano_C4',baseRatio:0.5945685670261941,loop:true,loopStart:0.5181859410430839,loopEnd:0.5449433106575964,attackEnd:0,holdEnd:0.04,decayEnd:8.04},{top:128,name:'ElectricPiano_C4',baseRatio:0.5945685670261941,loop:true,loopStart:0.5181859410430839,loopEnd:0.5449433106575964,attackEnd:0,holdEnd:0,decayEnd:6}],[{top:128,name:'Organ_G2',baseRatio:0.22283731584620914,loop:true,loopStart:0.05922902494331066,loopEnd:0.1510204081632653,attackEnd:0,holdEnd:0,decayEnd:0}],[{top:40,name:'AcousticGuitar_F3',baseRatio:0.3977272727272727,loop:true,loopStart:1.6628117913832199,loopEnd:1.6685260770975057,attackEnd:0,holdEnd:0,decayEnd:15},{top:56,name:'AcousticGuitar_F3',baseRatio:0.3977272727272727,loop:true,loopStart:1.6628117913832199,loopEnd:1.6685260770975057,attackEnd:0,holdEnd:0,decayEnd:13.5},{top:60,name:'AcousticGuitar_F3',baseRatio:0.3977272727272727,loop:true,loopStart:1.6628117913832199,loopEnd:1.6685260770975057,attackEnd:0,holdEnd:0,decayEnd:12},{top:67,name:'AcousticGuitar_F3',baseRatio:0.3977272727272727,loop:true,loopStart:1.6628117913832199,loopEnd:1.6685260770975057,attackEnd:0,holdEnd:0,decayEnd:8.5},{top:72,name:'AcousticGuitar_F3',baseRatio:0.3977272727272727,loop:true,loopStart:1.6628117913832199,loopEnd:1.6685260770975057,attackEnd:0,holdEnd:0,decayEnd:7},{top:83,name:'AcousticGuitar_F3',baseRatio:0.3977272727272727,loop:true,loopStart:1.6628117913832199,loopEnd:1.6685260770975057,attackEnd:0,holdEnd:0,decayEnd:5.5},{top:128,name:'AcousticGuitar_F3',baseRatio:0.3977272727272727,loop:true,loopStart:1.6628117913832199,loopEnd:1.6685260770975057,attackEnd:0,holdEnd:0,decayEnd:4.5}],[{top:40,name:'ElectricGuitar_F3',baseRatio:0.39615522817103843,loop:true,loopStart:1.5733333333333333,loopEnd:1.5848072562358277,attackEnd:0,holdEnd:0,decayEnd:15},{top:56,name:'ElectricGuitar_F3',baseRatio:0.39615522817103843,loop:true,loopStart:1.5733333333333333,loopEnd:1.5848072562358277,attackEnd:0,holdEnd:0,decayEnd:13.5},{top:60,name:'ElectricGuitar_F3',baseRatio:0.39615522817103843,loop:true,loopStart:1.5733333333333333,loopEnd:1.5848072562358277,attackEnd:0,holdEnd:0,decayEnd:12},{top:67,name:'ElectricGuitar_F3',baseRatio:0.39615522817103843,loop:true,loopStart:1.5733333333333333,loopEnd:1.5848072562358277,attackEnd:0,holdEnd:0,decayEnd:8.5},{top:72,name:'ElectricGuitar_F3',baseRatio:0.39615522817103843,loop:true,loopStart:1.5733333333333333,loopEnd:1.5848072562358277,attackEnd:0,holdEnd:0,decayEnd:7},{top:83,name:'ElectricGuitar_F3',baseRatio:0.39615522817103843,loop:true,loopStart:1.5733333333333333,loopEnd:1.5848072562358277,attackEnd:0,holdEnd:0,decayEnd:5.5},{top:128,name:'ElectricGuitar_F3',baseRatio:0.39615522817103843,loop:true,loopStart:1.5733333333333333,loopEnd:1.5848072562358277,attackEnd:0,holdEnd:0,decayEnd:4.5}],[{top:34,name:'ElectricBass_G1',baseRatio:0.11111671034065712,loop:true,loopStart:1.9007709750566892,loopEnd:1.9212244897959183,attackEnd:0,holdEnd:0,decayEnd:17},{top:48,name:'ElectricBass_G1',baseRatio:0.11111671034065712,loop:true,loopStart:1.9007709750566892,loopEnd:1.9212244897959183,attackEnd:0,holdEnd:0,decayEnd:14},{top:64,name:'ElectricBass_G1',baseRatio:0.11111671034065712,loop:true,loopStart:1.9007709750566892,loopEnd:1.9212244897959183,attackEnd:0,holdEnd:0,decayEnd:12},{top:128,name:'ElectricBass_G1',baseRatio:0.11111671034065712,loop:true,loopStart:1.9007709750566892,loopEnd:1.9212244897959183,attackEnd:0,holdEnd:0,decayEnd:10}],[{top:38,name:'Pizz_G2',baseRatio:0.21979665071770335,loop:true,loopStart:0.3879365079365079,loopEnd:0.3982766439909297,attackEnd:0,holdEnd:0,decayEnd:5},{top:45,name:'Pizz_G2',baseRatio:0.21979665071770335,loop:true,loopStart:0.3879365079365079,loopEnd:0.3982766439909297,attackEnd:0,holdEnd:0.012,decayEnd:4.012},{top:56,name:'Pizz_A3',baseRatio:0.503654636820466,loop:true,loopStart:0.5197278911564626,loopEnd:0.5287528344671202,attackEnd:0,holdEnd:0,decayEnd:4},{top:64,name:'Pizz_A3',baseRatio:0.503654636820466,loop:true,loopStart:0.5197278911564626,loopEnd:0.5287528344671202,attackEnd:0,holdEnd:0,decayEnd:3.2},{top:72,name:'Pizz_E4',baseRatio:0.7479647218453188,loop:true,loopStart:0.7947845804988662,loopEnd:0.7978231292517007,attackEnd:0,holdEnd:0,decayEnd:2.8},{top:80,name:'Pizz_E4',baseRatio:0.7479647218453188,loop:true,loopStart:0.7947845804988662,loopEnd:0.7978231292517007,attackEnd:0,holdEnd:0,decayEnd:2.2},{top:128,name:'Pizz_E4',baseRatio:0.7479647218453188,loop:true,loopStart:0.7947845804988662,loopEnd:0.7978231292517007,attackEnd:0,holdEnd:0,decayEnd:1.5}],[{top:41,name:'Cello_C2',baseRatio:0.14870515241435123,loop:true,loopStart:0.3876643990929705,loopEnd:0.40294784580498866,attackEnd:0,holdEnd:0,decayEnd:0},{top:52,name:'Cello_As2',baseRatio:0.263755980861244,loop:true,loopStart:0.3385487528344671,loopEnd:0.35578231292517004,attackEnd:0,holdEnd:0,decayEnd:0},{top:62,name:'Violin_D4',baseRatio:0.6664047388781432,loop:true,loopStart:0.48108843537414964,loopEnd:0.5151927437641723,attackEnd:0,holdEnd:0,decayEnd:0},{top:75,name:'Violin_A4',baseRatio:0.987460815047022,loop:true,loopStart:0.14108843537414967,loopEnd:0.15029478458049886,attackEnd:0.07,holdEnd:0.07,decayEnd:0.07},{top:128,name:'Violin_E5',baseRatio:1.4885238523852387,loop:true,loopStart:0.10807256235827664,loopEnd:0.1126530612244898,attackEnd:0,holdEnd:0,decayEnd:0}],[{top:30,name:'BassTrombone_A2_3',baseRatio:0.24981872564125807,loop:true,loopStart:0.061541950113378686,loopEnd:0.10702947845804989,attackEnd:0,holdEnd:0,decayEnd:0},{top:40,name:'BassTrombone_A2_2',baseRatio:0.24981872564125807,loop:true,loopStart:0.08585034013605441,loopEnd:0.13133786848072562,attackEnd:0,holdEnd:0,decayEnd:0},{top:55,name:'Trombone_B3',baseRatio:0.5608240680183126,loop:true,loopStart:0.12,loopEnd:0.17673469387755103,attackEnd:0,holdEnd:0,decayEnd:0},{top:88,name:'Trombone_B3',baseRatio:0.5608240680183126,loop:true,loopStart:0.12,loopEnd:0.17673469387755103,attackEnd:0.05,holdEnd:0.05,decayEnd:0.05},{top:128,name:'Trumpet_E5',baseRatio:1.4959294436906376,loop:true,loopStart:0.1307936507936508,loopEnd:0.14294784580498865,attackEnd:0,holdEnd:0,decayEnd:0}],[{top:128,name:'Clarinet_C4',baseRatio:0.5940193965517241,loop:true,loopStart:0.6594104308390023,loopEnd:0.7014965986394558,attackEnd:0,holdEnd:0,decayEnd:0}],[{top:40,name:'TenorSax_C3',baseRatio:0.2971698113207547,loop:true,loopStart:0.4053968253968254,loopEnd:0.4895238095238095,attackEnd:0,holdEnd:0,decayEnd:0},{top:50,name:'TenorSax_C3',baseRatio:0.2971698113207547,loop:true,loopStart:0.4053968253968254,loopEnd:0.4895238095238095,attackEnd:0.02,holdEnd:0.02,decayEnd:0.02},{top:59,name:'TenorSax_C3',baseRatio:0.2971698113207547,loop:true,loopStart:0.4053968253968254,loopEnd:0.4895238095238095,attackEnd:0.04,holdEnd:0.04,decayEnd:0.04},{top:67,name:'AltoSax_A3',baseRatio:0.49814747876378096,loop:true,loopStart:0.3875736961451247,loopEnd:0.4103854875283447,attackEnd:0,holdEnd:0,decayEnd:0},{top:75,name:'AltoSax_A3',baseRatio:0.49814747876378096,loop:true,loopStart:0.3875736961451247,loopEnd:0.4103854875283447,attackEnd:0.02,holdEnd:0.02,decayEnd:0.02},{top:80,name:'AltoSax_A3',baseRatio:0.49814747876378096,loop:true,loopStart:0.3875736961451247,loopEnd:0.4103854875283447,attackEnd:0.02,holdEnd:0.02,decayEnd:0.02},{top:128,name:'AltoSax_C6',baseRatio:2.3782742681047764,loop:true,loopStart:0.05705215419501134,loopEnd:0.0838095238095238,attackEnd:0,holdEnd:0,decayEnd:0}],[{top:61,name:'Flute_B5_2',baseRatio:2.255113636363636,loop:true,loopStart:0.08430839002267573,loopEnd:0.10244897959183673,attackEnd:0,holdEnd:0,decayEnd:0},{top:128,name:'Flute_B5_1',baseRatio:2.255113636363636,loop:true,loopStart:0.10965986394557824,loopEnd:0.12780045351473923,attackEnd:0,holdEnd:0,decayEnd:0}],[{top:128,name:'WoodenFlute_C5',baseRatio:1.1892952324548416,loop:true,loopStart:0.5181859410430839,loopEnd:0.7131065759637188,attackEnd:0,holdEnd:0,decayEnd:0}],[{top:57,name:'Bassoon_C3',baseRatio:0.29700969827586204,loop:true,loopStart:0.11011337868480725,loopEnd:0.19428571428571428,attackEnd:0,holdEnd:0,decayEnd:0},{top:67,name:'Bassoon_C3',baseRatio:0.29700969827586204,loop:true,loopStart:0.11011337868480725,loopEnd:0.19428571428571428,attackEnd:0.04,holdEnd:0.04,decayEnd:0.04},{top:76,name:'Bassoon_C3',baseRatio:0.29700969827586204,loop:true,loopStart:0.11011337868480725,loopEnd:0.19428571428571428,attackEnd:0.08,holdEnd:0.08,decayEnd:0.08},{top:84,name:'EnglishHorn_F3',baseRatio:0.39601293103448276,loop:true,loopStart:0.341859410430839,loopEnd:0.4049886621315193,attackEnd:0.04,holdEnd:0.04,decayEnd:0.04},{top:128,name:'EnglishHorn_D4',baseRatio:0.6699684005833739,loop:true,loopStart:0.22027210884353743,loopEnd:0.23723356009070296,attackEnd:0,holdEnd:0,decayEnd:0}],[{top:39,name:'Choir_F3',baseRatio:0.3968814788643197,loop:true,loopStart:0.6352380952380953,loopEnd:1.8721541950113378,attackEnd:0,holdEnd:0,decayEnd:0},{top:50,name:'Choir_F3',baseRatio:0.3968814788643197,loop:true,loopStart:0.6352380952380953,loopEnd:1.8721541950113378,attackEnd:0.04,holdEnd:0.04,decayEnd:0.04},{top:61,name:'Choir_F3',baseRatio:0.3968814788643197,loop:true,loopStart:0.6352380952380953,loopEnd:1.8721541950113378,attackEnd:0.06,holdEnd:0.06,decayEnd:0.06},{top:72,name:'Choir_F4',baseRatio:0.7928898424161845,loop:true,loopStart:0.7415419501133786,loopEnd:2.1059410430839,attackEnd:0,holdEnd:0,decayEnd:0},{top:128,name:'Choir_F5',baseRatio:1.5879576065654504,loop:true,loopStart:0.836281179138322,loopEnd:2.0585487528344673,attackEnd:0,holdEnd:0,decayEnd:0}],[{top:38,name:'Vibraphone_C3',baseRatio:0.29829545454545453,loop:true,loopStart:0.2812698412698413,loopEnd:0.28888888888888886,attackEnd:0,holdEnd:0.1,decayEnd:8.1},{top:48,name:'Vibraphone_C3',baseRatio:0.29829545454545453,loop:true,loopStart:0.2812698412698413,loopEnd:0.28888888888888886,attackEnd:0,holdEnd:0.1,decayEnd:7.6},{top:59,name:'Vibraphone_C3',baseRatio:0.29829545454545453,loop:true,loopStart:0.2812698412698413,loopEnd:0.28888888888888886,attackEnd:0,holdEnd:0.06,decayEnd:7.06},{top:70,name:'Vibraphone_C3',baseRatio:0.29829545454545453,loop:true,loopStart:0.2812698412698413,loopEnd:0.28888888888888886,attackEnd:0,holdEnd:0.04,decayEnd:6.04},{top:78,name:'Vibraphone_C3',baseRatio:0.29829545454545453,loop:true,loopStart:0.2812698412698413,loopEnd:0.28888888888888886,attackEnd:0,holdEnd:0.02,decayEnd:5.02},{top:86,name:'Vibraphone_C3',baseRatio:0.29829545454545453,loop:true,loopStart:0.2812698412698413,loopEnd:0.28888888888888886,attackEnd:0,holdEnd:0,decayEnd:4},{top:128,name:'Vibraphone_C3',baseRatio:0.29829545454545453,loop:true,loopStart:0.2812698412698413,loopEnd:0.28888888888888886,attackEnd:0,holdEnd:0,decayEnd:3}],[{top:128,name:'MusicBox_C4',baseRatio:0.5937634640241276,loop:true,loopStart:0.6475283446712018,loopEnd:0.6666666666666666,attackEnd:0,holdEnd:0,decayEnd:2}],[{top:128,name:'SteelDrum_D5',baseRatio:1.3660402567543959,loop:false,loopStart:-0.000045351473922902495,loopEnd:-0.000045351473922902495,attackEnd:0,holdEnd:0,decayEnd:2}],[{top:128,name:'Marimba_C4',baseRatio:0.5946035575013605,loop:false,loopStart:-0.000045351473922902495,loopEnd:-0.000045351473922902495,attackEnd:0,holdEnd:0,decayEnd:0}],[{top:80,name:'SynthLead_C4',baseRatio:0.5942328422565577,loop:true,loopStart:0.006122448979591836,loopEnd:0.06349206349206349,attackEnd:0,holdEnd:0,decayEnd:0},{top:128,name:'SynthLead_C6',baseRatio:2.3760775862068964,loop:true,loopStart:0.005623582766439909,loopEnd:0.01614512471655329,attackEnd:0,holdEnd:0,decayEnd:0}],[{top:38,name:'SynthPad_A3',baseRatio:0.4999105065330231,loop:true,loopStart:0.1910204081632653,loopEnd:3.9917006802721087,attackEnd:0.05,holdEnd:0.05,decayEnd:0.05},{top:50,name:'SynthPad_A3',baseRatio:0.4999105065330231,loop:true,loopStart:0.1910204081632653,loopEnd:3.9917006802721087,attackEnd:0.08,holdEnd:0.08,decayEnd:0.08},{top:62,name:'SynthPad_A3',baseRatio:0.4999105065330231,loop:true,loopStart:0.1910204081632653,loopEnd:3.9917006802721087,attackEnd:0.11,holdEnd:0.11,decayEnd:0.11},{top:74,name:'SynthPad_A3',baseRatio:0.4999105065330231,loop:true,loopStart:0.1910204081632653,loopEnd:3.9917006802721087,attackEnd:0.15,holdEnd:0.15,decayEnd:0.15},{top:86,name:'SynthPad_A3',baseRatio:0.4999105065330231,loop:true,loopStart:0.1910204081632653,loopEnd:3.9917006802721087,attackEnd:0.2,holdEnd:0.2,decayEnd:0.2},{top:128,name:'SynthPad_C6',baseRatio:2.3820424708835755,loop:true,loopStart:0.11678004535147392,loopEnd:0.41732426303854875,attackEnd:0,holdEnd:0,decayEnd:0}]];
+  // TODO: generate these big arrays at runtime?
+  var INSTRUMENTS = [
+    [
+      {top:38,name:'AcousticPiano_As3',baseRatio:0.5316313272700484,loop:true,loopStart:0.465578231292517,loopEnd:0.7733786848072562,attackEnd:0,holdEnd:0.1,decayEnd:22.1},
+      {top:44,name:'AcousticPiano_C4',baseRatio:0.5905141892259927,loop:true,loopStart:0.6334693877551021,loopEnd:0.8605442176870748,attackEnd:0,holdEnd:0.1,decayEnd:20.1},
+      {top:51,name:'AcousticPiano_G4',baseRatio:0.8843582887700535,loop:true,loopStart:0.5532879818594104,loopEnd:0.5609977324263039,attackEnd:0,holdEnd:0.08,decayEnd:18.08},
+      {top:62,name:'AcousticPiano_C6',baseRatio:2.3557692307692304,loop:true,loopStart:0.5914739229024943,loopEnd:0.6020861678004535,attackEnd:0,holdEnd:0.08,decayEnd:16.08},
+      {top:70,name:'AcousticPiano_F5',baseRatio:1.5776515151515151,loop:true,loopStart:0.5634920634920635,loopEnd:0.5879818594104308,attackEnd:0,holdEnd:0.04,decayEnd:14.04},
+      {top:77,name:'AcousticPiano_Ds6',baseRatio:2.800762112139358,loop:true,loopStart:0.560907029478458,loopEnd:0.5836281179138322,attackEnd:0,holdEnd:0.02,decayEnd:10.02},
+      {top:85,name:'AcousticPiano_Ds6',baseRatio:2.800762112139358,loop:true,loopStart:0.560907029478458,loopEnd:0.5836281179138322,attackEnd:0,holdEnd:0,decayEnd:8},
+      {top:90,name:'AcousticPiano_Ds6',baseRatio:2.800762112139358,loop:true,loopStart:0.560907029478458,loopEnd:0.5836281179138322,attackEnd:0,holdEnd:0,decayEnd:6},
+      {top:96,name:'AcousticPiano_D7',baseRatio:5.275119617224881,loop:true,loopStart:0.3380498866213152,loopEnd:0.34494331065759637,attackEnd:0,holdEnd:0,decayEnd:3},
+      {top:128,name:'AcousticPiano_D7',baseRatio:5.275119617224881,loop:true,loopStart:0.3380498866213152,loopEnd:0.34494331065759637,attackEnd:0,holdEnd:0,decayEnd:2}
+    ], [
+      {top:48,name:'ElectricPiano_C2',baseRatio:0.14870515241435123,loop:true,loopStart:0.6956009070294784,loopEnd:0.7873015873015873,attackEnd:0,holdEnd:0.08,decayEnd:10.08},
+      {top:74,name:'ElectricPiano_C4',baseRatio:0.5945685670261941,loop:true,loopStart:0.5181859410430839,loopEnd:0.5449433106575964,attackEnd:0,holdEnd:0.04,decayEnd:8.04},
+      {top:128,name:'ElectricPiano_C4',baseRatio:0.5945685670261941,loop:true,loopStart:0.5181859410430839,loopEnd:0.5449433106575964,attackEnd:0,holdEnd:0,decayEnd:6}
+    ], [
+      {top:128,name:'Organ_G2',baseRatio:0.22283731584620914,loop:true,loopStart:0.05922902494331066,loopEnd:0.1510204081632653,attackEnd:0,holdEnd:0,decayEnd:0}
+    ],[{top:40,name:'AcousticGuitar_F3',baseRatio:0.3977272727272727,loop:true,loopStart:1.6628117913832199,loopEnd:1.6685260770975057,attackEnd:0,holdEnd:0,decayEnd:15},
+      {top:56,name:'AcousticGuitar_F3',baseRatio:0.3977272727272727,loop:true,loopStart:1.6628117913832199,loopEnd:1.6685260770975057,attackEnd:0,holdEnd:0,decayEnd:13.5},
+      {top:60,name:'AcousticGuitar_F3',baseRatio:0.3977272727272727,loop:true,loopStart:1.6628117913832199,loopEnd:1.6685260770975057,attackEnd:0,holdEnd:0,decayEnd:12},
+      {top:67,name:'AcousticGuitar_F3',baseRatio:0.3977272727272727,loop:true,loopStart:1.6628117913832199,loopEnd:1.6685260770975057,attackEnd:0,holdEnd:0,decayEnd:8.5},
+      {top:72,name:'AcousticGuitar_F3',baseRatio:0.3977272727272727,loop:true,loopStart:1.6628117913832199,loopEnd:1.6685260770975057,attackEnd:0,holdEnd:0,decayEnd:7},
+      {top:83,name:'AcousticGuitar_F3',baseRatio:0.3977272727272727,loop:true,loopStart:1.6628117913832199,loopEnd:1.6685260770975057,attackEnd:0,holdEnd:0,decayEnd:5.5},
+      {top:128,name:'AcousticGuitar_F3',baseRatio:0.3977272727272727,loop:true,loopStart:1.6628117913832199,loopEnd:1.6685260770975057,attackEnd:0,holdEnd:0,decayEnd:4.5}
+    ], [
+      {top:40,name:'ElectricGuitar_F3',baseRatio:0.39615522817103843,loop:true,loopStart:1.5733333333333333,loopEnd:1.5848072562358277,attackEnd:0,holdEnd:0,decayEnd:15},
+      {top:56,name:'ElectricGuitar_F3',baseRatio:0.39615522817103843,loop:true,loopStart:1.5733333333333333,loopEnd:1.5848072562358277,attackEnd:0,holdEnd:0,decayEnd:13.5},
+      {top:60,name:'ElectricGuitar_F3',baseRatio:0.39615522817103843,loop:true,loopStart:1.5733333333333333,loopEnd:1.5848072562358277,attackEnd:0,holdEnd:0,decayEnd:12},
+      {top:67,name:'ElectricGuitar_F3',baseRatio:0.39615522817103843,loop:true,loopStart:1.5733333333333333,loopEnd:1.5848072562358277,attackEnd:0,holdEnd:0,decayEnd:8.5},
+      {top:72,name:'ElectricGuitar_F3',baseRatio:0.39615522817103843,loop:true,loopStart:1.5733333333333333,loopEnd:1.5848072562358277,attackEnd:0,holdEnd:0,decayEnd:7},
+      {top:83,name:'ElectricGuitar_F3',baseRatio:0.39615522817103843,loop:true,loopStart:1.5733333333333333,loopEnd:1.5848072562358277,attackEnd:0,holdEnd:0,decayEnd:5.5},
+      {top:128,name:'ElectricGuitar_F3',baseRatio:0.39615522817103843,loop:true,loopStart:1.5733333333333333,loopEnd:1.5848072562358277,attackEnd:0,holdEnd:0,decayEnd:4.5}
+    ], [
+      {top:34,name:'ElectricBass_G1',baseRatio:0.11111671034065712,loop:true,loopStart:1.9007709750566892,loopEnd:1.9212244897959183,attackEnd:0,holdEnd:0,decayEnd:17},
+      {top:48,name:'ElectricBass_G1',baseRatio:0.11111671034065712,loop:true,loopStart:1.9007709750566892,loopEnd:1.9212244897959183,attackEnd:0,holdEnd:0,decayEnd:14},
+      {top:64,name:'ElectricBass_G1',baseRatio:0.11111671034065712,loop:true,loopStart:1.9007709750566892,loopEnd:1.9212244897959183,attackEnd:0,holdEnd:0,decayEnd:12},
+      {top:128,name:'ElectricBass_G1',baseRatio:0.11111671034065712,loop:true,loopStart:1.9007709750566892,loopEnd:1.9212244897959183,attackEnd:0,holdEnd:0,decayEnd:10}
+    ], [
+      {top:38,name:'Pizz_G2',baseRatio:0.21979665071770335,loop:true,loopStart:0.3879365079365079,loopEnd:0.3982766439909297,attackEnd:0,holdEnd:0,decayEnd:5},
+      {top:45,name:'Pizz_G2',baseRatio:0.21979665071770335,loop:true,loopStart:0.3879365079365079,loopEnd:0.3982766439909297,attackEnd:0,holdEnd:0.012,decayEnd:4.012},
+      {top:56,name:'Pizz_A3',baseRatio:0.503654636820466,loop:true,loopStart:0.5197278911564626,loopEnd:0.5287528344671202,attackEnd:0,holdEnd:0,decayEnd:4},
+      {top:64,name:'Pizz_A3',baseRatio:0.503654636820466,loop:true,loopStart:0.5197278911564626,loopEnd:0.5287528344671202,attackEnd:0,holdEnd:0,decayEnd:3.2},
+      {top:72,name:'Pizz_E4',baseRatio:0.7479647218453188,loop:true,loopStart:0.7947845804988662,loopEnd:0.7978231292517007,attackEnd:0,holdEnd:0,decayEnd:2.8},
+      {top:80,name:'Pizz_E4',baseRatio:0.7479647218453188,loop:true,loopStart:0.7947845804988662,loopEnd:0.7978231292517007,attackEnd:0,holdEnd:0,decayEnd:2.2},
+      {top:128,name:'Pizz_E4',baseRatio:0.7479647218453188,loop:true,loopStart:0.7947845804988662,loopEnd:0.7978231292517007,attackEnd:0,holdEnd:0,decayEnd:1.5}
+    ], [
+      {top:41,name:'Cello_C2',baseRatio:0.14870515241435123,loop:true,loopStart:0.3876643990929705,loopEnd:0.40294784580498866,attackEnd:0,holdEnd:0,decayEnd:0},
+      {top:52,name:'Cello_As2',baseRatio:0.263755980861244,loop:true,loopStart:0.3385487528344671,loopEnd:0.35578231292517004,attackEnd:0,holdEnd:0,decayEnd:0},
+      {top:62,name:'Violin_D4',baseRatio:0.6664047388781432,loop:true,loopStart:0.48108843537414964,loopEnd:0.5151927437641723,attackEnd:0,holdEnd:0,decayEnd:0},
+      {top:75,name:'Violin_A4',baseRatio:0.987460815047022,loop:true,loopStart:0.14108843537414967,loopEnd:0.15029478458049886,attackEnd:0.07,holdEnd:0.07,decayEnd:0.07},
+      {top:128,name:'Violin_E5',baseRatio:1.4885238523852387,loop:true,loopStart:0.10807256235827664,loopEnd:0.1126530612244898,attackEnd:0,holdEnd:0,decayEnd:0}
+    ], [
+      {top:30,name:'BassTrombone_A2_3',baseRatio:0.24981872564125807,loop:true,loopStart:0.061541950113378686,loopEnd:0.10702947845804989,attackEnd:0,holdEnd:0,decayEnd:0},
+      {top:40,name:'BassTrombone_A2_2',baseRatio:0.24981872564125807,loop:true,loopStart:0.08585034013605441,loopEnd:0.13133786848072562,attackEnd:0,holdEnd:0,decayEnd:0},
+      {top:55,name:'Trombone_B3',baseRatio:0.5608240680183126,loop:true,loopStart:0.12,loopEnd:0.17673469387755103,attackEnd:0,holdEnd:0,decayEnd:0},
+      {top:88,name:'Trombone_B3',baseRatio:0.5608240680183126,loop:true,loopStart:0.12,loopEnd:0.17673469387755103,attackEnd:0.05,holdEnd:0.05,decayEnd:0.05},
+      {top:128,name:'Trumpet_E5',baseRatio:1.4959294436906376,loop:true,loopStart:0.1307936507936508,loopEnd:0.14294784580498865,attackEnd:0,holdEnd:0,decayEnd:0}
+    ], [
+      {top:128,name:'Clarinet_C4',baseRatio:0.5940193965517241,loop:true,loopStart:0.6594104308390023,loopEnd:0.7014965986394558,attackEnd:0,holdEnd:0,decayEnd:0}
+    ], [
+      {top:40,name:'TenorSax_C3',baseRatio:0.2971698113207547,loop:true,loopStart:0.4053968253968254,loopEnd:0.4895238095238095,attackEnd:0,holdEnd:0,decayEnd:0},
+      {top:50,name:'TenorSax_C3',baseRatio:0.2971698113207547,loop:true,loopStart:0.4053968253968254,loopEnd:0.4895238095238095,attackEnd:0.02,holdEnd:0.02,decayEnd:0.02},
+      {top:59,name:'TenorSax_C3',baseRatio:0.2971698113207547,loop:true,loopStart:0.4053968253968254,loopEnd:0.4895238095238095,attackEnd:0.04,holdEnd:0.04,decayEnd:0.04},
+      {top:67,name:'AltoSax_A3',baseRatio:0.49814747876378096,loop:true,loopStart:0.3875736961451247,loopEnd:0.4103854875283447,attackEnd:0,holdEnd:0,decayEnd:0},
+      {top:75,name:'AltoSax_A3',baseRatio:0.49814747876378096,loop:true,loopStart:0.3875736961451247,loopEnd:0.4103854875283447,attackEnd:0.02,holdEnd:0.02,decayEnd:0.02},
+      {top:80,name:'AltoSax_A3',baseRatio:0.49814747876378096,loop:true,loopStart:0.3875736961451247,loopEnd:0.4103854875283447,attackEnd:0.02,holdEnd:0.02,decayEnd:0.02},
+      {top:128,name:'AltoSax_C6',baseRatio:2.3782742681047764,loop:true,loopStart:0.05705215419501134,loopEnd:0.0838095238095238,attackEnd:0,holdEnd:0,decayEnd:0}
+    ], [
+      {top:61,name:'Flute_B5_2',baseRatio:2.255113636363636,loop:true,loopStart:0.08430839002267573,loopEnd:0.10244897959183673,attackEnd:0,holdEnd:0,decayEnd:0},
+      {top:128,name:'Flute_B5_1',baseRatio:2.255113636363636,loop:true,loopStart:0.10965986394557824,loopEnd:0.12780045351473923,attackEnd:0,holdEnd:0,decayEnd:0}
+    ], [
+      {top:128,name:'WoodenFlute_C5',baseRatio:1.1892952324548416,loop:true,loopStart:0.5181859410430839,loopEnd:0.7131065759637188,attackEnd:0,holdEnd:0,decayEnd:0}
+    ], [
+      {top:57,name:'Bassoon_C3',baseRatio:0.29700969827586204,loop:true,loopStart:0.11011337868480725,loopEnd:0.19428571428571428,attackEnd:0,holdEnd:0,decayEnd:0},
+      {top:67,name:'Bassoon_C3',baseRatio:0.29700969827586204,loop:true,loopStart:0.11011337868480725,loopEnd:0.19428571428571428,attackEnd:0.04,holdEnd:0.04,decayEnd:0.04},
+      {top:76,name:'Bassoon_C3',baseRatio:0.29700969827586204,loop:true,loopStart:0.11011337868480725,loopEnd:0.19428571428571428,attackEnd:0.08,holdEnd:0.08,decayEnd:0.08},
+      {top:84,name:'EnglishHorn_F3',baseRatio:0.39601293103448276,loop:true,loopStart:0.341859410430839,loopEnd:0.4049886621315193,attackEnd:0.04,holdEnd:0.04,decayEnd:0.04},
+      {top:128,name:'EnglishHorn_D4',baseRatio:0.6699684005833739,loop:true,loopStart:0.22027210884353743,loopEnd:0.23723356009070296,attackEnd:0,holdEnd:0,decayEnd:0}
+    ], [
+      {top:39,name:'Choir_F3',baseRatio:0.3968814788643197,loop:true,loopStart:0.6352380952380953,loopEnd:1.8721541950113378,attackEnd:0,holdEnd:0,decayEnd:0},
+      {top:50,name:'Choir_F3',baseRatio:0.3968814788643197,loop:true,loopStart:0.6352380952380953,loopEnd:1.8721541950113378,attackEnd:0.04,holdEnd:0.04,decayEnd:0.04},
+      {top:61,name:'Choir_F3',baseRatio:0.3968814788643197,loop:true,loopStart:0.6352380952380953,loopEnd:1.8721541950113378,attackEnd:0.06,holdEnd:0.06,decayEnd:0.06},
+      {top:72,name:'Choir_F4',baseRatio:0.7928898424161845,loop:true,loopStart:0.7415419501133786,loopEnd:2.1059410430839,attackEnd:0,holdEnd:0,decayEnd:0},
+      {top:128,name:'Choir_F5',baseRatio:1.5879576065654504,loop:true,loopStart:0.836281179138322,loopEnd:2.0585487528344673,attackEnd:0,holdEnd:0,decayEnd:0}
+    ], [
+      {top:38,name:'Vibraphone_C3',baseRatio:0.29829545454545453,loop:true,loopStart:0.2812698412698413,loopEnd:0.28888888888888886,attackEnd:0,holdEnd:0.1,decayEnd:8.1},
+      {top:48,name:'Vibraphone_C3',baseRatio:0.29829545454545453,loop:true,loopStart:0.2812698412698413,loopEnd:0.28888888888888886,attackEnd:0,holdEnd:0.1,decayEnd:7.6},
+      {top:59,name:'Vibraphone_C3',baseRatio:0.29829545454545453,loop:true,loopStart:0.2812698412698413,loopEnd:0.28888888888888886,attackEnd:0,holdEnd:0.06,decayEnd:7.06},
+      {top:70,name:'Vibraphone_C3',baseRatio:0.29829545454545453,loop:true,loopStart:0.2812698412698413,loopEnd:0.28888888888888886,attackEnd:0,holdEnd:0.04,decayEnd:6.04},
+      {top:78,name:'Vibraphone_C3',baseRatio:0.29829545454545453,loop:true,loopStart:0.2812698412698413,loopEnd:0.28888888888888886,attackEnd:0,holdEnd:0.02,decayEnd:5.02},
+      {top:86,name:'Vibraphone_C3',baseRatio:0.29829545454545453,loop:true,loopStart:0.2812698412698413,loopEnd:0.28888888888888886,attackEnd:0,holdEnd:0,decayEnd:4},
+      {top:128,name:'Vibraphone_C3',baseRatio:0.29829545454545453,loop:true,loopStart:0.2812698412698413,loopEnd:0.28888888888888886,attackEnd:0,holdEnd:0,decayEnd:3}
+    ], [
+      {top:128,name:'MusicBox_C4',baseRatio:0.5937634640241276,loop:true,loopStart:0.6475283446712018,loopEnd:0.6666666666666666,attackEnd:0,holdEnd:0,decayEnd:2}
+    ], [
+      {top:128,name:'SteelDrum_D5',baseRatio:1.3660402567543959,loop:false,loopStart:-0.000045351473922902495,loopEnd:-0.000045351473922902495,attackEnd:0,holdEnd:0,decayEnd:2}
+    ],[
+      {top:128,name:'Marimba_C4',baseRatio:0.5946035575013605,loop:false,loopStart:-0.000045351473922902495,loopEnd:-0.000045351473922902495,attackEnd:0,holdEnd:0,decayEnd:0}
+    ], [
+      {top:80,name:'SynthLead_C4',baseRatio:0.5942328422565577,loop:true,loopStart:0.006122448979591836,loopEnd:0.06349206349206349,attackEnd:0,holdEnd:0,decayEnd:0},
+      {top:128,name:'SynthLead_C6',baseRatio:2.3760775862068964,loop:true,loopStart:0.005623582766439909,loopEnd:0.01614512471655329,attackEnd:0,holdEnd:0,decayEnd:0}
+    ], [
+      {top:38,name:'SynthPad_A3',baseRatio:0.4999105065330231,loop:true,loopStart:0.1910204081632653,loopEnd:3.9917006802721087,attackEnd:0.05,holdEnd:0.05,decayEnd:0.05},
+      {top:50,name:'SynthPad_A3',baseRatio:0.4999105065330231,loop:true,loopStart:0.1910204081632653,loopEnd:3.9917006802721087,attackEnd:0.08,holdEnd:0.08,decayEnd:0.08},
+      {top:62,name:'SynthPad_A3',baseRatio:0.4999105065330231,loop:true,loopStart:0.1910204081632653,loopEnd:3.9917006802721087,attackEnd:0.11,holdEnd:0.11,decayEnd:0.11},
+      {top:74,name:'SynthPad_A3',baseRatio:0.4999105065330231,loop:true,loopStart:0.1910204081632653,loopEnd:3.9917006802721087,attackEnd:0.15,holdEnd:0.15,decayEnd:0.15},
+      {top:86,name:'SynthPad_A3',baseRatio:0.4999105065330231,loop:true,loopStart:0.1910204081632653,loopEnd:3.9917006802721087,attackEnd:0.2,holdEnd:0.2,decayEnd:0.2},
+      {top:128,name:'SynthPad_C6',baseRatio:2.3820424708835755,loop:true,loopStart:0.11678004535147392,loopEnd:0.41732426303854875,attackEnd:0,holdEnd:0,decayEnd:0}
+    ]
+  ];
 
   /*
     copy(JSON.stringify(drums.map(function(d) {
@@ -4139,10 +5100,30 @@ P.runtime = (function() {
         holdEnd: 0,
         decayEnd: decayTime
       }
-    })).replace(/"(\w+)":/g,'$1:').replace(/"/g, '\''));
+    }))
   */
-  var DRUMS = [{name:'SnareDrum',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'Tom',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'SideStick',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'Crash',baseRatio:0.8908987181403393,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'HiHatOpen',baseRatio:0.9438743126816935,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'HiHatClosed',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'Tambourine',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'Clap',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'Claves',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'WoodBlock',baseRatio:0.7491535384383408,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'Cowbell',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'Triangle',baseRatio:0.8514452780229479,loop:true,loopStart:0.7638548752834468,loopEnd:0.7825396825396825,attackEnd:0,holdEnd:0,decayEnd:2},{name:'Bongo',baseRatio:0.5297315471796477,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'Conga',baseRatio:0.7954545454545454,loop:true,loopStart:0.1926077097505669,loopEnd:0.20403628117913833,attackEnd:0,holdEnd:0,decayEnd:2},{name:'Cabasa',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'GuiroLong',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'Vibraslap',baseRatio:0.8408964152537145,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},{name:'Cuica',baseRatio:0.7937005259840998,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0}];
+  var DRUMS = [
+    {name:'SnareDrum',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},
+    {name:'Tom',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},
+    {name:'SideStick',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},
+    {name:'Crash',baseRatio:0.8908987181403393,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},
+    {name:'HiHatOpen',baseRatio:0.9438743126816935,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},
+    {name:'HiHatClosed',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},
+    {name:'Tambourine',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},
+    {name:'Clap',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},
+    {name:'Claves',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},
+    {name:'WoodBlock',baseRatio:0.7491535384383408,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},
+    {name:'Cowbell',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},
+    {name:'Triangle',baseRatio:0.8514452780229479,loop:true,loopStart:0.7638548752834468,loopEnd:0.7825396825396825,attackEnd:0,holdEnd:0,decayEnd:2},
+    {name:'Bongo',baseRatio:0.5297315471796477,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},
+    {name:'Conga',baseRatio:0.7954545454545454,loop:true,loopStart:0.1926077097505669,loopEnd:0.20403628117913833,attackEnd:0,holdEnd:0,decayEnd:2},
+    {name:'Cabasa',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},
+    {name:'GuiroLong',baseRatio:0.5946035575013605,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},
+    {name:'Vibraslap',baseRatio:0.8408964152537145,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0},
+    {name:'Cuica',baseRatio:0.7937005259840998,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0}
+  ];
 
+  // Evaluated JavaScript within the scope of the runtime.
   function scopedEval(source) {
     return eval(source);
   }

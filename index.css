@@ -20,10 +20,6 @@ body.dark {
   margin: 16px 0 0;
   position: relative;
 }
-#subtitle {
-  float: right;
-  opacity: 0.4;
-}
 
 .url {
   position: relative;
