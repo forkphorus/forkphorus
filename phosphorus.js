@@ -1898,50 +1898,14 @@ P.sb3 = (function() {
       if (format === 'svg') {
         return this.getAsText(path)
           .then((source) => {
-            // It's magic.
-            var parser = new DOMParser();
-            var doc = parser.parseFromString(source, 'image/svg+xml');
-            var svg = doc.documentElement;
-            if (!svg.style) {
-              doc = parser.parseFromString('<body>'+source, 'text/html');
-              svg = doc.querySelector('svg');
-            }
-            svg.style.visibility = 'hidden';
-            svg.style.position = 'absolute';
-            svg.style.left = '-10000px';
-            svg.style.top = '-10000px';
-            document.body.appendChild(svg);
-            var viewBox = svg.viewBox.baseVal;
-            if (viewBox && (viewBox.x || viewBox.y)) {
-              svg.width.baseVal.value = viewBox.width - viewBox.x;
-              svg.height.baseVal.value = viewBox.height - viewBox.y;
-              viewBox.x = 0;
-              viewBox.y = 0;
-              viewBox.width = 0;
-              viewBox.height = 0;
-            }
-            P.utils.patchSVG(svg, svg);
-            document.body.removeChild(svg);
-            svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
-
-            var canvas = document.createElement('canvas');
-            var image = new Image();
+            const image = new Image();
 
             return new Promise((resolve, reject) => {
-              canvg(canvas, new XMLSerializer().serializeToString(svg), {
-                ignoreMouse: true,
-                ignoreAnimation: true,
-                ignoreClear: true,
-                renderCallback: function() {
-                  if (canvas.width === 0 || canvas.height === 0) {
-                    return resolve(new Image());
-                  }
-                  image.src = canvas.toDataURL();
-                  resolve(image);
-                }
-              });
+              image.onload = () => resolve(image);
+              image.onerror = (err) => reject(err);
+              image.src = 'data:image/svg+xml;base64,' + btoa(source);
             });
-          });
+        });
       } else {
         return this.getAsImage(path, format);
       }
@@ -2047,6 +2011,7 @@ P.sb3 = (function() {
           }
 
           P.sb3.compiler.compile(target, data);
+
           return target;
         });
     }
@@ -2094,14 +2059,17 @@ P.sb3 = (function() {
     }
 
     getAsImage(path, format) {
+      P.IO.progressHooks.new();
       return this.getAsBase64(path)
         .then((imageData) => {
           return new Promise((resolve, reject) => {
             const image = new Image();
             image.onload = function() {
+              P.IO.progressHooks.end();
               resolve(image);
             };
             image.onerror = function(error) {
+              P.IO.progressHooks.error(error);
               reject(error);
             };
             image.src = 'data:image/' + format + ';base64,' + imageData;
@@ -2999,8 +2967,9 @@ P.sb2 = (function(sb2) {
         ignoreAnimation: true,
         ignoreClear: true,
         renderCallback: function() {
+          image.onload = () => resolve(image);
+          image.onerror = (err) => reject(err);
           image.src = canvas.toDataURL();
-          resolve(image);
         }
       });
     });

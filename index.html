@@ -91,7 +91,8 @@
 
     <section>
       <h1>Credits</h1>
-      <p>phosphorus was created by <a href=https://github.com/nathan>Nathan</a>. This fork is maintained by <a href=https://github.com/GarboMuffin>GarboMuffin</a>. Its CPS-style compilation and overall design was inspired by <a href=https://github.com/RHY3756547>Rhys</a>'s <a href=https://code.google.com/p/sb2-js/>sb2.js</a>. It would have more bugs if not for <a href=https://github.com/trumank>Truman</a> and <a href=https://github.com/tjvr>Tim</a>. It uses the <a href=https://stuk.github.io/jszip/>JSZip</a> library, created by <a href=https://github.com/stuk>Stuart Knightley</a>, <a href=https://github.com/dduponchel>David Duponchel</a>, Franz Buchinger, and <a href=https://github.com/aadsm>António Afonso</a>, to read <code>.sb2</code> files and compressed projects, and the <a href=https://code.google.com/p/canvg/>canvg</a> library, created by <a href=https://code.google.com/u/gabelerner@gmail.com/>Gabe Lerner</a>, to render SVGs in <code>&lt;canvas&gt;</code> elements.</p>
+      <p>phosphorus was created by <a href=https://github.com/nathan>Nathan</a>. This fork is maintained by <a href=https://github.com/GarboMuffin>GarboMuffin</a>. Its CPS-style compilation and overall design was inspired by <a href=https://github.com/RHY3756547>Rhys</a>'s <a href=https://code.google.com/p/sb2-js/>sb2.js</a>. It would have more bugs if not for <a href=https://github.com/trumank>Truman</a> and <a href=https://github.com/tjvr>Tim</a>. It uses the <a href=https://stuk.github.io/jszip/>JSZip</a> library, created by <a href=https://github.com/stuk>Stuart Knightley</a>, <a href=https://github.com/dduponchel>David Duponchel</a>, Franz Buchinger, and <a href=https://github.com/aadsm>António Afonso</a>, to read <code>.sb2</code> and <code>.sb3</code> files, and the <a href=https://github.com/canvg/canvg>canvg</a> library to render SVGs in <code>&lt;canvas&gt;</code> elements.</p>
+
       <h1>Code</h1>
       <p>The source code for this phosphorus fork is available <a href=https://github.com/GarboMuffin/phosphorus>on GitHub</a>.</p>
     </section>
@@ -201,9 +202,11 @@
 
       show(id);
       projectLink.href = P.player.projectURL;
-      updateBugLink();
       P.player.load(id)
-        .then((stage) => P.player.start(stage));
+        .then((stage) => {
+          P.player.start(stage)
+          updateBugLink();
+        });
       // updatePackageLink();
       // updateEmbedCode();
     }
@@ -285,6 +288,7 @@
           }
         }).then((stage) => {
           P.player.start(stage);
+          updateBugLink();
         });
     });
 
