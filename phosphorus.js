@@ -2721,7 +2721,6 @@ P.sb2 = (function(sb2) {
     P.IO.progressHooks.new();
 
     var image = new Image();
-    image.src = url;
     image.crossOrigin = 'anonymous';
 
     return new Promise((resolve, reject) => {
@@ -2732,6 +2731,7 @@ P.sb2 = (function(sb2) {
       image.onerror = function(err) {
         reject(err);
       };
+      image.src = url;
     });
   };
 
