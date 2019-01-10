@@ -214,7 +214,7 @@ P.player = (function() {
     var id = P.player.projectId || '(no id)';
     var title = encodeURIComponent(P.player.projectTitle || P.player.projectURL || "Project Bug");
     var baseBody = '\n\n\n----\nProject URL: ' + url + '\nProject ID: ' + id + '\n' + location.href + '\n' + navigator.userAgent + '\n';
-    return 'https://github.com/GarboMuffin/phosphorus/issues/new?title=' + title + '&body=' + encodeURIComponent(before + baseBody + after) + '&labels=bug';
+    return 'https://github.com/forkphorus/forkphorus.github.io/issues/new?title=' + title + '&body=' + encodeURIComponent(before + baseBody + after) + '&labels=bug';
   }
 
   function showError(e) {
