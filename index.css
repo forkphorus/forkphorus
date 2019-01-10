@@ -66,6 +66,15 @@ a:visited {
 a:active {
   color: #03a;
 }
+body.dark a {
+  color: #4af;
+}
+body.dark a:visited {
+  color: #b381ef;
+}
+body.dark a:active {
+  color: #58f;
+}
 
 .dropdown {
   display: inline-block;
