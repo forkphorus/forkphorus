@@ -141,6 +141,7 @@ P.utils = (function(exports) {
   }
 
   exports.createContinuation = function(source) {
+    // TODO: make understandable
     var result = '(function() {\n';
     var brackets = 0;
     var delBrackets = 0;
@@ -412,7 +413,7 @@ P.core = (function(core) {
           x: stage.defaultWatcherX,
           y: stage.defaultWatcherY,
           target: this,
-          label: (watcher.target === stage ? '' : watcher.target.objName + ': ') + name,
+          label: (this.isStage ? '' : this.objName + ': ') + name,
           param: name,
         }, stage);
         stage.defaultWatcherY += 26;
@@ -2021,7 +2022,7 @@ P.sb3 = (function() {
           target.vars = variables;
           sounds.forEach((sound) => target.addSound(sound));
           if (data.isStage) {
-
+            target.broadcastReferences = data.broadcasts;
           } else {
             target.scratchX = x;
             target.scratchY = y;
@@ -2033,7 +2034,7 @@ P.sb3 = (function() {
             target.visible = visible;
           }
 
-          P.sb3.compiler.compile(target, data);
+          target.sb3data = data;
 
           return target;
         });
@@ -2045,6 +2046,7 @@ P.sb3 = (function() {
           const sprites = targets.filter((i) => i instanceof P.core.Sprite);
           const stage = targets.filter((i) => i instanceof P.core.Stage)[0];
           sprites.forEach((sprite) => sprite.stage = stage);
+          targets.forEach((base) => P.sb3.compiler.compile(base, base.sb3data));
           stage.children = sprites;
           stage.updateBackdrop();
           return stage;
@@ -2200,6 +2202,16 @@ P.sb3.compiler = (function() {
       }
       currentTarget.listeners.whenIReceive[optionId].push(f);
     },
+    event_whenkeypressed(block, f) {
+      const key = block.fields.KEY_OPTION[0];
+      if (key === 'any') {
+        for (var i = 128; i--;) {
+          currentTarget.listeners.whenKeyPressed[i].push(f);
+        }
+      } else {
+        currentTarget.listeners.whenKeyPressed[P.utils.getKeyCode(key)].push(f);
+      }
+    },
 
     // Control
     control_start_as_clone(block, f) {
@@ -2215,9 +2227,6 @@ P.sb3.compiler = (function() {
     },
 
     // Operators
-    operator_add(block) {
-      return '(' + compileExpression(block.inputs.NUM1) + ' + ' + compileExpression(block.inputs.NUM2) + ')';
-    },
     operator_random(block) {
       const from = block.inputs.FROM;
       const to = block.inputs.TO;
@@ -2233,14 +2242,44 @@ P.sb3.compiler = (function() {
       const operand2 = block.inputs.OPERAND2;
       return compileExpression(operand1) + ' && ' + compileExpression(operand2);
     },
+    operator_not(block) {
+      const operand = block.inputs.OPERAND;
+      return '!(' + compileExpression(operand) + ')';
+    },
     operator_equals(block) {
       const operand1 = block.inputs.OPERAND1;
       const operand2 = block.inputs.OPERAND2;
       return compileExpression(operand1) + ' === ' + compileExpression(operand2);
     },
-    operator_not(block) {
-      const operand = block.inputs.OPERAND;
-      return '!(' + compileExpression(operand) + ')';
+    operator_lt(block) {
+      const operand1 = block.inputs.OPERAND1;
+      const operand2 = block.inputs.OPERAND2;
+      return 'numLess(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ')';
+    },
+    operator_gt(block) {
+      const operand1 = block.inputs.OPERAND1;
+      const operand2 = block.inputs.OPERAND2;
+      return 'numGreater(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ')';
+    },
+    operator_subtract(block) {
+      const num1 = block.inputs.NUM1;
+      const num2 = block.inputs.NUM2;
+      return '(' + compileExpression(num1) + ' - ' + compileExpression(num2) + ' || 0)';
+    },
+    operator_add(block) {
+      const num1 = block.inputs.NUM1;
+      const num2 = block.inputs.NUM2;
+      return '(' + compileExpression(num1) + ' + ' + compileExpression(num2) + ' || 0)';
+    },
+    operator_multiply(block) {
+      const num1 = block.inputs.NUM1;
+      const num2 = block.inputs.NUM2;
+      return '(' + compileExpression(num1) + ' * ' + compileExpression(num2) + ' || 0)';
+    },
+    operator_divide(block) {
+      const num1 = block.inputs.NUM2;
+      const num2 = block.inputs.NUM2;
+      return '(' + compileExpression(num1) + ' / ' + compileExpression(num2) + ' || 0)';
     },
 
     // Sensing
@@ -2261,18 +2300,51 @@ P.sb3.compiler = (function() {
       const object = block.fields.TOUCHINGOBJECTMENU;
       return '"' + sanitize(object[0]) + '"';
     },
+    sensing_keypressed(block) {
+      const key = block.inputs.KEY_OPTION;
+      return '!!self.keys[P.utils.getKeyCode(' + compileExpression(key) + ')]';
+    },
+    sensing_keyoptions(block) {
+      const key = block.fields.KEY_OPTION[0];
+      return '"' + sanitize(key) + '"';
+    },
+    sensing_answer(block) {
+      return 'self.answer';
+    },
 
     // Motion
-    motion_xposition() {
+    motion_xposition(block) {
       return 'S.scratchX';
     },
-    motion_yposition() {
+    motion_yposition(block) {
       return 'S.scratchY';
+    },
+    motion_goto_menu(block) {
+      const to = block.fields.TO[0];
+      return '"' + sanitize(to) + '"';
+    },
+    motion_pointtowards_menu(block) {
+      const towards = block.fields.TOWARDS[0];
+      return '"' + sanitize(towards) + '"';
     },
 
     // Looks
     looks_costume(block) {
       return 'S.getCostumeName()';
+    },
+    looks_backdrops(block) {
+      const backdrop = block.fields.BACKDROP[0];
+      return '"' + sanitize(backdrop) + '"';
+    },
+    looks_costumenumbername(block) {
+      const name = block.fields.NUMBER_NAME[0];
+      if (name === 'number') {
+        return 'S.currentCostumeIndex + 1';
+      } else if (name === 'name') {
+        return 'S.costumes[S.currentCostumeIndex].name';
+      } else {
+        throw new Error('unknown costume: ' + name);
+      }
     },
 
     // Sounds
@@ -2295,6 +2367,11 @@ P.sb3.compiler = (function() {
       source += '}\n';
       source += 'restore();\n';
     },
+    event_broadcast(block) {
+      const input = block.inputs.BROADCAST_INPUT;
+      source += 'var threads = broadcast(' + compileExpression(input) + ');\n';
+      source += 'if (threads.indexOf(BASE) !== -1) {return;}\n';
+    },
 
     // Control
     control_forever(block) {
@@ -2315,6 +2392,15 @@ P.sb3.compiler = (function() {
       queue(id);
       source += '} else {\n';
       source += '  restore();\n';
+      source += '}\n';
+    },
+    control_repeat_until(block) {
+      const condition = block.inputs.CONDITION;
+      const substack = block.inputs.SUBSTACK[1];
+      const id = label();
+      source += 'if (!' + compileExpression(condition) + ') {\n'
+      compile(substack);
+      forceQueue(id);
       source += '}\n';
     },
     control_wait(block) {
@@ -2375,14 +2461,34 @@ P.sb3.compiler = (function() {
     // Motion
     motion_changexby(block) {
       const dx = block.inputs.DX;
-      visualCheck();
       source += 'S.moveTo(S.scratchX + ' + compileExpression(dx) + ', S.scratchY);\n';
+      visualCheck();
+    },
+    motion_changeyby(block) {
+      const dy = block.inputs.DY;
+      source += 'S.moveTo(S.scratchX, S.scratchY + ' + compileExpression(dy) + ');\n';
+      visualCheck();
+    },
+    motion_sety(block) {
+      const y = block.inputs.Y;
+      source += 'S.moveTo(S.scratchX, ' + compileExpression(y) + ');\n';
+      visualCheck();
+    },
+    motion_setx(block) {
+      const x = block.inputs.X;
+      source += 'S.moveTo(' + compileExpression(x) + ', S.scratchY);\n';
+      visualCheck();
     },
     motion_gotoxy(block) {
       const x = block.inputs.X;
       const y = block.inputs.Y;
       visualCheck();
       source += 'S.moveTo(' + compileExpression(x) + ', ' + compileExpression(y) + ');\n';
+    },
+    motion_goto(block) {
+      const to = block.inputs.TO;
+      source += 'S.gotoObject(' + compileExpression(to) + ');\n';
+      visualCheck();
     },
     motion_glidesecstoxy(block) {
       const secs = block.inputs.SECS;
@@ -2413,8 +2519,7 @@ P.sb3.compiler = (function() {
     },
     motion_setrotationstyle(block) {
       const style = block.fields.STYLE[0];
-      visualCheck();
-      // TODO: convert S.rotationStyle to an enum like
+      // TODO: convert S.rotationStyle to an enum-like
       if (style === "normal") {
         source += 'S.rotationStyle = "normal";\n';
       } else if (style === 'left-right') {
@@ -2424,17 +2529,34 @@ P.sb3.compiler = (function() {
       } else {
         throw new Error('unknown rotation style: ' + style)
       }
+      visualCheck();
+    },
+    motion_turnright(block) {
+      const degrees = block.inputs.DEGREES;
+      source += 'S.setDirection(S.direction + ' + compileExpression(degrees) + ');\n';
+      visualCheck();
+    },
+    motion_turnleft(block) {
+      const degrees = block.inputs.DEGREES;
+      source += 'S.setDirection(S.direction - ' + compileExpression(degrees) + ');\n';
+      visualCheck();
+    },
+    motion_pointtowards(block) {
+      const towards = block.inputs.TOWARDS;
+      source += 'S.pointTowards(' + compileExpression(towards) + ');\n';
+      visualCheck();
     },
 
     // Looks
-    looks_seteffectto(block) {
-      const effect = block.fields.EFFECT[0];
-      const value = block.inputs.VALUE;
-      source += 'S.setFilter("' + effect + '", ' + compileExpression(value) + ');\n';
-    },
     looks_switchcostumeto(block) {
       const costume = block.inputs.COSTUME;
       source += 'S.setCostume(' + compileExpression(costume) + ');\n';
+      visualCheck();
+    },
+    looks_switchbackdropto(block) {
+      const backdrop = block.inputs.BACKDROP;
+      source += 'self.setCostume(' + compileExpression(backdrop) + ');\n';
+      visualCheck();
     },
     looks_hide(block) {
       visualCheck();
@@ -2452,9 +2574,47 @@ P.sb3.compiler = (function() {
       source += 'var f = ' + compileExpression(size) + ' / 100;\n';
       source += 'S.scale = f < 0 ? 0 : f;\n';
     },
+    looks_changesizeby(block) {
+      const change = block.inputs.CHANGE;
+      source += 'var f = S.scale + ' + compileExpression(change) + ' / 100;\n';
+      source += 'S.scale = f < 0 ? 0 : f;\n';
+    },
     looks_nextcostume(block) {
       visualCheck();
       source += 'S.showNextCostume();\n';
+    },
+    looks_seteffectto(block) {
+      const effect = block.fields.EFFECT[0];
+      const value = block.inputs.VALUE;
+      source += 'S.setFilter("' + sanitize(effect) + '", ' + compileExpression(value) + ');\n';
+      visualCheck();
+    },
+    looks_changeeffectby(block) {
+      const effect = block.fields.EFFECT[0];
+      const change = block.inputs.CHANGE;
+      source += 'S.changeFilter("' + sanitize(effect) + '", ' + compileExpression(change) + ');\n';
+      visualCheck();
+    },
+    looks_cleargraphiceffects(block) {
+      source += 'S.resetFilters();\n';
+    },
+    looks_gotofrontback(block) {
+      const frontBack = block.fields.FRONT_BACK[0];
+      source += 'var i = self.children.indexOf(S);\n';
+      source += 'if (i !== -1) self.children.splice(i, 1);\n';
+      if (frontBack === 'front') {
+        source += 'self.children.push(S);\n';
+      } else if (frontBack === 'back') {
+        source += 'self.children.unshift(S);\n';
+      }
+    },
+    looks_say(block) {
+      const message = block.inputs.MESSAGE;
+      source += 'S.say(' + compileExpression(message) + ', false);\n';
+    },
+    looks_think(block) {
+      const message = block.inputs.MESSAGE;
+      source += 'S.say(' + compileExpression(message) + ', true);\n';
     },
 
     // Sounds
@@ -2473,6 +2633,25 @@ P.sb3.compiler = (function() {
       source += '  playSound(sound);\n';
       source += '}\n';
     },
+
+    // Sensing
+    sensing_askandwait(block) {
+      const question = block.inputs.QUESTION;
+      source += 'R.id = self.nextPromptId++;\n';
+      // 1 - wait until we are next up for the asking
+      const id1 = label();
+      source += 'if (self.promptId < R.id) {\n';
+      forceQueue(id1);
+      source += '}\n';
+
+      source += 'S.ask(' + compileExpression(question) + ');\n';
+      // 2 - wait until the prompt has been answered
+      const id2 = label();
+      source += 'if (self.promptId === R.id) {\n';
+      forceQueue(id2);
+      source += '}\n';
+    },
+
     // Data
     data_setvariableto(block) {
       const variableId = block.fields.VARIABLE[1];
@@ -2557,7 +2736,9 @@ P.sb3.compiler = (function() {
         .replace('\'', '\\\'')
         .replace('"', '\\"')
         .replace('\n', '\\n')
-        .replace('\r', '\\r');
+        .replace('\r', '\\r')
+        .replace(/\{/g, '\\x7b')
+        .replace(/\}/g, '\\x7d');
     } else if (typeof thing === 'number') {
       return thing.toString();
     } else {
@@ -2578,10 +2759,10 @@ P.sb3.compiler = (function() {
     source += 'restore();\n';
   }
   function variableReference(id) {
-    if (id in currentTarget.vars) {
-      return 'S.vars[' + compileExpression(id) + ']';
+    if (id in currentTarget.stage.vars) {
+      return 'self.vars[' + compileExpression(id) + ']';
     }
-    return 'self.vars[' + compileExpression(id) + ']';
+    return 'S.vars[' + compileExpression(id) + ']';
   }
 
   ///
@@ -2613,7 +2794,7 @@ P.sb3.compiler = (function() {
         return variableReference(constant[2]);
 
       case PRIMATIVE_TYPES.BROADCAST:
-        return 'self.broadcasts[' + compileExpression(constant[2]) + ']';
+        return compileExpression(constant[2]);
 
       case PRIMATIVE_TYPES.LIST:
       default:
@@ -2649,6 +2830,10 @@ P.sb3.compiler = (function() {
   function compileExpression(expression) {
     // Expressions are also known as inputs.
 
+    if (!expression) {
+      throw new Error('invalid expression');
+    }
+
     if (typeof expression === 'string') {
       return '"' + sanitize(expression) + '"';
     }
@@ -2668,7 +2853,7 @@ P.sb3.compiler = (function() {
     const compiler = expressionLibrary[opcode];
     if (!compiler) {
       console.warn('unknown expression', opcode, block);
-      return;
+      return '""';
     }
     const result = compiler(block);
     if (P.config.debug) {
@@ -2697,7 +2882,7 @@ P.sb3.compiler = (function() {
     if (!(topLevelOpCode in topLevelLibrary)) {
       // Warning can be caused by a top level block being anything other than a listener.
       // Most projects have at least 1 dangling block like that.
-      // console.warn('unknown top level block', topLevelOpCode, topBlock);
+      console.warn('unknown top level block', topLevelOpCode, topBlock);
       return;
     }
 
@@ -4817,7 +5002,10 @@ P.runtime = (function() {
     } else if (event === 'whenGreenFlag') {
       threads = sprite.listeners.whenGreenFlag;
     } else if (event === 'whenIReceive') {
-      threads = sprite.listeners.whenIReceive[('' + arg).toLowerCase()];
+      // Scratch 2 compiler uses case insensitive broadcast names
+      // while scratch 3 compiler currently uses case sensitive IDs (to change)
+      arg = arg.toString();
+      threads = sprite.listeners.whenIReceive[arg] || sprite.listeners.whenIReceive[arg.toLowerCase()];
     } else if (event === 'whenKeyPressed') {
       threads = sprite.listeners.whenKeyPressed[arg];
     } else if (event === 'whenSceneStarts') {
@@ -4988,7 +5176,7 @@ P.runtime = (function() {
       {top:83,name:'AcousticGuitar_F3',baseRatio:0.3977272727272727,loop:true,loopStart:1.6628117913832199,loopEnd:1.6685260770975057,attackEnd:0,holdEnd:0,decayEnd:5.5},
       {top:128,name:'AcousticGuitar_F3',baseRatio:0.3977272727272727,loop:true,loopStart:1.6628117913832199,loopEnd:1.6685260770975057,attackEnd:0,holdEnd:0,decayEnd:4.5}
     ], [
-      {top:40,name:'ElectricGuitar_F3',baseRatio:0.39615522817103843,loop:true,loopStart:1.5733333333333333,loopEnd:1.5848072562358277,attackEnd:0,holdEnd:0,decayEnd:15},
+      {top:40,name:'ElectricGuitar_F3',baseRatio:0.39615522817103843,loop:true,loopStart:1.5733333333333333,loopEnd:1.5848072562358,attackEnd:0,holdEnd:0,decayEnd:15},
       {top:56,name:'ElectricGuitar_F3',baseRatio:0.39615522817103843,loop:true,loopStart:1.5733333333333333,loopEnd:1.5848072562358277,attackEnd:0,holdEnd:0,decayEnd:13.5},
       {top:60,name:'ElectricGuitar_F3',baseRatio:0.39615522817103843,loop:true,loopStart:1.5733333333333333,loopEnd:1.5848072562358277,attackEnd:0,holdEnd:0,decayEnd:12},
       {top:67,name:'ElectricGuitar_F3',baseRatio:0.39615522817103843,loop:true,loopStart:1.5733333333333333,loopEnd:1.5848072562358277,attackEnd:0,holdEnd:0,decayEnd:8.5},
