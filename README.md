@@ -1,5 +1,5 @@
-# phosphorus
+# [forkphorus](https://forkphorus.github.io/)
 
-[garbomuffin.github.io/phosphorus](https://garbomuffin.github.io/phosphorus/)
+A JavaScript compiler for Scratch projects. forkphorus is a *fork* of phos*phorus* that aims to be better in almost every way.
 
-A JavaScript compiler for Scratch projects. This fork aims to improve upon phosphorus since the original seems to be unmaintained.
+forkphorus tries to pick up where phosphorus left off by fixing many long standing issues and adding Scratch 3 project support. (early support is already available)
