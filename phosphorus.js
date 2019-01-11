@@ -1878,7 +1878,7 @@ P.IO = (function(IO) {
       };
 
       fileReader.onerror = function(err) {
-        reject(err);
+        reject('Failed to load file');
       };
 
       fileReader.onprogress = function(progress) {
@@ -1926,7 +1926,7 @@ P.sb3 = (function() {
 
             return new Promise((resolve, reject) => {
               image.onload = () => resolve(image);
-              image.onerror = (err) => reject(err);
+              image.onerror = (err) => reject("Failed to load SVG image");
               image.src = 'data:image/svg+xml;base64,' + btoa(source);
             });
         });
@@ -2095,7 +2095,7 @@ P.sb3 = (function() {
             };
             image.onerror = function(error) {
               P.IO.progressHooks.error(error);
-              reject(error);
+              reject('Failed to load image: ' + path + '.' + format);
             };
             image.src = 'data:image/' + format + ';base64,' + imageData;
           });
@@ -2142,7 +2142,7 @@ P.sb3 = (function() {
         };
         image.onerror = function(err) {
           P.IO.progressHooks.error(err);
-          reject(err);
+          reject('Failed to load iamge');
         };
         image.crossOrigin = 'anonymous';
         image.src = ASSETS_API.replace('$path', path);
@@ -2937,7 +2937,7 @@ P.sb2 = (function(sb2) {
         resolve(image);
       };
       image.onerror = function(err) {
-        reject(err);
+        reject('Failed to load image');
       };
       image.src = url;
     });
@@ -3175,8 +3175,12 @@ P.sb2 = (function(sb2) {
         ignoreAnimation: true,
         ignoreClear: true,
         renderCallback: function() {
+          if (canvas.width === 0 || canvas.height === 0) {
+            resolve(new Image());
+            return;
+          }
           image.onload = () => resolve(image);
-          image.onerror = (err) => reject(err);
+          image.onerror = (err) => {debugger;reject('Failed to load SVG')};
           image.src = canvas.toDataURL();
         }
       });
