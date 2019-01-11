@@ -3180,7 +3180,7 @@ P.sb2 = (function(sb2) {
             return;
           }
           image.onload = () => resolve(image);
-          image.onerror = (err) => {debugger;reject('Failed to load SVG')};
+          image.onerror = (err) => reject('Failed to load SVG');
           image.src = canvas.toDataURL();
         }
       });
