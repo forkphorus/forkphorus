@@ -18,7 +18,7 @@
 
     <div class=area id=title-area>
       <h1 class=title>forkphorus</h1>
-      <p>forkphorus runs your Scratch projects really fast by compiling them to JavaScript. Try it out by pasting a URL or project ID into the field below, by dropping a project file on the page, or <a class=dropdown>by choosing an example<select id=examples>
+      <p>forkphorus runs Scratch projects really fast by compiling them to JavaScript. Try it out by pasting a project ID or URL into the field below, by <a class="upload-button">uploading<input id="upload-file-input" type="file" autocomplete="off" accept=".sb2,.sb3"></a> or dropping a project file on the page, or <a class=dropdown>by choosing an example<select id=examples>
         <option value></option>
         <option value=276660763>Scratch 3.0 is here! by ScratchCat (3.0 project)</option>
         <option value=11397100>3D Remix by DadOfMrLog</option>
@@ -111,7 +111,7 @@
   (function() {
     'use strict';
 
-    var prefix = 'https://scratch.mit.edu/projects/';
+    var PROJECT_PREFIX = 'https://scratch.mit.edu/projects/';
 
     var initialId = location.hash.substr(1);
     if (initialId[0] === '.') initialId = '';
@@ -128,12 +128,14 @@
 
     var examples = document.querySelector('#examples');
     var urlInput = document.querySelector('.url');
-    urlInput.value = prefix + initialId;
+    urlInput.value = PROJECT_PREFIX + initialId;
 
     var progressBar = document.querySelector('.progress-bar');
     var player = document.querySelector('.player');
     var projectLink = document.querySelector('.project-link');
     var bugLink = document.querySelector('#bug-link');
+
+    var uploadFileInput = document.querySelector('#upload-file-input');
 
     // var packageLink = document.querySelector('#package-link');
     // var packageTurbo = document.querySelector('#package-turbo');
@@ -154,8 +156,8 @@
         id.splice(id.indexOf(P.player.projectId), 1);
       }
       id = id[0];
-      urlInput.value = url = prefix + id;
-      urlInput.selectionStart = urlInput.selectionEnd = Math.max(prefix.length, ss);
+      urlInput.value = url = PROJECT_PREFIX + id;
+      urlInput.selectionStart = urlInput.selectionEnd = Math.max(PROJECT_PREFIX.length, ss);
       clearTimeout(timeout);
       if (P.player.projectId !== id) {
         timeout = setTimeout(function() {
@@ -182,9 +184,9 @@
       var id = location.hash.substr(1);
       if (id[0] !== '.') {
         if (+id !== +id) id = '';
-        urlInput.value = prefix + id;
+        urlInput.value = PROJECT_PREFIX + id;
       }
-      load(id);
+      loadProject(id);
     });
 
     function show(id) {
@@ -194,7 +196,7 @@
       if (!id) urlInput.focus();
     }
 
-    function load(id) {
+    function loadProject(id) {
 
       if (id === '' || id[0] === '.') {
         return;
@@ -207,21 +209,18 @@
           P.player.start(stage)
           updateBugLink();
         });
-      // updatePackageLink();
-      // updateEmbedCode();
     }
 
     function updateBugLink() {
       bugLink.href = P.player.createBugLink('Please describe the issue below. Please be specific, descriptions like "it doesnt work" are not helpful.', '');
     }
 
+    // TODO: bring back packaging and embedding
     // function updatePackageLink() {
     //   packageLink.href = P.player.projectId ? '/app.html?id=' + P.player.projectId + '&turbo=' + packageTurbo.checked + '&full-screen=' + packageFullScreen.checked : 'about:blank';
     // }
-
     // packageTurbo.addEventListener('change', updatePackageLink);
     // packageFullScreen.addEventListener('change', updatePackageLink);
-
     // function updateEmbedCode(e) {
     //   embedCode.value = P.player.projectId ? '<script src=https://' + location.host + '/embed.js?id=' + P.player.projectId + (embedHideControls.checked ? '&ui=false' : '&auto-start=' + embedAutoStart.checked + '&light-content=' + embedLightContent.checked) + '></' + 'script>' : '';
     //   embedAutoStart.disabled =
@@ -229,38 +228,50 @@
     //   if (embedHideControls.checked) embedAutoStart.checked = true;
     //   if (e) embedCode.focus();
     // }
-
     // function selectEmbedCode() {
     //   setTimeout(function() {
     //     embedCode.select();
     //   });
     // }
-
     // embedCode.addEventListener('focus', selectEmbedCode);
     // embedCode.addEventListener('click', selectEmbedCode);
     // embedHideControls.addEventListener('change', updateEmbedCode);
     // embedAutoStart.addEventListener('change', updateEmbedCode);
     // embedLightContent.addEventListener('change', updateEmbedCode);
 
-    setTimeout(function() {
-      function setTransition(el) {
-        el.style.WebkitTransition =
-          el.style.MozTransition =
-          el.style.OTransition =
-          el.style.transition = 'height 0.2s';
-      }
-      setTransition(titleArea);
-      setTransition(playerArea);
-      setTransition(projectArea);
-    });
+    // Add transitions to certain elements
+    // TODO: move to CSS?
+    function addTransition(el) {
+      el.style.WebkitTransition =
+        el.style.MozTransition =
+        el.style.OTransition =
+        el.style.transition = 'height 0.2s';
+    }
+    addTransition(titleArea);
+    addTransition(playerArea);
+    addTransition(projectArea);
 
+    // File loading
     function cancel(e) {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'copy';
     }
+    function loadProjectBuffer(buffer, ext) {
+      function startLoad() {
+        if (ext === 'sb2') {
+          return P.sb2.loadSB2Project(buffer);
+        } else if (ext === 'sb3') {
+          const loader = new P.sb3.SB3FileLoader(buffer);
+          return loader.load();
+        }
+      }
+      startLoad().then((stage) => {
+        P.player.start(stage);
+        updateBugLink();
+      });
+    }
     document.body.addEventListener('dragover', cancel);
     document.body.addEventListener('dragenter', cancel);
-
     document.body.addEventListener('drop', function(e) {
       e.preventDefault();
 
@@ -278,33 +289,33 @@
       P.player.projectId = 'local ' + ext;
       location.hash = '.' + ext;
 
-      P.IO.fileAsArrayBuffer(f)
-        .then((buffer) => {
-          if (ext === 'sb2') {
-            return P.sb2.loadSB2Project(buffer);
-          } else if (ext === 'sb3') {
-            const loader = new P.sb3.SB3FileLoader(buffer);
-            return loader.load();
-          }
-        }).then((stage) => {
-          P.player.start(stage);
-          updateBugLink();
-        });
+      P.IO.fileAsArrayBuffer(f).then((buffer) => loadProjectBuffer(buffer, ext));
+    });
+    uploadFileInput.addEventListener('change', function(e) {
+      var files = e.target.files;
+      if (files[0]) {
+        var ext = files[0].name.split('.').pop();
+        show('.' + ext);
+        P.IO.fileAsArrayBuffer(files[0]).then((buffer) => loadProjectBuffer(buffer, ext));
+      }
     });
 
+
+    // Dark Mode
     function toggleDark(dark) {
       document.body.classList.toggle('dark', dark);
       localStorage.setItem('userPrefersDark', document.body.classList.contains('dark'));
     }
-
-    document.querySelector('.theme-select a').onclick = function() {
+    document.querySelector('.theme-select a').addEventListener("click", function() {
       toggleDark();
-    };
+    });
     if (localStorage.getItem('userPrefersDark') === 'true') {
       toggleDark(true);
     }
 
-    load(initialId);
+    // Load any initial project
+
+    loadProject(initialId);
 
   }());
 
