@@ -2188,7 +2188,7 @@ P.sb3.compiler = (function() {
   The main difference is that inputs can change at runtime while fields cannot.
   For example in the block `set [ghost] effect to [100]` ghost is a field (cannot change) and 100 is an input (can change).
   (In Scratch 2 'ghost' was an input and thus could be changed programatically, this is no longer the case)
-  Fields are a new concept in Scratch 3, in Scratch 2 everything was effectively an input.
+  Fields as a specific datatype are new to Scratch 3, however there were inputs that acted like fields in Scratch 2. (see the stop block, its input cannot be a block)
   */
 
   const topLevelLibrary = {
@@ -2285,6 +2285,26 @@ P.sb3.compiler = (function() {
       const num2 = block.inputs.NUM2;
       return '(' + compileExpression(num1) + ' / ' + compileExpression(num2) + ' || 0)';
     },
+    operator_join(block) {
+      const string1 = block.inputs.STRING1;
+      const string2 = block.inputs.STRING2;
+      return '( "" + ' + compileExpression(string1) + ' + ' + compileExpression(string2) + ')';
+    },
+    operator_mathop(block) {
+      const operator = block.fields.OPERATOR[0];
+      const num = block.inputs.NUM;
+      // TODO: inline the function when possible for performance gain?
+      return 'mathFunc("' + sanitize(operator) + '", ' + compileExpression(num) + ')';
+    },
+    operator_round(block) {
+      const num = block.inputs.NUM;
+      return 'Math.round(' + compileExpression(num) + ')';
+    },
+    operator_length(block) {
+      const string = block.inputs.STRING;
+      // TODO: parenthesis important?
+      return '("" + ' + compileExpression(string) + ').length';
+    },
 
     // Sensing
     sensing_mousedown(block) {
@@ -2314,6 +2334,10 @@ P.sb3.compiler = (function() {
     },
     sensing_answer(block) {
       return 'self.answer';
+    },
+    sensing_username(block) {
+      // TODO: let the user pick a username
+      return '""';
     },
 
     // Motion
@@ -2459,6 +2483,25 @@ P.sb3.compiler = (function() {
       source += '    }\n';
       source += '  }\n';
       source += '  return;\n';
+      source += '}\n';
+    },
+    control_stop(block) {
+      const option = block.fields.STOP_OPTION[0];
+      source += 'switch (' + compileExpression(option) + ') {\n';
+      source += '  case "all":\n';
+      source += '    self.stopAll();\n';
+      source += '    return;\n';
+      source += '  case "this script":\n';
+      source += '    endCall();\n';
+      source += '    return;\n';
+      source += '  case "other scripts in sprite":\n';
+      source += '  case "other scripts in stage":\n';
+      source += '    for (var i = 0; i < self.queue.length; i++) {\n';
+      source += '      if (i !== THREAD && self.queue[i] && self.queue[i].sprite === S) {\n';
+      source += '        self.queue[i] = undefined;\n';
+      source += '      }\n';
+      source += '    }\n';
+      source += '    break;\n';
       source += '}\n';
     },
 
@@ -2654,6 +2697,9 @@ P.sb3.compiler = (function() {
       source += 'if (self.promptId === R.id) {\n';
       forceQueue(id2);
       source += '}\n';
+    },
+    sensing_resettimer(blocK) {
+      source += 'self.timerStart = self.now;\n';
     },
 
     // Data
