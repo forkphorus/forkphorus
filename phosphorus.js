@@ -2769,14 +2769,15 @@ P.sb3.compiler = (function() {
   /// Compiling Functions
   ///
 
-  // Compiles a constant expression to a JavaScript string
-  function compileConstant(constant) {
-    // Constants are arrays.
-    // The first value is the type of the constant, see PRIMATIVE_TYPES
+  // Compiles a native expression (number, string, data) to a JavaScript string
+  function compileNative(constant) {
+    // Natives are arrays.
+    // The first value is the type of the native, see PRIMATIVE_TYPES
     // TODO: use another library instead?
     const type = constant[0];
 
     switch (type) {
+      // These all function as numbers. They are only differentiated so the editor be more helpful.
       case PRIMATIVE_TYPES.MATH_NUM:
       case PRIMATIVE_TYPES.POSITIVE_NUM:
       case PRIMATIVE_TYPES.WHOLE_NUM:
@@ -2785,11 +2786,12 @@ P.sb3.compiler = (function() {
       case PRIMATIVE_TYPES.COLOR_PICKER:
         return +constant[1];
 
+      // String
       case PRIMATIVE_TYPES.TEXT:
         return '"' + sanitize(constant[1]) + '"';
 
       case PRIMATIVE_TYPES.VAR:
-        // For variable constants the second item is the name of the variable
+        // For variable natives the second item is the name of the variable
         // and the third is the ID of the variable. We only care about the ID.
         return variableReference(constant[2]);
 
@@ -2849,8 +2851,8 @@ P.sb3.compiler = (function() {
     }
 
     if (Array.isArray(expression[1])) {
-      const constant = expression[1];
-      return compileConstant(constant);
+      const native = expression[1];
+      return compileNative(native);
     }
 
     const id = expression[1];
