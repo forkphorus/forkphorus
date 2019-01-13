@@ -2375,14 +2375,14 @@ P.sb3.compiler = (function() {
 
     // Control
     control_forever(block) {
-      const substack = block.inputs.SUBSTACK[1];
+      const substack = block.inputs.SUBSTACK;
       const id = label();
-      compile(substack);
+      compileSubstack(substack);
       forceQueue(id);
     },
     control_repeat(block) {
       const times = block.inputs.TIMES;
-      const substack = block.inputs.SUBSTACK[1];
+      const substack = block.inputs.SUBSTACK;
       source += 'save();\n';
       source += 'R.count = ' + compileExpression(times) + ';\n';
       const id = label();
@@ -2396,10 +2396,10 @@ P.sb3.compiler = (function() {
     },
     control_repeat_until(block) {
       const condition = block.inputs.CONDITION;
-      const substack = block.inputs.SUBSTACK[1];
+      const substack = block.inputs.SUBSTACK;
       const id = label();
       source += 'if (!' + compileExpression(condition) + ') {\n'
-      compile(substack);
+      compileSubstack(substack);
       forceQueue(id);
       source += '}\n';
     },
@@ -2429,19 +2429,19 @@ P.sb3.compiler = (function() {
     },
     control_if(block) {
       const condition = block.inputs.CONDITION;
-      const substack = block.inputs.SUBSTACK[1];
+      const substack = block.inputs.SUBSTACK;
       source += 'if (' + compileExpression(condition) + ') {\n';
-      compile(substack);
+      compileSubstack(substack);
       source += '}\n';
     },
     control_if_else(block) {
       const condition = block.inputs.CONDITION;
-      const substack1 = block.inputs.SUBSTACK[1];
-      const substack2 = block.inputs.SUBSTACK2[1];
+      const substack1 = block.inputs.SUBSTACK;
+      const substack2 = block.inputs.SUBSTACK2;
       source += 'if (' + compileExpression(condition) + ') {\n';
-      compile(substack1);
+      compileSubstack(substack1);
       source += '} else {\n';
-      compile(substack2);
+      compileSubstack(substack2);
       source += '}\n';
     },
     control_delete_this_clone(block) {
@@ -2824,6 +2824,13 @@ P.sb3.compiler = (function() {
       }
       block = blocks[block.next];
     }
+  }
+
+  function compileSubstack(substack) {
+    if (!substack) {
+      return;
+    }
+    compile(substack[1]);
   }
 
   // Returns a compiled expression as a JavaScript string.
