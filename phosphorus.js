@@ -30,7 +30,8 @@ P.config = {
   scale: window.devicePixelRatio || 1,
   hasTouchEvents: 'ontouchstart' in document,
   framerate: 30,
-  debug: window.location.hostname === 'localhost' && window.location.search.includes("debug"),
+  debug: window.location.search.includes("debug"),
+  forcedLoader: null,
   // builtin instruments and their URL
   wavFiles: {
     'AcousticGuitar_F3': 'instruments/AcousticGuitar_F3_22k.wav',
@@ -267,6 +268,9 @@ P.utils = (function(exports) {
 
   // Determines the likely type of a project based on its ID.
   exports.likelyProjectType = function(id) {
+    if (P.config.forcedLoader) {
+      return P.config.forcedLoader;
+    }
     if (id >= SB3_TRANSITION) {
       return 3;
     } else {
