@@ -13,10 +13,11 @@
 .progress-bar.error {
   background: #eaa;
 }
-body.dark .progress-bar {
+
+.dark .progress-bar {
   background: #234;
 }
-body.dark .progress-bar.error {
+.dark .progress-bar.error {
   background: #411;
 }
 
@@ -35,7 +36,7 @@ body.dark .progress-bar.error {
   text-decoration: none;
   background-position-y: 0;
 }
-body.dark .controls span {
+.dark .controls span {
   background-position-y: 64px;
 }
 .controls .flag {
@@ -92,10 +93,11 @@ body.dark .controls span {
 .internal-error a {
   color: rgb(100, 0, 0);
 }
-body.dark .internal-error {
+
+.dark .internal-error {
   color: rgb(255, 91, 91);
 }
-body.dark .internal-error a {
+.dark .internal-error a {
   color: rgb(210, 24, 24);
 }
 

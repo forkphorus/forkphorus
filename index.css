@@ -5,9 +5,10 @@ body {
   font-weight: 300;
 }
 
-body.dark {
+.dark {
   background-color: #111;
   color: #ddd;
+  scrollbar-color: #444 #222;
 }
 
 #app {
@@ -41,10 +42,10 @@ body.dark {
   color: #000;
 }
 
-body.dark .url {
+.dark .url {
   color: rgba(255, 255, 255, .4);
 }
-body.dark .url:focus {
+.dark .url:focus {
   color: #fff;
 }
 
@@ -66,13 +67,13 @@ a:visited {
 a:active {
   color: #03a;
 }
-body.dark a {
+.dark a {
   color: #4af;
 }
-body.dark a:visited {
+.dark a:visited {
   color: #b381ef;
 }
-body.dark a:active {
+.dark a:active {
   color: #58f;
 }
 

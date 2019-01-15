@@ -303,8 +303,8 @@
 
     // Dark Mode
     function toggleDark(dark) {
-      document.body.classList.toggle('dark', dark);
-      localStorage.setItem('userPrefersDark', document.body.classList.contains('dark'));
+      document.documentElement.classList.toggle('dark', dark);
+      localStorage.setItem('userPrefersDark', document.documentElement.classList.contains('dark'));
     }
     document.querySelector('.theme-select a').addEventListener("click", function() {
       toggleDark();
