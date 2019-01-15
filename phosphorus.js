@@ -2239,12 +2239,12 @@ P.sb3.compiler = (function() {
     operator_or(block) {
       const operand1 = block.inputs.OPERAND1;
       const operand2 = block.inputs.OPERAND2;
-      return compileExpression(operand1) + ' || ' + compileExpression(operand2);
+      return '(' + compileExpression(operand1) + ' || ' + compileExpression(operand2) + ')';
     },
     operator_and(block) {
       const operand1 = block.inputs.OPERAND1;
       const operand2 = block.inputs.OPERAND2;
-      return compileExpression(operand1) + ' && ' + compileExpression(operand2);
+      return '(' + compileExpression(operand1) + ' && ' + compileExpression(operand2) + ')';
     },
     operator_not(block) {
       const operand = block.inputs.OPERAND;
@@ -2253,7 +2253,7 @@ P.sb3.compiler = (function() {
     operator_equals(block) {
       const operand1 = block.inputs.OPERAND1;
       const operand2 = block.inputs.OPERAND2;
-      return compileExpression(operand1) + ' === ' + compileExpression(operand2);
+      return '(' + compileExpression(operand1) + ' === ' + compileExpression(operand2) + ')';
     },
     operator_lt(block) {
       const operand1 = block.inputs.OPERAND1;
@@ -2281,9 +2281,14 @@ P.sb3.compiler = (function() {
       return '(' + compileExpression(num1) + ' * ' + compileExpression(num2) + ' || 0)';
     },
     operator_divide(block) {
-      const num1 = block.inputs.NUM2;
+      const num1 = block.inputs.NUM1;
       const num2 = block.inputs.NUM2;
-      return '(' + compileExpression(num1) + ' / ' + compileExpression(num2) + ' || 0)';
+      return '(' + compileExpression(num1, 'number') + ' / ' + compileExpression(num2, 'number') + ' || 0)';
+    },
+    operator_mod(block) {
+      const num1 = block.inputs.NUM1;
+      const num2 = block.inputs.NUM2;
+      return '(' + compileExpression(num1) + ' % ' + compileExpression(num2) + ' || 0)';
     },
     operator_join(block) {
       const string1 = block.inputs.STRING1;
@@ -2303,7 +2308,7 @@ P.sb3.compiler = (function() {
     operator_length(block) {
       const string = block.inputs.STRING;
       // TODO: parenthesis important?
-      return '("" + ' + compileExpression(string) + ').length';
+      return '(' + compileExpression(string, 'string') + ').length';
     },
 
     // Sensing
@@ -2355,10 +2360,14 @@ P.sb3.compiler = (function() {
       const towards = block.fields.TOWARDS[0];
       return '"' + sanitize(towards) + '"';
     },
+    motion_direction() {
+      return 'S.direction';
+    },
 
     // Looks
     looks_costume(block) {
-      return 'S.getCostumeName()';
+      const costume = block.fields.COSTUME;
+      return sanitize(costume[0], true);
     },
     looks_backdrops(block) {
       const backdrop = block.fields.BACKDROP[0];
@@ -2508,29 +2517,29 @@ P.sb3.compiler = (function() {
     // Motion
     motion_changexby(block) {
       const dx = block.inputs.DX;
-      source += 'S.moveTo(S.scratchX + ' + compileExpression(dx) + ', S.scratchY);\n';
+      source += 'S.moveTo(S.scratchX + ' + compileExpression(dx, 'number') + ', S.scratchY);\n';
       visualCheck();
     },
     motion_changeyby(block) {
       const dy = block.inputs.DY;
-      source += 'S.moveTo(S.scratchX, S.scratchY + ' + compileExpression(dy) + ');\n';
+      source += 'S.moveTo(S.scratchX, S.scratchY + ' + compileExpression(dy, 'number') + ');\n';
       visualCheck();
     },
     motion_sety(block) {
       const y = block.inputs.Y;
-      source += 'S.moveTo(S.scratchX, ' + compileExpression(y) + ');\n';
+      source += 'S.moveTo(S.scratchX, ' + compileExpression(y, 'number') + ');\n';
       visualCheck();
     },
     motion_setx(block) {
       const x = block.inputs.X;
-      source += 'S.moveTo(' + compileExpression(x) + ', S.scratchY);\n';
+      source += 'S.moveTo(' + compileExpression(x, 'number') + ', S.scratchY);\n';
       visualCheck();
     },
     motion_gotoxy(block) {
       const x = block.inputs.X;
       const y = block.inputs.Y;
       visualCheck();
-      source += 'S.moveTo(' + compileExpression(x) + ', ' + compileExpression(y) + ');\n';
+      source += 'S.moveTo(' + compileExpression(x, 'number') + ', ' + compileExpression(y, 'number') + ');\n';
     },
     motion_goto(block) {
       const to = block.inputs.TO;
@@ -2655,6 +2664,21 @@ P.sb3.compiler = (function() {
         source += 'self.children.unshift(S);\n';
       }
     },
+    looks_goforwardbackwardlayers(block) {
+      const direction = block.fields.FORWARD_BACKWARD[0];
+      const number = block.inputs.NUM;
+      source += 'var i = self.children.indexOf(S);\n';
+      source += 'if (i !== -1) {\n';
+      source += '  self.children.splice(i, 1);\n';
+      if (direction === 'backward') {
+        source += '  self.children.splice(Math.max(0, i - ' + compileExpression(number) + '), 0, S);\n';
+      } else if (direction === 'forward') {
+        source += '  self.children.splice(Math.min(self.children.length - 1, i + ' + compileExpression(number) + '), 0, S);\n';
+      } else {
+        throw new Error('unknown direction: ' + direction);
+      }
+      source += '}\n';
+    },
     looks_say(block) {
       const message = block.inputs.MESSAGE;
       source += 'S.say(' + compileExpression(message) + ', false);\n';
@@ -2662,6 +2686,38 @@ P.sb3.compiler = (function() {
     looks_think(block) {
       const message = block.inputs.MESSAGE;
       source += 'S.say(' + compileExpression(message) + ', true);\n';
+    },
+    looks_sayforsecs(block) {
+      const message = block.inputs.MESSAGE;
+      const secs = block.inputs.SECS;
+      source += 'save();\n';
+      source += 'R.id = S.say(' + compileExpression(message) + ', false);\n';
+      source += 'R.start = self.now;\n';
+      source += 'R.duration = ' + compileExpression(secs, 'number') + ';\n';
+      const id = label();
+      source += 'if (self.now - R.start < R.duration * 1000) {\n';
+      forceQueue(id);
+      source += '}\n';
+      source += 'if (S.sayId === R.id) {\n';
+      source += '  S.say("");\n';
+      source += '}\n';
+      source += 'restore();\n';
+    },
+    looks_thinkforsecs(block) {
+      const message = block.inputs.MESSAGE;
+      const secs = block.inputs.SECS;
+      source += 'save();\n';
+      source += 'R.id = S.say(' + compileExpression(message) + ', true);\n';
+      source += 'R.start = self.now;\n';
+      source += 'R.duration = ' + compileExpression(secs, 'number') + ';\n';
+      const id = label();
+      source += 'if (self.now - R.start < R.duration * 1000) {\n';
+      forceQueue(id);
+      source += '}\n';
+      source += 'if (S.sayId === R.id) {\n';
+      source += '  S.say("");\n';
+      source += '}\n';
+      source += 'restore();\n';
     },
 
     // Sounds
@@ -2779,18 +2835,20 @@ P.sb3.compiler = (function() {
     return id;
   }
   // Sanitizes a string to be used in a javascript string
-  function sanitize(thing) {
+  function sanitize(thing, includeQuotes) {
+    const quote = includeQuotes ? '"' : '';
     if (typeof thing === 'string') {
-      return thing
+      return quote + thing
         .replace('\\', '\\\\')
         .replace('\'', '\\\'')
         .replace('"', '\\"')
         .replace('\n', '\\n')
         .replace('\r', '\\r')
         .replace(/\{/g, '\\x7b')
-        .replace(/\}/g, '\\x7d');
+        .replace(/\}/g, '\\x7d')
+        + quote;
     } else if (typeof thing === 'number') {
-      return thing.toString();
+      return quote + thing.toString() + quote;
     } else {
       throw new Error('cant sanitize ' + thing);
     }
@@ -2885,16 +2943,29 @@ P.sb3.compiler = (function() {
     compile(substack[1]);
   }
 
+  function asType(script, type) {
+    if (type === 'string') {
+      return '"" + ' + script;
+    } else if (type === 'number') {
+      return '+' + script;
+    } else if (type === 'boolean') {
+      return '!!' + script;
+    } else {
+      return script;
+    }
+  }
+
   // Returns a compiled expression as a JavaScript string.
-  function compileExpression(expression) {
+  function compileExpression(expression, type) {
     // Expressions are also known as inputs.
 
     if (!expression) {
       throw new Error('invalid expression');
     }
 
+    // TODO: use asType?
     if (typeof expression === 'string') {
-      return '"' + sanitize(expression) + '"';
+      return sanitize(expression, true);
     }
     if (typeof expression === 'number') {
       return exprssion;
@@ -2902,7 +2973,7 @@ P.sb3.compiler = (function() {
 
     if (Array.isArray(expression[1])) {
       const native = expression[1];
-      return compileNative(native);
+      return asType(compileNative(native), type);
     }
 
     const id = expression[1];
@@ -2914,11 +2985,11 @@ P.sb3.compiler = (function() {
       console.warn('unknown expression', opcode, block);
       return '""';
     }
-    const result = compiler(block);
+    let result = compiler(block);
     if (P.config.debug) {
-      return '/*' + opcode + '*/' + result;
+      result = '/*' + opcode + '*/' + result;
     }
-    return result;
+    return asType(result, type);
   }
 
   function compileListener(topBlock) {
