@@ -2416,7 +2416,7 @@ P.sb3.compiler = (function() {
       const id = label();
       source += 'if (R.count >= 0.5) {\n';
       source += '  R.count -= 1;\n';
-      compile(substack);
+      compileSubstack(substack);
       queue(id);
       source += '} else {\n';
       source += '  restore();\n';
