@@ -1609,7 +1609,9 @@ P.core = (function(core) {
       this.image.height = Math.max(this.layers[0].height, 1);
 
       for (const layer of this.layers) {
-        this.context.drawImage(layer, 0, 0);
+        if (layer.width > 0 && layer.height > 0) {
+          this.context.drawImage(layer, 0, 0);
+        }
       }
     }
   }

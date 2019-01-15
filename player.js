@@ -225,6 +225,7 @@ P.player = (function() {
     progressBar.classList.add('error');
     error.style.display = 'block';
     errorBugLink.href = createBugLink("Please describe what you were doing to cause this error:", '```\n' + P.utils.stringifyError(e) + '\n```');
+    console.error(e);
   }
 
   // Install our progress hooks
