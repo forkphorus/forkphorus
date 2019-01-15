@@ -1993,6 +1993,12 @@ P.sb3 = (function() {
         variables[id] = variable[1];
       }
 
+      const lists = {};
+      for (const id of Object.keys(data.lists)) {
+        const list = data.lists[id];
+        lists[id] = list[1];
+      }
+
       const broadcasts = {};
       for (const id of Object.keys(data.broadcasts)) {
         const name = data.broadcasts[id];
@@ -2024,7 +2030,9 @@ P.sb3 = (function() {
           target.name = data.name;
           target.costumes = costumes;
           target.vars = variables;
+          target.lists = lists;
           sounds.forEach((sound) => target.addSound(sound));
+
           if (data.isStage) {
             target.broadcastReferences = data.broadcasts;
           } else {
@@ -2344,6 +2352,9 @@ P.sb3.compiler = (function() {
       // TODO: let the user pick a username
       return '""';
     },
+    sensing_timer(block) {
+      return '((self.now - self.timerStart) / 1000)';
+    },
 
     // Motion
     motion_xposition(block) {
@@ -2382,6 +2393,17 @@ P.sb3.compiler = (function() {
       } else {
         throw new Error('unknown costume: ' + name);
       }
+    },
+
+    // Data
+    data_lengthoflist(block) {
+      const list = block.fields.LIST[1];
+      return listReference(list) + '.length';
+    },
+    data_itemoflist(block) {
+      const list = block.fields.LIST[1];
+      const index = block.inputs.INDEX;
+      return listReference(list) + '[' + compileExpression(index, 'number') + ' - 1]';
     },
 
     // Sounds
@@ -2770,6 +2792,20 @@ P.sb3.compiler = (function() {
       const ref = variableReference(variableId);
       source += ref + ' = (+' + ref + ' + +' + compileExpression(value) + ');\n';
     },
+    data_deletealloflist(block) {
+      const list = block.fields.LIST[1];
+      source += listReference(list) + ' = [];\n';
+    },
+    data_deleteoflist(block) {
+      const list = block.fields.LIST[1];
+      const index = block.inputs.INDEX;
+      source += listReference(list) + '.splice(' + compileExpression(index, 'number') + ' - 1 , 1);\n';
+    },
+    data_addtolist(block) {
+      const list = block.fields.LIST[1];
+      const item = block.inputs.ITEM;
+      source += listReference(list) + '.push(' + compileExpression(item)  + ');\n';
+    },
 
     // Pen (extension)
     pen_clear(block) {
@@ -2872,6 +2908,12 @@ P.sb3.compiler = (function() {
     }
     return 'S.vars[' + compileExpression(id) + ']';
   }
+  function listReference(id) {
+    if (id in currentTarget.stage.lists) {
+      return 'self.lists[' + compileExpression(id) + ']';
+    }
+    return 'S.lists[' + compileExpression(id) + ']';
+  }
 
   ///
   /// Compiling Functions
@@ -2903,10 +2945,13 @@ P.sb3.compiler = (function() {
         // and the third is the ID of the variable. We only care about the ID.
         return variableReference(constant[2]);
 
+      case PRIMATIVE_TYPES.LIST:
+        // Same thing as variable references.
+        return listReference(constant[2]);
+
       case PRIMATIVE_TYPES.BROADCAST:
         return compileExpression(constant[2]);
 
-      case PRIMATIVE_TYPES.LIST:
       default:
         console.warn('unknown constant', type, constant);
         return '""';
