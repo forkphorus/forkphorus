@@ -189,9 +189,11 @@ P.player = (function() {
     const likelyType = P.utils.likelyProjectType(id);
 
     if (likelyType === 3) {
-      return (new P.sb3.Scratch3Loader(id)).load();
+      return (new P.sb3.Scratch3Loader(id)).load()
+        .catch((e) => showError(e));
     } else if (likelyType === 2) {
-      return P.sb2.loadOnlineSB2(id);
+      return P.sb2.loadOnlineSB2(id)
+        .catch((e) => showError(e));
     }
   }
 
