@@ -1935,7 +1935,7 @@ P.sb3 = (function() {
               image.onerror = (err) => reject("Failed to load SVG image");
               image.src = 'data:image/svg+xml;base64,' + btoa(source);
             });
-        });
+          });
       } else {
         return this.getAsImage(path, format);
       }
@@ -2402,10 +2402,22 @@ P.sb3.compiler = (function() {
       const list = block.fields.LIST[1];
       return listReference(list) + '.length';
     },
+    // TODO: list things might want to use the runtime methods?
     data_itemoflist(block) {
       const list = block.fields.LIST[1];
       const index = block.inputs.INDEX;
+      // TODO: 'last', 'random'
       return listReference(list) + '[' + compileExpression(index, 'number') + ' - 1]';
+    },
+    data_listcontainsitem(block) {
+      const list = block.fields.LIST[1];
+      const item = block.inputs.ITEM;
+      return 'listContains(' + listReference(list) + ', ' + compileExpression(item) + ')';
+    },
+    data_itemnumoflist(block) {
+      const list = block.fields.LIST[1];
+      const item = block.inputs.ITEM;
+      return 'listIndexOf(' + listReference(list) + ', ' + compileExpression(item) + ')';
     },
 
     // Sounds
@@ -2613,12 +2625,12 @@ P.sb3.compiler = (function() {
     },
     motion_turnright(block) {
       const degrees = block.inputs.DEGREES;
-      source += 'S.setDirection(S.direction + ' + compileExpression(degrees) + ');\n';
+      source += 'S.setDirection(S.direction + ' + compileExpression(degrees, 'number') + ');\n';
       visualCheck();
     },
     motion_turnleft(block) {
       const degrees = block.inputs.DEGREES;
-      source += 'S.setDirection(S.direction - ' + compileExpression(degrees) + ');\n';
+      source += 'S.setDirection(S.direction - ' + compileExpression(degrees, 'number') + ');\n';
       visualCheck();
     },
     motion_pointtowards(block) {
@@ -2801,12 +2813,25 @@ P.sb3.compiler = (function() {
     data_deleteoflist(block) {
       const list = block.fields.LIST[1];
       const index = block.inputs.INDEX;
+      // TODO: delete 'all' of list
       source += listReference(list) + '.splice(' + compileExpression(index, 'number') + ' - 1 , 1);\n';
     },
     data_addtolist(block) {
       const list = block.fields.LIST[1];
       const item = block.inputs.ITEM;
       source += listReference(list) + '.push(' + compileExpression(item)  + ');\n';
+    },
+    data_replaceitemoflist(block) {
+      const list = block.fields.LIST[1];
+      const item = block.inputs.ITEM;
+      const index = block.inputs.INDEX;
+      source += 'setLineOfList(' + listReference(list) + ', ' + compileExpression(index, 'number') + ',' + compileExpression(item) + ');\n';
+    },
+    data_insertatlist(block) {
+      const list = block.fields.LIST[1];
+      const item = block.inputs.ITEM;
+      const index = block.inputs.INDEX;
+      source += 'insertInList(' + listReference(list) + ', ' + compileExpression(index, 'number') + ',' + compileExpression(item) + ');\n';
     },
 
     // Pen (extension)
@@ -3057,9 +3082,10 @@ P.sb3.compiler = (function() {
 
     const topLevelOpCode = topBlock.opcode;
     if (!(topLevelOpCode in topLevelLibrary)) {
-      // Warning can be caused by a top level block being anything other than a listener.
-      // Most projects have at least 1 dangling block like that.
-      console.warn('unknown top level block', topLevelOpCode, topBlock);
+      // Since dangling blocks aren't that uncommon, only log warnings if it isn't otherwise recognized.
+      if (!(topLevelOpCode in expressionLibrary) && !(topLevelOpCode in statementLibrary)) {
+        console.warn('unknown top level block', topLevelOpCode, topBlock);
+      }
       return;
     }
 
@@ -4870,6 +4896,13 @@ P.runtime = (function() {
       if (equal(list[i], value)) return true;
     }
     return false;
+  };
+
+  var listIndexOf = function(list, value) {
+    for (var i = list.length; i--;) {
+      if (equal(list[i], value)) return i + 1;
+    }
+    return 0;
   };
 
   var appendToList = function(list, value) {
