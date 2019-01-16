@@ -2198,7 +2198,15 @@ P.sb3.compiler = (function() {
   The main difference is that inputs can change at runtime while fields cannot.
   For example in the block `set [ghost] effect to [100]` ghost is a field (cannot change) and 100 is an input (can change).
   (In Scratch 2 'ghost' was an input and thus could be changed programatically, this is no longer the case)
-  Fields as a specific datatype are new to Scratch 3, however there were inputs that acted like fields in Scratch 2. (see the stop block, its input cannot be a block)
+  Fields are not entirely new to Scratch 3, there were a few inputs before that acted as fields, but many more things have become fields than before.
+
+  This compiler differentiates between "statements", "expressions", "top levels", and "natives".
+  Statements are things like `move [ ] steps`. They do something.
+  Expressions are things like `size`, `addition`, `and` etc. They return something.
+  Variables are not exprssions, but rather natives.
+  Natives are things that are core parts of the runtime. This is stuff like strings, numbers, variables, lists, colors.
+  Top levels are top level blocks like `when green flag pressed`
+  Each of these are separated and compiled differently and in different spots.
   */
 
   const topLevelLibrary = {
@@ -2554,40 +2562,40 @@ P.sb3.compiler = (function() {
     motion_changexby(block) {
       const dx = block.inputs.DX;
       source += 'S.moveTo(S.scratchX + ' + compileExpression(dx, 'number') + ', S.scratchY);\n';
-      visualCheck();
+      visualCheck('drawing');
     },
     motion_changeyby(block) {
       const dy = block.inputs.DY;
       source += 'S.moveTo(S.scratchX, S.scratchY + ' + compileExpression(dy, 'number') + ');\n';
-      visualCheck();
+      visualCheck('drawing');
     },
     motion_sety(block) {
       const y = block.inputs.Y;
       source += 'S.moveTo(S.scratchX, ' + compileExpression(y, 'number') + ');\n';
-      visualCheck();
+      visualCheck('drawing');
     },
     motion_setx(block) {
       const x = block.inputs.X;
       source += 'S.moveTo(' + compileExpression(x, 'number') + ', S.scratchY);\n';
-      visualCheck();
+      visualCheck('drawing');
     },
     motion_gotoxy(block) {
       const x = block.inputs.X;
       const y = block.inputs.Y;
-      visualCheck();
+      visualCheck('drawing');
       source += 'S.moveTo(' + compileExpression(x, 'number') + ', ' + compileExpression(y, 'number') + ');\n';
     },
     motion_goto(block) {
       const to = block.inputs.TO;
       source += 'S.gotoObject(' + compileExpression(to) + ');\n';
-      visualCheck();
+      visualCheck('drawing');
     },
     motion_glidesecstoxy(block) {
       const secs = block.inputs.SECS;
       const x = block.inputs.X;
       const y = block.inputs.Y;
 
-      visualCheck();
+      visualCheck('drawing');
       source += 'save();\n';
       source += 'R.start = self.now;\n';
       source += 'R.duration = ' + compileExpression(secs) + ';\n';
@@ -2606,7 +2614,7 @@ P.sb3.compiler = (function() {
     },
     motion_pointindirection(block) {
       const direction = block.inputs.DIRECTION;
-      visualCheck();
+      visualCheck('visible');
       source += 'S.direction = ' + compileExpression(direction) + ';\n';
     },
     motion_setrotationstyle(block) {
@@ -2621,74 +2629,77 @@ P.sb3.compiler = (function() {
       } else {
         throw new Error('unknown rotation style: ' + style)
       }
-      visualCheck();
+      visualCheck('visible');
     },
     motion_turnright(block) {
       const degrees = block.inputs.DEGREES;
       source += 'S.setDirection(S.direction + ' + compileExpression(degrees, 'number') + ');\n';
-      visualCheck();
+      visualCheck('visible');
     },
     motion_turnleft(block) {
       const degrees = block.inputs.DEGREES;
       source += 'S.setDirection(S.direction - ' + compileExpression(degrees, 'number') + ');\n';
-      visualCheck();
+      visualCheck('visible');
     },
     motion_pointtowards(block) {
       const towards = block.inputs.TOWARDS;
       source += 'S.pointTowards(' + compileExpression(towards) + ');\n';
-      visualCheck();
+      visualCheck('visible');
     },
 
     // Looks
     looks_switchcostumeto(block) {
       const costume = block.inputs.COSTUME;
       source += 'S.setCostume(' + compileExpression(costume) + ');\n';
-      visualCheck();
+      visualCheck('visible');
     },
     looks_switchbackdropto(block) {
       const backdrop = block.inputs.BACKDROP;
       source += 'self.setCostume(' + compileExpression(backdrop) + ');\n';
-      visualCheck();
+      visualCheck('always');
     },
     looks_hide(block) {
-      visualCheck();
       source += 'S.visible = false;\n';
+      visualCheck('always');
       updateBubble();
     },
     looks_show(block) {
-      visualCheck();
       source += 'S.visible = true;\n';
+      visualCheck('always');
       updateBubble();
     },
     looks_setsizeto(block) {
       const size = block.inputs.SIZE;
-      visualCheck();
       source += 'var f = ' + compileExpression(size) + ' / 100;\n';
       source += 'S.scale = f < 0 ? 0 : f;\n';
+      visualCheck('visible');
     },
     looks_changesizeby(block) {
       const change = block.inputs.CHANGE;
       source += 'var f = S.scale + ' + compileExpression(change) + ' / 100;\n';
       source += 'S.scale = f < 0 ? 0 : f;\n';
+      visualCheck('visible');
     },
     looks_nextcostume(block) {
-      visualCheck();
       source += 'S.showNextCostume();\n';
+      visualCheck('visible');
     },
     looks_seteffectto(block) {
       const effect = block.fields.EFFECT[0];
       const value = block.inputs.VALUE;
-      source += 'S.setFilter("' + sanitize(effect) + '", ' + compileExpression(value) + ');\n';
-      visualCheck();
+      // Effect is in all caps which is not what we want.
+      source += 'S.setFilter("' + sanitize(effect.toLowerCase()) + '", ' + compileExpression(value, 'number') + ');\n';
+      visualCheck('visible');
     },
     looks_changeeffectby(block) {
       const effect = block.fields.EFFECT[0];
       const change = block.inputs.CHANGE;
-      source += 'S.changeFilter("' + sanitize(effect) + '", ' + compileExpression(change) + ');\n';
-      visualCheck();
+      source += 'S.changeFilter("' + sanitize(effect.toLowerCase()) + '", ' + compileExpression(change, 'number') + ');\n';
+      visualCheck('visible');
     },
     looks_cleargraphiceffects(block) {
       source += 'S.resetFilters();\n';
+      visualCheck('visible');
     },
     looks_gotofrontback(block) {
       const frontBack = block.fields.FRONT_BACK[0];
@@ -2699,6 +2710,7 @@ P.sb3.compiler = (function() {
       } else if (frontBack === 'back') {
         source += 'self.children.unshift(S);\n';
       }
+      visualCheck('visible');
     },
     looks_goforwardbackwardlayers(block) {
       const direction = block.fields.FORWARD_BACKWARD[0];
@@ -2714,14 +2726,17 @@ P.sb3.compiler = (function() {
         throw new Error('unknown direction: ' + direction);
       }
       source += '}\n';
+      visualCheck('visible');
     },
     looks_say(block) {
       const message = block.inputs.MESSAGE;
       source += 'S.say(' + compileExpression(message) + ', false);\n';
+      visualCheck('visible');
     },
     looks_think(block) {
       const message = block.inputs.MESSAGE;
       source += 'S.say(' + compileExpression(message) + ', true);\n';
+      visualCheck('visible');
     },
     looks_sayforsecs(block) {
       const message = block.inputs.MESSAGE;
@@ -2738,6 +2753,7 @@ P.sb3.compiler = (function() {
       source += '  S.say("");\n';
       source += '}\n';
       source += 'restore();\n';
+      visualCheck('visible');
     },
     looks_thinkforsecs(block) {
       const message = block.inputs.MESSAGE;
@@ -2754,6 +2770,7 @@ P.sb3.compiler = (function() {
       source += '  S.say("");\n';
       source += '}\n';
       source += 'restore();\n';
+      visualCheck('visible');
     },
 
     // Sounds
@@ -2789,6 +2806,8 @@ P.sb3.compiler = (function() {
       source += 'if (self.promptId === R.id) {\n';
       forceQueue(id2);
       source += '}\n';
+
+      visualCheck('always');
     },
     sensing_resettimer(blocK) {
       source += 'self.timerStart = self.now;\n';
@@ -2837,9 +2856,11 @@ P.sb3.compiler = (function() {
     // Pen (extension)
     pen_clear(block) {
       source += 'self.clearPen();\n';
+      visualCheck('always');
     },
     pen_stamp(block) {
       source += 'S.stamp();\n';
+      visualCheck('always');
     },
   };
 
@@ -2876,18 +2897,34 @@ P.sb3.compiler = (function() {
   function updateBubble() {
     source += 'if (S.saying) S.updateBubble();\n';
   }
-  // Adds js to enable the VISUAL flag in the runtime if necessary
-  function visualCheck() {
-    source += 'if (S.visible || S.isPenDown) VISUAL = true;\n';
+
+  // Adds JS to enable the VISUAL flag when necessary.
+  // `variant` can be either 'drawing', 'visible', or 'always' to control when the flag gets enabled.
+  // 'drawing' (default) will enable it if the sprite is visible or the pen is down (the sprite is drawing something)
+  // 'visible' will enable it if the sprite is visible
+  // 'always' will always enable it
+  function visualCheck(variant) {
+    const CASES = {
+      drawing: 'if (S.visible || S.isPenDown) VISUAL = true;\n',
+      visible: 'if (S.visible) VISUAL = true;\n',
+      always: 'VISUAL = true;\n',
+    };
+    if (P.config.debug) {
+      source += '/*visual:' + variant + '*/';
+    }
+    source += CASES[variant] || CASES.drawing;
   }
+
   // Forcibly queues something to run
   function forceQueue(id) {
     source += 'forceQueue(' + id + '); return;\n';
   }
+
   // Queues somethign to run (TODO: difference from forceQueue)
   function queue(id) {
     source += 'queue(' + id + '); return;\n';
   }
+
   // Creates and returns a new label for the script's current state
   function label() {
     const id = fns.length + currentTarget.fns.length;
@@ -2897,7 +2934,9 @@ P.sb3.compiler = (function() {
     }
     return id;
   }
+
   // Sanitizes a string to be used in a javascript string
+  // If includeQuotes is true, it will be encapsulated in double quotes.
   function sanitize(thing, includeQuotes) {
     const quote = includeQuotes ? '"' : '';
     if (typeof thing === 'string') {
@@ -2916,25 +2955,31 @@ P.sb3.compiler = (function() {
       throw new Error('cant sanitize ' + thing);
     }
   }
-  // Waits for a duration
+
+  // Adds JS to wait for a duration.
+  // `duration` is a valid compiled JS expression.
   function wait(duration) {
     source += 'save();\n';
     source += 'R.start = self.now;\n';
     source += 'R.duration = ' + duration + ';\n';
     source += 'var first = true;\n';
-    var id = label();
+    const id = label();
     source += 'if (self.now - R.start < R.duration * 1000 || first) {\n';
     source += '  var first;\n';
     forceQueue(id);
     source += '}\n';
     source += 'restore();\n';
   }
+
+  // Returns a reference to a variable with an ID
   function variableReference(id) {
     if (id in currentTarget.stage.vars) {
       return 'self.vars[' + compileExpression(id) + ']';
     }
     return 'S.vars[' + compileExpression(id) + ']';
   }
+
+  // Returns a reference to a list with a ID
   function listReference(id) {
     if (id in currentTarget.stage.lists) {
       return 'self.lists[' + compileExpression(id) + ']';
