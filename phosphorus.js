@@ -2198,11 +2198,11 @@ P.sb3.compiler = (function() {
   Structurally blocks have no relation to eachother (the data is structed in the way that an sb2 is)
   but they do point to the IDs of other blocks.
 
-  Blocks have "inputs" and "fields". These are both types of data that change how blocks behave.
-  The main difference is that inputs can change at runtime while fields cannot.
+  Blocks have "inputs", "fields", and "mutations". These are both types of data that change how blocks behave.
+  Inputs accept any block as an input, while fields generally accept hard coded strings.
   For example in the block `set [ghost] effect to [100]` ghost is a field (cannot change) and 100 is an input (can change).
   (In Scratch 2 'ghost' was an input and thus could be changed programatically, this is no longer the case)
-  Fields are not entirely new to Scratch 3, there were a few inputs before that acted as fields, but many more things have become fields than before.
+  Mutations are only used in custom block definitions.
 
   This compiler differentiates between "statements", "expressions", "top levels", and "natives".
   Statements are things like `move [ ] steps`. They do something.
@@ -2242,7 +2242,28 @@ P.sb3.compiler = (function() {
     // Control
     control_start_as_clone(block, f) {
       currentTarget.listeners.whenCloned.push(f);
-    }
+    },
+
+    // Procedures
+    procedures_definition(block, f) {
+      const customBlockId = block.inputs.custom_block[1];
+      const mutation = blocks[customBlockId].mutation;
+
+      // Custom block defintions are the most inconsistent thing in Scratch 3.
+      // Snake case input name, uses mutations, booleans as strings...
+
+      const name = mutation.proccode;
+      // warp is stored as the string 'true' or 'false'
+      const warp = mutation.warp === 'true';
+
+      // TODO: inputs
+
+      currentTarget.procedures[name] = {
+        inputs: [],
+        warp: warp,
+        fn: f,
+      };
+    },
   };
 
   const expressionLibrary = {
@@ -2331,6 +2352,11 @@ P.sb3.compiler = (function() {
       const string = block.inputs.STRING;
       // TODO: parenthesis important?
       return '(' + compileExpression(string, 'string') + ').length';
+    },
+    operator_letter_of(block) {
+      const string = block.inputs.STRING;
+      const letter = block.inputs.LETTER;
+      return '((' + compileExpression(string, 'string') + ')[(' + compileExpression(letter, 'number') + ' | 0) - 1] || "")';
     },
 
     // Sensing
@@ -2860,6 +2886,15 @@ P.sb3.compiler = (function() {
       source += 'insertInList(' + listReference(list) + ', ' + compileExpression(index, 'number') + ',' + compileExpression(item) + ');\n';
     },
 
+    // Procedures
+    procedures_call(block) {
+      const mutation = block.mutation;
+      const name = mutation.proccode;
+      const id = nextLabel();
+      source += 'call(S.procedures[' + sanitize(name, true) + '], ' + id + ', []);\n';
+      delay();
+    },
+
     // Pen (extension)
     pen_clear(block) {
       source += 'self.clearPen();\n';
@@ -2932,9 +2967,20 @@ P.sb3.compiler = (function() {
     source += 'queue(' + id + '); return;\n';
   }
 
+  // Adds a delay
+  function delay() {
+    source += 'return;\n';
+    label();
+  }
+
+  // Gets the next label
+  function nextLabel() {
+    return fns.length + currentTarget.fns.length;
+  }
+
   // Creates and returns a new label for the script's current state
   function label() {
-    const id = fns.length + currentTarget.fns.length;
+    const id = nextLabel();
     fns.push(source.length);
     if (P.config.debug) {
       source += '/*' + id + '*/'
@@ -2954,8 +3000,7 @@ P.sb3.compiler = (function() {
         .replace('\n', '\\n')
         .replace('\r', '\\r')
         .replace(/\{/g, '\\x7b')
-        .replace(/\}/g, '\\x7d')
-        + quote;
+        .replace(/\}/g, '\\x7d') + quote;
     } else if (typeof thing === 'number') {
       return quote + thing.toString() + quote;
     } else {
@@ -3006,7 +3051,7 @@ P.sb3.compiler = (function() {
     const type = constant[0];
 
     switch (type) {
-      // These all function as numbers. They are only differentiated so the editor be more helpful.
+      // These all function as numbers. They are only differentiated so the editor can be more helpful.
       case PRIMATIVE_TYPES.MATH_NUM:
       case PRIMATIVE_TYPES.POSITIVE_NUM:
       case PRIMATIVE_TYPES.WHOLE_NUM:
@@ -3060,11 +3105,21 @@ P.sb3.compiler = (function() {
     }
   }
 
+  // Compiles a substack (script inside of another block)
   function compileSubstack(substack) {
+    // Substacks are statements inside of statements.
+    // Substacks are a type of input. The first item is ofcourse type, the second is the ID of the child.
+
+    // Substacks are not guarunteed to exist.
     if (!substack) {
       return;
     }
-    compile(substack[1]);
+
+    // TODO: check type?
+    // const type = substack[0];
+
+    const id = substack[1];
+    compile(id);
   }
 
   function asType(script, type) {
@@ -3143,6 +3198,12 @@ P.sb3.compiler = (function() {
 
     compile(block);
 
+    // Procedure defintions need special care to properly end calls.
+    if (topLevelOpCode === 'procedures_definition') {
+      source += 'endCall();\n';
+      source += 'return;\n';
+    }
+
     return source;
   }
 
@@ -3154,14 +3215,18 @@ P.sb3.compiler = (function() {
     for (const block of topLevelBlocks) {
       fns = [0];
       const source = compileListener(block);
+      const topOpcode = block.opcode;
+
       if (!source) {
         continue;
       }
+
       const startFn = currentTarget.fns.length;
       for (var i = 0; i < fns.length; i++) {
         target.fns.push(P.utils.createContinuation(source.slice(fns[i])));
       }
-      topLevelLibrary[block.opcode](block, target.fns[startFn]);
+      topLevelLibrary[topOpcode](block, target.fns[startFn]);
+
       if (P.config.debug) {
         console.log('compiled listener', block.opcode, source, target);
       }
@@ -5150,10 +5215,7 @@ P.runtime = (function() {
     R = STACK.pop();
   };
 
-  // var lastCalls = [];
   var call = function(procedure, id, values) {
-    // lastCalls.push(spec);
-    // if (lastCalls.length > 10000) lastCalls.shift();
     if (procedure) {
       STACK.push(R);
       CALLS.push(C);
