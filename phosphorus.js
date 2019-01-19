@@ -2221,6 +2221,10 @@ P.sb3.compiler = (function() {
     event_whenthisspriteclicked(block, f) {
       currentTarget.listeners.whenClicked.push(f);
     },
+    event_whenstageclicked(block, f) {
+      // same as "when this sprite clicked"
+      currentTarget.listeners.whenClicked.push(f);
+    },
     event_whenbroadcastreceived(block, f) {
       const optionId = block.fields.BROADCAST_OPTION[1];
       if (!currentTarget.listeners.whenIReceive[optionId]) {
