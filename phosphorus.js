@@ -1243,19 +1243,23 @@ P.core = (function(core) {
         if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top) {
           return false;
         }
-        var cx = (x - this.scratchX) / this.scale
-        var cy = (this.scratchY - y) / this.scale
+
+        var cx = (x - this.scratchX) / this.scale;
+        var cy = (this.scratchY - y) / this.scale;
         if (this.rotationStyle === 'normal' && this.direction !== 90) {
-          var d = (90 - this.direction) * Math.PI / 180
-          var ox = cx
-          var s = Math.sin(d), c = Math.cos(d)
-          cx = c * ox - s * cy
-          cy = s * ox + c * cy
+          var d = (90 - this.direction) * Math.PI / 180;
+          var ox = cx;
+          var s = Math.sin(d), c = Math.cos(d);
+          cx = c * ox - s * cy;
+          cy = s * ox + c * cy;
         } else if (this.rotationStyle === 'leftRight' && this.direction < 0) {
-          cx = -cx
+          cx = -cx;
         }
-        var d = costume.context.getImageData(cx * costume.bitmapResolution + costume.rotationCenterX, cy * costume.bitmapResolution + costume.rotationCenterY, 1, 1).data;
-        return d[3] !== 0;
+
+        var positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
+        var positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
+        var data = costume.context.getImageData(positionX, positionY, 1, 1).data;
+        return data[3] !== 0;
       } else if (thing === '_edge_') {
         var bounds = this.rotatedBounds();
         return bounds.left <= -240 || bounds.right >= 240 || bounds.top >= 180 || bounds.bottom <= -180;
@@ -2403,6 +2407,9 @@ P.sb3.compiler = (function() {
       } else {
         throw new Error('unknown costume: ' + name);
       }
+    },
+    looks_size() {
+      return 'S.scale * 100';    
     },
 
     // Data
