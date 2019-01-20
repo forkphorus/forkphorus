@@ -2300,7 +2300,7 @@ P.sb3.compiler = (function() {
     operator_equals(block) {
       const operand1 = block.inputs.OPERAND1;
       const operand2 = block.inputs.OPERAND2;
-      return '(' + compileExpression(operand1) + ' === ' + compileExpression(operand2) + ')';
+      return 'equal(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ')';
     },
     operator_lt(block) {
       const operand1 = block.inputs.OPERAND1;
@@ -2398,6 +2398,13 @@ P.sb3.compiler = (function() {
     },
     sensing_timer(block) {
       return '((self.now - self.timerStart) / 1000)';
+    },
+    sensing_distancetomenu(block) {
+      return sanitize(block.fields.DISTANCETOMENU[0], true);
+    },
+    sensing_distanceto(block) {
+      const menu = block.inputs.DISTANCETOMENU;
+      return 'S.distanceTo(' + compileExpression(menu) + ')';
     },
 
     // Motion
@@ -2596,6 +2603,11 @@ P.sb3.compiler = (function() {
     },
 
     // Motion
+    motion_movesteps(block) {
+      const steps = block.inputs.STEPS;
+      source += 'S.forward(' + compileExpression(steps, 'number') + ');\n';
+      visualCheck('drawing');
+    },
     motion_changexby(block) {
       const dx = block.inputs.DX;
       source += 'S.moveTo(S.scratchX + ' + compileExpression(dx, 'number') + ', S.scratchY);\n';
