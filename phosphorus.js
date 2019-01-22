@@ -2261,12 +2261,8 @@ P.sb3.compiler = (function() {
       const customBlockId = block.inputs.custom_block[1];
       const mutation = blocks[customBlockId].mutation;
 
-      // Custom block mutations are the most inconsistent thing in Scratch 3.
-      // Snake case input name, uses mutations, stringifying JSON...
-
       const name = mutation.proccode;
-      // warp is stored as the string 'true' or 'false'
-      const warp = mutation.warp === 'true';
+      const warp = mutation.warp;
       // It's a stringified JSON array.
       const argumentNames = JSON.parse(mutation.argumentnames);
 
@@ -2411,6 +2407,15 @@ P.sb3.compiler = (function() {
       const menu = block.inputs.DISTANCETOMENU;
       return 'S.distanceTo(' + compileExpression(menu) + ')';
     },
+    sensing_of(block) {
+      const property = block.fields.PROPERTY[0];
+      const object = block.inputs.OBJECT;
+      return 'attribute(' + sanitize(property, true) + ', ' + compileExpression(object, 'string') + ')';
+    },
+    sensing_of_object_menu(block) {
+      const object = block.fields.OBJECT[0];
+      return sanitize(object, true);
+    },
 
     // Motion
     motion_xposition(block) {
@@ -2447,11 +2452,21 @@ P.sb3.compiler = (function() {
       } else if (name === 'name') {
         return 'S.costumes[S.currentCostumeIndex].name';
       } else {
-        throw new Error('unknown costume: ' + name);
+        throw new Error('unknown NUMBER_NAME: ' + name);
+      }
+    },
+    looks_backdropnumbername(block) {
+      const name = block.fields.NUMBER_NAME[0];
+      if (name === 'number') {
+        return 'self.currentCostumeIndex + 1';
+      } else if (name === 'name') {
+        return 'self.costumes[self.currentCostumeIndex].name';
+      } else {
+        throw new Error('unknown NUMBER_NAME: ' + name);
       }
     },
     looks_size() {
-      return 'S.scale * 100';    
+      return 'S.scale * 100';
     },
 
     // Data
@@ -2542,6 +2557,16 @@ P.sb3.compiler = (function() {
       const substack = block.inputs.SUBSTACK;
       const id = label();
       source += 'if (!(' + compileExpression(condition, 'boolean') + ')) {\n'
+      compileSubstack(substack);
+      forceQueue(id);
+      source += '}\n';
+    },
+    control_while(block) {
+      // Hacked block
+      const condition = block.inputs.CONDITION;
+      const substack = block.inputs.SUBSTACK;
+      const id = label();
+      source += 'if (' + compileExpression(condition, 'boolean') + ') {\n'
       compileSubstack(substack);
       forceQueue(id);
       source += '}\n';
@@ -2857,6 +2882,22 @@ P.sb3.compiler = (function() {
       source += '    sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
       source += '  }\n';
       source += '}\n';
+    },
+    sound_changevolumeby(block) {
+      const volume = block.inputs.VOLUME;
+      source += 'S.volume = Math.max(0, Math.min(1, S.volume + ' + compileExpression(volume, 'number') + ' / 100));\n';
+      source += 'if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
+      source += 'for (var sounds = S.sounds, i = sounds.length; i--;) {\n';
+      source += '  var sound = sounds[i];\n';
+      source += '  if (sound.node && sound.target === S) {\n';
+      source += '    sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
+      source += '  }\n';
+      source += '}\n';
+    },
+    sound_stopallsounds(block) {
+      if (P.audio.context) {
+        source += 'self.stopAllSounds();\n';
+      }
     },
 
     // Sensing
