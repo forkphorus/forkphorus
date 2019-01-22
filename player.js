@@ -186,15 +186,17 @@ P.player = (function() {
     P.player.projectId = id;
     P.player.projectURL = id ? 'https://scratch.mit.edu/projects/' + id + '/' : '';
 
-    const likelyType = P.utils.likelyProjectType(id);
-
-    if (likelyType === 3) {
-      return (new P.sb3.Scratch3Loader(id)).load()
-        .catch((e) => showError(e));
-    } else if (likelyType === 2) {
-      return P.sb2.loadOnlineSB2(id)
-        .catch((e) => showError(e));
-    }
+    return P.IO.fetch(P.config.PROJECT_API.replace('$id', id))
+      .then((req) => req.json())
+      .then((json) => {
+        const type = P.utils.projectType(json);
+        if (type === 3) {
+          return (new P.sb3.Scratch3Loader(json)).load();
+        } else if (type === 2) {
+          return P.sb2.loadProject(json);
+        }
+      })
+      .catch((e) => showError(e));
   }
 
   function start(s) {
@@ -265,11 +267,6 @@ P.player = (function() {
     load: load,
     start: start,
     createBugLink: createBugLink,
-    progress: {
-      set: setProgress,
-      show: showProgress,
-      hide: hideProgress,
-    },
   };
 
 }());

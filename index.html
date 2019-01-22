@@ -203,15 +203,16 @@
       }
 
       show(id);
-      projectLink.href = P.player.projectURL;
+
       P.player.load(id)
         .then((stage) => {
-          P.player.start(stage)
-          updateBugLink();
+          P.player.start(stage);
+          updateLinks();
         });
     }
 
-    function updateBugLink() {
+    function updateLinks() {
+      projectLink.href = P.player.projectURL;
       bugLink.href = P.player.createBugLink('Describe the issue below. Please be specific, things like "it doesn\'t work" are not helpful.', '');
     }
 
@@ -267,7 +268,7 @@
       }
       startLoad().then((stage) => {
         P.player.start(stage);
-        updateBugLink();
+        updateLinks();
       });
     }
     document.body.addEventListener('dragover', cancel);

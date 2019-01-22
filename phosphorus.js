@@ -32,91 +32,22 @@ P.config = {
   framerate: 30,
   debug: window.location.search.includes("debug"),
   forcedLoader: null,
-  // builtin instruments and their URL
-  wavFiles: {
-    'AcousticGuitar_F3': 'instruments/AcousticGuitar_F3_22k.wav',
-    'AcousticPiano_As3': 'instruments/AcousticPiano(5)_A%233_22k.wav',
-    'AcousticPiano_C4': 'instruments/AcousticPiano(5)_C4_22k.wav',
-    'AcousticPiano_G4': 'instruments/AcousticPiano(5)_G4_22k.wav',
-    'AcousticPiano_F5': 'instruments/AcousticPiano(5)_F5_22k.wav',
-    'AcousticPiano_C6': 'instruments/AcousticPiano(5)_C6_22k.wav',
-    'AcousticPiano_Ds6': 'instruments/AcousticPiano(5)_D%236_22k.wav',
-    'AcousticPiano_D7': 'instruments/AcousticPiano(5)_D7_22k.wav',
-    'AltoSax_A3': 'instruments/AltoSax_A3_22K.wav',
-    'AltoSax_C6': 'instruments/AltoSax(3)_C6_22k.wav',
-    'Bassoon_C3': 'instruments/Bassoon_C3_22k.wav',
-    'BassTrombone_A2_2': 'instruments/BassTrombone_A2(2)_22k.wav',
-    'BassTrombone_A2_3': 'instruments/BassTrombone_A2(3)_22k.wav',
-    'Cello_C2': 'instruments/Cello(3b)_C2_22k.wav',
-    'Cello_As2': 'instruments/Cello(3)_A%232_22k.wav',
-    'Choir_F3': 'instruments/Choir(4)_F3_22k.wav',
-    'Choir_F4': 'instruments/Choir(4)_F4_22k.wav',
-    'Choir_F5': 'instruments/Choir(4)_F5_22k.wav',
-    'Clarinet_C4': 'instruments/Clarinet_C4_22k.wav',
-    'ElectricBass_G1': 'instruments/ElectricBass(2)_G1_22k.wav',
-    'ElectricGuitar_F3': 'instruments/ElectricGuitar(2)_F3(1)_22k.wav',
-    'ElectricPiano_C2': 'instruments/ElectricPiano_C2_22k.wav',
-    'ElectricPiano_C4': 'instruments/ElectricPiano_C4_22k.wav',
-    'EnglishHorn_D4': 'instruments/EnglishHorn(1)_D4_22k.wav',
-    'EnglishHorn_F3': 'instruments/EnglishHorn(1)_F3_22k.wav',
-    'Flute_B5_1': 'instruments/Flute(3)_B5(1)_22k.wav',
-    'Flute_B5_2': 'instruments/Flute(3)_B5(2)_22k.wav',
-    'Marimba_C4': 'instruments/Marimba_C4_22k.wav',
-    'MusicBox_C4': 'instruments/MusicBox_C4_22k.wav',
-    'Organ_G2': 'instruments/Organ(2)_G2_22k.wav',
-    'Pizz_A3': 'instruments/Pizz(2)_A3_22k.wav',
-    'Pizz_E4': 'instruments/Pizz(2)_E4_22k.wav',
-    'Pizz_G2': 'instruments/Pizz(2)_G2_22k.wav',
-    'SteelDrum_D5': 'instruments/SteelDrum_D5_22k.wav',
-    'SynthLead_C4': 'instruments/SynthLead(6)_C4_22k.wav',
-    'SynthLead_C6': 'instruments/SynthLead(6)_C6_22k.wav',
-    'SynthPad_A3': 'instruments/SynthPad(2)_A3_22k.wav',
-    'SynthPad_C6': 'instruments/SynthPad(2)_C6_22k.wav',
-    'TenorSax_C3': 'instruments/TenorSax(1)_C3_22k.wav',
-    'Trombone_B3': 'instruments/Trombone_B3_22k.wav',
-    'Trumpet_E5': 'instruments/Trumpet_E5_22k.wav',
-    'Vibraphone_C3': 'instruments/Vibraphone_C3_22k.wav',
-    'Violin_D4': 'instruments/Violin(2)_D4_22K.wav',
-    'Violin_A4': 'instruments/Violin(3)_A4_22k.wav',
-    'Violin_E5': 'instruments/Violin(3b)_E5_22k.wav',
-    'WoodenFlute_C5': 'instruments/WoodenFlute_C5_22k.wav',
-    'BassDrum': 'drums/BassDrum(1b)_22k.wav',
-    'Bongo': 'drums/Bongo_22k.wav',
-    'Cabasa': 'drums/Cabasa(1)_22k.wav',
-    'Clap': 'drums/Clap(1)_22k.wav',
-    'Claves': 'drums/Claves(1)_22k.wav',
-    'Conga': 'drums/Conga(1)_22k.wav',
-    'Cowbell': 'drums/Cowbell(3)_22k.wav',
-    'Crash': 'drums/Crash(2)_22k.wav',
-    'Cuica': 'drums/Cuica(2)_22k.wav',
-    'GuiroLong': 'drums/GuiroLong(1)_22k.wav',
-    'GuiroShort': 'drums/GuiroShort(1)_22k.wav',
-    'HiHatClosed': 'drums/HiHatClosed(1)_22k.wav',
-    'HiHatOpen': 'drums/HiHatOpen(2)_22k.wav',
-    'HiHatPedal': 'drums/HiHatPedal(1)_22k.wav',
-    'Maracas': 'drums/Maracas(1)_22k.wav',
-    'SideStick': 'drums/SideStick(1)_22k.wav',
-    'SnareDrum': 'drums/SnareDrum(1)_22k.wav',
-    'Tambourine': 'drums/Tambourine(3)_22k.wav',
-    'Tom': 'drums/Tom(1)_22k.wav',
-    'Triangle': 'drums/Triangle(1)_22k.wav',
-    'Vibraslap': 'drums/Vibraslap(1)_22k.wav',
-    'WoodBlock': 'drums/WoodBlock(1)_22k.wav'
-  },
+  PROJECT_API: 'https://projects.scratch.mit.edu/$id',
 };
 
 // Utility methods
 P.utils = (function(exports) {
-  const KEY_CODES = {
-    space: 32,
-    'left arrow': 37,
-    'up arrow': 38,
-    'right arrow': 39,
-    'down arrow': 40,
-    any: 'any'
-  };
 
   exports.getKeyCode = function(keyName) {
+    const KEY_CODES = {
+      space: 32,
+      'left arrow': 37,
+      'up arrow': 38,
+      'right arrow': 39,
+      'down arrow': 40,
+      any: 'any'
+    };
+
     return KEY_CODES[keyName.toLowerCase()] || keyName.toUpperCase().charCodeAt(0);
   };
 
@@ -131,6 +62,7 @@ P.utils = (function(exports) {
     return (1, eval)('(' + json + ')');
   };
 
+  // Returns the string representation of an error.
   exports.stringifyError = function(error) {
     if (!error) {
       return 'unknown error';
@@ -206,26 +138,26 @@ P.utils = (function(exports) {
     return P.runtime.scopedEval(result);
   };
 
-  const FONTS = {
-    // TODO: Scratch 3
-    '': 'Helvetica',
-    Donegal: 'Donegal One',
-    Gloria: 'Gloria Hallelujah',
-    Marker: 'Permanent Marker',
-    Mystery: 'Mystery Quest'
-  };
-
-  const LINE_HEIGHTS = {
-    // TODO: Scratch 3
-    Helvetica: 1.13,
-    'Donegal One': 1.25,
-    'Gloria Hallelujah': 1.97,
-    'Permanent Marker': 1.43,
-    'Mystery Quest': 1.37
-  };
-
   // Patches an SVG to make it behave more like Scratch.
   exports.patchSVG = function(svg, element) {
+    const FONTS = {
+      // TODO: Scratch 3
+      '': 'Helvetica',
+      Donegal: 'Donegal One',
+      Gloria: 'Gloria Hallelujah',
+      Marker: 'Permanent Marker',
+      Mystery: 'Mystery Quest'
+    };
+
+    const LINE_HEIGHTS = {
+      // TODO: Scratch 3
+      Helvetica: 1.13,
+      'Donegal One': 1.25,
+      'Gloria Hallelujah': 1.97,
+      'Permanent Marker': 1.43,
+      'Mystery Quest': 1.37
+    };
+
     if (element.nodeType !== 1) return;
     if (element.nodeName === 'text') {
       // Correct fonts
@@ -263,19 +195,28 @@ P.utils = (function(exports) {
     [].forEach.call(element.childNodes, exports.patchSVG.bind(null, svg));
   };
 
-  // FIXME: terrible hack that probably works "well enough"
-  const SB3_TRANSITION = 276660763;
+  // Converts an external string to an internally recognized rotation style.
+  exports.asRotationStyle = function(style) {
+    switch (style) {
+      case 'left-right': return 'leftRight';
+      case 'don\'t rotate': return 'none';
+      case 'all around': return 'normal';
+      default: return 'normal';
+    }
+  };
 
-  // Determines the likely type of a project based on its ID.
-  exports.likelyProjectType = function(id) {
+  // Determines the type of a project with its project.json data
+  exports.projectType = function(data) {
     if (P.config.forcedLoader) {
       return P.config.forcedLoader;
     }
-    if (id >= SB3_TRANSITION) {
+    if (data.targets) {
       return 3;
-    } else {
+    }
+    if (data.objName) {
       return 2;
     }
+    throw new Error('unknown project: ' + JSON.stringify(data));
   };
 
   return exports;
@@ -1842,12 +1783,25 @@ P.core = (function(core) {
     }
   }
 
+  class Procedure {
+    constructor(fn, warp, inputs) {
+      this.fn = fn;
+      this.warp = warp;
+      this.inputs = inputs;
+    }
+
+    call(inputs) {
+      throw new Error('Procedure did not implement call()');
+    }
+  }
+
   core.Base = Base;
   core.Stage = Stage;
   core.Sprite = Sprite;
   core.Costume = Costume;
   core.Sound = Sound;
   core.Watcher = Watcher;
+  core.Procedure = Procedure;
 
   return core;
 })({});
@@ -1904,7 +1858,6 @@ P.IO = (function(IO) {
 
 // Loads Scratch 3 projects
 P.sb3 = (function() {
-  const PROJECTS_API = 'https://projects.scratch.mit.edu/$id';
   const ASSETS_API = 'https://assets.scratch.mit.edu/internalapi/asset/$path/get/';
 
   // Implements base SB3 loading logic.
@@ -2047,7 +2000,7 @@ P.sb3 = (function() {
             target.direction = direction;
             target.isDraggable = draggable;
             // target.indexInLibrary = -1; // TODO
-            // target.rotationStyle = 'normal'; // TODO
+            target.rotationStyle = P.utils.asRotationStyle(data.rotationStyle);
             target.scale = size / 100;
             target.visible = visible;
           }
@@ -2134,10 +2087,16 @@ P.sb3 = (function() {
   }
 
   // Loads a Scratch 3 project from the scratch.mit.edu website
+  // Uses either a loaded project.json or its ID
   class Scratch3Loader extends BaseSB3Loader {
-    constructor(id) {
+    constructor(idOrData) {
       super();
-      this.id = id;
+      if (typeof idOrData === 'object') {
+        this.projectData = idOrData;
+        this.projectId = null;
+      } else {
+        this.projectId = idOrData;
+      }
     }
 
     getAsText(path) {
@@ -2168,12 +2127,16 @@ P.sb3 = (function() {
     }
 
     load() {
-      return P.IO.fetch(PROJECTS_API.replace('$id', this.id))
-        .then((request) => request.json())
-        .then((data) => {
-          this.projectData = data;
-        })
-        .then(() => super.load());
+      if (this.projectId) {
+        return P.IO.fetch(P.config.PROJECTS_API.replace('$id', this.id))
+          .then((request) => request.json())
+          .then((data) => {
+            this.projectData = data;
+          })
+          .then(() => super.load());
+      } else {
+        return super.load();
+      }
     }
   }
 
@@ -2213,6 +2176,43 @@ P.sb3.compiler = (function() {
   Each of these are separated and compiled differently and in different spots.
   */
 
+  // Implements a Scratch 3 procedure.
+  // Scratch 3 uses names as references for arguments (Scratch 2 uses indexes I believe)
+  class Scratch3Procedure extends P.core.Procedure {
+    call(inputs) {
+      const args = {};
+      for (var i = 0; i < this.inputs.length; i++) {
+        args[this.inputs[i]] = inputs[i];
+      }
+      return args;
+    }
+  }
+
+  // IDs of primative types
+  // https://github.com/LLK/scratch-vm/blob/36fe6378db930deb835e7cd342a39c23bb54dd72/src/serialization/sb3.js#L60-L79
+  const PRIMATIVE_TYPES = {
+    // Any number (???)
+    MATH_NUM: 4,
+    // Any positive number (maybe including zero?)
+    POSITIVE_NUM: 5,
+    // Any whole number, including 0
+    WHOLE_NUM: 6,
+    // Any integer
+    INTEGER_NUM: 7,
+    // An angle
+    ANGLE_NUM: 8,
+    // A color
+    COLOR_PICKER: 9,
+    // A text string
+    TEXT: 10,
+    // A broadcast
+    BROADCAST: 11,
+    // A variable reference
+    VAR: 12,
+    // A list reference
+    LIST: 13,
+  };
+
   const topLevelLibrary = {
     // Events
     event_whenflagclicked(block, f) {
@@ -2242,6 +2242,14 @@ P.sb3.compiler = (function() {
         currentTarget.listeners.whenKeyPressed[P.utils.getKeyCode(key)].push(f);
       }
     },
+    event_whenbackdropswitchesto(block, f) {
+      const backdrop = block.fields.BACKDROP[0];
+      // When backdrop switches to was previously known as "when scene starts"
+      if (!currentTarget.listeners.whenSceneStarts[backdrop]) {
+        currentTarget.listeners.whenSceneStarts[backdrop] = [];
+      }
+      currentTarget.listeners.whenSceneStarts[backdrop].push(f);
+    },
 
     // Control
     control_start_as_clone(block, f) {
@@ -2253,20 +2261,17 @@ P.sb3.compiler = (function() {
       const customBlockId = block.inputs.custom_block[1];
       const mutation = blocks[customBlockId].mutation;
 
-      // Custom block defintions are the most inconsistent thing in Scratch 3.
-      // Snake case input name, uses mutations, booleans as strings...
+      // Custom block mutations are the most inconsistent thing in Scratch 3.
+      // Snake case input name, uses mutations, stringifying JSON...
 
       const name = mutation.proccode;
       // warp is stored as the string 'true' or 'false'
       const warp = mutation.warp === 'true';
+      // It's a stringified JSON array.
+      const argumentNames = JSON.parse(mutation.argumentnames);
 
-      // TODO: inputs
-
-      currentTarget.procedures[name] = {
-        inputs: [],
-        warp: warp,
-        fn: f,
-      };
+      const procedure = new Scratch3Procedure(f, warp, argumentNames);
+      currentTarget.procedures[name] = procedure;
     },
   };
 
@@ -2472,11 +2477,24 @@ P.sb3.compiler = (function() {
       return 'listIndexOf(' + listReference(list) + ', ' + compileExpression(item) + ')';
     },
 
+    // Procedures/arguments
+    argument_reporter_string_number(block) {
+      const name = block.fields.VALUE[0];
+      return 'C.args[' + sanitize(name, true) + ']';
+    },
+    argument_reporter_boolean(block) {
+      const name = block.fields.VALUE[0];
+      return asType('C.args[' + sanitize(name, true) + ']', 'boolean');
+    },
+
     // Sounds
     sound_sounds_menu(block) {
       const sound = block.fields.SOUND_MENU[0];
       return '"' + sanitize(sound) + '"';
     },
+    sound_volume() {
+      return '(S.volume * 100)'
+    }
   };
 
   const statementLibrary = {
@@ -2523,7 +2541,7 @@ P.sb3.compiler = (function() {
       const condition = block.inputs.CONDITION;
       const substack = block.inputs.SUBSTACK;
       const id = label();
-      source += 'if (!' + compileExpression(condition) + ') {\n'
+      source += 'if (!(' + compileExpression(condition, 'boolean') + ')) {\n'
       compileSubstack(substack);
       forceQueue(id);
       source += '}\n';
@@ -2631,8 +2649,8 @@ P.sb3.compiler = (function() {
     motion_gotoxy(block) {
       const x = block.inputs.X;
       const y = block.inputs.Y;
-      visualCheck('drawing');
       source += 'S.moveTo(' + compileExpression(x, 'number') + ', ' + compileExpression(y, 'number') + ');\n';
+      visualCheck('drawing');
     },
     motion_goto(block) {
       const to = block.inputs.TO;
@@ -2668,16 +2686,7 @@ P.sb3.compiler = (function() {
     },
     motion_setrotationstyle(block) {
       const style = block.fields.STYLE[0];
-      // TODO: convert S.rotationStyle to an enum-like
-      if (style === "normal") {
-        source += 'S.rotationStyle = "normal";\n';
-      } else if (style === 'left-right') {
-        source += 'S.rotationStyle = "leftRight";\n';
-      } else if (style === "don't rotate") {
-        source += 'S.rotationStyle = "none";\n'; 
-      } else {
-        throw new Error('unknown rotation style: ' + style)
-      }
+      source += 'S.rotationStyle = "' + P.utils.asRotationStyle(style) + '";\n';
       visualCheck('visible');
     },
     motion_turnright(block) {
@@ -2838,6 +2847,17 @@ P.sb3.compiler = (function() {
       source += '  playSound(sound);\n';
       source += '}\n';
     },
+    sound_setvolumeto(block) {
+      const volume = block.inputs.VOLUME;
+      source += 'S.volume = Math.max(0, Math.min(1, ' + compileExpression(volume, 'number') + ' / 100));\n';
+      source += 'if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
+      source += 'for (var sounds = S.sounds, i = sounds.length; i--;) {\n';
+      source += '  var sound = sounds[i];\n';
+      source += '  if (sound.node && sound.target === S) {\n';
+      source += '    sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
+      source += '  }\n';
+      source += '}\n';
+    },
 
     // Sensing
     sensing_askandwait(block) {
@@ -2906,8 +2926,19 @@ P.sb3.compiler = (function() {
     procedures_call(block) {
       const mutation = block.mutation;
       const name = mutation.proccode;
+
       const id = nextLabel();
-      source += 'call(S.procedures[' + sanitize(name, true) + '], ' + id + ', []);\n';
+      source += 'call(S.procedures[' + sanitize(name, true) + '], ' + id + ', [\n';
+
+      // The mutation has a stringified JSON list of input IDs... it's weird.
+      const inputIds = JSON.parse(mutation.argumentids);
+      for (const id of inputIds) {
+        const input = block.inputs[id];
+        source += '  ' + compileExpression(input) + ',\n';
+      }
+
+      source += ']);\n';
+
       delay();
     },
 
@@ -2920,31 +2951,6 @@ P.sb3.compiler = (function() {
       source += 'S.stamp();\n';
       visualCheck('always');
     },
-  };
-
-  // IDs of primative types
-  // https://github.com/LLK/scratch-vm/blob/36fe6378db930deb835e7cd342a39c23bb54dd72/src/serialization/sb3.js#L60-L79
-  const PRIMATIVE_TYPES = {
-    // Any number (???)
-    MATH_NUM: 4,
-    // Any positive number (maybe including zero?)
-    POSITIVE_NUM: 5,
-    // Any whole number, including 0
-    WHOLE_NUM: 6,
-    // Any integer
-    INTEGER_NUM: 7,
-    // An angle
-    ANGLE_NUM: 8,
-    // A color
-    COLOR_PICKER: 9,
-    // A text string
-    TEXT: 10,
-    // A broadcast
-    BROADCAST: 11,
-    // A variable reference
-    VAR: 12,
-    // A list reference
-    LIST: 13,
   };
 
   ///
@@ -2999,7 +3005,7 @@ P.sb3.compiler = (function() {
     const id = nextLabel();
     fns.push(source.length);
     if (P.config.debug) {
-      source += '/*' + id + '*/'
+      source += '/*label:' + id + '*/'
     }
     return id;
   }
@@ -3073,10 +3079,13 @@ P.sb3.compiler = (function() {
       case PRIMATIVE_TYPES.WHOLE_NUM:
       case PRIMATIVE_TYPES.INTEGER_NUM:
       case PRIMATIVE_TYPES.ANGLE_NUM:
-      case PRIMATIVE_TYPES.COLOR_PICKER:
         return +constant[1];
 
-      // String
+      case PRIMATIVE_TYPES.COLOR_PICKER:
+        // TODO
+        // Colors are usually stored as "#123456" in Scratch 3 which means we must convert.
+        return 0;
+
       case PRIMATIVE_TYPES.TEXT:
         return '"' + sanitize(constant[1]) + '"';
 
@@ -3150,6 +3159,18 @@ P.sb3.compiler = (function() {
     }
   }
 
+  function fallbackValue(type) {
+    if (type === 'string') {
+      return '""';
+    } else if (type === 'number') {
+      return '0';
+    } else if (type === 'boolean') {
+      return 'false';
+    } else {
+      return '""';
+    }
+  }
+
   // Returns a compiled expression as a JavaScript string.
   function compileExpression(expression, type) {
     // Expressions are also known as inputs.
@@ -3173,12 +3194,15 @@ P.sb3.compiler = (function() {
 
     const id = expression[1];
     const block = blocks[id];
+    if (!block) {
+      return fallbackValue(type);
+    }
     const opcode = block.opcode;
 
     const compiler = expressionLibrary[opcode];
     if (!compiler) {
       console.warn('unknown expression', opcode, block);
-      return '""';
+      return fallbackValue(type);
     }
     let result = compiler(block);
     if (P.config.debug) {
@@ -3216,8 +3240,7 @@ P.sb3.compiler = (function() {
 
     // Procedure defintions need special care to properly end calls.
     if (topLevelOpCode === 'procedures_definition') {
-      source += 'endCall();\n';
-      source += 'return;\n';
+      source += 'endCall(); return\n';
     }
 
     return source;
@@ -3256,9 +3279,78 @@ P.sb3.compiler = (function() {
 
 // Loads Scratch 2 projects
 P.sb2 = (function(sb2) {
-  sb2.PROJECT_URL = 'https://projects.scratch.mit.edu/internalapi/project/';
   sb2.ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
   sb2.SOUNDBANK_URL = 'https://raw.githubusercontent.com/LLK/scratch-flash/v429/src/soundbank/';
+  sb2.WAV_FILES = {
+    'AcousticGuitar_F3': 'instruments/AcousticGuitar_F3_22k.wav',
+    'AcousticPiano_As3': 'instruments/AcousticPiano(5)_A%233_22k.wav',
+    'AcousticPiano_C4': 'instruments/AcousticPiano(5)_C4_22k.wav',
+    'AcousticPiano_G4': 'instruments/AcousticPiano(5)_G4_22k.wav',
+    'AcousticPiano_F5': 'instruments/AcousticPiano(5)_F5_22k.wav',
+    'AcousticPiano_C6': 'instruments/AcousticPiano(5)_C6_22k.wav',
+    'AcousticPiano_Ds6': 'instruments/AcousticPiano(5)_D%236_22k.wav',
+    'AcousticPiano_D7': 'instruments/AcousticPiano(5)_D7_22k.wav',
+    'AltoSax_A3': 'instruments/AltoSax_A3_22K.wav',
+    'AltoSax_C6': 'instruments/AltoSax(3)_C6_22k.wav',
+    'Bassoon_C3': 'instruments/Bassoon_C3_22k.wav',
+    'BassTrombone_A2_2': 'instruments/BassTrombone_A2(2)_22k.wav',
+    'BassTrombone_A2_3': 'instruments/BassTrombone_A2(3)_22k.wav',
+    'Cello_C2': 'instruments/Cello(3b)_C2_22k.wav',
+    'Cello_As2': 'instruments/Cello(3)_A%232_22k.wav',
+    'Choir_F3': 'instruments/Choir(4)_F3_22k.wav',
+    'Choir_F4': 'instruments/Choir(4)_F4_22k.wav',
+    'Choir_F5': 'instruments/Choir(4)_F5_22k.wav',
+    'Clarinet_C4': 'instruments/Clarinet_C4_22k.wav',
+    'ElectricBass_G1': 'instruments/ElectricBass(2)_G1_22k.wav',
+    'ElectricGuitar_F3': 'instruments/ElectricGuitar(2)_F3(1)_22k.wav',
+    'ElectricPiano_C2': 'instruments/ElectricPiano_C2_22k.wav',
+    'ElectricPiano_C4': 'instruments/ElectricPiano_C4_22k.wav',
+    'EnglishHorn_D4': 'instruments/EnglishHorn(1)_D4_22k.wav',
+    'EnglishHorn_F3': 'instruments/EnglishHorn(1)_F3_22k.wav',
+    'Flute_B5_1': 'instruments/Flute(3)_B5(1)_22k.wav',
+    'Flute_B5_2': 'instruments/Flute(3)_B5(2)_22k.wav',
+    'Marimba_C4': 'instruments/Marimba_C4_22k.wav',
+    'MusicBox_C4': 'instruments/MusicBox_C4_22k.wav',
+    'Organ_G2': 'instruments/Organ(2)_G2_22k.wav',
+    'Pizz_A3': 'instruments/Pizz(2)_A3_22k.wav',
+    'Pizz_E4': 'instruments/Pizz(2)_E4_22k.wav',
+    'Pizz_G2': 'instruments/Pizz(2)_G2_22k.wav',
+    'SteelDrum_D5': 'instruments/SteelDrum_D5_22k.wav',
+    'SynthLead_C4': 'instruments/SynthLead(6)_C4_22k.wav',
+    'SynthLead_C6': 'instruments/SynthLead(6)_C6_22k.wav',
+    'SynthPad_A3': 'instruments/SynthPad(2)_A3_22k.wav',
+    'SynthPad_C6': 'instruments/SynthPad(2)_C6_22k.wav',
+    'TenorSax_C3': 'instruments/TenorSax(1)_C3_22k.wav',
+    'Trombone_B3': 'instruments/Trombone_B3_22k.wav',
+    'Trumpet_E5': 'instruments/Trumpet_E5_22k.wav',
+    'Vibraphone_C3': 'instruments/Vibraphone_C3_22k.wav',
+    'Violin_D4': 'instruments/Violin(2)_D4_22K.wav',
+    'Violin_A4': 'instruments/Violin(3)_A4_22k.wav',
+    'Violin_E5': 'instruments/Violin(3b)_E5_22k.wav',
+    'WoodenFlute_C5': 'instruments/WoodenFlute_C5_22k.wav',
+    'BassDrum': 'drums/BassDrum(1b)_22k.wav',
+    'Bongo': 'drums/Bongo_22k.wav',
+    'Cabasa': 'drums/Cabasa(1)_22k.wav',
+    'Clap': 'drums/Clap(1)_22k.wav',
+    'Claves': 'drums/Claves(1)_22k.wav',
+    'Conga': 'drums/Conga(1)_22k.wav',
+    'Cowbell': 'drums/Cowbell(3)_22k.wav',
+    'Crash': 'drums/Crash(2)_22k.wav',
+    'Cuica': 'drums/Cuica(2)_22k.wav',
+    'GuiroLong': 'drums/GuiroLong(1)_22k.wav',
+    'GuiroShort': 'drums/GuiroShort(1)_22k.wav',
+    'HiHatClosed': 'drums/HiHatClosed(1)_22k.wav',
+    'HiHatOpen': 'drums/HiHatOpen(2)_22k.wav',
+    'HiHatPedal': 'drums/HiHatPedal(1)_22k.wav',
+    'Maracas': 'drums/Maracas(1)_22k.wav',
+    'SideStick': 'drums/SideStick(1)_22k.wav',
+    'SnareDrum': 'drums/SnareDrum(1)_22k.wav',
+    'Tambourine': 'drums/Tambourine(3)_22k.wav',
+    'Tom': 'drums/Tom(1)_22k.wav',
+    'Triangle': 'drums/Triangle(1)_22k.wav',
+    'Vibraslap': 'drums/Vibraslap(1)_22k.wav',
+    'WoodBlock': 'drums/WoodBlock(1)_22k.wav'
+  };
 
   // loads an image from a URL
   sb2.loadImage = function(url) {
@@ -3279,29 +3371,7 @@ P.sb2 = (function(sb2) {
     });
   };
 
-  // loads a scratch 2 project from the scratch.mit.edu website with its ID
-  sb2.loadOnlineSB2 = function(id) {
-    const url = sb2.PROJECT_URL + id + '/get/';
-    return new Promise((resolve, reject) => {
-      return P.IO.fetch(url)
-        .then((request) => request.json())
-        .then((project) => sb2.loadProject(project))
-        .then((stage) => resolve(stage))
-        .catch((err) => {
-          if (err instanceof SyntaxError) {
-            P.IO.fetch(url)
-              .then((request) => request.arrayBuffer())
-              .then((buffer) => sb2.loadSB2Project(buffer))
-              .then((stage) => resolve(stage))
-              .catch((err) => reject(err));
-          } else {
-            reject(err);
-          }
-        })
-    });
-  };
-
-  // Loads a .sb2 file from an ArrayBuffer
+  // Loads a .sb2 file from an ArrayBuffer containing the .sb2 file
   sb2.loadSB2Project = function(arrayBuffer) {
     return JSZip.loadAsync(arrayBuffer)
       .then((zip) => {
@@ -3314,6 +3384,7 @@ P.sb2 = (function(sb2) {
       });
   };
 
+  // Loads a project on the scratch.mit.edu website from its project.json
   sb2.loadProject = function(data) {
     var children;
     var stage;
@@ -3324,9 +3395,9 @@ P.sb2 = (function(sb2) {
       sb2.loadBase(data, true).then((s) => stage = s),
     ]).then(() => {
       children = children.filter((i) => i);
+      children.forEach((c) => c.stage = stage);
       var sprites = children.filter((i) => i instanceof P.core.Sprite);
       var watchers = children.filter((i) => i instanceof P.core.Watcher);
-      children.forEach((c) => c.stage = stage);
 
       stage.children = sprites;
       stage.allWatchers = watchers;
@@ -3344,7 +3415,7 @@ P.sb2 = (function(sb2) {
     if (!P.audio.context) return Promise.resolve();
 
     const assets = [];
-    for (var name in P.config.wavFiles) {
+    for (var name in sb2.wavFiles) {
       if (!sb2.wavBuffers[name]) {
         assets.push(
           sb2.loadWavBuffer(name)
@@ -3356,7 +3427,7 @@ P.sb2 = (function(sb2) {
   };
 
   sb2.loadWavBuffer = function(name) {
-    return P.IO.fetch(sb2.SOUNDBANK_URL + P.config.wavFiles[name])
+    return P.IO.fetch(sb2.SOUNDBANK_URL + sb2.wavFiles[name])
       .then((request) => request.arrayBuffer())
       .then((arrayBuffer) => P.audio.decodeAudio(arrayBuffer))
       .then((buffer) => sb2.wavBuffers[name] = buffer);
@@ -3367,14 +3438,8 @@ P.sb2 = (function(sb2) {
     var sounds;
 
     return Promise.all([
-      sb2.loadArray(data.costumes, sb2.loadCostume)
-        .then((c) => {
-          costumes = c;
-        }),
-      sb2.loadArray(data.sounds, sb2.loadSound)
-        .then((s) => {
-          sounds = s;
-        }),
+      sb2.loadArray(data.costumes, sb2.loadCostume).then((c) => costumes = c),
+      sb2.loadArray(data.sounds, sb2.loadSound).then((s) => sounds = s),
     ]).then(() => {
       const variables = {};
       if (data.variables) {
@@ -3573,7 +3638,14 @@ P.sb2 = (function(sb2) {
 // Compiler for .sb2 projects
 P.sb2.compiler = (function() {
   var LOG_PRIMITIVES;
-  // LOG_PRIMITIVES = true;
+
+  // Implements a Scratch 2 procedure.
+  // Scratch 2 argument references just go by index, so its very simple.
+  class Scratch2Procedure extends P.core.Procedure {
+    call(inputs) {
+      return inputs;
+    }
+  }
 
   var EVENT_SELECTORS = [
     'procDef',
@@ -4134,6 +4206,7 @@ P.sb2.compiler = (function() {
 
       } else if (block[0] === 'setRotationStyle') {
 
+        // TODO: use P.utils.asRotationStyle()?
         source += 'var style = ' + val(block[1]) + ';\n';
         source += 'S.rotationStyle = style === "left-right" ? "leftRight" : style === "don\'t rotate" ? "none" : "normal";\n';
 
@@ -4698,11 +4771,8 @@ P.sb2.compiler = (function() {
       var key = script[0][1].toLowerCase();
       (object.listeners.whenSceneStarts[key] || (object.listeners.whenSceneStarts[key] = [])).push(f);
     } else if (script[0][0] === 'procDef') {
-      object.procedures[script[0][1]] = {
-        inputs: inputs,
-        warp: script[0][4],
-        fn: f
-      };
+      const warp = script[0][4];
+      object.procedures[script[0][1]] = new Scratch2Procedure(f, warp, inputs);
     } else {
       warn('Undefined event: ' + script[0][0]);
     }
@@ -4845,7 +4915,33 @@ P.audio = (function(audio) {
 // The phosphorus Scratch runtime
 // Provides methods expected at runtime by scripts created by the compiler and an environment for Scratch scripts to run
 P.runtime = (function() {
-  var self, S, R, STACK, C, WARP, CALLS, BASE, THREAD, IMMEDIATE, VISUAL;
+  // The runtime is really weird and hard to understand.
+  // The upside: it's fast as hell.
+
+  // Global variables expected by scripts at runtime:
+
+  // The stage object
+  var self;
+  // Current sprite or stage
+  var S;
+  // Used for resuming state
+  var R;
+  // Stack of states (??)
+  var STACK;
+  // Current procedure call, if any
+  var C;
+  // If warp mode (run without screen refresh) is enabled
+  var WARP;
+  // Call stack
+  var CALLS;
+  // ??
+  var BASE;
+  // ??
+  var THREAD;
+  // ??
+  var IMMEDIATE;
+  // Has a "visual change" been made?
+  var VISUAL;
 
   // Converts a value to its boolean equivalent
   var bool = function(v) {
@@ -5235,10 +5331,11 @@ P.runtime = (function() {
     if (procedure) {
       STACK.push(R);
       CALLS.push(C);
+
       C = {
         base: procedure.fn,
         fn: S.fns[id],
-        args: values,
+        args: procedure.call(values),
         numargs: [],
         boolargs: [],
         stack: STACK = [],
