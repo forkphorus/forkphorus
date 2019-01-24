@@ -2567,7 +2567,7 @@ P.sb3.compiler = (function() {
       const id = label();
       source += 'if (' + compileExpression(condition, 'boolean') + ') {\n'
       compileSubstack(substack);
-      forceQueue(id);
+      queue(id);
       source += '}\n';
     },
     control_wait(block) {
@@ -3215,7 +3215,7 @@ P.sb3.compiler = (function() {
     // Expressions are also known as inputs.
 
     if (!expression) {
-      throw new Error('invalid expression');
+      return fallbackValue(type);
     }
 
     // TODO: use asType?
