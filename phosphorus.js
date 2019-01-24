@@ -1048,7 +1048,7 @@ P.core = (function(core) {
       // TODO: automated loop to copy all fields?
 
       // Copy Data
-      // Passing these by reference is fine.
+      // These are all primates which will not pass by reference.
       c.name = this.name;
       c.costumes = this.costumes;
       c.currentCostumeIndex = this.currentCostumeIndex;
@@ -2364,6 +2364,11 @@ P.sb3.compiler = (function() {
       const letter = block.inputs.LETTER;
       return '((' + compileExpression(string, 'string') + ')[(' + compileExpression(letter, 'number') + ' | 0) - 1] || "")';
     },
+    operator_contains(block) {
+      const string1 = block.inputs.STRING1;
+      const string2 = block.inputs.STRING2;
+      return compileExpression(string1, 'string') + '.includes(' + compileExpression(string2, 'string') + ')';
+    },
 
     // Sensing
     sensing_mousedown(block) {
@@ -2416,6 +2421,34 @@ P.sb3.compiler = (function() {
     sensing_of_object_menu(block) {
       const object = block.fields.OBJECT[0];
       return sanitize(object, true);
+    },
+    sensing_touchingcolor(block) {
+      const color = block.inputs.COLOR;
+      return 'S.touchingColor(' + compileExpression(color) + ')';
+    },
+    sensing_coloristouchingcolor(block) {
+      const color = block.inputs.COLOR;
+      const color2 = block.inputs.COLOR2;
+      return 'S.colorTouchingColor(' + compileExpression(color) + ', ' + compileExpression(color2) + ')';
+    },
+    sensing_current(block) {
+      const current = block.fields.CURRENTMENU[0];
+
+      switch (current) {
+        case 'YEAR': return 'new Date().getFullYear()';
+        case 'MONTH': return 'new Date().getMonth() + 1';
+        case 'DATE': return 'new Date().getDate()';
+        case 'DAYOFWEEK': return 'new Date().getDay() + 1';
+        case 'HOUR': return 'new Date().getHours()';
+        case 'MINUTE': return 'new Date().getMinutes()';
+        case 'SECOND': return 'new Date().getSeconds()';
+      }
+
+      console.warn('unknown CURRENTMENU: ' + current);
+      return 0;
+    },
+    sensing_dayssince2000(block) {
+      return '((Date.now() - epoch) / 86400000)';
     },
 
     // Motion
@@ -2728,6 +2761,9 @@ P.sb3.compiler = (function() {
       source += 'S.pointTowards(' + compileExpression(towards) + ');\n';
       visualCheck('visible');
     },
+    motion_ifonedgebounce(block) {
+      source += 'S.bounceOffEdge();\n';
+    },
 
     // Looks
     looks_switchcostumeto(block) {
@@ -2764,6 +2800,10 @@ P.sb3.compiler = (function() {
     },
     looks_nextcostume(block) {
       source += 'S.showNextCostume();\n';
+      visualCheck('visible');
+    },
+    looks_nextbackdrop(block) {
+      source += 'self.showNextCostume();\n';
       visualCheck('visible');
     },
     looks_seteffectto(block) {
@@ -2921,6 +2961,14 @@ P.sb3.compiler = (function() {
     sensing_resettimer(blocK) {
       source += 'self.timerStart = self.now;\n';
     },
+    sensing_setdragmode(block) {
+      const dragMode = block.fields.DRAG_MODE[0];
+      if (dragMode === 'draggable') {
+        source += 'S.isDraggable = true;\n';
+      } else {
+        source += 'S.isDraggable = false;\n';
+      }
+    },
 
     // Data
     data_setvariableto(block) {
@@ -2988,6 +3036,14 @@ P.sb3.compiler = (function() {
     },
     pen_stamp(block) {
       source += 'S.stamp();\n';
+      visualCheck('always');
+    },
+    pen_penUp(block) {
+      source += 'S.isPenDown = false;\n';
+      visualCheck('always');
+    },
+    pen_penDown(block) {
+      source += 'S.isPenDown = true;\n';
       visualCheck('always');
     },
   };
@@ -3104,6 +3160,10 @@ P.sb3.compiler = (function() {
   /// Compiling Functions
   ///
 
+  function convertColor(hexCode) {
+    return '0x' + hexCode.substring(1);
+  }
+
   // Compiles a native expression (number, string, data) to a JavaScript string
   function compileNative(constant) {
     // Natives are arrays.
@@ -3120,11 +3180,6 @@ P.sb3.compiler = (function() {
       case PRIMATIVE_TYPES.ANGLE_NUM:
         return +constant[1];
 
-      case PRIMATIVE_TYPES.COLOR_PICKER:
-        // TODO
-        // Colors are usually stored as "#123456" in Scratch 3 which means we must convert.
-        return 0;
-
       case PRIMATIVE_TYPES.TEXT:
         return sanitize(constant[1], true);
 
@@ -3136,6 +3191,10 @@ P.sb3.compiler = (function() {
       case PRIMATIVE_TYPES.LIST:
         // Same thing as variable references.
         return listReference(constant[2]);
+
+      case PRIMATIVE_TYPES.COLOR_PICKER:
+        // Colors are stored as "#123456", so we must do some conversions.
+        return convertColor(constant[1]);
 
       case PRIMATIVE_TYPES.BROADCAST:
         return compileExpression(constant[2]);
