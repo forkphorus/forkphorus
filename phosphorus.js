@@ -386,7 +386,7 @@ P.core = (function(core) {
     }
 
     getCostumeName() {
-      return this.costumes[this.currentCostumeIndex] ? this.costumes[this.currentCostumeIndex].costumeName : '';
+      return this.costumes[this.currentCostumeIndex] ? this.costumes[this.currentCostumeIndex].name : '';
     }
 
     setCostume(costume) {
@@ -2262,7 +2262,8 @@ P.sb3.compiler = (function() {
       const mutation = blocks[customBlockId].mutation;
 
       const name = mutation.proccode;
-      const warp = mutation.warp;
+      // Warp is either a boolean or a string representation of that boolean.
+      const warp = typeof mutation.warp === 'string' ? mutation.warp === 'true' : mutation.warp;
       // It's a stringified JSON array.
       const argumentNames = JSON.parse(mutation.argumentnames);
 
@@ -2474,12 +2475,10 @@ P.sb3.compiler = (function() {
       const list = block.fields.LIST[1];
       return listReference(list) + '.length';
     },
-    // TODO: list things might want to use the runtime methods?
     data_itemoflist(block) {
       const list = block.fields.LIST[1];
       const index = block.inputs.INDEX;
-      // TODO: 'last', 'random'
-      return listReference(list) + '[' + compileExpression(index, 'number') + ' - 1]';
+      return 'getLineOfList(' + listReference(list) + ', ' + compileExpression(index, 'number') + ')';
     },
     data_listcontainsitem(block) {
       const list = block.fields.LIST[1];
@@ -2558,7 +2557,7 @@ P.sb3.compiler = (function() {
       const id = label();
       source += 'if (!(' + compileExpression(condition, 'boolean') + ')) {\n'
       compileSubstack(substack);
-      forceQueue(id);
+      queue(id);
       source += '}\n';
     },
     control_while(block) {
@@ -2942,8 +2941,7 @@ P.sb3.compiler = (function() {
     data_deleteoflist(block) {
       const list = block.fields.LIST[1];
       const index = block.inputs.INDEX;
-      // TODO: delete 'all' of list
-      source += listReference(list) + '.splice(' + compileExpression(index, 'number') + ' - 1 , 1);\n';
+      source += 'deleteLineOfList(' + listReference(list) + ', ' + compileExpression(index, 'number') + ');\n';
     },
     data_addtolist(block) {
       const list = block.fields.LIST[1];
@@ -3025,7 +3023,7 @@ P.sb3.compiler = (function() {
     source += 'forceQueue(' + id + '); return;\n';
   }
 
-  // Queues somethign to run (TODO: difference from forceQueue)
+  // Queues something to run (TODO: difference from forceQueue)
   function queue(id) {
     source += 'queue(' + id + '); return;\n';
   }
@@ -3057,11 +3055,11 @@ P.sb3.compiler = (function() {
     const quote = includeQuotes ? '"' : '';
     if (typeof thing === 'string') {
       return quote + thing
-        .replace('\\', '\\\\')
-        .replace('\'', '\\\'')
-        .replace('"', '\\"')
-        .replace('\n', '\\n')
-        .replace('\r', '\\r')
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, '\\\'')
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r')
         .replace(/\{/g, '\\x7b')
         .replace(/\}/g, '\\x7d') + quote;
     } else if (typeof thing === 'number') {
@@ -3128,7 +3126,7 @@ P.sb3.compiler = (function() {
         return 0;
 
       case PRIMATIVE_TYPES.TEXT:
-        return '"' + sanitize(constant[1]) + '"';
+        return sanitize(constant[1], true);
 
       case PRIMATIVE_TYPES.VAR:
         // For variable natives the second item is the name of the variable
@@ -4839,7 +4837,11 @@ P.sb2.compiler = (function() {
 
 // Related to playing or decoding sounds
 P.audio = (function(audio) {
-  const audioContext = audio.context = new AudioContext();
+  if (window.AudioContext) {
+    audio.context = new AudioContext();
+  } else {
+    audio.context = null;
+  }
 
   const ADPCM_STEPS = [
     7, 8, 9, 10, 11, 12, 13, 14, 16, 17,
@@ -4932,7 +4934,7 @@ P.audio = (function(audio) {
   };
 
   audio.decodeAudio = function(ab) {
-    if (!audioContext) {
+    if (!audio.context) {
       return Promise.resolve();
     }
 
@@ -4944,7 +4946,7 @@ P.audio = (function(audio) {
           return;
         }
         // Hope that the audio context will know what to do
-        return audioContext.decodeAudioData(ab)
+        return audio.context.decodeAudioData(ab)
           .then((buffer) => resolve(buffer));
       });
     });
@@ -4971,9 +4973,10 @@ P.runtime = (function() {
   var STACK;
   // Current procedure call, if any
   var C;
-  // If warp mode (run without screen refresh) is enabled
+  // If level of layers of "Run without screen refresh" we are in
+  // Each subsequent procedure call will increment and decrement as they start and stop.
   var WARP;
-  // Call stack
+  // ??
   var CALLS;
   // ??
   var BASE;
@@ -5251,7 +5254,7 @@ P.runtime = (function() {
         case 'y position': return o.scratchY;
         case 'direction': return o.direction;
         case 'costume #': return o.currentCostumeIndex + 1;
-        case 'costume name': return o.costumes[o.currentCostumeIndex].costumeName;
+        case 'costume name': return o.costumes[o.currentCostumeIndex].name;
         case 'size': return o.scale * 100;
         case 'volume': return 0; // TODO
       }
@@ -5259,7 +5262,7 @@ P.runtime = (function() {
       switch (attr) {
         case 'background #':
         case 'backdrop #': return o.currentCostumeIndex + 1;
-        case 'backdrop name': return o.costumes[o.currentCostumeIndex].costumeName;
+        case 'backdrop name': return o.costumes[o.currentCostumeIndex].name;
         case 'volume': return 0; // TODO
       }
     }
@@ -5372,7 +5375,6 @@ P.runtime = (function() {
     if (procedure) {
       STACK.push(R);
       CALLS.push(C);
-
       C = {
         base: procedure.fn,
         fn: S.fns[id],
@@ -5380,7 +5382,7 @@ P.runtime = (function() {
         numargs: [],
         boolargs: [],
         stack: STACK = [],
-        warp: procedure.warp
+        warp: procedure.warp,
       };
       R = {};
       if (C.warp || WARP) {
@@ -5420,7 +5422,7 @@ P.runtime = (function() {
   };
 
   var sceneChange = function() {
-    return self.trigger('whenSceneStarts', self.costumes[self.currentCostumeIndex].costumeName);
+    return self.trigger('whenSceneStarts', self.costumes[self.currentCostumeIndex].name);
   };
 
   var broadcast = function(name) {
