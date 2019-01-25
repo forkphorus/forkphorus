@@ -2218,20 +2218,6 @@ P.sb3.compiler = (function() {
     event_whenflagclicked(block, f) {
       currentTarget.listeners.whenGreenFlag.push(f);
     },
-    event_whenthisspriteclicked(block, f) {
-      currentTarget.listeners.whenClicked.push(f);
-    },
-    event_whenstageclicked(block, f) {
-      // same as "when this sprite clicked"
-      currentTarget.listeners.whenClicked.push(f);
-    },
-    event_whenbroadcastreceived(block, f) {
-      const optionId = block.fields.BROADCAST_OPTION[1];
-      if (!currentTarget.listeners.whenIReceive[optionId]) {
-        currentTarget.listeners.whenIReceive[optionId] = [];
-      }
-      currentTarget.listeners.whenIReceive[optionId].push(f);
-    },
     event_whenkeypressed(block, f) {
       const key = block.fields.KEY_OPTION[0];
       if (key === 'any') {
@@ -2242,6 +2228,13 @@ P.sb3.compiler = (function() {
         currentTarget.listeners.whenKeyPressed[P.utils.getKeyCode(key)].push(f);
       }
     },
+    event_whenthisspriteclicked(block, f) {
+      currentTarget.listeners.whenClicked.push(f);
+    },
+    event_whenstageclicked(block, f) {
+      // same as "when this sprite clicked"
+      currentTarget.listeners.whenClicked.push(f);
+    },
     event_whenbackdropswitchesto(block, f) {
       const backdrop = block.fields.BACKDROP[0];
       // When backdrop switches to was previously known as "when scene starts"
@@ -2249,6 +2242,13 @@ P.sb3.compiler = (function() {
         currentTarget.listeners.whenSceneStarts[backdrop] = [];
       }
       currentTarget.listeners.whenSceneStarts[backdrop].push(f);
+    },
+    event_whenbroadcastreceived(block, f) {
+      const optionId = block.fields.BROADCAST_OPTION[1];
+      if (!currentTarget.listeners.whenIReceive[optionId]) {
+        currentTarget.listeners.whenIReceive[optionId] = [];
+      }
+      currentTarget.listeners.whenIReceive[optionId].push(f);
     },
 
     // Control
@@ -2273,191 +2273,7 @@ P.sb3.compiler = (function() {
   };
 
   const expressionLibrary = {
-    // Control
-    control_create_clone_of_menu(block) {
-      const option = block.fields.CLONE_OPTION;
-      return '"' + sanitize(option[0]) + '"';
-    },
-
-    // Operators
-    operator_random(block) {
-      const from = block.inputs.FROM;
-      const to = block.inputs.TO;
-      return 'random(' + compileExpression(from) + ', ' + compileExpression(to) + ')';
-    },
-    operator_or(block) {
-      const operand1 = block.inputs.OPERAND1;
-      const operand2 = block.inputs.OPERAND2;
-      return '(' + compileExpression(operand1) + ' || ' + compileExpression(operand2) + ')';
-    },
-    operator_and(block) {
-      const operand1 = block.inputs.OPERAND1;
-      const operand2 = block.inputs.OPERAND2;
-      return '(' + compileExpression(operand1) + ' && ' + compileExpression(operand2) + ')';
-    },
-    operator_not(block) {
-      const operand = block.inputs.OPERAND;
-      return '!(' + compileExpression(operand) + ')';
-    },
-    operator_equals(block) {
-      const operand1 = block.inputs.OPERAND1;
-      const operand2 = block.inputs.OPERAND2;
-      return 'equal(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ')';
-    },
-    operator_lt(block) {
-      const operand1 = block.inputs.OPERAND1;
-      const operand2 = block.inputs.OPERAND2;
-      return 'numLess(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ')';
-    },
-    operator_gt(block) {
-      const operand1 = block.inputs.OPERAND1;
-      const operand2 = block.inputs.OPERAND2;
-      return 'numGreater(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ')';
-    },
-    operator_subtract(block) {
-      const num1 = block.inputs.NUM1;
-      const num2 = block.inputs.NUM2;
-      return '(' + compileExpression(num1) + ' - ' + compileExpression(num2) + ' || 0)';
-    },
-    operator_add(block) {
-      const num1 = block.inputs.NUM1;
-      const num2 = block.inputs.NUM2;
-      return '(' + compileExpression(num1) + ' + ' + compileExpression(num2) + ' || 0)';
-    },
-    operator_multiply(block) {
-      const num1 = block.inputs.NUM1;
-      const num2 = block.inputs.NUM2;
-      return '(' + compileExpression(num1) + ' * ' + compileExpression(num2) + ' || 0)';
-    },
-    operator_divide(block) {
-      const num1 = block.inputs.NUM1;
-      const num2 = block.inputs.NUM2;
-      return '(' + compileExpression(num1, 'number') + ' / ' + compileExpression(num2, 'number') + ' || 0)';
-    },
-    operator_mod(block) {
-      const num1 = block.inputs.NUM1;
-      const num2 = block.inputs.NUM2;
-      return '(' + compileExpression(num1) + ' % ' + compileExpression(num2) + ' || 0)';
-    },
-    operator_join(block) {
-      const string1 = block.inputs.STRING1;
-      const string2 = block.inputs.STRING2;
-      return '( "" + ' + compileExpression(string1) + ' + ' + compileExpression(string2) + ')';
-    },
-    operator_mathop(block) {
-      const operator = block.fields.OPERATOR[0];
-      const num = block.inputs.NUM;
-      // TODO: inline the function when possible for performance gain?
-      return 'mathFunc("' + sanitize(operator) + '", ' + compileExpression(num) + ')';
-    },
-    operator_round(block) {
-      const num = block.inputs.NUM;
-      return 'Math.round(' + compileExpression(num) + ')';
-    },
-    operator_length(block) {
-      const string = block.inputs.STRING;
-      // TODO: parenthesis important?
-      return '(' + compileExpression(string, 'string') + ').length';
-    },
-    operator_letter_of(block) {
-      const string = block.inputs.STRING;
-      const letter = block.inputs.LETTER;
-      return '((' + compileExpression(string, 'string') + ')[(' + compileExpression(letter, 'number') + ' | 0) - 1] || "")';
-    },
-    operator_contains(block) {
-      const string1 = block.inputs.STRING1;
-      const string2 = block.inputs.STRING2;
-      return compileExpression(string1, 'string') + '.includes(' + compileExpression(string2, 'string') + ')';
-    },
-
-    // Sensing
-    sensing_mousedown(block) {
-      return 'self.mousePressed';
-    },
-    sensing_mousex(block) {
-      return 'self.mouseX';
-    },
-    sensing_mousey(block) {
-      return 'self.mouseY';
-    },
-    sensing_touchingobject(block) {
-      const object = block.inputs.TOUCHINGOBJECTMENU;
-      return 'S.touching(' + compileExpression(object) + ')';
-    },
-    sensing_touchingobjectmenu(block) {
-      const object = block.fields.TOUCHINGOBJECTMENU;
-      return '"' + sanitize(object[0]) + '"';
-    },
-    sensing_keypressed(block) {
-      const key = block.inputs.KEY_OPTION;
-      return '!!self.keys[P.utils.getKeyCode(' + compileExpression(key) + ')]';
-    },
-    sensing_keyoptions(block) {
-      const key = block.fields.KEY_OPTION[0];
-      return '"' + sanitize(key) + '"';
-    },
-    sensing_answer(block) {
-      return 'self.answer';
-    },
-    sensing_username(block) {
-      // TODO: let the user pick a username
-      return '""';
-    },
-    sensing_timer(block) {
-      return '((self.now - self.timerStart) / 1000)';
-    },
-    sensing_distancetomenu(block) {
-      return sanitize(block.fields.DISTANCETOMENU[0], true);
-    },
-    sensing_distanceto(block) {
-      const menu = block.inputs.DISTANCETOMENU;
-      return 'S.distanceTo(' + compileExpression(menu) + ')';
-    },
-    sensing_of(block) {
-      const property = block.fields.PROPERTY[0];
-      const object = block.inputs.OBJECT;
-      return 'attribute(' + sanitize(property, true) + ', ' + compileExpression(object, 'string') + ')';
-    },
-    sensing_of_object_menu(block) {
-      const object = block.fields.OBJECT[0];
-      return sanitize(object, true);
-    },
-    sensing_touchingcolor(block) {
-      const color = block.inputs.COLOR;
-      return 'S.touchingColor(' + compileExpression(color) + ')';
-    },
-    sensing_coloristouchingcolor(block) {
-      const color = block.inputs.COLOR;
-      const color2 = block.inputs.COLOR2;
-      return 'S.colorTouchingColor(' + compileExpression(color) + ', ' + compileExpression(color2) + ')';
-    },
-    sensing_current(block) {
-      const current = block.fields.CURRENTMENU[0];
-
-      switch (current) {
-        case 'YEAR': return 'new Date().getFullYear()';
-        case 'MONTH': return 'new Date().getMonth() + 1';
-        case 'DATE': return 'new Date().getDate()';
-        case 'DAYOFWEEK': return 'new Date().getDay() + 1';
-        case 'HOUR': return 'new Date().getHours()';
-        case 'MINUTE': return 'new Date().getMinutes()';
-        case 'SECOND': return 'new Date().getSeconds()';
-      }
-
-      console.warn('unknown CURRENTMENU: ' + current);
-      return 0;
-    },
-    sensing_dayssince2000(block) {
-      return '((Date.now() - epoch) / 86400000)';
-    },
-
     // Motion
-    motion_xposition(block) {
-      return 'S.scratchX';
-    },
-    motion_yposition(block) {
-      return 'S.scratchY';
-    },
     motion_goto_menu(block) {
       const to = block.fields.TO[0];
       return '"' + sanitize(to) + '"';
@@ -2465,6 +2281,12 @@ P.sb3.compiler = (function() {
     motion_pointtowards_menu(block) {
       const towards = block.fields.TOWARDS[0];
       return '"' + sanitize(towards) + '"';
+    },
+    motion_xposition(block) {
+      return 'S.scratchX';
+    },
+    motion_yposition(block) {
+      return 'S.scratchY';
     },
     motion_direction() {
       return 'S.direction';
@@ -2503,25 +2325,213 @@ P.sb3.compiler = (function() {
       return 'S.scale * 100';
     },
 
-    // Data
-    data_lengthoflist(block) {
-      const list = block.fields.LIST[1];
-      return listReference(list) + '.length';
+    // Sounds
+    sound_sounds_menu(block) {
+      const sound = block.fields.SOUND_MENU[0];
+      return '"' + sanitize(sound) + '"';
     },
+    sound_volume() {
+      return '(S.volume * 100)'
+    },
+
+    // Control
+    control_create_clone_of_menu(block) {
+      const option = block.fields.CLONE_OPTION;
+      return '"' + sanitize(option[0]) + '"';
+    },
+
+    // Sensing
+
+    sensing_touchingobject(block) {
+      const object = block.inputs.TOUCHINGOBJECTMENU;
+      return 'S.touching(' + compileExpression(object) + ')';
+    },
+    sensing_touchingobjectmenu(block) {
+      const object = block.fields.TOUCHINGOBJECTMENU;
+      return '"' + sanitize(object[0]) + '"';
+    },
+    sensing_touchingcolor(block) {
+      const color = block.inputs.COLOR;
+      return 'S.touchingColor(' + compileExpression(color) + ')';
+    },
+    sensing_coloristouchingcolor(block) {
+      const color = block.inputs.COLOR;
+      const color2 = block.inputs.COLOR2;
+      return 'S.colorTouchingColor(' + compileExpression(color) + ', ' + compileExpression(color2) + ')';
+    },
+    sensing_distanceto(block) {
+      const menu = block.inputs.DISTANCETOMENU;
+      return 'S.distanceTo(' + compileExpression(menu) + ')';
+    },
+    sensing_distancetomenu(block) {
+      return sanitize(block.fields.DISTANCETOMENU[0], true);
+    },
+    sensing_answer(block) {
+      return 'self.answer';
+    },
+    sensing_keypressed(block) {
+      const key = block.inputs.KEY_OPTION;
+      return '!!self.keys[P.utils.getKeyCode(' + compileExpression(key) + ')]';
+    },
+    sensing_keyoptions(block) {
+      const key = block.fields.KEY_OPTION[0];
+      return '"' + sanitize(key) + '"';
+    },
+    sensing_mousedown(block) {
+      return 'self.mousePressed';
+    },
+    sensing_mousex(block) {
+      return 'self.mouseX';
+    },
+    sensing_mousey(block) {
+      return 'self.mouseY';
+    },
+    sensing_timer(block) {
+      return '((self.now - self.timerStart) / 1000)';
+    },
+    sensing_of(block) {
+      const property = block.fields.PROPERTY[0];
+      const object = block.inputs.OBJECT;
+      return 'attribute(' + sanitize(property, true) + ', ' + compileExpression(object, 'string') + ')';
+    },
+    sensing_of_object_menu(block) {
+      const object = block.fields.OBJECT[0];
+      return sanitize(object, true);
+    },
+    sensing_current(block) {
+      const current = block.fields.CURRENTMENU[0];
+
+      switch (current) {
+        case 'YEAR': return 'new Date().getFullYear()';
+        case 'MONTH': return 'new Date().getMonth() + 1';
+        case 'DATE': return 'new Date().getDate()';
+        case 'DAYOFWEEK': return 'new Date().getDay() + 1';
+        case 'HOUR': return 'new Date().getHours()';
+        case 'MINUTE': return 'new Date().getMinutes()';
+        case 'SECOND': return 'new Date().getSeconds()';
+      }
+
+      console.warn('unknown CURRENTMENU: ' + current);
+      return 0;
+    },
+    sensing_dayssince2000(block) {
+      return '((Date.now() - epoch) / 86400000)';
+    },
+    sensing_username(block) {
+      // TODO: let the user pick a username
+      return '""';
+    },
+
+    // Operators
+    operator_add(block) {
+      const num1 = block.inputs.NUM1;
+      const num2 = block.inputs.NUM2;
+      return '(' + compileExpression(num1) + ' + ' + compileExpression(num2) + ' || 0)';
+    },
+    operator_subtract(block) {
+      const num1 = block.inputs.NUM1;
+      const num2 = block.inputs.NUM2;
+      return '(' + compileExpression(num1) + ' - ' + compileExpression(num2) + ' || 0)';
+    },
+    operator_multiply(block) {
+      const num1 = block.inputs.NUM1;
+      const num2 = block.inputs.NUM2;
+      return '(' + compileExpression(num1) + ' * ' + compileExpression(num2) + ' || 0)';
+    },
+    operator_divide(block) {
+      const num1 = block.inputs.NUM1;
+      const num2 = block.inputs.NUM2;
+      return '(' + compileExpression(num1, 'number') + ' / ' + compileExpression(num2, 'number') + ' || 0)';
+    },
+    operator_random(block) {
+      const from = block.inputs.FROM;
+      const to = block.inputs.TO;
+      return 'random(' + compileExpression(from) + ', ' + compileExpression(to) + ')';
+    },
+    operator_gt(block) {
+      const operand1 = block.inputs.OPERAND1;
+      const operand2 = block.inputs.OPERAND2;
+      return 'numGreater(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ')';
+    },
+    operator_lt(block) {
+      const operand1 = block.inputs.OPERAND1;
+      const operand2 = block.inputs.OPERAND2;
+      return 'numLess(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ')';
+    },
+    operator_equals(block) {
+      const operand1 = block.inputs.OPERAND1;
+      const operand2 = block.inputs.OPERAND2;
+      return 'equal(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ')';
+    },
+    operator_and(block) {
+      const operand1 = block.inputs.OPERAND1;
+      const operand2 = block.inputs.OPERAND2;
+      return '(' + compileExpression(operand1) + ' && ' + compileExpression(operand2) + ')';
+    },
+    operator_or(block) {
+      const operand1 = block.inputs.OPERAND1;
+      const operand2 = block.inputs.OPERAND2;
+      return '(' + compileExpression(operand1) + ' || ' + compileExpression(operand2) + ')';
+    },
+    operator_not(block) {
+      const operand = block.inputs.OPERAND;
+      return '!(' + compileExpression(operand) + ')';
+    },
+    operator_join(block) {
+      const string1 = block.inputs.STRING1;
+      const string2 = block.inputs.STRING2;
+      return '( "" + ' + compileExpression(string1) + ' + ' + compileExpression(string2) + ')';
+    },
+    operator_letter_of(block) {
+      const string = block.inputs.STRING;
+      const letter = block.inputs.LETTER;
+      return '((' + compileExpression(string, 'string') + ')[(' + compileExpression(letter, 'number') + ' | 0) - 1] || "")';
+    },
+    operator_length(block) {
+      const string = block.inputs.STRING;
+      // TODO: parenthesis important?
+      return '(' + compileExpression(string, 'string') + ').length';
+    },
+    operator_contains(block) {
+      const string1 = block.inputs.STRING1;
+      const string2 = block.inputs.STRING2;
+      return compileExpression(string1, 'string') + '.includes(' + compileExpression(string2, 'string') + ')';
+    },
+    operator_mod(block) {
+      const num1 = block.inputs.NUM1;
+      const num2 = block.inputs.NUM2;
+      return '(' + compileExpression(num1) + ' % ' + compileExpression(num2) + ' || 0)';
+    },
+    operator_round(block) {
+      const num = block.inputs.NUM;
+      return 'Math.round(' + compileExpression(num) + ')';
+    },
+    operator_mathop(block) {
+      const operator = block.fields.OPERATOR[0];
+      const num = block.inputs.NUM;
+      // TODO: inline the function when possible for performance gain?
+      return 'mathFunc("' + sanitize(operator) + '", ' + compileExpression(num) + ')';
+    },
+
+    // Data
     data_itemoflist(block) {
       const list = block.fields.LIST[1];
       const index = block.inputs.INDEX;
       return 'getLineOfList(' + listReference(list) + ', ' + compileExpression(index, 'number') + ')';
     },
-    data_listcontainsitem(block) {
-      const list = block.fields.LIST[1];
-      const item = block.inputs.ITEM;
-      return 'listContains(' + listReference(list) + ', ' + compileExpression(item) + ')';
-    },
     data_itemnumoflist(block) {
       const list = block.fields.LIST[1];
       const item = block.inputs.ITEM;
       return 'listIndexOf(' + listReference(list) + ', ' + compileExpression(item) + ')';
+    },
+    data_lengthoflist(block) {
+      const list = block.fields.LIST[1];
+      return listReference(list) + '.length';
+    },
+    data_listcontainsitem(block) {
+      const list = block.fields.LIST[1];
+      const item = block.inputs.ITEM;
+      return 'listContains(' + listReference(list) + ', ' + compileExpression(item) + ')';
     },
 
     // Procedures/arguments
@@ -2533,185 +2543,34 @@ P.sb3.compiler = (function() {
       const name = block.fields.VALUE[0];
       return asType('C.args[' + sanitize(name, true) + ']', 'boolean');
     },
-
-    // Sounds
-    sound_sounds_menu(block) {
-      const sound = block.fields.SOUND_MENU[0];
-      return '"' + sanitize(sound) + '"';
-    },
-    sound_volume() {
-      return '(S.volume * 100)'
-    }
   };
 
   const statementLibrary = {
-    // Event
-    event_broadcastandwait(block) {
-      const input = block.inputs.BROADCAST_INPUT;
-      source += 'save();\n';
-      source += 'R.threads = broadcast(' + compileExpression(input) + ');\n';
-      source += 'if (R.threads.indexOf(BASE) !== -1) {return;}\n';
-      const id = label();
-      source += 'if (running(R.threads)) {\n';
-      forceQueue(id);
-      source += '}\n';
-      source += 'restore();\n';
-    },
-    event_broadcast(block) {
-      const input = block.inputs.BROADCAST_INPUT;
-      source += 'var threads = broadcast(' + compileExpression(input) + ');\n';
-      source += 'if (threads.indexOf(BASE) !== -1) {return;}\n';
-    },
-
-    // Control
-    control_forever(block) {
-      const substack = block.inputs.SUBSTACK;
-      const id = label();
-      compileSubstack(substack);
-      forceQueue(id);
-    },
-    control_repeat(block) {
-      const times = block.inputs.TIMES;
-      const substack = block.inputs.SUBSTACK;
-      source += 'save();\n';
-      source += 'R.count = ' + compileExpression(times) + ';\n';
-      const id = label();
-      source += 'if (R.count >= 0.5) {\n';
-      source += '  R.count -= 1;\n';
-      compileSubstack(substack);
-      queue(id);
-      source += '} else {\n';
-      source += '  restore();\n';
-      source += '}\n';
-    },
-    control_repeat_until(block) {
-      const condition = block.inputs.CONDITION;
-      const substack = block.inputs.SUBSTACK;
-      const id = label();
-      source += 'if (!(' + compileExpression(condition, 'boolean') + ')) {\n'
-      compileSubstack(substack);
-      queue(id);
-      source += '}\n';
-    },
-    control_while(block) {
-      // Hacked block
-      const condition = block.inputs.CONDITION;
-      const substack = block.inputs.SUBSTACK;
-      const id = label();
-      source += 'if (' + compileExpression(condition, 'boolean') + ') {\n'
-      compileSubstack(substack);
-      queue(id);
-      source += '}\n';
-    },
-    control_wait(block) {
-      const duration = block.inputs.DURATION;
-      source += 'save();\n';
-      source += 'R.start = self.now;\n';
-      source += 'R.duration = ' + compileExpression(duration) + ';\n';
-      source += 'var first = true;\n';
-      const id = label();
-      source += 'if (self.now - R.start < R.duration * 1000 || first) {\n';
-      source += '  var first;\n';
-      forceQueue(id);
-      source += '}\n';
-      source += 'restore();\n';
-    },
-    control_create_clone_of(block) {
-      const option = block.inputs.CLONE_OPTION;
-      source += 'clone(' + compileExpression(option) + ');\n';
-    },
-    control_wait_until(block) {
-      const condition = block.inputs.CONDITION;
-      const id = label();
-      source += 'if (!' + compileExpression(condition) + ') {\n';
-      queue(id);
-      source += '}\n';
-    },
-    control_if(block) {
-      const condition = block.inputs.CONDITION;
-      const substack = block.inputs.SUBSTACK;
-      source += 'if (' + compileExpression(condition) + ') {\n';
-      compileSubstack(substack);
-      source += '}\n';
-    },
-    control_if_else(block) {
-      const condition = block.inputs.CONDITION;
-      const substack1 = block.inputs.SUBSTACK;
-      const substack2 = block.inputs.SUBSTACK2;
-      source += 'if (' + compileExpression(condition) + ') {\n';
-      compileSubstack(substack1);
-      source += '} else {\n';
-      compileSubstack(substack2);
-      source += '}\n';
-    },
-    control_delete_this_clone(block) {
-      source += 'if (S.isClone) {\n';
-      source += '  S.remove();\n';
-      source += '  var i = self.children.indexOf(S);\n';
-      source += '  if (i !== -1) self.children.splice(i, 1);\n';
-      source += '  for (var i = 0; i < self.queue.length; i++) {\n';
-      source += '    if (self.queue[i] && self.queue[i].sprite === S) {\n';
-      source += '      self.queue[i] = undefined;\n';
-      source += '    }\n';
-      source += '  }\n';
-      source += '  return;\n';
-      source += '}\n';
-    },
-    control_stop(block) {
-      const option = block.fields.STOP_OPTION[0];
-      source += 'switch (' + compileExpression(option) + ') {\n';
-      source += '  case "all":\n';
-      source += '    self.stopAll();\n';
-      source += '    return;\n';
-      source += '  case "this script":\n';
-      source += '    endCall();\n';
-      source += '    return;\n';
-      source += '  case "other scripts in sprite":\n';
-      source += '  case "other scripts in stage":\n';
-      source += '    for (var i = 0; i < self.queue.length; i++) {\n';
-      source += '      if (i !== THREAD && self.queue[i] && self.queue[i].sprite === S) {\n';
-      source += '        self.queue[i] = undefined;\n';
-      source += '      }\n';
-      source += '    }\n';
-      source += '    break;\n';
-      source += '}\n';
-    },
-
     // Motion
     motion_movesteps(block) {
       const steps = block.inputs.STEPS;
       source += 'S.forward(' + compileExpression(steps, 'number') + ');\n';
       visualCheck('drawing');
     },
-    motion_changexby(block) {
-      const dx = block.inputs.DX;
-      source += 'S.moveTo(S.scratchX + ' + compileExpression(dx, 'number') + ', S.scratchY);\n';
-      visualCheck('drawing');
+    motion_turnright(block) {
+      const degrees = block.inputs.DEGREES;
+      source += 'S.setDirection(S.direction + ' + compileExpression(degrees, 'number') + ');\n';
+      visualCheck('visible');
     },
-    motion_changeyby(block) {
-      const dy = block.inputs.DY;
-      source += 'S.moveTo(S.scratchX, S.scratchY + ' + compileExpression(dy, 'number') + ');\n';
-      visualCheck('drawing');
+    motion_turnleft(block) {
+      const degrees = block.inputs.DEGREES;
+      source += 'S.setDirection(S.direction - ' + compileExpression(degrees, 'number') + ');\n';
+      visualCheck('visible');
     },
-    motion_sety(block) {
-      const y = block.inputs.Y;
-      source += 'S.moveTo(S.scratchX, ' + compileExpression(y, 'number') + ');\n';
-      visualCheck('drawing');
-    },
-    motion_setx(block) {
-      const x = block.inputs.X;
-      source += 'S.moveTo(' + compileExpression(x, 'number') + ', S.scratchY);\n';
+    motion_goto(block) {
+      const to = block.inputs.TO;
+      source += 'S.gotoObject(' + compileExpression(to) + ');\n';
       visualCheck('drawing');
     },
     motion_gotoxy(block) {
       const x = block.inputs.X;
       const y = block.inputs.Y;
       source += 'S.moveTo(' + compileExpression(x, 'number') + ', ' + compileExpression(y, 'number') + ');\n';
-      visualCheck('drawing');
-    },
-    motion_goto(block) {
-      const to = block.inputs.TO;
-      source += 'S.gotoObject(' + compileExpression(to) + ');\n';
       visualCheck('drawing');
     },
     motion_glidesecstoxy(block) {
@@ -2741,34 +2600,92 @@ P.sb3.compiler = (function() {
       visualCheck('visible');
       source += 'S.direction = ' + compileExpression(direction) + ';\n';
     },
-    motion_setrotationstyle(block) {
-      const style = block.fields.STYLE[0];
-      source += 'S.rotationStyle = "' + P.utils.asRotationStyle(style) + '";\n';
-      visualCheck('visible');
-    },
-    motion_turnright(block) {
-      const degrees = block.inputs.DEGREES;
-      source += 'S.setDirection(S.direction + ' + compileExpression(degrees, 'number') + ');\n';
-      visualCheck('visible');
-    },
-    motion_turnleft(block) {
-      const degrees = block.inputs.DEGREES;
-      source += 'S.setDirection(S.direction - ' + compileExpression(degrees, 'number') + ');\n';
-      visualCheck('visible');
-    },
     motion_pointtowards(block) {
       const towards = block.inputs.TOWARDS;
       source += 'S.pointTowards(' + compileExpression(towards) + ');\n';
       visualCheck('visible');
     },
+    motion_changexby(block) {
+      const dx = block.inputs.DX;
+      source += 'S.moveTo(S.scratchX + ' + compileExpression(dx, 'number') + ', S.scratchY);\n';
+      visualCheck('drawing');
+    },
+    motion_setx(block) {
+      const x = block.inputs.X;
+      source += 'S.moveTo(' + compileExpression(x, 'number') + ', S.scratchY);\n';
+      visualCheck('drawing');
+    },
+    motion_changeyby(block) {
+      const dy = block.inputs.DY;
+      source += 'S.moveTo(S.scratchX, S.scratchY + ' + compileExpression(dy, 'number') + ');\n';
+      visualCheck('drawing');
+    },
+    motion_sety(block) {
+      const y = block.inputs.Y;
+      source += 'S.moveTo(S.scratchX, ' + compileExpression(y, 'number') + ');\n';
+      visualCheck('drawing');
+    },
     motion_ifonedgebounce(block) {
       source += 'S.bounceOffEdge();\n';
     },
+    motion_setrotationstyle(block) {
+      const style = block.fields.STYLE[0];
+      source += 'S.rotationStyle = "' + P.utils.asRotationStyle(style) + '";\n';
+      visualCheck('visible');
+    },
 
     // Looks
+    looks_sayforsecs(block) {
+      const message = block.inputs.MESSAGE;
+      const secs = block.inputs.SECS;
+      source += 'save();\n';
+      source += 'R.id = S.say(' + compileExpression(message) + ', false);\n';
+      source += 'R.start = self.now;\n';
+      source += 'R.duration = ' + compileExpression(secs, 'number') + ';\n';
+      const id = label();
+      source += 'if (self.now - R.start < R.duration * 1000) {\n';
+      forceQueue(id);
+      source += '}\n';
+      source += 'if (S.sayId === R.id) {\n';
+      source += '  S.say("");\n';
+      source += '}\n';
+      source += 'restore();\n';
+      visualCheck('visible');
+    },
+    looks_say(block) {
+      const message = block.inputs.MESSAGE;
+      source += 'S.say(' + compileExpression(message) + ', false);\n';
+      visualCheck('visible');
+    },
+    looks_thinkforsecs(block) {
+      const message = block.inputs.MESSAGE;
+      const secs = block.inputs.SECS;
+      source += 'save();\n';
+      source += 'R.id = S.say(' + compileExpression(message) + ', true);\n';
+      source += 'R.start = self.now;\n';
+      source += 'R.duration = ' + compileExpression(secs, 'number') + ';\n';
+      const id = label();
+      source += 'if (self.now - R.start < R.duration * 1000) {\n';
+      forceQueue(id);
+      source += '}\n';
+      source += 'if (S.sayId === R.id) {\n';
+      source += '  S.say("");\n';
+      source += '}\n';
+      source += 'restore();\n';
+      visualCheck('visible');
+    },
+    looks_think(block) {
+      const message = block.inputs.MESSAGE;
+      source += 'S.say(' + compileExpression(message) + ', true);\n';
+      visualCheck('visible');
+    },
     looks_switchcostumeto(block) {
       const costume = block.inputs.COSTUME;
       source += 'S.setCostume(' + compileExpression(costume) + ');\n';
+      visualCheck('visible');
+    },
+    looks_nextcostume(block) {
+      source += 'S.showNextCostume();\n';
       visualCheck('visible');
     },
     looks_switchbackdropto(block) {
@@ -2776,20 +2693,8 @@ P.sb3.compiler = (function() {
       source += 'self.setCostume(' + compileExpression(backdrop) + ');\n';
       visualCheck('always');
     },
-    looks_hide(block) {
-      source += 'S.visible = false;\n';
-      visualCheck('always');
-      updateBubble();
-    },
-    looks_show(block) {
-      source += 'S.visible = true;\n';
-      visualCheck('always');
-      updateBubble();
-    },
-    looks_setsizeto(block) {
-      const size = block.inputs.SIZE;
-      source += 'var f = ' + compileExpression(size) + ' / 100;\n';
-      source += 'S.scale = f < 0 ? 0 : f;\n';
+    looks_nextbackdrop(block) {
+      source += 'self.showNextCostume();\n';
       visualCheck('visible');
     },
     looks_changesizeby(block) {
@@ -2798,12 +2703,16 @@ P.sb3.compiler = (function() {
       source += 'S.scale = f < 0 ? 0 : f;\n';
       visualCheck('visible');
     },
-    looks_nextcostume(block) {
-      source += 'S.showNextCostume();\n';
+    looks_setsizeto(block) {
+      const size = block.inputs.SIZE;
+      source += 'var f = ' + compileExpression(size) + ' / 100;\n';
+      source += 'S.scale = f < 0 ? 0 : f;\n';
       visualCheck('visible');
     },
-    looks_nextbackdrop(block) {
-      source += 'self.showNextCostume();\n';
+    looks_changeeffectby(block) {
+      const effect = block.fields.EFFECT[0];
+      const change = block.inputs.CHANGE;
+      source += 'S.changeFilter("' + sanitize(effect.toLowerCase()) + '", ' + compileExpression(change, 'number') + ');\n';
       visualCheck('visible');
     },
     looks_seteffectto(block) {
@@ -2813,15 +2722,19 @@ P.sb3.compiler = (function() {
       source += 'S.setFilter("' + sanitize(effect.toLowerCase()) + '", ' + compileExpression(value, 'number') + ');\n';
       visualCheck('visible');
     },
-    looks_changeeffectby(block) {
-      const effect = block.fields.EFFECT[0];
-      const change = block.inputs.CHANGE;
-      source += 'S.changeFilter("' + sanitize(effect.toLowerCase()) + '", ' + compileExpression(change, 'number') + ');\n';
-      visualCheck('visible');
-    },
     looks_cleargraphiceffects(block) {
       source += 'S.resetFilters();\n';
       visualCheck('visible');
+    },
+    looks_show(block) {
+      source += 'S.visible = true;\n';
+      visualCheck('always');
+      updateBubble();
+    },
+    looks_hide(block) {
+      source += 'S.visible = false;\n';
+      visualCheck('always');
+      updateBubble();
     },
     looks_gotofrontback(block) {
       const frontBack = block.fields.FRONT_BACK[0];
@@ -2850,50 +2763,6 @@ P.sb3.compiler = (function() {
       source += '}\n';
       visualCheck('visible');
     },
-    looks_say(block) {
-      const message = block.inputs.MESSAGE;
-      source += 'S.say(' + compileExpression(message) + ', false);\n';
-      visualCheck('visible');
-    },
-    looks_think(block) {
-      const message = block.inputs.MESSAGE;
-      source += 'S.say(' + compileExpression(message) + ', true);\n';
-      visualCheck('visible');
-    },
-    looks_sayforsecs(block) {
-      const message = block.inputs.MESSAGE;
-      const secs = block.inputs.SECS;
-      source += 'save();\n';
-      source += 'R.id = S.say(' + compileExpression(message) + ', false);\n';
-      source += 'R.start = self.now;\n';
-      source += 'R.duration = ' + compileExpression(secs, 'number') + ';\n';
-      const id = label();
-      source += 'if (self.now - R.start < R.duration * 1000) {\n';
-      forceQueue(id);
-      source += '}\n';
-      source += 'if (S.sayId === R.id) {\n';
-      source += '  S.say("");\n';
-      source += '}\n';
-      source += 'restore();\n';
-      visualCheck('visible');
-    },
-    looks_thinkforsecs(block) {
-      const message = block.inputs.MESSAGE;
-      const secs = block.inputs.SECS;
-      source += 'save();\n';
-      source += 'R.id = S.say(' + compileExpression(message) + ', true);\n';
-      source += 'R.start = self.now;\n';
-      source += 'R.duration = ' + compileExpression(secs, 'number') + ';\n';
-      const id = label();
-      source += 'if (self.now - R.start < R.duration * 1000) {\n';
-      forceQueue(id);
-      source += '}\n';
-      source += 'if (S.sayId === R.id) {\n';
-      source += '  S.say("");\n';
-      source += '}\n';
-      source += 'restore();\n';
-      visualCheck('visible');
-    },
 
     // Sounds
     sound_playuntildone(block) {
@@ -2911,16 +2780,10 @@ P.sb3.compiler = (function() {
       source += '  playSound(sound);\n';
       source += '}\n';
     },
-    sound_setvolumeto(block) {
-      const volume = block.inputs.VOLUME;
-      source += 'S.volume = Math.max(0, Math.min(1, ' + compileExpression(volume, 'number') + ' / 100));\n';
-      source += 'if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
-      source += 'for (var sounds = S.sounds, i = sounds.length; i--;) {\n';
-      source += '  var sound = sounds[i];\n';
-      source += '  if (sound.node && sound.target === S) {\n';
-      source += '    sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
-      source += '  }\n';
-      source += '}\n';
+    sound_stopallsounds(block) {
+      if (P.audio.context) {
+        source += 'self.stopAllSounds();\n';
+      }
     },
     sound_changevolumeby(block) {
       const volume = block.inputs.VOLUME;
@@ -2933,10 +2796,148 @@ P.sb3.compiler = (function() {
       source += '  }\n';
       source += '}\n';
     },
-    sound_stopallsounds(block) {
-      if (P.audio.context) {
-        source += 'self.stopAllSounds();\n';
-      }
+    sound_setvolumeto(block) {
+      const volume = block.inputs.VOLUME;
+      source += 'S.volume = Math.max(0, Math.min(1, ' + compileExpression(volume, 'number') + ' / 100));\n';
+      source += 'if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
+      source += 'for (var sounds = S.sounds, i = sounds.length; i--;) {\n';
+      source += '  var sound = sounds[i];\n';
+      source += '  if (sound.node && sound.target === S) {\n';
+      source += '    sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
+      source += '  }\n';
+      source += '}\n';
+    },
+
+    // Event
+    event_broadcast(block) {
+      const input = block.inputs.BROADCAST_INPUT;
+      source += 'var threads = broadcast(' + compileExpression(input) + ');\n';
+      source += 'if (threads.indexOf(BASE) !== -1) {return;}\n';
+    },
+    event_broadcastandwait(block) {
+      const input = block.inputs.BROADCAST_INPUT;
+      source += 'save();\n';
+      source += 'R.threads = broadcast(' + compileExpression(input) + ');\n';
+      source += 'if (R.threads.indexOf(BASE) !== -1) {return;}\n';
+      const id = label();
+      source += 'if (running(R.threads)) {\n';
+      forceQueue(id);
+      source += '}\n';
+      source += 'restore();\n';
+    },
+
+    // Control
+    control_wait(block) {
+      const duration = block.inputs.DURATION;
+      source += 'save();\n';
+      source += 'R.start = self.now;\n';
+      source += 'R.duration = ' + compileExpression(duration) + ';\n';
+      source += 'var first = true;\n';
+      const id = label();
+      source += 'if (self.now - R.start < R.duration * 1000 || first) {\n';
+      source += '  var first;\n';
+      forceQueue(id);
+      source += '}\n';
+      source += 'restore();\n';
+    },
+    control_repeat(block) {
+      const times = block.inputs.TIMES;
+      const substack = block.inputs.SUBSTACK;
+      source += 'save();\n';
+      source += 'R.count = ' + compileExpression(times) + ';\n';
+      const id = label();
+      source += 'if (R.count >= 0.5) {\n';
+      source += '  R.count -= 1;\n';
+      compileSubstack(substack);
+      queue(id);
+      source += '} else {\n';
+      source += '  restore();\n';
+      source += '}\n';
+    },
+    control_forever(block) {
+      const substack = block.inputs.SUBSTACK;
+      const id = label();
+      compileSubstack(substack);
+      forceQueue(id);
+    },
+    control_if(block) {
+      const condition = block.inputs.CONDITION;
+      const substack = block.inputs.SUBSTACK;
+      source += 'if (' + compileExpression(condition) + ') {\n';
+      compileSubstack(substack);
+      source += '}\n';
+    },
+    control_if_else(block) {
+      const condition = block.inputs.CONDITION;
+      const substack1 = block.inputs.SUBSTACK;
+      const substack2 = block.inputs.SUBSTACK2;
+      source += 'if (' + compileExpression(condition) + ') {\n';
+      compileSubstack(substack1);
+      source += '} else {\n';
+      compileSubstack(substack2);
+      source += '}\n';
+    },
+    control_wait_until(block) {
+      const condition = block.inputs.CONDITION;
+      const id = label();
+      source += 'if (!' + compileExpression(condition) + ') {\n';
+      queue(id);
+      source += '}\n';
+    },
+    control_repeat_until(block) {
+      const condition = block.inputs.CONDITION;
+      const substack = block.inputs.SUBSTACK;
+      const id = label();
+      source += 'if (!(' + compileExpression(condition, 'boolean') + ')) {\n'
+      compileSubstack(substack);
+      queue(id);
+      source += '}\n';
+    },
+    control_while(block) {
+      // Hacked block
+      const condition = block.inputs.CONDITION;
+      const substack = block.inputs.SUBSTACK;
+      const id = label();
+      source += 'if (' + compileExpression(condition, 'boolean') + ') {\n'
+      compileSubstack(substack);
+      queue(id);
+      source += '}\n';
+    },
+    control_stop(block) {
+      const option = block.fields.STOP_OPTION[0];
+      source += 'switch (' + compileExpression(option) + ') {\n';
+      source += '  case "all":\n';
+      source += '    self.stopAll();\n';
+      source += '    return;\n';
+      source += '  case "this script":\n';
+      source += '    endCall();\n';
+      source += '    return;\n';
+      source += '  case "other scripts in sprite":\n';
+      source += '  case "other scripts in stage":\n';
+      source += '    for (var i = 0; i < self.queue.length; i++) {\n';
+      source += '      if (i !== THREAD && self.queue[i] && self.queue[i].sprite === S) {\n';
+      source += '        self.queue[i] = undefined;\n';
+      source += '      }\n';
+      source += '    }\n';
+      source += '    break;\n';
+      source += '}\n';
+    },
+    control_create_clone_of(block) {
+      const option = block.inputs.CLONE_OPTION;
+      source += 'clone(' + compileExpression(option) + ');\n';
+    },
+    control_delete_this_clone(block) {
+      source += 'if (S.isClone) {\n';
+      source += '  S.remove();\n';
+      source += '  var i = self.children.indexOf(S);\n';
+      source += '  if (i !== -1) self.children.splice(i, 1);\n';
+      source += '  for (var i = 0; i < self.queue.length; i++) {\n';
+      source += '    if (self.queue[i] && self.queue[i].sprite === S) {\n';
+      source += '      self.queue[i] = undefined;\n';
+      source += '    }\n';
+      source += '  }\n';
+      source += '  return;\n';
+      source += '}\n';
     },
 
     // Sensing
@@ -2958,9 +2959,6 @@ P.sb3.compiler = (function() {
 
       visualCheck('always');
     },
-    sensing_resettimer(blocK) {
-      source += 'self.timerStart = self.now;\n';
-    },
     sensing_setdragmode(block) {
       const dragMode = block.fields.DRAG_MODE[0];
       if (dragMode === 'draggable') {
@@ -2968,6 +2966,9 @@ P.sb3.compiler = (function() {
       } else {
         source += 'S.isDraggable = false;\n';
       }
+    },
+    sensing_resettimer(blocK) {
+      source += 'self.timerStart = self.now;\n';
     },
 
     // Data
@@ -2982,31 +2983,31 @@ P.sb3.compiler = (function() {
       const ref = variableReference(variableId);
       source += ref + ' = (+' + ref + ' + +' + compileExpression(value) + ');\n';
     },
-    data_deletealloflist(block) {
+    data_addtolist(block) {
       const list = block.fields.LIST[1];
-      source += listReference(list) + ' = [];\n';
+      const item = block.inputs.ITEM;
+      source += listReference(list) + '.push(' + compileExpression(item)  + ');\n';
     },
     data_deleteoflist(block) {
       const list = block.fields.LIST[1];
       const index = block.inputs.INDEX;
       source += 'deleteLineOfList(' + listReference(list) + ', ' + compileExpression(index, 'number') + ');\n';
     },
-    data_addtolist(block) {
+    data_deletealloflist(block) {
       const list = block.fields.LIST[1];
-      const item = block.inputs.ITEM;
-      source += listReference(list) + '.push(' + compileExpression(item)  + ');\n';
-    },
-    data_replaceitemoflist(block) {
-      const list = block.fields.LIST[1];
-      const item = block.inputs.ITEM;
-      const index = block.inputs.INDEX;
-      source += 'setLineOfList(' + listReference(list) + ', ' + compileExpression(index, 'number') + ',' + compileExpression(item) + ');\n';
+      source += listReference(list) + ' = [];\n';
     },
     data_insertatlist(block) {
       const list = block.fields.LIST[1];
       const item = block.inputs.ITEM;
       const index = block.inputs.INDEX;
       source += 'insertInList(' + listReference(list) + ', ' + compileExpression(index, 'number') + ',' + compileExpression(item) + ');\n';
+    },
+    data_replaceitemoflist(block) {
+      const list = block.fields.LIST[1];
+      const item = block.inputs.ITEM;
+      const index = block.inputs.INDEX;
+      source += 'setLineOfList(' + listReference(list) + ', ' + compileExpression(index, 'number') + ',' + compileExpression(item) + ');\n';
     },
 
     // Procedures
@@ -3038,12 +3039,12 @@ P.sb3.compiler = (function() {
       source += 'S.stamp();\n';
       visualCheck('always');
     },
-    pen_penUp(block) {
-      source += 'S.isPenDown = false;\n';
-      visualCheck('always');
-    },
     pen_penDown(block) {
       source += 'S.isPenDown = true;\n';
+      visualCheck('always');
+    },
+    pen_penUp(block) {
+      source += 'S.isPenDown = false;\n';
       visualCheck('always');
     },
   };
