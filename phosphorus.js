@@ -25,19 +25,29 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 var P = {};
 
-// phosphorus runtime config
+// phosphorus global config
 P.config = {
+  // The default zoom level of the canvas
   scale: window.devicePixelRatio || 1,
+  // If the browser supports touch events (ie. is a mobile browser)
   hasTouchEvents: 'ontouchstart' in document,
+  // The target framerate. Changing this value often has very little effect on real framerate.
   framerate: 30,
+  // Is debug mode enabled?
   debug: window.location.search.includes("debug"),
-  forcedLoader: null,
+
+  // API constants
+
+  // The API to download project.json from scratch.mit.edu
+  // Replace $id with the project ID.
+  // Will respond with either a Scratch 2 json, Scratch 3 json, or 404.
   PROJECT_API: 'https://projects.scratch.mit.edu/$id',
 };
 
 // Utility methods
 P.utils = (function(exports) {
 
+  // Gets the keycode for a key name
   exports.getKeyCode = function(keyName) {
     const KEY_CODES = {
       space: 32,
@@ -51,6 +61,7 @@ P.utils = (function(exports) {
     return KEY_CODES[keyName.toLowerCase()] || keyName.toUpperCase().charCodeAt(0);
   };
 
+  // Parses a json-ish
   exports.parseJSONish = function(json) {
     if (!/^\s*\{/.test(json)) throw new SyntaxError('Bad JSON');
     try {
@@ -353,8 +364,10 @@ P.core = (function(core) {
     showVariable(name, visible) {
       var watcher = this.watchers[name];
       var stage = this.stage;
+
       if (!watcher) {
-        watcher = this.watchers[name] = new P.core.Watcher({
+        // I have no idea if this works.
+        watcher = this.watchers[name] = new P.sb2.VariableWatcher(this.stage, this.objName, {
           x: stage.defaultWatcherX,
           y: stage.defaultWatcherY,
           target: this,
@@ -368,8 +381,8 @@ P.core = (function(core) {
         }
         stage.allWatchers.push(watcher);
       }
-      watcher.visible = visible;
-      watcher.layout();
+
+      watcher.setVisible(visible);
     }
 
     showNextCostume() {
@@ -499,6 +512,7 @@ P.core = (function(core) {
     }
   }
 
+  // A stage object.
   class Stage extends Base {
     constructor() {
       super();
@@ -983,6 +997,7 @@ P.core = (function(core) {
     }
   }
 
+  // A sprite object.
   class Sprite extends Base {
     constructor(stage) {
       super();
@@ -1045,10 +1060,8 @@ P.core = (function(core) {
       c.listeners = this.listeners;
       c.fns = this.fns;
 
-      // TODO: automated loop to copy all fields?
-
       // Copy Data
-      // These are all primates which will not pass by reference.
+      // These are all primatives which will not pass by reference.
       c.name = this.name;
       c.costumes = this.costumes;
       c.currentCostumeIndex = this.currentCostumeIndex;
@@ -1533,6 +1546,7 @@ P.core = (function(core) {
     }
   }
 
+  // A costume, either bitmap or SVG
   class Costume {
     constructor(costumeData) {
       this.index = costumeData.index;
@@ -1561,6 +1575,7 @@ P.core = (function(core) {
     }
   }
 
+  // A sound
   class Sound {
     constructor(data) {
       this.name = data.name;
@@ -1569,220 +1584,38 @@ P.core = (function(core) {
     }
   }
 
-  class Watcher {
-    constructor(data, stage) {
+  // An abstract variable watcher
+  class VariableWatcher {
+    constructor(stage, targetName) {
       this.stage = stage;
+      this.targetName = targetName;
+      this.target = null;
 
-      this.cmd = data.cmd;
-      this.type = data.type || 'var';
-      if (data.color) {
-        var c = (data.color < 0 ? data.color + 0x1000000 : data.color).toString(16);
-        this.color = '#000000'.slice(0, -c.length) + c;
-      } else {
-        this.color = '#ee7d16';
-      }
-      this.isDiscrete = data.isDiscrete || true;
-      this.label = data.label || '';
-      this.mode = data.mode || 1;
-      this.param = data.param;
-      this.sliderMax = data.sliderMax == null ? 100 : data.sliderMax;
-      this.sliderMin = data.sliderMin || 0;
-      this.targetName = data.target;
-      this.visible = data.visible == null ? true : data.visible;
-      this.x = data.x || 0;
-      this.y = data.y || 0;
-
-      this.el = null;
-      this.labelEl = null;
-      this.readout = null;
-      this.slider = null;
-      this.button = null;
+      this.x = 0;
+      this.y = 0;
+      this.visible = true;
     }
 
-    resolve() {
-      this.target = this.stage.getObject(this.targetName);
-      if (this.target && this.cmd === 'getVar:') {
-        this.target.watchers[this.param] = this;
-      }
-      if (!this.label) {
-        this.label = this.getLabel();
-        if (this.target.isSprite) this.label = this.target.objName + ': ' + this.label;
-      }
-      this.layout();
+    // Initializes the VariableWatcher. Called once.
+    // Expected to be overidden, call super.init()
+    init() {
+      this.target = this.stage.getObject(this.targetName) || this.stage;
     }
 
-    getLabel() {
-      var WATCHER_LABELS = {
-        'costumeIndex': 'costume #',
-        'xpos': 'x position',
-        'ypos': 'y position',
-        'heading': 'direction',
-        'scale': 'size',
-        'backgroundIndex': 'background #',
-        'sceneName': 'background name',
-        'tempo': 'tempo',
-        'volume': 'volume',
-        'answer': 'answer',
-        'timer': 'timer',
-        'soundLevel': 'loudness',
-        'isLoud': 'loud?',
-        'xScroll': 'x scroll',
-        'yScroll': 'y scroll'
-      };
-      switch (this.cmd) {
-        case 'getVar:': return this.param;
-        case 'sensor:': return this.param + ' sensor value';
-        case 'sensorPressed': return 'sensor ' + this.param + '?';
-        case 'timeAndDate': return this.param;
-        case 'senseVideoMotion': return 'video ' + this.param;
-      }
-      return WATCHER_LABELS[this.cmd] || '';
-    }
-
+    // Updates the VariableWatcher. Called every frame.
+    // Expected to be overidden, call super.update()
     update() {
-      var value = 0;
-      if (!this.target) return;
-      switch (this.cmd) {
-        case 'answer':
-          value = this.stage.answer;
-          break;
-        case 'backgroundIndex':
-          value = this.stage.currentCostumeIndex + 1;
-          break;
-        case 'costumeIndex':
-          value = this.target.currentCostumeIndex + 1;
-          break;
-        case 'getVar:':
-          value = this.target.vars[this.param];
-          break;
-        case 'heading':
-          value = this.target.direction;
-          break;
-        case 'scale':
-          value = this.target.scale * 100;
-          break;
-        case 'sceneName':
-          value = this.stage.getCostumeName();
-          break;
-        case 'senseVideoMotion':
-          // TODO
-          break;
-        case 'soundLevel':
-          // TODO
-          break;
-        case 'tempo':
-          value = this.stage.tempoBPM;
-          break;
-        case 'timeAndDate':
-          value = this.timeAndDate(this.param);
-          break;
-        case 'timer':
-          value = Math.round((this.stage.rightNow() - this.stage.timerStart) / 100) / 10;
-          break;
-        case 'volume':
-          value = this.target.volume * 100;
-          break;
-        case 'xpos':
-          value = this.target.scratchX;
-          break;
-        case 'ypos':
-          value = this.target.scratchY;
-          break;
-      }
-      if (typeof value === 'number' && (value < 0.001 || value > 0.001)) {
-        value = Math.round(value * 1000) / 1000;
-      }
-      this.readout.textContent = '' + value;
-      if (this.slider) {
-        this.buttonWrap.style.transform = 'translate('+((+value || 0) - this.sliderMin) / (this.sliderMax - this.sliderMin)*100+'%,0)';
-      }
+      throw new Error('VariableWatcher did not implement update()');
     }
 
-    layout() {
-      if (this.el) {
-        this.el.style.display = this.visible ? 'block' : 'none';
-        return;
-      }
-      if (!this.visible) return;
-
-      this.el = document.createElement('div');
-      this.el.dataset.watcher = this.stage.allWatchers.indexOf(this);
-      this.el.style.whiteSpace = 'pre';
-      this.el.style.position = 'absolute';
-      this.el.style.left = this.el.style.top = '0';
-      this.el.style.transform = 'translate('+(this.x|0)/10+'em,'+(this.y|0)/10+'em)';
-      this.el.style.cursor = 'default';
-      this.el.style.pointerEvents = 'auto';
-
-      if (this.mode === 2) {
-        this.el.appendChild(this.readout = document.createElement('div'));
-        this.readout.style.minWidth = (38/15)+'em';
-        this.readout.style.font = 'bold 1.5em/'+(19/15)+' sans-serif';
-        this.readout.style.height = (19/15)+'em';
-        this.readout.style.borderRadius = (4/15)+'em';
-        this.readout.style.margin = (3/15)+'em 0 0 0';
-        this.readout.style.padding = '0 '+(3/10)+'em';
-      } else {
-        this.el.appendChild(this.labelEl = document.createElement('div'), this.el.firstChild);
-        this.el.appendChild(this.readout = document.createElement('div'));
-
-        this.el.style.border = '.1em solid rgb(148,145,145)';
-        this.el.style.borderRadius = '.4em';
-        this.el.style.background = 'rgb(193,196,199)';
-        this.el.style.padding = '.2em .6em .3em .5em';
-
-        this.labelEl.textContent = this.label;
-        // this.labelEl.style.marginTop = (1/11)+'em';
-        this.labelEl.style.font = 'bold 1.1em/1 sans-serif';
-        this.labelEl.style.display = 'inline-block';
-
-        this.labelEl.style.verticalAlign =
-        this.readout.style.verticalAlign = 'middle';
-
-        this.readout.style.minWidth = (37/10)+'em';
-        this.readout.style.padding = '0 '+(1/10)+'em';
-        this.readout.style.font = 'bold 1.0em/'+(13/10)+' sans-serif';
-        this.readout.style.height = (13/10)+'em';
-        this.readout.style.borderRadius = (4/10)+'em';
-        this.readout.style.marginLeft = (6/10)+'em';
-      }
-      this.readout.style.color = '#fff';
-      var f = 1 / (this.mode === 2 ? 15 : 10);
-      this.readout.style.border = f+'em solid #fff';
-      this.readout.style.boxShadow = 'inset '+f+'em '+f+'em '+f+'em rgba(0,0,0,.5), inset -'+f+'em -'+f+'em '+f+'em rgba(255,255,255,.5)';
-      this.readout.style.textAlign = 'center';
-      this.readout.style.background = this.color;
-      this.readout.style.display = 'inline-block';
-
-      if (this.mode === 3) {
-        this.el.appendChild(this.slider = document.createElement('div'));
-        this.slider.appendChild(this.buttonWrap = document.createElement('div'));
-        this.buttonWrap.appendChild(this.button = document.createElement('div'));
-
-        this.slider.style.height =
-        this.slider.style.borderRadius = '.5em';
-        this.slider.style.background = 'rgb(192,192,192)';
-        this.slider.style.margin = '.4em 0 .1em';
-        this.slider.style.boxShadow = 'inset .125em .125em .125em rgba(0,0,0,.5), inset -.125em -.125em .125em rgba(255,255,255,.5)';
-        this.slider.style.position = 'relative';
-        this.slider.dataset.slider = '';
-
-        this.slider.style.paddingRight =
-        this.button.style.width =
-        this.button.style.height =
-        this.button.style.borderRadius = '1.1em';
-        this.button.style.position = 'absolute';
-        this.button.style.left = '0';
-        this.button.style.top = '-.3em';
-        this.button.style.background = '#fff';
-        this.button.style.boxShadow = 'inset .3em .3em .2em -.2em rgba(255,255,255,.9), inset -.3em -.3em .2em -.2em rgba(0,0,0,.9), inset 0 0 0 .1em #777';
-        this.button.dataset.button = '';
-      }
-
-      this.stage.ui.appendChild(this.el);
+    // Changes the visibility of the watcher.
+    // Expected to be overidden, call super.setVisible(visible)
+    setVisible(visible) {
+      this.visible = visible;
     }
   }
 
+  // An abstract callable procedure
   class Procedure {
     constructor(fn, warp, inputs) {
       this.fn = fn;
@@ -1800,7 +1633,7 @@ P.core = (function(core) {
   core.Sprite = Sprite;
   core.Costume = Costume;
   core.Sound = Sound;
-  core.Watcher = Watcher;
+  core.VariableWatcher = VariableWatcher;
   core.Procedure = Procedure;
 
   return core;
@@ -1858,6 +1691,8 @@ P.IO = (function(IO) {
 
 // Loads Scratch 3 projects
 P.sb3 = (function() {
+  // The path to remote assets.
+  // Replace $path with the md5ext of the file
   const ASSETS_API = 'https://assets.scratch.mit.edu/internalapi/asset/$path/get/';
 
   // Implements base SB3 loading logic.
@@ -1901,13 +1736,13 @@ P.sb3 = (function() {
     loadCostume(data, index) {
       /*
       data = {
-        "assetId":"b61b1077b0ea1931abee9dbbfa7903ff",
-        "name":"aaa",
-        "bitmapResolution":2,
-        "md5ext":"b61b1077b0ea1931abee9dbbfa7903ff.png",
-        "dataFormat":"png",
-        "rotationCenterX":480,
-        "rotationCenterY":360
+        "assetId": "b61b1077b0ea1931abee9dbbfa7903ff",
+        "name": "aaa",
+        "bitmapResolution": 2,
+        "md5ext": "b61b1077b0ea1931abee9dbbfa7903ff.png",
+        "dataFormat": "png",
+        "rotationCenterX": 480,
+        "rotationCenterY": 360
       }
       */
       return this.getImage(data.md5ext, data.dataFormat)
@@ -1929,13 +1764,13 @@ P.sb3 = (function() {
     loadSound(data) {
       /*
       data = {
-        "assetId":"83a9787d4cb6f3b7632b4ddfebf74367",
-        "name":"pop",
-        "dataFormat":"wav",
-        "format":"",
-        "rate":48000,
-        "sampleCount":1124,
-        "md5ext":"83a9787d4cb6f3b7632b4ddfebf74367.wav"
+        "assetId": "83a9787d4cb6f3b7632b4ddfebf74367",
+        "name": "pop",
+        "dataFormat": "wav",
+        "format": "",
+        "rate": 48000,
+        "sampleCount": 1124,
+        "md5ext": "83a9787d4cb6f3b7632b4ddfebf74367.wav"
       }
       */
       return this.getAudioBuffer(data.md5ext)
@@ -1943,6 +1778,35 @@ P.sb3 = (function() {
           name: data.name,
           buffer: buffer,
         }));
+    }
+
+    loadWatcher(data, stage) {
+      /*
+      data = {
+        "id": "`jEk@4|i[#Fk?(8x)AV.-my variable",
+        "mode": "default",
+        "opcode": "data_variable",
+        "params": {
+          "VARIABLE": "my variable"
+        },
+        "spriteName": null,
+        "value": 4,
+        "width": 0,
+        "height": 0,
+        "x": 5,
+        "y": 5,
+        "visible": true,
+        "min": 0,
+        "max": 100
+      }
+      */
+      if (data.mode === 'list') {
+        return null;
+      }
+
+      const watcher = new P.sb3.compiler.VariableWatcher(stage, data);
+
+      return watcher;
     }
 
     loadTarget(data) {
@@ -2014,12 +1878,22 @@ P.sb3 = (function() {
     load() {
       return Promise.all(this.projectData.targets.map((data) => this.loadTarget(data)))
         .then((targets) => {
-          const sprites = targets.filter((i) => i instanceof P.core.Sprite);
           const stage = targets.filter((i) => i instanceof P.core.Stage)[0];
+          if (!stage) {
+            throw new Error('no stage object');
+          }
+          const sprites = targets.filter((i) => i instanceof P.core.Sprite);
+          const watchers = this.projectData.monitors
+            .map((data) => this.loadWatcher(data, stage))
+            .filter((i) => i);
+
           sprites.forEach((sprite) => sprite.stage = stage);
           targets.forEach((base) => P.sb3.compiler.compile(base, base.sb3data));
           stage.children = sprites;
+          stage.allWatchers = watchers;
+          watchers.forEach((watcher) => watcher.init());
           stage.updateBackdrop();
+
           return stage;
         });
     }
@@ -2155,26 +2029,126 @@ P.sb3.compiler = (function() {
   let fns;
 
   /*
-  Important concepts about Scratch 3 blocks:
-
   In Scratch 3 all blocks have a unique identifier.
-  Structurally blocks have no relation to eachother (the data is structed in the way that an sb2 is)
-  but they do point to the IDs of other blocks.
+  In the project.json blocks do not contain other blocks in the way a .sb2 file does, but rather they point to the IDs of other blocks.
 
   Blocks have "inputs", "fields", and "mutations". These are both types of data that change how blocks behave.
   Inputs accept any block as an input, while fields generally accept hard coded strings.
   For example in the block `set [ghost] effect to [100]` ghost is a field (cannot change) and 100 is an input (can change).
-  (In Scratch 2 'ghost' was an input and thus could be changed programatically, this is no longer the case)
-  Mutations are only used in custom block definitions.
+  Mutations are only used in custom block definitions and calls.
 
   This compiler differentiates between "statements", "expressions", "top levels", and "natives".
-  Statements are things like `move [ ] steps`. They do something.
-  Expressions are things like `size`, `addition`, `and` etc. They return something.
-  Variables are not exprssions, but rather natives.
-  Natives are things that are core parts of the runtime. This is stuff like strings, numbers, variables, lists, colors.
-  Top levels are top level blocks like `when green flag pressed`
+  Statements are things like `move [ ] steps`. They do something. Cannot be placed in other blocks.
+  Expressions are things like `size`, `addition`, `and` etc. They return something. Cannot do anything on their own.
+  Natives are things that are core parts of the runtime. This is stuff like strings, numbers, variable references, list references, colors.
+  Top levels are top level blocks like `when green flag pressed`, they react to events.
   Each of these are separated and compiled differently and in different spots.
   */
+
+  // Implements a Scratch 3 VariableWatcher.
+  // Adds Scratch 3-like styling and implements most watchables.
+  class Scratch3VariableWatcher extends P.core.VariableWatcher {
+    constructor(stage, data) {
+      super(stage, data.spriteName || '');
+
+      // Unique ID
+      this.id = data.id;
+      // Operation code, similar to other parts of Scratch 3
+      this.opcode = data.opcode;
+      // 'default', '', ''
+      this.mode = data.mode;
+      // Watcher options, varies by opcode.
+      this.params = data.params;
+
+      // From VariableWatcher
+      this.x = data.x;
+      this.y = data.y;
+      this.visible = typeof data.visible === 'boolean' ? data.visible : true;
+
+      this.sliderMin = data.min;
+      this.sliderMax = data.max;
+
+      // Set by layout() at some point later on
+      this.containerEl = null;
+      this.valueEl = null;
+      this.labelEl = null;
+    }
+
+    // Override
+    update() {
+      if (this.visible) {
+        this.valueEl.textContent = this.getValue();
+      }
+    }
+
+    // Override
+    init() {
+      super.init();
+
+      if (!(this.opcode in watcherLibrary)) {
+        console.warn(this);
+        throw new Error('unknown watcher: ' + this.opcode);
+      }
+      if (watcherLibrary[this.opcode].init) {
+        watcherLibrary[this.opcode].init(this);
+      }
+
+      this.layout();
+    }
+
+    // Override
+    setVisible(visible) {
+      super.setVisible(visible);
+      this.layout();
+    }
+
+    getLabel() {
+      const label = watcherLibrary[this.opcode].getLabel(this);
+      if (!this.target.isStage) {
+        return this.targetName + ': ' + label;
+      }
+      return label;
+    }
+
+    getValue() {
+      const value = watcherLibrary[this.opcode].evaluate(this);
+      return value;
+    }
+
+    layout() {
+      if (this.containerEl) {
+        this.containerEl.style.display = this.visible ? 'flex' : 'none';
+        return;
+      }
+      if (!this.visible) {
+        return;
+      }
+
+      const container = document.createElement('div');
+      const label = document.createElement('div');
+      const value = document.createElement('div');
+
+      container.setAttribute('opcode', this.opcode);
+      container.classList.add('s3-watcher-container');
+      label.classList.add('s3-watcher-label');
+      value.classList.add('s3-watcher-value');
+
+      container.style.top = this.y + 'px';
+      container.style.left = this.x + 'px';
+
+      label.textContent = this.getLabel();
+      value.textContent = this.getValue();
+
+      container.appendChild(label);
+      container.appendChild(value);
+
+      this.containerEl = container;
+      this.labelEl = label;
+      this.valueEl = value;
+
+      this.stage.ui.appendChild(container);
+    }
+  }
 
   // Implements a Scratch 3 procedure.
   // Scratch 3 uses names as references for arguments (Scratch 2 uses indexes I believe)
@@ -2213,6 +2187,7 @@ P.sb3.compiler = (function() {
     LIST: 13,
   };
 
+  // Contains top level blocks.
   const topLevelLibrary = {
     // Events
     event_whenflagclicked(block, f) {
@@ -2272,6 +2247,7 @@ P.sb3.compiler = (function() {
     },
   };
 
+  // Contains expressions.
   const expressionLibrary = {
     // Motion
     motion_goto_menu(block) {
@@ -2385,6 +2361,10 @@ P.sb3.compiler = (function() {
     },
     sensing_mousey(block) {
       return 'self.mouseY';
+    },
+    sensing_loudness(block) {
+      // We don't implement loudness, we always return -1 which indicates that there is no microphone available.
+      return '-1';
     },
     sensing_timer(block) {
       return '((self.now - self.timerStart) / 1000)';
@@ -2545,6 +2525,7 @@ P.sb3.compiler = (function() {
     },
   };
 
+  // Contains statements.
   const statementLibrary = {
     // Motion
     motion_movesteps(block) {
@@ -2719,7 +2700,7 @@ P.sb3.compiler = (function() {
       const effect = block.fields.EFFECT[0];
       const value = block.inputs.VALUE;
       // Effect is in all caps which is not what we want.
-      source += 'S.setFilter("' + sanitize(effect.toLowerCase()) + '", ' + compileExpression(value, 'number') + ');\n';
+      source += 'S.setFilter("' + sanitize(effect) + '", ' + compileExpression(value, 'number') + ');\n';
       visualCheck('visible');
     },
     looks_cleargraphiceffects(block) {
@@ -2983,6 +2964,16 @@ P.sb3.compiler = (function() {
       const ref = variableReference(variableId);
       source += ref + ' = (+' + ref + ' + +' + compileExpression(value) + ');\n';
     },
+    data_showvariable(block) {
+      const variable = block.fields.VARIABLE[1];
+      const scope = variableScope(variable);
+      source += scope + '.showVariable(' + sanitize(variable, true) + ', true);\n';
+    },
+    data_hidevariable(block) {
+      const variable = block.fields.VARIABLE[1];
+      const scope = variableScope(variable);
+      source += scope + '.showVariable(' + sanitize(variable, true) + ', false);\n';
+    },
     data_addtolist(block) {
       const list = block.fields.LIST[1];
       const item = block.inputs.ITEM;
@@ -3046,6 +3037,122 @@ P.sb3.compiler = (function() {
     pen_penUp(block) {
       source += 'S.isPenDown = false;\n';
       visualCheck('always');
+    },
+  };
+
+  // Contains data used for variable watchers.
+  const watcherLibrary = {
+    // Maps watcher opcode to an object determining their behavior.
+    // Objects must have an evalute(watcher) method that returns the current value of the watcher. (called every visible frame)
+    // They also must have a getLabel(watcher) that returns the label for the watcher. (called once during initialization)
+    // They optionally may have an init(watcher) that does any required initialization work.
+
+    // Motion
+    motion_xposition: {
+      evaluate(watcher) { return watcher.target.scratchX; },
+      getLabel() { return 'x position'; },
+    },
+    motion_yposition: {
+      evaluate(watcher) { return watcher.target.scratchY; },
+      getLabel() { return 'y position'; },
+    },
+    motion_direction: {
+      evaluate(watcher) { return watcher.target.direction; },
+      getLabel() { return 'direction'; },
+    },
+    // Looks
+    looks_costumenumbername: {
+      evaluate(watcher) {
+        const target = watcher.target;
+        const param = watcher.params.NUMBER_NAME;
+        if (param === 'number') {
+          return target.currentCostumeIndex + 1;
+        } else if (param === 'name') {
+          return target.costumes[target.currentCostumeIndex].name;
+        }
+      },
+      getLabel(watcher) {
+        return 'costume ' + watcher.params.NUMBER_NAME;
+      },
+    },
+    looks_backdropnumbername: {
+      evaluate(watcher) {
+        const target = watcher.stage;
+        const param = watcher.params.NUMBER_NAME;
+        if (param === 'number') {
+          return target.currentCostumeIndex + 1;
+        } else if (param === 'name') {
+          return target.costumes[target.currentCostumeIndex].name;
+        }
+      },
+      getLabel(watcher) {
+        return 'backdrop ' + watcher.params.NUMBER_NAME;
+      },
+    },
+    looks_size: {
+      evaluate(watcher) { return watcher.target.scale * 100; },
+      getLabel() { return 'size'; },
+    },
+    // Sound
+    sound_volume: {
+      evaluate(watcher) { return watcher.target.volume * 100; },
+      getLabel() { return 'volume'; },
+    },
+    // Sensing
+    sensing_answer: {
+      evaluate(watcher) { return watcher.stage.answer; },
+      getLabel() { return 'answer'; },
+    },
+    sensing_loudness: {
+      // We don't actually implement loudness.
+      evaluate() { return -1; },
+      getLabel() { return 'loudness'; },
+    },
+    sensing_timer: {
+      evaluate(watcher) {
+        return (watcher.stage.now - watcher.stage.timerStart) / 1000;
+      },
+      getLabel() { return 'timer'; },
+    },
+    sensing_current: {
+      evaluate(watcher) {
+        switch (watcher.params.CURRENTMENU) {
+          case 'YEAR': return new Date().getFullYear();
+          case 'MONTH': return new Date().getMonth() + 1;
+          case 'DATE': return new Date().getDate();
+          case 'DAYOFWEEK': return new Date().getDay() + 1;
+          case 'HOUR': return new Date().getHours();
+          case 'MINUTE': return new Date().getMinutes();
+          case 'SECOND': return new Date().getSeconds();
+        }
+      },
+      getLabel(watcher) {
+        switch (watcher.params.CURRENTMENU) {
+          case 'YEAR': return 'year';
+          case 'MONTH': return 'month';
+          case 'DATE': return 'date';
+          case 'DAYOFWEEK': return 'day of week';
+          case 'HOUR': return 'hour';
+          case 'MINUTE': return 'minute';
+          case 'SECOND': return 'second';
+        }
+      }
+    },
+    sensing_username: {
+      evaluate(watcher) { return ''; },
+      getLabel() { return 'username'; },
+    },
+    // Data
+    data_variable: {
+      init(watcher) {
+        watcher.target.watchers[watcher.id] = watcher;
+      },
+      evaluate(watcher) {
+        return watcher.target.vars[watcher.id];
+      },
+      getLabel(watcher) {
+        return watcher.params.VARIABLE;
+      },
     },
   };
 
@@ -3122,7 +3229,7 @@ P.sb3.compiler = (function() {
     } else if (typeof thing === 'number') {
       return quote + thing.toString() + quote;
     } else {
-      throw new Error('cant sanitize ' + thing);
+      return sanitize(thing + '', includeQuotes);
     }
   }
 
@@ -3141,12 +3248,19 @@ P.sb3.compiler = (function() {
     source += 'restore();\n';
   }
 
+  // Returns the runtime object that contains a variable ID.
+  function variableScope(id) {
+    if (id in currentTarget.stage.vars) {
+      return 'self';
+    } else {
+      return 'S';
+    }
+  }
+
   // Returns a reference to a variable with an ID
   function variableReference(id) {
-    if (id in currentTarget.stage.vars) {
-      return 'self.vars[' + compileExpression(id) + ']';
-    }
-    return 'S.vars[' + compileExpression(id) + ']';
+    const scope = variableScope(id);
+    return scope + '.vars[' + compileExpression(id) + ']';
   }
 
   // Returns a reference to a list with a ID
@@ -3161,8 +3275,16 @@ P.sb3.compiler = (function() {
   /// Compiling Functions
   ///
 
+  // Compiles a '#ABCDEF' color
   function convertColor(hexCode) {
-    return '0x' + hexCode.substring(1);
+    // Just remove the leading # and convert it to a hexadecimal string.
+    const hex = hexCode.substr(1);
+    // Ensure that the color is actually a hex number and not trying to sneak in some XSS/ACE/RCE/whatever.
+    if (/^[0-9a-f]{6}$/g.test(hex)) {
+      return '0x' + hex;
+    } else {
+      return '0';
+    }
   }
 
   // Compiles a native expression (number, string, data) to a JavaScript string
@@ -3182,6 +3304,7 @@ P.sb3.compiler = (function() {
         return +constant[1];
 
       case PRIMATIVE_TYPES.TEXT:
+        // Text is compiled directly into a string.
         return sanitize(constant[1], true);
 
       case PRIMATIVE_TYPES.VAR:
@@ -3190,7 +3313,7 @@ P.sb3.compiler = (function() {
         return variableReference(constant[2]);
 
       case PRIMATIVE_TYPES.LIST:
-        // Same thing as variable references.
+        // See: variable references
         return listReference(constant[2]);
 
       case PRIMATIVE_TYPES.COLOR_PICKER:
@@ -3373,6 +3496,8 @@ P.sb3.compiler = (function() {
 
   return {
     compile: compileTarget,
+    Procedure: Scratch3Procedure,
+    VariableWatcher: Scratch3VariableWatcher,
   };
 }());
 
@@ -3451,6 +3576,247 @@ P.sb2 = (function(sb2) {
     'WoodBlock': 'drums/WoodBlock(1)_22k.wav'
   };
 
+  class Scratch2VariableWatcher extends P.core.VariableWatcher {
+    constructor(stage, targetName, data) {
+      super(stage, targetName);
+
+      this.cmd = data.cmd;
+      this.type = data.type || 'var';
+      if (data.color) {
+        var c = (data.color < 0 ? data.color + 0x1000000 : data.color).toString(16);
+        this.color = '#000000'.slice(0, -c.length) + c;
+      } else {
+        this.color = '#ee7d16';
+      }
+
+      this.isDiscrete = data.isDiscrete || true;
+      this.label = data.label || '';
+      this.mode = data.mode || 1;
+      this.param = data.param;
+      this.sliderMax = data.sliderMax == null ? 100 : data.sliderMax;
+      this.sliderMin = data.sliderMin || 0;
+      this.targetName = data.target;
+      this.visible = data.visible == null ? true : data.visible;
+      this.x = data.x || 0;
+      this.y = data.y || 0;
+
+      this.el = null;
+      this.labelEl = null;
+      this.readout = null;
+      this.slider = null;
+      this.button = null;
+    }
+
+    init() {
+      super.init();
+      if (this.target && this.cmd === 'getVar:') {
+        this.target.watchers[this.param] = this;
+      }
+      if (!this.label) {
+        this.label = this.getLabel();
+        if (this.target.isSprite) this.label = this.target.objName + ': ' + this.label;
+      }
+      this.layout();
+    }
+
+    getLabel() {
+      var WATCHER_LABELS = {
+        'costumeIndex': 'costume #',
+        'xpos': 'x position',
+        'ypos': 'y position',
+        'heading': 'direction',
+        'scale': 'size',
+        'backgroundIndex': 'background #',
+        'sceneName': 'background name',
+        'tempo': 'tempo',
+        'volume': 'volume',
+        'answer': 'answer',
+        'timer': 'timer',
+        'soundLevel': 'loudness',
+        'isLoud': 'loud?',
+        'xScroll': 'x scroll',
+        'yScroll': 'y scroll'
+      };
+      switch (this.cmd) {
+        case 'getVar:': return this.param;
+        case 'sensor:': return this.param + ' sensor value';
+        case 'sensorPressed': return 'sensor ' + this.param + '?';
+        case 'timeAndDate': return this.param;
+        case 'senseVideoMotion': return 'video ' + this.param;
+      }
+      return WATCHER_LABELS[this.cmd] || '';
+    }
+
+    setVisible(visible) {
+      super.setVisible(visible);
+      this.layout();
+    }
+
+    update() {
+      var value = 0;
+      if (!this.target) return;
+      switch (this.cmd) {
+        case 'answer':
+          value = this.stage.answer;
+          break;
+        case 'backgroundIndex':
+          value = this.stage.currentCostumeIndex + 1;
+          break;
+        case 'costumeIndex':
+          value = this.target.currentCostumeIndex + 1;
+          break;
+        case 'getVar:':
+          value = this.target.vars[this.param];
+          break;
+        case 'heading':
+          value = this.target.direction;
+          break;
+        case 'scale':
+          value = this.target.scale * 100;
+          break;
+        case 'sceneName':
+          value = this.stage.getCostumeName();
+          break;
+        case 'senseVideoMotion':
+          // TODO
+          break;
+        case 'soundLevel':
+          // TODO
+          break;
+        case 'tempo':
+          value = this.stage.tempoBPM;
+          break;
+        case 'timeAndDate':
+          value = this.timeAndDate(this.param);
+          break;
+        case 'timer':
+          value = Math.round((this.stage.rightNow() - this.stage.timerStart) / 100) / 10;
+          break;
+        case 'volume':
+          value = this.target.volume * 100;
+          break;
+        case 'xpos':
+          value = this.target.scratchX;
+          break;
+        case 'ypos':
+          value = this.target.scratchY;
+          break;
+      }
+      if (typeof value === 'number' && (value < 0.001 || value > 0.001)) {
+        value = Math.round(value * 1000) / 1000;
+      }
+      this.readout.textContent = '' + value;
+      if (this.slider) {
+        this.buttonWrap.style.transform = 'translate('+((+value || 0) - this.sliderMin) / (this.sliderMax - this.sliderMin)*100+'%,0)';
+      }
+    }
+
+    timeAndDate(format) {
+      switch (format) {
+        case 'year':
+          return new Date().getFullYear();
+        case 'month':
+          return new Date().getMonth() + 1;
+        case 'date':
+          return new Date().getDate();
+        case 'day of week':
+          return new Date().getDay() + 1;
+        case 'hour':
+          return new Date().getHours();
+        case 'minute':
+          return new Date().getMinutes();
+        case 'second':
+          return new Date().getSeconds();
+      }
+      return 0;
+    }
+
+    layout() {
+      if (this.el) {
+        this.el.style.display = this.visible ? 'block' : 'none';
+        return;
+      }
+      if (!this.visible) return;
+
+      this.el = document.createElement('div');
+      this.el.dataset.watcher = this.stage.allWatchers.indexOf(this);
+      this.el.style.whiteSpace = 'pre';
+      this.el.style.position = 'absolute';
+      this.el.style.left = this.el.style.top = '0';
+      this.el.style.transform = 'translate('+(this.x|0)/10+'em,'+(this.y|0)/10+'em)';
+      this.el.style.cursor = 'default';
+      this.el.style.pointerEvents = 'auto';
+
+      if (this.mode === 2) {
+        this.el.appendChild(this.readout = document.createElement('div'));
+        this.readout.style.minWidth = (38/15)+'em';
+        this.readout.style.font = 'bold 1.5em/'+(19/15)+' sans-serif';
+        this.readout.style.height = (19/15)+'em';
+        this.readout.style.borderRadius = (4/15)+'em';
+        this.readout.style.margin = (3/15)+'em 0 0 0';
+        this.readout.style.padding = '0 '+(3/10)+'em';
+      } else {
+        this.el.appendChild(this.labelEl = document.createElement('div'), this.el.firstChild);
+        this.el.appendChild(this.readout = document.createElement('div'));
+
+        this.el.style.border = '.1em solid rgb(148,145,145)';
+        this.el.style.borderRadius = '.4em';
+        this.el.style.background = 'rgb(193,196,199)';
+        this.el.style.padding = '.2em .6em .3em .5em';
+
+        this.labelEl.textContent = this.label;
+        // this.labelEl.style.marginTop = (1/11)+'em';
+        this.labelEl.style.font = 'bold 1.1em/1 sans-serif';
+        this.labelEl.style.display = 'inline-block';
+
+        this.labelEl.style.verticalAlign =
+        this.readout.style.verticalAlign = 'middle';
+
+        this.readout.style.minWidth = (37/10)+'em';
+        this.readout.style.padding = '0 '+(1/10)+'em';
+        this.readout.style.font = 'bold 1.0em/'+(13/10)+' sans-serif';
+        this.readout.style.height = (13/10)+'em';
+        this.readout.style.borderRadius = (4/10)+'em';
+        this.readout.style.marginLeft = (6/10)+'em';
+      }
+      this.readout.style.color = '#fff';
+      var f = 1 / (this.mode === 2 ? 15 : 10);
+      this.readout.style.border = f+'em solid #fff';
+      this.readout.style.boxShadow = 'inset '+f+'em '+f+'em '+f+'em rgba(0,0,0,.5), inset -'+f+'em -'+f+'em '+f+'em rgba(255,255,255,.5)';
+      this.readout.style.textAlign = 'center';
+      this.readout.style.background = this.color;
+      this.readout.style.display = 'inline-block';
+
+      if (this.mode === 3) {
+        this.el.appendChild(this.slider = document.createElement('div'));
+        this.slider.appendChild(this.buttonWrap = document.createElement('div'));
+        this.buttonWrap.appendChild(this.button = document.createElement('div'));
+
+        this.slider.style.height =
+        this.slider.style.borderRadius = '.5em';
+        this.slider.style.background = 'rgb(192,192,192)';
+        this.slider.style.margin = '.4em 0 .1em';
+        this.slider.style.boxShadow = 'inset .125em .125em .125em rgba(0,0,0,.5), inset -.125em -.125em .125em rgba(255,255,255,.5)';
+        this.slider.style.position = 'relative';
+        this.slider.dataset.slider = '';
+
+        this.slider.style.paddingRight =
+        this.button.style.width =
+        this.button.style.height =
+        this.button.style.borderRadius = '1.1em';
+        this.button.style.position = 'absolute';
+        this.button.style.left = '0';
+        this.button.style.top = '-.3em';
+        this.button.style.background = '#fff';
+        this.button.style.boxShadow = 'inset .3em .3em .2em -.2em rgba(255,255,255,.9), inset -.3em -.3em .2em -.2em rgba(0,0,0,.9), inset 0 0 0 .1em #777';
+        this.button.dataset.button = '';
+      }
+
+      this.stage.ui.appendChild(this.el);
+    }
+  }
+  sb2.VariableWatcher = Scratch2VariableWatcher;
+
   // loads an image from a URL
   sb2.loadImage = function(url) {
     P.IO.progressHooks.new();
@@ -3496,11 +3862,11 @@ P.sb2 = (function(sb2) {
       children = children.filter((i) => i);
       children.forEach((c) => c.stage = stage);
       var sprites = children.filter((i) => i instanceof P.core.Sprite);
-      var watchers = children.filter((i) => i instanceof P.core.Watcher);
+      var watchers = children.filter((i) => i instanceof Scratch2VariableWatcher);
 
       stage.children = sprites;
       stage.allWatchers = watchers;
-      stage.allWatchers.forEach((w) => w.resolve());
+      stage.allWatchers.forEach((w) => w.init());
       stage.updateBackdrop();
 
       P.sb2.compiler(stage);
@@ -3605,7 +3971,8 @@ P.sb2 = (function(sb2) {
   };
 
   sb2.loadVariableWatcher = function(data) {
-    return new P.core.Watcher(data);
+    const targetName = data.target;
+    return new Scratch2VariableWatcher(null, targetName, data);
   };
 
   sb2.loadCostume = function(data, index) {
@@ -5163,26 +5530,6 @@ P.runtime = (function() {
   };
 
   var epoch = Date.UTC(2000, 0, 1);
-
-  var timeAndDate = P.core.Watcher.prototype.timeAndDate = function(format) {
-    switch (format) {
-      case 'year':
-        return new Date().getFullYear();
-      case 'month':
-        return new Date().getMonth() + 1;
-      case 'date':
-        return new Date().getDate();
-      case 'day of week':
-        return new Date().getDay() + 1;
-      case 'hour':
-        return new Date().getHours();
-      case 'minute':
-        return new Date().getMinutes();
-      case 'second':
-        return new Date().getSeconds();
-    }
-    return 0;
-  };
 
   var getVars = function(name) {
     return self.vars[name] !== undefined ? self.vars : S.vars;

@@ -133,3 +133,46 @@
 .fs .player {
   box-shadow: none;
 }
+
+/* Styles for Scratch 3 variable watchers */
+/* Many of these values are taken directly from Scratch 3. */
+.s3-watcher-container {
+  font-size: 0.75rem;
+  padding: 3px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: row;
+  background-color: hsla(215, 100%, 95%);
+  border-radius: 0.25rem;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+.s3-watcher-label {
+  font-weight: bold;
+  text-align: center;
+  margin: 0 5px;
+}
+.s3-watcher-value {
+  color: white;
+  margin: 0 5px;
+  text-align: center;
+  border-radius: 0.25rem;
+  min-width: 40px;
+  padding: 0 2px;
+}
+.s3-watcher-container[opcode^="data_"] .s3-watcher-value {
+  background-color: rgb(255, 140, 26);
+}
+.s3-watcher-container[opcode^="sensing_"] .s3-watcher-value {
+  background-color: rgb(92, 177, 214);
+}
+.s3-watcher-container[opcode^="motion_"] .s3-watcher-value {
+  background-color: rgb(76, 151, 255);
+}
+.s3-watcher-container[opcode^="looks_"] .s3-watcher-value {
+  background-color: rgb(153, 102, 255);
+}
+.s3-watcher-container[opcode^="sound_"] .s3-watcher-value {
+  background-color: rgb(207, 99, 207);
+}
