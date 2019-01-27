@@ -2810,14 +2810,14 @@ P.sb3.compiler = (function() {
     looks_changeeffectby(block) {
       const effect = block.fields.EFFECT[0];
       const change = block.inputs.CHANGE;
-      source += 'S.changeFilter("' + sanitize(effect.toLowerCase()) + '", ' + compileExpression(change, 'number') + ');\n';
+      source += 'S.changeFilter("' + sanitize(effect).toLowerCase() + '", ' + compileExpression(change, 'number') + ');\n';
       visualCheck('visible');
     },
     looks_seteffectto(block) {
       const effect = block.fields.EFFECT[0];
       const value = block.inputs.VALUE;
       // Effect is in all caps which is not what we want.
-      source += 'S.setFilter("' + sanitize(effect) + '", ' + compileExpression(value, 'number') + ');\n';
+      source += 'S.setFilter("' + sanitize(effect).toLowerCase() + '", ' + compileExpression(value, 'number') + ');\n';
       visualCheck('visible');
     },
     looks_cleargraphiceffects(block) {
