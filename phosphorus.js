@@ -2168,7 +2168,8 @@ P.sb3.compiler = (function() {
       // Set by layout() at some point later on
       this.containerEl = null;
       this.valueEl = null;
-      this.labelEl = null;
+      // Not guarunteed to exist.
+      this.sliderEl = null;
 
       // Mark ourselves as invalid if the opcode is not recognized.
       if (!(this.opcode in watcherLibrary)) {
@@ -2236,28 +2237,32 @@ P.sb3.compiler = (function() {
       }
 
       const container = document.createElement('div');
-      const label = document.createElement('div');
-      const value = document.createElement('div');
-
-      container.setAttribute('opcode', this.opcode);
       container.classList.add('s3-watcher-container');
-      label.classList.add('s3-watcher-label');
-      value.classList.add('s3-watcher-value');
-
+      container.setAttribute('opcode', this.opcode);
       container.style.top = this.y + 'px';
       container.style.left = this.x + 'px';
 
-      label.textContent = this.getLabel();
+      const value = document.createElement('div');
+      value.classList.add('s3-watcher-value');
       value.textContent = this.getValue();
 
-      container.appendChild(label);
-      container.appendChild(value);
-
       this.containerEl = container;
-      this.labelEl = label;
       this.valueEl = value;
-
+      container.appendChild(value);
       this.stage.ui.appendChild(container);
+
+      const mode = this.mode;
+
+      if (mode === 'large') {
+        container.classList.add('s3-watcher-large');
+      } else {
+        // mode is probably 'normal', and we use that as a sensible fallback anyways.
+        const label = document.createElement('div');
+        container.classList.add('s3-watcher-normal');
+        label.classList.add('s3-watcher-label');
+        label.textContent = this.getLabel();
+        container.appendChild(label);
+      }
     }
   }
 
