@@ -230,6 +230,34 @@ P.utils = (function(exports) {
     throw new Error('unknown project: ' + JSON.stringify(data));
   };
 
+  // Converts RGB to HSL
+  exports.rgbToHSL = function(rgb) {
+    var r = (rgb >> 16 & 0xff) / 0xff;
+    var g = (rgb >> 8 & 0xff) / 0xff;
+    var b = (rgb & 0xff) / 0xff;
+
+    var min = Math.min(r, g, b);
+    var max = Math.max(r, g, b);
+
+    if (min === max) {
+      return [0, 0, r * 100];
+    }
+
+    var c = max - min;
+    var l = (min + max) / 2;
+    var s = c / (1 - Math.abs(2 * l - 1));
+
+    var h;
+    switch (max) {
+      case r: h = ((g - b) / c + 6) % 6; break;
+      case g: h = (b - r) / c + 2; break;
+      case b: h = (r - g) / c + 4; break;
+    }
+    h *= 60;
+
+    return [h, s * 100, l * 100];
+  }
+
   return exports;
 })({});
 
@@ -1103,6 +1131,8 @@ P.core = (function(core) {
       this.isDragging = false;
     }
 
+    // Implementing Scratch blocks
+
     forward(steps) {
       var d = (90 - this.direction) * Math.PI / 180;
       this.moveTo(this.scratchX + steps * Math.cos(d), this.scratchY + steps * Math.sin(d));
@@ -1499,6 +1529,65 @@ P.core = (function(core) {
       this.bubbleText.nodeValue = text;
       this.updateBubble();
       return ++this.sayId;
+    }
+
+    setPenColor(color) {
+      this.penColor = color;
+      const r = this.penColor >> 16 & 0xff;
+      const g = this.penColor >> 8 & 0xff;
+      const b = this.penColor & 0xff;
+      const a = this.penColor >> 24 & 0xff / 0xff || 1;
+      this.penCSS = 'rgba(' + r + ', ' + g + ', ' + b + ', ' + a + ')';
+    }
+
+    setPenColorHSL() {
+      if (this.penCSS) {
+        const hsl = P.utils.rgbToHSL(this.penColor);
+        this.penHue = hsl[0];
+        this.penSaturation = hsl[1];
+        this.penLightness = hsl[2];
+        this.penCSS = null;
+      }
+    }
+
+    setPenColorParam(param, value) {
+      this.setPenColorHSL();
+      switch (param) {
+        case 'color':
+          this.penHue = value * 360 / 200;
+          this.penSaturation = 100;
+          break;
+        case 'saturation':
+          this.penSaturation = value;
+          break;
+        case 'brightness':
+          this.penLightness = value % 200;
+          if (this.penLightness < 0) {
+            this.penLightness += 200;
+          }
+          this.penSaturation = 100;
+          break;
+      }
+    }
+
+    changePenColorParam(param, value) {
+      this.setPenColorHSL();
+      switch (param) {
+        case 'color':
+          this.penHue += value * 360 / 200;
+          this.penSaturation = 100;
+          break;
+        case 'saturation':
+          this.penSaturation += value;
+          break;
+        case 'brightness':
+          this.penLightness = (this.penLightness + value) % 200;
+          if (this.penLightness < 0) {
+            this.penLightness += 200;
+          }
+          this.penSaturation = 100;
+          break;
+      }
     }
 
     updateBubble() {
@@ -2545,6 +2634,12 @@ P.sb3.compiler = (function() {
       const name = block.fields.VALUE[0];
       return asType('C.args[' + sanitize(name, true) + ']', 'boolean');
     },
+
+    // Pen
+    pen_menu_colorParam(block) {
+      const colorParam = block.fields.colorParam[0];
+      return sanitize(colorParam, true);
+    },
   };
 
   // Contains statements.
@@ -3054,11 +3149,50 @@ P.sb3.compiler = (function() {
     },
     pen_penDown(block) {
       source += 'S.isPenDown = true;\n';
+      source += 'S.dotPen();\n';
       visualCheck('always');
     },
     pen_penUp(block) {
       source += 'S.isPenDown = false;\n';
       visualCheck('always');
+    },
+    pen_setPenColorToColor(block) {
+      const color = block.inputs.COLOR;
+      source += 'S.setPenColor(' + compileExpression(color, 'number') + ');\n';
+    },
+    pen_setPenHueToNumber(block) {
+      const hue = block.inputs.HUE;
+      source += 'S.setPenColorParam("color", ' + compileExpression(hue, 'number') + ');\n'
+    },
+    pen_changePenHueBy(block) {
+      const hue = block.inputs.HUE;
+      source += 'S.changePenColorParam("color", ' + compileExpression(hue, 'number') + ');\n';
+    },
+    pen_setPenShadeToNumber(block) {
+      const shade = block.inputs.SHADE;
+      source += 'S.setPenColorParam("brightness", ' + compileExpression(shade, 'number') + ');\n';
+    },
+    pen_changePenShadeBy(block) {
+      const shade = block.inputs.SHADE;
+      source += 'S.changePenColorParam("brightness", ' + compileExpression(shade, 'number') + ');\n';
+    },
+    pen_setPenColorParamTo(block) {
+      const colorParam = block.inputs.COLOR_PARAM;
+      const value = block.inputs.VALUE;
+      source += 'S.setPenColorParam(' + compileExpression(colorParam, 'string') + ', ' + compileExpression(value, 'number') + ');\n';
+    },
+    pen_changePenColorParamBy(block) {
+      const colorParam = block.inputs.COLOR_PARAM;
+      const value = block.inputs.VALUE;
+      source += 'S.changePenColorParam(' + compileExpression(colorParam, 'string') + ', ' + compileExpression(value, 'number') + ');\n';
+    },
+    pen_changePenSizeBy(block) {
+      const size = block.inputs.SIZE;
+      source += 'S.penSize = Math.max(1, S.penSize + ' + compileExpression(size, 'number') + ');\n';
+    },
+    pen_setPenSizeTo(block) {
+      const size = block.inputs.SIZE;
+      source += 'S.penSize = Math.max(1, ' + compileExpression(size, 'number') + ');\n';
     },
   };
 
@@ -4907,7 +5041,6 @@ P.sb2.compiler = (function() {
       } else if (block[0] === 'putPenUp') {
 
         source += 'S.isPenDown = false;\n';
-        source += 'S.penState = null;\n';
 
       } else if (block[0] === 'penColor:') {
 
