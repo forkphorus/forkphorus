@@ -1587,12 +1587,20 @@ P.core = (function(core) {
   // An abstract variable watcher
   class VariableWatcher {
     constructor(stage, targetName) {
+      // The stage this variable watcher belongs to.
       this.stage = stage;
+      // The name of the owner of this watcher, if any.
       this.targetName = targetName;
+      // The owner of this watcher, if any. Set in init()
       this.target = null;
+      // Is this a valid watcher? (no errrors, unrecognized opcode, etc.)
+      this.valid = true;
 
+      // X position
       this.x = 0;
+      // Y position
       this.y = 0;
+      // Visibility
       this.visible = true;
     }
 
@@ -1885,7 +1893,7 @@ P.sb3 = (function() {
           const sprites = targets.filter((i) => i instanceof P.core.Sprite);
           const watchers = this.projectData.monitors
             .map((data) => this.loadWatcher(data, stage))
-            .filter((i) => i);
+            .filter((i) => i && i.valid);
 
           sprites.forEach((sprite) => sprite.stage = stage);
           targets.forEach((base) => P.sb3.compiler.compile(base, base.sb3data));
@@ -2072,6 +2080,12 @@ P.sb3.compiler = (function() {
       this.containerEl = null;
       this.valueEl = null;
       this.labelEl = null;
+
+      // Mark ourselves as invalid if the opcode is not recognized.
+      if (!(this.opcode in watcherLibrary)) {
+        console.warn('unknown watcher', this.opcode, this);
+        this.valid = false;
+      }
     }
 
     // Override
@@ -2085,10 +2099,8 @@ P.sb3.compiler = (function() {
     init() {
       super.init();
 
-      if (!(this.opcode in watcherLibrary)) {
-        console.warn(this);
-        throw new Error('unknown watcher: ' + this.opcode);
-      }
+      // init() might not exist, call it if it does.
+      // (most opcodes do not have an init())
       if (watcherLibrary[this.opcode].init) {
         watcherLibrary[this.opcode].init(this);
       }
@@ -2102,6 +2114,9 @@ P.sb3.compiler = (function() {
       this.layout();
     }
 
+    // Gets the label of the watcher.
+    // Will include the sprite's name if any.
+    // Example results are 'Sprite1: my variable' and 'timer'
     getLabel() {
       const label = watcherLibrary[this.opcode].getLabel(this);
       if (!this.target.isStage) {
@@ -2110,11 +2125,18 @@ P.sb3.compiler = (function() {
       return label;
     }
 
+    // Gets the value of the watcher.
+    // Could be anything, number, string, undefined, whatever. It's all fair game.
     getValue() {
       const value = watcherLibrary[this.opcode].evaluate(this);
+      // Round off numbers to the thousandths to avoid excess precision
+      if (typeof value === 'number') {
+        return Math.round(value * 1000) / 1000;
+      }
       return value;
     }
 
+    // Updates the layout of the watcher.
     layout() {
       if (this.containerEl) {
         this.containerEl.style.display = this.visible ? 'flex' : 'none';
