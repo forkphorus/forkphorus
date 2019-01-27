@@ -2594,13 +2594,13 @@ P.sb3.compiler = (function() {
       const operand1 = block.inputs.OPERAND1;
       const operand2 = block.inputs.OPERAND2;
       // TODO: use numGreater?
-      return 'compare(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ') === 1';
+      return '(compare(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ') === 1)';
     },
     operator_lt(block) {
       const operand1 = block.inputs.OPERAND1;
       const operand2 = block.inputs.OPERAND2;
       // TODO: use numLess?
-      return 'compare(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ') === -1';
+      return '(compare(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ') === -1)';
     },
     operator_equals(block) {
       const operand1 = block.inputs.OPERAND1;
