@@ -547,6 +547,8 @@ P.core = (function(core) {
 
       this.stage = this;
       this.isStage = true;
+      // Stage is always visible. This ensures that visual changes that check visiblity will work correctly.
+      this.visible = true;
 
       // Maps broadcast display names to their ID
       // Scratch 3 uses unique IDs for broadcasts and the visual name for different things.
@@ -873,6 +875,15 @@ P.core = (function(core) {
 
     updateFilters() {
       this.backdropCanvas.style.opacity = Math.max(0, Math.min(1, 1 - this.filters.ghost / 100));
+
+      let filter = '';
+      if (this.filters.brightness) {
+        filter += 'brightness(' + (100 + this.filters.brightness) + '%) ';
+      }
+      if (this.filters.color) {
+        filter += 'hue-rotate(' + this.filters.color / 200 * 360 + 'deg) ';
+      }
+      this.backdropCanvas.style.filter = filter;
     }
 
     setZoom(zoom) {
