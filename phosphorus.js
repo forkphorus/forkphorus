@@ -2248,7 +2248,6 @@ P.sb3.compiler = (function() {
 
       this.containerEl = container;
       this.valueEl = value;
-      container.appendChild(value);
       this.stage.ui.appendChild(container);
 
       const mode = this.mode;
@@ -2263,6 +2262,8 @@ P.sb3.compiler = (function() {
         label.textContent = this.getLabel();
         container.appendChild(label);
       }
+
+      container.appendChild(value);
     }
   }
 
