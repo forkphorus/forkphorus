@@ -720,9 +720,6 @@ P.core = (function(core) {
             if (e.target.dataset.button != null || e.target.dataset.slider != null) {
               this.watcherStart('mouse', e, e);
             }
-            if (e.target !== this.prompt) setTimeout(function() {
-              this.canvas.focus();
-            }.bind(this));
           }
         }.bind(this));
 
@@ -1833,7 +1830,7 @@ P.sb3 = (function() {
             return new Promise((resolve, reject) => {
               image.onload = () => resolve(image);
               image.onerror = (err) => reject("Failed to load SVG image");
-              image.src = 'data:image/svg+xml;base64,' + btoa(source);
+              image.src = 'data:image/svg+xml;,' + encodeURIComponent(source);
             });
           });
       } else {
@@ -2192,6 +2189,7 @@ P.sb3.compiler = (function() {
     // Override
     update() {
       if (this.visible) {
+        // TODO: is it better to only change textContent when the value has changed?
         this.valueEl.textContent = this.getValue();
       }
     }
@@ -2237,6 +2235,13 @@ P.sb3.compiler = (function() {
       return value;
     }
 
+    setValue(value) {
+      const library = watcherLibrary[this.opcode];
+      if ('set' in library) {
+        library.set(this, value);
+      }
+    }
+
     // Updates the layout of the watcher.
     layout() {
       if (this.containerEl) {
@@ -2265,16 +2270,45 @@ P.sb3.compiler = (function() {
 
       if (mode === 'large') {
         container.classList.add('s3-watcher-large');
+        container.appendChild(value);
       } else {
-        // mode is probably 'normal', and we use that as a sensible fallback anyways.
+        // mode is probably 'normal' or 'slider'
+        // if it's not, then 'normal' would be a good fallback anyways.
+
+        const row = document.createElement('div');
+        row.classList.add('s3-watcher-row');
+        row.classList.add('s3-watcher-row-normal');
+
         const label = document.createElement('div');
-        container.classList.add('s3-watcher-normal');
         label.classList.add('s3-watcher-label');
         label.textContent = this.getLabel();
-        container.appendChild(label);
-      }
 
-      container.appendChild(value);
+        row.appendChild(label);
+        row.appendChild(value);
+
+        container.classList.add('s3-watcher-container-normal');
+        container.appendChild(row);
+
+        // Slider is a slight variation of normal.
+        if (mode === 'slider') {
+          const slider = document.createElement('div');
+          slider.classList.add('s3-watcher-row-slider');
+          const input = document.createElement('input');
+          input.type = 'range';
+          input.min = this.sliderMin;
+          input.max = this.sliderMax;
+          input.value = this.getValue();
+          input.addEventListener('input', this.sliderChanged.bind(this));
+          this.sliderEl = input;
+          slider.appendChild(input);
+          container.appendChild(slider);
+        }
+      }
+    }
+
+    sliderChanged(e) {
+      const value = +this.sliderEl.value;
+      this.setValue(value);
     }
   }
 
@@ -2534,17 +2568,17 @@ P.sb3.compiler = (function() {
     operator_add(block) {
       const num1 = block.inputs.NUM1;
       const num2 = block.inputs.NUM2;
-      return '(' + compileExpression(num1) + ' + ' + compileExpression(num2) + ' || 0)';
+      return '(' + compileExpression(num1, 'number') + ' + ' + compileExpression(num2, 'number') + ' || 0)';
     },
     operator_subtract(block) {
       const num1 = block.inputs.NUM1;
       const num2 = block.inputs.NUM2;
-      return '(' + compileExpression(num1) + ' - ' + compileExpression(num2) + ' || 0)';
+      return '(' + compileExpression(num1, 'number') + ' - ' + compileExpression(num2, 'number') + ' || 0)';
     },
     operator_multiply(block) {
       const num1 = block.inputs.NUM1;
       const num2 = block.inputs.NUM2;
-      return '(' + compileExpression(num1) + ' * ' + compileExpression(num2) + ' || 0)';
+      return '(' + compileExpression(num1, 'number') + ' * ' + compileExpression(num2, 'number') + ' || 0)';
     },
     operator_divide(block) {
       const num1 = block.inputs.NUM1;
@@ -2554,17 +2588,19 @@ P.sb3.compiler = (function() {
     operator_random(block) {
       const from = block.inputs.FROM;
       const to = block.inputs.TO;
-      return 'random(' + compileExpression(from) + ', ' + compileExpression(to) + ')';
+      return 'random(' + compileExpression(from, 'number') + ', ' + compileExpression(to, 'number') + ')';
     },
     operator_gt(block) {
       const operand1 = block.inputs.OPERAND1;
       const operand2 = block.inputs.OPERAND2;
-      return 'numGreater(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ')';
+      // TODO: use numGreater?
+      return 'compare(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ') === 1';
     },
     operator_lt(block) {
       const operand1 = block.inputs.OPERAND1;
       const operand2 = block.inputs.OPERAND2;
-      return 'numLess(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ')';
+      // TODO: use numLess?
+      return 'compare(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ') === -1';
     },
     operator_equals(block) {
       const operand1 = block.inputs.OPERAND1;
@@ -3116,7 +3152,7 @@ P.sb3.compiler = (function() {
     data_deleteoflist(block) {
       const list = block.fields.LIST[1];
       const index = block.inputs.INDEX;
-      source += 'deleteLineOfList(' + listReference(list) + ', ' + compileExpression(index, 'number') + ');\n';
+      source += 'deleteLineOfList(' + listReference(list) + ', ' + compileExpression(index) + ');\n';
     },
     data_deletealloflist(block) {
       const list = block.fields.LIST[1];
@@ -3320,6 +3356,9 @@ P.sb3.compiler = (function() {
       init(watcher) {
         watcher.target.watchers[watcher.id] = watcher;
       },
+      set(watcher, value) {
+        watcher.target.vars[watcher.id] = value;
+      },
       evaluate(watcher) {
         return watcher.target.vars[watcher.id];
       },
@@ -3474,7 +3513,13 @@ P.sb3.compiler = (function() {
       case PRIMATIVE_TYPES.WHOLE_NUM:
       case PRIMATIVE_TYPES.INTEGER_NUM:
       case PRIMATIVE_TYPES.ANGLE_NUM:
-        return +constant[1];
+        // There are no guaruntees there is actually a number here.
+        // It could be anything.
+        if (isFinite(constant[1])) {
+          return +constant[1];
+        } else {
+          return sanitize(constant[1], true);
+        }
 
       case PRIMATIVE_TYPES.TEXT:
         // Text is compiled directly into a string.

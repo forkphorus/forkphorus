@@ -142,13 +142,14 @@
   left: 0;
   border: 1px solid rgba(0, 0, 0, 0.15);
   border-radius: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  background: hsl(215, 100%, 95%);
+  pointer-events: auto;
 }
-.s3-watcher-normal {
-  font-size: 0.75rem;
-  padding: 3px;
+.s3-watcher-row {
   display: flex;
   flex-direction: row;
-  background: hsl(215, 100%, 95%);
 }
 .s3-watcher-label {
   font-weight: bold;
@@ -158,6 +159,10 @@
 .s3-watcher-value {
   color: white;
   text-align: center;
+}
+.s3-watcher-container .s3-watcher-value {
+  /* fallback color */
+  background-color: rgb(15, 189, 140);
 }
 .s3-watcher-container[opcode^="data_"] .s3-watcher-value {
   background-color: rgb(255, 140, 26);
@@ -175,16 +180,24 @@
   background-color: rgb(207, 99, 207);
 }
 /* Normal watcher */
-.s3-watcher-normal .s3-watcher-value {
+.s3-watcher-container-normal {
+  padding: 3px;
+}
+.s3-watcher-row-normal {
+  font-size: 0.75rem;
+}
+.s3-watcher-row-normal .s3-watcher-value {
   border-radius: 0.25rem;
   padding: 0 2px;
   margin: 0 5px;
   min-width: 40px;
 }
-/* Large watcher */
-.s3-watcher-large {
-  background: hsl(215, 100%, 95%);
+/* Slider Watcher (uses normal) */
+.s3-watcher-row-slider input[type="range"] {
+  margin: 0;
+  width: 100%;
 }
+/* Large watcher */
 .s3-watcher-large .s3-watcher-value {
   font-size: 1rem;
   min-height: 1.4rem;
