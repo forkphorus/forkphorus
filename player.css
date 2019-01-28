@@ -106,7 +106,7 @@
   width: 100%;
   height: 100%;
 }
-.fs body {
+.fs #app {
   margin: 0;
   padding: 0;
   overflow: hidden;

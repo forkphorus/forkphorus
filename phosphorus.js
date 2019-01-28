@@ -1981,7 +1981,11 @@ P.sb3 = (function() {
     }
 
     load() {
-      return Promise.all(this.projectData.targets.map((data) => this.loadTarget(data)))
+      const targets = this.projectData.targets;
+      // sort targets by their layerOrder
+      targets.sort((a, b) => a.layerOrder - b.layerOrder);
+
+      return Promise.all(targets.map((data) => this.loadTarget(data)))
         .then((targets) => {
           const stage = targets.filter((i) => i instanceof P.core.Stage)[0];
           if (!stage) {
