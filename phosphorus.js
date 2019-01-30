@@ -2768,7 +2768,7 @@ P.sb3.compiler = (function() {
     data_itemoflist(block) {
       const list = block.fields.LIST[1];
       const index = block.inputs.INDEX;
-      return 'getLineOfList(' + listReference(list) + ', ' + compileExpression(index, 'number') + ')';
+      return 'getLineOfList(' + listReference(list) + ', ' + compileExpression(index) + ')';
     },
     data_itemnumoflist(block) {
       const list = block.fields.LIST[1];
@@ -3239,7 +3239,7 @@ P.sb3.compiler = (function() {
       const variableId = block.fields.VARIABLE[1];
       const value = block.inputs.VALUE;
       const ref = variableReference(variableId);
-      source += ref + ' = (+' + ref + ' + +' + compileExpression(value) + ');\n';
+      source += ref + ' = (+' + ref + ' + ' + compileExpression(value, 'number') + ');\n';
     },
     data_showvariable(block) {
       const variable = block.fields.VARIABLE[1];
