@@ -34,7 +34,6 @@
   opacity: .4;
   background-image: url(icons.svg);
   text-decoration: none;
-  background-position-y: 0;
 }
 .dark .controls span {
   background-position-y: 64px;
@@ -66,6 +65,9 @@
   color: rgba(0, 0, 0, .4);
   font: 500 12px/32px Helvetica Neue, Helvetica, Arial, sans-serif;
   padding: 0 8px;
+}
+.dark .controls .turbo {
+  color: rgba(0, 0, 0, .6);
 }
 
 .player {
@@ -103,13 +105,13 @@
 
 .fs {
   background: #000;
-  width: 100%;
-  height: 100%;
 }
 .fs #app {
   margin: 0;
   padding: 0;
   overflow: hidden;
+  width: 100%;
+  height: 100%;
 }
 .fs .title,
 .fs section {
@@ -199,8 +201,8 @@
 }
 /* Large watcher */
 .s3-watcher-large .s3-watcher-value {
+  border-radius: inherit;
   font-size: 1rem;
   min-height: 1.4rem;
   min-width: 3rem;
-  padding: 0.1rem 0.25rem;
 }

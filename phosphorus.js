@@ -270,6 +270,7 @@ P.renderers.canvas2d = (function() {
     constructor(canvas) {
       this.ctx = canvas.getContext('2d');
       this.canvas = canvas;
+      this.noEffects = false;
     }
 
     reset(scale) {
@@ -284,7 +285,7 @@ P.renderers.canvas2d = (function() {
       this.ctx.drawImage(image, x, y);
     }
 
-    drawChild(c, noEffects) {
+    drawChild(c) {
       var costume = c.costumes[c.currentCostumeIndex];
       if (costume) {
         this.ctx.save();
@@ -304,7 +305,7 @@ P.renderers.canvas2d = (function() {
           this.ctx.translate(-costume.rotationCenterX, -costume.rotationCenterY);
         }
 
-        if (!noEffects) {
+        if (!this.noEffects) {
           this.ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
         } else {
           this.ctx.globalAlpha = 1;
@@ -323,13 +324,14 @@ P.renderers.canvas2d = (function() {
 }());
 
 // Phosphorus Core
+// Has some base classes that implement most functions while leaving some to implementations. (see P.sb2 and P.sb3)
 P.core = (function(core) {
 
   // Canvases used for various collision testing later on
-  var collisionCanvas = document.createElement('canvas');
-  var collisionRenderer = new P.renderers.canvas2d.Renderer(collisionCanvas);
-  var secondaryCollisionCanvas = document.createElement('canvas');
-  var secondaryCollisionRenderer = new P.renderers.canvas2d.Renderer(secondaryCollisionCanvas);
+  const collisionCanvas = document.createElement('canvas');
+  const collisionRenderer = new P.renderers.canvas2d.Renderer(collisionCanvas);
+  const secondaryCollisionCanvas = document.createElement('canvas');
+  const secondaryCollisionRenderer = new P.renderers.canvas2d.Renderer(secondaryCollisionCanvas);
 
   class Base {
     constructor() {
@@ -550,13 +552,11 @@ P.core = (function(core) {
       // Stage is always visible. This ensures that visual changes that check visiblity will work correctly.
       this.visible = true;
 
-      // Maps broadcast display names to their ID
-      // Scratch 3 uses unique IDs for broadcasts and the visual name for different things.
-      this.broadcastReferences = {};
-
+      // Child sprites.
       this.children = [];
       this.dragging = {};
 
+      // Variable Watchers
       this.allWatchers = [];
       this.defaultWatcherX = 10;
       this.defaultWatcherY = 10;
@@ -785,7 +785,7 @@ P.core = (function(core) {
       this.promptButton.style.position = 'absolute';
       this.promptButton.style.right = '.4em';
       this.promptButton.style.bottom = '.4em';
-      this.promptButton.style.background = 'url(icons.svg) -16.5em -3.7em';
+      this.promptButton.style.background = 'url(icons.svg) -16.5em -7em';
       this.promptButton.style.backgroundSize = '32.0em 9.6em';
 
       this.prompt.addEventListener('keydown', function(e) {
@@ -799,6 +799,7 @@ P.core = (function(core) {
       this.initRuntime();
     }
 
+    // TODO: move to Scratch2Stage, it's not used in Scratch3Stage
     watcherStart(id, t, e) {
       var p = e.target;
       while (p && p.dataset.watcher == null) p = p.parentElement;
@@ -937,23 +938,9 @@ P.core = (function(core) {
       }
     }
 
-    stopAllSounds() {
-      for (var children = this.children, i = children.length; i--;) {
-        children[i].stopSounds();
-      }
-      this.stopSounds();
-    }
-
-    removeAllClones() {
-      var i = this.children.length;
-      while (i--) {
-        if (this.children[i].isClone) {
-          this.children[i].remove();
-          this.children.splice(i, 1);
-        }
-      }
-    }
-
+    // Gets an object with a name.
+    // Does not return clones.
+    // Can return the stage object itself if you pass '_stage_' or the name of the stage.
     getObject(name) {
       for (var i = 0; i < this.children.length; i++) {
         var c = this.children[i];
@@ -966,6 +953,9 @@ P.core = (function(core) {
       }
     }
 
+    // Gets all the objects with a name.
+    // Includes the original object and any clones.
+    // No special values like '_stage_' are supported.
     getObjects(name) {
       var result = [];
       for (var i = 0; i < this.children.length; i++) {
@@ -976,10 +966,11 @@ P.core = (function(core) {
       return result;
     }
 
+    // Draws the canvas.
     draw() {
       this.renderer.reset(this.zoom);
 
-      this.drawChildren(this.renderer, false);
+      this.drawChildren(this.renderer);
 
       for (var i = this.allWatchers.length; i--;) {
         var w = this.allWatchers[i];
@@ -995,22 +986,50 @@ P.core = (function(core) {
       }
     }
 
-    drawChildren(renderer, noEffects, skip) {
+    // Draws all the children onto a renderer, optionally skipping an object.
+    drawChildren(renderer, skip) {
       for (var i = 0; i < this.children.length; i++) {
         var c = this.children[i];
         if (c.isDragging) {
           c.moveTo(c.dragOffsetX + c.stage.mouseX, c.dragOffsetY + c.stage.mouseY);
         }
         if (c.visible && c !== skip) {
-          renderer.drawChild(c, noEffects);
+          renderer.drawChild(c);
         }
       }
     }
 
-    drawAll(renderer, noEffects, skip) {
+    // Draws all the objects onto a renderer, optionally skipping an object.
+    drawAll(renderer, skip) {
       renderer.drawChild(this);
       renderer.drawImage(this.penCanvas, 0, 0);
-      this.drawChildren(renderer, noEffects, skip);
+      this.drawChildren(renderer, skip);
+    }
+
+    // Determines a broadcast ID from it's name.
+    // Name is simply what the broadcast block has for an input.
+    getBroadcastId(name) {
+      // Scratch 2 simply uses names as IDs.
+      return name;
+    }
+
+    // Implementing Scratch blocks
+
+    stopAllSounds() {
+      for (var children = this.children, i = children.length; i--;) {
+        children[i].stopSounds();
+      }
+      this.stopSounds();
+    }
+
+    removeAllClones() {
+      var i = this.children.length;
+      while (i--) {
+        if (this.children[i].isClone) {
+          this.children[i].remove();
+          this.children.splice(i, 1);
+        }
+      }
     }
 
     moveTo() {
@@ -1064,8 +1083,177 @@ P.core = (function(core) {
       this.sayId = 0;
     }
 
+    mouseDown() {
+      this.dragStartX = this.scratchX;
+      this.dragStartY = this.scratchY;
+      this.dragOffsetX = this.scratchX - this.stage.mouseX;
+      this.dragOffsetY = this.scratchY - this.stage.mouseY;
+      this.isDragging = true;
+    }
+
+    mouseUp() {
+      if (this.isDragging && this.scratchX === this.dragStartX && this.scratchY === this.dragStartY) {
+        this.stage.triggerFor(this, 'whenClicked');
+      }
+      this.isDragging = false;
+    }
+
+    // Determines the rotated bounds of the sprite.
+    rotatedBounds() {
+      var costume = this.costumes[this.currentCostumeIndex];
+
+      var s = costume.scale * this.scale;
+      var left = -costume.rotationCenterX * s;
+      var top = costume.rotationCenterY * s;
+      var right = left + costume.image.width * s;
+      var bottom = top - costume.image.height * s;
+
+      if (this.rotationStyle !== 'normal') {
+        if (this.rotationStyle === 'leftRight' && this.direction < 0) {
+          right = -left;
+          left = right - costume.image.width * costume.scale * this.scale;
+        }
+        return {
+          left: this.scratchX + left,
+          right: this.scratchX + right,
+          top: this.scratchY + top,
+          bottom: this.scratchY + bottom
+        };
+      }
+
+      var mSin = Math.sin(this.direction * Math.PI / 180);
+      var mCos = Math.cos(this.direction * Math.PI / 180);
+
+      var tlX = mSin * left - mCos * top;
+      var tlY = mCos * left + mSin * top;
+
+      var trX = mSin * right - mCos * top;
+      var trY = mCos * right + mSin * top;
+
+      var blX = mSin * left - mCos * bottom;
+      var blY = mCos * left + mSin * bottom;
+
+      var brX = mSin * right - mCos * bottom;
+      var brY = mCos * right + mSin * bottom;
+
+      return {
+        left: this.scratchX + Math.min(tlX, trX, blX, brX),
+        right: this.scratchX + Math.max(tlX, trX, blX, brX),
+        top: this.scratchY + Math.max(tlY, trY, blY, brY),
+        bottom: this.scratchY + Math.min(tlY, trY, blY, brY)
+      };
+    }
+
+    // Shows the rotated bounds of the sprite. For debugging.
+    showRotatedBounds() {
+      var bounds = this.rotatedBounds();
+      var div = document.createElement('div');
+      div.style.outline = '1px solid red';
+      div.style.position = 'absolute';
+      div.style.left = (240 + bounds.left) + 'px';
+      div.style.top = (180 - bounds.top) + 'px';
+      div.style.width = (bounds.right - bounds.left) + 'px';
+      div.style.height = (bounds.top - bounds.bottom) + 'px';
+      this.stage.canvas.parentNode.appendChild(div);
+    }
+
+    // Implementing Scratch blocks
+
+    // Moves forward some number of steps in the current direction.
+    forward(steps) {
+      const d = (90 - this.direction) * Math.PI / 180;
+      this.moveTo(this.scratchX + steps * Math.cos(d), this.scratchY + steps * Math.sin(d));
+    }
+
+    // Ensures that the sprite is in view of the stage.
+    keepInView() {
+      // See: https://github.com/LLK/scratch-flash/blob/72e4729b8189d11bbe51b6d94144b0a3c392ac9a/src/scratch/ScratchSprite.as#L191-L224
+
+      var rb = this.rotatedBounds();
+      var width = rb.right - rb.left;
+      var height = rb.top - rb.bottom;
+      // using 18 puts sprites 3 pixels too far from edges for some reason, 15 works fine
+      var border = Math.min(15, Math.min(width, height) / 2);
+
+      if (rb.right < -240 + border) {
+        var difference = rb.right - (-240 + border);
+        this.scratchX = Math.floor(this.scratchX - difference);
+      }
+      if (rb.left > 240 - border) {
+        var difference = (240 - border) - rb.left;
+        this.scratchX = Math.ceil(difference + this.scratchX);
+      }
+      if (rb.bottom > 180 - border) {
+        var difference = (180 - border) - rb.bottom;
+        this.scratchY = Math.ceil(difference + this.scratchY);
+      }
+      if (rb.top < -180 + border) {
+        var difference = rb.top - (-180 + border);
+        this.scratchY = Math.floor(this.scratchY - difference);
+      }
+    }
+
+    // Moves the sprite to a coordinate
+    // Draws a line if the pen is currently down.
+    moveTo(x, y) {
+      var ox = this.scratchX;
+      var oy = this.scratchY;
+      if (ox === x && oy === y && !this.isPenDown) {
+        return;
+      }
+      this.scratchX = x;
+      this.scratchY = y;
+
+      this.keepInView();
+
+      if (this.isPenDown && !this.isDragging) {
+        var context = this.stage.penRenderer.ctx;
+        if (this.penSize % 2 > .5 && this.penSize % 2 < 1.5) {
+          ox -= .5;
+          oy -= .5;
+          x -= .5;
+          y -= .5;
+        }
+        context.strokeStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
+        context.lineWidth = this.penSize;
+        context.beginPath();
+        context.moveTo(240 + ox, 180 - oy);
+        context.lineTo(240 + x, 180 - y);
+        context.stroke();
+      }
+
+      if (this.saying) {
+        this.updateBubble();
+      }
+    }
+
+    // Makes a pen dot at the current location.
+    dotPen() {
+      var context = this.stage.penRenderer.ctx;
+      var x = this.scratchX;
+      var y = this.scratchY;
+      context.fillStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
+      context.beginPath();
+      context.arc(240 + x, 180 - y, this.penSize / 2, 0, 2 * Math.PI, false);
+      context.fill();
+    }
+
+    // Stamps the sprite onto the pen layer.
+    stamp() {
+      this.stage.penRenderer.drawChild(this);
+    }
+
+    // Faces in a direction.
+    setDirection(degrees) {
+      var d = degrees % 360;
+      if (d > 180) d -= 360;
+      if (d <= -180) d += 360;
+      this.direction = d;
+      if (this.saying) this.updateBubble();
+    }
+
     clone() {
-      var c = new Sprite(this.stage);
+      var c = this._clone();
       c.isClone = true;
 
       // Copy data without passing reference
@@ -1124,107 +1312,14 @@ P.core = (function(core) {
       return c;
     }
 
-    mouseDown() {
-      this.dragStartX = this.scratchX;
-      this.dragStartY = this.scratchY;
-      this.dragOffsetX = this.scratchX - this.stage.mouseX;
-      this.dragOffsetY = this.scratchY - this.stage.mouseY;
-      this.isDragging = true;
+    // Abstract
+    // Must return a new instance of a Sprite. Data will be copied in another step.
+    _clone() {
+      throw new Error('Sprite did not implement _clone()');
     }
 
-    mouseUp() {
-      if (this.isDragging && this.scratchX === this.dragStartX && this.scratchY === this.dragStartY) {
-        this.stage.triggerFor(this, 'whenClicked');
-      }
-      this.isDragging = false;
-    }
-
-    // Implementing Scratch blocks
-
-    forward(steps) {
-      var d = (90 - this.direction) * Math.PI / 180;
-      this.moveTo(this.scratchX + steps * Math.cos(d), this.scratchY + steps * Math.sin(d));
-    }
-
-    keepInView() {
-      // Ensures that the sprite is in view of the stage.
-      // See: https://github.com/LLK/scratch-flash/blob/72e4729b8189d11bbe51b6d94144b0a3c392ac9a/src/scratch/ScratchSprite.as#L191-L224
-
-      var rb = this.rotatedBounds();
-      var width = rb.right - rb.left;
-      var height = rb.top - rb.bottom;
-      // using 18 puts sprites 3 pixels too far from edges for some reason, 15 works fine
-      var border = Math.min(15, Math.min(width, height) / 2);
-
-      if (rb.right < -240 + border) {
-        var difference = rb.right - (-240 + border);
-        this.scratchX = Math.floor(this.scratchX - difference);
-      }
-      if (rb.left > 240 - border) {
-        var difference = (240 - border) - rb.left;
-        this.scratchX = Math.ceil(difference + this.scratchX);
-      }
-      if (rb.bottom > 180 - border) {
-        var difference = (180 - border) - rb.bottom;
-        this.scratchY = Math.ceil(difference + this.scratchY);
-      }
-      if (rb.top < -180 + border) {
-        var difference = rb.top - (-180 + border);
-        this.scratchY = Math.floor(this.scratchY - difference);
-      }
-    }
-
-    moveTo(x, y) {
-      var ox = this.scratchX;
-      var oy = this.scratchY;
-      if (ox === x && oy === y && !this.isPenDown) return;
-      this.scratchX = x;
-      this.scratchY = y;
-
-      this.keepInView();
-
-      if (this.isPenDown && !this.isDragging) {
-        var context = this.stage.penRenderer.ctx;
-        if (this.penSize % 2 > .5 && this.penSize % 2 < 1.5) {
-          ox -= .5;
-          oy -= .5;
-          x -= .5;
-          y -= .5;
-        }
-        context.strokeStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
-        context.lineWidth = this.penSize;
-        context.beginPath();
-        context.moveTo(240 + ox, 180 - oy);
-        context.lineTo(240 + x, 180 - y);
-        context.stroke();
-      }
-      if (this.saying) {
-        this.updateBubble();
-      }
-    }
-
-    dotPen() {
-      var context = this.stage.penRenderer.ctx;
-      var x = this.scratchX;
-      var y = this.scratchY;
-      context.fillStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
-      context.beginPath();
-      context.arc(240 + x, 180 - y, this.penSize / 2, 0, 2 * Math.PI, false);
-      context.fill();
-    }
-
-    stamp() {
-      this.stage.penRenderer.drawChild(this);
-    }
-
-    setDirection(degrees) {
-      var d = degrees % 360;
-      if (d > 180) d -= 360;
-      if (d <= -180) d += 360;
-      this.direction = d;
-      if (this.saying) this.updateBubble();
-    }
-
+    // Determines if the sprite is touching an object.
+    // thing is the name of the object, '_mouse_', or '_edge_'
     touching(thing) {
       var costume = this.costumes[this.currentCostumeIndex];
 
@@ -1284,9 +1379,11 @@ P.core = (function(core) {
           collisionRenderer.ctx.save();
           collisionRenderer.ctx.translate(-(left + 240), -(180 - top));
 
+          collisionRenderer.noEffects = true;
           collisionRenderer.drawChild(this, true);
           collisionRenderer.ctx.globalCompositeOperation = 'source-in';
           collisionRenderer.drawChild(sprite, true);
+          collisionRenderer.noEffects = false;
 
           collisionRenderer.ctx.restore();
 
@@ -1303,6 +1400,7 @@ P.core = (function(core) {
       }
     }
 
+    // Determines if this Sprite is touching a color.
     touchingColor(rgb) {
       var b = this.rotatedBounds();
 
@@ -1312,7 +1410,7 @@ P.core = (function(core) {
       collisionRenderer.ctx.save();
       collisionRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
 
-      this.stage.drawAll(collisionRenderer, true, this);
+      this.stage.drawAll(collisionRenderer, this);
       collisionRenderer.ctx.globalCompositeOperation = 'destination-in';
       collisionRenderer.drawChild(this, true);
 
@@ -1342,7 +1440,7 @@ P.core = (function(core) {
       collisionRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
       secondaryCollisionRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
 
-      this.stage.drawAll(collisionRenderer, true, this);
+      this.stage.drawAll(collisionRenderer, this);
       secondaryCollisionRenderer.drawChild(this, true);
 
       collisionRenderer.ctx.restore();
@@ -1365,6 +1463,7 @@ P.core = (function(core) {
       return false;
     }
 
+    // Bounces off an edge of the stage, if it is touching one.
     bounceOffEdge() {
       var b = this.rotatedBounds();
       var dl = 240 + b.left;
@@ -1398,63 +1497,8 @@ P.core = (function(core) {
       if (b.bottom < -180) y += -180 - b.top;
     }
 
-    rotatedBounds() {
-      var costume = this.costumes[this.currentCostumeIndex];
-
-      var s = costume.scale * this.scale;
-      var left = -costume.rotationCenterX * s;
-      var top = costume.rotationCenterY * s;
-      var right = left + costume.image.width * s;
-      var bottom = top - costume.image.height * s;
-
-      if (this.rotationStyle !== 'normal') {
-        if (this.rotationStyle === 'leftRight' && this.direction < 0) {
-          right = -left;
-          left = right - costume.image.width * costume.scale * this.scale;
-        }
-        return {
-          left: this.scratchX + left,
-          right: this.scratchX + right,
-          top: this.scratchY + top,
-          bottom: this.scratchY + bottom
-        };
-      }
-
-      var mSin = Math.sin(this.direction * Math.PI / 180);
-      var mCos = Math.cos(this.direction * Math.PI / 180);
-
-      var tlX = mSin * left - mCos * top;
-      var tlY = mCos * left + mSin * top;
-
-      var trX = mSin * right - mCos * top;
-      var trY = mCos * right + mSin * top;
-
-      var blX = mSin * left - mCos * bottom;
-      var blY = mCos * left + mSin * bottom;
-
-      var brX = mSin * right - mCos * bottom;
-      var brY = mCos * right + mSin * bottom;
-
-      return {
-        left: this.scratchX + Math.min(tlX, trX, blX, brX),
-        right: this.scratchX + Math.max(tlX, trX, blX, brX),
-        top: this.scratchY + Math.max(tlY, trY, blY, brY),
-        bottom: this.scratchY + Math.min(tlY, trY, blY, brY)
-      };
-    }
-
-    showRotatedBounds() {
-      var bounds = this.rotatedBounds();
-      var div = document.createElement('div');
-      div.style.outline = '1px solid red';
-      div.style.position = 'absolute';
-      div.style.left = (240 + bounds.left) + 'px';
-      div.style.top = (180 - bounds.top) + 'px';
-      div.style.width = (bounds.right - bounds.left) + 'px';
-      div.style.height = (bounds.top - bounds.bottom) + 'px';
-      this.stage.canvas.parentNode.appendChild(div);
-    }
-
+    // Determines the distance to another object.
+    // thing is the name of the object, or '_mouse_'
     distanceTo(thing) {
       if (thing === '_mouse_') {
         var x = this.stage.mouseX;
@@ -1468,6 +1512,8 @@ P.core = (function(core) {
       return Math.sqrt((this.scratchX - x) * (this.scratchX - x) + (this.scratchY - y) * (this.scratchY - y));
     }
 
+    // Goes to another object.
+    // thing is either the name of the object, '_mouse_', or '_random_'
     gotoObject(thing) {
       if (thing === '_mouse_') {
         this.moveTo(this.stage.mouseX, this.stage.mouseY);
@@ -1482,6 +1528,8 @@ P.core = (function(core) {
       }
     }
 
+    // Points towards an object.
+    // thing is either the name of the object or '_mouse'
     pointTowards(thing) {
       if (thing === '_mouse_') {
         var x = this.stage.mouseX;
@@ -1498,6 +1546,7 @@ P.core = (function(core) {
       if (this.saying) this.updateBubble();
     }
 
+    // Says some text.
     say(text, thinking) {
       text = text.toString();
       if (!text) {
@@ -1539,6 +1588,7 @@ P.core = (function(core) {
       return ++this.sayId;
     }
 
+    // Sets the RGB color of the pen.
     setPenColor(color) {
       this.penColor = color;
       const r = this.penColor >> 16 & 0xff;
@@ -1548,6 +1598,7 @@ P.core = (function(core) {
       this.penCSS = 'rgba(' + r + ', ' + g + ', ' + b + ', ' + a + ')';
     }
 
+    // Converts the pen's color to HSL
     setPenColorHSL() {
       if (this.penCSS) {
         const hsl = P.utils.rgbToHSL(this.penColor);
@@ -1558,6 +1609,7 @@ P.core = (function(core) {
       }
     }
 
+    // Sets a pen color HSL parameter.
     setPenColorParam(param, value) {
       this.setPenColorHSL();
       switch (param) {
@@ -1578,6 +1630,7 @@ P.core = (function(core) {
       }
     }
 
+    // Changes a pen color HSL parameter.
     changePenColorParam(param, value) {
       this.setPenColorHSL();
       switch (param) {
@@ -1598,6 +1651,7 @@ P.core = (function(core) {
       }
     }
 
+    // Updates the text bubble.
     updateBubble() {
       if (!this.visible || !this.saying) {
         this.bubble.style.display = 'none';
@@ -1631,6 +1685,7 @@ P.core = (function(core) {
       this.bubble.style.bottom = (bottom / 14) + 'em';
     }
 
+    // Deletes the Sprite
     remove() {
       if (this.bubble) {
         this.stage.ui.removeChild(this.bubble);
@@ -1643,7 +1698,7 @@ P.core = (function(core) {
     }
   }
 
-  // A costume, either bitmap or SVG
+  // A costume (either bitmap or SVG)
   class Costume {
     constructor(costumeData) {
       this.index = costumeData.index;
@@ -1721,6 +1776,7 @@ P.core = (function(core) {
   }
 
   // An abstract callable procedure
+  // Implementation must implement call()
   class Procedure {
     constructor(fn, warp, inputs) {
       this.fn = fn;
@@ -1728,6 +1784,7 @@ P.core = (function(core) {
       this.inputs = inputs;
     }
 
+    // Call takes a list of inputs and must return the proper arguments to set C.args to in the runtime.
     call(inputs) {
       throw new Error('Procedure did not implement call()');
     }
@@ -1744,7 +1801,7 @@ P.core = (function(core) {
   return core;
 })({});
 
-// Generic IO helpers
+// IO helpers and hooks
 P.IO = (function(IO) {
   // Hooks that can be replaced by other scripts to hook into progress reports.
   IO.progressHooks = {
@@ -1799,6 +1856,217 @@ P.sb3 = (function() {
   // The path to remote assets.
   // Replace $path with the md5ext of the file
   const ASSETS_API = 'https://assets.scratch.mit.edu/internalapi/asset/$path/get/';
+
+  // Implements a Scratch 3 Stage.
+  // Adds Scratch 3 specific things such as broadcastReferences
+  class Scratch3Stage extends P.core.Stage {
+    constructor() {
+      super();
+      // Scratch 3 uses unique IDs for broadcasts and the visual name for different things.
+      this.broadcastNames = {};
+    }
+
+    addBroadcast(id, name) {
+      this.broadcastNames[name] = id;
+    }
+
+    // Override getBroadcastId to use broadcast IDs
+    getBroadcastId(name) {
+      // Use the mapped ID or fall back to the name.
+      // Usually the name is the unique ID, but occasionally it is not.
+      return this.broadcastNames[name] || name;
+    }
+  }
+
+  // Implements a Scratch 3 Sprite.
+  class Scratch3Sprite extends P.core.Sprite {
+    _clone() {
+      return new Scratch3Sprite(this.stage);
+    }
+  }
+
+  // Implements a Scratch 3 VariableWatcher.
+  // Adds Scratch 3-like styling and implements most watchables.
+  class Scratch3VariableWatcher extends P.core.VariableWatcher {
+    constructor(stage, data) {
+      super(stage, data.spriteName || '');
+
+      // Unique ID
+      this.id = data.id;
+      // Operation code, similar to other parts of Scratch 3
+      this.opcode = data.opcode;
+      // 'default', '', ''
+      this.mode = data.mode;
+      // Watcher options, varies by opcode.
+      this.params = data.params;
+      // This opcode's watcherLibrary entry.
+      this.library = P.sb3.compiler.watcherLibrary[this.opcode];
+
+      // From VariableWatcher
+      this.x = data.x;
+      this.y = data.y;
+      this.visible = typeof data.visible === 'boolean' ? data.visible : true;
+
+      this.sliderMin = data.min;
+      this.sliderMax = data.max;
+
+      // Set by layout() at some point later on
+      this.containerEl = null;
+      this.valueEl = null;
+      // Not guarunteed to exist.
+      this.sliderEl = null;
+
+      // Mark ourselves as invalid if the opcode is not recognized.
+      if (!this.library) {
+        console.warn('unknown watcher', this.opcode, this);
+        this.valid = false;
+      }
+    }
+
+    // Override
+    update() {
+      if (this.visible) {
+        // TODO: is it better to only change textContent when the value has changed?
+        this.valueEl.textContent = this.getValue();
+      }
+    }
+
+    // Override
+    init() {
+      super.init();
+
+      // init() might not exist, call it if it does.
+      // (most opcodes do not have an init())
+      if (this.library.init) {
+        this.library.init(this);
+      }
+
+      this.layout();
+    }
+
+    // Override
+    setVisible(visible) {
+      super.setVisible(visible);
+      this.layout();
+    }
+
+    // Gets the label of the watcher.
+    // Will include the sprite's name if any.
+    // Example results are 'Sprite1: my variable' and 'timer'
+    getLabel() {
+      const label = this.library.getLabel(this);
+      if (!this.target.isStage) {
+        return this.targetName + ': ' + label;
+      }
+      return label;
+    }
+
+    // Gets the value of the watcher.
+    // Could be anything, number, string, undefined, whatever. It's all fair game.
+    getValue() {
+      const value = this.library.evaluate(this);
+      // Round off numbers to the thousandths to avoid excess precision
+      if (typeof value === 'number') {
+        return Math.round(value * 1000) / 1000;
+      }
+      return value;
+    }
+
+    // Attempts to set the value of the watcher.
+    // Will silently fail if this watcher cannot be set.
+    setValue(value) {
+      // Not all opcodes have a set(), infact very few usually do.
+      if (this.library.set) {
+        this.library.set(this, value);
+      }
+    }
+
+    // Updates the layout of the watcher.
+    layout() {
+      // If the HTML element has already been created, them simply update the CSS display property.
+      if (this.containerEl) {
+        this.containerEl.style.display = this.visible ? 'flex' : 'none';
+        return;
+      }
+
+      if (!this.visible) {
+        return;
+      }
+
+      const container = document.createElement('div');
+      container.classList.add('s3-watcher-container');
+      container.setAttribute('opcode', this.opcode);
+      container.style.top = this.y + 'px';
+      container.style.left = this.x + 'px';
+
+      const value = document.createElement('div');
+      value.classList.add('s3-watcher-value');
+      value.textContent = this.getValue();
+
+      this.containerEl = container;
+      this.valueEl = value;
+      this.stage.ui.appendChild(container);
+
+      const mode = this.mode;
+
+      if (mode === 'large') {
+        container.classList.add('s3-watcher-large');
+        container.appendChild(value);
+      } else {
+        // mode is probably 'normal' or 'slider'
+        // if it's not, then 'normal' would be a good fallback anyways.
+
+        const row = document.createElement('div');
+        row.classList.add('s3-watcher-row');
+        row.classList.add('s3-watcher-row-normal');
+
+        const label = document.createElement('div');
+        label.classList.add('s3-watcher-label');
+        label.textContent = this.getLabel();
+
+        row.appendChild(label);
+        row.appendChild(value);
+
+        container.classList.add('s3-watcher-container-normal');
+        container.appendChild(row);
+
+        // 'slider' is a slight variation of 'normal', just with an extra slider row.
+        if (mode === 'slider') {
+          const slider = document.createElement('div');
+          slider.classList.add('s3-watcher-row-slider');
+
+          const input = document.createElement('input');
+          input.type = 'range';
+          input.min = this.sliderMin;
+          input.max = this.sliderMax;
+          input.value = this.getValue();
+          input.addEventListener('input', this.sliderChanged.bind(this));
+          this.sliderEl = input;
+
+          slider.appendChild(input);
+          container.appendChild(slider);
+        }
+      }
+    }
+
+    // Handles slider input events.
+    sliderChanged() {
+      const value = +this.sliderEl.value;
+      this.setValue(value);
+    }
+  }
+
+  // Implements a Scratch 3 procedure.
+  // Scratch 3 uses names as references for arguments (Scratch 2 uses indexes I believe)
+  class Scratch3Procedure extends P.core.Procedure {
+    call(inputs) {
+      const args = {};
+      for (var i = 0; i < this.inputs.length; i++) {
+        args[this.inputs[i]] = inputs[i];
+      }
+      return args;
+    }
+  }
 
   // Implements base SB3 loading logic.
   // Needs to be extended to add file loading methods.
@@ -1909,7 +2177,7 @@ P.sb3 = (function() {
         return null;
       }
 
-      const watcher = new P.sb3.compiler.VariableWatcher(stage, data);
+      const watcher = new P.sb3.Scratch3VariableWatcher(stage, data);
 
       return watcher;
     }
@@ -1952,7 +2220,7 @@ P.sb3 = (function() {
       return loadCostumes
         .then(() => loadSounds)
         .then(() => {
-          const target = new (data.isStage ? P.core.Stage : P.core.Sprite);
+          const target = new (data.isStage ? Scratch3Stage : Scratch3Sprite);
 
           target.currentCostumeIndex = data.currentCostume;
           target.name = data.name;
@@ -1962,7 +2230,10 @@ P.sb3 = (function() {
           sounds.forEach((sound) => target.addSound(sound));
 
           if (data.isStage) {
-            target.broadcastReferences = data.broadcasts;
+            for (const id of Object.keys(data.broadcasts)) {
+              const name = data.broadcasts[id];
+              target.addBroadcast(id, name);
+            }
           } else {
             target.scratchX = x;
             target.scratchY = y;
@@ -1987,11 +2258,11 @@ P.sb3 = (function() {
 
       return Promise.all(targets.map((data) => this.loadTarget(data)))
         .then((targets) => {
-          const stage = targets.filter((i) => i instanceof P.core.Stage)[0];
+          const stage = targets.filter((i) => i instanceof Scratch3Stage)[0];
           if (!stage) {
             throw new Error('no stage object');
           }
-          const sprites = targets.filter((i) => i instanceof P.core.Sprite);
+          const sprites = targets.filter((i) => i instanceof Scratch3Sprite);
           const watchers = this.projectData.monitors
             .map((data) => this.loadWatcher(data, stage))
             .filter((i) => i && i.valid);
@@ -2126,7 +2397,11 @@ P.sb3 = (function() {
   return {
     SB3FileLoader: SB3FileLoader,
     Scratch3Loader: Scratch3Loader,
-  }
+    Scratch3Stage: Scratch3Stage,
+    Scratch3Sprite: Scratch3Sprite,
+    Scratch3Procedure: Scratch3Procedure,
+    Scratch3VariableWatcher: Scratch3VariableWatcher,
+  };
 }());
 
 // Compiler for .sb3 projects
@@ -2139,7 +2414,7 @@ P.sb3.compiler = (function() {
 
   /*
   In Scratch 3 all blocks have a unique identifier.
-  In the project.json blocks do not contain other blocks in the way a .sb2 file does, but rather they point to the IDs of other blocks.
+  In the project.json, blocks do not contain other blocks in the way a .sb2 file does, but rather they point to the IDs of other blocks.
 
   Blocks have "inputs", "fields", and "mutations". These are both types of data that change how blocks behave.
   Inputs accept any block as an input, while fields generally accept hard coded strings.
@@ -2154,183 +2429,11 @@ P.sb3.compiler = (function() {
   Each of these are separated and compiled differently and in different spots.
   */
 
-  // Implements a Scratch 3 VariableWatcher.
-  // Adds Scratch 3-like styling and implements most watchables.
-  class Scratch3VariableWatcher extends P.core.VariableWatcher {
-    constructor(stage, data) {
-      super(stage, data.spriteName || '');
-
-      // Unique ID
-      this.id = data.id;
-      // Operation code, similar to other parts of Scratch 3
-      this.opcode = data.opcode;
-      // 'default', '', ''
-      this.mode = data.mode;
-      // Watcher options, varies by opcode.
-      this.params = data.params;
-
-      // From VariableWatcher
-      this.x = data.x;
-      this.y = data.y;
-      this.visible = typeof data.visible === 'boolean' ? data.visible : true;
-
-      this.sliderMin = data.min;
-      this.sliderMax = data.max;
-
-      // Set by layout() at some point later on
-      this.containerEl = null;
-      this.valueEl = null;
-      // Not guarunteed to exist.
-      this.sliderEl = null;
-
-      // Mark ourselves as invalid if the opcode is not recognized.
-      if (!(this.opcode in watcherLibrary)) {
-        console.warn('unknown watcher', this.opcode, this);
-        this.valid = false;
-      }
-    }
-
-    // Override
-    update() {
-      if (this.visible) {
-        // TODO: is it better to only change textContent when the value has changed?
-        this.valueEl.textContent = this.getValue();
-      }
-    }
-
-    // Override
-    init() {
-      super.init();
-
-      // init() might not exist, call it if it does.
-      // (most opcodes do not have an init())
-      if (watcherLibrary[this.opcode].init) {
-        watcherLibrary[this.opcode].init(this);
-      }
-
-      this.layout();
-    }
-
-    // Override
-    setVisible(visible) {
-      super.setVisible(visible);
-      this.layout();
-    }
-
-    // Gets the label of the watcher.
-    // Will include the sprite's name if any.
-    // Example results are 'Sprite1: my variable' and 'timer'
-    getLabel() {
-      const label = watcherLibrary[this.opcode].getLabel(this);
-      if (!this.target.isStage) {
-        return this.targetName + ': ' + label;
-      }
-      return label;
-    }
-
-    // Gets the value of the watcher.
-    // Could be anything, number, string, undefined, whatever. It's all fair game.
-    getValue() {
-      const value = watcherLibrary[this.opcode].evaluate(this);
-      // Round off numbers to the thousandths to avoid excess precision
-      if (typeof value === 'number') {
-        return Math.round(value * 1000) / 1000;
-      }
-      return value;
-    }
-
-    setValue(value) {
-      const library = watcherLibrary[this.opcode];
-      if ('set' in library) {
-        library.set(this, value);
-      }
-    }
-
-    // Updates the layout of the watcher.
-    layout() {
-      if (this.containerEl) {
-        this.containerEl.style.display = this.visible ? 'flex' : 'none';
-        return;
-      }
-      if (!this.visible) {
-        return;
-      }
-
-      const container = document.createElement('div');
-      container.classList.add('s3-watcher-container');
-      container.setAttribute('opcode', this.opcode);
-      container.style.top = this.y + 'px';
-      container.style.left = this.x + 'px';
-
-      const value = document.createElement('div');
-      value.classList.add('s3-watcher-value');
-      value.textContent = this.getValue();
-
-      this.containerEl = container;
-      this.valueEl = value;
-      this.stage.ui.appendChild(container);
-
-      const mode = this.mode;
-
-      if (mode === 'large') {
-        container.classList.add('s3-watcher-large');
-        container.appendChild(value);
-      } else {
-        // mode is probably 'normal' or 'slider'
-        // if it's not, then 'normal' would be a good fallback anyways.
-
-        const row = document.createElement('div');
-        row.classList.add('s3-watcher-row');
-        row.classList.add('s3-watcher-row-normal');
-
-        const label = document.createElement('div');
-        label.classList.add('s3-watcher-label');
-        label.textContent = this.getLabel();
-
-        row.appendChild(label);
-        row.appendChild(value);
-
-        container.classList.add('s3-watcher-container-normal');
-        container.appendChild(row);
-
-        // Slider is a slight variation of normal.
-        if (mode === 'slider') {
-          const slider = document.createElement('div');
-          slider.classList.add('s3-watcher-row-slider');
-          const input = document.createElement('input');
-          input.type = 'range';
-          input.min = this.sliderMin;
-          input.max = this.sliderMax;
-          input.value = this.getValue();
-          input.addEventListener('input', this.sliderChanged.bind(this));
-          this.sliderEl = input;
-          slider.appendChild(input);
-          container.appendChild(slider);
-        }
-      }
-    }
-
-    sliderChanged(e) {
-      const value = +this.sliderEl.value;
-      this.setValue(value);
-    }
-  }
-
-  // Implements a Scratch 3 procedure.
-  // Scratch 3 uses names as references for arguments (Scratch 2 uses indexes I believe)
-  class Scratch3Procedure extends P.core.Procedure {
-    call(inputs) {
-      const args = {};
-      for (var i = 0; i < this.inputs.length; i++) {
-        args[this.inputs[i]] = inputs[i];
-      }
-      return args;
-    }
-  }
-
   // IDs of primative types
   // https://github.com/LLK/scratch-vm/blob/36fe6378db930deb835e7cd342a39c23bb54dd72/src/serialization/sb3.js#L60-L79
   const PRIMATIVE_TYPES = {
+    // 1, 2, and 3 are used for substacks, which are compiled very differently
+
     // Any number (???)
     MATH_NUM: 4,
     // Any positive number (maybe including zero?)
@@ -2408,7 +2511,7 @@ P.sb3.compiler = (function() {
       // It's a stringified JSON array.
       const argumentNames = JSON.parse(mutation.argumentnames);
 
-      const procedure = new Scratch3Procedure(f, warp, argumentNames);
+      const procedure = new P.sb3.Scratch3Procedure(f, warp, argumentNames);
       currentTarget.procedures[name] = procedure;
     },
   };
@@ -2873,7 +2976,7 @@ P.sb3.compiler = (function() {
     looks_seteffectto(block) {
       const effect = block.fields.EFFECT[0];
       const value = block.inputs.VALUE;
-      // Effect is in all caps which is not what we want.
+      // Lowercase conversion is necessary to remove capitals, which we do not want.
       source += 'S.setFilter("' + sanitize(effect).toLowerCase() + '", ' + compileExpression(value, 'number') + ');\n';
       visualCheck('visible');
     },
@@ -2887,8 +2990,8 @@ P.sb3.compiler = (function() {
       updateBubble();
     },
     looks_hide(block) {
+      visualCheck('visible');
       source += 'S.visible = false;\n';
-      visualCheck('always');
       updateBubble();
     },
     looks_gotofrontback(block) {
@@ -3179,6 +3282,11 @@ P.sb3.compiler = (function() {
     procedures_call(block) {
       const mutation = block.mutation;
       const name = mutation.proccode;
+
+      if (P.config.debug && name === 'forkphorus:debugger;') {
+        source += '/*procedures_call debugger*/debugger;\n';
+        return;
+      }
 
       const id = nextLabel();
       source += 'call(S.procedures[' + sanitize(name, true) + '], ' + id + ', [\n';
@@ -3517,8 +3625,8 @@ P.sb3.compiler = (function() {
       case PRIMATIVE_TYPES.WHOLE_NUM:
       case PRIMATIVE_TYPES.INTEGER_NUM:
       case PRIMATIVE_TYPES.ANGLE_NUM:
-        // There are no guaruntees there is actually a number here.
-        // It could be anything.
+        // There are no actual gurauntees that a number is present here.
+        // In reality a non-number string could be present, which would be problematic to cast to number.
         if (isFinite(constant[1])) {
           return +constant[1];
         } else {
@@ -3538,12 +3646,13 @@ P.sb3.compiler = (function() {
         // See: variable references
         return listReference(constant[2]);
 
+      case PRIMATIVE_TYPES.BROADCAST:
+        // Similar to variable references.
+        return compileExpression(constant[2]);
+
       case PRIMATIVE_TYPES.COLOR_PICKER:
         // Colors are stored as "#123456", so we must do some conversions.
         return convertColor(constant[1]);
-
-      case PRIMATIVE_TYPES.BROADCAST:
-        return compileExpression(constant[2]);
 
       default:
         console.warn('unknown constant', type, constant);
@@ -3718,8 +3827,12 @@ P.sb3.compiler = (function() {
 
   return {
     compile: compileTarget,
-    Procedure: Scratch3Procedure,
-    VariableWatcher: Scratch3VariableWatcher,
+    // Expose libraries to be extended or read elsewhere.
+    // Make sure to only use builtin array modification methods, do not reassign.
+    topLevelLibrary: topLevelLibrary,
+    expressionLibrary: expressionLibrary,
+    statementLibrary: statementLibrary,
+    watcherLibrary: watcherLibrary,
   };
 }());
 
@@ -4039,6 +4152,16 @@ P.sb2 = (function(sb2) {
   }
   sb2.VariableWatcher = Scratch2VariableWatcher;
 
+  class Scratch2Stage extends P.core.Stage {
+
+  }
+
+  class Scratch2Sprite extends P.core.Sprite {
+    _clone() {
+      return new Scratch2Sprite(this.stage);
+    }
+  }
+
   // loads an image from a URL
   sb2.loadImage = function(url) {
     P.IO.progressHooks.new();
@@ -4083,7 +4206,7 @@ P.sb2 = (function(sb2) {
     ]).then(() => {
       children = children.filter((i) => i);
       children.forEach((c) => c.stage = stage);
-      var sprites = children.filter((i) => i instanceof P.core.Sprite);
+      var sprites = children.filter((i) => i instanceof Scratch2Sprite);
       var watchers = children.filter((i) => i instanceof Scratch2VariableWatcher);
 
       stage.children = sprites;
@@ -4148,7 +4271,7 @@ P.sb2 = (function(sb2) {
         }
       }
 
-      var object = new (isStage ? P.core.Stage : P.core.Sprite);
+      var object = new (isStage ? Scratch2Stage : Scratch2Sprite);
 
       object.name = data.objName;
       object.vars = variables;
@@ -5500,7 +5623,7 @@ P.audio = (function(audio) {
     876, 963, 1060, 1166, 1282, 1411, 1552, 1707, 1878, 2066,
     2272, 2499, 2749, 3024, 3327, 3660, 4026, 4428, 4871, 5358,
     5894, 6484, 7132, 7845, 8630, 9493, 10442, 11487, 12635, 13899,
-    15289, 16818, 18500, 20350, 22385, 24623, 27086, 29794, 32767
+    15289, 16818, 18500, 20350, 22385, 24623, 27086, 29794, 32767,
   ];
   const ADPCM_INDEX = [-1, -1, -1, -1, 2, 4, 6, 8, -1, -1, -1, -1, 2, 4, 6, 8];
 
@@ -5610,7 +5733,6 @@ P.runtime = (function() {
   // The upside: it's fast as hell.
 
   // Global variables expected by scripts at runtime:
-
   // The stage object
   var self;
   // Current sprite or stage
@@ -5641,6 +5763,7 @@ P.runtime = (function() {
   };
 
   var DIGIT = /\d/;
+  // Compares two values. Returns -1 if x < y, 1 if x > y, 0 if x === y
   var compare = function(x, y) {
     if ((typeof x === 'number' || DIGIT.test(x)) && (typeof y === 'number' || DIGIT.test(y))) {
       var nx = +x;
@@ -5653,6 +5776,7 @@ P.runtime = (function() {
     var ys = ('' + y).toLowerCase();
     return xs < ys ? -1 : xs === ys ? 0 : 1;
   };
+  // Determines if y is less than nx
   var numLess = function(nx, y) {
     if (typeof y === 'number' || DIGIT.test(y)) {
       var ny = +y;
@@ -5663,6 +5787,7 @@ P.runtime = (function() {
     var ys = ('' + y).toLowerCase();
     return '' + nx < ys;
   };
+  // Determines if y is greater than nx
   var numGreater = function(nx, y) {
     if (typeof y === 'number' || DIGIT.test(y)) {
       var ny = +y;
@@ -5673,7 +5798,7 @@ P.runtime = (function() {
     var ys = ('' + y).toLowerCase();
     return '' + nx > ys;
   };
-
+  // Determines if x is equal to y
   var equal = function(x, y) {
     if ((typeof x === 'number' || DIGIT.test(x)) && (typeof y === 'number' || DIGIT.test(y))) {
       var nx = +x;
@@ -5686,6 +5811,7 @@ P.runtime = (function() {
     var ys = ('' + y).toLowerCase();
     return xs === ys;
   };
+  // Determines if x (number) and y (number) are equal to eachother
   var numEqual = function(nx, y) {
     if (typeof y === 'number' || DIGIT.test(y)) {
       var ny = +y;
@@ -6054,7 +6180,7 @@ P.runtime = (function() {
   };
 
   var broadcast = function(name) {
-    return self.trigger('whenIReceive', name);
+    return self.trigger('whenIReceive', self.getBroadcastId(name));
   };
 
   var running = function(bases) {

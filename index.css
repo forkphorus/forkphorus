@@ -55,6 +55,9 @@ body {
   left: 0;
   background-position: -160px 0;
 }
+.dark .project-link {
+  background-position: -160px -32px;
+}
 
 a {
   cursor: pointer;
@@ -193,6 +196,9 @@ code {
 }
 .theme-select:hover {
   opacity: 1;
+}
+.fs .theme-select {
+  display: none;
 }
 
 .upload-button {
