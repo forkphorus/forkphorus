@@ -307,12 +307,18 @@ P.renderers.canvas2d = (function() {
 
         if (!this.noEffects) {
           this.ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
-        } else {
-          this.ctx.globalAlpha = 1;
+
+          let filter = '';
+          if (c.filters.brightness) {
+            filter += 'brightness(' + (100 + c.filters.brightness) + '%) ';
+          }
+          if (c.filters.color) {
+            filter += 'hue-rotate(' + (c.filters.color / 200 * 360) + 'deg) ';
+          }
+          this.ctx.filter = filter;
         }
 
         this.ctx.drawImage(costume.image, 0, 0);
-
         this.ctx.restore();
       }
     }
