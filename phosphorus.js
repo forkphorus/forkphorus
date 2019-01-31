@@ -331,7 +331,7 @@ P.renderers.canvas2d = (function() {
 
 // Phosphorus Core
 // Has some base classes that implement most functions while leaving some to implementations. (see P.sb2 and P.sb3)
-P.core = (function(core) {
+P.core = (function() {
 
   // Canvases used for various collision testing later on
   const collisionCanvas = document.createElement('canvas');
@@ -972,6 +972,30 @@ P.core = (function(core) {
       return result;
     }
 
+    // Determines the position of a position.
+    // Returns {x: number, y: number} or null.
+    // Implement '_mouse_', '_random_' and sprite names.
+    getPosition(name) {
+      if (name === '_mouse_') {
+        return {
+          x: this.mouseX,
+          y: this.mouseY,
+        };
+      } else if (name === '_random_') {
+        return {
+          x: Math.round(480 * Math.random() - 240),
+          y: Math.round(360 * Math.random() - 180),
+        };
+      } else {
+        var sprite = this.getObject(name);
+        if (!sprite) return null;
+        return {
+          x: sprite.scratchX,
+          y: sprite.scratchY,
+        };
+      }
+    }
+
     // Draws the canvas.
     draw() {
       this.renderer.reset(this.zoom);
@@ -1163,23 +1187,15 @@ P.core = (function(core) {
       this.stage.canvas.parentNode.appendChild(div);
     }
 
-    // Implementing Scratch blocks
-
-    // Moves forward some number of steps in the current direction.
-    forward(steps) {
-      const d = (90 - this.direction) * Math.PI / 180;
-      this.moveTo(this.scratchX + steps * Math.cos(d), this.scratchY + steps * Math.sin(d));
-    }
-
     // Ensures that the sprite is in view of the stage.
     keepInView() {
       // See: https://github.com/LLK/scratch-flash/blob/72e4729b8189d11bbe51b6d94144b0a3c392ac9a/src/scratch/ScratchSprite.as#L191-L224
 
-      var rb = this.rotatedBounds();
-      var width = rb.right - rb.left;
-      var height = rb.top - rb.bottom;
+      const rb = this.rotatedBounds();
+      const width = rb.right - rb.left;
+      const height = rb.top - rb.bottom;
       // using 18 puts sprites 3 pixels too far from edges for some reason, 15 works fine
-      var border = Math.min(15, Math.min(width, height) / 2);
+      const border = Math.min(15, Math.min(width, height) / 2);
 
       if (rb.right < -240 + border) {
         var difference = rb.right - (-240 + border);
@@ -1197,6 +1213,14 @@ P.core = (function(core) {
         var difference = rb.top - (-180 + border);
         this.scratchY = Math.floor(this.scratchY - difference);
       }
+    }
+
+    // Implementing Scratch blocks
+
+    // Moves forward some number of steps in the current direction.
+    forward(steps) {
+      const d = (90 - this.direction) * Math.PI / 180;
+      this.moveTo(this.scratchX + steps * Math.cos(d), this.scratchY + steps * Math.sin(d));
     }
 
     // Moves the sprite to a coordinate
@@ -1258,6 +1282,7 @@ P.core = (function(core) {
       if (this.saying) this.updateBubble();
     }
 
+    // Clones this sprite.
     clone() {
       var c = this._clone();
       c.isClone = true;
@@ -1319,7 +1344,7 @@ P.core = (function(core) {
     }
 
     // Abstract
-    // Must return a new instance of a Sprite. Data will be copied in another step.
+    // Must return a new instance of this Sprite's constructor. Data copying will be handled in clone()
     _clone() {
       throw new Error('Sprite did not implement _clone()');
     }
@@ -1521,33 +1546,22 @@ P.core = (function(core) {
     // Goes to another object.
     // thing is either the name of the object, '_mouse_', or '_random_'
     gotoObject(thing) {
-      if (thing === '_mouse_') {
-        this.moveTo(this.stage.mouseX, this.stage.mouseY);
-      } else if (thing === '_random_') {
-        var x = Math.round(480 * Math.random() - 240);
-        var y = Math.round(360 * Math.random() - 180);
-        this.moveTo(x, y);
-      } else {
-        var sprite = this.stage.getObject(thing);
-        if (!sprite) return 0;
-        this.moveTo(sprite.scratchX, sprite.scratchY);
+      const position = this.stage.getPosition(thing);
+      if (!position) {
+        return 0;
       }
+      this.moveTo(position.x, position.y);
     }
 
     // Points towards an object.
     // thing is either the name of the object or '_mouse'
     pointTowards(thing) {
-      if (thing === '_mouse_') {
-        var x = this.stage.mouseX;
-        var y = this.stage.mouseY;
-      } else {
-        var sprite = this.stage.getObject(thing);
-        if (!sprite) return 0;
-        x = sprite.scratchX;
-        y = sprite.scratchY;
+      const position = this.stage.getPosition(thing);
+      if (!position) {
+        return 0;
       }
-      var dx = x - this.scratchX;
-      var dy = y - this.scratchY;
+      const dx = position.x - this.scratchX;
+      const dy = position.y - this.scratchY;
       this.direction = dx === 0 && dy === 0 ? 90 : Math.atan2(dx, dy) * 180 / Math.PI;
       if (this.saying) this.updateBubble();
     }
@@ -1796,15 +1810,15 @@ P.core = (function(core) {
     }
   }
 
-  core.Base = Base;
-  core.Stage = Stage;
-  core.Sprite = Sprite;
-  core.Costume = Costume;
-  core.Sound = Sound;
-  core.VariableWatcher = VariableWatcher;
-  core.Procedure = Procedure;
-
-  return core;
+  return {
+    Base: Base,
+    Stage: Stage,
+    Sprite: Sprite,
+    Costume: Costume,
+    Sound: Sound,
+    VariableWatcher: VariableWatcher,
+    Procedure: Procedure,
+  };
 })({});
 
 // IO helpers and hooks
@@ -2527,11 +2541,15 @@ P.sb3.compiler = (function() {
     // Motion
     motion_goto_menu(block) {
       const to = block.fields.TO[0];
-      return '"' + sanitize(to) + '"';
+      return sanitize(to, true);
+    },
+    motion_glideto_menu(block) {
+      const to = block.fields.TO[0];
+      return sanitize(to, true);
     },
     motion_pointtowards_menu(block) {
       const towards = block.fields.TOWARDS[0];
-      return '"' + sanitize(towards) + '"';
+      return sanitize(towards, true);
     },
     motion_xposition(block) {
       return 'S.scratchX';
@@ -2550,7 +2568,7 @@ P.sb3.compiler = (function() {
     },
     looks_backdrops(block) {
       const backdrop = block.fields.BACKDROP[0];
-      return '"' + sanitize(backdrop) + '"';
+      return sanitize(backdrop, true);
     },
     looks_costumenumbername(block) {
       const name = block.fields.NUMBER_NAME[0];
@@ -2666,8 +2684,7 @@ P.sb3.compiler = (function() {
         case 'SECOND': return 'new Date().getSeconds()';
       }
 
-      console.warn('unknown CURRENTMENU: ' + current);
-      return 0;
+      throw new Error('unknown CURRENTMENU: ' + current);
     },
     sensing_dayssince2000(block) {
       return '((Date.now() - epoch) / 86400000)';
@@ -2737,7 +2754,7 @@ P.sb3.compiler = (function() {
     operator_join(block) {
       const string1 = block.inputs.STRING1;
       const string2 = block.inputs.STRING2;
-      return '( "" + ' + compileExpression(string1) + ' + ' + compileExpression(string2) + ')';
+      return '(' + compileExpression(string1, 'string') + ' + ' + compileExpression(string2) + ')';
     },
     operator_letter_of(block) {
       const string = block.inputs.STRING;
@@ -2837,6 +2854,30 @@ P.sb3.compiler = (function() {
       source += 'S.moveTo(' + compileExpression(x, 'number') + ', ' + compileExpression(y, 'number') + ');\n';
       visualCheck('drawing');
     },
+    motion_glideto(block) {
+      const secs = block.inputs.SECS;
+      const to = block.inputs.TO;
+
+      visualCheck('drawing');
+      source += 'save();\n';
+      source += 'R.start = self.now;\n';
+      source += 'R.duration = ' + compileExpression(secs) + ';\n';
+      source += 'R.baseX = S.scratchX;\n';
+      source += 'R.baseY = S.scratchY;\n';
+      source += 'var to = self.getPosition(' + compileExpression(to) + ');\n';
+      source += 'if (to) {'
+      source += 'R.deltaX = to.x - S.scratchX;\n';
+      source += 'R.deltaY = to.y - S.scratchY;\n';
+      const id = label();
+      source += 'var f = (self.now - R.start) / (R.duration * 1000);\n';
+      source += 'if (f > 1) f = 1;\n';
+      source += 'S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
+      source += 'if (f < 1) {\n';
+      forceQueue(id);
+      source += '}\n';
+      source += 'restore();\n';
+      source += '}\n'; // if (to) {
+    },
     motion_glidesecstoxy(block) {
       const secs = block.inputs.SECS;
       const x = block.inputs.X;
@@ -2890,11 +2931,12 @@ P.sb3.compiler = (function() {
       visualCheck('drawing');
     },
     motion_ifonedgebounce(block) {
+      // TODO: set visual if bounced
       source += 'S.bounceOffEdge();\n';
     },
     motion_setrotationstyle(block) {
       const style = block.fields.STYLE[0];
-      source += 'S.rotationStyle = "' + P.utils.asRotationStyle(style) + '";\n';
+      source += 'S.rotationStyle = ' + sanitize(P.utils.asRotationStyle(style), true) + ';\n';
       visualCheck('visible');
     },
 
@@ -2959,7 +3001,7 @@ P.sb3.compiler = (function() {
     },
     looks_nextbackdrop(block) {
       source += 'self.showNextCostume();\n';
-      visualCheck('visible');
+      visualCheck('always');
     },
     looks_changesizeby(block) {
       const change = block.inputs.CHANGE;
@@ -3009,7 +3051,6 @@ P.sb3.compiler = (function() {
       } else if (frontBack === 'back') {
         source += 'self.children.unshift(S);\n';
       }
-      visualCheck('visible');
     },
     looks_goforwardbackwardlayers(block) {
       const direction = block.fields.FORWARD_BACKWARD[0];
@@ -3025,7 +3066,6 @@ P.sb3.compiler = (function() {
         throw new Error('unknown direction: ' + direction);
       }
       source += '}\n';
-      visualCheck('visible');
     },
 
     // Sounds
@@ -3152,7 +3192,7 @@ P.sb3.compiler = (function() {
       const condition = block.inputs.CONDITION;
       const substack = block.inputs.SUBSTACK;
       const id = label();
-      source += 'if (!(' + compileExpression(condition, 'boolean') + ')) {\n'
+      source += 'if (!' + compileExpression(condition) + ') {\n'
       compileSubstack(substack);
       queue(id);
       source += '}\n';
@@ -3245,7 +3285,7 @@ P.sb3.compiler = (function() {
       const variableId = block.fields.VARIABLE[1];
       const value = block.inputs.VALUE;
       const ref = variableReference(variableId);
-      source += ref + ' = (+' + ref + ' + ' + compileExpression(value, 'number') + ');\n';
+      source += ref + ' = (' + asType(ref, 'number') + ' + ' + compileExpression(value, 'number') + ');\n';
     },
     data_showvariable(block) {
       const variable = block.fields.VARIABLE[1];
@@ -3324,8 +3364,9 @@ P.sb3.compiler = (function() {
       visualCheck('always');
     },
     pen_penUp(block) {
+      // TODO: determine visualCheck variant
+      // definitely not 'always' or 'visible', might be a 'if (S.isPenDown)'
       source += 'S.isPenDown = false;\n';
-      visualCheck('always');
     },
     pen_setPenColorToColor(block) {
       const color = block.inputs.COLOR;
@@ -3396,6 +3437,8 @@ P.sb3.compiler = (function() {
           return target.currentCostumeIndex + 1;
         } else if (param === 'name') {
           return target.costumes[target.currentCostumeIndex].name;
+        } else {
+          throw new Error('unknown watcher NUMBER_NAME: ' + param);
         }
       },
       getLabel(watcher) {
@@ -3410,6 +3453,8 @@ P.sb3.compiler = (function() {
           return target.currentCostumeIndex + 1;
         } else if (param === 'name') {
           return target.costumes[target.currentCostumeIndex].name;
+        } else {
+          throw new Error('unknown watcher NUMBER_NAME: ' + param);
         }
       },
       getLabel(watcher) {
@@ -3443,7 +3488,8 @@ P.sb3.compiler = (function() {
     },
     sensing_current: {
       evaluate(watcher) {
-        switch (watcher.params.CURRENTMENU) {
+        const param = watcher.params.CURRENTMENU;
+        switch (param) {
           case 'YEAR': return new Date().getFullYear();
           case 'MONTH': return new Date().getMonth() + 1;
           case 'DATE': return new Date().getDate();
@@ -3452,9 +3498,11 @@ P.sb3.compiler = (function() {
           case 'MINUTE': return new Date().getMinutes();
           case 'SECOND': return new Date().getSeconds();
         }
+        throw new Error('unknown watcher CURRENTMENU: ' + param);
       },
       getLabel(watcher) {
-        switch (watcher.params.CURRENTMENU) {
+        const param = watcher.params.CURRENTMENU;
+        switch (param) {
           case 'YEAR': return 'year';
           case 'MONTH': return 'month';
           case 'DATE': return 'date';
@@ -3463,6 +3511,7 @@ P.sb3.compiler = (function() {
           case 'MINUTE': return 'minute';
           case 'SECOND': return 'second';
         }
+        throw new Error('unknown watcher CURRENTMENU: ' + param);
       }
     },
     sensing_username: {
@@ -3506,10 +3555,13 @@ P.sb3.compiler = (function() {
       visible: 'if (S.visible) VISUAL = true;\n',
       always: 'VISUAL = true;\n',
     };
+    if (!(variant in CASES)) {
+      throw new Error('unknown visualCheck variant: ' + variant);
+    }
     if (P.config.debug) {
       source += '/*visual:' + variant + '*/';
     }
-    source += CASES[variant] || CASES.drawing;
+    source += CASES[variant];
   }
 
   // Forcibly queues something to run
@@ -3694,7 +3746,7 @@ P.sb3.compiler = (function() {
     // Substacks are statements inside of statements.
     // Substacks are a type of input. The first item is ofcourse type, the second is the ID of the child.
 
-    // Substacks are not guarunteed to exist.
+    // Substacks are not guarunteed to exist, so silently fail.
     if (!substack) {
       return;
     }
@@ -3708,7 +3760,7 @@ P.sb3.compiler = (function() {
 
   function asType(script, type) {
     if (type === 'string') {
-      return '"" + ' + script;
+      return '("" + ' + script + ")";
     } else if (type === 'number') {
       return '+' + script;
     } else if (type === 'boolean') {
@@ -3743,7 +3795,9 @@ P.sb3.compiler = (function() {
       return sanitize(expression, true);
     }
     if (typeof expression === 'number') {
-      return exprssion;
+      // I have a slight feeling this block never runs.
+      // TODO: remove?
+      return expression;
     }
 
     if (Array.isArray(expression[1])) {
