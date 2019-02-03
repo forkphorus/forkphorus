@@ -369,6 +369,7 @@ P.core = (function() {
         whenGreenFlag: [],
         whenIReceive: {},
         whenKeyPressed: [],
+        whenBackdropChanges: {},
         whenSceneStarts: [],
         whenSensorGreaterThan: []
       };
@@ -972,9 +973,8 @@ P.core = (function() {
       return result;
     }
 
-    // Determines the position of a position.
+    // Determines the position of an object from its name, with support for '_random_' and '_mouse_'
     // Returns {x: number, y: number} or null.
-    // Implement '_mouse_', '_random_' and sprite names.
     getPosition(name) {
       if (name === '_mouse_') {
         return {
@@ -996,7 +996,7 @@ P.core = (function() {
       }
     }
 
-    // Draws the canvas.
+    // Draws the project.
     draw() {
       this.renderer.reset(this.zoom);
 
@@ -1544,7 +1544,7 @@ P.core = (function() {
     }
 
     // Goes to another object.
-    // thing is either the name of the object, '_mouse_', or '_random_'
+    // thing is anything that getPosition() accepts
     gotoObject(thing) {
       const position = this.stage.getPosition(thing);
       if (!position) {
@@ -1554,7 +1554,7 @@ P.core = (function() {
     }
 
     // Points towards an object.
-    // thing is either the name of the object or '_mouse'
+    // thing is anything that getPosition() accepts
     pointTowards(thing) {
       const position = this.stage.getPosition(thing);
       if (!position) {
@@ -2501,11 +2501,10 @@ P.sb3.compiler = (function() {
     },
     event_whenbackdropswitchesto(block, f) {
       const backdrop = block.fields.BACKDROP[0];
-      // When backdrop switches to was previously known as "when scene starts"
-      if (!currentTarget.listeners.whenSceneStarts[backdrop]) {
-        currentTarget.listeners.whenSceneStarts[backdrop] = [];
+      if (!currentTarget.listeners.whenBackdropChanges[backdrop]) {
+        currentTarget.listeners.whenBackdropChanges[backdrop] = [];
       }
-      currentTarget.listeners.whenSceneStarts[backdrop].push(f);
+      currentTarget.listeners.whenBackdropChanges[backdrop].push(f);
     },
     event_whenbroadcastreceived(block, f) {
       const optionId = block.fields.BROADCAST_OPTION[1];
@@ -2998,10 +2997,14 @@ P.sb3.compiler = (function() {
       const backdrop = block.inputs.BACKDROP;
       source += 'self.setCostume(' + compileExpression(backdrop) + ');\n';
       visualCheck('always');
+      source += 'var threads = backdropChange();\n';
+      source += 'if (threads.indexOf(BASE) !== -1) {return;}\n';
     },
     looks_nextbackdrop(block) {
       source += 'self.showNextCostume();\n';
       visualCheck('always');
+      source += 'var threads = backdropChange();\n';
+      source += 'if (threads.indexOf(BASE) !== -1) {return;}\n';
     },
     looks_changesizeby(block) {
       const change = block.inputs.CHANGE;
@@ -6239,6 +6242,10 @@ P.runtime = (function() {
     return self.trigger('whenSceneStarts', self.costumes[self.currentCostumeIndex].name);
   };
 
+  function backdropChange() {
+    return self.trigger('whenBackdropChanges', self.costumes[self.currentCostumeIndex].name);
+  }
+
   var broadcast = function(name) {
     return self.trigger('whenIReceive', self.getBroadcastId(name));
   };
@@ -6300,14 +6307,16 @@ P.runtime = (function() {
     } else if (event === 'whenGreenFlag') {
       threads = sprite.listeners.whenGreenFlag;
     } else if (event === 'whenIReceive') {
-      // Scratch 2 compiler uses case insensitive broadcast names
-      // while scratch 3 compiler currently uses case sensitive IDs (to change)
-      arg = arg.toString();
+      arg = arg + '';
       threads = sprite.listeners.whenIReceive[arg] || sprite.listeners.whenIReceive[arg.toLowerCase()];
     } else if (event === 'whenKeyPressed') {
       threads = sprite.listeners.whenKeyPressed[arg];
     } else if (event === 'whenSceneStarts') {
       threads = sprite.listeners.whenSceneStarts[('' + arg).toLowerCase()];
+    } else if (event === 'whenBackdropChanges') {
+      threads = sprite.listeners.whenBackdropChanges['' + arg];
+    } else {
+      console.warn('Unknown trigger event', event);
     }
     if (threads) {
       for (var i = 0; i < threads.length; i++) {
