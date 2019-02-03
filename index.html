@@ -72,17 +72,6 @@
     </div>
 
     <div class=area id=project-area>
-      <!-- <section class=package>
-        <h1>Package this project</h1>
-        <p>Get a link to a web page that automatically runs your project.</p>
-        <p>
-          <a href=# target=_blank id=package-link>Package</a>
-          <input type=checkbox id=package-turbo>
-          <label for=package-turbo>Turbo mode</label>
-          <input type=checkbox id=package-full-screen checked>
-          <label for=package-full-screen>Full screen</label>
-        </p>
-      </section>-->
 
       <section>
         <h1>Report a problem</h1>
@@ -103,9 +92,16 @@
         </p>
       </section>
 
-      <section>
-        <h1>Packaging</h1>
-        <p>Packaging will be available again soon.</p>
+      <section class=package>
+        <h1>Package this project</h1>
+        <p>Get a link to a web page that automatically runs your project.</p>
+        <p class="package-options">
+          <a href=# target=_blank id=package-link>Package</a>
+          <input type=checkbox id=package-turbo>
+          <label for=package-turbo>Turbo mode</label>
+          <input type=checkbox id=package-full-screen checked>
+          <label for=package-full-screen>Full screen</label>
+        </p>
       </section>
     </div>
 
@@ -157,9 +153,9 @@
 
     var uploadFileInput = document.querySelector('#upload-file-input');
 
-    // var packageLink = document.querySelector('#package-link');
-    // var packageTurbo = document.querySelector('#package-turbo');
-    // var packageFullScreen = document.querySelector('#package-full-screen');
+    var packageLink = document.querySelector('#package-link');
+    var packageTurbo = document.querySelector('#package-turbo');
+    var packageFullScreen = document.querySelector('#package-full-screen');
 
     var embedCode = document.querySelector('#embed-code');
     var embedAutoStart = document.querySelector('#embed-auto-start');
@@ -232,14 +228,22 @@
       projectLink.href = P.player.projectURL;
       bugLink.href = P.player.createBugLink('Describe the issue below. Please be specific, things like "it doesn\'t work" are not helpful.', '');
       updateEmbedCode();
+      updatePackageLink();
     }
 
-    // TODO: bring back packaging
-    // function updatePackageLink() {
-    //   packageLink.href = P.player.projectId ? '/app.html?id=' + P.player.projectId + '&turbo=' + packageTurbo.checked + '&full-screen=' + packageFullScreen.checked : 'about:blank';
-    // }
-    // packageTurbo.addEventListener('change', updatePackageLink);
-    // packageFullScreen.addEventListener('change', updatePackageLink);
+    function updatePackageLink() {
+      if (P.player.projectId) {
+        var url = location.origin + '/app.html';
+        url += '?id=' + P.player.projectId;
+        url += '&turbo=' + packageTurbo.checked;
+        url += '&full-screen=' + packageFullScreen.checked;
+        packageLink.href = url;
+      } else {
+        packageLink.href = 'about:blank';
+      }
+    }
+    packageTurbo.addEventListener('change', updatePackageLink);
+    packageFullScreen.addEventListener('change', updatePackageLink);
 
     function updateEmbedCode(e) {
       // Hide UI replaces other options.

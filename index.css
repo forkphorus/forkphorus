@@ -138,7 +138,7 @@ code {
   color: #000;
 }
 
-/*.package a {
+#package-link {
   padding: 2px 8px;
   background: linear-gradient(#fafafa, #e8e8e8);
   box-shadow:
@@ -148,33 +148,32 @@ code {
   cursor: pointer;
   color: #000;
   text-decoration: none;
-  -webkit-tap-highlight-color: transparent;
+  width: 64px;
+  text-align: center;
 }
-.package a:hover {
+#package-link:hover {
   background: linear-gradient(#fff, #eaeaea);
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, .4),
     0 1px 4px rgba(0, 0, 0, .3);
 }
-.package a:active {
+#package-link:active {
   background: linear-gradient(#ddd, #eaeaea);
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, .5),
     inset 0 2px 5px rgba(0, 0, 0, .15);
 }
-.package label,
-.package input,
-.package a,
-.package span {
+.package-options > * {
   display: inline-block;
   vertical-align: middle;
 }
 .package input[type=checkbox] {
   margin: 0 0 0 16px;
-}*/
+}
 
 #embed-code {
-  background: 0;
+  background-color: white;
+  color: rgba(0, 0, 0, .8);
   border: 1px solid rgba(0, 0, 0, .4);
   margin: 0;
   padding: 4px;
@@ -183,11 +182,9 @@ code {
   font-size: 12px;
   line-height: 16px;
   box-sizing: border-box;
-  color: rgba(0, 0, 0, .7);
   font-family: monospace;
 }
 .dark #embed-code {
-  color: rgba(255, 255, 255, .7);
   border-color: rgba(255, 255, 255, .4);
 }
 
