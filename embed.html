@@ -1,69 +1,94 @@
-<!doctype html>
-<meta charset=utf-8>
-<meta name=viewport content="width=device-width, initial-scale=1.0">
-<title>phosphorus</title>
-<link rel=stylesheet href=player.css>
-<link rel=stylesheet href=embed.css>
-<div class=controls>
-  <div class=progress-bar></div>
-  <span class=stop></span>
-  <span class=pause></span>
-  <span class=flag title="Shift+click to enable turbo mode."></span>
-  <div class=turbo>Turbo Mode</div>
-  <span class=full-screen></span>
-</div>
-<div class=player></div>
-<div class=internal-error>
-  An internal error occurred. <a id=error-bug-link target=_blank href=https://github.com/GarboMuffin/phosphorus/issues/new>Click here</a> to file a bug report.
-</div>
-<script src=fonts.js></script>
-<script src=//cdnjs.cloudflare.com/ajax/libs/jszip/2.4.0/jszip.js></script>
-<script src=lib/rgbcolor.js></script>
-<script src=lib/StackBlur.js></script>
-<script src=lib/canvg.js></script>
-<script src=phosphorus.js></script>
-<script src=player.js></script>
-<script>
+<!DOCTYPE html>
+<html>
 
-(function() {
-  'use strict';
+<!-- embed.js will load this page in an <iframe> -->
 
-  var projectId = 17088932;
-  var autoStart = false;
-  var lightContent = false;
-  var hasUI = true;
+<head>
+  <meta charset=utf-8>
+  <meta name=viewport content="width=device-width, initial-scale=1.0">
+  <title>forkphorus</title>
+  <link rel=stylesheet href=embed.css>
+  <link rel=stylesheet href=player.css>
+  <link rel=stylesheet href=index.css>
+</head>
 
-  var params = location.search.substr(1).split('&');
-  params.forEach(function(p) {
-    var parts = p.split('=');
-    if (parts.length > 1) {
-      switch (parts[0]) {
-        case 'id':
-          projectId = Number(parts[1]);
-          break;
-        case 'auto-start':
-          autoStart = parts[1] !== 'false';
-          break;
-        case 'light-content':
-          lightContent = parts[1] !== 'false';
-          break;
-        case 'ui':
-          hasUI = parts[1] !== 'false';
-          break;
+<body>
+
+
+  <div class=controls>
+    <div class=progress-bar></div>
+    <span class=stop></span>
+    <span class=pause></span>
+    <span class=flag title="Shift+click to enable turbo mode."></span>
+    <div class=turbo>Turbo Mode</div>
+    <span class=full-screen></span>
+  </div>
+
+  <div class=player></div>
+  <div class=internal-error>
+    An internal error occurred. <a id=error-bug-link target=_blank href=https://github.com/forkphorus/forkphorus.github.io/issues/new>Click here</a> to file a bug report.
+  </div>
+
+  <script src=fonts.js></script>
+  <script src=lib/jszip.min.js></script>
+  <script src=lib/rgbcolor.js></script>
+  <script src=lib/StackBlur.js></script>
+  <script src=lib/canvg.js></script>
+  <script src=phosphorus.js></script>
+  <script src=player.js></script>
+
+  <script>
+  (function() {
+    'use strict';
+
+    window.parent.dispatchEvent(new CustomEvent('ForkphorusEmbedStart', {
+      detail: window,
+    }));
+
+    var projectId = 17088932;
+    var autoStart = false;
+    var lightContent = false;
+    var hasUI = true;
+
+    var params = location.search.substr(1).split('&');
+    params.forEach(function(p) {
+      var parts = p.split('=');
+      if (parts.length > 1) {
+        switch (parts[0]) {
+          case 'id':
+            projectId = Number(parts[1]);
+            break;
+          case 'auto-start':
+            autoStart = parts[1] !== 'false';
+            break;
+          case 'light-content':
+            lightContent = parts[1] !== 'false';
+            break;
+          case 'ui':
+            hasUI = parts[1] !== 'false';
+            break;
+        }
       }
-    }
-  });
+    });
 
-  if (lightContent) document.body.className += ' light-content';
-  document.body.className += hasUI ? ' has-ui' : ' hide-ui';
+    if (lightContent) document.body.classList.add('light-content');
+    document.body.classList.add(hasUI ? 'has-ui' : 'hide-ui');
 
-  document.title = 'phosphorus';
-  P.player.load(projectId, function(stage) {
-    if (autoStart || !hasUI) stage.triggerGreenFlag();
-  }, function(title) {
-    document.title = title ? title + ' \xb7 phosphorus' : 'phosphorus';
-  });
+    P.player.load(projectId)
+      .then((stage) => {
+        P.player.start(stage, autoStart);
+        window.stage = stage;
+        if (window.parent) {
+          window.parent.dispatchEvent(new CustomEvent('ForkphorusEmbedLoaded', {
+            detail: window,
+          }));
+        }
+      });
 
-}());
+  }());
 
-</script>
+  </script>
+
+</body>
+
+</html>

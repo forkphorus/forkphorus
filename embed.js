@@ -1,6 +1,7 @@
-(function(global) {
+(function() {
   'use strict';
 
+  // Get this script's HTML element.
   var script = document.currentScript || (function(scripts) {
     return scripts[scripts.length - 1];
   })(document.getElementsByTagName('script'));
@@ -17,12 +18,12 @@
   var iframe = document.createElement('iframe');
   iframe.setAttribute('allowfullscreen', true);
   iframe.setAttribute('allowtransparency', true);
-  iframe.src = script.src.replace(/^http:/, 'https:').replace(/embed\.js/, 'embed.html');
+  iframe.src = script.src.replace('embed.js', 'embed.html');
   iframe.width = hasUI ? 482 : 480;
   iframe.height = hasUI ? 393 : 360;
   iframe.style.border = '0';
-  iframe.className = 'phosphorus';
+  iframe.className = 'forkphorus-embed';
 
   script.parentNode.replaceChild(iframe, script);
 
-}(this));
+}());

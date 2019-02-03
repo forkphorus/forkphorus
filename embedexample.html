@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <style>
+      /* How to apply styles to the forkphorus embed <iframe> */
+      /* If you wish to apply styles within the iframe, you'll probably have to inject them via javascript in a ForkphorusEmbedStart event below. */
+      .forkphorus-embed {
+        margin: 10px;
+      }
+    </style>
+  </head>
+
+  <body>
+    Something before.<br>
+
+    <!-- Example of using forkphorus' events API -->
+    <script>
+      // A forkphorus embed will dispatch some events to its parent's window.
+      // e.detail is always the window of the embed that this event is from.
+
+      // ForkphorusEmbedStart fires before the embed starts loading the project.
+      // All script dependencies have loaded at this point, but nothing else is known at this point.
+      window.addEventListener('ForkphorusEmbedStart', function(e) {
+        console.log('ForkphorusEmbedStart', e.detail);
+
+        // You can find the global forkphorus object at e.detail.P
+        // Using this you can change the behavior of sprites, blocks, etc.
+        console.log('ForkphorusEmbedStart.detail.P', e.detail.P);
+
+        // For example, you can change the behavior of blocks in the sb3 compiler.
+        // To make the timer always 10:
+        /*
+        e.detail.P.sb3.compiler.expressionLibrary['sensing_timer'] = function() { return '10'; };
+        */
+        // (This means "The sensing_timer expression is represented by the JavaScript expression of '10'")
+
+        // Or to disable if statements:
+        /*
+        e.detail.P.sb3.compiler.statementLibrary['control_if'] = function() {};
+        */
+        // (This means "Do nothing for 'control_if'")
+
+        // You also can replace e.detail.P.IO.progressHooks here.
+        // This is how you would start to implement your own progress bar:
+        /*
+        var totalTasks = 0, completedTasks = 0;
+        e.detail.P.IO.progressHooks.new = function() { totalTasks++; };
+        e.detail.P.IO.progressHooks.end = function() { completedTasks++; };
+        */
+        // (Doing this will remove the builtin progress bar, but will not break it)
+        // Use a ForkphorusEmbedLoaded event (see below) to see when it is finished loading.
+      });
+
+      // ForkphorusEmbedLoaded fires when the embed has finished loading the project.
+      // The project may be running at this point.
+      window.addEventListener('ForkphorusEmbedLoaded', function(e) {
+        console.log('ForkphorusEmbedLoaded', e.detail);
+        // At this point, stage can be found on e.detail.stage
+        console.log('ForkphorusEmbedLoaded.detail.stage', e.detail.stage);
+        // You can access the sprite list, variable, and whatever it is that you want.
+      });
+    </script>
+
+    <!-- This script will be replaced with the iframe. -->
+    <script src="https://forkphorus.github.io/embed.js?id=283514716&auto-start=true&light-content=false"></script>
+
+    <br>Something after.
+
+  </body>
+</html>

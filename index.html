@@ -10,9 +10,26 @@
 </head>
 
 <body>
+
   <div class="theme-select">
     <a class="switch-theme">switch theme</a>
   </div>
+  <script>
+    (function() {
+      'use strict';
+      // Implement theme selector early to remove most of the white loading flash.
+      function toggleDark(dark) {
+        document.documentElement.classList.toggle('dark', dark);
+        localStorage.setItem('userPrefersDark', document.documentElement.classList.contains('dark'));
+      }
+      document.querySelector('.theme-select a').addEventListener("click", function() {
+        toggleDark();
+      });
+      if (localStorage.getItem('userPrefersDark') === 'true') {
+        toggleDark(true);
+      }
+    }());
+  </script>
 
   <div id="app">
 
@@ -65,10 +82,16 @@
           <input type=checkbox id=package-full-screen checked>
           <label for=package-full-screen>Full screen</label>
         </p>
+      </section>-->
+
+      <section>
+        <h1>Report a problem</h1>
+        <p>forkphorus is still in development and has many bugs. <a id=bug-link target=_blank href=https://github.com/forkphorus/forkphorus.github.io/issues/new>Click here</a> to report a problem with this project.</p>
       </section>
+
       <section class=package>
         <h1>Embed this project</h1>
-        <p>Include the phosphorus player in your web site.</p>
+        <p>Include the forkphorus player in your web site.</p>
         <p>
           <input readonly id=embed-code>
           <input type=checkbox id=embed-auto-start checked>
@@ -78,14 +101,11 @@
           <input type=checkbox id=embed-hide-controls>
           <label for=embed-hide-controls>Hide UI</label>
         </p>
-      </section> -->
-      <section>
-        <h1>Report a problem</h1>
-        <p>forkphorus is still in development and has many bugs. <a id=bug-link target=_blank href=https://github.com/forkphorus/forkphorus.github.io/issues/new>Click here</a> to report a problem with this project.</p>
       </section>
+
       <section>
-        <h1>Embedding</h1>
-        <p>Embedding and packing will be available again soon.</p>
+        <h1>Packaging</h1>
+        <p>Packaging will be available again soon.</p>
       </section>
     </div>
 
@@ -141,10 +161,10 @@
     // var packageTurbo = document.querySelector('#package-turbo');
     // var packageFullScreen = document.querySelector('#package-full-screen');
 
-    // var embedCode = document.querySelector('#embed-code');
-    // var embedAutoStart = document.querySelector('#embed-auto-start');
-    // var embedLightContent = document.querySelector('#embed-light-content');
-    // var embedHideControls = document.querySelector('#embed-hide-controls');
+    var embedCode = document.querySelector('#embed-code');
+    var embedAutoStart = document.querySelector('#embed-auto-start');
+    var embedLightContent = document.querySelector('#embed-light-content');
+    var embedHideControls = document.querySelector('#embed-hide-controls');
 
     var timeout;
     urlInput.addEventListener('input', function() {
@@ -197,16 +217,13 @@
     }
 
     function loadProject(id) {
-
       if (id === '' || id[0] === '.') {
         return;
       }
-
       show(id);
-
       P.player.load(id)
         .then((stage) => {
-          P.player.start(stage);
+          P.player.start(stage, true);
           updateLinks();
         });
     }
@@ -214,31 +231,53 @@
     function updateLinks() {
       projectLink.href = P.player.projectURL;
       bugLink.href = P.player.createBugLink('Describe the issue below. Please be specific, things like "it doesn\'t work" are not helpful.', '');
+      updateEmbedCode();
     }
 
-    // TODO: bring back packaging and embedding
+    // TODO: bring back packaging
     // function updatePackageLink() {
     //   packageLink.href = P.player.projectId ? '/app.html?id=' + P.player.projectId + '&turbo=' + packageTurbo.checked + '&full-screen=' + packageFullScreen.checked : 'about:blank';
     // }
     // packageTurbo.addEventListener('change', updatePackageLink);
     // packageFullScreen.addEventListener('change', updatePackageLink);
-    // function updateEmbedCode(e) {
-    //   embedCode.value = P.player.projectId ? '<script src=https://' + location.host + '/embed.js?id=' + P.player.projectId + (embedHideControls.checked ? '&ui=false' : '&auto-start=' + embedAutoStart.checked + '&light-content=' + embedLightContent.checked) + '></' + 'script>' : '';
-    //   embedAutoStart.disabled =
-    //   embedLightContent.disabled = embedHideControls.checked;
-    //   if (embedHideControls.checked) embedAutoStart.checked = true;
-    //   if (e) embedCode.focus();
-    // }
-    // function selectEmbedCode() {
-    //   setTimeout(function() {
-    //     embedCode.select();
-    //   });
-    // }
-    // embedCode.addEventListener('focus', selectEmbedCode);
-    // embedCode.addEventListener('click', selectEmbedCode);
-    // embedHideControls.addEventListener('change', updateEmbedCode);
-    // embedAutoStart.addEventListener('change', updateEmbedCode);
-    // embedLightContent.addEventListener('change', updateEmbedCode);
+
+    function updateEmbedCode(e) {
+      // Hide UI replaces other options.
+      embedAutoStart.disabled = embedHideControls.checked;
+      embedLightContent.disabled = embedHideControls.checked;
+      if (embedHideControls.checked) {
+        embedAutoStart.checked = true;
+        embedLightContent.checked = false;
+      }
+
+      if (P.player.projectId) {
+        var source = location.protocol + '//' + location.host + '/embed.js?id=' + P.player.projectId;
+        if (embedHideControls.checked) {
+          source += '&ui=false';
+        } else {
+          source += '&auto-start=' + embedAutoStart.checked;
+          source += '&light-content=' + embedLightContent.checked;
+        }
+        // We need to break up the closing script tag, otherwise things break.
+        embedCode.value = '<script src="' + source + '"></scrip' + 't>';
+      } else {
+        embedCode.value = '';
+      }
+
+      // Focus the embed code if we are an event callback
+      if (e) {
+        selectEmbedCode();
+      }
+    }
+    function selectEmbedCode() {
+      embedCode.select();
+    }
+
+    embedCode.addEventListener('focus', selectEmbedCode);
+    embedCode.addEventListener('click', selectEmbedCode);
+    embedHideControls.addEventListener('change', updateEmbedCode);
+    embedAutoStart.addEventListener('change', updateEmbedCode);
+    embedLightContent.addEventListener('change', updateEmbedCode);
 
     // Add transitions to certain elements
     // TODO: move to CSS?
@@ -253,7 +292,7 @@
     addTransition(projectArea);
 
     // File loading
-    function cancel(e) {
+    function cancelDragEvent(e) {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'copy';
     }
@@ -267,12 +306,13 @@
         }
       }
       startLoad().then((stage) => {
-        P.player.start(stage);
+        P.player.start(stage, true);
         updateLinks();
       });
     }
-    document.body.addEventListener('dragover', cancel);
-    document.body.addEventListener('dragenter', cancel);
+
+    document.body.addEventListener('dragover', cancelDragEvent);
+    document.body.addEventListener('dragenter', cancelDragEvent);
     document.body.addEventListener('drop', function(e) {
       e.preventDefault();
 
@@ -285,37 +325,27 @@
       if (!['sb2', 'sb3'].includes(ext)) {
         return;
       }
-
       show('.' + ext);
       P.player.projectId = 'local ' + ext;
       location.hash = '.' + ext;
-
-      P.IO.fileAsArrayBuffer(f).then((buffer) => loadProjectBuffer(buffer, ext));
+      P.IO.fileAsArrayBuffer(f)
+        .then((buffer) => loadProjectBuffer(buffer, ext));
     });
     uploadFileInput.addEventListener('change', function(e) {
       var files = e.target.files;
-      if (files[0]) {
-        var ext = files[0].name.split('.').pop();
-        show('.' + ext);
-        P.IO.fileAsArrayBuffer(files[0]).then((buffer) => loadProjectBuffer(buffer, ext));
+      if (!files[0]) {
+        return;
       }
+      var ext = files[0].name.split('.').pop();
+      if (!['sb2', 'sb3'].includes(ext)) {
+        return;
+      }
+      show('.' + ext);
+      P.IO.fileAsArrayBuffer(files[0])
+        .then((buffer) => loadProjectBuffer(buffer, ext));
     });
 
-
-    // Dark Mode
-    function toggleDark(dark) {
-      document.documentElement.classList.toggle('dark', dark);
-      localStorage.setItem('userPrefersDark', document.documentElement.classList.contains('dark'));
-    }
-    document.querySelector('.theme-select a').addEventListener("click", function() {
-      toggleDark();
-    });
-    if (localStorage.getItem('userPrefersDark') === 'true') {
-      toggleDark(true);
-    }
-
-    // Load any initial project
-
+    // Load any initial project ID
     loadProject(initialId);
 
   }());

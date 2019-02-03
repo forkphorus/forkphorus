@@ -140,28 +140,6 @@ P.player = (function() {
 
   window.addEventListener('resize', updateFullScreen);
 
-  if (P.hasTouchEvents) {
-    flag.addEventListener('touchstart', flagTouchStart);
-    flag.addEventListener('touchend', flagClick);
-    pause.addEventListener('touchend', pauseClick);
-    stop.addEventListener('touchend', stopClick);
-    fullScreen.addEventListener('touchend', fullScreenClick);
-
-    flag.addEventListener('touchstart', preventDefault);
-    pause.addEventListener('touchstart', preventDefault);
-    stop.addEventListener('touchstart', preventDefault);
-    fullScreen.addEventListener('touchstart', preventDefault);
-
-    document.addEventListener('touchmove', function(e) {
-      if (isFullScreen) e.preventDefault();
-    });
-  } else {
-    flag.addEventListener('click', flagClick);
-    pause.addEventListener('click', pauseClick);
-    stop.addEventListener('click', stopClick);
-    fullScreen.addEventListener('click', fullScreenClick);
-  }
-
   document.addEventListener("fullscreenchange", function () {
     if (isFullScreen !== document.fullscreen) fullScreenClick();
   });
@@ -199,7 +177,7 @@ P.player = (function() {
       .catch((e) => showError(e));
   }
 
-  function start(s) {
+  function start(s, triggerGreenFlag) {
     stage = s;
     if (P.config.debug) {
       window.stage = stage;
@@ -209,8 +187,10 @@ P.player = (function() {
     stage.root.addEventListener('keydown', exitFullScreen);
     stage.handleError = showError;
     s.start();
-    s.triggerGreenFlag();
     hideProgress();
+    if (triggerGreenFlag) {
+      s.triggerGreenFlag();
+    }
   }
 
   function createBugLink(before, after) {
@@ -263,10 +243,31 @@ P.player = (function() {
     progressBar.style.width = (10 + progress * 90) + '%';
   }
 
+  if (P.config.hasTouchEvents) {
+    flag.addEventListener('touchstart', flagTouchStart);
+    flag.addEventListener('touchend', flagClick);
+    pause.addEventListener('touchend', pauseClick);
+    stop.addEventListener('touchend', stopClick);
+    fullScreen.addEventListener('touchend', fullScreenClick);
+
+    flag.addEventListener('touchstart', preventDefault);
+    pause.addEventListener('touchstart', preventDefault);
+    stop.addEventListener('touchstart', preventDefault);
+    fullScreen.addEventListener('touchstart', preventDefault);
+
+    document.addEventListener('touchmove', function(e) {
+      if (isFullScreen) e.preventDefault();
+    });
+  } else {
+    flag.addEventListener('click', flagClick);
+    pause.addEventListener('click', pauseClick);
+    stop.addEventListener('click', stopClick);
+    fullScreen.addEventListener('click', fullScreenClick);
+  }
+
   return {
     load: load,
     start: start,
     createBugLink: createBugLink,
   };
-
 }());
