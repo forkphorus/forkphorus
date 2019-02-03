@@ -1,8 +1,5 @@
 <!DOCTYPE html>
 <html>
-
-<!-- embed.js will load this page in an <iframe> -->
-
 <head>
   <meta charset=utf-8>
   <meta name=viewport content="width=device-width, initial-scale=1.0">
@@ -13,8 +10,6 @@
 </head>
 
 <body>
-
-
   <div class=controls>
     <div class=progress-bar></div>
     <span class=stop></span>
@@ -41,9 +36,14 @@
   (function() {
     'use strict';
 
-    window.parent.dispatchEvent(new CustomEvent('ForkphorusEmbedStart', {
-      detail: window,
-    }));
+    function sendMessage(state) {
+      window.parent.postMessage({
+        forkphorusAPI: 1,
+        state: state,
+      }, '*');
+    }
+
+    sendMessage('loading');
 
     var projectId = 17088932;
     var autoStart = false;
@@ -78,17 +78,10 @@
       .then((stage) => {
         P.player.start(stage, autoStart);
         window.stage = stage;
-        if (window.parent) {
-          window.parent.dispatchEvent(new CustomEvent('ForkphorusEmbedLoaded', {
-            detail: window,
-          }));
-        }
+        sendMessage('started');
       });
 
   }());
-
   </script>
-
 </body>
-
 </html>
