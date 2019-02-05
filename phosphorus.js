@@ -1920,7 +1920,7 @@ P.sb3 = (function() {
       // Watcher options, varies by opcode.
       this.params = data.params;
       // This opcode's watcherLibrary entry.
-      this.library = P.sb3.compiler.watcherLibrary[this.opcode];
+      this.libraryEntry = P.sb3.compiler.watcherLibrary[this.opcode];
 
       // From VariableWatcher
       this.x = data.x;
@@ -1930,14 +1930,12 @@ P.sb3 = (function() {
       this.sliderMin = data.min;
       this.sliderMax = data.max;
 
-      // Set by layout() at some point later on
+      // Set by updateLayout() at some point later on
       this.containerEl = null;
       this.valueEl = null;
-      // Not guarunteed to exist.
-      this.sliderEl = null;
 
       // Mark ourselves as invalid if the opcode is not recognized.
-      if (!this.library) {
+      if (!this.libraryEntry) {
         console.warn('unknown watcher', this.opcode, this);
         this.valid = false;
       }
@@ -1946,8 +1944,11 @@ P.sb3 = (function() {
     // Override
     update() {
       if (this.visible) {
-        // TODO: is it better to only change textContent when the value has changed?
-        this.valueEl.textContent = this.getValue();
+        // Value is only updated when the value has changed to reduce useless paints in some browsers.
+        const value = this.getValue();
+        if (this.valueEl.textContent !== value) {
+          this.valueEl.textContent = this.getValue();
+        }
       }
     }
 
@@ -1955,54 +1956,52 @@ P.sb3 = (function() {
     init() {
       super.init();
 
-      // init() might not exist, call it if it does.
-      // (most opcodes do not have an init())
-      if (this.library.init) {
-        this.library.init(this);
+      // call init() if it exists
+      if ('init' in this.libraryEntry) {
+        this.libraryEntry.init(this);
       }
 
-      this.layout();
+      this.updateLayout();
     }
 
     // Override
     setVisible(visible) {
       super.setVisible(visible);
-      this.layout();
+      this.updateLayout();
     }
 
     // Gets the label of the watcher.
     // Will include the sprite's name if any.
     // Example results are 'Sprite1: my variable' and 'timer'
     getLabel() {
-      const label = this.library.getLabel(this);
+      const label = this.libraryEntry.getLabel(this);
       if (!this.target.isStage) {
         return this.targetName + ': ' + label;
       }
       return label;
     }
 
-    // Gets the value of the watcher.
-    // Could be anything, number, string, undefined, whatever. It's all fair game.
+    // Gets the value of the watcher as a string.
     getValue() {
-      const value = this.library.evaluate(this);
+      const value = this.libraryEntry.evaluate(this);
       // Round off numbers to the thousandths to avoid excess precision
       if (typeof value === 'number') {
-        return Math.round(value * 1000) / 1000;
+        return '' + (Math.round(value * 1000) / 1000);
       }
-      return value;
+      return '' + value;
     }
 
     // Attempts to set the value of the watcher.
     // Will silently fail if this watcher cannot be set.
     setValue(value) {
-      // Not all opcodes have a set(), infact very few usually do.
-      if (this.library.set) {
-        this.library.set(this, value);
+      // Not all opcodes have a set()
+      if ('set' in this.libraryEntry) {
+        this.libraryEntry.set(this, value);
       }
     }
 
-    // Updates the layout of the watcher.
-    layout() {
+    // Updates or creates the layout of the watcher.
+    updateLayout() {
       // If the HTML element has already been created, them simply update the CSS display property.
       if (this.containerEl) {
         this.containerEl.style.display = this.visible ? 'flex' : 'none';
@@ -2061,7 +2060,6 @@ P.sb3 = (function() {
           input.max = this.sliderMax;
           input.value = this.getValue();
           input.addEventListener('input', this.sliderChanged.bind(this));
-          this.sliderEl = input;
 
           slider.appendChild(input);
           container.appendChild(slider);
@@ -2070,8 +2068,8 @@ P.sb3 = (function() {
     }
 
     // Handles slider input events.
-    sliderChanged() {
-      const value = +this.sliderEl.value;
+    sliderChanged(e) {
+      const value = +e.target.value;
       this.setValue(value);
     }
   }
