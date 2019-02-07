@@ -2,10 +2,12 @@
   'use strict';
 
   // Get this script's HTML element.
+  // We'll replace the script element with the frame.
   var script = document.currentScript || (function(scripts) {
     return scripts[scripts.length - 1];
   })(document.getElementsByTagName('script'));
 
+  // Determine the hasUI option to properly size the frame.
   var hasUI = true;
   var params = script.src.split('?')[1].split('&');
   params.forEach(function(p) {

@@ -2,14 +2,10 @@ P.player = (function() {
   'use strict';
 
   var stage;
-  var error = false;
-  var frameId = null;
   var isFullScreen = false;
 
   var progressBar = document.querySelector('.progress-bar');
   var player = document.querySelector('.player');
-  var projectLink = document.querySelector('.project-link');
-  var bugLink = document.querySelector('#bug-link');
 
   var controls = document.querySelector('.controls');
   var flag = document.querySelector('.flag');
@@ -206,7 +202,7 @@ P.player = (function() {
     setProgress(1);
     progressBar.classList.add('error');
     error.style.display = 'block';
-    errorBugLink.href = createBugLink("Please describe what you were doing to cause this error:", '```\n' + P.utils.stringifyError(e) + '\n```');
+    errorBugLink.href = createBugLink("Describe what you were doing to cause this error:", '```\n' + P.utils.stringifyError(e) + '\n```');
     console.error(e);
   }
 

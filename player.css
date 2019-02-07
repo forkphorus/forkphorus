@@ -166,19 +166,19 @@
   /* fallback color */
   background-color: rgb(15, 189, 140);
 }
-.s3-watcher-container[opcode^="data_"] .s3-watcher-value {
+.s3-watcher-container[data-opcode^="data_"] .s3-watcher-value {
   background-color: rgb(255, 140, 26);
 }
-.s3-watcher-container[opcode^="sensing_"] .s3-watcher-value {
+.s3-watcher-container[data-opcode^="sensing_"] .s3-watcher-value {
   background-color: rgb(92, 177, 214);
 }
-.s3-watcher-container[opcode^="motion_"] .s3-watcher-value {
+.s3-watcher-container[data-opcode^="motion_"] .s3-watcher-value {
   background-color: rgb(76, 151, 255);
 }
-.s3-watcher-container[opcode^="looks_"] .s3-watcher-value {
+.s3-watcher-container[data-opcode^="looks_"] .s3-watcher-value {
   background-color: rgb(153, 102, 255);
 }
-.s3-watcher-container[opcode^="sound_"] .s3-watcher-value {
+.s3-watcher-container[data-opcode^="sound_"] .s3-watcher-value {
   background-color: rgb(207, 99, 207);
 }
 /* Normal watcher */

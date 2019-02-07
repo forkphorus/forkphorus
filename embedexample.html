@@ -27,16 +27,16 @@
 
         // e.data is set by forkphorus.
         // It is an object containing `forkphorusAPI` and `state`
+
+        console.log('got message from forkphorus', e.data);
+
         // Before doing anything else, you should check that forkphorusAPI is what you expect.
         // At the moment it will always be 1, but a big backwards incompatible change might change this in the future. (Not expecting it to change, but it still might)
-
         var apiVersion = e.data.forkphorusAPI;
         if (apiVersion !== 1) {
           console.warn('unknown api version', apiVersion);
           return;
         }
-
-        console.log('got message from forkphorus', e.data);
 
         var state = e.data.state;
         if (state === 'loading') {

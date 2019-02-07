@@ -23,7 +23,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-var P = {};
+const P = {};
 
 // phosphorus global config
 P.config = {
@@ -556,7 +556,7 @@ P.core = (function() {
 
       this.stage = this;
       this.isStage = true;
-      // Stage is always visible. This ensures that visual changes that check visiblity will work correctly.
+      // Stage is always visible. This ensures that visual changes that check visibility will work correctly.
       this.visible = true;
 
       // Child sprites.
@@ -565,6 +565,7 @@ P.core = (function() {
 
       // Variable Watchers
       this.allWatchers = [];
+      // TODO: move to Scratch2Stage because it's only used there?
       this.defaultWatcherX = 10;
       this.defaultWatcherY = 10;
 
@@ -587,6 +588,8 @@ P.core = (function() {
       this.mouseX = 0;
       this.mouseY = 0;
       this.mousePressed = false;
+
+      this.username = '';
 
       this.root = document.createElement('div');
       this.root.style.position = 'absolute';
@@ -1198,19 +1201,19 @@ P.core = (function() {
       const border = Math.min(15, Math.min(width, height) / 2);
 
       if (rb.right < -240 + border) {
-        var difference = rb.right - (-240 + border);
+        let difference = rb.right - (-240 + border);
         this.scratchX = Math.floor(this.scratchX - difference);
       }
       if (rb.left > 240 - border) {
-        var difference = (240 - border) - rb.left;
+        let difference = (240 - border) - rb.left;
         this.scratchX = Math.ceil(difference + this.scratchX);
       }
       if (rb.bottom > 180 - border) {
-        var difference = (180 - border) - rb.bottom;
+        let difference = (180 - border) - rb.bottom;
         this.scratchY = Math.ceil(difference + this.scratchY);
       }
       if (rb.top < -180 + border) {
-        var difference = rb.top - (-180 + border);
+        let difference = rb.top - (-180 + border);
         this.scratchY = Math.floor(this.scratchY - difference);
       }
     }
@@ -1765,7 +1768,7 @@ P.core = (function() {
       this.targetName = targetName;
       // The owner of this watcher, if any. Set in init()
       this.target = null;
-      // Is this a valid watcher? (no errrors, unrecognized opcode, etc.)
+      // Is this a valid watcher? (no errors, unrecognized opcode, etc.)
       this.valid = true;
 
       // X position
@@ -1777,19 +1780,19 @@ P.core = (function() {
     }
 
     // Initializes the VariableWatcher. Called once.
-    // Expected to be overidden, call super.init()
+    // Expected to be overridden, call super.init()
     init() {
       this.target = this.stage.getObject(this.targetName) || this.stage;
     }
 
     // Updates the VariableWatcher. Called every frame.
-    // Expected to be overidden, call super.update()
+    // Expected to be overridden, call super.update()
     update() {
       throw new Error('VariableWatcher did not implement update()');
     }
 
     // Changes the visibility of the watcher.
-    // Expected to be overidden, call super.setVisible(visible)
+    // Expected to be overridden, call super.setVisible(visible)
     setVisible(visible) {
       this.visible = visible;
     }
@@ -2014,7 +2017,7 @@ P.sb3 = (function() {
 
       const container = document.createElement('div');
       container.classList.add('s3-watcher-container');
-      container.setAttribute('opcode', this.opcode);
+      container.dataset.opcode = this.opcode;
       container.style.top = this.y + 'px';
       container.style.left = this.x + 'px';
 
@@ -2083,6 +2086,20 @@ P.sb3 = (function() {
         args[this.inputs[i]] = inputs[i];
       }
       return args;
+    }
+  }
+
+  // An Array with a modified toString() that behaves like Scratch
+  class Scratch3Array extends Array {
+    toString() {
+      let isSingle = true;
+      for (let i = this.length; i--;) {
+        if (this[i].toString().length !== 1) {
+          isSingle = false;
+          break;
+        }
+      }
+      return this.join(isSingle ? '' : ' ');
     }
   }
 
@@ -2210,7 +2227,8 @@ P.sb3 = (function() {
       const lists = {};
       for (const id of Object.keys(data.lists)) {
         const list = data.lists[id];
-        lists[id] = list[1];
+        // Use Scratch3Array instead of a normal array.
+        lists[id] = new Scratch3Array().concat(list[1]);
       }
 
       const broadcasts = {};
@@ -2414,10 +2432,11 @@ P.sb3 = (function() {
 
   return {
     SB3FileLoader: SB3FileLoader,
+    Scratch3Array: Scratch3Array,
     Scratch3Loader: Scratch3Loader,
-    Scratch3Stage: Scratch3Stage,
-    Scratch3Sprite: Scratch3Sprite,
     Scratch3Procedure: Scratch3Procedure,
+    Scratch3Sprite: Scratch3Sprite,
+    Scratch3Stage: Scratch3Stage,
     Scratch3VariableWatcher: Scratch3VariableWatcher,
   };
 }());
@@ -2687,8 +2706,7 @@ P.sb3.compiler = (function() {
       return '((Date.now() - epoch) / 86400000)';
     },
     sensing_username(block) {
-      // TODO: let the user pick a username
-      return '""';
+      return 'self.username';
     },
 
     // Operators
@@ -2815,10 +2833,15 @@ P.sb3.compiler = (function() {
       return asType('C.args[' + sanitize(name, true) + ']', 'boolean');
     },
 
-    // Pen
+    // Pen (extension)
     pen_menu_colorParam(block) {
       const colorParam = block.fields.colorParam[0];
       return sanitize(colorParam, true);
+    },
+
+    // Music (extension)
+    music_getTempo(block) {
+      return 'self.tempoBPM';
     },
   };
 
@@ -3407,6 +3430,16 @@ P.sb3.compiler = (function() {
       const size = block.inputs.SIZE;
       source += 'S.penSize = Math.max(1, ' + compileExpression(size, 'number') + ');\n';
     },
+
+    // Music (extension)
+    music_setTempo(block) {
+      const tempo = block.inputs.TEMPO;
+      source += 'self.tempoBPM = ' + compileExpression(tempo, 'number') + ';\n';
+    },
+    music_changeTempo(block) {
+      const tempo = block.inputs.TEMPO;
+      source += 'self.tempoBPM += ' + compileExpression(tempo, 'number') + ';\n';
+    },
   };
 
   // Contains data used for variable watchers.
@@ -3415,6 +3448,7 @@ P.sb3.compiler = (function() {
     // Objects must have an evalute(watcher) method that returns the current value of the watcher. (called every visible frame)
     // They also must have a getLabel(watcher) that returns the label for the watcher. (called once during initialization)
     // They optionally may have an init(watcher) that does any required initialization work.
+    // They also may optionally have a set(watcher, value) that sets the value of the watcher.
 
     // Motion
     motion_xposition: {
@@ -3429,6 +3463,7 @@ P.sb3.compiler = (function() {
       evaluate(watcher) { return watcher.target.direction; },
       getLabel() { return 'direction'; },
     },
+
     // Looks
     looks_costumenumbername: {
       evaluate(watcher) {
@@ -3466,18 +3501,20 @@ P.sb3.compiler = (function() {
       evaluate(watcher) { return watcher.target.scale * 100; },
       getLabel() { return 'size'; },
     },
+
     // Sound
     sound_volume: {
       evaluate(watcher) { return watcher.target.volume * 100; },
       getLabel() { return 'volume'; },
     },
+
     // Sensing
     sensing_answer: {
       evaluate(watcher) { return watcher.stage.answer; },
       getLabel() { return 'answer'; },
     },
     sensing_loudness: {
-      // We don't actually implement loudness.
+      // We don't implement loudness.
       evaluate() { return -1; },
       getLabel() { return 'loudness'; },
     },
@@ -3516,9 +3553,10 @@ P.sb3.compiler = (function() {
       }
     },
     sensing_username: {
-      evaluate(watcher) { return ''; },
+      evaluate(watcher) { return watcher.target.stage.username; },
       getLabel() { return 'username'; },
     },
+
     // Data
     data_variable: {
       init(watcher) {
@@ -3533,6 +3571,12 @@ P.sb3.compiler = (function() {
       getLabel(watcher) {
         return watcher.params.VARIABLE;
       },
+    },
+
+    // Music (extension)
+    music_getTempo: {
+      evaluate(watcher) { return watcher.target.stage.tempoBPM; },
+      getLabel() { return 'Music: tempo'; },
     },
   };
 
@@ -3660,13 +3704,13 @@ P.sb3.compiler = (function() {
 
   // Compiles a '#ABCDEF' color
   function convertColor(hexCode) {
-    // Just remove the leading # and convert it to a hexadecimal string.
+    // Remove the leading # and use it to create a hexadecimal number
     const hex = hexCode.substr(1);
-    // Ensure that the color is actually a hex number and not trying to sneak in some XSS/ACE/RCE/whatever.
-    if (/^[0-9a-f]{6}$/g.test(hex)) {
+    // Ensure that it is actually a hex number.
+    if (/^[0-9a-f]{6}$/.test(hex)) {
       return '0x' + hex;
     } else {
-      return '0';
+      return '0x0';
     }
   }
 
@@ -3684,7 +3728,7 @@ P.sb3.compiler = (function() {
       case PRIMATIVE_TYPES.WHOLE_NUM:
       case PRIMATIVE_TYPES.INTEGER_NUM:
       case PRIMATIVE_TYPES.ANGLE_NUM:
-        // There are no actual gurauntees that a number is present here.
+        // There are no actual guarantees that a number is present here.
         // In reality a non-number string could be present, which would be problematic to cast to number.
         if (isFinite(constant[1])) {
           return +constant[1];
@@ -3702,7 +3746,7 @@ P.sb3.compiler = (function() {
         return variableReference(constant[2]);
 
       case PRIMATIVE_TYPES.LIST:
-        // See: variable references
+        // Similar to variable references
         return listReference(constant[2]);
 
       case PRIMATIVE_TYPES.BROADCAST:
@@ -3710,7 +3754,7 @@ P.sb3.compiler = (function() {
         return compileExpression(constant[2]);
 
       case PRIMATIVE_TYPES.COLOR_PICKER:
-        // Colors are stored as "#123456", so we must do some conversions.
+        // Colors are stored as strings like "#123ABC", so we must do some conversions.
         return convertColor(constant[1]);
 
       default:
@@ -3745,9 +3789,9 @@ P.sb3.compiler = (function() {
   // Compiles a substack (script inside of another block)
   function compileSubstack(substack) {
     // Substacks are statements inside of statements.
-    // Substacks are a type of input. The first item is ofcourse type, the second is the ID of the child.
+    // Substacks are a type of input. The first item is type ID, the second is the ID of the child.
 
-    // Substacks are not guarunteed to exist, so silently fail.
+    // Substacks are not guaranteed to exist, so silently fail.
     if (!substack) {
       return;
     }
@@ -3852,7 +3896,7 @@ P.sb3.compiler = (function() {
 
     compile(block);
 
-    // Procedure defintions need special care to properly end calls.
+    // Procedure definitions need special care to properly end calls.
     if (topLevelOpCode === 'procedures_definition') {
       source += 'endCall(); return\n';
     }
@@ -3889,7 +3933,7 @@ P.sb3.compiler = (function() {
   return {
     compile: compileTarget,
     // Expose libraries to be extended or read elsewhere.
-    // Make sure to only use builtin array modification methods, do not reassign.
+    // Make sure to only use built in array modification methods, do not reassign.
     topLevelLibrary: topLevelLibrary,
     expressionLibrary: expressionLibrary,
     statementLibrary: statementLibrary,
@@ -4672,7 +4716,7 @@ P.sb2.compiler = (function() {
 
       } else if (e[0] === 'getUserName') {
 
-        return '""';
+        return 'self.username';
 
       } else {
 
@@ -5872,7 +5916,7 @@ P.runtime = (function() {
     var ys = ('' + y).toLowerCase();
     return xs === ys;
   };
-  // Determines if x (number) and y (number) are equal to eachother
+  // Determines if x (number) and y (number) are equal to each other
   var numEqual = function(nx, y) {
     if (typeof y === 'number' || DIGIT.test(y)) {
       var ny = +y;

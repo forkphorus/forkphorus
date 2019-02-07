@@ -83,7 +83,7 @@
     function showError(e) {
       // See player.js
       error.style.display = 'table';
-      bugLink.href = createBugLink("Please describe what you were doing to cause this error:", '```\n' + P.utils.stringifyError(e) + '\n```');
+      bugLink.href = createBugLink("Describe what you were doing to cause this error:", '```\n' + P.utils.stringifyError(e) + '\n```');
       console.error(e.stack);
     }
 
