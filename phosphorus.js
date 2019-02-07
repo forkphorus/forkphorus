@@ -3333,7 +3333,7 @@ P.sb3.compiler = (function() {
     },
     data_deletealloflist(block) {
       const list = block.fields.LIST[1];
-      source += listReference(list) + ' = [];\n';
+      source += listReference(list) + '.length = 0;\n';
     },
     data_insertatlist(block) {
       const list = block.fields.LIST[1];
