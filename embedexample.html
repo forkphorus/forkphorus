@@ -13,45 +13,38 @@
   <body>
     Something before.<br>
 
-    <!-- Example of using forkphorus' embed API -->
+    <!-- Example of using the embed API -->
     <script>
 
-      // Forkphorus will send a few messages to the parent window to allow you to listen to events as they happen.
-
+      // Forkphorus uses the messaging API to send messages to and from the parent window.
       window.addEventListener('message', function(e) {
         // Make sure to check the origin to make sure it's coming from forkphorus.
-        // if (e.origin !== 'http://localhost:8000') {
         if (e.origin !== 'https://forkphorus.github.io') {
           return;
         }
 
-        // e.data is set by forkphorus.
-        // It is an object containing `forkphorusAPI` and `state`
+        // data will be sent from forkphorus to the parent website.
+        var data = e.data;
+        console.log('got message from forkphorus', data);
 
-        console.log('got message from forkphorus', e.data);
+        // `id` (string) - The unique (random) ID of the forkphorus embed that sent this message.
+        var id = data.id;
+        // `type` (string) - The type of message that this is. (we'll see what this means later)
+        var type = data.type;
+        // `payload` (varies) - The payload part of the message. (varies by type)
+        var payload = data.payload;
 
-        // Before doing anything else, you should check that forkphorusAPI is what you expect.
-        // At the moment it will always be 1, but a big backwards incompatible change might change this in the future. (Not expecting it to change, but it still might)
-        var apiVersion = e.data.forkphorusAPI;
-        if (apiVersion !== 1) {
-          console.warn('unknown api version', apiVersion);
-          return;
-        }
-
-        var state = e.data.state;
-        if (state === 'loading') {
-          // Loading the project has just started
-          console.log('forkphorus started loading');
-        } else if (state === 'started') {
-          // The project has finished loading and has now started running
-          console.log('forkphorus has started');
+        switch (type) {
+          case 'stateChange':
+            // payload is a string of the current state ('loading', 'ready')
+            console.log('forkphorus state changed to', payload);
+            break;
         }
       });
     </script>
 
     <!-- This script will be replaced with the iframe. -->
     <script src="https://forkphorus.github.io/embed.js?id=283514716&auto-start=true&light-content=false"></script>
-    <!-- <script src="http://localhost:8000/embed.js?id=283514716&auto-start=true&light-content=false"></script> -->
 
     <br>Something after.
 

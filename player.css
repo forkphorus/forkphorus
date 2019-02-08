@@ -1,3 +1,19 @@
+.player {
+  color: #000;
+  width: 480px;
+  height: 360px;
+  position: relative;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .4);
+  -webkit-transform-origin: 0 0;
+  -moz-transform-origin: 0 0;
+  -ms-transform-origin: 0 0;
+  -o-transform-origin: 0 0;
+  transform-origin: 0 0;
+}
+.light-content.player, .dark .player {
+  border-color: rgba(255, 255, 255, .4);
+}
+
 .progress-bar {
   position: absolute;
   top: 0;
@@ -5,12 +21,9 @@
   bottom: 0;
   width: 0;
   background: #cde;
-  -webkit-transition: .3s;
-  -moz-transition: .3s;
-  -o-transition: .3s;
-  transition: .3s;
+  transition: width .3s, background .3s, opacity .3s;
 }
-.progress-bar.error {
+.progres-bar.error {
   background: #eaa;
 }
 
@@ -25,7 +38,8 @@
   position: relative;
   height: 32px;
 }
-.controls span, .project-link {
+
+.controls .button, .project-link {
   width: 32px;
   height: 32px;
   float: right;
@@ -35,68 +49,49 @@
   background-image: url(icons.svg);
   text-decoration: none;
 }
-.dark .controls span {
-  background-position-y: 64px;
-}
-.controls .flag {
-  background-position-x: 0;
-}
-.controls .stop {
-  background-position-x: -96px;
-}
-.controls .pause {
-  background-position-x: -32px;
-}
-.controls .play {
-  background-position-x: -64px;
-}
 .controls .full-screen {
   float: left;
-  background-position: -128px;
+  background-position: -128px -0px;
 }
-.controls span:active,
+.controls .flag {
+  background-position: 0px -0px;
+}
+.controls .stop {
+  background-position: -96px -0px;
+}
+.controls .play {
+  background-position: -64px -0px;
+}
+.controls .pause {
+  background-position: -32px -0px;
+}
+
+.controls .button:active,
 .project-link:active {
-  opacity: 1 !important;
+  opacity: 1;
 }
+
 .controls .turbo {
   float: right;
   display: none;
   cursor: default;
   color: rgba(0, 0, 0, .4);
-  font: 500 12px/32px Helvetica Neue, Helvetica, Arial, sans-serif;
+  font: 500 12px/32px sans-serif;
   padding: 0 8px;
-}
-.dark .controls .turbo {
-  color: rgba(0, 0, 0, .6);
-}
-
-.player {
-  color: #000;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, .4);
-  width: 480px;
-  height: 360px;
-  position: relative;
-  -webkit-transform-origin: 0 0;
-  -moz-transform-origin: 0 0;
-  -ms-transform-origin: 0 0;
-  -o-transform-origin: 0 0;
-  transform-origin: 0 0;
-}
-.light-content .player {
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, .4);
 }
 
 .internal-error {
   color: rgb(128, 0, 0);
-  font: 500 12px Helvetica Neue, Helvetica, Arial, sans-serif;
+  font: 500 12px sans-serif;
   padding: 8px;
   display: none;
+  border-top: 1px solid rgba(0, 0, 0, .4);
 }
 .internal-error a {
   color: rgb(100, 0, 0);
 }
-
 .dark .internal-error {
+  border-color: rgba(255, 255, 255, .4);
   color: rgb(255, 91, 91);
 }
 .dark .internal-error a {
@@ -118,91 +113,24 @@
   display: none;
 }
 .fs .controls span,
-.light-content .controls span {
+.light-content .controls span,
+.dark .controls span {
   background-position-y: -32px;
   opacity: .6;
 }
-.light-content .controls .full-screen {
+.light-content .controls .full-screen,
+.dark .controls .full-screen {
   background-position-y: -64px;
 }
-.fs .light-content .controls .full-screen {
+.fs .light-content .controls .full-screen
+.dark .fs .controls .fullscreen {
   background-position-y: -32px;
 }
 .fs .controls .turbo,
-.light-content .controls .turbo {
+.light-content .controls .turbo,
+.dark .controls .turbo {
   color: rgba(255, 255, 255, .6);
 }
 .fs .player {
   box-shadow: none;
-}
-
-/* Styles for Scratch 3 variable watchers */
-/* Many of these values are taken directly from Scratch 3. */
-.s3-watcher-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  border-radius: 0.25rem;
-  display: flex;
-  flex-direction: column;
-  background: hsl(215, 100%, 95%);
-  pointer-events: auto;
-}
-.s3-watcher-row {
-  display: flex;
-  flex-direction: row;
-}
-.s3-watcher-label {
-  font-weight: bold;
-  text-align: center;
-  margin: 0 5px;
-}
-.s3-watcher-value {
-  color: white;
-  text-align: center;
-}
-.s3-watcher-container .s3-watcher-value {
-  /* fallback color */
-  background-color: rgb(15, 189, 140);
-}
-.s3-watcher-container[data-opcode^="data_"] .s3-watcher-value {
-  background-color: rgb(255, 140, 26);
-}
-.s3-watcher-container[data-opcode^="sensing_"] .s3-watcher-value {
-  background-color: rgb(92, 177, 214);
-}
-.s3-watcher-container[data-opcode^="motion_"] .s3-watcher-value {
-  background-color: rgb(76, 151, 255);
-}
-.s3-watcher-container[data-opcode^="looks_"] .s3-watcher-value {
-  background-color: rgb(153, 102, 255);
-}
-.s3-watcher-container[data-opcode^="sound_"] .s3-watcher-value {
-  background-color: rgb(207, 99, 207);
-}
-/* Normal watcher */
-.s3-watcher-container-normal {
-  padding: 3px;
-}
-.s3-watcher-row-normal {
-  font-size: 0.75rem;
-}
-.s3-watcher-row-normal .s3-watcher-value {
-  border-radius: 0.25rem;
-  padding: 0 2px;
-  margin: 0 5px;
-  min-width: 40px;
-}
-/* Slider Watcher (uses normal) */
-.s3-watcher-row-slider input[type="range"] {
-  margin: 0;
-  width: 100%;
-}
-/* Large watcher */
-.s3-watcher-large .s3-watcher-value {
-  border-radius: inherit;
-  font-size: 1rem;
-  min-height: 1.4rem;
-  min-width: 3rem;
 }

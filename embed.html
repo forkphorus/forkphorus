@@ -5,18 +5,19 @@
   <meta name=viewport content="width=device-width, initial-scale=1.0">
   <title>forkphorus</title>
   <link rel=stylesheet href=embed.css>
+  <link rel=stylesheet href=phosphorus.css>
   <link rel=stylesheet href=player.css>
   <link rel=stylesheet href=index.css>
 </head>
 
 <body>
-  <div class=controls>
-    <div class=progress-bar></div>
-    <span class=stop></span>
-    <span class=pause></span>
-    <span class=flag title="Shift+click to enable turbo mode."></span>
-    <div class=turbo>Turbo Mode</div>
-    <span class=full-screen></span>
+  <div class="controls">
+    <div class="progress-bar"></div>
+    <span class="button stop"></span>
+    <span class="button pause"></span>
+    <span class="button flag" title="Shift+click to enable turbo mode."></span>
+    <div class="turbo">Turbo Mode</div>
+    <span class="button full-screen"></span>
   </div>
 
   <div class=player></div>
@@ -36,23 +37,17 @@
   (function() {
     'use strict';
 
-    function sendMessage(state) {
-      window.parent.postMessage({
-        forkphorusAPI: 1,
-        state: state,
-      }, '*');
-    }
+    let stage;
 
-    sendMessage('loading');
+    let projectId = 17088932;
+    let autoStart = true;
+    let lightContent = false;
+    let hasUI = true;
 
-    var projectId = 17088932;
-    var autoStart = false;
-    var lightContent = false;
-    var hasUI = true;
-
-    var params = location.search.substr(1).split('&');
+    // Reads URL parameters.
+    const params = location.search.substr(1).split('&');
     params.forEach(function(p) {
-      var parts = p.split('=');
+      const parts = p.split('=');
       if (parts.length > 1) {
         switch (parts[0]) {
           case 'id':
@@ -71,14 +66,27 @@
       }
     });
 
+    // Combination of project ID, auto start, light content, ui, current time, and some randomness.
+    const id = projectId + '-' + +autoStart + +lightContent + +hasUI + '-' + Date.now() + '-' + Math.random().toString().substr(2, 5);
+
+    function postMessage(type, payload) {
+      window.parent.postMessage({
+        id: id,
+        type: type,
+        payload: payload,
+      }, '*');
+    }
+
     if (lightContent) document.body.classList.add('light-content');
     document.body.classList.add(hasUI ? 'has-ui' : 'hide-ui');
 
+    postMessage('stateChange', 'loading');
+
     P.player.load(projectId)
-      .then((stage) => {
+      .then((s) => {
+        stage = s;
         P.player.start(stage, autoStart);
-        window.stage = stage;
-        sendMessage('started');
+        postMessage('stateChange', 'ready');
       });
 
   }());

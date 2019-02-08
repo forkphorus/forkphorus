@@ -458,6 +458,9 @@ P.core = (function() {
           this.showPreviousCostume();
           return;
         }
+        if (!isFinite(costume)) {
+          return;
+        }
       }
       var i = (Math.floor(costume) - 1 || 0) % this.costumes.length;
       if (i < 0) i += this.costumes.length;
@@ -1909,7 +1912,7 @@ P.sb3 = (function() {
   }
 
   // Implements a Scratch 3 VariableWatcher.
-  // Adds Scratch 3-like styling and implements most watchables.
+  // Adds Scratch 3-like styling
   class Scratch3VariableWatcher extends P.core.VariableWatcher {
     constructor(stage, data) {
       super(stage, data.spriteName || '');
@@ -2089,17 +2092,68 @@ P.sb3 = (function() {
     }
   }
 
-  // An Array with a modified toString() that behaves like Scratch
-  class Scratch3Array extends Array {
+  // An Array usable by the Scratch 3 compiler.
+  // Implements Scratch list blocks and their behavior.
+  class Scratch3List extends Array {
+    constructor() {
+      super();
+    }
+
+    // Modified toString() that functions like Scratch.
     toString() {
-      let isSingle = true;
       for (let i = this.length; i--;) {
         if (this[i].toString().length !== 1) {
-          isSingle = false;
-          break;
+          return this.join(' ');
         }
       }
-      return this.join(isSingle ? '' : ' ');
+      return this.join('');
+    }
+
+    // Determines the real index of a Scratch index.
+    // Returns -1 if not found.
+    scratchIndex(index) {
+      if (index < 1 || index > this.length) {
+        return -1;
+      }
+      return index - 1;
+    }
+
+    // Deletes a line from the list.
+    // index is a scratch index.
+    deleteLine(index) {
+      if (index === 'all') {
+        this.length = 0;
+        return;
+      }
+
+      index = this.scratchIndex(index);
+      if (index === this.length - 1) {
+        this.pop();
+      } else if (index !== -1) {
+        this.splice(index, 1);
+      }
+    }
+
+    // Adds an item to the list.
+    push(item) {
+      super.push(item);
+    }
+
+    // Inserts an item at a spot in the list.
+    // Index is a Scratch index.
+    insert(index, value) {
+      index = this.scratchIndex(index);
+      if (index === this.length) {
+        this.push(value);
+      } else if (index !== -1) {
+        this.splice(index, 0, value);
+      }
+    }
+
+    // Sets the index of something in the list.
+    set(index, value) {
+      index = this.scratchIndex(index);
+      this[index] = value;
     }
   }
 
@@ -2208,13 +2262,12 @@ P.sb3 = (function() {
         "max": 100
       }
       */
+
       if (data.mode === 'list') {
         return null;
       }
 
-      const watcher = new P.sb3.Scratch3VariableWatcher(stage, data);
-
-      return watcher;
+      return new Scratch3VariableWatcher(stage, data);
     }
 
     loadTarget(data) {
@@ -2227,8 +2280,8 @@ P.sb3 = (function() {
       const lists = {};
       for (const id of Object.keys(data.lists)) {
         const list = data.lists[id];
-        // Use Scratch3Array instead of a normal array.
-        lists[id] = new Scratch3Array().concat(list[1]);
+        // Use Scratch3List instead of a normal array.
+        lists[id] = new Scratch3List().concat(list[1]);
       }
 
       const broadcasts = {};
@@ -2432,7 +2485,7 @@ P.sb3 = (function() {
 
   return {
     SB3FileLoader: SB3FileLoader,
-    Scratch3Array: Scratch3Array,
+    Scratch3List: Scratch3List,
     Scratch3Loader: Scratch3Loader,
     Scratch3Procedure: Scratch3Procedure,
     Scratch3Sprite: Scratch3Sprite,
@@ -3324,28 +3377,28 @@ P.sb3.compiler = (function() {
     data_addtolist(block) {
       const list = block.fields.LIST[1];
       const item = block.inputs.ITEM;
-      source += listReference(list) + '.push(' + compileExpression(item)  + ');\n';
+      source += listReference(list) + '.push(' + compileExpression(item, 'string')  + ');\n';
     },
     data_deleteoflist(block) {
       const list = block.fields.LIST[1];
       const index = block.inputs.INDEX;
-      source += 'deleteLineOfList(' + listReference(list) + ', ' + compileExpression(index) + ');\n';
+      source += listReference(list) + '.deleteLine(' + compileExpression(index) + ');\n';
     },
     data_deletealloflist(block) {
       const list = block.fields.LIST[1];
-      source += listReference(list) + '.length = 0;\n';
+      source += listReference(list) + '.deleteLine("all");\n';
     },
     data_insertatlist(block) {
       const list = block.fields.LIST[1];
       const item = block.inputs.ITEM;
       const index = block.inputs.INDEX;
-      source += 'insertInList(' + listReference(list) + ', ' + compileExpression(index, 'number') + ',' + compileExpression(item) + ');\n';
+      source += listReference(list) + '.insert(' + compileExpression(index, 'number') + ', ' + compileExpression(item, 'string') + ');\n';
     },
     data_replaceitemoflist(block) {
       const list = block.fields.LIST[1];
       const item = block.inputs.ITEM;
       const index = block.inputs.INDEX;
-      source += 'setLineOfList(' + listReference(list) + ', ' + compileExpression(index, 'number') + ',' + compileExpression(item) + ');\n';
+      source += listReference(list) + '.set(' + compileExpression(index, 'number') + ', ' + compileExpression(item, 'string') + ');\n';
     },
 
     // Procedures
@@ -3553,7 +3606,7 @@ P.sb3.compiler = (function() {
       }
     },
     sensing_username: {
-      evaluate(watcher) { return watcher.target.stage.username; },
+      evaluate(watcher) { return watcher.stage.username; },
       getLabel() { return 'username'; },
     },
 
@@ -3575,7 +3628,7 @@ P.sb3.compiler = (function() {
 
     // Music (extension)
     music_getTempo: {
-      evaluate(watcher) { return watcher.target.stage.tempoBPM; },
+      evaluate(watcher) { return watcher.stage.tempoBPM; },
       getLabel() { return 'Music: tempo'; },
     },
   };
@@ -3887,7 +3940,7 @@ P.sb3.compiler = (function() {
 
     const topLevelOpCode = topBlock.opcode;
     if (!(topLevelOpCode in topLevelLibrary)) {
-      // Since dangling blocks aren't that uncommon, only log warnings if it isn't otherwise recognized.
+      // Only log warnings if we wouldn't otherwise recognize the block.
       if (!(topLevelOpCode in expressionLibrary) && !(topLevelOpCode in statementLibrary)) {
         console.warn('unknown top level block', topLevelOpCode, topBlock);
       }

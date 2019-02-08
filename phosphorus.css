@@ -1,0 +1,77 @@
+
+/* Styles for Scratch 3 variable watchers */
+/* Many of these values are taken directly from Scratch 3. */
+.s3-watcher-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  background: hsl(215, 100%, 95%);
+  pointer-events: auto;
+}
+.s3-watcher-row {
+  display: flex;
+  flex-direction: row;
+}
+.s3-watcher-label {
+  font-weight: bold;
+  text-align: center;
+  margin: 0 5px;
+}
+.s3-watcher-value {
+  color: white;
+  text-align: center;
+}
+.s3-watcher-container .s3-watcher-value {
+  /* fallback color */
+  background-color: rgb(15, 189, 140);
+}
+.s3-watcher-container[data-opcode^="data_"] .s3-watcher-value {
+  background-color: rgb(255, 140, 26);
+}
+.s3-watcher-container[data-opcode^="sensing_"] .s3-watcher-value {
+  background-color: rgb(92, 177, 214);
+}
+.s3-watcher-container[data-opcode^="motion_"] .s3-watcher-value {
+  background-color: rgb(76, 151, 255);
+}
+.s3-watcher-container[data-opcode^="looks_"] .s3-watcher-value {
+  background-color: rgb(153, 102, 255);
+}
+.s3-watcher-container[data-opcode^="sound_"] .s3-watcher-value {
+  background-color: rgb(207, 99, 207);
+}
+/* Normal watcher */
+.s3-watcher-container-normal {
+  padding: 3px;
+}
+.s3-watcher-row-normal {
+  font-size: 0.75rem;
+}
+.s3-watcher-row-normal .s3-watcher-value {
+  border-radius: 0.25rem;
+  padding: 0 2px;
+  margin: 0 5px;
+  min-width: 40px;
+}
+/* Slider Watcher (uses normal) */
+.s3-watcher-row-slider input[type="range"] {
+  margin: 0;
+  width: 100%;
+}
+/* Large watcher */
+.s3-watcher-large .s3-watcher-value {
+  border-radius: inherit;
+  font-size: 1rem;
+  min-height: 1.4rem;
+  min-width: 3rem;
+}
+
+.s3-list-watcher-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+}

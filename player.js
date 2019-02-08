@@ -39,7 +39,8 @@ P.player = (function() {
       turboClick();
     } else {
       stage.start();
-      pause.className = 'pause';
+      pause.classList.add('pause');
+      pause.classList.remove('play');
       stage.stopAll();
       stage.triggerGreenFlag();
     }
@@ -51,11 +52,11 @@ P.player = (function() {
     if (!stage) return;
     if (stage.isRunning) {
       stage.pause();
-      pause.className = 'play';
     } else {
       stage.start();
-      pause.className = 'pause';
     }
+    pause.classList.toggle('play', !stage.isRunning);
+    pause.classList.toggle('pause', stage.isRunning);
     stage.focus();
     e.preventDefault();
   }
@@ -63,7 +64,8 @@ P.player = (function() {
   function stopClick(e) {
     if (!stage) return;
     stage.start();
-    pause.className = 'pause';
+    pause.classList.add('pause');
+    pause.classList.remove('play');
     stage.stopAll();
     stage.focus();
     e.preventDefault();
@@ -155,7 +157,9 @@ P.player = (function() {
     while (player.firstChild) player.removeChild(player.lastChild);
     turbo.style.display = 'none';
     error.style.display = 'none';
-    pause.className = 'pause';
+
+    pause.classList.add('pause');
+    pause.classList.remove('play');
 
     P.player.projectId = id;
     P.player.projectURL = id ? 'https://scratch.mit.edu/projects/' + id + '/' : '';
