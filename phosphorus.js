@@ -1136,13 +1136,13 @@ P.core = (function() {
 
     // Determines the rotated bounds of the sprite.
     rotatedBounds() {
-      var costume = this.costumes[this.currentCostumeIndex];
+      const costume = this.costumes[this.currentCostumeIndex];
 
-      var s = costume.scale * this.scale;
-      var left = -costume.rotationCenterX * s;
-      var top = costume.rotationCenterY * s;
-      var right = left + costume.image.width * s;
-      var bottom = top - costume.image.height * s;
+      const scale = costume.scale * this.scale;
+      const left = -costume.rotationCenterX * scale;
+      const top = costume.rotationCenterY * scale;
+      const right = left + costume.image.width * scale;
+      const bottom = top - costume.image.height * scale;
 
       if (this.rotationStyle !== 'normal') {
         if (this.rotationStyle === 'leftRight' && this.direction < 0) {
@@ -1157,20 +1157,24 @@ P.core = (function() {
         };
       }
 
-      var mSin = Math.sin(this.direction * Math.PI / 180);
-      var mCos = Math.cos(this.direction * Math.PI / 180);
+      const mSin = Math.sin(this.direction * Math.PI / 180);
+      const mCos = Math.cos(this.direction * Math.PI / 180);
 
-      var tlX = mSin * left - mCos * top;
-      var tlY = mCos * left + mSin * top;
+      // Top left
+      const tlX = mSin * left - mCos * top;
+      const tlY = mCos * left + mSin * top;
 
-      var trX = mSin * right - mCos * top;
-      var trY = mCos * right + mSin * top;
+      // Top right
+      const trX = mSin * right - mCos * top;
+      const trY = mCos * right + mSin * top;
 
-      var blX = mSin * left - mCos * bottom;
-      var blY = mCos * left + mSin * bottom;
+      // Bottom left
+      const blX = mSin * left - mCos * bottom;
+      const blY = mCos * left + mSin * bottom;
 
-      var brX = mSin * right - mCos * bottom;
-      var brY = mCos * right + mSin * bottom;
+      // Bottom right
+      const brX = mSin * right - mCos * bottom;
+      const brY = mCos * right + mSin * bottom;
 
       return {
         left: this.scratchX + Math.min(tlX, trX, blX, brX),
@@ -1193,34 +1197,6 @@ P.core = (function() {
       this.stage.canvas.parentNode.appendChild(div);
     }
 
-    // Ensures that the sprite is in view of the stage.
-    keepInView() {
-      // See: https://github.com/LLK/scratch-flash/blob/72e4729b8189d11bbe51b6d94144b0a3c392ac9a/src/scratch/ScratchSprite.as#L191-L224
-
-      const rb = this.rotatedBounds();
-      const width = rb.right - rb.left;
-      const height = rb.top - rb.bottom;
-      // using 18 puts sprites 3 pixels too far from edges for some reason, 15 works fine
-      const border = Math.min(15, Math.min(width, height) / 2);
-
-      if (rb.right < -240 + border) {
-        let difference = rb.right - (-240 + border);
-        this.scratchX = Math.floor(this.scratchX - difference);
-      }
-      if (rb.left > 240 - border) {
-        let difference = (240 - border) - rb.left;
-        this.scratchX = Math.ceil(difference + this.scratchX);
-      }
-      if (rb.bottom > 180 - border) {
-        let difference = (180 - border) - rb.bottom;
-        this.scratchY = Math.ceil(difference + this.scratchY);
-      }
-      if (rb.top < -180 + border) {
-        let difference = rb.top - (-180 + border);
-        this.scratchY = Math.floor(this.scratchY - difference);
-      }
-    }
-
     // Implementing Scratch blocks
 
     // Moves forward some number of steps in the current direction.
@@ -1239,8 +1215,6 @@ P.core = (function() {
       }
       this.scratchX = x;
       this.scratchY = y;
-
-      this.keepInView();
 
       if (this.isPenDown && !this.isDragging) {
         var context = this.stage.penRenderer.ctx;
