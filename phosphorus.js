@@ -1139,10 +1139,10 @@ P.core = (function() {
       const costume = this.costumes[this.currentCostumeIndex];
 
       const scale = costume.scale * this.scale;
-      const left = -costume.rotationCenterX * scale;
-      const top = costume.rotationCenterY * scale;
-      const right = left + costume.image.width * scale;
-      const bottom = top - costume.image.height * scale;
+      var left = -costume.rotationCenterX * scale;
+      var top = costume.rotationCenterY * scale;
+      var right = left + costume.image.width * scale;
+      var bottom = top - costume.image.height * scale;
 
       if (this.rotationStyle !== 'normal') {
         if (this.rotationStyle === 'leftRight' && this.direction < 0) {
