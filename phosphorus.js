@@ -1100,7 +1100,6 @@ P.core = (function() {
       this.scratchY = 0;
       this.direction = 90;
       this.isDraggable = false;
-      this.indexInLibrary = -1;
       this.isDragging = false;
       this.rotationStyle = 'normal';
       this.scale = 1;
@@ -1302,7 +1301,6 @@ P.core = (function() {
       c.soundRefs = this.soundRefs;
       c.direction = this.direction;
       c.instrument = this.instrument;
-      c.indexInLibrary = this.indexInLibrary;
       c.isDraggable = this.isDraggable;
       c.rotationStyle = this.rotationStyle;
       c.scale = this.scale;
@@ -2301,7 +2299,6 @@ P.sb3 = (function() {
             target.scratchY = y;
             target.direction = direction;
             target.isDraggable = draggable;
-            // target.indexInLibrary = -1; // TODO
             target.rotationStyle = P.utils.asRotationStyle(data.rotationStyle);
             target.scale = size / 100;
             target.visible = visible;
@@ -2315,7 +2312,7 @@ P.sb3 = (function() {
 
     load() {
       const targets = this.projectData.targets;
-      // sort targets by their layerOrder
+      // sort targets by their layerOrder to match how they will display
       targets.sort((a, b) => a.layerOrder - b.layerOrder);
 
       return Promise.all(targets.map((data) => this.loadTarget(data)))
@@ -4418,7 +4415,6 @@ P.sb2 = (function(sb2) {
         object.scratchY = data.scratchY;
         object.direction = data.direction;
         object.isDraggable = data.isDraggable;
-        object.indexInLibrary = data.indexInLibrary;
         object.rotationStyle = data.rotationStyle;
         object.scale = data.scale
         object.visible = data.visible;
