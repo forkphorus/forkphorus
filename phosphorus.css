@@ -1,3 +1,11 @@
+.forkphorus-root {
+  font-family: sans-serif;
+  width: 480px;
+  height: 360px;
+  font-size: 10px;
+  background-color: #fff;
+  color: #000;
+}
 
 /* Styles for Scratch 3 variable watchers */
 /* Many of these values are taken directly from Scratch 3. */

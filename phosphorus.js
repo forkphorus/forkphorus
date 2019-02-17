@@ -562,30 +562,34 @@ P.core = (function() {
       // Stage is always visible. This ensures that visual changes that check visibility will work correctly.
       this.visible = true;
 
-      // Child sprites.
+      // Child sprites
       this.children = [];
       this.dragging = {};
 
-      // Variable Watchers
+      // All Variable Watchers within the stage
       this.allWatchers = [];
       // TODO: move to Scratch2Stage because it's only used there?
       this.defaultWatcherX = 10;
       this.defaultWatcherY = 10;
 
-      this.info = {};
+      // Ask prompts
       this.answer = '';
       this.promptId = 0;
       this.nextPromptId = 0;
       this.tempoBPM = 60;
-      this.videoAlpha = 1;
       this.zoom = 1;
       this.maxZoom = P.config.scale;
+
       this.baseNow = 0;
       this.baseTime = 0;
       this.timerStart = 0;
 
+      // Maps keyboard key ID to the state (boolean | undefined)
       this.keys = [];
+      // Keeps track of the total amount of unique keys being pressed.
       this.keys.any = 0;
+
+      // Mouse position
       this.rawMouseX = 0;
       this.rawMouseY = 0;
       this.mouseX = 0;
@@ -595,18 +599,13 @@ P.core = (function() {
       this.username = '';
 
       this.root = document.createElement('div');
+      this.root.classList.add('forkphorus-root');
       this.root.style.position = 'absolute';
       this.root.style.overflow = 'hidden';
-      this.root.style.width = '480px';
-      this.root.style.height = '360px';
-      this.root.style.fontSize = '10px';
-      this.root.style.background = '#fff';
       this.root.style.contain = 'strict';
-
       this.root.style.WebkitUserSelect =
         this.root.style.MozUserSelect =
-        this.root.style.MSUserSelect =
-        this.root.style.WebkitUserSelect = 'none';
+        this.root.style.MSUserSelect = 'none';
 
       var scale = P.config.scale;
 
@@ -1107,7 +1106,6 @@ P.core = (function() {
       this.scale = 1;
       this.visible = false;
 
-      this.spriteInfo = {};
       this.penHue = 240;
       this.penSaturation = 100;
       this.penLightness = 50;
@@ -2181,7 +2179,8 @@ P.sb3 = (function() {
         "rotationCenterY": 360
       }
       */
-      return this.getImage(data.md5ext, data.dataFormat)
+      const path = data.assetId + '.' + data.dataFormat;
+      return this.getImage(path, data.dataFormat)
         .then((image) => new P.core.Costume({
           index: index,
           bitmapResolution: data.bitmapResolution,
@@ -2820,13 +2819,13 @@ P.sb3.compiler = (function() {
     },
     operator_round(block) {
       const num = block.inputs.NUM;
-      return 'Math.round(' + compileExpression(num) + ')';
+      return 'Math.round(' + compileExpression(num, 'number') + ')';
     },
     operator_mathop(block) {
       const operator = block.fields.OPERATOR[0];
       const num = block.inputs.NUM;
-      // TODO: inline the function when possible for performance gain?
-      return 'mathFunc("' + sanitize(operator) + '", ' + compileExpression(num) + ')';
+      // TODO: skip mathFunc overhead (probably very slight) for performance?
+      return 'mathFunc(' + sanitize(operator, true) + ', ' + compileExpression(num, 'number') + ')';
     },
 
     // Data
@@ -6376,7 +6375,7 @@ P.runtime = (function() {
     } else if (event === 'whenGreenFlag') {
       threads = sprite.listeners.whenGreenFlag;
     } else if (event === 'whenIReceive') {
-      arg = arg + '';
+      arg = '' + arg;
       threads = sprite.listeners.whenIReceive[arg] || sprite.listeners.whenIReceive[arg.toLowerCase()];
     } else if (event === 'whenKeyPressed') {
       threads = sprite.listeners.whenKeyPressed[arg];
