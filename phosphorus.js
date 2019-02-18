@@ -29,18 +29,21 @@ const P = {};
 P.config = {
   // The default zoom level of the canvas
   scale: window.devicePixelRatio || 1,
+
   // If the browser supports touch events (ie. is a mobile browser)
   hasTouchEvents: 'ontouchstart' in document,
+
   // The target framerate. Changing this value often has very little effect on real framerate.
   framerate: 30,
+
   // Is debug mode enabled?
   debug: window.location.search.includes("debug"),
 
-  // API constants
+  // API constants:
 
-  // The API to download project.json from scratch.mit.edu
+  // The url to download project.json from scratch.mit.edu
   // Replace $id with the project ID.
-  // Will respond with either a Scratch 2 json, Scratch 3 json, or 404.
+  // Will respond with either a Scratch 2 json, Scratch 3 json, Scratch 1 sb, or 404.
   PROJECT_API: 'https://projects.scratch.mit.edu/$id',
 };
 
@@ -62,6 +65,7 @@ P.utils = (function(exports) {
   };
 
   // Parses a json-ish
+  // TODO: this is terrible, remove it
   exports.parseJSONish = function(json) {
     if (!/^\s*\{/.test(json)) throw new SyntaxError('Bad JSON');
     try {
@@ -74,6 +78,7 @@ P.utils = (function(exports) {
   };
 
   // Returns the string representation of an error.
+  // TODO: does this need to be here?
   exports.stringifyError = function(error) {
     if (!error) {
       return 'unknown error';
@@ -797,8 +802,8 @@ P.core = (function() {
       this.promptButton.style.position = 'absolute';
       this.promptButton.style.right = '.4em';
       this.promptButton.style.bottom = '.4em';
-      this.promptButton.style.background = 'url(icons.svg) -16.5em -7em';
-      this.promptButton.style.backgroundSize = '32.0em 9.6em';
+      this.promptButton.style.background = 'url(icons.svg) -22.8em -0.4em';
+      this.promptButton.style.backgroundSize = '38.4em 6.4em';
 
       this.prompt.addEventListener('keydown', function(e) {
         if (e.keyCode === 13) {
@@ -1571,13 +1576,14 @@ P.core = (function() {
         this.bubble.appendChild(this.bubbleText = document.createTextNode(''));
         this.bubble.appendChild(this.bubblePointer = document.createElement('div'));
         this.bubblePointer.style.position = 'absolute';
-        this.bubblePointer.style.height = ''+(21/14)+'em';
-        this.bubblePointer.style.width = ''+(44/14)+'em';
-        this.bubblePointer.style.background = 'url(icons.svg) '+(-195/14)+'em '+(-4/14)+'em';
-        this.bubblePointer.style.backgroundSize = ''+(320/14)+'em '+(96/14)+'em';
+        this.bubblePointer.style.height = (21 / 14) + 'em';
+        this.bubblePointer.style.width = (44 / 14) + 'em';
+        this.bubblePointer.style.background = 'url("icons.svg")';
+        this.bubblePointer.style.backgroundSize = (384/14) + 'em ' + (64/14) + 'em';
+        this.bubblePointer.style.backgroundPositionY = (-4/14) + 'em';
         this.stage.ui.appendChild(this.bubble);
       }
-      this.bubblePointer.style.backgroundPositionX = ((thinking ? -259 : -195)/14)+'em';
+      this.bubblePointer.style.backgroundPositionX = (thinking ? -323 : -259) / 14 + 'em';
       this.bubble.style.display = 'block';
       this.bubbleText.nodeValue = text;
       this.updateBubble();
@@ -4353,7 +4359,7 @@ P.sb2 = (function(sb2) {
     if (!P.audio.context) return Promise.resolve();
 
     const assets = [];
-    for (var name in sb2.wavFiles) {
+    for (var name in sb2.WAV_FILES) {
       if (!sb2.wavBuffers[name]) {
         assets.push(
           sb2.loadWavBuffer(name)
@@ -4365,7 +4371,7 @@ P.sb2 = (function(sb2) {
   };
 
   sb2.loadWavBuffer = function(name) {
-    return P.IO.fetch(sb2.SOUNDBANK_URL + sb2.wavFiles[name])
+    return P.IO.fetch(sb2.SOUNDBANK_URL + sb2.WAV_FILES[name])
       .then((request) => request.arrayBuffer())
       .then((arrayBuffer) => P.audio.decodeAudio(arrayBuffer))
       .then((buffer) => sb2.wavBuffers[name] = buffer);

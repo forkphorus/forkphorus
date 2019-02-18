@@ -118,9 +118,8 @@
   background-position-y: -32px;
   opacity: .6;
 }
-.light-content .controls .full-screen,
-.dark .controls .full-screen {
-  background-position-y: -64px;
+.fs .controls .full-screen {
+  background-position-x: -160px;
 }
 .fs .light-content .controls .full-screen
 .dark .fs .controls .fullscreen {

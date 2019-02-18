@@ -53,10 +53,10 @@ body {
   position: absolute;
   top: 0;
   left: 0;
-  background-position: -160px 0;
+  background-position: -192px 0;
 }
 .dark .project-link {
-  background-position: -160px -32px;
+  background-position: -192px -32px;
 }
 
 a {
@@ -185,7 +185,6 @@ code {
   display: inline-block;
   vertical-align: middle;
 }
-
 
 .theme-select {
   position: absolute;

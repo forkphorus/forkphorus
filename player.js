@@ -83,6 +83,8 @@ P.player = (function() {
           el.requestFullScreenWithKeys();
         } else if (el.webkitRequestFullScreen) {
           el.webkitRequestFullScreen(Element.ALLOW_KEYBOARD_INPUT);
+        } else if (el.requestFullscreen) {
+          el.requestFullscreen();
         }
       } else {
         if (document.exitFullscreen) {

@@ -54,16 +54,16 @@
 }
 /* Normal watcher */
 .s3-watcher-container-normal {
-  padding: 3px;
+  padding: 0.3em;
 }
 .s3-watcher-row-normal {
   font-size: 0.75rem;
 }
 .s3-watcher-row-normal .s3-watcher-value {
   border-radius: 0.25rem;
-  padding: 0 2px;
-  margin: 0 5px;
-  min-width: 40px;
+  padding: 0 0.2px;
+  margin: 0 0.5em;
+  min-width: 4em;
 }
 /* Slider Watcher (uses normal) */
 .s3-watcher-row-slider input[type="range"] {
