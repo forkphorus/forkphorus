@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "outFile": "./phosphorus.js",
+    "sourceMap": true,
+    "target": "es2016",
+  },
+  "include": [
+    "src/**/*",
+  ],
+}
