@@ -1,5 +1,6 @@
 
 /// <reference path="core.ts" />
+/// <reference path="JSZip.d.ts" />
 
 namespace P.sb3 {
   // The path to remote assets.
@@ -11,6 +12,8 @@ namespace P.sb3 {
   export class Scratch3Stage extends P.core.Stage {
     // Scratch 3 uses unique IDs for broadcasts and the visual name for different things.
     private broadcastNames: {[key: string]: string};
+
+    public sb3data: any;
 
     addBroadcast(id, name) {
       this.broadcastNames[name] = id;
@@ -26,6 +29,8 @@ namespace P.sb3 {
 
   // Implements a Scratch 3 Sprite.
   export class Scratch3Sprite extends P.core.Sprite {
+    public sb3data: any;
+
     _clone() {
       return new Scratch3Sprite(this.stage);
     }
@@ -296,7 +301,7 @@ namespace P.sb3 {
 
     protected abstract getAsText(path): Promise<string>;
     protected abstract getAsArrayBuffer(path): Promise<ArrayBuffer>;
-    protected abstract getAsImage(path): Promise<HTMLImageElement>;
+    protected abstract getAsImage(path, format: string): Promise<HTMLImageElement>;
 
     // Loads and returns a costume from its sb3 JSON data
     getImage(path, format): Promise<HTMLImageElement> {
@@ -305,12 +310,12 @@ namespace P.sb3 {
           .then((source) => {
             const image = new Image();
 
-            return new Promise((resolve, reject) => {
+            return new Promise<HTMLImageElement>((resolve, reject) => {
               image.onload = () => resolve(image);
               image.onerror = (err) => reject("Failed to load SVG image");
               image.src = 'data:image/svg+xml;,' + encodeURIComponent(source);
             });
-          }) as Promise<HTMLImageElement>;
+          });
       } else {
         return this.getAsImage(path, format);
       }
@@ -392,7 +397,7 @@ namespace P.sb3 {
       return new Scratch3VariableWatcher(stage, data);
     }
 
-    loadTarget(data) {
+    loadTarget(data): Promise<Scratch3Stage | Scratch3Sprite> {
       const variables = {};
       for (const id of Object.keys(data.variables)) {
         const variable = data.variables[id];
@@ -440,19 +445,21 @@ namespace P.sb3 {
           target.lists = lists;
           sounds.forEach((sound) => target.addSound(sound));
 
-          if (data.isStage) {
+          if (target.isStage) {
+            const stage = target as Scratch3Stage;
             for (const id of Object.keys(data.broadcasts)) {
               const name = data.broadcasts[id];
-              target.addBroadcast(id, name);
+              stage.addBroadcast(id, name);
             }
           } else {
-            target.scratchX = x;
-            target.scratchY = y;
-            target.direction = direction;
-            target.isDraggable = draggable;
-            target.rotationStyle = P.utils.asRotationStyle(data.rotationStyle);
-            target.scale = size / 100;
-            target.visible = visible;
+            const sprite = target as Scratch3Sprite;
+            sprite.scratchX = x;
+            sprite.scratchY = y;
+            sprite.direction = direction;
+            sprite.isDraggable = draggable;
+            sprite.rotationStyle = P.utils.asRotationStyle(data.rotationStyle);
+            sprite.scale = size / 100;
+            sprite.visible = visible;
           }
 
           target.sb3data = data;
@@ -473,7 +480,7 @@ namespace P.sb3 {
       targets.sort((a, b) => a.layerOrder - b.layerOrder);
 
       return Promise.all(targets.map((data) => this.loadTarget(data)))
-        .then((targets) => {
+        .then((targets: any) => {
           const stage = targets.filter((i) => i instanceof Scratch3Stage)[0] as Scratch3Stage;
           if (!stage) {
             throw new Error('no stage object');
@@ -498,7 +505,7 @@ namespace P.sb3 {
   // Loads a .sb3 file
   export class SB3FileLoader extends BaseSB3Loader {
     private buffer: ArrayBuffer;
-    private zip: any = null; // TODO
+    private zip: JSZip.Zip = null; // TODO
 
     constructor(buffer) {
       super();
@@ -515,22 +522,22 @@ namespace P.sb3 {
     }
 
     getAsText(path) {
-      return this.getFile(path, 'string');
+      return this.getFile(path, 'string') as Promise<string>;
     }
 
     getAsArrayBuffer(path) {
-      return this.getFile(path, 'arrayBuffer')
+      return this.getFile(path, 'arrayBuffer') as Promise<ArrayBuffer>;
     }
 
     getAsBase64(path) {
-      return this.getFile(path, 'base64');
+      return this.getFile(path, 'base64') as Promise<string>;
     }
 
     getAsImage(path, format) {
       P.IO.progressHooks.new();
       return this.getAsBase64(path)
         .then((imageData) => {
-          return new Promise((resolve, reject) => {
+          return new Promise<HTMLImageElement>((resolve, reject) => {
             const image = new Image();
             image.onload = function() {
               P.IO.progressHooks.end();
@@ -585,7 +592,7 @@ namespace P.sb3 {
 
     getAsImage(path, format) {
       P.IO.progressHooks.new();
-      return new Promise((resolve, reject) => {
+      return new Promise<HTMLImageElement>((resolve, reject) => {
         const image = new Image();
         image.onload = function() {
           P.IO.progressHooks.end();
@@ -602,7 +609,7 @@ namespace P.sb3 {
 
     load() {
       if (this.projectId) {
-        return P.IO.fetch(P.config.PROJECT_API.replace('$id', this.id))
+        return P.IO.fetch(P.config.PROJECT_API.replace('$id', '' + this.projectId))
           .then((request) => request.json())
           .then((data) => {
             this.projectData = data;
@@ -626,11 +633,6 @@ namespace P.sb3.compiler {
   /*
   In Scratch 3 all blocks have a unique identifier.
   In the project.json, blocks do not contain other blocks in the way a .sb2 file does, but rather they point to the IDs of other blocks.
-
-  Blocks have "inputs", "fields", and "mutations". These are both types of data that change how blocks behave.
-  Inputs accept any block as an input, while fields generally accept hard coded strings.
-  For example in the block `set [ghost] effect to [100]` ghost is a field (cannot change) and 100 is an input (can change).
-  Mutations are only used in custom block definitions and calls.
 
   This compiler differentiates between "statements", "expressions", "top levels", and "natives".
   Statements are things like `move [ ] steps`. They do something. Cannot be placed in other blocks.
@@ -2003,7 +2005,7 @@ namespace P.sb3.compiler {
   }
 
   // Returns a compiled expression as a JavaScript string.
-  function compileExpression(expression, type?: string) {
+  function compileExpression(expression, type?: string): string {
     // Expressions are also known as inputs.
 
     if (!expression) {
@@ -2017,7 +2019,7 @@ namespace P.sb3.compiler {
     if (typeof expression === 'number') {
       // I have a slight feeling this block never runs.
       // TODO: remove?
-      return expression;
+      return '' + expression;
     }
 
     if (Array.isArray(expression[1])) {
@@ -2082,7 +2084,9 @@ namespace P.sb3.compiler {
   export function compileTarget(target, data) {
     currentTarget = target;
     blocks = data.blocks;
-    const topLevelBlocks = Object.values(data.blocks).filter((block) => block.topLevel);
+    const topLevelBlocks = Object.keys(data.blocks)
+      .map((id) => data.blocks[id])
+      .filter((block) => block.topLevel);
 
     for (const block of topLevelBlocks) {
       fns = [0];

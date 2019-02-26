@@ -98,7 +98,7 @@ var P;
         ;
         function decodeAudio(ab) {
             if (!audio.context) {
-                return Promise.resolve();
+                return Promise.resolve(null);
             }
             return new Promise((resolve, reject) => {
                 // Attempt to decode it as ADPCM audio
@@ -427,7 +427,7 @@ var P;
                 this.answer = '';
                 this.promptId = 0;
                 this.nextPromptId = 0;
-                this.tmepoBPM = 60;
+                this.tempoBPM = 60;
                 this.zoom = 1;
                 this.maxZoom = P.config.scale;
                 this.baseNow = 0;
@@ -727,7 +727,7 @@ var P;
                     canvas.getContext('2d').drawImage(this.penCanvas, 0, 0);
                     this.penCanvas.width = 480 * zoom * P.config.scale;
                     this.penCanvas.height = 360 * zoom * P.config.scale;
-                    this.penRenderer.drawImage(canvas, 0, 0, 480 * zoom * P.config.scale, 360 * zoom * P.config.scale);
+                    this.penRenderer.ctx.drawImage(canvas, 0, 0, 480 * zoom * P.config.scale, 360 * zoom * P.config.scale);
                     this.penRenderer.reset(this.maxZoom);
                     this.penRenderer.ctx.lineCap = 'round';
                 }
@@ -839,8 +839,9 @@ var P;
             // Draws all the children onto a renderer, optionally skipping an object.
             drawChildren(renderer, skip) {
                 for (var i = 0; i < this.children.length; i++) {
-                    var c = this.children[i];
+                    const c = this.children[i];
                     if (c.isDragging) {
+                        // TODO: move
                         c.moveTo(c.dragOffsetX + c.stage.mouseX, c.dragOffsetY + c.stage.mouseY);
                     }
                     if (c.visible && c !== skip) {
@@ -898,26 +899,27 @@ var P;
         class Sprite extends Base {
             constructor(stage) {
                 super();
-                this.stage = stage;
                 this.isSprite = true;
-                // These fields should probably be overwritten by creators.
-                this.scratchX = 0;
-                this.scratchY = 0;
-                this.direction = 90;
+                this.isClone = false;
+                this.direction = 0;
                 this.isDraggable = false;
                 this.isDragging = false;
-                this.rotationStyle = 'normal';
                 this.scale = 1;
-                this.visible = false;
                 this.penHue = 240;
                 this.penSaturation = 100;
                 this.penLightness = 50;
+                this.penCSS = '';
                 this.penSize = 1;
+                this.penColor = 0x000000;
                 this.isPenDown = false;
                 this.bubble = null;
-                this.saying = false;
                 this.thinking = false;
                 this.sayId = 0;
+                this.dragStartX = 0;
+                this.dragStartY = 0;
+                this.dragOffsetX = 0;
+                this.dragOffsetY = 0;
+                this.stage = stage;
             }
             mouseDown() {
                 this.dragStartX = this.scratchX;
@@ -1098,11 +1100,6 @@ var P;
                 c.isPenDown = this.isPenDown;
                 return c;
             }
-            // Abstract
-            // Must return a new instance of this Sprite's constructor. Data copying will be handled in clone()
-            _clone() {
-                throw new Error('Sprite did not implement _clone()');
-            }
             // Determines if the sprite is touching an object.
             // thing is the name of the object, '_mouse_', or '_edge_'
             touching(thing) {
@@ -1185,7 +1182,7 @@ var P;
                 collisionRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
                 this.stage.drawAll(collisionRenderer, this);
                 collisionRenderer.ctx.globalCompositeOperation = 'destination-in';
-                collisionRenderer.drawChild(this, true);
+                collisionRenderer.drawChild(this);
                 collisionRenderer.ctx.restore();
                 var data = collisionRenderer.ctx.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
                 rgb = rgb & 0xffffff;
@@ -1503,11 +1500,6 @@ var P;
             init() {
                 this.target = this.stage.getObject(this.targetName) || this.stage;
             }
-            // Updates the VariableWatcher. Called every frame.
-            // Expected to be overridden, call super.update()
-            update() {
-                throw new Error('VariableWatcher did not implement update()');
-            }
             // Changes the visibility of the watcher.
             // Expected to be overridden, call super.setVisible(visible)
             setVisible(visible) {
@@ -1604,13 +1596,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 /// <reference path="core.ts" />
+/// <reference path="canvg.d.ts" />
 var P;
 (function (P) {
     var sb2;
     (function (sb2) {
-        sb2.ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
-        sb2.SOUNDBANK_URL = 'https://raw.githubusercontent.com/LLK/scratch-flash/v429/src/soundbank/';
-        sb2.WAV_FILES = {
+        const ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
+        const SOUNDBANK_URL = 'https://raw.githubusercontent.com/LLK/scratch-flash/v429/src/soundbank/';
+        const WAV_FILES = {
             'AcousticGuitar_F3': 'instruments/AcousticGuitar_F3_22k.wav',
             'AcousticPiano_As3': 'instruments/AcousticPiano(5)_A%233_22k.wav',
             'AcousticPiano_C4': 'instruments/AcousticPiano(5)_C4_22k.wav',
@@ -1680,9 +1673,15 @@ var P;
             'Vibraslap': 'drums/Vibraslap(1)_22k.wav',
             'WoodBlock': 'drums/WoodBlock(1)_22k.wav'
         };
+        let zipArchive = null;
         class Scratch2VariableWatcher extends P.core.VariableWatcher {
             constructor(stage, targetName, data) {
                 super(stage, targetName);
+                this.el = null;
+                this.labelEl = null;
+                this.readout = null;
+                this.slider = null;
+                this.button = null;
                 this.cmd = data.cmd;
                 this.type = data.type || 'var';
                 if (data.color) {
@@ -1702,11 +1701,6 @@ var P;
                 this.visible = data.visible == null ? true : data.visible;
                 this.x = data.x || 0;
                 this.y = data.y || 0;
-                this.el = null;
-                this.labelEl = null;
-                this.readout = null;
-                this.slider = null;
-                this.button = null;
             }
             init() {
                 super.init();
@@ -1716,7 +1710,7 @@ var P;
                 if (!this.label) {
                     this.label = this.getLabel();
                     if (this.target.isSprite)
-                        this.label = this.target.objName + ': ' + this.label;
+                        this.label = this.target.name + ': ' + this.label;
                 }
                 this.layout();
             }
@@ -1772,7 +1766,9 @@ var P;
                         value = this.target.direction;
                         break;
                     case 'scale':
-                        value = this.target.scale * 100;
+                        if (this.target.isSprite) {
+                            value = this.target.scale * 100;
+                        }
                         break;
                     case 'sceneName':
                         value = this.stage.getCostumeName();
@@ -1837,7 +1833,7 @@ var P;
                 if (!this.visible)
                     return;
                 this.el = document.createElement('div');
-                this.el.dataset.watcher = this.stage.allWatchers.indexOf(this);
+                this.el.dataset.watcher = '' + this.stage.allWatchers.indexOf(this);
                 this.el.style.whiteSpace = 'pre';
                 this.el.style.position = 'absolute';
                 this.el.style.left = this.el.style.top = '0';
@@ -1937,12 +1933,12 @@ var P;
         function loadSB2Project(arrayBuffer) {
             return JSZip.loadAsync(arrayBuffer)
                 .then((zip) => {
-                sb2.zip = zip;
+                zipArchive = zip;
                 return zip.file('project.json').async('text');
             })
                 .then((text) => {
                 const project = P.utils.parseJSONish(text);
-                return sb2.loadProject(project);
+                return loadProject(project);
             });
         }
         sb2.loadSB2Project = loadSB2Project;
@@ -1952,9 +1948,9 @@ var P;
             var children;
             var stage;
             return Promise.all([
-                sb2.loadWavs(),
-                sb2.loadArray(data.children, sb2.loadObject).then((c) => children = c),
-                sb2.loadBase(data, true).then((s) => stage = s),
+                loadWavs(),
+                loadArray(data.children, loadObject).then((c) => children = c),
+                loadBase(data, true).then((s) => stage = s),
             ]).then(() => {
                 children = children.filter((i) => i);
                 children.forEach((c) => c.stage = stage);
@@ -1976,9 +1972,9 @@ var P;
             if (!P.audio.context)
                 return Promise.resolve();
             const assets = [];
-            for (var name in sb2.WAV_FILES) {
+            for (var name in WAV_FILES) {
                 if (!sb2.wavBuffers[name]) {
-                    assets.push(sb2.loadWavBuffer(name)
+                    assets.push(loadWavBuffer(name)
                         .then((buffer) => sb2.wavBuffers[name] = buffer));
                 }
             }
@@ -1987,19 +1983,19 @@ var P;
         sb2.loadWavs = loadWavs;
         ;
         function loadWavBuffer(name) {
-            return P.IO.fetch(sb2.SOUNDBANK_URL + sb2.WAV_FILES[name])
+            return P.IO.fetch(SOUNDBANK_URL + WAV_FILES[name])
                 .then((request) => request.arrayBuffer())
                 .then((arrayBuffer) => P.audio.decodeAudio(arrayBuffer))
                 .then((buffer) => sb2.wavBuffers[name] = buffer);
         }
         sb2.loadWavBuffer = loadWavBuffer;
         ;
-        function loadBase(data, isStage) {
+        function loadBase(data, isStage = false) {
             var costumes;
             var sounds;
             return Promise.all([
-                sb2.loadArray(data.costumes, sb2.loadCostume).then((c) => costumes = c),
-                sb2.loadArray(data.sounds, sb2.loadSound).then((s) => sounds = s),
+                loadArray(data.costumes, loadCostume).then((c) => costumes = c),
+                loadArray(data.sounds, loadSound).then((s) => sounds = s),
             ]).then(() => {
                 const variables = {};
                 if (data.variables) {
@@ -2052,13 +2048,13 @@ var P;
         ;
         function loadObject(data) {
             if (data.cmd) {
-                return sb2.loadVariableWatcher(data);
+                return loadVariableWatcher(data);
             }
             else if (data.listName) {
                 // list watcher TODO
             }
             else {
-                return sb2.loadBase(data);
+                return loadBase(data);
             }
         }
         sb2.loadObject = loadObject;
@@ -2071,11 +2067,11 @@ var P;
         ;
         function loadCostume(data, index) {
             const promises = [
-                sb2.loadMD5(data.baseLayerMD5, data.baseLayerID)
+                loadMD5(data.baseLayerMD5, data.baseLayerID)
                     .then((asset) => data.$image = asset)
             ];
             if (data.textLayerMD5) {
-                promises.push(sb2.loadMD5(data.textLayerMD5, data.textLayerID)
+                promises.push(loadMD5(data.textLayerMD5, data.textLayerID)
                     .then((asset) => data.$text = asset));
             }
             return Promise.all(promises)
@@ -2093,7 +2089,7 @@ var P;
         sb2.loadCostume = loadCostume;
         ;
         function loadSound(data) {
-            return sb2.loadMD5(data.md5, data.soundID, true)
+            return loadMD5(data.md5, data.soundID, true)
                 .then((buffer) => {
                 return new P.core.Sound({
                     name: data.soundName,
@@ -2104,9 +2100,10 @@ var P;
         sb2.loadSound = loadSound;
         ;
         function loadSVG(source) {
+            // The fact that this works is truly a work of art.
             var parser = new DOMParser();
             var doc = parser.parseFromString(source, 'image/svg+xml');
-            var svg = doc.documentElement;
+            var svg = doc.documentElement; // TODO
             if (!svg.style) {
                 doc = parser.parseFromString('<body>' + source, 'text/html');
                 svg = doc.querySelector('svg');
@@ -2148,36 +2145,36 @@ var P;
             });
         }
         sb2.loadSVG = loadSVG;
-        function loadMD5(hash, id, isAudio) {
-            if (sb2.zip) {
-                var f = isAudio ? sb2.zip.file(id + '.wav') : sb2.zip.file(id + '.gif') || sb2.zip.file(id + '.png') || sb2.zip.file(id + '.jpg') || sb2.zip.file(id + '.svg');
+        function loadMD5(hash, id, isAudio = false) {
+            if (zipArchive) {
+                var f = isAudio ? zipArchive.file(id + '.wav') : zipArchive.file(id + '.gif') || zipArchive.file(id + '.png') || zipArchive.file(id + '.jpg') || zipArchive.file(id + '.svg');
                 hash = f.name;
             }
             const ext = hash.split('.').pop();
             if (ext === 'svg') {
-                if (sb2.zip) {
+                if (zipArchive) {
                     return f.async('text')
-                        .then((text) => sb2.loadSVG(text));
+                        .then((text) => loadSVG(text));
                 }
                 else {
-                    return P.IO.fetch(sb2.ASSET_URL + hash + '/get/')
+                    return P.IO.fetch(ASSET_URL + hash + '/get/')
                         .then((request) => request.text())
-                        .then((text) => sb2.loadSVG(text));
+                        .then((text) => loadSVG(text));
                 }
             }
             else if (ext === 'wav') {
-                if (sb2.zip) {
+                if (zipArchive) {
                     return f.async('arrayBuffer')
                         .then((buffer) => P.audio.decodeAudio(buffer));
                 }
                 else {
-                    return P.IO.fetch(sb2.ASSET_URL + hash + '/get/')
+                    return P.IO.fetch(ASSET_URL + hash + '/get/')
                         .then((request) => request.arrayBuffer())
                         .then((buffer) => P.audio.decodeAudio(buffer));
                 }
             }
             else {
-                if (sb2.zip) {
+                if (zipArchive) {
                     return new Promise((resolve, reject) => {
                         var image = new Image();
                         image.onload = function () {
@@ -2190,7 +2187,7 @@ var P;
                     });
                 }
                 else {
-                    return sb2.loadImage(sb2.ASSET_URL + hash + '/get/');
+                    return loadImage(ASSET_URL + hash + '/get/');
                 }
             }
         }
@@ -2561,7 +2558,7 @@ var P;
                         return e;
                     }
                     if (typeof e === 'number' || typeof e === 'string') {
-                        return +e !== 0 && e !== '' && e !== 'false' && e !== false;
+                        return +e !== 0 && e !== '' && e !== 'false';
                     }
                     var v = boolval(e);
                     return v != null ? v : val(e, false, true);
@@ -2582,7 +2579,7 @@ var P;
                     source += 'R.duration = ' + num(dur) + ' * 60 / self.tempoBPM;\n';
                     source += 'var first = true;\n';
                 };
-                var beatTail = function (dur) {
+                var beatTail = function () {
                     var id = label();
                     source += 'if (self.now - R.start < R.duration * 1000 || first) {\n';
                     source += '  var first;\n';
@@ -3100,14 +3097,14 @@ var P;
                     var types = script[0][1].match(/%[snmdcb]/g) || [];
                     var used = [];
                 }
-                for (var i = 1; i < script.length; i++) {
+                for (let i = 1; i < script.length; i++) {
                     compile(script[i]);
                 }
                 if (script[0][0] === 'procDef') {
-                    var pre = '';
-                    for (var i = types.length; i--;)
+                    let pre = '';
+                    for (let i = types.length; i--;) {
                         if (used[i]) {
-                            var t = types[i];
+                            const t = types[i];
                             if (t === '%d' || t === '%n' || t === '%c') {
                                 pre += 'C.numargs[' + i + '] = +C.args[' + i + '] || 0;\n';
                             }
@@ -3115,14 +3112,15 @@ var P;
                                 pre += 'C.boolargs[' + i + '] = bool(C.args[' + i + ']);\n';
                             }
                         }
+                    }
                     source = pre + source;
-                    for (var i = 1, l = fns.length; i < l; ++i) {
+                    for (let i = 1, l = fns.length; i < l; ++i) {
                         fns[i] += pre.length;
                     }
                     source += 'endCall();\n';
                     source += 'return;\n';
                 }
-                for (var i = 0; i < fns.length; i++) {
+                for (let i = 0; i < fns.length; i++) {
                     object.fns.push(P.utils.createContinuation(source.slice(fns[i])));
                 }
                 var f = object.fns[startfn];
@@ -3180,6 +3178,7 @@ var P;
 })(P || (P = {}));
 ;
 /// <reference path="sb2.ts" />
+/// <reference path="core.ts" />
 // The phosphorus Scratch runtime
 // Provides methods expected at runtime by scripts created by the compiler and an environment for Scratch scripts to run
 var P;
@@ -3986,6 +3985,7 @@ var P;
     })(runtime = P.runtime || (P.runtime = {}));
 })(P || (P = {}));
 /// <reference path="core.ts" />
+/// <reference path="JSZip.d.ts" />
 var P;
 (function (P) {
     var sb3;
@@ -4358,20 +4358,22 @@ var P;
                     target.vars = variables;
                     target.lists = lists;
                     sounds.forEach((sound) => target.addSound(sound));
-                    if (data.isStage) {
+                    if (target.isStage) {
+                        const stage = target;
                         for (const id of Object.keys(data.broadcasts)) {
                             const name = data.broadcasts[id];
-                            target.addBroadcast(id, name);
+                            stage.addBroadcast(id, name);
                         }
                     }
                     else {
-                        target.scratchX = x;
-                        target.scratchY = y;
-                        target.direction = direction;
-                        target.isDraggable = draggable;
-                        target.rotationStyle = P.utils.asRotationStyle(data.rotationStyle);
-                        target.scale = size / 100;
-                        target.visible = visible;
+                        const sprite = target;
+                        sprite.scratchX = x;
+                        sprite.scratchY = y;
+                        sprite.direction = direction;
+                        sprite.isDraggable = draggable;
+                        sprite.rotationStyle = P.utils.asRotationStyle(data.rotationStyle);
+                        sprite.scale = size / 100;
+                        sprite.visible = visible;
                     }
                     target.sb3data = data;
                     return target;
@@ -4502,7 +4504,7 @@ var P;
             }
             load() {
                 if (this.projectId) {
-                    return P.IO.fetch(P.config.PROJECT_API.replace('$id', this.id))
+                    return P.IO.fetch(P.config.PROJECT_API.replace('$id', '' + this.projectId))
                         .then((request) => request.json())
                         .then((data) => {
                         this.projectData = data;
@@ -4532,11 +4534,6 @@ var P;
             /*
             In Scratch 3 all blocks have a unique identifier.
             In the project.json, blocks do not contain other blocks in the way a .sb2 file does, but rather they point to the IDs of other blocks.
-          
-            Blocks have "inputs", "fields", and "mutations". These are both types of data that change how blocks behave.
-            Inputs accept any block as an input, while fields generally accept hard coded strings.
-            For example in the block `set [ghost] effect to [100]` ghost is a field (cannot change) and 100 is an input (can change).
-            Mutations are only used in custom block definitions and calls.
           
             This compiler differentiates between "statements", "expressions", "top levels", and "natives".
             Statements are things like `move [ ] steps`. They do something. Cannot be placed in other blocks.
@@ -5869,7 +5866,7 @@ var P;
                 if (typeof expression === 'number') {
                     // I have a slight feeling this block never runs.
                     // TODO: remove?
-                    return expression;
+                    return '' + expression;
                 }
                 if (Array.isArray(expression[1])) {
                     const native = expression[1];
@@ -5924,7 +5921,9 @@ var P;
             function compileTarget(target, data) {
                 currentTarget = target;
                 blocks = data.blocks;
-                const topLevelBlocks = Object.values(data.blocks).filter((block) => block.topLevel);
+                const topLevelBlocks = Object.keys(data.blocks)
+                    .map((id) => data.blocks[id])
+                    .filter((block) => block.topLevel);
                 for (const block of topLevelBlocks) {
                     fns = [0];
                     const source = compileListener(block);
@@ -6112,8 +6111,8 @@ var P;
                     for (var i = 1, l = lines.length; i < l; i++) {
                         var tspan = document.createElementNS(null, 'tspan');
                         tspan.textContent = lines[i];
-                        tspan.setAttribute('x', x);
-                        tspan.setAttribute('y', y + size * i * lineHeight);
+                        tspan.setAttribute('x', '' + x);
+                        tspan.setAttribute('y', '' + (y + size * i * lineHeight));
                         element.appendChild(tspan);
                     }
                 }

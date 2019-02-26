@@ -92,9 +92,9 @@ namespace P.audio {
     cb(new Error('Unrecognized WAV format ' + format));
   };
 
-  export function decodeAudio(ab) {
+  export function decodeAudio(ab): Promise<AudioBuffer | null> {
     if (!context) {
-      return Promise.resolve();
+      return Promise.resolve(null);
     }
 
     return new Promise((resolve, reject) => {

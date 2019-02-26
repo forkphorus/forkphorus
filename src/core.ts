@@ -224,7 +224,7 @@ namespace P.core {
   }
 
   // A stage object.
-  export class Stage extends Base {
+  export abstract class Stage extends Base {
     public stage = this;
     public isStage = true;
     public children: Sprite[] = [];
@@ -239,7 +239,7 @@ namespace P.core {
     public promptId: number = 0;
     public nextPromptId: number = 0;
 
-    public tmepoBPM: number = 60;
+    public tempoBPM: number = 60;
 
     public zoom: number = 1;
     public maxZoom: number = P.config.scale;
@@ -261,12 +261,12 @@ namespace P.core {
     public root: HTMLElement;
     public ui: HTMLElement;
     public canvas: HTMLCanvasElement;
-    public renderer: P.core.CanvasRenderer;
+    public renderer: P.renderer.CanvasRenderer;
     public backdropCanvas: HTMLCanvasElement;
     public backdropContext: CanvasRenderingContext2D;
     public penCanvas: HTMLCanvasElement;
     public penRenderer: P.renderer.CanvasRenderer;
-    public prompt: HTMLElement;
+    public prompt: HTMLInputElement;
     public prompter: HTMLElement;
     public promptTitle: HTMLElement;
     public promptButton: HTMLElement;
@@ -577,7 +577,7 @@ namespace P.core {
         canvas.getContext('2d').drawImage(this.penCanvas, 0, 0);
         this.penCanvas.width = 480 * zoom * P.config.scale;
         this.penCanvas.height = 360 * zoom * P.config.scale;
-        this.penRenderer.drawImage(canvas, 0, 0, 480 * zoom * P.config.scale, 360 * zoom * P.config.scale);
+        this.penRenderer.ctx.drawImage(canvas, 0, 0, 480 * zoom * P.config.scale, 360 * zoom * P.config.scale);
         this.penRenderer.reset(this.maxZoom);
         this.penRenderer.ctx.lineCap = 'round';
       }
@@ -693,10 +693,11 @@ namespace P.core {
     }
 
     // Draws all the children onto a renderer, optionally skipping an object.
-    drawChildren(renderer, skip) {
+    drawChildren(renderer: P.renderer.CanvasRenderer, skip?: Sprite) {
       for (var i = 0; i < this.children.length; i++) {
-        var c = this.children[i];
+        const c = this.children[i];
         if (c.isDragging) {
+          // TODO: move
           c.moveTo(c.dragOffsetX + c.stage.mouseX, c.dragOffsetY + c.stage.mouseY);
         }
         if (c.visible && c !== skip) {
@@ -706,7 +707,7 @@ namespace P.core {
     }
 
     // Draws all the objects onto a renderer, optionally skipping an object.
-    drawAll(renderer, skip) {
+    drawAll(renderer: P.renderer.CanvasRenderer, skip?: Sprite) {
       renderer.drawChild(this);
       renderer.drawImage(this.penCanvas, 0, 0);
       this.drawChildren(renderer, skip);
@@ -759,32 +760,31 @@ namespace P.core {
   }
 
   // A sprite object.
-  export class Sprite extends Base {
+  export abstract class Sprite extends Base {
+    public isSprite = true;
+    public isClone = false;
+    public direction: number = 0;
+    public isDraggable: boolean = false;
+    public isDragging: boolean = false;
+    public scale: number = 1;
+    public penHue: number = 240;
+    public penSaturation: number = 100;
+    public penLightness: number = 50;
+    public penCSS: string = '';
+    public penSize: number = 1;
+    public penColor: number = 0x000000;
+    public isPenDown: boolean = false;
+    public bubble: HTMLElement = null;
+    public thinking: boolean = false;
+    public sayId: number = 0;
+    public dragStartX: number = 0;
+    public dragStartY: number = 0;
+    public dragOffsetX: number = 0;
+    public dragOffsetY: number = 0;
+
     constructor(stage) {
       super();
-
       this.stage = stage;
-      this.isSprite = true;
-
-      // These fields should probably be overwritten by creators.
-      this.scratchX = 0;
-      this.scratchY = 0;
-      this.direction = 90;
-      this.isDraggable = false;
-      this.isDragging = false;
-      this.rotationStyle = 'normal';
-      this.scale = 1;
-      this.visible = false;
-
-      this.penHue = 240;
-      this.penSaturation = 100;
-      this.penLightness = 50;
-      this.penSize = 1;
-      this.isPenDown = false;
-      this.bubble = null;
-      this.saying = false;
-      this.thinking = false;
-      this.sayId = 0;
     }
 
     mouseDown() {
@@ -990,11 +990,8 @@ namespace P.core {
       return c;
     }
 
-    // Abstract
     // Must return a new instance of this Sprite's constructor. Data copying will be handled in clone()
-    _clone() {
-      throw new Error('Sprite did not implement _clone()');
-    }
+    abstract _clone(): P.core.Sprite;
 
     // Determines if the sprite is touching an object.
     // thing is the name of the object, '_mouse_', or '_edge_'
@@ -1090,7 +1087,7 @@ namespace P.core {
 
       this.stage.drawAll(collisionRenderer, this);
       collisionRenderer.ctx.globalCompositeOperation = 'destination-in';
-      collisionRenderer.drawChild(this, true);
+      collisionRenderer.drawChild(this);
 
       collisionRenderer.ctx.restore();
 
@@ -1419,7 +1416,7 @@ namespace P.core {
   }
 
   // An abstract variable watcher
-  export class VariableWatcher {
+  export abstract class VariableWatcher {
     public stage: Stage;
     public targetName: string;
     public target: Base | null = null;
@@ -1442,17 +1439,14 @@ namespace P.core {
       this.target = this.stage.getObject(this.targetName) || this.stage;
     }
 
-    // Updates the VariableWatcher. Called every frame.
-    // Expected to be overridden, call super.update()
-    update() {
-      throw new Error('VariableWatcher did not implement update()');
-    }
-
     // Changes the visibility of the watcher.
     // Expected to be overridden, call super.setVisible(visible)
     setVisible(visible) {
       this.visible = visible;
     }
+
+    // Updates the VariableWatcher. Called every frame.
+    abstract update(): void;
   }
 
   // An abstract callable procedure

@@ -148,8 +148,8 @@ namespace P.utils {
         for (var i = 1, l = lines.length; i < l; i++) {
           var tspan = document.createElementNS(null, 'tspan');
           tspan.textContent = lines[i];
-          tspan.setAttribute('x', x);
-          tspan.setAttribute('y', y + size * i * lineHeight);
+          tspan.setAttribute('x', '' + x);
+          tspan.setAttribute('y', '' + (y + size * i * lineHeight));
           element.appendChild(tspan);
         }
       }

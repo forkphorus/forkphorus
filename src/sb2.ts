@@ -1,11 +1,12 @@
 
 /// <reference path="core.ts" />
+/// <reference path="canvg.d.ts" />
 
 namespace P.sb2 {
 
-  export const ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
-  export const SOUNDBANK_URL = 'https://raw.githubusercontent.com/LLK/scratch-flash/v429/src/soundbank/';
-  export const WAV_FILES = {
+  const ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
+  const SOUNDBANK_URL = 'https://raw.githubusercontent.com/LLK/scratch-flash/v429/src/soundbank/';
+  const WAV_FILES = {
     'AcousticGuitar_F3': 'instruments/AcousticGuitar_F3_22k.wav',
     'AcousticPiano_As3': 'instruments/AcousticPiano(5)_A%233_22k.wav',
     'AcousticPiano_C4': 'instruments/AcousticPiano(5)_C4_22k.wav',
@@ -76,7 +77,25 @@ namespace P.sb2 {
     'WoodBlock': 'drums/WoodBlock(1)_22k.wav'
   };
 
+  let zipArchive = null;
+
   export class Scratch2VariableWatcher extends P.core.VariableWatcher {
+    private cmd: string;
+    private type: string;
+    private color: string;
+    private isDiscrete: boolean;
+    private label: string;
+    private mode: number;
+    private param: string;
+    private sliderMax: number;
+    private sliderMin: number;
+
+    private el: HTMLElement = null;
+    private labelEl: HTMLElement = null;
+    private readout: HTMLElement = null;
+    private slider: HTMLElement = null;
+    private button: HTMLElement = null;
+
     constructor(stage, targetName, data) {
       super(stage, targetName);
 
@@ -99,12 +118,6 @@ namespace P.sb2 {
       this.visible = data.visible == null ? true : data.visible;
       this.x = data.x || 0;
       this.y = data.y || 0;
-
-      this.el = null;
-      this.labelEl = null;
-      this.readout = null;
-      this.slider = null;
-      this.button = null;
     }
 
     init() {
@@ -114,7 +127,7 @@ namespace P.sb2 {
       }
       if (!this.label) {
         this.label = this.getLabel();
-        if (this.target.isSprite) this.label = this.target.objName + ': ' + this.label;
+        if (this.target.isSprite) this.label = this.target.name + ': ' + this.label;
       }
       this.layout();
     }
@@ -153,7 +166,7 @@ namespace P.sb2 {
     }
 
     update() {
-      var value = 0;
+      var value: string | number = 0;
       if (!this.target) return;
       switch (this.cmd) {
         case 'answer':
@@ -169,10 +182,12 @@ namespace P.sb2 {
           value = this.target.vars[this.param];
           break;
         case 'heading':
-          value = this.target.direction;
+          value = (this.target as P.core.Sprite).direction;
           break;
         case 'scale':
-          value = this.target.scale * 100;
+          if (this.target.isSprite) {
+            value = (this.target as P.core.Sprite).scale * 100;
+          }
           break;
         case 'sceneName':
           value = this.stage.getCostumeName();
@@ -239,7 +254,7 @@ namespace P.sb2 {
       if (!this.visible) return;
 
       this.el = document.createElement('div');
-      this.el.dataset.watcher = this.stage.allWatchers.indexOf(this);
+      this.el.dataset.watcher = '' + this.stage.allWatchers.indexOf(this);
       this.el.style.whiteSpace = 'pre';
       this.el.style.position = 'absolute';
       this.el.style.left = this.el.style.top = '0';
@@ -349,12 +364,12 @@ namespace P.sb2 {
   export function loadSB2Project(arrayBuffer) {
     return JSZip.loadAsync(arrayBuffer)
       .then((zip) => {
-        sb2.zip = zip;
+        zipArchive = zip;
         return zip.file('project.json').async('text');
       })
       .then((text) => {
         const project = P.utils.parseJSONish(text);
-        return sb2.loadProject(project);
+        return loadProject(project);
       });
   };
 
@@ -363,10 +378,10 @@ namespace P.sb2 {
     var children;
     var stage;
 
-    return Promise.all([
-      sb2.loadWavs(),
-      sb2.loadArray(data.children, sb2.loadObject).then((c) => children = c),
-      sb2.loadBase(data, true).then((s) => stage = s),
+    return Promise.all<any>([
+      loadWavs(),
+      loadArray(data.children, loadObject).then((c) => children = c),
+      loadBase(data, true).then((s) => stage = s),
     ]).then(() => {
       children = children.filter((i) => i);
       children.forEach((c) => c.stage = stage);
@@ -389,11 +404,11 @@ namespace P.sb2 {
     if (!P.audio.context) return Promise.resolve();
 
     const assets = [];
-    for (var name in sb2.WAV_FILES) {
-      if (!sb2.wavBuffers[name]) {
+    for (var name in WAV_FILES) {
+      if (!wavBuffers[name]) {
         assets.push(
-          sb2.loadWavBuffer(name)
-            .then((buffer) => sb2.wavBuffers[name] = buffer)
+          loadWavBuffer(name)
+            .then((buffer) => wavBuffers[name] = buffer)
         );
       }
     }
@@ -401,19 +416,19 @@ namespace P.sb2 {
   };
 
   export function loadWavBuffer(name) {
-    return P.IO.fetch(sb2.SOUNDBANK_URL + sb2.WAV_FILES[name])
+    return P.IO.fetch(SOUNDBANK_URL + WAV_FILES[name])
       .then((request) => request.arrayBuffer())
       .then((arrayBuffer) => P.audio.decodeAudio(arrayBuffer))
-      .then((buffer) => sb2.wavBuffers[name] = buffer);
+      .then((buffer) => wavBuffers[name] = buffer);
   };
 
-  export function loadBase(data, isStage) {
+  export function loadBase(data, isStage = false) {
     var costumes;
     var sounds;
 
     return Promise.all([
-      sb2.loadArray(data.costumes, sb2.loadCostume).then((c) => costumes = c),
-      sb2.loadArray(data.sounds, sb2.loadSound).then((s) => sounds = s),
+      loadArray(data.costumes, loadCostume).then((c) => costumes = c),
+      loadArray(data.sounds, loadSound).then((s) => sounds = s),
     ]).then(() => {
       const variables = {};
       if (data.variables) {
@@ -470,11 +485,11 @@ namespace P.sb2 {
 
   export function loadObject(data) {
     if (data.cmd) {
-      return sb2.loadVariableWatcher(data);
+      return loadVariableWatcher(data);
     } else if (data.listName) {
       // list watcher TODO
     } else {
-      return sb2.loadBase(data);
+      return loadBase(data);
     }
   };
 
@@ -485,11 +500,11 @@ namespace P.sb2 {
 
   export function loadCostume(data, index) {
     const promises = [
-      sb2.loadMD5(data.baseLayerMD5, data.baseLayerID)
+      loadMD5(data.baseLayerMD5, data.baseLayerID)
         .then((asset) => data.$image = asset)
     ];
     if (data.textLayerMD5) {
-      promises.push(sb2.loadMD5(data.textLayerMD5, data.textLayerID)
+      promises.push(loadMD5(data.textLayerMD5, data.textLayerID)
         .then((asset) => data.$text = asset));
     }
     return Promise.all(promises)
@@ -506,7 +521,7 @@ namespace P.sb2 {
   };
 
   export function loadSound(data) {
-    return sb2.loadMD5(data.md5, data.soundID, true)
+    return loadMD5(data.md5, data.soundID, true)
       .then((buffer) => {
         return new P.core.Sound({
           name: data.soundName,
@@ -516,11 +531,12 @@ namespace P.sb2 {
   };
 
   export function loadSVG(source) {
+    // The fact that this works is truly a work of art.
     var parser = new DOMParser();
     var doc = parser.parseFromString(source, 'image/svg+xml');
-    var svg = doc.documentElement;
+    var svg = doc.documentElement as any; // TODO
     if (!svg.style) {
-      doc = parser.parseFromString('<body>'+source, 'text/html');
+      doc = parser.parseFromString('<body>' + source, 'text/html');
       svg = doc.querySelector('svg');
     }
     svg.style.visibility = 'hidden';
@@ -562,34 +578,34 @@ namespace P.sb2 {
     });
   }
 
-  export function loadMD5(hash, id, isAudio) {
-    if (sb2.zip) {
-      var f = isAudio ? sb2.zip.file(id + '.wav') : sb2.zip.file(id + '.gif') || sb2.zip.file(id + '.png') || sb2.zip.file(id + '.jpg') || sb2.zip.file(id + '.svg');
+  export function loadMD5(hash, id, isAudio = false) {
+    if (zipArchive) {
+      var f = isAudio ? zipArchive.file(id + '.wav') : zipArchive.file(id + '.gif') || zipArchive.file(id + '.png') || zipArchive.file(id + '.jpg') || zipArchive.file(id + '.svg');
       hash = f.name;
     }
 
     const ext = hash.split('.').pop();
 
     if (ext === 'svg') {
-      if (sb2.zip) {
+      if (zipArchive) {
         return f.async('text')
-          .then((text) => sb2.loadSVG(text));
+          .then((text) => loadSVG(text));
       } else {
-        return P.IO.fetch(sb2.ASSET_URL + hash + '/get/')
+        return P.IO.fetch(ASSET_URL + hash + '/get/')
           .then((request) => request.text())
-          .then((text) => sb2.loadSVG(text));
+          .then((text) => loadSVG(text));
       }
     } else if (ext === 'wav') {
-      if (sb2.zip) {
+      if (zipArchive) {
         return f.async('arrayBuffer')
           .then((buffer) => P.audio.decodeAudio(buffer));
       } else {
-        return P.IO.fetch(sb2.ASSET_URL + hash + '/get/')
+        return P.IO.fetch(ASSET_URL + hash + '/get/')
           .then((request) => request.arrayBuffer())
           .then((buffer) => P.audio.decodeAudio(buffer))
       }
     } else {
-      if (sb2.zip) {
+      if (zipArchive) {
         return new Promise((resolve, reject) => {
           var image = new Image();
           image.onload = function() {
@@ -601,11 +617,10 @@ namespace P.sb2 {
             });
         });
       } else {
-        return sb2.loadImage(sb2.ASSET_URL + hash + '/get/');
+        return loadImage(ASSET_URL + hash + '/get/');
       }
     }
   };
-
 }
 
 // Compiler for .sb2 projects
@@ -1048,7 +1063,7 @@ namespace P.sb2.compiler {
         return e;
       }
       if (typeof e === 'number' || typeof e === 'string') {
-        return +e !== 0 && e !== '' && e !== 'false' && e !== false;
+        return +e !== 0 && e !== '' && e !== 'false';
       }
       var v = boolval(e);
       return v != null ? v : val(e, false, true);
@@ -1072,7 +1087,7 @@ namespace P.sb2.compiler {
       source += 'var first = true;\n';
     };
 
-    var beatTail = function(dur) {
+    var beatTail = function() {
       var id = label();
       source += 'if (self.now - R.start < R.duration * 1000 || first) {\n';
       source += '  var first;\n';
@@ -1694,29 +1709,31 @@ namespace P.sb2.compiler {
       var used = [];
     }
 
-    for (var i = 1; i < script.length; i++) {
+    for (let i = 1; i < script.length; i++) {
       compile(script[i]);
     }
 
     if (script[0][0] === 'procDef') {
-      var pre = '';
-      for (var i = types.length; i--;) if (used[i]) {
-        var t = types[i];
-        if (t === '%d' || t === '%n' || t === '%c') {
-          pre += 'C.numargs[' + i + '] = +C.args[' + i + '] || 0;\n';
-        } else if (t === '%b') {
-          pre += 'C.boolargs[' + i + '] = bool(C.args[' + i + ']);\n';
+      let pre = '';
+      for (let i = types.length; i--;) {
+        if (used[i]) {
+          const t = types[i];
+          if (t === '%d' || t === '%n' || t === '%c') {
+            pre += 'C.numargs[' + i + '] = +C.args[' + i + '] || 0;\n';
+          } else if (t === '%b') {
+            pre += 'C.boolargs[' + i + '] = bool(C.args[' + i + ']);\n';
+          }
         }
       }
       source = pre + source;
-      for (var i = 1, l = fns.length; i < l; ++i) {
+      for (let i = 1, l = fns.length; i < l; ++i) {
         fns[i] += pre.length;
       }
       source += 'endCall();\n';
       source += 'return;\n';
     }
 
-    for (var i = 0; i < fns.length; i++) {
+    for (let i = 0; i < fns.length; i++) {
       object.fns.push(P.utils.createContinuation(source.slice(fns[i])));
     }
 

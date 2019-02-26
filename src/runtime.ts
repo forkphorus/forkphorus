@@ -1,5 +1,6 @@
 
 /// <reference path="sb2.ts" />
+/// <reference path="core.ts" />
 
 // The phosphorus Scratch runtime
 // Provides methods expected at runtime by scripts created by the compiler and an environment for Scratch scripts to run
@@ -9,7 +10,7 @@ namespace P.runtime {
 
   // Global variables expected by scripts at runtime:
   // The stage object
-  var self;
+  var self: P.core.Stage;
   // Current sprite or stage
   var S;
   // Used for resuming state
