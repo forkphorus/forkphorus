@@ -427,6 +427,7 @@ var P;
                 this.answer = '';
                 this.promptId = 0;
                 this.nextPromptId = 0;
+                this.hidePrompt = false;
                 this.tempoBPM = 60;
                 this.zoom = 1;
                 this.maxZoom = P.config.scale;
@@ -595,8 +596,7 @@ var P;
                 this.prompter.appendChild(this.prompt);
                 this.prompt.style.border = '0';
                 this.prompt.style.background = '#eee';
-                this.prompt.style.MozBoxSizing =
-                    this.prompt.style.boxSizing = 'border-box';
+                this.prompt.style.boxSizing = 'border-box';
                 this.prompt.style.font = '1.3em sans-serif';
                 this.prompt.style.padding = '0 ' + (3 / 13) + 'em';
                 this.prompt.style.outline = '0';
@@ -606,7 +606,7 @@ var P;
                 this.prompt.style.display = 'block';
                 this.prompt.style.borderRadius = '0';
                 this.prompt.style.boxShadow = 'inset ' + (1 / 13) + 'em ' + (1 / 13) + 'em ' + (2 / 13) + 'em rgba(0, 0, 0, .2), inset ' + (-1 / 13) + 'em ' + (-1 / 13) + 'em ' + (1 / 13) + 'em rgba(255, 255, 255, .2)';
-                this.prompt.style.WebkitAppearance = 'none';
+                this.prompt.style.webkitAppearance = 'none';
                 this.promptButton = document.createElement('div');
                 this.prompter.appendChild(this.promptButton);
                 this.promptButton.style.width = '2.2em';
@@ -1152,14 +1152,14 @@ var P;
                         if (right - left < 1 || top - bottom < 1) {
                             continue;
                         }
-                        collisionRenderer.ctx.width = right - left;
-                        collisionRenderer.ctx.height = top - bottom;
+                        collisionRenderer.canvas.width = right - left;
+                        collisionRenderer.canvas.height = top - bottom;
                         collisionRenderer.ctx.save();
                         collisionRenderer.ctx.translate(-(left + 240), -(180 - top));
                         collisionRenderer.noEffects = true;
-                        collisionRenderer.drawChild(this, true);
+                        collisionRenderer.drawChild(this);
                         collisionRenderer.ctx.globalCompositeOperation = 'source-in';
-                        collisionRenderer.drawChild(sprite, true);
+                        collisionRenderer.drawChild(sprite);
                         collisionRenderer.noEffects = false;
                         collisionRenderer.ctx.restore();
                         var data = collisionRenderer.ctx.getImageData(0, 0, right - left, top - bottom).data;
@@ -1203,7 +1203,7 @@ var P;
                 collisionRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
                 secondaryCollisionRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
                 this.stage.drawAll(collisionRenderer, this);
-                secondaryCollisionRenderer.drawChild(this, true);
+                secondaryCollisionRenderer.drawChild(this);
                 collisionRenderer.ctx.restore();
                 var dataA = collisionRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
                 var dataB = secondaryCollisionRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
@@ -1508,16 +1508,11 @@ var P;
         }
         core.VariableWatcher = VariableWatcher;
         // An abstract callable procedure
-        // Implementation must implement call()
         class Procedure {
             constructor(fn, warp, inputs) {
                 this.fn = fn;
                 this.warp = warp;
                 this.inputs = inputs;
-            }
-            // Call takes a list of inputs and must return the proper arguments to set C.args to in the runtime.
-            call(inputs) {
-                throw new Error('Procedure did not implement call()');
             }
         }
         core.Procedure = Procedure;
@@ -1682,6 +1677,7 @@ var P;
                 this.readout = null;
                 this.slider = null;
                 this.button = null;
+                this.buttonWrap = null;
                 this.cmd = data.cmd;
                 this.type = data.type || 'var';
                 if (data.color) {
@@ -1850,7 +1846,7 @@ var P;
                     this.readout.style.padding = '0 ' + (3 / 10) + 'em';
                 }
                 else {
-                    this.el.appendChild(this.labelEl = document.createElement('div'), this.el.firstChild);
+                    this.el.appendChild(this.labelEl = document.createElement('div'));
                     this.el.appendChild(this.readout = document.createElement('div'));
                     this.el.style.border = '.1em solid rgb(148,145,145)';
                     this.el.style.borderRadius = '.4em';
@@ -2025,13 +2021,14 @@ var P;
                 if (isStage) {
                 }
                 else {
-                    object.scratchX = data.scratchX;
-                    object.scratchY = data.scratchY;
-                    object.direction = data.direction;
-                    object.isDraggable = data.isDraggable;
-                    object.rotationStyle = data.rotationStyle;
-                    object.scale = data.scale;
-                    object.visible = data.visible;
+                    const sprite = object;
+                    sprite.scratchX = data.scratchX;
+                    sprite.scratchY = data.scratchY;
+                    sprite.direction = data.direction;
+                    sprite.isDraggable = data.isDraggable;
+                    sprite.rotationStyle = data.rotationStyle;
+                    sprite.scale = data.scale;
+                    sprite.visible = data.visible;
                 }
                 // Dirty hack expected by the sb2 compiler, TODO: remove
                 object.scripts = data.scripts || [];

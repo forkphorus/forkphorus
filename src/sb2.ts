@@ -95,6 +95,7 @@ namespace P.sb2 {
     private readout: HTMLElement = null;
     private slider: HTMLElement = null;
     private button: HTMLElement = null;
+    private buttonWrap: HTMLElement = null;
 
     constructor(stage, targetName, data) {
       super(stage, targetName);
@@ -271,7 +272,7 @@ namespace P.sb2 {
         this.readout.style.margin = (3/15)+'em 0 0 0';
         this.readout.style.padding = '0 '+(3/10)+'em';
       } else {
-        this.el.appendChild(this.labelEl = document.createElement('div'), this.el.firstChild);
+        this.el.appendChild(this.labelEl = document.createElement('div'));
         this.el.appendChild(this.readout = document.createElement('div'));
 
         this.el.style.border = '.1em solid rgb(148,145,145)';
@@ -332,10 +333,12 @@ namespace P.sb2 {
   }
 
   export class Scratch2Stage extends P.core.Stage {
-
+    public scripts: any;
   }
 
   export class Scratch2Sprite extends P.core.Sprite {
+    public scripts: any;
+
     _clone() {
       return new Scratch2Sprite(this.stage);
     }
@@ -462,13 +465,14 @@ namespace P.sb2 {
       if (isStage) {
 
       } else {
-        object.scratchX = data.scratchX;
-        object.scratchY = data.scratchY;
-        object.direction = data.direction;
-        object.isDraggable = data.isDraggable;
-        object.rotationStyle = data.rotationStyle;
-        object.scale = data.scale
-        object.visible = data.visible;
+        const sprite = object as Scratch2Sprite;
+        sprite.scratchX = data.scratchX;
+        sprite.scratchY = data.scratchY;
+        sprite.direction = data.direction;
+        sprite.isDraggable = data.isDraggable;
+        sprite.rotationStyle = data.rotationStyle;
+        sprite.scale = data.scale
+        sprite.visible = data.visible;
       }
 
       // Dirty hack expected by the sb2 compiler, TODO: remove

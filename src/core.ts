@@ -26,6 +26,7 @@ namespace P.core {
     public soundRefs: ObjectMap<Sound> = {};
     public instrument: number = 0;
     public volume: number = 1;
+    public node: AudioNode;
     public rotationStyle: 'normal' | 'leftRight' | 'none' = 'normal';
     public vars: ObjectMap<any> = {};
     public watchers: ObjectMap<VariableWatcher> = {};
@@ -238,6 +239,7 @@ namespace P.core {
     public answer: string = '';
     public promptId: number = 0;
     public nextPromptId: number = 0;
+    public hidePrompt: boolean = false;
 
     public tempoBPM: number = 60;
 
@@ -271,6 +273,7 @@ namespace P.core {
     public promptTitle: HTMLElement;
     public promptButton: HTMLElement;
     public bubble: HTMLElement;
+    public mouseSprite: Sprite;
 
     constructor() {
       super();
@@ -448,7 +451,6 @@ namespace P.core {
       this.prompter.appendChild(this.prompt);
       this.prompt.style.border = '0';
       this.prompt.style.background = '#eee';
-      this.prompt.style.MozBoxSizing =
       this.prompt.style.boxSizing = 'border-box';
       this.prompt.style.font = '1.3em sans-serif';
       this.prompt.style.padding = '0 '+(3/13)+'em';
@@ -459,7 +461,7 @@ namespace P.core {
       this.prompt.style.display = 'block';
       this.prompt.style.borderRadius = '0';
       this.prompt.style.boxShadow = 'inset '+(1/13)+'em '+(1/13)+'em '+(2/13)+'em rgba(0, 0, 0, .2), inset '+(-1/13)+'em '+(-1/13)+'em '+(1/13)+'em rgba(255, 255, 255, .2)';
-      this.prompt.style.WebkitAppearance = 'none';
+      this.prompt.style.webkitAppearance = 'none';
 
       this.promptButton = document.createElement('div');
       this.prompter.appendChild(this.promptButton);
@@ -777,6 +779,8 @@ namespace P.core {
     public bubble: HTMLElement = null;
     public thinking: boolean = false;
     public sayId: number = 0;
+    public bubblePointer: HTMLElement;
+    public bubbleText: Text;
     public dragStartX: number = 0;
     public dragStartY: number = 0;
     public dragOffsetX: number = 0;
@@ -1048,16 +1052,16 @@ namespace P.core {
             continue;
           }
 
-          collisionRenderer.ctx.width = right - left;
-          collisionRenderer.ctx.height = top - bottom;
+          collisionRenderer.canvas.width = right - left;
+          collisionRenderer.canvas.height = top - bottom;
 
           collisionRenderer.ctx.save();
           collisionRenderer.ctx.translate(-(left + 240), -(180 - top));
 
           collisionRenderer.noEffects = true;
-          collisionRenderer.drawChild(this, true);
+          collisionRenderer.drawChild(this);
           collisionRenderer.ctx.globalCompositeOperation = 'source-in';
-          collisionRenderer.drawChild(sprite, true);
+          collisionRenderer.drawChild(sprite);
           collisionRenderer.noEffects = false;
 
           collisionRenderer.ctx.restore();
@@ -1116,7 +1120,7 @@ namespace P.core {
       secondaryCollisionRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
 
       this.stage.drawAll(collisionRenderer, this);
-      secondaryCollisionRenderer.drawChild(this, true);
+      secondaryCollisionRenderer.drawChild(this);
 
       collisionRenderer.ctx.restore();
 
@@ -1407,6 +1411,7 @@ namespace P.core {
     public name: string;
     public buffer: AudioBuffer;
     public duration: number;
+    public node: AudioNode;
 
     constructor(data) {
       this.name = data.name;
@@ -1450,8 +1455,7 @@ namespace P.core {
   }
 
   // An abstract callable procedure
-  // Implementation must implement call()
-  export class Procedure {
+  export abstract class Procedure {
     public fn: Function; // TODO
     public warp: boolean;
     public inputs: any[]; // TODO
@@ -1463,8 +1467,7 @@ namespace P.core {
     }
 
     // Call takes a list of inputs and must return the proper arguments to set C.args to in the runtime.
-    call(inputs) {
-      throw new Error('Procedure did not implement call()');
-    }
+    // Result can be any datatype as long as the compiler uses the right methods to get the data.
+    abstract call(inputs): any;
   }
 }
