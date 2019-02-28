@@ -5,6 +5,8 @@
 // The phosphorus Scratch runtime
 // Provides methods expected at runtime by scripts created by the compiler and an environment for Scratch scripts to run
 namespace P.runtime {
+  export type Fn = () => void;
+
   // The runtime is really weird and hard to understand.
   // The upside: it's fast as hell.
 
@@ -23,7 +25,7 @@ namespace P.runtime {
   var C;
   // If level of layers of "Run without screen refresh" we are in
   // Each subsequent procedure call will increment and decrement as they start and stop.
-  var WARP;
+  var WARP: number;
   // ??
   var CALLS;
   // ??
@@ -31,7 +33,7 @@ namespace P.runtime {
   // ??
   var THREAD;
   // The next function to run immediately after this one.
-  var IMMEDIATE;
+  var IMMEDIATE: Fn;
   // Has a "visual change" been made in this frame?
   var VISUAL: boolean;
 
@@ -461,11 +463,11 @@ namespace P.runtime {
   };
 
   var sceneChange = function() {
-    return runtime.trigger('whenSceneStarts', self.costumes[self.currentCostumeIndex].name);
+    return runtime.trigger('whenSceneStarts', self.getCostumeName());
   };
 
   function backdropChange() {
-    return runtime.trigger('whenBackdropChanges', self.costumes[self.currentCostumeIndex].name);
+    return runtime.trigger('whenBackdropChanges', self.getCostumeName());
   }
 
   var broadcast = function(name) {
@@ -495,8 +497,6 @@ namespace P.runtime {
       calls: CALLS
     };
   };
-
-  // Extend the stage with new methods related to running the project.
 
   class Thread {
     constructor(
@@ -854,7 +854,7 @@ namespace P.runtime {
     {name:'Cuica',baseRatio:0.7937005259840998,loop:false,loopStart:null,loopEnd:null,attackEnd:0,holdEnd:0,decayEnd:0}
   ];
 
-  // Evaluated JavaScript within the scope of the runtime.
+  // Evaluate JavaScript within the scope of the runtime.
   export function scopedEval(source) {
     return eval(source);
   }

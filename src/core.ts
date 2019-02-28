@@ -320,6 +320,13 @@ namespace P.core {
     public bubble: HTMLElement;
     public mouseSprite: Sprite;
 
+    private onTouchStart: EventListener;
+    private onTouchEnd: EventListener;
+    private onTouchMove: EventListener;
+    private onMouseDown: EventListener;
+    private onMouseUp: EventListener;
+    private onMouseMove: EventListener;
+
     constructor() {
       super();
 
@@ -1508,9 +1515,9 @@ namespace P.core {
 
   // An abstract callable procedure
   export abstract class Procedure {
-    public fn: Function; // TODO
+    public fn: P.runtime.Fn;
     public warp: boolean;
-    public inputs: any[]; // TODO
+    public inputs: any[];
 
     constructor(fn, warp, inputs) {
       this.fn = fn;
@@ -1520,7 +1527,7 @@ namespace P.core {
 
     // Call takes a list of inputs and must return the proper arguments to set C.args to in the runtime.
     // Result can be anything as long as the compiler knows how to interpret it.
-    abstract call(inputs): any;
+    abstract call(inputs: any[]): any;
   }
 
   export function isSprite(base: P.core.Base): base is P.core.Sprite {

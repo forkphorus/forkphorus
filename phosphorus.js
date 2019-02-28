@@ -3660,10 +3660,10 @@ var P;
             }
         };
         var sceneChange = function () {
-            return runtime.trigger('whenSceneStarts', self.costumes[self.currentCostumeIndex].name);
+            return runtime.trigger('whenSceneStarts', self.getCostumeName());
         };
         function backdropChange() {
-            return runtime.trigger('whenBackdropChanges', self.costumes[self.currentCostumeIndex].name);
+            return runtime.trigger('whenBackdropChanges', self.getCostumeName());
         }
         var broadcast = function (name) {
             return runtime.trigger('whenIReceive', self.getBroadcastId(name));
@@ -3691,7 +3691,6 @@ var P;
                 calls: CALLS
             };
         };
-        // Extend the stage with new methods related to running the project.
         class Thread {
             constructor(sprite, base, fn, calls) {
                 this.sprite = sprite;
@@ -4051,7 +4050,7 @@ var P;
             { name: 'Vibraslap', baseRatio: 0.8408964152537145, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
             { name: 'Cuica', baseRatio: 0.7937005259840998, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
         ];
-        // Evaluated JavaScript within the scope of the runtime.
+        // Evaluate JavaScript within the scope of the runtime.
         function scopedEval(source) {
             return eval(source);
         }
