@@ -201,10 +201,19 @@
 
     window.addEventListener('hashchange', function() {
       var id = location.hash.substr(1);
+      if (id === '') {
+        show('');
+        if (P.player.stage) {
+          P.player.stage.destroy();
+        }
+        return;
+      }
+
       if (id[0] !== '.') {
         if (+id !== +id) id = '';
         urlInput.value = PROJECT_PREFIX + id;
       }
+
       loadProject(id);
     });
 
@@ -212,7 +221,9 @@
       titleArea.style.height = id ? 0 : titleAreaHeight + 'px';
       playerArea.style.height = id ? playerAreaHeight + 'px' : 0
       projectArea.style.height = id ? projectAreaHeight + 'px' : 0;
-      if (!id) urlInput.focus();
+      if (!id) {
+        urlInput.focus();
+      }
     }
 
     function loadProject(id) {

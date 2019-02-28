@@ -4,10 +4,45 @@
   <meta charset=utf-8>
   <meta name=viewport content="width=device-width, initial-scale=1.0">
   <title>forkphorus</title>
-  <link rel=stylesheet href=embed.css>
   <link rel=stylesheet href=phosphorus.css>
   <link rel=stylesheet href=player.css>
   <link rel=stylesheet href=index.css>
+
+  <style>
+    body {
+      margin: 0 auto;
+    }
+    .player {
+      margin-left: 1px;
+    }
+    .progress-bar {
+      padding: 0;
+      pointer-events: none;
+    }
+    .internal-error {
+      position: absolute;
+      left: 1px;
+      bottom: 1px;
+      right: 1px;
+      background: #fff;
+    }
+    .controls {
+      display: none;
+    }
+    .has-ui .controls {
+      display: block;
+    }
+    .hide-ui .controls {
+      position: absolute;
+      width: 100%;
+    }
+    .hide-ui .controls span {
+      display: none;
+    }
+    .hide-ui .player {
+      box-shadow: none;
+    }
+  </style>
 </head>
 
 <body>

@@ -153,7 +153,7 @@ var P;
                 if (costume) {
                     this.ctx.save();
                     var z = c.stage.zoom * P.config.scale;
-                    if (c.isSprite) {
+                    if (P.core.isSprite(c)) {
                         this.ctx.translate(((c.scratchX + 240) * z | 0) / z, ((180 - c.scratchY) * z | 0) / z);
                         if (c.rotationStyle === 'normal') {
                             this.ctx.rotate((c.direction - 90) * Math.PI / 180);
@@ -161,8 +161,8 @@ var P;
                         else if (c.rotationStyle === 'leftRight' && c.direction < 0) {
                             this.ctx.scale(-1, 1);
                         }
+                        this.ctx.scale(c.scale, c.scale);
                     }
-                    this.ctx.scale(c.scale, c.scale);
                     this.ctx.scale(costume.scale, costume.scale);
                     if (c.isSprite) {
                         this.ctx.translate(-costume.rotationCenterX, -costume.rotationCenterY);
@@ -186,8 +186,8 @@ var P;
         renderer.CanvasRenderer = CanvasRenderer;
     })(renderer = P.renderer || (P.renderer = {}));
 })(P || (P = {}));
-/// <reference path="renderer.ts" />
 /// <reference path="config.ts" />
+/// <reference path="renderer.ts" />
 // Phosphorus Core
 // Has some base classes that implement most functions while leaving some to implementations. (see P.sb2 and P.sb3)
 var P;
@@ -201,24 +201,43 @@ var P;
         const secondaryCollisionRenderer = new P.renderer.CanvasRenderer(secondaryCollisionCanvas);
         class Base {
             constructor() {
+                // Is this object a clone of another?
                 this.isClone = false;
+                // Is this object a stage?
                 this.isStage = false;
+                // Is this object a sprite?
                 this.isSprite = false;
+                // Is this sprite visible?
                 this.visible = true;
+                // The sprite's X coordinate in Scratch space.
                 this.scratchX = 0;
+                // The sprite's X coordinate in Scratch space.
                 this.scratchY = 0;
+                // The name of the object.
                 this.name = '';
+                // The costumes of the object.
                 this.costumes = [];
+                // The index of the currently selected costume.
                 this.currentCostumeIndex = 0;
+                // The sounds of the objects.
                 this.sounds = [];
+                // Map of sound name to the Sound object. TODO: remove?
                 this.soundRefs = {};
+                // Current instrument
                 this.instrument = 0;
+                // Current volume, from 0-1
                 this.volume = 1;
+                // The rotation style of the object.
                 this.rotationStyle = 'normal';
+                // Variables of the object.
                 this.vars = {};
+                // Variable watchers of the object.
                 this.watchers = {};
+                // Lists of the object.
                 this.lists = {};
+                // Is this object saying something?
                 this.saying = false;
+                // Procedures of the object.
                 this.procedures = {};
                 this.listeners = {
                     whenClicked: [],
@@ -270,21 +289,25 @@ var P;
                 //   }
                 //   stage.allWatchers.push(watcher);
                 // }
+                if (!watcher) {
+                    // TODO: create watchers when it doesnt exist
+                    return;
+                }
                 watcher.setVisible(visible);
             }
             showNextCostume() {
                 this.currentCostumeIndex = (this.currentCostumeIndex + 1) % this.costumes.length;
-                if (this.isStage)
+                if (isStage(this))
                     this.updateBackdrop();
-                if (this.saying)
+                if (this.saying && isSprite(this))
                     this.updateBubble();
             }
             showPreviousCostume() {
                 var length = this.costumes.length;
                 this.currentCostumeIndex = (this.currentCostumeIndex + length - 1) % length;
-                if (this.isStage)
+                if (isStage(this))
                     this.updateBackdrop();
-                if (this.saying)
+                if (this.saying && isSprite(this))
                     this.updateBubble();
             }
             getCostumeName() {
@@ -296,9 +319,9 @@ var P;
                     for (var i = 0; i < this.costumes.length; i++) {
                         if (this.costumes[i].name === costume) {
                             this.currentCostumeIndex = i;
-                            if (this.isStage)
+                            if (isStage(this))
                                 this.updateBackdrop();
-                            if (this.saying)
+                            if (this.saying && isSprite(this))
                                 this.updateBubble();
                             return;
                         }
@@ -319,9 +342,9 @@ var P;
                 if (i < 0)
                     i += this.costumes.length;
                 this.currentCostumeIndex = i;
-                if (this.isStage)
+                if (isStage(this))
                     this.updateBackdrop();
-                if (this.saying)
+                if (isSprite(this) && this.saying)
                     this.updateBubble();
             }
             setFilter(name, value) {
@@ -345,7 +368,7 @@ var P;
                         break;
                 }
                 this.filters[name] = value;
-                if (this.isStage)
+                if (isStage(this))
                     this.updateFilters();
             }
             changeFilter(name, value) {
@@ -393,7 +416,7 @@ var P;
             ask(question) {
                 var stage = this.stage;
                 if (question) {
-                    if (this.isSprite && this.visible) {
+                    if (this.visible && isSprite(this)) {
                         this.say(question);
                         stage.promptTitle.style.display = 'none';
                     }
@@ -412,14 +435,18 @@ var P;
             }
         }
         core.Base = Base;
-        // A stage object.
+        // A stage object
         class Stage extends Base {
             constructor() {
                 super();
+                // We are our own stage.
                 this.stage = this;
+                // We are a stage.
                 this.isStage = true;
+                // Child sprites
                 this.children = [];
                 this.dragging = {}; // TODO
+                // All watchers in the Stage
                 this.allWatchers = [];
                 // TODO: move to Scratch2Stage because it's only used there?
                 this.defaultWatcherX = 10;
@@ -441,6 +468,7 @@ var P;
                 this.mouseY = 0;
                 this.mousePressed = false;
                 this.username = '';
+                this.runtime = new P.runtime.Runtime(this);
                 this.root = document.createElement('div');
                 this.root.classList.add('forkphorus-root');
                 this.root.style.position = 'absolute';
@@ -501,7 +529,7 @@ var P;
                     e.stopPropagation();
                     if (e.target === this.canvas) {
                         e.preventDefault();
-                        this.trigger('whenKeyPressed', c);
+                        this.runtime.trigger('whenKeyPressed', c);
                     }
                 }.bind(this));
                 this.root.addEventListener('keyup', function (e) {
@@ -622,7 +650,6 @@ var P;
                     }
                 }.bind(this));
                 this.promptButton.addEventListener(P.config.hasTouchEvents ? 'touchstart' : 'mousedown', this.submitPrompt.bind(this));
-                this.initRuntime();
             }
             // TODO: move to Scratch2Stage, it's not used in Scratch3Stage
             watcherStart(id, t, e) {
@@ -654,8 +681,9 @@ var P;
                 delete this.dragging[id];
             }
             destroy() {
-                this.stopAll();
-                this.pause();
+                this.runtime.stopAll();
+                this.runtime.pause();
+                this.stopAllSounds();
                 if (this.onTouchStart)
                     document.removeEventListener('touchstart', this.onTouchStart);
                 if (this.onTouchMove)
@@ -755,12 +783,12 @@ var P;
                             c.mouseDown();
                         }
                         else {
-                            this.triggerFor(c, 'whenClicked');
+                            this.runtime.triggerFor(c, 'whenClicked');
                         }
                         return;
                     }
                 }
-                this.triggerFor(this, 'whenClicked');
+                this.runtime.triggerFor(this, 'whenClicked');
             }
             releaseMouse() {
                 this.mousePressed = false;
@@ -855,12 +883,6 @@ var P;
                 renderer.drawImage(this.penCanvas, 0, 0);
                 this.drawChildren(renderer, skip);
             }
-            // Determines a broadcast ID from it's name.
-            // Name is simply what the broadcast block has for an input.
-            getBroadcastId(name) {
-                // Scratch 2 simply uses names as IDs.
-                return name;
-            }
             // Implementing Scratch blocks
             stopAllSounds() {
                 for (var children = this.children, i = children.length; i--;) {
@@ -893,9 +915,17 @@ var P;
                 this.penRenderer.reset(this.maxZoom);
                 this.penRenderer.ctx.lineCap = 'round';
             }
+            rotatedBounds() {
+                return {
+                    top: 0,
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                };
+            }
         }
         core.Stage = Stage;
-        // A sprite object.
+        // A sprite object
         class Sprite extends Base {
             constructor(stage) {
                 super();
@@ -930,7 +960,7 @@ var P;
             }
             mouseUp() {
                 if (this.isDragging && this.scratchX === this.dragStartX && this.scratchY === this.dragStartY) {
-                    this.stage.triggerFor(this, 'whenClicked');
+                    this.stage.runtime.triggerFor(this, 'whenClicked');
                 }
                 this.isDragging = false;
             }
@@ -1300,7 +1330,7 @@ var P;
                     this.updateBubble();
             }
             // Says some text.
-            say(text, thinking) {
+            say(text, thinking = false) {
                 text = text.toString();
                 if (!text) {
                     this.saying = false;
@@ -1448,7 +1478,7 @@ var P;
             }
         }
         core.Sprite = Sprite;
-        // A costume (either bitmap or SVG)
+        // A costume
         class Costume {
             constructor(costumeData) {
                 this.index = costumeData.index;
@@ -1516,6 +1546,14 @@ var P;
             }
         }
         core.Procedure = Procedure;
+        function isSprite(base) {
+            return base.isSprite;
+        }
+        core.isSprite = isSprite;
+        function isStage(base) {
+            return base.isStage;
+        }
+        core.isStage = isStage;
     })(core = P.core || (P.core = {}));
 })(P || (P = {}));
 // IO helpers and hooks
@@ -1782,7 +1820,7 @@ var P;
                         value = this.timeAndDate(this.param);
                         break;
                     case 'timer':
-                        value = Math.round((this.stage.rightNow() - this.stage.timerStart) / 100) / 10;
+                        value = Math.round((this.stage.runtime.rightNow() - this.stage.timerStart) / 100) / 10;
                         break;
                     case 'volume':
                         value = this.target.volume * 100;
@@ -1899,6 +1937,10 @@ var P;
         }
         sb2.Scratch2VariableWatcher = Scratch2VariableWatcher;
         class Scratch2Stage extends P.core.Stage {
+            getBroadcastId(name) {
+                // Scratch 2 uses names as IDs.
+                return name;
+            }
         }
         sb2.Scratch2Stage = Scratch2Stage;
         class Scratch2Sprite extends P.core.Sprite {
@@ -2470,7 +2512,7 @@ var P;
                         return 'self.mouseY';
                     }
                     else if (e[0] === 'timer') {
-                        return '((self.now - self.timerStart) / 1000)';
+                        return '((runtime.now - runtime.timerStart) / 1000)';
                     }
                     else if (e[0] === 'distanceTo:') {
                         return 'S.distanceTo(' + val(e[1]) + ')';
@@ -2572,13 +2614,13 @@ var P;
                 };
                 var beatHead = function (dur) {
                     source += 'save();\n';
-                    source += 'R.start = self.now;\n';
+                    source += 'R.start = runtime.now;\n';
                     source += 'R.duration = ' + num(dur) + ' * 60 / self.tempoBPM;\n';
                     source += 'var first = true;\n';
                 };
                 var beatTail = function () {
                     var id = label();
-                    source += 'if (self.now - R.start < R.duration * 1000 || first) {\n';
+                    source += 'if (runtime.now - R.start < R.duration * 1000 || first) {\n';
                     source += '  var first;\n';
                     forceQueue(id);
                     source += '}\n';
@@ -2586,11 +2628,11 @@ var P;
                 };
                 var wait = function (dur) {
                     source += 'save();\n';
-                    source += 'R.start = self.now;\n';
+                    source += 'R.start = runtime.now;\n';
                     source += 'R.duration = ' + dur + ';\n';
                     source += 'var first = true;\n';
                     var id = label();
-                    source += 'if (self.now - R.start < R.duration * 1000 || first) {\n';
+                    source += 'if (runtime.now - R.start < R.duration * 1000 || first) {\n';
                     source += '  var first;\n';
                     forceQueue(id);
                     source += '}\n';
@@ -2706,10 +2748,10 @@ var P;
                     else if (block[0] === 'say:duration:elapsed:from:') {
                         source += 'save();\n';
                         source += 'R.id = S.say(' + val(block[1]) + ', false);\n';
-                        source += 'R.start = self.now;\n';
+                        source += 'R.start = runtime.now;\n';
                         source += 'R.duration = ' + num(block[2]) + ';\n';
                         var id = label();
-                        source += 'if (self.now - R.start < R.duration * 1000) {\n';
+                        source += 'if (runtime.now - R.start < R.duration * 1000) {\n';
                         forceQueue(id);
                         source += '}\n';
                         source += 'if (S.sayId === R.id) {\n';
@@ -2723,10 +2765,10 @@ var P;
                     else if (block[0] === 'think:duration:elapsed:from:') {
                         source += 'save();\n';
                         source += 'R.id = S.say(' + val(block[1]) + ', true);\n';
-                        source += 'R.start = self.now;\n';
+                        source += 'R.start = runtime.now;\n';
                         source += 'R.duration = ' + num(block[2]) + ';\n';
                         var id = label();
-                        source += 'if (self.now - R.start < R.duration * 1000) {\n';
+                        source += 'if (runtime.now - R.start < R.duration * 1000) {\n';
                         forceQueue(id);
                         source += '}\n';
                         source += 'if (S.sayId === R.id) {\n';
@@ -3006,14 +3048,14 @@ var P;
                     }
                     else if (block[0] === 'glideSecs:toX:y:elapsed:from:') {
                         source += 'save();\n';
-                        source += 'R.start = self.now;\n';
+                        source += 'R.start = runtime.now;\n';
                         source += 'R.duration = ' + num(block[1]) + ';\n';
                         source += 'R.baseX = S.scratchX;\n';
                         source += 'R.baseY = S.scratchY;\n';
                         source += 'R.deltaX = ' + num(block[2]) + ' - S.scratchX;\n';
                         source += 'R.deltaY = ' + num(block[3]) + ' - S.scratchY;\n';
                         var id = label();
-                        source += 'var f = (self.now - R.start) / (R.duration * 1000);\n';
+                        source += 'var f = (runtime.now - R.start) / (R.duration * 1000);\n';
                         source += 'if (f > 1) f = 1;\n';
                         source += 'S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
                         source += 'if (f < 1) {\n';
@@ -3022,22 +3064,22 @@ var P;
                         source += 'restore();\n';
                     }
                     else if (block[0] === 'stopAll') {
-                        source += 'self.stopAll();\n';
+                        source += 'runtime.stopAll();\n';
                         source += 'return;\n';
                     }
                     else if (block[0] === 'stopScripts') {
                         source += 'switch (' + val(block[1]) + ') {\n';
                         source += '  case "all":\n';
-                        source += '    self.stopAll();\n';
+                        source += '    runtime.stopAll();\n';
                         source += '    return;\n';
                         source += '  case "this script":\n';
                         source += '    endCall();\n';
                         source += '    return;\n';
                         source += '  case "other scripts in sprite":\n';
                         source += '  case "other scripts in stage":\n';
-                        source += '    for (var i = 0; i < self.queue.length; i++) {\n';
-                        source += '      if (i !== THREAD && self.queue[i] && self.queue[i].sprite === S) {\n';
-                        source += '        self.queue[i] = undefined;\n';
+                        source += '    for (var i = 0; i < runtime.queue.length; i++) {\n';
+                        source += '      if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
+                        source += '        runtime.queue[i] = undefined;\n';
                         source += '      }\n';
                         source += '    }\n';
                         source += '    break;\n';
@@ -3059,9 +3101,9 @@ var P;
                         source += '  S.remove();\n';
                         source += '  var i = self.children.indexOf(S);\n';
                         source += '  if (i !== -1) self.children.splice(i, 1);\n';
-                        source += '  for (var i = 0; i < self.queue.length; i++) {\n';
-                        source += '    if (self.queue[i] && self.queue[i].sprite === S) {\n';
-                        source += '      self.queue[i] = undefined;\n';
+                        source += '  for (var i = 0; i < runtime.queue.length; i++) {\n';
+                        source += '    if (runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
+                        source += '      runtime.queue[i] = undefined;\n';
                         source += '    }\n';
                         source += '  }\n';
                         source += '  return;\n';
@@ -3080,7 +3122,7 @@ var P;
                         source += '}\n';
                     }
                     else if (block[0] === 'timerReset') {
-                        source += 'self.timerStart = self.now;\n';
+                        source += 'runtime.timerStart = runtime.now;\n';
                     }
                     else {
                         warn('Undefined command: ' + block[0]);
@@ -3181,11 +3223,13 @@ var P;
 var P;
 (function (P) {
     var runtime;
-    (function (runtime) {
+    (function (runtime_1) {
         // The runtime is really weird and hard to understand.
         // The upside: it's fast as hell.
         // Global variables expected by scripts at runtime:
-        // The stage object
+        // Current runtime
+        var runtime;
+        // Current stage
         var self;
         // Current sprite or stage
         var S;
@@ -3317,12 +3361,18 @@ var P;
             return [h, s * 100, l * 100];
         };
         var clone = function (name) {
-            var parent = name === '_myself_' ? S : self.getObject(name);
-            var c = parent.clone();
+            const parent = name === '_myself_' ? S : self.getObject(name);
+            if (!parent) {
+                throw new Error('No parent!');
+            }
+            if (!P.core.isSprite(parent)) {
+                throw new Error('Cannot clone non-sprite object');
+            }
+            const c = parent.clone();
             self.children.splice(self.children.indexOf(parent), 0, c);
-            self.triggerFor(c, 'whenCloned');
+            runtime.triggerFor(c, 'whenCloned');
         };
-        var epoch = Date.UTC(2000, 0, 1);
+        const epoch = Date.UTC(2000, 0, 1);
         var getVars = function (name) {
             return self.vars[name] !== undefined ? self.vars : S.vars;
         };
@@ -3443,7 +3493,7 @@ var P;
             var o = self.getObject(objName);
             if (!o)
                 return 0;
-            if (o.isSprite) {
+            if (P.core.isSprite(o)) {
                 switch (attr) {
                     case 'x position': return o.scratchX;
                     case 'y position': return o.scratchY;
@@ -3468,6 +3518,7 @@ var P;
             }
             return 0;
         };
+        // TODO: configurable volume
         var VOLUME = 0.3;
         var audioContext = P.audio.context;
         if (audioContext) {
@@ -3516,7 +3567,7 @@ var P;
                             gain.linearRampToValueAtTime(0, time + span.decayEnd);
                         }
                         else {
-                            gain.linearRampToValueAtTime(1 - (duration - holdEnd) / span.decayTime, time + duration);
+                            gain.linearRampToValueAtTime(1 - (duration - span.holdEnd) / span.decayTime, time + duration);
                         }
                     }
                     else {
@@ -3582,7 +3633,7 @@ var P;
                         }
                     }
                     if (recursive) {
-                        self.queue[THREAD] = {
+                        runtime.queue[THREAD] = {
                             sprite: S,
                             base: BASE,
                             fn: procedure.fn,
@@ -3609,17 +3660,17 @@ var P;
             }
         };
         var sceneChange = function () {
-            return self.trigger('whenSceneStarts', self.costumes[self.currentCostumeIndex].name);
+            return runtime.trigger('whenSceneStarts', self.costumes[self.currentCostumeIndex].name);
         };
         function backdropChange() {
-            return self.trigger('whenBackdropChanges', self.costumes[self.currentCostumeIndex].name);
+            return runtime.trigger('whenBackdropChanges', self.costumes[self.currentCostumeIndex].name);
         }
         var broadcast = function (name) {
-            return self.trigger('whenIReceive', self.getBroadcastId(name));
+            return runtime.trigger('whenIReceive', self.getBroadcastId(name));
         };
         var running = function (bases) {
-            for (var j = 0; j < self.queue.length; j++) {
-                if (self.queue[j] && bases.indexOf(self.queue[j].base) !== -1)
+            for (var j = 0; j < runtime.queue.length; j++) {
+                if (runtime.queue[j] && bases.indexOf(runtime.queue[j].base) !== -1)
                     return true;
             }
             return false;
@@ -3633,7 +3684,7 @@ var P;
             }
         };
         var forceQueue = function (id) {
-            self.queue[THREAD] = {
+            runtime.queue[THREAD] = {
                 sprite: S,
                 base: BASE,
                 fn: S.fns[id],
@@ -3641,162 +3692,188 @@ var P;
             };
         };
         // Extend the stage with new methods related to running the project.
-        P.core.Stage.prototype.initRuntime = function () {
-            this.queue = [];
-            this.onError = this.onError.bind(this);
-        };
-        P.core.Stage.prototype.startThread = function (sprite, base) {
-            var thread = {
-                sprite: sprite,
-                base: base,
-                fn: base,
-                calls: [{ args: [], stack: [{}] }]
-            };
-            for (var i = 0; i < this.queue.length; i++) {
-                var q = this.queue[i];
-                if (q && q.sprite === sprite && q.base === base) {
-                    this.queue[i] = thread;
-                    return;
-                }
+        class Thread {
+            constructor(sprite, base, fn, calls) {
+                this.sprite = sprite;
+                this.base = base;
+                this.fn = fn;
+                this.calls = calls;
             }
-            this.queue.push(thread);
-        };
-        P.core.Stage.prototype.triggerFor = function (sprite, event, arg) {
-            var threads;
-            if (event === 'whenClicked') {
-                threads = sprite.listeners.whenClicked;
+        }
+        class Runtime {
+            constructor(stage) {
+                this.stage = stage;
+                this.queue = [];
+                this.isRunning = false;
+                this.timerStart = 0;
+                this.baseTime = 0;
+                this.baseNow = 0;
+                this.now = 0;
+                this.isTurbo = false;
+                this.onError = this.onError.bind(this);
             }
-            else if (event === 'whenCloned') {
-                threads = sprite.listeners.whenCloned;
-            }
-            else if (event === 'whenGreenFlag') {
-                threads = sprite.listeners.whenGreenFlag;
-            }
-            else if (event === 'whenIReceive') {
-                arg = '' + arg;
-                threads = sprite.listeners.whenIReceive[arg] || sprite.listeners.whenIReceive[arg.toLowerCase()];
-            }
-            else if (event === 'whenKeyPressed') {
-                threads = sprite.listeners.whenKeyPressed[arg];
-            }
-            else if (event === 'whenSceneStarts') {
-                threads = sprite.listeners.whenSceneStarts[('' + arg).toLowerCase()];
-            }
-            else if (event === 'whenBackdropChanges') {
-                threads = sprite.listeners.whenBackdropChanges['' + arg];
-            }
-            else {
-                console.warn('Unknown trigger event', event);
-            }
-            if (threads) {
-                for (var i = 0; i < threads.length; i++) {
-                    this.startThread(sprite, threads[i]);
-                }
-            }
-            return threads || [];
-        };
-        P.core.Stage.prototype.trigger = function (event, arg) {
-            var threads = [];
-            for (var i = this.children.length; i--;) {
-                threads = threads.concat(this.triggerFor(this.children[i], event, arg));
-            }
-            return threads.concat(this.triggerFor(this, event, arg));
-        };
-        P.core.Stage.prototype.triggerGreenFlag = function () {
-            this.timerStart = this.rightNow();
-            this.trigger('whenGreenFlag');
-        };
-        P.core.Stage.prototype.start = function () {
-            this.isRunning = true;
-            if (this.interval)
-                return;
-            addEventListener('error', this.onError);
-            this.baseTime = Date.now();
-            this.interval = setInterval(this.step.bind(this), 1000 / P.config.framerate);
-            if (audioContext)
-                audioContext.resume();
-        };
-        P.core.Stage.prototype.pause = function () {
-            if (this.interval) {
-                this.baseNow = this.rightNow();
-                clearInterval(this.interval);
-                delete this.interval;
-                removeEventListener('error', this.onError);
-                if (audioContext)
-                    audioContext.suspend();
-            }
-            this.isRunning = false;
-        };
-        P.core.Stage.prototype.stopAll = function () {
-            this.hidePrompt = false;
-            this.prompter.style.display = 'none';
-            this.promptId = this.nextPromptId = 0;
-            this.queue.length = 0;
-            this.resetFilters();
-            this.stopSounds();
-            for (var i = 0; i < this.children.length; i++) {
-                var c = this.children[i];
-                if (c.isClone) {
-                    c.remove();
-                    this.children.splice(i, 1);
-                    i -= 1;
-                }
-                else {
-                    c.resetFilters();
-                    if (c.saying)
-                        c.say('');
-                    c.stopSounds();
-                }
-            }
-        };
-        P.core.Stage.prototype.rightNow = function () {
-            return this.baseNow + Date.now() - this.baseTime;
-        };
-        P.core.Stage.prototype.step = function () {
-            self = this;
-            VISUAL = false;
-            var start = Date.now();
-            do {
-                var queue = this.queue;
-                this.now = this.rightNow();
-                for (THREAD = 0; THREAD < queue.length; THREAD++) {
-                    if (queue[THREAD]) {
-                        S = queue[THREAD].sprite;
-                        IMMEDIATE = queue[THREAD].fn;
-                        BASE = queue[THREAD].base;
-                        CALLS = queue[THREAD].calls;
-                        C = CALLS.pop();
-                        STACK = C.stack;
-                        R = STACK.pop();
-                        queue[THREAD] = undefined;
-                        WARP = 0;
-                        while (IMMEDIATE) {
-                            var fn = IMMEDIATE;
-                            IMMEDIATE = null;
-                            // if (P.config.debug) {
-                            //   console.log('running', fn);
-                            // }
-                            fn();
-                        }
-                        STACK.push(R);
-                        CALLS.push(C);
+            startThread(sprite, base) {
+                const thread = new Thread(sprite, base, base, [{ args: [], stack: [{}] }]);
+                for (let i = 0; i < this.queue.length; i++) {
+                    const q = this.queue[i];
+                    if (q && q.sprite === sprite && q.base === base) {
+                        this.queue[i] = thread;
+                        return;
                     }
                 }
-                for (var i = queue.length; i--;) {
-                    if (!queue[i])
-                        queue.splice(i, 1);
+                this.queue.push(thread);
+            }
+            triggerFor(sprite, event, arg) {
+                var threads;
+                switch (event) {
+                    case 'whenClicked':
+                        threads = sprite.listeners.whenClicked;
+                        break;
+                    case 'whenCloned':
+                        threads = sprite.listeners.whenCloned;
+                        break;
+                    case 'whenGreenFlag':
+                        threads = sprite.listeners.whenGreenFlag;
+                        break;
+                    case 'whenKeyPressed':
+                        threads = sprite.listeners.whenKeyPressed[arg];
+                        break;
+                    case 'whenSceneStarts':
+                        threads = sprite.listeners.whenSceneStarts[('' + arg).toLowerCase()];
+                        break;
+                    case 'whenBackdropChanges':
+                        threads = sprite.listeners.whenBackdropChanges['' + arg];
+                        break;
+                    case 'whenIReceive':
+                        arg = '' + arg;
+                        threads = sprite.listeners.whenIReceive[arg] || sprite.listeners.whenIReceive[arg.toLowerCase()];
+                        break;
+                    default: throw new Error('Unknown trigger event: ' + event);
                 }
-            } while ((self.isTurbo || !VISUAL) && Date.now() - start < 1000 / P.config.framerate && queue.length);
-            this.draw();
-            S = null;
-        };
-        P.core.Stage.prototype.onError = function (e) {
-            this.handleError(e.error);
-            clearInterval(this.interval);
-        };
-        P.core.Stage.prototype.handleError = function (e) {
-            console.error(e);
-        };
+                if (threads) {
+                    for (let i = 0; i < threads.length; i++) {
+                        this.startThread(sprite, threads[i]);
+                    }
+                }
+                return threads || [];
+            }
+            trigger(event, arg) {
+                let threads = [];
+                for (let i = this.stage.children.length; i--;) {
+                    threads = threads.concat(this.triggerFor(this.stage.children[i], event, arg));
+                }
+                return threads.concat(this.triggerFor(this.stage, event, arg));
+            }
+            ;
+            triggerGreenFlag() {
+                this.timerStart = this.rightNow();
+                this.trigger('whenGreenFlag');
+            }
+            ;
+            start() {
+                this.isRunning = true;
+                if (this.interval)
+                    return;
+                window.addEventListener('error', this.onError);
+                this.baseTime = Date.now();
+                this.interval = setInterval(this.step.bind(this), 1000 / P.config.framerate);
+                if (audioContext)
+                    audioContext.resume();
+            }
+            ;
+            pause() {
+                if (this.interval) {
+                    this.baseNow = this.rightNow();
+                    clearInterval(this.interval);
+                    delete this.interval;
+                    window.removeEventListener('error', this.onError);
+                    if (audioContext)
+                        audioContext.suspend();
+                }
+                this.isRunning = false;
+            }
+            ;
+            stopAll() {
+                this.stage.hidePrompt = false;
+                this.stage.prompter.style.display = 'none';
+                this.stage.promptId = this.stage.nextPromptId = 0;
+                this.queue.length = 0;
+                this.stage.resetFilters();
+                this.stage.stopSounds();
+                for (var i = 0; i < this.stage.children.length; i++) {
+                    var c = this.stage.children[i];
+                    if (c.isClone) {
+                        c.remove();
+                        this.stage.children.splice(i, 1);
+                        i -= 1;
+                    }
+                    else {
+                        c.resetFilters();
+                        if (c.saying && P.core.isSprite(c))
+                            c.say('');
+                        c.stopSounds();
+                    }
+                }
+            }
+            ;
+            rightNow() {
+                return this.baseNow + Date.now() - this.baseTime;
+            }
+            ;
+            step() {
+                // Reset runtime variables
+                self = this.stage;
+                runtime = this;
+                VISUAL = false;
+                const start = Date.now();
+                do {
+                    var queue = this.queue;
+                    this.now = this.rightNow();
+                    for (THREAD = 0; THREAD < queue.length; THREAD++) {
+                        if (queue[THREAD]) {
+                            // Load thread data
+                            S = queue[THREAD].sprite;
+                            IMMEDIATE = queue[THREAD].fn;
+                            BASE = queue[THREAD].base;
+                            CALLS = queue[THREAD].calls;
+                            C = CALLS.pop();
+                            STACK = C.stack;
+                            R = STACK.pop();
+                            queue[THREAD] = undefined;
+                            WARP = 0;
+                            while (IMMEDIATE) {
+                                const fn = IMMEDIATE;
+                                IMMEDIATE = null;
+                                // if (P.config.debug) {
+                                //   console.log('running', S.name, fn);
+                                // }
+                                fn();
+                            }
+                            STACK.push(R);
+                            CALLS.push(C);
+                        }
+                    }
+                    // Remove empty threads in the queue
+                    for (let i = queue.length; i--;) {
+                        if (!queue[i])
+                            queue.splice(i, 1);
+                    }
+                } while ((this.isTurbo || !VISUAL) && Date.now() - start < 1000 / P.config.framerate && queue.length);
+                this.stage.draw();
+                S = null;
+            }
+            ;
+            onError(e) {
+                this.handleError(e.error);
+                clearInterval(this.interval);
+            }
+            ;
+            handleError(e) {
+                console.error(e);
+            }
+            ;
+        }
+        runtime_1.Runtime = Runtime;
         /*
           copy(JSON.stringify(instruments.map(function(g) {
             return g.map(function(r) {
@@ -3978,11 +4055,12 @@ var P;
         function scopedEval(source) {
             return eval(source);
         }
-        runtime.scopedEval = scopedEval;
+        runtime_1.scopedEval = scopedEval;
     })(runtime = P.runtime || (P.runtime = {}));
 })(P || (P = {}));
 /// <reference path="core.ts" />
 /// <reference path="JSZip.d.ts" />
+// Scratch 3 project loader and runtime objects
 var P;
 (function (P) {
     var sb3;
@@ -3993,6 +4071,11 @@ var P;
         // Implements a Scratch 3 Stage.
         // Adds Scratch 3 specific things such as broadcastReferences
         class Scratch3Stage extends P.core.Stage {
+            constructor() {
+                super(...arguments);
+                // Scratch 3 uses unique IDs for broadcasts and the visual name for different things.
+                this.broadcastNames = {};
+            }
             addBroadcast(id, name) {
                 this.broadcastNames[name] = id;
             }
@@ -4742,7 +4825,7 @@ var P;
                     return '-1';
                 },
                 sensing_timer(block) {
-                    return '((self.now - self.timerStart) / 1000)';
+                    return '((runtime.now - runtime.timerStart) / 1000)';
                 },
                 sensing_of(block) {
                     const property = block.fields.PROPERTY[0];
@@ -4937,7 +5020,7 @@ var P;
                     const to = block.inputs.TO;
                     visualCheck('drawing');
                     source += 'save();\n';
-                    source += 'R.start = self.now;\n';
+                    source += 'R.start = runtime.now;\n';
                     source += 'R.duration = ' + compileExpression(secs) + ';\n';
                     source += 'R.baseX = S.scratchX;\n';
                     source += 'R.baseY = S.scratchY;\n';
@@ -4946,7 +5029,7 @@ var P;
                     source += 'R.deltaX = to.x - S.scratchX;\n';
                     source += 'R.deltaY = to.y - S.scratchY;\n';
                     const id = label();
-                    source += 'var f = (self.now - R.start) / (R.duration * 1000);\n';
+                    source += 'var f = (runtime.now - R.start) / (R.duration * 1000);\n';
                     source += 'if (f > 1) f = 1;\n';
                     source += 'S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
                     source += 'if (f < 1) {\n';
@@ -4961,14 +5044,14 @@ var P;
                     const y = block.inputs.Y;
                     visualCheck('drawing');
                     source += 'save();\n';
-                    source += 'R.start = self.now;\n';
+                    source += 'R.start = runtime.now;\n';
                     source += 'R.duration = ' + compileExpression(secs) + ';\n';
                     source += 'R.baseX = S.scratchX;\n';
                     source += 'R.baseY = S.scratchY;\n';
                     source += 'R.deltaX = ' + compileExpression(x) + ' - S.scratchX;\n';
                     source += 'R.deltaY = ' + compileExpression(y) + ' - S.scratchY;\n';
                     const id = label();
-                    source += 'var f = (self.now - R.start) / (R.duration * 1000);\n';
+                    source += 'var f = (runtime.now - R.start) / (R.duration * 1000);\n';
                     source += 'if (f > 1) f = 1;\n';
                     source += 'S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
                     source += 'if (f < 1) {\n';
@@ -5021,10 +5104,10 @@ var P;
                     const secs = block.inputs.SECS;
                     source += 'save();\n';
                     source += 'R.id = S.say(' + compileExpression(message) + ', false);\n';
-                    source += 'R.start = self.now;\n';
+                    source += 'R.start = runtime.now;\n';
                     source += 'R.duration = ' + compileExpression(secs, 'number') + ';\n';
                     const id = label();
-                    source += 'if (self.now - R.start < R.duration * 1000) {\n';
+                    source += 'if (runtime.now - R.start < R.duration * 1000) {\n';
                     forceQueue(id);
                     source += '}\n';
                     source += 'if (S.sayId === R.id) {\n';
@@ -5043,10 +5126,10 @@ var P;
                     const secs = block.inputs.SECS;
                     source += 'save();\n';
                     source += 'R.id = S.say(' + compileExpression(message) + ', true);\n';
-                    source += 'R.start = self.now;\n';
+                    source += 'R.start = runtime.now;\n';
                     source += 'R.duration = ' + compileExpression(secs, 'number') + ';\n';
                     const id = label();
-                    source += 'if (self.now - R.start < R.duration * 1000) {\n';
+                    source += 'if (runtime.now - R.start < R.duration * 1000) {\n';
                     forceQueue(id);
                     source += '}\n';
                     source += 'if (S.sayId === R.id) {\n';
@@ -5213,11 +5296,11 @@ var P;
                 control_wait(block) {
                     const duration = block.inputs.DURATION;
                     source += 'save();\n';
-                    source += 'R.start = self.now;\n';
+                    source += 'R.start = runtime.now;\n';
                     source += 'R.duration = ' + compileExpression(duration) + ';\n';
                     source += 'var first = true;\n';
                     const id = label();
-                    source += 'if (self.now - R.start < R.duration * 1000 || first) {\n';
+                    source += 'if (runtime.now - R.start < R.duration * 1000 || first) {\n';
                     source += '  var first;\n';
                     forceQueue(id);
                     source += '}\n';
@@ -5290,16 +5373,16 @@ var P;
                     const option = block.fields.STOP_OPTION[0];
                     source += 'switch (' + compileExpression(option) + ') {\n';
                     source += '  case "all":\n';
-                    source += '    self.stopAll();\n';
+                    source += '    runtime.stopAll();\n';
                     source += '    return;\n';
                     source += '  case "this script":\n';
                     source += '    endCall();\n';
                     source += '    return;\n';
                     source += '  case "other scripts in sprite":\n';
                     source += '  case "other scripts in stage":\n';
-                    source += '    for (var i = 0; i < self.queue.length; i++) {\n';
-                    source += '      if (i !== THREAD && self.queue[i] && self.queue[i].sprite === S) {\n';
-                    source += '        self.queue[i] = undefined;\n';
+                    source += '    for (var i = 0; i < runtime.queue.length; i++) {\n';
+                    source += '      if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
+                    source += '        runtime.queue[i] = undefined;\n';
                     source += '      }\n';
                     source += '    }\n';
                     source += '    break;\n';
@@ -5314,9 +5397,9 @@ var P;
                     source += '  S.remove();\n';
                     source += '  var i = self.children.indexOf(S);\n';
                     source += '  if (i !== -1) self.children.splice(i, 1);\n';
-                    source += '  for (var i = 0; i < self.queue.length; i++) {\n';
-                    source += '    if (self.queue[i] && self.queue[i].sprite === S) {\n';
-                    source += '      self.queue[i] = undefined;\n';
+                    source += '  for (var i = 0; i < runtime.queue.length; i++) {\n';
+                    source += '    if (runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
+                    source += '      runtime.queue[i] = undefined;\n';
                     source += '    }\n';
                     source += '  }\n';
                     source += '  return;\n';
@@ -5349,7 +5432,7 @@ var P;
                     }
                 },
                 sensing_resettimer(blocK) {
-                    source += 'self.timerStart = self.now;\n';
+                    source += 'runtime.timerStart = runtime.now;\n';
                 },
                 // Data
                 data_setvariableto(block) {
@@ -5697,11 +5780,11 @@ var P;
             // `duration` is a valid compiled JS expression.
             function wait(duration) {
                 source += 'save();\n';
-                source += 'R.start = self.now;\n';
+                source += 'R.start = runtime.now;\n';
                 source += 'R.duration = ' + duration + ';\n';
                 source += 'var first = true;\n';
                 const id = label();
-                source += 'if (self.now - R.start < R.duration * 1000 || first) {\n';
+                source += 'if (runtime.now - R.start < R.duration * 1000 || first) {\n';
                 source += '  var first;\n';
                 forceQueue(id);
                 source += '}\n';

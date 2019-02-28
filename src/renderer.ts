@@ -21,21 +21,21 @@ namespace P.renderer {
       this.ctx.drawImage(image, x, y);
     }
 
-    drawChild(c) {
+    drawChild(c: P.core.Base) {
       var costume = c.costumes[c.currentCostumeIndex];
       if (costume) {
         this.ctx.save();
 
         var z = c.stage.zoom * P.config.scale;
-        if (c.isSprite) {
+        if (P.core.isSprite(c)) {
           this.ctx.translate(((c.scratchX + 240) * z | 0) / z, ((180 - c.scratchY) * z | 0) / z);
           if (c.rotationStyle === 'normal') {
             this.ctx.rotate((c.direction - 90) * Math.PI / 180);
           } else if (c.rotationStyle === 'leftRight' && c.direction < 0) {
             this.ctx.scale(-1, 1);
           }
+          this.ctx.scale(c.scale, c.scale);
         }
-        this.ctx.scale(c.scale, c.scale);
         this.ctx.scale(costume.scale, costume.scale);
         if (c.isSprite) {
           this.ctx.translate(-costume.rotationCenterX, -costume.rotationCenterY);

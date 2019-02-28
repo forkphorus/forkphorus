@@ -9,10 +9,12 @@ namespace P.runtime {
   // The upside: it's fast as hell.
 
   // Global variables expected by scripts at runtime:
-  // The stage object
+  // Current runtime
+  var runtime: Runtime;
+  // Current stage
   var self: P.core.Stage;
   // Current sprite or stage
-  var S;
+  var S: P.core.Base;
   // Used for resuming state
   var R;
   // Stack of states (??)
@@ -31,7 +33,7 @@ namespace P.runtime {
   // The next function to run immediately after this one.
   var IMMEDIATE;
   // Has a "visual change" been made in this frame?
-  var VISUAL;
+  var VISUAL: boolean;
 
   // Converts a value to its boolean equivalent
   var bool = function(v) {
@@ -146,13 +148,19 @@ namespace P.runtime {
   };
 
   var clone = function(name) {
-    var parent = name === '_myself_' ? S : self.getObject(name);
-    var c = parent.clone();
+    const parent = name === '_myself_' ? S : self.getObject(name);
+    if (!parent) {
+      throw new Error('No parent!');
+    }
+    if (!P.core.isSprite(parent)) {
+      throw new Error('Cannot clone non-sprite object');
+    }
+    const c = parent.clone();
     self.children.splice(self.children.indexOf(parent), 0, c);
-    self.triggerFor(c, 'whenCloned');
+    runtime.triggerFor(c, 'whenCloned');
   };
 
-  var epoch = Date.UTC(2000, 0, 1);
+  const epoch = Date.UTC(2000, 0, 1);
 
   var getVars = function(name) {
     return self.vars[name] !== undefined ? self.vars : S.vars;
@@ -278,7 +286,7 @@ namespace P.runtime {
   var attribute = function(attr, objName) {
     var o = self.getObject(objName);
     if (!o) return 0;
-    if (o.isSprite) {
+    if (P.core.isSprite(o)) {
       switch (attr) {
         case 'x position': return o.scratchX;
         case 'y position': return o.scratchY;
@@ -303,6 +311,7 @@ namespace P.runtime {
     return 0;
   };
 
+  // TODO: configurable volume
   var VOLUME = 0.3;
 
   var audioContext = P.audio.context;
@@ -357,7 +366,7 @@ namespace P.runtime {
           if (span.decayEnd < duration) {
             gain.linearRampToValueAtTime(0, time + span.decayEnd);
           } else {
-            gain.linearRampToValueAtTime(1 - (duration - holdEnd) / span.decayTime, time + duration);
+            gain.linearRampToValueAtTime(1 - (duration - span.holdEnd) / span.decayTime, time + duration);
           }
         } else {
           gain.linearRampToValueAtTime(1, time + duration);
@@ -401,7 +410,7 @@ namespace P.runtime {
     R = STACK.pop();
   };
 
-  var call = function(procedure, id, values) {
+  var call = function(procedure: P.core.Procedure, id, values) {
     if (procedure) {
       STACK.push(R);
       CALLS.push(C);
@@ -426,7 +435,7 @@ namespace P.runtime {
           }
         }
         if (recursive) {
-          self.queue[THREAD] = {
+          runtime.queue[THREAD] = {
             sprite: S,
             base: BASE,
             fn: procedure.fn,
@@ -452,20 +461,20 @@ namespace P.runtime {
   };
 
   var sceneChange = function() {
-    return self.trigger('whenSceneStarts', self.costumes[self.currentCostumeIndex].name);
+    return runtime.trigger('whenSceneStarts', self.costumes[self.currentCostumeIndex].name);
   };
 
   function backdropChange() {
-    return self.trigger('whenBackdropChanges', self.costumes[self.currentCostumeIndex].name);
+    return runtime.trigger('whenBackdropChanges', self.costumes[self.currentCostumeIndex].name);
   }
 
   var broadcast = function(name) {
-    return self.trigger('whenIReceive', self.getBroadcastId(name));
+    return runtime.trigger('whenIReceive', self.getBroadcastId(name));
   };
 
   var running = function(bases) {
-    for (var j = 0; j < self.queue.length; j++) {
-      if (self.queue[j] && bases.indexOf(self.queue[j].base) !== -1) return true;
+    for (var j = 0; j < runtime.queue.length; j++) {
+      if (runtime.queue[j] && bases.indexOf(runtime.queue[j].base) !== -1) return true;
     }
     return false;
   };
@@ -479,7 +488,7 @@ namespace P.runtime {
   };
 
   var forceQueue = function(id) {
-    self.queue[THREAD] = {
+    runtime.queue[THREAD] = {
       sprite: S,
       base: BASE,
       fn: S.fns[id],
@@ -489,160 +498,182 @@ namespace P.runtime {
 
   // Extend the stage with new methods related to running the project.
 
-  P.core.Stage.prototype.initRuntime = function() {
-    this.queue = [];
-    this.onError = this.onError.bind(this);
-  };
+  class Thread {
+    constructor(
+      public sprite: P.core.Base,
+      public base: any,
+      public fn: any,
+      public calls: any,
+    ) {
 
-  P.core.Stage.prototype.startThread = function(sprite, base) {
-    var thread = {
-      sprite: sprite,
-      base: base,
-      fn: base,
-      calls: [{args: [], stack: [{}]}]
-    };
-    for (var i = 0; i < this.queue.length; i++) {
-      var q = this.queue[i];
-      if (q && q.sprite === sprite && q.base === base) {
-        this.queue[i] = thread;
-        return;
-      }
     }
-    this.queue.push(thread);
-  };
+  }
 
-  P.core.Stage.prototype.triggerFor = function(sprite, event, arg) {
-    var threads;
-    if (event === 'whenClicked') {
-      threads = sprite.listeners.whenClicked;
-    } else if (event === 'whenCloned') {
-      threads = sprite.listeners.whenCloned;
-    } else if (event === 'whenGreenFlag') {
-      threads = sprite.listeners.whenGreenFlag;
-    } else if (event === 'whenIReceive') {
-      arg = '' + arg;
-      threads = sprite.listeners.whenIReceive[arg] || sprite.listeners.whenIReceive[arg.toLowerCase()];
-    } else if (event === 'whenKeyPressed') {
-      threads = sprite.listeners.whenKeyPressed[arg];
-    } else if (event === 'whenSceneStarts') {
-      threads = sprite.listeners.whenSceneStarts[('' + arg).toLowerCase()];
-    } else if (event === 'whenBackdropChanges') {
-      threads = sprite.listeners.whenBackdropChanges['' + arg];
-    } else {
-      console.warn('Unknown trigger event', event);
+  export class Runtime {
+    public queue: (Thread | undefined)[] = [];
+    public isRunning: boolean = false;
+    public timerStart: number = 0;
+    public baseTime: number = 0;
+    public baseNow: number = 0;
+    public now: number = 0;
+    public interval: number;
+    public isTurbo: boolean = false;
+
+    constructor(public stage: P.core.Stage) {
+      this.onError = this.onError.bind(this);
     }
-    if (threads) {
-      for (var i = 0; i < threads.length; i++) {
-        this.startThread(sprite, threads[i]);
-      }
-    }
-    return threads || [];
-  };
 
-  P.core.Stage.prototype.trigger = function(event, arg) {
-    var threads = [];
-    for (var i = this.children.length; i--;) {
-      threads = threads.concat(this.triggerFor(this.children[i], event, arg));
-    }
-    return threads.concat(this.triggerFor(this, event, arg));
-  };
+    startThread(sprite, base) {
+      const thread = new Thread(sprite, base, base, [{args: [], stack: [{}]}]);
 
-  P.core.Stage.prototype.triggerGreenFlag = function() {
-    this.timerStart = this.rightNow();
-    this.trigger('whenGreenFlag');
-  };
-
-  P.core.Stage.prototype.start = function() {
-    this.isRunning = true;
-    if (this.interval) return;
-    addEventListener('error', this.onError);
-    this.baseTime = Date.now();
-    this.interval = setInterval(this.step.bind(this), 1000 / P.config.framerate);
-    if (audioContext) audioContext.resume();
-  };
-
-  P.core.Stage.prototype.pause = function() {
-    if (this.interval) {
-      this.baseNow = this.rightNow();
-      clearInterval(this.interval);
-      delete this.interval;
-      removeEventListener('error', this.onError);
-      if (audioContext) audioContext.suspend();
-    }
-    this.isRunning = false;
-  };
-
-  P.core.Stage.prototype.stopAll = function() {
-    this.hidePrompt = false;
-    this.prompter.style.display = 'none';
-    this.promptId = this.nextPromptId = 0;
-    this.queue.length = 0;
-    this.resetFilters();
-    this.stopSounds();
-    for (var i = 0; i < this.children.length; i++) {
-      var c = this.children[i];
-      if (c.isClone) {
-        c.remove();
-        this.children.splice(i, 1);
-        i -= 1;
-      } else {
-        c.resetFilters();
-        if (c.saying) c.say('');
-        c.stopSounds();
-      }
-    }
-  };
-
-  P.core.Stage.prototype.rightNow = function() {
-    return this.baseNow + Date.now() - this.baseTime;
-  };
-
-  P.core.Stage.prototype.step = function() {
-    self = this;
-    VISUAL = false;
-    var start = Date.now();
-    do {
-      var queue = this.queue;
-      this.now = this.rightNow();
-      for (THREAD = 0; THREAD < queue.length; THREAD++) {
-        if (queue[THREAD]) {
-          S = queue[THREAD].sprite;
-          IMMEDIATE = queue[THREAD].fn;
-          BASE = queue[THREAD].base;
-          CALLS = queue[THREAD].calls;
-          C = CALLS.pop();
-          STACK = C.stack;
-          R = STACK.pop();
-          queue[THREAD] = undefined;
-          WARP = 0;
-          while (IMMEDIATE) {
-            var fn = IMMEDIATE;
-            IMMEDIATE = null;
-            // if (P.config.debug) {
-            //   console.log('running', fn);
-            // }
-            fn();
-          }
-          STACK.push(R);
-          CALLS.push(C);
+      for (let i = 0; i < this.queue.length; i++) {
+        const q = this.queue[i];
+        if (q && q.sprite === sprite && q.base === base) {
+          this.queue[i] = thread;
+          return;
         }
       }
-      for (var i = queue.length; i--;) {
-        if (!queue[i]) queue.splice(i, 1);
+
+      this.queue.push(thread);
+    }
+
+    triggerFor(sprite: P.core.Base, event: string, arg?: any) {
+      var threads;
+      switch (event) {
+        case 'whenClicked': threads = sprite.listeners.whenClicked; break;
+        case 'whenCloned': threads = sprite.listeners.whenCloned; break;
+        case 'whenGreenFlag': threads = sprite.listeners.whenGreenFlag; break;
+        case 'whenKeyPressed': threads = sprite.listeners.whenKeyPressed[arg]; break;
+        case 'whenSceneStarts': threads = sprite.listeners.whenSceneStarts[('' + arg).toLowerCase()]; break;
+        case 'whenBackdropChanges': threads = sprite.listeners.whenBackdropChanges['' + arg]; break;
+        case 'whenIReceive':
+          arg = '' + arg;
+          threads = sprite.listeners.whenIReceive[arg] || sprite.listeners.whenIReceive[arg.toLowerCase()];
+          break;
+        default: throw new Error('Unknown trigger event: ' + event);
       }
-    } while ((self.isTurbo || !VISUAL) && Date.now() - start < 1000 / P.config.framerate && queue.length);
-    this.draw();
-    S = null;
-  };
+      if (threads) {
+        for (let i = 0; i < threads.length; i++) {
+          this.startThread(sprite, threads[i]);
+        }
+      }
+      return threads || [];
+    }
 
-  P.core.Stage.prototype.onError = function(e) {
-    this.handleError(e.error);
-    clearInterval(this.interval);
-  };
+    trigger(event: string, arg?: any) {
+      let threads = [];
+      for (let i = this.stage.children.length; i--;) {
+        threads = threads.concat(this.triggerFor(this.stage.children[i], event, arg));
+      }
+      return threads.concat(this.triggerFor(this.stage, event, arg));
+    };
 
-  P.core.Stage.prototype.handleError = function(e) {
-    console.error(e);
-  };
+    triggerGreenFlag() {
+      this.timerStart = this.rightNow();
+      this.trigger('whenGreenFlag');
+    };
+
+    start() {
+      this.isRunning = true;
+      if (this.interval) return;
+      window.addEventListener('error', this.onError);
+      this.baseTime = Date.now();
+      this.interval = setInterval(this.step.bind(this), 1000 / P.config.framerate);
+      if (audioContext) audioContext.resume();
+    };
+
+    pause() {
+      if (this.interval) {
+        this.baseNow = this.rightNow();
+        clearInterval(this.interval);
+        delete this.interval;
+        window.removeEventListener('error', this.onError);
+        if (audioContext) audioContext.suspend();
+      }
+      this.isRunning = false;
+    };
+
+    stopAll() {
+      this.stage.hidePrompt = false;
+      this.stage.prompter.style.display = 'none';
+      this.stage.promptId = this.stage.nextPromptId = 0;
+      this.queue.length = 0;
+      this.stage.resetFilters();
+      this.stage.stopSounds();
+      for (var i = 0; i < this.stage.children.length; i++) {
+        var c = this.stage.children[i];
+        if (c.isClone) {
+          c.remove();
+          this.stage.children.splice(i, 1);
+          i -= 1;
+        } else {
+          c.resetFilters();
+          if (c.saying && P.core.isSprite(c)) c.say('');
+          c.stopSounds();
+        }
+      }
+    };
+
+    rightNow() {
+      return this.baseNow + Date.now() - this.baseTime;
+    };
+
+    step() {
+      // Reset runtime variables
+      self = this.stage;
+      runtime = this;
+      VISUAL = false;
+
+      const start = Date.now();
+      do {
+        var queue = this.queue;
+        this.now = this.rightNow();
+        for (THREAD = 0; THREAD < queue.length; THREAD++) {
+          if (queue[THREAD]) {
+            // Load thread data
+            S = queue[THREAD].sprite;
+            IMMEDIATE = queue[THREAD].fn;
+            BASE = queue[THREAD].base;
+            CALLS = queue[THREAD].calls;
+            C = CALLS.pop();
+            STACK = C.stack;
+            R = STACK.pop();
+            queue[THREAD] = undefined;
+            WARP = 0;
+
+            while (IMMEDIATE) {
+              const fn = IMMEDIATE;
+              IMMEDIATE = null;
+              // if (P.config.debug) {
+              //   console.log('running', S.name, fn);
+              // }
+              fn();
+            }
+
+            STACK.push(R);
+            CALLS.push(C);
+          }
+        }
+
+        // Remove empty threads in the queue
+        for (let i = queue.length; i--;) {
+          if (!queue[i]) queue.splice(i, 1);
+        }
+      } while ((this.isTurbo || !VISUAL) && Date.now() - start < 1000 / P.config.framerate && queue.length);
+
+      this.stage.draw();
+      S = null;
+    };
+
+    onError(e) {
+      this.handleError(e.error);
+      clearInterval(this.interval);
+    };
+
+    handleError(e) {
+      console.error(e);
+    };
+  }
 
   /*
     copy(JSON.stringify(instruments.map(function(g) {

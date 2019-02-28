@@ -2,6 +2,7 @@
 /// <reference path="core.ts" />
 /// <reference path="JSZip.d.ts" />
 
+// Scratch 3 project loader and runtime objects
 namespace P.sb3 {
   // The path to remote assets.
   // Replace $path with the md5ext of the file
@@ -11,7 +12,7 @@ namespace P.sb3 {
   // Adds Scratch 3 specific things such as broadcastReferences
   export class Scratch3Stage extends P.core.Stage {
     // Scratch 3 uses unique IDs for broadcasts and the visual name for different things.
-    private broadcastNames: {[key: string]: string};
+    private broadcastNames: {[key: string]: string} = {};
 
     public sb3data: any;
 
@@ -852,7 +853,7 @@ namespace P.sb3.compiler {
       return '-1';
     },
     sensing_timer(block) {
-      return '((self.now - self.timerStart) / 1000)';
+      return '((runtime.now - runtime.timerStart) / 1000)';
     },
     sensing_of(block) {
       const property = block.fields.PROPERTY[0];
@@ -1056,7 +1057,7 @@ namespace P.sb3.compiler {
 
       visualCheck('drawing');
       source += 'save();\n';
-      source += 'R.start = self.now;\n';
+      source += 'R.start = runtime.now;\n';
       source += 'R.duration = ' + compileExpression(secs) + ';\n';
       source += 'R.baseX = S.scratchX;\n';
       source += 'R.baseY = S.scratchY;\n';
@@ -1065,7 +1066,7 @@ namespace P.sb3.compiler {
       source += 'R.deltaX = to.x - S.scratchX;\n';
       source += 'R.deltaY = to.y - S.scratchY;\n';
       const id = label();
-      source += 'var f = (self.now - R.start) / (R.duration * 1000);\n';
+      source += 'var f = (runtime.now - R.start) / (R.duration * 1000);\n';
       source += 'if (f > 1) f = 1;\n';
       source += 'S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
       source += 'if (f < 1) {\n';
@@ -1081,14 +1082,14 @@ namespace P.sb3.compiler {
 
       visualCheck('drawing');
       source += 'save();\n';
-      source += 'R.start = self.now;\n';
+      source += 'R.start = runtime.now;\n';
       source += 'R.duration = ' + compileExpression(secs) + ';\n';
       source += 'R.baseX = S.scratchX;\n';
       source += 'R.baseY = S.scratchY;\n';
       source += 'R.deltaX = ' + compileExpression(x) + ' - S.scratchX;\n';
       source += 'R.deltaY = ' + compileExpression(y) + ' - S.scratchY;\n';
       const id = label();
-      source += 'var f = (self.now - R.start) / (R.duration * 1000);\n';
+      source += 'var f = (runtime.now - R.start) / (R.duration * 1000);\n';
       source += 'if (f > 1) f = 1;\n';
       source += 'S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
       source += 'if (f < 1) {\n';
@@ -1142,10 +1143,10 @@ namespace P.sb3.compiler {
       const secs = block.inputs.SECS;
       source += 'save();\n';
       source += 'R.id = S.say(' + compileExpression(message) + ', false);\n';
-      source += 'R.start = self.now;\n';
+      source += 'R.start = runtime.now;\n';
       source += 'R.duration = ' + compileExpression(secs, 'number') + ';\n';
       const id = label();
-      source += 'if (self.now - R.start < R.duration * 1000) {\n';
+      source += 'if (runtime.now - R.start < R.duration * 1000) {\n';
       forceQueue(id);
       source += '}\n';
       source += 'if (S.sayId === R.id) {\n';
@@ -1164,10 +1165,10 @@ namespace P.sb3.compiler {
       const secs = block.inputs.SECS;
       source += 'save();\n';
       source += 'R.id = S.say(' + compileExpression(message) + ', true);\n';
-      source += 'R.start = self.now;\n';
+      source += 'R.start = runtime.now;\n';
       source += 'R.duration = ' + compileExpression(secs, 'number') + ';\n';
       const id = label();
-      source += 'if (self.now - R.start < R.duration * 1000) {\n';
+      source += 'if (runtime.now - R.start < R.duration * 1000) {\n';
       forceQueue(id);
       source += '}\n';
       source += 'if (S.sayId === R.id) {\n';
@@ -1334,11 +1335,11 @@ namespace P.sb3.compiler {
     control_wait(block) {
       const duration = block.inputs.DURATION;
       source += 'save();\n';
-      source += 'R.start = self.now;\n';
+      source += 'R.start = runtime.now;\n';
       source += 'R.duration = ' + compileExpression(duration) + ';\n';
       source += 'var first = true;\n';
       const id = label();
-      source += 'if (self.now - R.start < R.duration * 1000 || first) {\n';
+      source += 'if (runtime.now - R.start < R.duration * 1000 || first) {\n';
       source += '  var first;\n';
       forceQueue(id);
       source += '}\n';
@@ -1411,16 +1412,16 @@ namespace P.sb3.compiler {
       const option = block.fields.STOP_OPTION[0];
       source += 'switch (' + compileExpression(option) + ') {\n';
       source += '  case "all":\n';
-      source += '    self.stopAll();\n';
+      source += '    runtime.stopAll();\n';
       source += '    return;\n';
       source += '  case "this script":\n';
       source += '    endCall();\n';
       source += '    return;\n';
       source += '  case "other scripts in sprite":\n';
       source += '  case "other scripts in stage":\n';
-      source += '    for (var i = 0; i < self.queue.length; i++) {\n';
-      source += '      if (i !== THREAD && self.queue[i] && self.queue[i].sprite === S) {\n';
-      source += '        self.queue[i] = undefined;\n';
+      source += '    for (var i = 0; i < runtime.queue.length; i++) {\n';
+      source += '      if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
+      source += '        runtime.queue[i] = undefined;\n';
       source += '      }\n';
       source += '    }\n';
       source += '    break;\n';
@@ -1435,9 +1436,9 @@ namespace P.sb3.compiler {
       source += '  S.remove();\n';
       source += '  var i = self.children.indexOf(S);\n';
       source += '  if (i !== -1) self.children.splice(i, 1);\n';
-      source += '  for (var i = 0; i < self.queue.length; i++) {\n';
-      source += '    if (self.queue[i] && self.queue[i].sprite === S) {\n';
-      source += '      self.queue[i] = undefined;\n';
+      source += '  for (var i = 0; i < runtime.queue.length; i++) {\n';
+      source += '    if (runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
+      source += '      runtime.queue[i] = undefined;\n';
       source += '    }\n';
       source += '  }\n';
       source += '  return;\n';
@@ -1472,7 +1473,7 @@ namespace P.sb3.compiler {
       }
     },
     sensing_resettimer(blocK) {
-      source += 'self.timerStart = self.now;\n';
+      source += 'runtime.timerStart = runtime.now;\n';
     },
 
     // Data
@@ -1840,11 +1841,11 @@ namespace P.sb3.compiler {
   // `duration` is a valid compiled JS expression.
   function wait(duration) {
     source += 'save();\n';
-    source += 'R.start = self.now;\n';
+    source += 'R.start = runtime.now;\n';
     source += 'R.duration = ' + duration + ';\n';
     source += 'var first = true;\n';
     const id = label();
-    source += 'if (self.now - R.start < R.duration * 1000 || first) {\n';
+    source += 'if (runtime.now - R.start < R.duration * 1000 || first) {\n';
     source += '  var first;\n';
     forceQueue(id);
     source += '}\n';

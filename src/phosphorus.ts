@@ -26,5 +26,5 @@ interface ObjectMap<V> {
 }
 
 namespace P {
- 
+
 }

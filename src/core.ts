@@ -1,37 +1,68 @@
-/// <reference path="renderer.ts" />
 /// <reference path="config.ts" />
+/// <reference path="renderer.ts" />
 
 // Phosphorus Core
 // Has some base classes that implement most functions while leaving some to implementations. (see P.sb2 and P.sb3)
 namespace P.core {
-
   // Canvases used for various collision testing later on
   const collisionCanvas = document.createElement('canvas');
   const collisionRenderer = new P.renderer.CanvasRenderer(collisionCanvas);
   const secondaryCollisionCanvas = document.createElement('canvas');
   const secondaryCollisionRenderer = new P.renderer.CanvasRenderer(secondaryCollisionCanvas);
 
-  export class Base {
+  interface RotatedBounds {
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+  }
+
+  export abstract class Base {
+    // The parent stage.
     public stage: Stage;
+
+    // Is this object a clone of another?
     public isClone: boolean = false;
+    // Is this object a stage?
     public isStage: boolean = false;
+    // Is this object a sprite?
     public isSprite: boolean = false;
+
+    // Is this sprite visible?
     public visible: boolean = true;
+
+    // The sprite's X coordinate in Scratch space.
     public scratchX: number = 0;
+    // The sprite's X coordinate in Scratch space.
     public scratchY: number = 0;
+
+    // The name of the object.
     public name: string = '';
+    // The costumes of the object.
     public costumes: Costume[] = [];
+    // The index of the currently selected costume.
     public currentCostumeIndex: number = 0;
+    // The sounds of the objects.
     public sounds: Sound[] = [];
+    // Map of sound name to the Sound object. TODO: remove?
     public soundRefs: ObjectMap<Sound> = {};
+    // Current instrument
     public instrument: number = 0;
+    // Current volume, from 0-1
     public volume: number = 1;
-    public node: AudioNode;
+    // This object's audio node.
+    public node: GainNode;
+    // The rotation style of the object.
     public rotationStyle: 'normal' | 'leftRight' | 'none' = 'normal';
+    // Variables of the object.
     public vars: ObjectMap<any> = {};
+    // Variable watchers of the object.
     public watchers: ObjectMap<VariableWatcher> = {};
+    // Lists of the object.
     public lists: ObjectMap<Array<any>> = {};
+    // Is this object saying something?
     public saying: boolean = false;
+    // Procedures of the object.
     public procedures: ObjectMap<Procedure> = {};
     public listeners = {
       whenClicked: [],
@@ -91,20 +122,25 @@ namespace P.core {
       //   stage.allWatchers.push(watcher);
       // }
 
+      if (!watcher) {
+        // TODO: create watchers when it doesnt exist
+        return;
+      }
+
       watcher.setVisible(visible);
     }
 
     showNextCostume() {
       this.currentCostumeIndex = (this.currentCostumeIndex + 1) % this.costumes.length;
-      if (this.isStage) this.updateBackdrop();
-      if (this.saying) this.updateBubble();
+      if (isStage(this)) this.updateBackdrop();
+      if (this.saying && isSprite(this)) this.updateBubble();
     }
 
     showPreviousCostume() {
       var length = this.costumes.length;
       this.currentCostumeIndex = (this.currentCostumeIndex + length - 1) % length;
-      if (this.isStage) this.updateBackdrop();
-      if (this.saying) this.updateBubble();
+      if (isStage(this)) this.updateBackdrop();
+      if (this.saying && isSprite(this)) this.updateBubble();
     }
 
     getCostumeName() {
@@ -117,8 +153,8 @@ namespace P.core {
         for (var i = 0; i < this.costumes.length; i++) {
           if (this.costumes[i].name === costume) {
             this.currentCostumeIndex = i;
-            if (this.isStage) this.updateBackdrop();
-            if (this.saying) this.updateBubble();
+            if (isStage(this)) this.updateBackdrop();
+            if (this.saying && isSprite(this)) this.updateBubble();
             return;
           }
         }
@@ -137,8 +173,8 @@ namespace P.core {
       var i = (Math.floor(costume) - 1 || 0) % this.costumes.length;
       if (i < 0) i += this.costumes.length;
       this.currentCostumeIndex = i;
-      if (this.isStage) this.updateBackdrop();
-      if (this.saying) this.updateBubble();
+      if (isStage(this)) this.updateBackdrop();
+      if (isSprite(this) && this.saying) this.updateBubble();
     }
 
     setFilter(name, value) {
@@ -157,7 +193,7 @@ namespace P.core {
           break;
       }
       this.filters[name] = value;
-      if (this.isStage) this.updateFilters();
+      if (isStage(this)) this.updateFilters();
     }
 
     changeFilter(name, value) {
@@ -207,7 +243,7 @@ namespace P.core {
     ask(question) {
       var stage = this.stage;
       if (question) {
-        if (this.isSprite && this.visible) {
+        if (this.visible && isSprite(this)) {
           this.say(question);
           stage.promptTitle.style.display = 'none';
         } else {
@@ -222,16 +258,23 @@ namespace P.core {
       stage.prompt.value = '';
       stage.prompt.focus();
     }
+
+    abstract rotatedBounds(): RotatedBounds;
   }
 
-  // A stage object.
+  // A stage object
   export abstract class Stage extends Base {
+    // We are our own stage.
     public stage = this;
+    // We are a stage.
     public isStage = true;
+
+    // Child sprites
     public children: Sprite[] = [];
     public dragging: any = {}; // TODO
-    public allWatchers: VariableWatcher[] = [];
 
+    // All watchers in the Stage
+    public allWatchers: VariableWatcher[] = [];
     // TODO: move to Scratch2Stage because it's only used there?
     public defaultWatcherX: number = 10;
     public defaultWatcherY: number = 10;
@@ -260,6 +303,8 @@ namespace P.core {
 
     public username: string = '';
 
+    public runtime: P.runtime.Runtime;
+
     public root: HTMLElement;
     public ui: HTMLElement;
     public canvas: HTMLCanvasElement;
@@ -277,6 +322,8 @@ namespace P.core {
 
     constructor() {
       super();
+
+      this.runtime = new P.runtime.Runtime(this);
 
       this.root = document.createElement('div');
       this.root.classList.add('forkphorus-root');
@@ -348,7 +395,7 @@ namespace P.core {
         e.stopPropagation();
         if (e.target === this.canvas) {
           e.preventDefault();
-          this.trigger('whenKeyPressed', c);
+          this.runtime.trigger('whenKeyPressed', c);
         }
       }.bind(this));
 
@@ -480,8 +527,6 @@ namespace P.core {
       }.bind(this));
 
       this.promptButton.addEventListener(P.config.hasTouchEvents ? 'touchstart' : 'mousedown', this.submitPrompt.bind(this));
-
-      this.initRuntime();
     }
 
     // TODO: move to Scratch2Stage, it's not used in Scratch3Stage
@@ -489,7 +534,7 @@ namespace P.core {
       var p = e.target;
       while (p && p.dataset.watcher == null) p = p.parentElement;
       if (!p) return;
-      var w = this.allWatchers[p.dataset.watcher]
+      var w = this.allWatchers[p.dataset.watcher] as P.sb2.Scratch2VariableWatcher;
       this.dragging[id] = {
         watcher: w,
         offset: (e.target.dataset.button == null ? -w.button.offsetWidth / 2 | 0 : w.button.getBoundingClientRect().left - t.clientX) - w.slider.getBoundingClientRect().left
@@ -498,7 +543,7 @@ namespace P.core {
     watcherMove(id, t, e) {
       var d = this.dragging[id];
       if (!d) return;
-      var w = d.watcher
+      var w = d.watcher as P.sb2.Scratch2VariableWatcher;
       var sw = w.slider.offsetWidth;
       var bw = w.button.offsetWidth;
       var value = w.sliderMin + Math.max(0, Math.min(1, (t.clientX + d.offset) / (sw - bw))) * (w.sliderMax - w.sliderMin);
@@ -512,8 +557,9 @@ namespace P.core {
     }
 
     destroy() {
-      this.stopAll();
-      this.pause();
+      this.runtime.stopAll();
+      this.runtime.pause();
+      this.stopAllSounds();
       if (this.onTouchStart) document.removeEventListener('touchstart', this.onTouchStart);
       if (this.onTouchMove) document.removeEventListener('touchmove', this.onTouchMove);
       if (this.onTouchEnd) document.removeEventListener('touchend', this.onTouchEnd);
@@ -607,12 +653,12 @@ namespace P.core {
             this.mouseSprite = c;
             c.mouseDown();
           } else {
-            this.triggerFor(c, 'whenClicked');
+            this.runtime.triggerFor(c, 'whenClicked');
           }
           return;
         }
       }
-      this.triggerFor(this, 'whenClicked');
+      this.runtime.triggerFor(this, 'whenClicked');
     }
 
     releaseMouse() {
@@ -717,10 +763,7 @@ namespace P.core {
 
     // Determines a broadcast ID from it's name.
     // Name is simply what the broadcast block has for an input.
-    getBroadcastId(name) {
-      // Scratch 2 simply uses names as IDs.
-      return name;
-    }
+    abstract getBroadcastId(name: string): string;
 
     // Implementing Scratch blocks
 
@@ -759,9 +802,18 @@ namespace P.core {
       this.penRenderer.reset(this.maxZoom);
       this.penRenderer.ctx.lineCap = 'round';
     }
+
+    rotatedBounds() {
+      return {
+        top: 0,
+        bottom: 0,
+        left: 0,
+        right: 0,
+      };
+    }
   }
 
-  // A sprite object.
+  // A sprite object
   export abstract class Sprite extends Base {
     public isSprite = true;
     public isClone = false;
@@ -801,7 +853,7 @@ namespace P.core {
 
     mouseUp() {
       if (this.isDragging && this.scratchX === this.dragStartX && this.scratchY === this.dragStartY) {
-        this.stage.triggerFor(this, 'whenClicked');
+        this.stage.runtime.triggerFor(this, 'whenClicked');
       }
       this.isDragging = false;
     }
@@ -1215,7 +1267,7 @@ namespace P.core {
     }
 
     // Says some text.
-    say(text, thinking) {
+    say(text: string, thinking: boolean = false) {
       text = text.toString();
       if (!text) {
         this.saying = false;
@@ -1367,12 +1419,12 @@ namespace P.core {
     }
   }
 
-  // A costume (either bitmap or SVG)
+  // A costume
   export class Costume {
     public name: string;
     public rotationCenterX: number;
     public rotationCenterY: number;
-    public layers: HTMLImageElement[]; // TODO
+    public layers: HTMLImageElement[];
     public image: HTMLCanvasElement;
     public context: CanvasRenderingContext2D;
     public index: number;
@@ -1467,7 +1519,15 @@ namespace P.core {
     }
 
     // Call takes a list of inputs and must return the proper arguments to set C.args to in the runtime.
-    // Result can be any datatype as long as the compiler uses the right methods to get the data.
+    // Result can be anything as long as the compiler knows how to interpret it.
     abstract call(inputs): any;
+  }
+
+  export function isSprite(base: P.core.Base): base is P.core.Sprite {
+    return base.isSprite;
+  }
+
+  export function isStage(base: P.core.Base): base is P.core.Stage {
+    return base.isStage;
   }
 }

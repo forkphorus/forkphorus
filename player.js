@@ -25,9 +25,9 @@ P.player = (function() {
     }, 500);
   }
   function turboClick() {
-    stage.isTurbo = !stage.isTurbo;
-    flag.title = stage.isTurbo ? 'Turbo mode enabled. Shift+click to disable.' : 'Shift+click to enable turbo mode.';
-    turbo.style.display = stage.isTurbo ? 'block' : 'none';
+    stage.runtime.isTurbo = !stage.runtime.isTurbo;
+    flag.title = stage.runtime.isTurbo ? 'Turbo mode enabled. Shift+click to disable.' : 'Shift+click to enable turbo mode.';
+    turbo.style.display = stage.runtime.isTurbo ? 'block' : 'none';
   }
   function flagClick(e) {
     if (!stage) return;
@@ -38,11 +38,11 @@ P.player = (function() {
     if (e.shiftKey) {
       turboClick();
     } else {
-      stage.start();
+      stage.runtime.start();
       pause.classList.add('pause');
       pause.classList.remove('play');
-      stage.stopAll();
-      stage.triggerGreenFlag();
+      stage.runtime.stopAll();
+      stage.runtime.triggerGreenFlag();
     }
     stage.focus();
     e.preventDefault();
@@ -50,23 +50,23 @@ P.player = (function() {
 
   function pauseClick(e) {
     if (!stage) return;
-    if (stage.isRunning) {
-      stage.pause();
+    if (stage.runtime.isRunning) {
+      stage.runtime.pause();
     } else {
-      stage.start();
+      stage.runtime.start();
     }
-    pause.classList.toggle('play', !stage.isRunning);
-    pause.classList.toggle('pause', stage.isRunning);
+    pause.classList.toggle('play', !stage.runtime.isRunning);
+    pause.classList.toggle('pause', stage.runtime.isRunning);
     stage.focus();
     e.preventDefault();
   }
 
   function stopClick(e) {
     if (!stage) return;
-    stage.start();
+    stage.runtime.start();
     pause.classList.add('pause');
     pause.classList.remove('play');
-    stage.stopAll();
+    stage.runtime.stopAll();
     stage.focus();
     e.preventDefault();
   }
@@ -180,18 +180,15 @@ P.player = (function() {
   }
 
   function start(s, triggerGreenFlag) {
-    stage = s;
-    if (P.config.debug) {
-      window.stage = stage;
-    }
+    stage = P.player.stage = s;
     player.appendChild(s.root);
     s.setZoom(stage.zoom);
     stage.root.addEventListener('keydown', exitFullScreen);
-    stage.handleError = showError;
-    s.start();
+    stage.runtime.handleError = showError;
+    s.runtime.start();
     hideProgress();
     if (triggerGreenFlag) {
-      s.triggerGreenFlag();
+      s.runtime.triggerGreenFlag();
     }
   }
 

@@ -83,18 +83,18 @@ namespace P.sb2 {
     private cmd: string;
     private type: string;
     private color: string;
-    private isDiscrete: boolean;
+    public isDiscrete: boolean;
     private label: string;
     private mode: number;
-    private param: string;
-    private sliderMax: number;
-    private sliderMin: number;
+    public param: string;
+    public sliderMax: number;
+    public sliderMin: number;
 
     private el: HTMLElement = null;
     private labelEl: HTMLElement = null;
     private readout: HTMLElement = null;
-    private slider: HTMLElement = null;
-    private button: HTMLElement = null;
+    public slider: HTMLElement = null;
+    public button: HTMLElement = null;
     private buttonWrap: HTMLElement = null;
 
     constructor(stage, targetName, data) {
@@ -206,7 +206,7 @@ namespace P.sb2 {
           value = this.timeAndDate(this.param);
           break;
         case 'timer':
-          value = Math.round((this.stage.rightNow() - this.stage.timerStart) / 100) / 10;
+          value = Math.round((this.stage.runtime.rightNow() - this.stage.timerStart) / 100) / 10;
           break;
         case 'volume':
           value = this.target.volume * 100;
@@ -334,6 +334,11 @@ namespace P.sb2 {
 
   export class Scratch2Stage extends P.core.Stage {
     public scripts: any;
+
+    getBroadcastId(name: string) {
+      // Scratch 2 uses names as IDs.
+      return name;
+    }
   }
 
   export class Scratch2Sprite extends P.core.Sprite {
@@ -961,7 +966,7 @@ namespace P.sb2.compiler {
 
       } else if (e[0] === 'timer') {
 
-        return '((self.now - self.timerStart) / 1000)';
+        return '((runtime.now - runtime.timerStart) / 1000)';
 
       } else if (e[0] === 'distanceTo:') {
 
@@ -1086,14 +1091,14 @@ namespace P.sb2.compiler {
 
     var beatHead = function(dur) {
       source += 'save();\n';
-      source += 'R.start = self.now;\n';
+      source += 'R.start = runtime.now;\n';
       source += 'R.duration = ' + num(dur) + ' * 60 / self.tempoBPM;\n';
       source += 'var first = true;\n';
     };
 
     var beatTail = function() {
       var id = label();
-      source += 'if (self.now - R.start < R.duration * 1000 || first) {\n';
+      source += 'if (runtime.now - R.start < R.duration * 1000 || first) {\n';
       source += '  var first;\n';
       forceQueue(id);
       source += '}\n';
@@ -1103,12 +1108,12 @@ namespace P.sb2.compiler {
 
     var wait = function(dur) {
       source += 'save();\n';
-      source += 'R.start = self.now;\n';
+      source += 'R.start = runtime.now;\n';
       source += 'R.duration = ' + dur + ';\n';
       source += 'var first = true;\n';
 
       var id = label();
-      source += 'if (self.now - R.start < R.duration * 1000 || first) {\n';
+      source += 'if (runtime.now - R.start < R.duration * 1000 || first) {\n';
       source += '  var first;\n';
       forceQueue(id);
       source += '}\n';
@@ -1240,11 +1245,11 @@ namespace P.sb2.compiler {
 
         source += 'save();\n';
         source += 'R.id = S.say(' + val(block[1]) + ', false);\n';
-        source += 'R.start = self.now;\n';
+        source += 'R.start = runtime.now;\n';
         source += 'R.duration = ' + num(block[2]) + ';\n';
 
         var id = label();
-        source += 'if (self.now - R.start < R.duration * 1000) {\n';
+        source += 'if (runtime.now - R.start < R.duration * 1000) {\n';
         forceQueue(id);
         source += '}\n';
 
@@ -1261,11 +1266,11 @@ namespace P.sb2.compiler {
 
         source += 'save();\n';
         source += 'R.id = S.say(' + val(block[1]) + ', true);\n';
-        source += 'R.start = self.now;\n';
+        source += 'R.start = runtime.now;\n';
         source += 'R.duration = ' + num(block[2]) + ';\n';
 
         var id = label();
-        source += 'if (self.now - R.start < R.duration * 1000) {\n';
+        source += 'if (runtime.now - R.start < R.duration * 1000) {\n';
         forceQueue(id);
         source += '}\n';
 
@@ -1607,7 +1612,7 @@ namespace P.sb2.compiler {
       } else if (block[0] === 'glideSecs:toX:y:elapsed:from:') {
 
         source += 'save();\n';
-        source += 'R.start = self.now;\n';
+        source += 'R.start = runtime.now;\n';
         source += 'R.duration = ' + num(block[1]) + ';\n';
         source += 'R.baseX = S.scratchX;\n';
         source += 'R.baseY = S.scratchY;\n';
@@ -1615,7 +1620,7 @@ namespace P.sb2.compiler {
         source += 'R.deltaY = ' + num(block[3]) + ' - S.scratchY;\n';
 
         var id = label();
-        source += 'var f = (self.now - R.start) / (R.duration * 1000);\n';
+        source += 'var f = (runtime.now - R.start) / (R.duration * 1000);\n';
         source += 'if (f > 1) f = 1;\n';
         source += 'S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
 
@@ -1626,23 +1631,23 @@ namespace P.sb2.compiler {
 
       } else if (block[0] === 'stopAll') {
 
-        source += 'self.stopAll();\n';
+        source += 'runtime.stopAll();\n';
         source += 'return;\n';
 
       } else if (block[0] === 'stopScripts') {
 
         source += 'switch (' + val(block[1]) + ') {\n';
         source += '  case "all":\n';
-        source += '    self.stopAll();\n';
+        source += '    runtime.stopAll();\n';
         source += '    return;\n';
         source += '  case "this script":\n';
         source += '    endCall();\n';
         source += '    return;\n';
         source += '  case "other scripts in sprite":\n';
         source += '  case "other scripts in stage":\n';
-        source += '    for (var i = 0; i < self.queue.length; i++) {\n';
-        source += '      if (i !== THREAD && self.queue[i] && self.queue[i].sprite === S) {\n';
-        source += '        self.queue[i] = undefined;\n';
+        source += '    for (var i = 0; i < runtime.queue.length; i++) {\n';
+        source += '      if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
+        source += '        runtime.queue[i] = undefined;\n';
         source += '      }\n';
         source += '    }\n';
         source += '    break;\n';
@@ -1668,9 +1673,9 @@ namespace P.sb2.compiler {
         source += '  S.remove();\n';
         source += '  var i = self.children.indexOf(S);\n';
         source += '  if (i !== -1) self.children.splice(i, 1);\n';
-        source += '  for (var i = 0; i < self.queue.length; i++) {\n';
-        source += '    if (self.queue[i] && self.queue[i].sprite === S) {\n';
-        source += '      self.queue[i] = undefined;\n';
+        source += '  for (var i = 0; i < runtime.queue.length; i++) {\n';
+        source += '    if (runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
+        source += '      runtime.queue[i] = undefined;\n';
         source += '    }\n';
         source += '  }\n';
         source += '  return;\n';
@@ -1694,7 +1699,7 @@ namespace P.sb2.compiler {
 
       } else if (block[0] === 'timerReset') {
 
-        source += 'self.timerStart = self.now;\n';
+        source += 'runtime.timerStart = runtime.now;\n';
 
       } else {
 
