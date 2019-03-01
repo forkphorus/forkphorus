@@ -2,7 +2,7 @@
 
 namespace P.utils {
   // Gets the keycode for a key name
-  export function getKeyCode(keyName) {
+  export function getKeyCode(keyName: string): number | "any" {
     switch (keyName.toLowerCase()) {
       case 'space': return 32;
       case 'left arrow': return 37;
@@ -15,22 +15,9 @@ namespace P.utils {
     return keyName.toUpperCase().charCodeAt(0);
   };
 
-  // Parses a json-ish
-  // TODO: this is terrible, remove it
-  export function parseJSONish(json) {
-    if (!/^\s*\{/.test(json)) throw new SyntaxError('Bad JSON');
-    try {
-      return JSON.parse(json);
-    } catch (e) {}
-    if (/[^,:{}\[\]0-9\.\-+EINaefilnr-uy \n\r\t]/.test(json.replace(/"(\\.|[^"\\])*"/g, ''))) {
-      throw new SyntaxError('Bad JSON');
-    }
-    return eval('(' + json + ')');
-  };
-
   // Returns the string representation of an error.
   // TODO: does this need to be here?
-  export function stringifyError(error) {
+  export function stringifyError(error: any): string {
     if (!error) {
       return 'unknown error';
     }
@@ -40,7 +27,7 @@ namespace P.utils {
     return error.toString();
   }
 
-  export function createContinuation(source) {
+  export function createContinuation(source: string): P.runtime.Fn {
     // TODO: make understandable
     var result = '(function() {\n';
     var brackets = 0;

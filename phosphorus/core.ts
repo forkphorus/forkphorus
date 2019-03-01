@@ -105,27 +105,14 @@ namespace P.core {
       var watcher = this.watchers[name];
       var stage = this.stage;
 
-      // TODO
-      // if (!watcher) {
-      //   // I have no idea if this works.
-      //   watcher = this.watchers[name] = new P.sb2.Scratch2VariableWatcher(this.stage, this.objName, {
-      //     x: stage.defaultWatcherX,
-      //     y: stage.defaultWatcherY,
-      //     target: this,
-      //     label: (this.isStage ? '' : this.objName + ': ') + name,
-      //     param: name,
-      //   }, stage);
-      //   stage.defaultWatcherY += 26;
-      //   if (stage.defaultWatcherY >= 450) {
-      //     stage.defaultWatcherY = 10;
-      //     stage.defaultWatcherX += 150;
-      //   }
-      //   stage.allWatchers.push(watcher);
-      // }
-
       if (!watcher) {
-        // TODO: create watchers when it doesnt exist
-        return;
+        watcher = this.createVariableWatcher(this, name);
+        if (!watcher) {
+          return;
+        }
+        watcher.init();
+        this.watchers[name] = watcher;
+        stage.allWatchers.push(watcher);
       }
 
       watcher.setVisible(visible);
@@ -261,6 +248,8 @@ namespace P.core {
     }
 
     abstract rotatedBounds(): RotatedBounds;
+
+    abstract createVariableWatcher(target: Base, variableName: string): VariableWatcher | null;
   }
 
   // A stage object
@@ -276,9 +265,6 @@ namespace P.core {
 
     // All watchers in the Stage
     public allWatchers: VariableWatcher[] = [];
-    // TODO: move to Scratch2Stage because it's only used there?
-    public defaultWatcherX: number = 10;
-    public defaultWatcherY: number = 10;
 
     public answer: string = '';
     public promptId: number = 0;
@@ -927,6 +913,10 @@ namespace P.core {
 
     // Implementing Scratch blocks
 
+    createVariableWatcher(target: P.core.Base, variableName: string) {
+      return this.stage.createVariableWatcher(target, variableName);
+    }
+
     // Moves forward some number of steps in the current direction.
     forward(steps) {
       const d = (90 - this.direction) * Math.PI / 180;
@@ -1088,6 +1078,7 @@ namespace P.core {
       } else {
         if (!this.visible) return false;
         var sprites = this.stage.getObjects(thing);
+
         for (var i = sprites.length; i--;) {
           var sprite = sprites[i];
           if (!sprite.visible) continue;

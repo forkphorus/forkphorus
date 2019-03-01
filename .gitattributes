@@ -1,2 +1,3 @@
+# Improves how GitHub detects files
 phosphorus.js linguist-generated=true
-phosphorus.js.map linguist-generated=true
+lib linguist-vendored

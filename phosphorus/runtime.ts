@@ -316,7 +316,7 @@ namespace P.runtime {
   // TODO: configurable volume
   var VOLUME = 0.3;
 
-  var audioContext = P.audio.context;
+  const audioContext = P.audio.context;
   if (audioContext) {
     // TODO: move wavBuffers to IO
     var wavBuffers = P.sb2.wavBuffers;
@@ -437,12 +437,7 @@ namespace P.runtime {
           }
         }
         if (recursive) {
-          runtime.queue[THREAD] = {
-            sprite: S,
-            base: BASE,
-            fn: procedure.fn,
-            calls: CALLS
-          };
+          runtime.queue[THREAD] = new Thread(S, BASE, procedure.fn, CALLS);
         } else {
           IMMEDIATE = procedure.fn;
         }
@@ -490,12 +485,7 @@ namespace P.runtime {
   };
 
   var forceQueue = function(id) {
-    runtime.queue[THREAD] = {
-      sprite: S,
-      base: BASE,
-      fn: S.fns[id],
-      calls: CALLS
-    };
+    runtime.queue[THREAD] = new Thread(S, BASE, S.fns[id], CALLS);
   };
 
   class Thread {
@@ -520,6 +510,7 @@ namespace P.runtime {
     public isTurbo: boolean = false;
 
     constructor(public stage: P.core.Stage) {
+      // Fix scoping
       this.onError = this.onError.bind(this);
     }
 
@@ -537,8 +528,8 @@ namespace P.runtime {
       this.queue.push(thread);
     }
 
-    triggerFor(sprite: P.core.Base, event: string, arg?: any) {
-      var threads;
+    triggerFor(sprite: P.core.Base, event: string, arg?: any): Thread[] {
+      let threads;
       switch (event) {
         case 'whenClicked': threads = sprite.listeners.whenClicked; break;
         case 'whenCloned': threads = sprite.listeners.whenCloned; break;
@@ -561,17 +552,17 @@ namespace P.runtime {
     }
 
     trigger(event: string, arg?: any) {
-      let threads = [];
+      let threads: Thread[] = [];
       for (let i = this.stage.children.length; i--;) {
         threads = threads.concat(this.triggerFor(this.stage.children[i], event, arg));
       }
       return threads.concat(this.triggerFor(this.stage, event, arg));
-    };
+    }
 
     triggerGreenFlag() {
       this.timerStart = this.rightNow();
       this.trigger('whenGreenFlag');
-    };
+    }
 
     start() {
       this.isRunning = true;
@@ -580,7 +571,7 @@ namespace P.runtime {
       this.baseTime = Date.now();
       this.interval = setInterval(this.step.bind(this), 1000 / P.config.framerate);
       if (audioContext) audioContext.resume();
-    };
+    }
 
     pause() {
       if (this.interval) {
@@ -591,7 +582,7 @@ namespace P.runtime {
         if (audioContext) audioContext.suspend();
       }
       this.isRunning = false;
-    };
+    }
 
     stopAll() {
       this.stage.hidePrompt = false;
@@ -601,7 +592,7 @@ namespace P.runtime {
       this.stage.resetFilters();
       this.stage.stopSounds();
       for (var i = 0; i < this.stage.children.length; i++) {
-        var c = this.stage.children[i];
+        const c = this.stage.children[i];
         if (c.isClone) {
           c.remove();
           this.stage.children.splice(i, 1);
@@ -612,11 +603,11 @@ namespace P.runtime {
           c.stopSounds();
         }
       }
-    };
+    }
 
-    rightNow() {
+    rightNow(): number {
       return this.baseNow + Date.now() - this.baseTime;
-    };
+    }
 
     step() {
       // Reset runtime variables
@@ -655,24 +646,27 @@ namespace P.runtime {
           }
         }
 
-        // Remove empty threads in the queue
+        // Remove empty elements in the queue list
         for (let i = queue.length; i--;) {
-          if (!queue[i]) queue.splice(i, 1);
+          if (!queue[i]) {
+            queue.splice(i, 1);
+          }
         }
       } while ((this.isTurbo || !VISUAL) && Date.now() - start < 1000 / P.config.framerate && queue.length);
 
       this.stage.draw();
       S = null;
-    };
+    }
 
     onError(e) {
-      this.handleError(e.error);
       clearInterval(this.interval);
-    };
+      this.handleError(e.error);
+    }
 
     handleError(e) {
+      // Default error handler
       console.error(e);
-    };
+    }
   }
 
   /*
@@ -855,7 +849,7 @@ namespace P.runtime {
   ];
 
   // Evaluate JavaScript within the scope of the runtime.
-  export function scopedEval(source) {
+  export function scopedEval(source: string): any {
     return eval(source);
   }
 }

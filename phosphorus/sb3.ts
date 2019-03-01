@@ -12,8 +12,7 @@ namespace P.sb3 {
   // Adds Scratch 3 specific things such as broadcastReferences
   export class Scratch3Stage extends P.core.Stage {
     // Scratch 3 uses unique IDs for broadcasts and the visual name for different things.
-    private broadcastNames: {[key: string]: string} = {};
-
+    private broadcastNames: ObjectMap<string> = {};
     public sb3data: any;
 
     addBroadcast(id, name) {
@@ -25,6 +24,11 @@ namespace P.sb3 {
       // Use the mapped ID or fall back to the name.
       // Usually the name is the unique ID, but occasionally it is not.
       return this.broadcastNames[name] || name;
+    }
+
+    createVariableWatcher(target: P.core.Base, variableName: string) {
+      // TODO: implement
+      return null;
     }
   }
 
@@ -45,15 +49,15 @@ namespace P.sb3 {
     public id: string;
     public opcode: string;
     public mode: string;
-    public params: any; // TODO
-    public libraryEntry: any; // TODO
+    public params: any;
+    public libraryEntry: P.sb3.compiler.WatchedValue;
     public sliderMin: number;
     public sliderMax: number;
 
     public containerEl: HTMLElement;
     public valueEl: HTMLElement;
 
-    constructor(stage, data) {
+    constructor(stage: Scratch3Stage, data) {
       super(stage, data.spriteName || '');
 
       // Unique ID
@@ -676,10 +680,10 @@ namespace P.sb3.compiler {
   };
 
   type Block = any;
-  type TopLevelCompiler = (block: Block, f: Function) => void;
-  type ExpressionCompiler = (block: Block) => string;
-  type StatementCompiler = (block: Block) => void;
-  interface WatchedValue {
+  export type TopLevelCompiler = (block: Block, f: Function) => void;
+  export type ExpressionCompiler = (block: Block) => string;
+  export type StatementCompiler = (block: Block) => void;
+  export interface WatchedValue {
     init?(watcher: P.sb3.Scratch3VariableWatcher): void;
     set?(watcher: P.sb3.Scratch3VariableWatcher, value: number): void;
     evaluate(watcher: P.sb3.Scratch3VariableWatcher): any;
@@ -1930,7 +1934,7 @@ namespace P.sb3.compiler {
       case PRIMATIVE_TYPES.INTEGER_NUM:
       case PRIMATIVE_TYPES.ANGLE_NUM:
         // There are no actual guarantees that a number is present here.
-        // In reality a non-number string could be present, which would be problematic to cast to number.
+        // In reality a non-number string could be present, which would be problematic to cast to number. (maybe even XSS)
         if (isFinite(constant[1])) {
           return constant[1];
         } else {
@@ -2013,7 +2017,7 @@ namespace P.sb3.compiler {
     } else if (type === 'boolean') {
       return '!!' + script;
     } else {
-      throw new Error('unknown asType type: ' + type);
+      return script;
     }
   }
 

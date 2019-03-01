@@ -1,4 +1,10 @@
-/*
+/*!
+Forkphorus: A JavaScript compiler for Scratch 2 and 3 projects.
+(A fork of phosphorus)
+
+Note: phosphorus.js is automatically generated from the files in `phosphorus`
+See the README for more information.
+
 The MIT License (MIT)
 
 Copyright (c) 2019 Thomas Weber
@@ -201,7 +207,10 @@ var P;
                         if (c.filters.color) {
                             filter += 'hue-rotate(' + (c.filters.color / 200 * 360) + 'deg) ';
                         }
-                        this.ctx.filter = filter;
+                        // Only apply a filter if necessary to fix Firefox performance issue
+                        if (filter !== '') {
+                            this.ctx.filter = filter;
+                        }
                     }
                     this.ctx.drawImage(costume.image, 0, 0);
                     this.ctx.restore();
@@ -298,26 +307,14 @@ var P;
             showVariable(name, visible) {
                 var watcher = this.watchers[name];
                 var stage = this.stage;
-                // TODO
-                // if (!watcher) {
-                //   // I have no idea if this works.
-                //   watcher = this.watchers[name] = new P.sb2.Scratch2VariableWatcher(this.stage, this.objName, {
-                //     x: stage.defaultWatcherX,
-                //     y: stage.defaultWatcherY,
-                //     target: this,
-                //     label: (this.isStage ? '' : this.objName + ': ') + name,
-                //     param: name,
-                //   }, stage);
-                //   stage.defaultWatcherY += 26;
-                //   if (stage.defaultWatcherY >= 450) {
-                //     stage.defaultWatcherY = 10;
-                //     stage.defaultWatcherX += 150;
-                //   }
-                //   stage.allWatchers.push(watcher);
-                // }
                 if (!watcher) {
-                    // TODO: create watchers when it doesnt exist
-                    return;
+                    watcher = this.createVariableWatcher(this, name);
+                    if (!watcher) {
+                        return;
+                    }
+                    watcher.init();
+                    this.watchers[name] = watcher;
+                    stage.allWatchers.push(watcher);
                 }
                 watcher.setVisible(visible);
             }
@@ -474,9 +471,6 @@ var P;
                 this.dragging = {}; // TODO
                 // All watchers in the Stage
                 this.allWatchers = [];
-                // TODO: move to Scratch2Stage because it's only used there?
-                this.defaultWatcherX = 10;
-                this.defaultWatcherY = 10;
                 this.answer = '';
                 this.promptId = 0;
                 this.nextPromptId = 0;
@@ -1041,6 +1035,9 @@ var P;
                 this.stage.canvas.parentNode.appendChild(div);
             }
             // Implementing Scratch blocks
+            createVariableWatcher(target, variableName) {
+                return this.stage.createVariableWatcher(target, variableName);
+            }
             // Moves forward some number of steps in the current direction.
             forward(steps) {
                 const d = (90 - this.direction) * Math.PI / 180;
@@ -1940,9 +1937,29 @@ var P;
         }
         sb2.Scratch2VariableWatcher = Scratch2VariableWatcher;
         class Scratch2Stage extends P.core.Stage {
+            constructor() {
+                super(...arguments);
+                this.defaultWatcherX = 10;
+                this.defaultWatcherY = 10;
+            }
             getBroadcastId(name) {
                 // Scratch 2 uses names as IDs.
                 return name;
+            }
+            createVariableWatcher(target, variableName) {
+                const x = this.defaultWatcherX;
+                const y = this.defaultWatcherY;
+                this.defaultWatcherY += 26;
+                if (this.defaultWatcherY >= 450) {
+                    this.defaultWatcherY = 10;
+                    this.defaultWatcherX += 150;
+                }
+                return new P.sb2.Scratch2VariableWatcher(this, target.name, {
+                    cmd: 'getVar:',
+                    param: variableName,
+                    x,
+                    y,
+                });
             }
         }
         sb2.Scratch2Stage = Scratch2Stage;
@@ -1978,7 +1995,7 @@ var P;
                 return zip.file('project.json').async('text');
             })
                 .then((text) => {
-                const project = P.utils.parseJSONish(text);
+                const project = JSON.parse(text);
                 return loadProject(project);
             });
         }
@@ -3524,7 +3541,7 @@ var P;
         };
         // TODO: configurable volume
         var VOLUME = 0.3;
-        var audioContext = P.audio.context;
+        const audioContext = P.audio.context;
         if (audioContext) {
             // TODO: move wavBuffers to IO
             var wavBuffers = P.sb2.wavBuffers;
@@ -3637,12 +3654,7 @@ var P;
                         }
                     }
                     if (recursive) {
-                        runtime.queue[THREAD] = {
-                            sprite: S,
-                            base: BASE,
-                            fn: procedure.fn,
-                            calls: CALLS
-                        };
+                        runtime.queue[THREAD] = new Thread(S, BASE, procedure.fn, CALLS);
                     }
                     else {
                         IMMEDIATE = procedure.fn;
@@ -3688,12 +3700,7 @@ var P;
             }
         };
         var forceQueue = function (id) {
-            runtime.queue[THREAD] = {
-                sprite: S,
-                base: BASE,
-                fn: S.fns[id],
-                calls: CALLS
-            };
+            runtime.queue[THREAD] = new Thread(S, BASE, S.fns[id], CALLS);
         };
         class Thread {
             constructor(sprite, base, fn, calls) {
@@ -3713,6 +3720,7 @@ var P;
                 this.baseNow = 0;
                 this.now = 0;
                 this.isTurbo = false;
+                // Fix scoping
                 this.onError = this.onError.bind(this);
             }
             startThread(sprite, base) {
@@ -3727,7 +3735,7 @@ var P;
                 this.queue.push(thread);
             }
             triggerFor(sprite, event, arg) {
-                var threads;
+                let threads;
                 switch (event) {
                     case 'whenClicked':
                         threads = sprite.listeners.whenClicked;
@@ -3767,12 +3775,10 @@ var P;
                 }
                 return threads.concat(this.triggerFor(this.stage, event, arg));
             }
-            ;
             triggerGreenFlag() {
                 this.timerStart = this.rightNow();
                 this.trigger('whenGreenFlag');
             }
-            ;
             start() {
                 this.isRunning = true;
                 if (this.interval)
@@ -3783,7 +3789,6 @@ var P;
                 if (audioContext)
                     audioContext.resume();
             }
-            ;
             pause() {
                 if (this.interval) {
                     this.baseNow = this.rightNow();
@@ -3795,7 +3800,6 @@ var P;
                 }
                 this.isRunning = false;
             }
-            ;
             stopAll() {
                 this.stage.hidePrompt = false;
                 this.stage.prompter.style.display = 'none';
@@ -3804,7 +3808,7 @@ var P;
                 this.stage.resetFilters();
                 this.stage.stopSounds();
                 for (var i = 0; i < this.stage.children.length; i++) {
-                    var c = this.stage.children[i];
+                    const c = this.stage.children[i];
                     if (c.isClone) {
                         c.remove();
                         this.stage.children.splice(i, 1);
@@ -3818,11 +3822,9 @@ var P;
                     }
                 }
             }
-            ;
             rightNow() {
                 return this.baseNow + Date.now() - this.baseTime;
             }
-            ;
             step() {
                 // Reset runtime variables
                 self = this.stage;
@@ -3856,25 +3858,24 @@ var P;
                             CALLS.push(C);
                         }
                     }
-                    // Remove empty threads in the queue
+                    // Remove empty elements in the queue list
                     for (let i = queue.length; i--;) {
-                        if (!queue[i])
+                        if (!queue[i]) {
                             queue.splice(i, 1);
+                        }
                     }
                 } while ((this.isTurbo || !VISUAL) && Date.now() - start < 1000 / P.config.framerate && queue.length);
                 this.stage.draw();
                 S = null;
             }
-            ;
             onError(e) {
-                this.handleError(e.error);
                 clearInterval(this.interval);
+                this.handleError(e.error);
             }
-            ;
             handleError(e) {
+                // Default error handler
                 console.error(e);
             }
-            ;
         }
         runtime_1.Runtime = Runtime;
         /*
@@ -4088,6 +4089,10 @@ var P;
                 // Use the mapped ID or fall back to the name.
                 // Usually the name is the unique ID, but occasionally it is not.
                 return this.broadcastNames[name] || name;
+            }
+            createVariableWatcher(target, variableName) {
+                // TODO: implement
+                return null;
             }
         }
         sb3.Scratch3Stage = Scratch3Stage;
@@ -5861,7 +5866,7 @@ var P;
                     case PRIMATIVE_TYPES.INTEGER_NUM:
                     case PRIMATIVE_TYPES.ANGLE_NUM:
                         // There are no actual guarantees that a number is present here.
-                        // In reality a non-number string could be present, which would be problematic to cast to number.
+                        // In reality a non-number string could be present, which would be problematic to cast to number. (maybe even XSS)
                         if (isFinite(constant[1])) {
                             return constant[1];
                         }
@@ -5936,7 +5941,7 @@ var P;
                     return '!!' + script;
                 }
                 else {
-                    throw new Error('unknown asType type: ' + type);
+                    return script;
                 }
             }
             function fallbackValue(type) {
@@ -6064,22 +6069,6 @@ var P;
             return keyName.toUpperCase().charCodeAt(0);
         }
         utils.getKeyCode = getKeyCode;
-        ;
-        // Parses a json-ish
-        // TODO: this is terrible, remove it
-        function parseJSONish(json) {
-            if (!/^\s*\{/.test(json))
-                throw new SyntaxError('Bad JSON');
-            try {
-                return JSON.parse(json);
-            }
-            catch (e) { }
-            if (/[^,:{}\[\]0-9\.\-+EINaefilnr-uy \n\r\t]/.test(json.replace(/"(\\.|[^"\\])*"/g, ''))) {
-                throw new SyntaxError('Bad JSON');
-            }
-            return eval('(' + json + ')');
-        }
-        utils.parseJSONish = parseJSONish;
         ;
         // Returns the string representation of an error.
         // TODO: does this need to be here?

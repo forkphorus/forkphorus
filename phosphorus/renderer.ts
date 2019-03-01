@@ -53,7 +53,10 @@ namespace P.renderer {
           if (c.filters.color) {
             filter += 'hue-rotate(' + (c.filters.color / 200 * 360) + 'deg) ';
           }
-          this.ctx.filter = filter;
+          // Only apply a filter if necessary to fix Firefox performance issue
+          if (filter !== '') {
+            this.ctx.filter = filter;
+          }
         }
 
         this.ctx.drawImage(costume.image, 0, 0);

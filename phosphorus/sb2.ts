@@ -335,9 +335,30 @@ namespace P.sb2 {
   export class Scratch2Stage extends P.core.Stage {
     public scripts: any;
 
+    private defaultWatcherX = 10;
+    private defaultWatcherY = 10;
+
     getBroadcastId(name: string) {
       // Scratch 2 uses names as IDs.
       return name;
+    }
+
+    createVariableWatcher(target: P.core.Base, variableName: string) {
+      const x = this.defaultWatcherX;
+      const y = this.defaultWatcherY;
+
+      this.defaultWatcherY += 26;
+      if (this.defaultWatcherY >= 450) {
+        this.defaultWatcherY = 10;
+        this.defaultWatcherX += 150;
+      }
+
+      return new P.sb2.Scratch2VariableWatcher(this, target.name, {
+        cmd: 'getVar:',
+        param: variableName,
+        x,
+        y,
+      });
     }
   }
 
@@ -375,8 +396,8 @@ namespace P.sb2 {
         zipArchive = zip;
         return zip.file('project.json').async('text');
       })
-      .then((text) => {
-        const project = P.utils.parseJSONish(text);
+      .then((text: string) => {
+        const project = JSON.parse(text);
         return loadProject(project);
       });
   };
