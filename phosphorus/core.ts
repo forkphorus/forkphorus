@@ -1,3 +1,4 @@
+/// <reference path="phosphorus.ts" />
 /// <reference path="config.ts" />
 /// <reference path="renderer.ts" />
 
@@ -288,10 +289,6 @@ namespace P.core {
 
     public zoom: number = 1;
     public maxZoom: number = P.config.scale;
-
-    public baseNow: number = 0;
-    public baseTime: number = 0;
-    public timerStart: number = 0;
 
     public keys: (boolean | undefined)[] = [];
 

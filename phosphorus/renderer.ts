@@ -1,3 +1,5 @@
+/// <reference path="phosphorus.ts" />
+
 namespace P.renderer {
   export class CanvasRenderer {
     public ctx: CanvasRenderingContext2D;

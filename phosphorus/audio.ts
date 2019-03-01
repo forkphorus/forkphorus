@@ -1,3 +1,4 @@
+/// <reference path="phosphorus.ts" />
 
 namespace P.audio {
   export const context = new AudioContext();

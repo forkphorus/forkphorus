@@ -1,3 +1,5 @@
+/// <reference path="phosphorus.ts" />
+
 // IO helpers and hooks
 
 namespace P.IO {

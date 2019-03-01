@@ -1,3 +1,26 @@
+/*
+The MIT License (MIT)
+
+Copyright (c) 2019 Thomas Weber
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+/// <reference path="phosphorus.ts" />
 var P;
 (function (P) {
     var audio;
@@ -118,6 +141,7 @@ var P;
     })(audio = P.audio || (P.audio = {}));
 })(P || (P = {}));
 ;
+/// <reference path="phosphorus.ts" />
 var P;
 (function (P) {
     var config;
@@ -129,6 +153,7 @@ var P;
         config.PROJECT_API = 'https://projects.scratch.mit.edu/$id';
     })(config = P.config || (P.config = {}));
 })(P || (P = {}));
+/// <reference path="phosphorus.ts" />
 var P;
 (function (P) {
     var renderer;
@@ -186,6 +211,7 @@ var P;
         renderer.CanvasRenderer = CanvasRenderer;
     })(renderer = P.renderer || (P.renderer = {}));
 })(P || (P = {}));
+/// <reference path="phosphorus.ts" />
 /// <reference path="config.ts" />
 /// <reference path="renderer.ts" />
 // Phosphorus Core
@@ -458,9 +484,6 @@ var P;
                 this.tempoBPM = 60;
                 this.zoom = 1;
                 this.maxZoom = P.config.scale;
-                this.baseNow = 0;
-                this.baseTime = 0;
-                this.timerStart = 0;
                 this.keys = [];
                 this.rawMouseX = 0;
                 this.rawMouseY = 0;
@@ -1556,6 +1579,7 @@ var P;
         core.isStage = isStage;
     })(core = P.core || (P.core = {}));
 })(P || (P = {}));
+/// <reference path="phosphorus.ts" />
 // IO helpers and hooks
 var P;
 (function (P) {
@@ -1606,28 +1630,7 @@ var P;
     })(IO = P.IO || (P.IO = {}));
 })(P || (P = {}));
 ;
-/*
-The MIT License (MIT)
-
-Copyright (c) 2019 Thomas Weber
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in
-the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software is furnished to do so,
-subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
+/// <reference path="phosphorus.ts" />
 /// <reference path="core.ts" />
 /// <reference path="canvg.d.ts" />
 var P;
@@ -1820,7 +1823,7 @@ var P;
                         value = this.timeAndDate(this.param);
                         break;
                     case 'timer':
-                        value = Math.round((this.stage.runtime.rightNow() - this.stage.timerStart) / 100) / 10;
+                        value = Math.round((this.stage.runtime.rightNow() - this.stage.runtime.timerStart) / 100) / 10;
                         break;
                     case 'volume':
                         value = this.target.volume * 100;
@@ -3216,6 +3219,7 @@ var P;
     })(sb2 = P.sb2 || (P.sb2 = {}));
 })(P || (P = {}));
 ;
+/// <reference path="phosphorus.ts" />
 /// <reference path="sb2.ts" />
 /// <reference path="core.ts" />
 // The phosphorus Scratch runtime
@@ -4057,6 +4061,7 @@ var P;
         runtime_1.scopedEval = scopedEval;
     })(runtime = P.runtime || (P.runtime = {}));
 })(P || (P = {}));
+/// <reference path="phosphorus.ts" />
 /// <reference path="core.ts" />
 /// <reference path="JSZip.d.ts" />
 // Scratch 3 project loader and runtime objects
@@ -4470,11 +4475,11 @@ var P;
                 targets.sort((a, b) => a.layerOrder - b.layerOrder);
                 return Promise.all(targets.map((data) => this.loadTarget(data)))
                     .then((targets) => {
-                    const stage = targets.filter((i) => i instanceof Scratch3Stage)[0];
+                    const stage = targets.filter((i) => i.isStage)[0];
                     if (!stage) {
                         throw new Error('no stage object');
                     }
-                    const sprites = targets.filter((i) => i instanceof Scratch3Sprite);
+                    const sprites = targets.filter((i) => i.isSprite);
                     const watchers = this.projectData.monitors
                         .map((data) => this.loadWatcher(data, stage))
                         .filter((i) => i && i.valid);
@@ -4605,10 +4610,13 @@ var P;
     (function (sb3) {
         var compiler;
         (function (compiler_1) {
-            // State variables, used/initialized later.
+            // Source of the current script being compiled.
             let source;
+            // The target being compiled.
             let currentTarget;
+            // The blocks of the target.
             let blocks;
+            // Points to the position of functions within the source.
             let fns;
             /*
             In Scratch 3 all blocks have a unique identifier.
@@ -4853,6 +4861,11 @@ var P;
                 },
                 sensing_username(block) {
                     return 'self.username';
+                },
+                sensing_userid(block) {
+                    // This is what Scratch 3 does.
+                    // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_sensing.js#L74
+                    return 'undefined';
                 },
                 // Operators
                 operator_add(block) {
@@ -5368,6 +5381,11 @@ var P;
                     queue(id);
                     source += '}\n';
                 },
+                control_all_at_once(block) {
+                    // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_control.js#L194-L199
+                    const substack = block.inputs.SUBSTACK;
+                    compileSubstack(substack);
+                },
                 control_stop(block) {
                     const option = block.fields.STOP_OPTION[0];
                     source += 'switch (' + compileExpression(option) + ') {\n';
@@ -5584,7 +5602,7 @@ var P;
                     getLabel() { return 'y position'; },
                 },
                 motion_direction: {
-                    evaluate(watcher) { return watcher.target.direction; },
+                    evaluate(watcher) { return P.core.isSprite(watcher.target) ? watcher.target.direction : 0; },
                     getLabel() { return 'direction'; },
                 },
                 // Looks
@@ -5625,7 +5643,7 @@ var P;
                     },
                 },
                 looks_size: {
-                    evaluate(watcher) { return watcher.target.scale * 100; },
+                    evaluate(watcher) { return P.core.isSprite(watcher.target) ? watcher.target.scale * 100 : 100; },
                     getLabel() { return 'size'; },
                 },
                 // Sound
@@ -5645,7 +5663,7 @@ var P;
                 },
                 sensing_timer: {
                     evaluate(watcher) {
-                        return (watcher.stage.now - watcher.stage.timerStart) / 1000;
+                        return (watcher.stage.runtime.now - watcher.stage.runtime.timerStart) / 1000;
                     },
                     getLabel() { return 'timer'; },
                 },
@@ -5705,34 +5723,37 @@ var P;
             ///
             /// Helpers
             ///
-            // Adds JS to update the speach bubble if necessary
+            // Adds JS to update the speech bubble if necessary
             function updateBubble() {
                 source += 'if (S.saying) S.updateBubble();\n';
             }
             // Adds JS to enable the VISUAL flag when necessary.
-            // `variant` can be either 'drawing', 'visible', or 'always' to control when the flag gets enabled.
-            // 'drawing' (default) will enable it if the sprite is visible or the pen is down (the sprite is drawing something)
+            // `variant` can be:
+            // 'drawing' will enable it if the sprite is visible or the pen is down (if the sprite is drawing something)
             // 'visible' will enable it if the sprite is visible
             // 'always' will always enable it
             function visualCheck(variant) {
-                const CASES = {
-                    drawing: 'if (S.visible || S.isPenDown) VISUAL = true;\n',
-                    visible: 'if (S.visible) VISUAL = true;\n',
-                    always: 'VISUAL = true;\n',
-                };
-                if (!(variant in CASES)) {
-                    throw new Error('unknown visualCheck variant: ' + variant);
-                }
                 if (P.config.debug) {
                     source += '/*visual:' + variant + '*/';
                 }
-                source += CASES[variant];
+                switch (variant) {
+                    case 'drawing':
+                        source += 'if (S.visible || S.isPenDown) VISUAL = true;\n';
+                        break;
+                    case 'visible':
+                        source += 'if (S.visible) VISUAL = true;\n';
+                        break;
+                    case 'always':
+                        source += 'VISUAL = true;\n';
+                        break;
+                    default: throw new Error('unknown visualCheck variant: ' + variant);
+                }
             }
-            // Forcibly queues something to run
+            // Queues something to run with the forceQueue runtime method
             function forceQueue(id) {
                 source += 'forceQueue(' + id + '); return;\n';
             }
-            // Queues something to run (TODO: difference from forceQueue)
+            // Queues something to run with the queue runtime method
             function queue(id) {
                 source += 'queue(' + id + '); return;\n';
             }
@@ -5833,7 +5854,7 @@ var P;
                 // TODO: use another library instead?
                 const type = constant[0];
                 switch (type) {
-                    // These all function as numbers. They are only differentiated so the editor can be more helpful.
+                    // These all function as numbers. I believe they are only differentiated so the editor can be more helpful.
                     case PRIMATIVE_TYPES.MATH_NUM:
                     case PRIMATIVE_TYPES.POSITIVE_NUM:
                     case PRIMATIVE_TYPES.WHOLE_NUM:
@@ -5842,7 +5863,7 @@ var P;
                         // There are no actual guarantees that a number is present here.
                         // In reality a non-number string could be present, which would be problematic to cast to number.
                         if (isFinite(constant[1])) {
-                            return +constant[1];
+                            return constant[1];
                         }
                         else {
                             return sanitize(constant[1], true);
@@ -5915,7 +5936,7 @@ var P;
                     return '!!' + script;
                 }
                 else {
-                    return script;
+                    throw new Error('unknown asType type: ' + type);
                 }
             }
             function fallbackValue(type) {
@@ -5929,7 +5950,7 @@ var P;
                     return 'false';
                 }
                 else {
-                    return '""';
+                    throw new Error('unknown fallbackValue type: ' + type);
                 }
             }
             // Returns a compiled expression as a JavaScript string.
@@ -6025,21 +6046,22 @@ var P;
     })(sb3 = P.sb3 || (P.sb3 = {}));
 })(P || (P = {}));
 ;
+/// <reference path="phosphorus.ts" />
 var P;
 (function (P) {
     var utils;
     (function (utils) {
         // Gets the keycode for a key name
         function getKeyCode(keyName) {
-            const KEY_CODES = {
-                space: 32,
-                'left arrow': 37,
-                'up arrow': 38,
-                'right arrow': 39,
-                'down arrow': 40,
-                any: 'any'
-            };
-            return KEY_CODES[keyName.toLowerCase()] || keyName.toUpperCase().charCodeAt(0);
+            switch (keyName.toLowerCase()) {
+                case 'space': return 32;
+                case 'left arrow': return 37;
+                case 'up arrow': return 38;
+                case 'right arrow': return 39;
+                case 'down arrow': return 40;
+                case 'any': return 'any';
+            }
+            return keyName.toUpperCase().charCodeAt(0);
         }
         utils.getKeyCode = getKeyCode;
         ;
@@ -6055,7 +6077,7 @@ var P;
             if (/[^,:{}\[\]0-9\.\-+EINaefilnr-uy \n\r\t]/.test(json.replace(/"(\\.|[^"\\])*"/g, ''))) {
                 throw new SyntaxError('Bad JSON');
             }
-            return (1, eval)('(' + json + ')');
+            return eval('(' + json + ')');
         }
         utils.parseJSONish = parseJSONish;
         ;

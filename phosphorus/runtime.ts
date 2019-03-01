@@ -1,4 +1,4 @@
-
+/// <reference path="phosphorus.ts" />
 /// <reference path="sb2.ts" />
 /// <reference path="core.ts" />
 

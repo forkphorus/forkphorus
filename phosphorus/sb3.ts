@@ -1,4 +1,4 @@
-
+/// <reference path="phosphorus.ts" />
 /// <reference path="core.ts" />
 /// <reference path="JSZip.d.ts" />
 
@@ -36,6 +36,8 @@ namespace P.sb3 {
       return new Scratch3Sprite(this.stage);
     }
   }
+
+  export type Target = Scratch3Stage | Scratch3Sprite;
 
   // Implements a Scratch 3 VariableWatcher.
   // Adds Scratch 3-like styling
@@ -398,7 +400,7 @@ namespace P.sb3 {
       return new Scratch3VariableWatcher(stage, data);
     }
 
-    loadTarget(data): Promise<Scratch3Stage | Scratch3Sprite> {
+    loadTarget(data): Promise<Target> {
       const variables = {};
       for (const id of Object.keys(data.variables)) {
         const variable = data.variables[id];
@@ -482,11 +484,11 @@ namespace P.sb3 {
 
       return Promise.all(targets.map((data) => this.loadTarget(data)))
         .then((targets: any) => {
-          const stage = targets.filter((i) => i instanceof Scratch3Stage)[0] as Scratch3Stage;
+          const stage = targets.filter((i) => i.isStage)[0] as Scratch3Stage;
           if (!stage) {
             throw new Error('no stage object');
           }
-          const sprites = targets.filter((i) => i instanceof Scratch3Sprite) as Scratch3Sprite[];
+          const sprites = targets.filter((i) => i.isSprite) as Scratch3Sprite[];
           const watchers = this.projectData.monitors
             .map((data) => this.loadWatcher(data, stage))
             .filter((i) => i && i.valid);
@@ -625,11 +627,14 @@ namespace P.sb3 {
 
 // Compiler for .sb3 projects
 namespace P.sb3.compiler {
-  // State variables, used/initialized later.
-  let source;
-  let currentTarget;
-  let blocks;
-  let fns;
+  // Source of the current script being compiled.
+  let source: string;
+  // The target being compiled.
+  let currentTarget: P.sb3.Target;
+  // The blocks of the target.
+  let blocks: Block[];
+  // Points to the position of functions within the source.
+  let fns: number[];
 
   /*
   In Scratch 3 all blocks have a unique identifier.
@@ -670,8 +675,19 @@ namespace P.sb3.compiler {
     LIST: 13,
   };
 
+  type Block = any;
+  type TopLevelCompiler = (block: Block, f: Function) => void;
+  type ExpressionCompiler = (block: Block) => string;
+  type StatementCompiler = (block: Block) => void;
+  interface WatchedValue {
+    init?(watcher: P.sb3.Scratch3VariableWatcher): void;
+    set?(watcher: P.sb3.Scratch3VariableWatcher, value: number): void;
+    evaluate(watcher: P.sb3.Scratch3VariableWatcher): any;
+    getLabel(watcher: P.sb3.Scratch3VariableWatcher): string;
+  }
+
   // Contains top level blocks.
-  export const topLevelLibrary = {
+  export const topLevelLibrary: ObjectMap<TopLevelCompiler> = {
     // Events
     event_whenflagclicked(block, f) {
       currentTarget.listeners.whenGreenFlag.push(f);
@@ -730,7 +746,7 @@ namespace P.sb3.compiler {
   };
 
   // Contains expressions.
-  export const expressionLibrary = {
+  export const expressionLibrary: ObjectMap<ExpressionCompiler> = {
     // Motion
     motion_goto_menu(block) {
       const to = block.fields.TO[0];
@@ -885,6 +901,11 @@ namespace P.sb3.compiler {
     sensing_username(block) {
       return 'self.username';
     },
+    sensing_userid(block) {
+      // This is what Scratch 3 does.
+      // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_sensing.js#L74
+      return 'undefined';
+    },
 
     // Operators
     operator_add(block) {
@@ -1023,7 +1044,7 @@ namespace P.sb3.compiler {
   };
 
   // Contains statements.
-  export const statementLibrary = {
+  export const statementLibrary: ObjectMap<StatementCompiler> = {
     // Motion
     motion_movesteps(block) {
       const steps = block.inputs.STEPS;
@@ -1408,6 +1429,11 @@ namespace P.sb3.compiler {
       queue(id);
       source += '}\n';
     },
+    control_all_at_once(block) {
+      // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_control.js#L194-L199
+      const substack = block.inputs.SUBSTACK;
+      compileSubstack(substack);
+    },
     control_stop(block) {
       const option = block.fields.STOP_OPTION[0];
       source += 'switch (' + compileExpression(option) + ') {\n';
@@ -1620,7 +1646,7 @@ namespace P.sb3.compiler {
   };
 
   // Contains data used for variable watchers.
-  export const watcherLibrary = {
+  export const watcherLibrary: ObjectMap<WatchedValue> = {
     // Maps watcher opcode to an object determining their behavior.
     // Objects must have an evalute(watcher) method that returns the current value of the watcher. (called every visible frame)
     // They also must have a getLabel(watcher) that returns the label for the watcher. (called once during initialization)
@@ -1637,7 +1663,7 @@ namespace P.sb3.compiler {
       getLabel() { return 'y position'; },
     },
     motion_direction: {
-      evaluate(watcher) { return watcher.target.direction; },
+      evaluate(watcher) { return P.core.isSprite(watcher.target) ? watcher.target.direction : 0; },
       getLabel() { return 'direction'; },
     },
 
@@ -1675,7 +1701,7 @@ namespace P.sb3.compiler {
       },
     },
     looks_size: {
-      evaluate(watcher) { return watcher.target.scale * 100; },
+      evaluate(watcher) { return P.core.isSprite(watcher.target) ? watcher.target.scale * 100 : 100; },
       getLabel() { return 'size'; },
     },
 
@@ -1697,7 +1723,7 @@ namespace P.sb3.compiler {
     },
     sensing_timer: {
       evaluate(watcher) {
-        return (watcher.stage.now - watcher.stage.timerStart) / 1000;
+        return (watcher.stage.runtime.now - watcher.stage.runtime.timerStart) / 1000;
       },
       getLabel() { return 'timer'; },
     },
@@ -1761,38 +1787,35 @@ namespace P.sb3.compiler {
   /// Helpers
   ///
 
-  // Adds JS to update the speach bubble if necessary
+  // Adds JS to update the speech bubble if necessary
   function updateBubble() {
     source += 'if (S.saying) S.updateBubble();\n';
   }
 
   // Adds JS to enable the VISUAL flag when necessary.
-  // `variant` can be either 'drawing', 'visible', or 'always' to control when the flag gets enabled.
-  // 'drawing' (default) will enable it if the sprite is visible or the pen is down (the sprite is drawing something)
+  // `variant` can be:
+  // 'drawing' will enable it if the sprite is visible or the pen is down (if the sprite is drawing something)
   // 'visible' will enable it if the sprite is visible
   // 'always' will always enable it
-  function visualCheck(variant) {
-    const CASES = {
-      drawing: 'if (S.visible || S.isPenDown) VISUAL = true;\n',
-      visible: 'if (S.visible) VISUAL = true;\n',
-      always: 'VISUAL = true;\n',
-    };
-    if (!(variant in CASES)) {
-      throw new Error('unknown visualCheck variant: ' + variant);
-    }
+  function visualCheck(variant: string) {
     if (P.config.debug) {
       source += '/*visual:' + variant + '*/';
     }
-    source += CASES[variant];
+    switch (variant) {
+      case 'drawing': source += 'if (S.visible || S.isPenDown) VISUAL = true;\n'; break;
+      case 'visible': source += 'if (S.visible) VISUAL = true;\n'; break;
+      case 'always':  source += 'VISUAL = true;\n'; break;
+      default: throw new Error('unknown visualCheck variant: ' + variant);
+    }
   }
 
-  // Forcibly queues something to run
-  function forceQueue(id) {
+  // Queues something to run with the forceQueue runtime method
+  function forceQueue(id: number) {
     source += 'forceQueue(' + id + '); return;\n';
   }
 
-  // Queues something to run (TODO: difference from forceQueue)
-  function queue(id) {
+  // Queues something to run with the queue runtime method
+  function queue(id: number) {
     source += 'queue(' + id + '); return;\n';
   }
 
@@ -1803,12 +1826,12 @@ namespace P.sb3.compiler {
   }
 
   // Gets the next label
-  function nextLabel() {
+  function nextLabel(): number {
     return fns.length + currentTarget.fns.length;
   }
 
   // Creates and returns a new label for the script's current state
-  function label() {
+  function label(): number {
     const id = nextLabel();
     fns.push(source.length);
     if (P.config.debug) {
@@ -1819,7 +1842,7 @@ namespace P.sb3.compiler {
 
   // Sanitizes a string to be used in a javascript string
   // If includeQuotes is true, it will be encapsulated in double quotes.
-  function sanitize(thing: any, includeQuotes: boolean = false) {
+  function sanitize(thing: any, includeQuotes: boolean = false): string {
     const quote = includeQuotes ? '"' : '';
     if (typeof thing === 'string') {
       return quote + thing
@@ -1839,7 +1862,7 @@ namespace P.sb3.compiler {
 
   // Adds JS to wait for a duration.
   // `duration` is a valid compiled JS expression.
-  function wait(duration) {
+  function wait(duration: string) {
     source += 'save();\n';
     source += 'R.start = runtime.now;\n';
     source += 'R.duration = ' + duration + ';\n';
@@ -1853,7 +1876,7 @@ namespace P.sb3.compiler {
   }
 
   // Returns the runtime object that contains a variable ID.
-  function variableScope(id) {
+  function variableScope(id: string) {
     if (id in currentTarget.stage.vars) {
       return 'self';
     } else {
@@ -1862,13 +1885,13 @@ namespace P.sb3.compiler {
   }
 
   // Returns a reference to a variable with an ID
-  function variableReference(id) {
+  function variableReference(id: string) {
     const scope = variableScope(id);
     return scope + '.vars[' + compileExpression(id) + ']';
   }
 
   // Returns a reference to a list with a ID
-  function listReference(id) {
+  function listReference(id: string) {
     if (id in currentTarget.stage.lists) {
       return 'self.lists[' + compileExpression(id) + ']';
     }
@@ -1880,7 +1903,7 @@ namespace P.sb3.compiler {
   ///
 
   // Compiles a '#ABCDEF' color
-  function convertColor(hexCode) {
+  function convertColor(hexCode: string): string {
     // Remove the leading # and use it to create a hexadecimal number
     const hex = hexCode.substr(1);
     // Ensure that it is actually a hex number.
@@ -1893,14 +1916,14 @@ namespace P.sb3.compiler {
   }
 
   // Compiles a native expression (number, string, data) to a JavaScript string
-  function compileNative(constant) {
+  function compileNative(constant): string {
     // Natives are arrays.
     // The first value is the type of the native, see PRIMATIVE_TYPES
     // TODO: use another library instead?
     const type = constant[0];
 
     switch (type) {
-      // These all function as numbers. They are only differentiated so the editor can be more helpful.
+      // These all function as numbers. I believe they are only differentiated so the editor can be more helpful.
       case PRIMATIVE_TYPES.MATH_NUM:
       case PRIMATIVE_TYPES.POSITIVE_NUM:
       case PRIMATIVE_TYPES.WHOLE_NUM:
@@ -1909,7 +1932,7 @@ namespace P.sb3.compiler {
         // There are no actual guarantees that a number is present here.
         // In reality a non-number string could be present, which would be problematic to cast to number.
         if (isFinite(constant[1])) {
-          return +constant[1];
+          return constant[1];
         } else {
           return sanitize(constant[1], true);
         }
@@ -1949,6 +1972,7 @@ namespace P.sb3.compiler {
     if (!block) {
       return;
     }
+
     while (block) {
       const opcode = block.opcode;
       const compiler = statementLibrary[opcode];
@@ -1981,7 +2005,7 @@ namespace P.sb3.compiler {
     compile(id);
   }
 
-  function asType(script, type) {
+  function asType(script: string, type: string): string {
     if (type === 'string') {
       return '("" + ' + script + ")";
     } else if (type === 'number') {
@@ -1989,11 +2013,11 @@ namespace P.sb3.compiler {
     } else if (type === 'boolean') {
       return '!!' + script;
     } else {
-      return script;
+      throw new Error('unknown asType type: ' + type);
     }
   }
 
-  function fallbackValue(type) {
+  function fallbackValue(type: string): string {
     if (type === 'string') {
       return '""';
     } else if (type === 'number') {
@@ -2001,7 +2025,7 @@ namespace P.sb3.compiler {
     } else if (type === 'boolean') {
       return 'false';
     } else {
-      return '""';
+      throw new Error('unknown fallbackValue type: ' + type);
     }
   }
 
@@ -2047,7 +2071,7 @@ namespace P.sb3.compiler {
     return asType(result, type);
   }
 
-  function compileListener(topBlock) {
+  function compileListener(topBlock): string {
     let block = blocks[topBlock.next];
     source = '';
 
@@ -2082,7 +2106,7 @@ namespace P.sb3.compiler {
     return source;
   }
 
-  export function compileTarget(target, data) {
+  export function compileTarget(target: P.sb3.Target, data) {
     currentTarget = target;
     blocks = data.blocks;
     const topLevelBlocks = Object.keys(data.blocks)

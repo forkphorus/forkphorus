@@ -1,4 +1,4 @@
-
+/// <reference path="phosphorus.ts" />
 /// <reference path="core.ts" />
 /// <reference path="canvg.d.ts" />
 
@@ -206,7 +206,7 @@ namespace P.sb2 {
           value = this.timeAndDate(this.param);
           break;
         case 'timer':
-          value = Math.round((this.stage.runtime.rightNow() - this.stage.timerStart) / 100) / 10;
+          value = Math.round((this.stage.runtime.rightNow() - this.stage.runtime.timerStart) / 100) / 10;
           break;
         case 'volume':
           value = this.target.volume * 100;

@@ -1,16 +1,18 @@
+/// <reference path="phosphorus.ts" />
+
 namespace P.utils {
   // Gets the keycode for a key name
   export function getKeyCode(keyName) {
-    const KEY_CODES = {
-      space: 32,
-      'left arrow': 37,
-      'up arrow': 38,
-      'right arrow': 39,
-      'down arrow': 40,
-      any: 'any'
-    };
+    switch (keyName.toLowerCase()) {
+      case 'space': return 32;
+      case 'left arrow': return 37;
+      case 'up arrow': return 38;
+      case 'right arrow': return 39;
+      case 'down arrow': return 40;
+      case 'any': return 'any';
+    }
 
-    return KEY_CODES[keyName.toLowerCase()] || keyName.toUpperCase().charCodeAt(0);
+    return keyName.toUpperCase().charCodeAt(0);
   };
 
   // Parses a json-ish
@@ -23,7 +25,7 @@ namespace P.utils {
     if (/[^,:{}\[\]0-9\.\-+EINaefilnr-uy \n\r\t]/.test(json.replace(/"(\\.|[^"\\])*"/g, ''))) {
       throw new SyntaxError('Bad JSON');
     }
-    return (1, eval)('(' + json + ')');
+    return eval('(' + json + ')');
   };
 
   // Returns the string representation of an error.

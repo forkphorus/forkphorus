@@ -1,3 +1,5 @@
+/// <reference path="phosphorus.ts" />
+
 namespace P.config {
   export const scale = window.devicePixelRatio || 1;
   export const hasTouchEvents = 'ontouchstart' in document;
