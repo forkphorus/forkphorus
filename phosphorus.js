@@ -1,3 +1,4 @@
+"use strict";
 /*!
 Forkphorus: A JavaScript compiler for Scratch 2 and 3 projects.
 (A fork of phosphorus)
@@ -282,7 +283,6 @@ var P;
                     whenKeyPressed: [],
                     whenBackdropChanges: {},
                     whenSceneStarts: [],
-                    whenSensorGreaterThan: []
                 };
                 this.fns = []; // TODO
                 this.filters = {
@@ -478,13 +478,14 @@ var P;
                 this.tempoBPM = 60;
                 this.zoom = 1;
                 this.maxZoom = P.config.scale;
-                this.keys = [];
                 this.rawMouseX = 0;
                 this.rawMouseY = 0;
                 this.mouseX = 0;
                 this.mouseY = 0;
                 this.mousePressed = false;
                 this.username = '';
+                this.keys = [];
+                this.keys.any = 0;
                 this.runtime = new P.runtime.Runtime(this);
                 this.root = document.createElement('div');
                 this.root.classList.add('forkphorus-root');
@@ -536,7 +537,7 @@ var P;
                     this.penCanvas.style.transform =
                         this.canvas.style.transform =
                             this.ui.style.transform = 'translateZ(0)';
-                this.root.addEventListener('keydown', function (e) {
+                this.root.addEventListener('keydown', (e) => {
                     var c = e.keyCode;
                     if (!this.keys[c])
                         this.keys.any++;
@@ -548,8 +549,8 @@ var P;
                         e.preventDefault();
                         this.runtime.trigger('whenKeyPressed', c);
                     }
-                }.bind(this));
-                this.root.addEventListener('keyup', function (e) {
+                });
+                this.root.addEventListener('keyup', (e) => {
                     var c = e.keyCode;
                     if (this.keys[c])
                         this.keys.any--;
@@ -558,62 +559,64 @@ var P;
                     if (e.target === this.canvas) {
                         e.preventDefault();
                     }
-                }.bind(this));
+                });
                 if (P.config.hasTouchEvents) {
-                    document.addEventListener('touchstart', this.onTouchStart = function (e) {
+                    document.addEventListener('touchstart', this.onTouchStart = (e) => {
                         this.mousePressed = true;
+                        const target = e.target;
                         for (var i = 0; i < e.changedTouches.length; i++) {
-                            var t = e.changedTouches[i];
+                            const t = e.changedTouches[i];
                             this.updateMouse(t);
                             if (e.target === this.canvas) {
                                 this.clickMouse();
                             }
-                            else if (e.target.dataset.button != null || e.target.dataset.slider != null) {
+                            else if (target.dataset.button != null || target.dataset.slider != null) {
                                 this.watcherStart(t.identifier, t, e);
                             }
                         }
                         if (e.target === this.canvas)
                             e.preventDefault();
-                    }.bind(this));
-                    document.addEventListener('touchmove', this.onTouchMove = function (e) {
+                    });
+                    document.addEventListener('touchmove', this.onTouchMove = (e) => {
                         this.updateMouse(e.changedTouches[0]);
                         for (var i = 0; i < e.changedTouches.length; i++) {
-                            var t = e.changedTouches[i];
+                            const t = e.changedTouches[i];
                             this.watcherMove(t.identifier, t, e);
                         }
-                    }.bind(this));
-                    document.addEventListener('touchend', this.onTouchEnd = function (e) {
+                    });
+                    document.addEventListener('touchend', this.onTouchEnd = (e) => {
                         this.releaseMouse();
                         for (var i = 0; i < e.changedTouches.length; i++) {
-                            var t = e.changedTouches[i];
+                            const t = e.changedTouches[i];
                             this.watcherEnd(t.identifier, t, e);
                         }
-                    }.bind(this));
+                    });
                 }
                 else {
-                    document.addEventListener('mousedown', this.onMouseDown = function (e) {
+                    document.addEventListener('mousedown', this.onMouseDown = (e) => {
                         this.updateMouse(e);
                         this.mousePressed = true;
+                        const target = e.target;
                         if (e.target === this.canvas) {
                             this.clickMouse();
                             e.preventDefault();
                             this.canvas.focus();
                         }
                         else {
-                            if (e.target.dataset.button != null || e.target.dataset.slider != null) {
+                            if (target.dataset.button != null || target.dataset.slider != null) {
                                 this.watcherStart('mouse', e, e);
                             }
                         }
-                    }.bind(this));
-                    document.addEventListener('mousemove', this.onMouseMove = function (e) {
+                    });
+                    document.addEventListener('mousemove', this.onMouseMove = (e) => {
                         this.updateMouse(e);
                         this.watcherMove('mouse', e, e);
-                    }.bind(this));
-                    document.addEventListener('mouseup', this.onMouseUp = function (e) {
+                    });
+                    document.addEventListener('mouseup', this.onMouseUp = (e) => {
                         this.updateMouse(e);
                         this.releaseMouse();
                         this.watcherEnd('mouse', e, e);
-                    }.bind(this));
+                    });
                 }
                 this.prompter = document.createElement('div');
                 this.ui.appendChild(this.prompter);
@@ -661,11 +664,11 @@ var P;
                 this.promptButton.style.bottom = '.4em';
                 this.promptButton.style.background = 'url(icons.svg) -22.8em -0.4em';
                 this.promptButton.style.backgroundSize = '38.4em 6.4em';
-                this.prompt.addEventListener('keydown', function (e) {
+                this.prompt.addEventListener('keydown', (e) => {
                     if (e.keyCode === 13) {
                         this.submitPrompt();
                     }
-                }.bind(this));
+                });
                 this.promptButton.addEventListener(P.config.hasTouchEvents ? 'touchstart' : 'mousedown', this.submitPrompt.bind(this));
             }
             // TODO: move to Scratch2Stage, it's not used in Scratch3Stage
@@ -959,7 +962,6 @@ var P;
                 this.penSize = 1;
                 this.penColor = 0x000000;
                 this.isPenDown = false;
-                this.bubble = null;
                 this.thinking = false;
                 this.sayId = 0;
                 this.dragStartX = 0;
@@ -1099,20 +1101,20 @@ var P;
             }
             // Clones this sprite.
             clone() {
-                var c = this._clone();
-                c.isClone = true;
-                // Copy data without passing reference
+                var clone = this._clone();
+                clone.isClone = true;
+                // Copy variables and lists without passing reference
                 var keys = Object.keys(this.vars);
                 for (var i = keys.length; i--;) {
                     var k = keys[i];
-                    c.vars[k] = this.vars[k];
+                    clone.vars[k] = this.vars[k];
                 }
                 var keys = Object.keys(this.lists);
                 for (var i = keys.length; i--;) {
                     var k = keys[i];
-                    c.lists[k] = this.lists[k].slice(0);
+                    clone.lists[k] = this.lists[k].slice(0);
                 }
-                c.filters = {
+                clone.filters = {
                     color: this.filters.color,
                     fisheye: this.filters.fisheye,
                     whirl: this.filters.whirl,
@@ -1122,33 +1124,32 @@ var P;
                     ghost: this.filters.ghost
                 };
                 // Copy scripts
-                c.procedures = this.procedures;
-                c.listeners = this.listeners;
-                c.fns = this.fns;
+                clone.procedures = this.procedures;
+                clone.listeners = this.listeners;
+                clone.fns = this.fns;
                 // Copy Data
-                // These are all primatives which will not pass by reference.
-                c.name = this.name;
-                c.costumes = this.costumes;
-                c.currentCostumeIndex = this.currentCostumeIndex;
-                c.sounds = this.sounds;
-                c.soundRefs = this.soundRefs;
-                c.direction = this.direction;
-                c.instrument = this.instrument;
-                c.isDraggable = this.isDraggable;
-                c.rotationStyle = this.rotationStyle;
-                c.scale = this.scale;
-                c.volume = this.volume;
-                c.scratchX = this.scratchX;
-                c.scratchY = this.scratchY;
-                c.visible = this.visible;
-                c.penColor = this.penColor;
-                c.penCSS = this.penCSS;
-                c.penHue = this.penHue;
-                c.penSaturation = this.penSaturation;
-                c.penLightness = this.penLightness;
-                c.penSize = this.penSize;
-                c.isPenDown = this.isPenDown;
-                return c;
+                clone.name = this.name;
+                clone.costumes = this.costumes;
+                clone.currentCostumeIndex = this.currentCostumeIndex;
+                clone.sounds = this.sounds;
+                clone.soundRefs = this.soundRefs;
+                clone.direction = this.direction;
+                clone.instrument = this.instrument;
+                clone.isDraggable = this.isDraggable;
+                clone.rotationStyle = this.rotationStyle;
+                clone.scale = this.scale;
+                clone.volume = this.volume;
+                clone.scratchX = this.scratchX;
+                clone.scratchY = this.scratchY;
+                clone.visible = this.visible;
+                clone.penColor = this.penColor;
+                clone.penCSS = this.penCSS;
+                clone.penHue = this.penHue;
+                clone.penSaturation = this.penSaturation;
+                clone.penLightness = this.penLightness;
+                clone.penSize = this.penSize;
+                clone.isPenDown = this.isPenDown;
+                return clone;
             }
             // Determines if the sprite is touching an object.
             // thing is the name of the object, '_mouse_', or '_edge_'
@@ -1408,7 +1409,7 @@ var P;
                     this.penHue = hsl[0];
                     this.penSaturation = hsl[1];
                     this.penLightness = hsl[2];
-                    this.penCSS = null;
+                    this.penCSS = '';
                 }
             }
             // Sets a pen color HSL parameter.
@@ -1509,7 +1510,13 @@ var P;
                 this.rotationCenterY = costumeData.rotationCenterY;
                 this.layers = costumeData.layers;
                 this.image = document.createElement('canvas');
-                this.context = this.image.getContext('2d');
+                const context = this.image.getContext('2d');
+                if (context) {
+                    this.context = context;
+                }
+                else {
+                    throw new Error('No canvas 2d context');
+                }
                 this.render();
             }
             render() {
@@ -1535,7 +1542,6 @@ var P;
         // An abstract variable watcher
         class VariableWatcher {
             constructor(stage, targetName) {
-                this.target = null;
                 this.valid = false;
                 this.x = 0;
                 this.y = 0;
@@ -1546,12 +1552,12 @@ var P;
                 this.targetName = targetName;
             }
             // Initializes the VariableWatcher. Called once.
-            // Expected to be overridden, call super.init()
+            // Expected to be overridden.
             init() {
                 this.target = this.stage.getObject(this.targetName) || this.stage;
             }
             // Changes the visibility of the watcher.
-            // Expected to be overridden, call super.setVisible(visible)
+            // Expected to be overridden.
             setVisible(visible) {
                 this.visible = visible;
             }
@@ -1706,16 +1712,10 @@ var P;
             'Vibraslap': 'drums/Vibraslap(1)_22k.wav',
             'WoodBlock': 'drums/WoodBlock(1)_22k.wav'
         };
-        let zipArchive = null;
+        let zipArchive;
         class Scratch2VariableWatcher extends P.core.VariableWatcher {
             constructor(stage, targetName, data) {
                 super(stage, targetName);
-                this.el = null;
-                this.labelEl = null;
-                this.readout = null;
-                this.slider = null;
-                this.button = null;
-                this.buttonWrap = null;
                 this.cmd = data.cmd;
                 this.type = data.type || 'var';
                 if (data.color) {
@@ -3649,16 +3649,12 @@ var P;
                 else {
                     for (var i = CALLS.length, j = 5; i-- && j--;) {
                         if (CALLS[i].base === procedure.fn) {
-                            var recursive = true;
+                            // recursive
+                            runtime.queue[THREAD] = new Thread(S, BASE, procedure.fn, CALLS);
                             break;
                         }
                     }
-                    if (recursive) {
-                        runtime.queue[THREAD] = new Thread(S, BASE, procedure.fn, CALLS);
-                    }
-                    else {
-                        IMMEDIATE = procedure.fn;
-                    }
+                    IMMEDIATE = procedure.fn;
                 }
             }
             else {
@@ -3866,7 +3862,6 @@ var P;
                     }
                 } while ((this.isTurbo || !VISUAL) && Date.now() - start < 1000 / P.config.framerate && queue.length);
                 this.stage.draw();
-                S = null;
             }
             onError(e) {
                 clearInterval(this.interval);
@@ -4130,7 +4125,6 @@ var P;
                     this.valid = false;
                 }
             }
-            // Override
             update() {
                 if (this.visible) {
                     // Value is only updated when the value has changed to reduce useless paints in some browsers.
@@ -4140,16 +4134,14 @@ var P;
                     }
                 }
             }
-            // Override
             init() {
                 super.init();
                 // call init() if it exists
-                if ('init' in this.libraryEntry) {
+                if (this.libraryEntry.init) {
                     this.libraryEntry.init(this);
                 }
                 this.updateLayout();
             }
-            // Override
             setVisible(visible) {
                 super.setVisible(visible);
                 this.updateLayout();
@@ -4177,7 +4169,7 @@ var P;
             // Will silently fail if this watcher cannot be set.
             setValue(value) {
                 // Not all opcodes have a set()
-                if ('set' in this.libraryEntry) {
+                if (this.libraryEntry.set) {
                     this.libraryEntry.set(this, value);
                 }
             }
@@ -4503,7 +4495,6 @@ var P;
         class SB3FileLoader extends BaseSB3Loader {
             constructor(buffer) {
                 super();
-                this.zip = null; // TODO
                 this.buffer = buffer;
             }
             getFile(path, type) {
@@ -5955,7 +5946,7 @@ var P;
                     return 'false';
                 }
                 else {
-                    throw new Error('unknown fallbackValue type: ' + type);
+                    return '""';
                 }
             }
             // Returns a compiled expression as a JavaScript string.
@@ -6014,7 +6005,7 @@ var P;
                     if (!(topLevelOpCode in compiler_1.expressionLibrary) && !(topLevelOpCode in compiler_1.statementLibrary)) {
                         console.warn('unknown top level block', topLevelOpCode, topBlock);
                     }
-                    return;
+                    return '';
                 }
                 compile(block);
                 // Procedure definitions need special care to properly end calls.

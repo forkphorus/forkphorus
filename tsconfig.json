@@ -3,6 +3,13 @@
     "outFile": "./phosphorus.js",
     "sourceMap": true,
     "target": "es6",
+    "alwaysStrict": true,
+    "noImplicitThis": true,
+    "strictBindCallApply": true,
+
+    // Want to enable these, but too many issues.
+    // "strictNullChecks": true,
+    // "noImplicitAny": true,
   },
   "include": [
     "phosphorus/**/*",

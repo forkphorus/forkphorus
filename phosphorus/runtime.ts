@@ -33,7 +33,7 @@ namespace P.runtime {
   // ??
   var THREAD;
   // The next function to run immediately after this one.
-  var IMMEDIATE: Fn;
+  var IMMEDIATE: Fn | null;
   // Has a "visual change" been made in this frame?
   var VISUAL: boolean;
 
@@ -432,15 +432,12 @@ namespace P.runtime {
       } else {
         for (var i = CALLS.length, j = 5; i-- && j--;) {
           if (CALLS[i].base === procedure.fn) {
-            var recursive = true;
+            // recursive
+            runtime.queue[THREAD] = new Thread(S, BASE, procedure.fn, CALLS);
             break;
           }
         }
-        if (recursive) {
-          runtime.queue[THREAD] = new Thread(S, BASE, procedure.fn, CALLS);
-        } else {
-          IMMEDIATE = procedure.fn;
-        }
+        IMMEDIATE = procedure.fn;
       }
     } else {
       IMMEDIATE = S.fns[id];
@@ -655,7 +652,6 @@ namespace P.runtime {
       } while ((this.isTurbo || !VISUAL) && Date.now() - start < 1000 / P.config.framerate && queue.length);
 
       this.stage.draw();
-      S = null;
     }
 
     onError(e) {

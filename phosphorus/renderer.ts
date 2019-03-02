@@ -6,7 +6,7 @@ namespace P.renderer {
     public canvas: HTMLCanvasElement;
     public noEffects: boolean = false;
 
-    constructor(canvas) {
+    constructor(canvas: HTMLCanvasElement) {
       this.ctx = canvas.getContext('2d');
       this.canvas = canvas;
     }

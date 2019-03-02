@@ -77,7 +77,7 @@ namespace P.sb2 {
     'WoodBlock': 'drums/WoodBlock(1)_22k.wav'
   };
 
-  let zipArchive = null;
+  let zipArchive: JSZip.Zip;
 
   export class Scratch2VariableWatcher extends P.core.VariableWatcher {
     private cmd: string;
@@ -90,12 +90,12 @@ namespace P.sb2 {
     public sliderMax: number;
     public sliderMin: number;
 
-    private el: HTMLElement = null;
-    private labelEl: HTMLElement = null;
-    private readout: HTMLElement = null;
-    public slider: HTMLElement = null;
-    public button: HTMLElement = null;
-    private buttonWrap: HTMLElement = null;
+    private el: HTMLElement;
+    private labelEl: HTMLElement;
+    private readout: HTMLElement;
+    public slider: HTMLElement;
+    public button: HTMLElement;
+    private buttonWrap: HTMLElement;
 
     constructor(stage, targetName, data) {
       super(stage, targetName);
@@ -642,7 +642,7 @@ namespace P.sb2 {
             resolve(image);
           };
           const data = f.async('binarystring')
-            .then((data) => {
+            .then((data: string) => {
               image.src = 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(data);
             });
         });
@@ -1736,7 +1736,7 @@ namespace P.sb2.compiler {
     if (script[0][0] === 'procDef') {
       var inputs = script[0][2];
       var types = script[0][1].match(/%[snmdcb]/g) || [];
-      var used = [];
+      var used: boolean[] = [];
     }
 
     for (let i = 1; i < script.length; i++) {

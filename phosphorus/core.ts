@@ -18,6 +18,17 @@ namespace P.core {
     right: number;
   }
 
+  interface Listeners {
+    whenClicked: P.runtime.Fn[];
+    whenCloned: P.runtime.Fn[];
+    whenGreenFlag: P.runtime.Fn[];
+    whenIReceive: ObjectMap<P.runtime.Fn[]>;
+    whenKeyPressed: P.runtime.Fn[][];
+    whenBackdropChanges: ObjectMap<P.runtime.Fn[]>;
+    whenSceneStarts: P.runtime.Fn[];
+    // whenSensorGreaterThan: P.runtime.Fn[]
+  }
+
   export abstract class Base {
     // The parent stage.
     public stage: Stage;
@@ -65,7 +76,7 @@ namespace P.core {
     public saying: boolean = false;
     // Procedures of the object.
     public procedures: ObjectMap<Procedure> = {};
-    public listeners = {
+    public listeners: Listeners = {
       whenClicked: [],
       whenCloned: [],
       whenGreenFlag: [],
@@ -73,7 +84,6 @@ namespace P.core {
       whenKeyPressed: [],
       whenBackdropChanges: {},
       whenSceneStarts: [],
-      whenSensorGreaterThan: []
     };
     public fns: any[] = []; // TODO
     public filters = {
@@ -252,6 +262,8 @@ namespace P.core {
     abstract createVariableWatcher(target: Base, variableName: string): VariableWatcher | null;
   }
 
+  type KeyList = Array<boolean | undefined> & { any: number; };
+
   // A stage object
   export abstract class Stage extends Base {
     // We are our own stage.
@@ -276,7 +288,7 @@ namespace P.core {
     public zoom: number = 1;
     public maxZoom: number = P.config.scale;
 
-    public keys: (boolean | undefined)[] = [];
+    public keys: KeyList;
 
     public rawMouseX: number = 0;
     public rawMouseY: number = 0;
@@ -313,6 +325,8 @@ namespace P.core {
     constructor() {
       super();
 
+      this.keys = [] as KeyList;
+      this.keys.any = 0;
       this.runtime = new P.runtime.Runtime(this);
 
       this.root = document.createElement('div');
@@ -377,7 +391,7 @@ namespace P.core {
         this.canvas.style.transform =
         this.ui.style.transform = 'translateZ(0)';
 
-      this.root.addEventListener('keydown', function(e) {
+      this.root.addEventListener('keydown', (e) => {
         var c = e.keyCode;
         if (!this.keys[c]) this.keys.any++;
         this.keys[c] = true;
@@ -387,9 +401,9 @@ namespace P.core {
           e.preventDefault();
           this.runtime.trigger('whenKeyPressed', c);
         }
-      }.bind(this));
+      });
 
-      this.root.addEventListener('keyup', function(e) {
+      this.root.addEventListener('keyup', (e) => {
         var c = e.keyCode;
         if (this.keys[c]) this.keys.any--;
         this.keys[c] = false;
@@ -397,67 +411,71 @@ namespace P.core {
         if (e.target === this.canvas) {
           e.preventDefault();
         }
-      }.bind(this));
+      });
 
       if (P.config.hasTouchEvents) {
 
-        document.addEventListener('touchstart', this.onTouchStart = function(e) {
+        document.addEventListener('touchstart', this.onTouchStart = (e: TouchEvent) => {
           this.mousePressed = true;
+          const target = e.target as HTMLElement;
+
           for (var i = 0; i < e.changedTouches.length; i++) {
-            var t = e.changedTouches[i];
+            const t = e.changedTouches[i];
             this.updateMouse(t);
             if (e.target === this.canvas) {
               this.clickMouse();
-            } else if (e.target.dataset.button != null || e.target.dataset.slider != null) {
+            } else if (target.dataset.button != null || target.dataset.slider != null) {
               this.watcherStart(t.identifier, t, e);
             }
           }
-          if (e.target === this.canvas) e.preventDefault();
-        }.bind(this));
 
-        document.addEventListener('touchmove', this.onTouchMove = function(e) {
+          if (e.target === this.canvas) e.preventDefault();
+        });
+
+        document.addEventListener('touchmove', this.onTouchMove = (e: TouchEvent) => {
           this.updateMouse(e.changedTouches[0]);
           for (var i = 0; i < e.changedTouches.length; i++) {
-            var t = e.changedTouches[i];
+            const t = e.changedTouches[i];
             this.watcherMove(t.identifier, t, e);
           }
-        }.bind(this));
+        });
 
-        document.addEventListener('touchend', this.onTouchEnd = function(e) {
+        document.addEventListener('touchend', this.onTouchEnd = (e: TouchEvent) => {
           this.releaseMouse();
           for (var i = 0; i < e.changedTouches.length; i++) {
-            var t = e.changedTouches[i];
+            const t = e.changedTouches[i];
             this.watcherEnd(t.identifier, t, e);
           }
-        }.bind(this));
+        });
 
       } else {
 
-        document.addEventListener('mousedown', this.onMouseDown = function(e) {
+        document.addEventListener('mousedown', this.onMouseDown = (e) => {
           this.updateMouse(e);
           this.mousePressed = true;
+          const target = e.target as HTMLElement;
 
           if (e.target === this.canvas) {
             this.clickMouse();
             e.preventDefault();
             this.canvas.focus();
           } else {
-            if (e.target.dataset.button != null || e.target.dataset.slider != null) {
+            if (target.dataset.button != null || target.dataset.slider != null) {
               this.watcherStart('mouse', e, e);
             }
           }
-        }.bind(this));
+        });
 
-        document.addEventListener('mousemove', this.onMouseMove = function(e) {
+        document.addEventListener('mousemove', this.onMouseMove = (e) => {
           this.updateMouse(e);
           this.watcherMove('mouse', e, e);
-        }.bind(this));
+        });
 
-        document.addEventListener('mouseup', this.onMouseUp = function(e) {
+        document.addEventListener('mouseup', this.onMouseUp = (e) => {
           this.updateMouse(e);
           this.releaseMouse();
           this.watcherEnd('mouse', e, e);
-        }.bind(this));
+        });
       }
 
       this.prompter = document.createElement('div');
@@ -510,11 +528,11 @@ namespace P.core {
       this.promptButton.style.background = 'url(icons.svg) -22.8em -0.4em';
       this.promptButton.style.backgroundSize = '38.4em 6.4em';
 
-      this.prompt.addEventListener('keydown', function(e) {
+      this.prompt.addEventListener('keydown', (e) => {
         if (e.keyCode === 13) {
           this.submitPrompt();
         }
-      }.bind(this));
+      });
 
       this.promptButton.addEventListener(P.config.hasTouchEvents ? 'touchstart' : 'mousedown', this.submitPrompt.bind(this));
     }
@@ -818,7 +836,7 @@ namespace P.core {
     public penSize: number = 1;
     public penColor: number = 0x000000;
     public isPenDown: boolean = false;
-    public bubble: HTMLElement = null;
+    public bubble: HTMLElement;
     public thinking: boolean = false;
     public sayId: number = 0;
     public bubblePointer: HTMLElement;
@@ -982,23 +1000,23 @@ namespace P.core {
 
     // Clones this sprite.
     clone() {
-      var c = this._clone();
-      c.isClone = true;
+      var clone = this._clone();
+      clone.isClone = true;
 
-      // Copy data without passing reference
+      // Copy variables and lists without passing reference
       var keys = Object.keys(this.vars);
       for (var i = keys.length; i--;) {
         var k = keys[i];
-        c.vars[k] = this.vars[k];
+        clone.vars[k] = this.vars[k];
       }
 
       var keys = Object.keys(this.lists);
       for (var i = keys.length; i--;) {
         var k = keys[i];
-        c.lists[k] = this.lists[k].slice(0);
+        clone.lists[k] = this.lists[k].slice(0);
       }
 
-      c.filters = {
+      clone.filters = {
         color: this.filters.color,
         fisheye: this.filters.fisheye,
         whirl: this.filters.whirl,
@@ -1009,35 +1027,34 @@ namespace P.core {
       };
 
       // Copy scripts
-      c.procedures = this.procedures;
-      c.listeners = this.listeners;
-      c.fns = this.fns;
+      clone.procedures = this.procedures;
+      clone.listeners = this.listeners;
+      clone.fns = this.fns;
 
       // Copy Data
-      // These are all primatives which will not pass by reference.
-      c.name = this.name;
-      c.costumes = this.costumes;
-      c.currentCostumeIndex = this.currentCostumeIndex;
-      c.sounds = this.sounds;
-      c.soundRefs = this.soundRefs;
-      c.direction = this.direction;
-      c.instrument = this.instrument;
-      c.isDraggable = this.isDraggable;
-      c.rotationStyle = this.rotationStyle;
-      c.scale = this.scale;
-      c.volume = this.volume;
-      c.scratchX = this.scratchX;
-      c.scratchY = this.scratchY;
-      c.visible = this.visible;
-      c.penColor = this.penColor;
-      c.penCSS = this.penCSS;
-      c.penHue = this.penHue;
-      c.penSaturation = this.penSaturation;
-      c.penLightness = this.penLightness;
-      c.penSize = this.penSize;
-      c.isPenDown = this.isPenDown;
+      clone.name = this.name;
+      clone.costumes = this.costumes;
+      clone.currentCostumeIndex = this.currentCostumeIndex;
+      clone.sounds = this.sounds;
+      clone.soundRefs = this.soundRefs;
+      clone.direction = this.direction;
+      clone.instrument = this.instrument;
+      clone.isDraggable = this.isDraggable;
+      clone.rotationStyle = this.rotationStyle;
+      clone.scale = this.scale;
+      clone.volume = this.volume;
+      clone.scratchX = this.scratchX;
+      clone.scratchY = this.scratchY;
+      clone.visible = this.visible;
+      clone.penColor = this.penColor;
+      clone.penCSS = this.penCSS;
+      clone.penHue = this.penHue;
+      clone.penSaturation = this.penSaturation;
+      clone.penLightness = this.penLightness;
+      clone.penSize = this.penSize;
+      clone.isPenDown = this.isPenDown;
 
-      return c;
+      return clone;
     }
 
     // Must return a new instance of this Sprite's constructor. Data copying will be handled in clone()
@@ -1321,7 +1338,7 @@ namespace P.core {
         this.penHue = hsl[0];
         this.penSaturation = hsl[1];
         this.penLightness = hsl[2];
-        this.penCSS = null;
+        this.penCSS = '';
       }
     }
 
@@ -1436,7 +1453,12 @@ namespace P.core {
       this.layers = costumeData.layers;
 
       this.image = document.createElement('canvas');
-      this.context = this.image.getContext('2d');
+      const context = this.image.getContext('2d');
+      if (context) {
+        this.context = context;
+      } else {
+        throw new Error('No canvas 2d context');
+      }
 
       this.render();
     }
@@ -1471,7 +1493,7 @@ namespace P.core {
   export abstract class VariableWatcher {
     public stage: Stage;
     public targetName: string;
-    public target: Base | null = null;
+    public target: Base;
     public valid: boolean = false;
     public x: number = 0;
     public y: number = 0;
@@ -1486,13 +1508,13 @@ namespace P.core {
     }
 
     // Initializes the VariableWatcher. Called once.
-    // Expected to be overridden, call super.init()
+    // Expected to be overridden.
     init() {
       this.target = this.stage.getObject(this.targetName) || this.stage;
     }
 
     // Changes the visibility of the watcher.
-    // Expected to be overridden, call super.setVisible(visible)
+    // Expected to be overridden.
     setVisible(visible) {
       this.visible = visible;
     }
@@ -1518,11 +1540,11 @@ namespace P.core {
     abstract call(inputs: any[]): any;
   }
 
-  export function isSprite(base: P.core.Base): base is P.core.Sprite {
+  export function isSprite(base: any): base is P.core.Sprite {
     return base.isSprite;
   }
 
-  export function isStage(base: P.core.Base): base is P.core.Stage {
+  export function isStage(base: any): base is P.core.Stage {
     return base.isStage;
   }
 }

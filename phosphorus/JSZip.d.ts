@@ -8,6 +8,7 @@ declare namespace JSZip {
 
   export interface File {
     async(type: string): Promise<string | ArrayBuffer>;
+    name: string;
   }
 
   export interface Base {

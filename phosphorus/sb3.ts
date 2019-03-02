@@ -86,7 +86,6 @@ namespace P.sb3 {
       }
     }
 
-    // Override
     update() {
       if (this.visible) {
         // Value is only updated when the value has changed to reduce useless paints in some browsers.
@@ -97,19 +96,17 @@ namespace P.sb3 {
       }
     }
 
-    // Override
     init() {
       super.init();
 
       // call init() if it exists
-      if ('init' in this.libraryEntry) {
+      if (this.libraryEntry.init) {
         this.libraryEntry.init(this);
       }
 
       this.updateLayout();
     }
 
-    // Override
     setVisible(visible) {
       super.setVisible(visible);
       this.updateLayout();
@@ -140,7 +137,7 @@ namespace P.sb3 {
     // Will silently fail if this watcher cannot be set.
     setValue(value) {
       // Not all opcodes have a set()
-      if ('set' in this.libraryEntry) {
+      if (this.libraryEntry.set) {
         this.libraryEntry.set(this, value);
       }
     }
@@ -512,7 +509,7 @@ namespace P.sb3 {
   // Loads a .sb3 file
   export class SB3FileLoader extends BaseSB3Loader {
     private buffer: ArrayBuffer;
-    private zip: JSZip.Zip = null; // TODO
+    private zip: JSZip.Zip;
 
     constructor(buffer) {
       super();
@@ -575,7 +572,7 @@ namespace P.sb3 {
   // Loads a Scratch 3 project from the scratch.mit.edu website
   // Uses either a loaded project.json or its ID
   export class Scratch3Loader extends BaseSB3Loader {
-    private projectId: number;
+    private projectId: number | null;
 
     constructor(idOrData) {
       super();
@@ -680,7 +677,7 @@ namespace P.sb3.compiler {
   };
 
   type Block = any;
-  export type TopLevelCompiler = (block: Block, f: Function) => void;
+  export type TopLevelCompiler = (block: Block, f: P.runtime.Fn) => void;
   export type ExpressionCompiler = (block: Block) => string;
   export type StatementCompiler = (block: Block) => void;
   export interface WatchedValue {
@@ -2009,7 +2006,7 @@ namespace P.sb3.compiler {
     compile(id);
   }
 
-  function asType(script: string, type: string): string {
+  function asType(script: string, type: string | undefined): string {
     if (type === 'string') {
       return '("" + ' + script + ")";
     } else if (type === 'number') {
@@ -2021,7 +2018,7 @@ namespace P.sb3.compiler {
     }
   }
 
-  function fallbackValue(type: string): string {
+  function fallbackValue(type: string | undefined): string {
     if (type === 'string') {
       return '""';
     } else if (type === 'number') {
@@ -2029,7 +2026,7 @@ namespace P.sb3.compiler {
     } else if (type === 'boolean') {
       return 'false';
     } else {
-      throw new Error('unknown fallbackValue type: ' + type);
+      return '""';
     }
   }
 
@@ -2097,7 +2094,7 @@ namespace P.sb3.compiler {
       if (!(topLevelOpCode in expressionLibrary) && !(topLevelOpCode in statementLibrary)) {
         console.warn('unknown top level block', topLevelOpCode, topBlock);
       }
-      return;
+      return '';
     }
 
     compile(block);
