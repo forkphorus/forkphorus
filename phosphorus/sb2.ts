@@ -133,7 +133,7 @@ namespace P.sb2 {
       this.layout();
     }
 
-    getLabel() {
+    getLabel(): string {
       var WATCHER_LABELS = {
         'costumeIndex': 'costume #',
         'xpos': 'x position',
@@ -161,7 +161,7 @@ namespace P.sb2 {
       return WATCHER_LABELS[this.cmd] || '';
     }
 
-    setVisible(visible) {
+    setVisible(visible: boolean) {
       super.setVisible(visible);
       this.layout();
     }
@@ -496,7 +496,7 @@ namespace P.sb2 {
         sprite.scratchY = data.scratchY;
         sprite.direction = data.direction;
         sprite.isDraggable = data.isDraggable;
-        sprite.rotationStyle = data.rotationStyle;
+        sprite.rotationStyle = P.utils.parseRotationStyle(data.rotationStyle);
         sprite.scale = data.scale
         sprite.visible = data.visible;
       }
@@ -1228,9 +1228,7 @@ namespace P.sb2.compiler {
 
       } else if (block[0] === 'setRotationStyle') {
 
-        // TODO: use P.utils.asRotationStyle()?
-        source += 'var style = ' + val(block[1]) + ';\n';
-        source += 'S.rotationStyle = style === "left-right" ? "leftRight" : style === "don\'t rotate" ? "none" : "normal";\n';
+        source += 'S.rotationStyle = P.utils.parseRotationStyle(' + val(block[1]) + ');\n';
 
       } else if (block[0] === 'lookLike:') { /* Looks */
 

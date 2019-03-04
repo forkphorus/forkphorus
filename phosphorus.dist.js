@@ -128,7 +128,7 @@ var P;
         ;
         function decodeAudio(ab) {
             if (!audio.context) {
-                return Promise.resolve(null);
+                return Promise.reject("No audio context");
             }
             return new Promise((resolve, reject) => {
                 // Attempt to decode it as ADPCM audio
@@ -168,54 +168,60 @@ var P;
         class CanvasRenderer {
             constructor(canvas) {
                 this.noEffects = false;
-                this.ctx = canvas.getContext('2d');
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    throw new Error('Cannot get 2d rendering context');
+                }
+                this.ctx = ctx;
                 this.canvas = canvas;
             }
             reset(scale) {
                 // resizes and clears the canvas
-                this.canvas.width = 480 * scale * P.config.scale;
-                this.canvas.height = 360 * scale * P.config.scale;
-                this.ctx.scale(scale * P.config.scale, scale * P.config.scale);
+                const effectiveScale = scale * P.config.scale;
+                this.canvas.width = 480 * effectiveScale;
+                this.canvas.height = 360 * effectiveScale;
+                this.ctx.scale(effectiveScale, effectiveScale);
             }
             drawImage(image, x, y) {
                 this.ctx.drawImage(image, x, y);
             }
             drawChild(c) {
-                var costume = c.costumes[c.currentCostumeIndex];
-                if (costume) {
-                    this.ctx.save();
-                    var z = c.stage.zoom * P.config.scale;
-                    if (P.core.isSprite(c)) {
-                        this.ctx.translate(((c.scratchX + 240) * z | 0) / z, ((180 - c.scratchY) * z | 0) / z);
-                        if (c.rotationStyle === 0 /* Normal */) {
-                            this.ctx.rotate((c.direction - 90) * Math.PI / 180);
-                        }
-                        else if (c.rotationStyle === 1 /* LeftRight */ && c.direction < 0) {
-                            this.ctx.scale(-1, 1);
-                        }
-                        this.ctx.scale(c.scale, c.scale);
-                    }
-                    this.ctx.scale(costume.scale, costume.scale);
-                    if (c.isSprite) {
-                        this.ctx.translate(-costume.rotationCenterX, -costume.rotationCenterY);
-                    }
-                    if (!this.noEffects) {
-                        this.ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
-                        let filter = '';
-                        if (c.filters.brightness) {
-                            filter += 'brightness(' + (100 + c.filters.brightness) + '%) ';
-                        }
-                        if (c.filters.color) {
-                            filter += 'hue-rotate(' + (c.filters.color / 200 * 360) + 'deg) ';
-                        }
-                        // Only apply a filter if necessary to fix Firefox performance issue
-                        if (filter !== '') {
-                            this.ctx.filter = filter;
-                        }
-                    }
-                    this.ctx.drawImage(costume.image, 0, 0);
-                    this.ctx.restore();
+                const costume = c.costumes[c.currentCostumeIndex];
+                if (!costume) {
+                    return;
                 }
+                this.ctx.save();
+                const scale = c.stage.zoom * P.config.scale;
+                if (P.core.isSprite(c)) {
+                    this.ctx.translate(((c.scratchX + 240) * scale | 0) / scale, ((180 - c.scratchY) * scale | 0) / scale);
+                    if (c.rotationStyle === 0 /* Normal */) {
+                        this.ctx.rotate((c.direction - 90) * Math.PI / 180);
+                    }
+                    else if (c.rotationStyle === 1 /* LeftRight */ && c.direction < 0) {
+                        this.ctx.scale(-1, 1);
+                    }
+                    this.ctx.scale(c.scale, c.scale);
+                }
+                this.ctx.scale(costume.scale, costume.scale);
+                if (c.isSprite) {
+                    this.ctx.translate(-costume.rotationCenterX, -costume.rotationCenterY);
+                }
+                if (!this.noEffects) {
+                    this.ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
+                    let filter = '';
+                    if (c.filters.brightness) {
+                        filter += 'brightness(' + (100 + c.filters.brightness) + '%) ';
+                    }
+                    if (c.filters.color) {
+                        filter += 'hue-rotate(' + (c.filters.color / 200 * 360) + 'deg) ';
+                    }
+                    // Only apply a filter if necessary to fix Firefox performance issue
+                    if (filter !== '') {
+                        this.ctx.filter = filter;
+                    }
+                }
+                this.ctx.drawImage(costume.image, 0, 0);
+                this.ctx.restore();
             }
         }
         renderer.CanvasRenderer = CanvasRenderer;
@@ -276,7 +282,7 @@ var P;
                 // Current volume, from 0-1
                 this.volume = 1;
                 // The rotation style of the object.
-                this.rotationStyle = 2 /* None */;
+                this.rotationStyle = 0 /* Normal */;
                 // Variables of the object.
                 this.vars = {};
                 // Variable watchers of the object.
@@ -296,7 +302,7 @@ var P;
                     whenBackdropChanges: {},
                     whenSceneStarts: [],
                 };
-                this.fns = []; // TODO
+                this.fns = [];
                 this.filters = {
                     color: 0,
                     fisheye: 0,
@@ -1116,18 +1122,14 @@ var P;
             }
             // Clones this sprite.
             clone() {
-                var clone = this._clone();
+                const clone = this._clone();
                 clone.isClone = true;
                 // Copy variables and lists without passing reference
-                var keys = Object.keys(this.vars);
-                for (var i = keys.length; i--;) {
-                    var k = keys[i];
-                    clone.vars[k] = this.vars[k];
+                for (const key of Object.keys(this.vars)) {
+                    clone.vars[key] = this.vars[key];
                 }
-                var keys = Object.keys(this.lists);
-                for (var i = keys.length; i--;) {
-                    var k = keys[i];
-                    clone.lists[k] = this.lists[k].slice(0);
+                for (const key of Object.keys(this.lists)) {
+                    clone.lists[key] = this.lists[key].slice(0);
                 }
                 clone.filters = {
                     color: this.filters.color,
@@ -1241,7 +1243,7 @@ var P;
             }
             // Determines if this Sprite is touching a color.
             touchingColor(rgb) {
-                var b = this.rotatedBounds();
+                const b = this.rotatedBounds();
                 collisionCanvas.width = b.right - b.left;
                 collisionCanvas.height = b.top - b.bottom;
                 collisionRenderer.ctx.save();
@@ -1250,9 +1252,9 @@ var P;
                 collisionRenderer.ctx.globalCompositeOperation = 'destination-in';
                 collisionRenderer.drawChild(this);
                 collisionRenderer.ctx.restore();
-                var data = collisionRenderer.ctx.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
+                const data = collisionRenderer.ctx.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
                 rgb = rgb & 0xffffff;
-                var length = (b.right - b.left) * (b.top - b.bottom) * 4;
+                const length = (b.right - b.left) * (b.top - b.bottom) * 4;
                 for (var i = 0; i < length; i += 4) {
                     if ((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) === rgb && data[i + 3]) {
                         return true;
@@ -2109,7 +2111,7 @@ var P;
                     sprite.scratchY = data.scratchY;
                     sprite.direction = data.direction;
                     sprite.isDraggable = data.isDraggable;
-                    sprite.rotationStyle = data.rotationStyle;
+                    sprite.rotationStyle = P.utils.parseRotationStyle(data.rotationStyle);
                     sprite.scale = data.scale;
                     sprite.visible = data.visible;
                 }
@@ -2756,9 +2758,7 @@ var P;
                         source += 'S.bounceOffEdge();\n';
                     }
                     else if (block[0] === 'setRotationStyle') {
-                        // TODO: use P.utils.asRotationStyle()?
-                        source += 'var style = ' + val(block[1]) + ';\n';
-                        source += 'S.rotationStyle = style === "left-right" ? "leftRight" : style === "don\'t rotate" ? "none" : "normal";\n';
+                        source += 'S.rotationStyle = P.utils.parseRotationStyle(' + val(block[1]) + ');\n';
                     }
                     else if (block[0] === 'lookLike:') { /* Looks */
                         source += 'S.setCostume(' + val(block[1]) + ');\n';
@@ -4133,7 +4133,6 @@ var P;
                 this.id = data.id;
                 // Operation code, similar to other parts of Scratch 3
                 this.opcode = data.opcode;
-                // 'default', '', ''
                 this.mode = data.mode;
                 // Watcher options, varies by opcode.
                 this.params = data.params;
@@ -4458,6 +4457,7 @@ var P;
                 return loadCostumes
                     .then(() => loadSounds)
                     .then(() => {
+                    // TODO: dirty hack for null stage
                     const target = new (data.isStage ? Scratch3Stage : Scratch3Sprite)(null);
                     target.currentCostumeIndex = data.currentCostume;
                     target.name = data.name;
@@ -4523,22 +4523,29 @@ var P;
                 super();
                 this.buffer = buffer;
             }
-            getFile(path, type) {
+            getAsText(path) {
                 P.IO.progressHooks.new();
-                return this.zip.file(path).async(type)
+                return this.zip.file(path).async('text')
                     .then((response) => {
                     P.IO.progressHooks.end();
                     return response;
                 });
             }
-            getAsText(path) {
-                return this.getFile(path, 'string');
-            }
             getAsArrayBuffer(path) {
-                return this.getFile(path, 'arrayBuffer');
+                P.IO.progressHooks.new();
+                return this.zip.file(path).async('arrayBuffer')
+                    .then((response) => {
+                    P.IO.progressHooks.end();
+                    return response;
+                });
             }
             getAsBase64(path) {
-                return this.getFile(path, 'base64');
+                P.IO.progressHooks.new();
+                return this.zip.file(path).async('base64')
+                    .then((response) => {
+                    P.IO.progressHooks.end();
+                    return response;
+                });
             }
             getAsImage(path, format) {
                 P.IO.progressHooks.new();
@@ -4592,7 +4599,7 @@ var P;
                 return P.IO.fetch(sb3.ASSETS_API.replace('$path', path))
                     .then((request) => request.arrayBuffer());
             }
-            getAsImage(path, format) {
+            getAsImage(path) {
                 P.IO.progressHooks.new();
                 return new Promise((resolve, reject) => {
                     const image = new Image();
@@ -4651,6 +4658,18 @@ var P;
             Top levels are top level blocks like `when green flag pressed`, they react to events.
             Each of these are separated and compiled differently and in different spots.
             */
+            // A CompiledExpression is a type of expression made by an expression compiler with extra
+            // data such as types for sake of optimization.
+            class CompiledExpression {
+                constructor(source, type) {
+                    this.source = source;
+                    this.type = type;
+                }
+            }
+            // Easier aliases for CompiledExpression
+            const numberExpr = (source) => new CompiledExpression(source, 'number');
+            const stringExpr = (source) => new CompiledExpression(source, 'number');
+            const booleanExpr = (source) => new CompiledExpression(source, 'number');
             // IDs of primative types
             // https://github.com/LLK/scratch-vm/blob/36fe6378db930deb835e7cd342a39c23bb54dd72/src/serialization/sb3.js#L60-L79
             const PRIMATIVE_TYPES = {
@@ -4736,41 +4755,41 @@ var P;
                 // Motion
                 motion_goto_menu(block) {
                     const to = block.fields.TO[0];
-                    return sanitize(to, true);
+                    return sanitizedExpression(to);
                 },
                 motion_glideto_menu(block) {
                     const to = block.fields.TO[0];
-                    return sanitize(to, true);
+                    return sanitizedExpression(to);
                 },
                 motion_pointtowards_menu(block) {
                     const towards = block.fields.TOWARDS[0];
-                    return sanitize(towards, true);
+                    return sanitizedExpression(towards);
                 },
                 motion_xposition(block) {
-                    return 'S.scratchX';
+                    return numberExpr('S.scratchX');
                 },
                 motion_yposition(block) {
-                    return 'S.scratchY';
+                    return numberExpr('S.scratchY');
                 },
                 motion_direction() {
-                    return 'S.direction';
+                    return numberExpr('S.direction');
                 },
                 // Looks
                 looks_costume(block) {
                     const costume = block.fields.COSTUME;
-                    return sanitize(costume[0], true);
+                    return sanitizedExpression(costume[0]);
                 },
                 looks_backdrops(block) {
                     const backdrop = block.fields.BACKDROP[0];
-                    return sanitize(backdrop, true);
+                    return sanitizedExpression(backdrop);
                 },
                 looks_costumenumbername(block) {
                     const name = block.fields.NUMBER_NAME[0];
                     if (name === 'number') {
-                        return 'S.currentCostumeIndex + 1';
+                        return numberExpr('(S.currentCostumeIndex + 1)');
                     }
                     else if (name === 'name') {
-                        return 'S.costumes[S.currentCostumeIndex].name';
+                        return stringExpr('S.costumes[S.currentCostumeIndex].name');
                     }
                     else {
                         throw new Error('unknown NUMBER_NAME: ' + name);
@@ -4779,113 +4798,112 @@ var P;
                 looks_backdropnumbername(block) {
                     const name = block.fields.NUMBER_NAME[0];
                     if (name === 'number') {
-                        return 'self.currentCostumeIndex + 1';
+                        return numberExpr('(self.currentCostumeIndex + 1)');
                     }
                     else if (name === 'name') {
-                        return 'self.costumes[self.currentCostumeIndex].name';
+                        return stringExpr('self.costumes[self.currentCostumeIndex].name');
                     }
                     else {
                         throw new Error('unknown NUMBER_NAME: ' + name);
                     }
                 },
                 looks_size() {
-                    return 'S.scale * 100';
+                    return numberExpr('(S.scale * 100)');
                 },
                 // Sounds
                 sound_sounds_menu(block) {
                     const sound = block.fields.SOUND_MENU[0];
-                    return '"' + sanitize(sound) + '"';
+                    return sanitizedExpression(sound);
                 },
                 sound_volume() {
-                    return '(S.volume * 100)';
+                    return numberExpr('(S.volume * 100)');
                 },
                 // Control
                 control_create_clone_of_menu(block) {
                     const option = block.fields.CLONE_OPTION;
-                    return '"' + sanitize(option[0]) + '"';
+                    return sanitizedExpression(option[0]);
                 },
                 // Sensing
                 sensing_touchingobject(block) {
                     const object = block.inputs.TOUCHINGOBJECTMENU;
-                    return 'S.touching(' + compileExpression(object) + ')';
+                    return booleanExpr('S.touching(' + compileExpression(object) + ')');
                 },
                 sensing_touchingobjectmenu(block) {
                     const object = block.fields.TOUCHINGOBJECTMENU;
-                    return '"' + sanitize(object[0]) + '"';
+                    return sanitizedExpression(object[0]);
                 },
                 sensing_touchingcolor(block) {
                     const color = block.inputs.COLOR;
-                    return 'S.touchingColor(' + compileExpression(color) + ')';
+                    return booleanExpr('S.touchingColor(' + compileExpression(color) + ')');
                 },
                 sensing_coloristouchingcolor(block) {
                     const color = block.inputs.COLOR;
                     const color2 = block.inputs.COLOR2;
-                    return 'S.colorTouchingColor(' + compileExpression(color) + ', ' + compileExpression(color2) + ')';
+                    return booleanExpr('S.colorTouchingColor(' + compileExpression(color) + ', ' + compileExpression(color2) + ')');
                 },
                 sensing_distanceto(block) {
                     const menu = block.inputs.DISTANCETOMENU;
-                    return 'S.distanceTo(' + compileExpression(menu) + ')';
+                    return numberExpr('S.distanceTo(' + compileExpression(menu) + ')');
                 },
                 sensing_distancetomenu(block) {
-                    return sanitize(block.fields.DISTANCETOMENU[0], true);
+                    return sanitizedExpression(block.fields.DISTANCETOMENU[0]);
                 },
                 sensing_answer(block) {
-                    return 'self.answer';
+                    return stringExpr('self.answer');
                 },
                 sensing_keypressed(block) {
                     const key = block.inputs.KEY_OPTION;
-                    return '!!self.keys[P.utils.getKeyCode(' + compileExpression(key) + ')]';
+                    return booleanExpr('!!self.keys[P.utils.getKeyCode(' + compileExpression(key) + ')]');
                 },
                 sensing_keyoptions(block) {
                     const key = block.fields.KEY_OPTION[0];
-                    return '"' + sanitize(key) + '"';
+                    return sanitizedExpression(key);
                 },
                 sensing_mousedown(block) {
-                    return 'self.mousePressed';
+                    return booleanExpr('self.mousePressed');
                 },
                 sensing_mousex(block) {
-                    return 'self.mouseX';
+                    return numberExpr('self.mouseX');
                 },
                 sensing_mousey(block) {
-                    return 'self.mouseY';
+                    return numberExpr('self.mouseY');
                 },
                 sensing_loudness(block) {
                     // We don't implement loudness, we always return -1 which indicates that there is no microphone available.
-                    return '-1';
+                    return numberExpr('-1');
                 },
                 sensing_timer(block) {
-                    return '((runtime.now - runtime.timerStart) / 1000)';
+                    return numberExpr('((runtime.now - runtime.timerStart) / 1000)');
                 },
                 sensing_of(block) {
                     const property = block.fields.PROPERTY[0];
                     const object = block.inputs.OBJECT;
-                    return 'attribute(' + sanitize(property, true) + ', ' + compileExpression(object, 'string') + ')';
+                    return 'attribute(' + sanitizedString(property) + ', ' + compileExpression(object, 'string') + ')';
                 },
                 sensing_of_object_menu(block) {
                     const object = block.fields.OBJECT[0];
-                    return sanitize(object, true);
+                    return sanitizedExpression(object);
                 },
                 sensing_current(block) {
                     const current = block.fields.CURRENTMENU[0];
                     switch (current) {
-                        case 'YEAR': return 'new Date().getFullYear()';
-                        case 'MONTH': return 'new Date().getMonth() + 1';
-                        case 'DATE': return 'new Date().getDate()';
-                        case 'DAYOFWEEK': return 'new Date().getDay() + 1';
-                        case 'HOUR': return 'new Date().getHours()';
-                        case 'MINUTE': return 'new Date().getMinutes()';
-                        case 'SECOND': return 'new Date().getSeconds()';
+                        case 'YEAR': return numberExpr('new Date().getFullYear()');
+                        case 'MONTH': return numberExpr('(new Date().getMonth() + 1)');
+                        case 'DATE': return numberExpr('new Date().getDate()');
+                        case 'DAYOFWEEK': return numberExpr('(new Date().getDay() + 1)');
+                        case 'HOUR': return numberExpr('new Date().getHours()');
+                        case 'MINUTE': return numberExpr('new Date().getMinutes()');
+                        case 'SECOND': return numberExpr('new Date().getSeconds()');
                     }
                     throw new Error('unknown CURRENTMENU: ' + current);
                 },
                 sensing_dayssince2000(block) {
-                    return '((Date.now() - epoch) / 86400000)';
+                    return numberExpr('((Date.now() - epoch) / 86400000)');
                 },
                 sensing_username(block) {
-                    return 'self.username';
+                    return stringExpr('self.username');
                 },
                 sensing_userid(block) {
-                    // This is what Scratch 3 does.
                     // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_sensing.js#L74
                     return 'undefined';
                 },
@@ -4893,93 +4911,93 @@ var P;
                 operator_add(block) {
                     const num1 = block.inputs.NUM1;
                     const num2 = block.inputs.NUM2;
-                    return '(' + compileExpression(num1, 'number') + ' + ' + compileExpression(num2, 'number') + ' || 0)';
+                    return numberExpr('(' + compileExpression(num1, 'number') + ' + ' + compileExpression(num2, 'number') + ' || 0)');
                 },
                 operator_subtract(block) {
                     const num1 = block.inputs.NUM1;
                     const num2 = block.inputs.NUM2;
-                    return '(' + compileExpression(num1, 'number') + ' - ' + compileExpression(num2, 'number') + ' || 0)';
+                    return numberExpr('(' + compileExpression(num1, 'number') + ' - ' + compileExpression(num2, 'number') + ' || 0)');
                 },
                 operator_multiply(block) {
                     const num1 = block.inputs.NUM1;
                     const num2 = block.inputs.NUM2;
-                    return '(' + compileExpression(num1, 'number') + ' * ' + compileExpression(num2, 'number') + ' || 0)';
+                    return numberExpr('(' + compileExpression(num1, 'number') + ' * ' + compileExpression(num2, 'number') + ' || 0)');
                 },
                 operator_divide(block) {
                     const num1 = block.inputs.NUM1;
                     const num2 = block.inputs.NUM2;
-                    return '(' + compileExpression(num1, 'number') + ' / ' + compileExpression(num2, 'number') + ' || 0)';
+                    return numberExpr('(' + compileExpression(num1, 'number') + ' / ' + compileExpression(num2, 'number') + ' || 0)');
                 },
                 operator_random(block) {
                     const from = block.inputs.FROM;
                     const to = block.inputs.TO;
-                    return 'random(' + compileExpression(from, 'number') + ', ' + compileExpression(to, 'number') + ')';
+                    return numberExpr('random(' + compileExpression(from, 'number') + ', ' + compileExpression(to, 'number') + ')');
                 },
                 operator_gt(block) {
                     const operand1 = block.inputs.OPERAND1;
                     const operand2 = block.inputs.OPERAND2;
                     // TODO: use numGreater?
-                    return '(compare(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ') === 1)';
+                    return booleanExpr('(compare(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ') === 1)');
                 },
                 operator_lt(block) {
                     const operand1 = block.inputs.OPERAND1;
                     const operand2 = block.inputs.OPERAND2;
                     // TODO: use numLess?
-                    return '(compare(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ') === -1)';
+                    return booleanExpr('(compare(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ') === -1)');
                 },
                 operator_equals(block) {
                     const operand1 = block.inputs.OPERAND1;
                     const operand2 = block.inputs.OPERAND2;
-                    return 'equal(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ')';
+                    return booleanExpr('equal(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ')');
                 },
                 operator_and(block) {
                     const operand1 = block.inputs.OPERAND1;
                     const operand2 = block.inputs.OPERAND2;
-                    return '(' + compileExpression(operand1) + ' && ' + compileExpression(operand2) + ')';
+                    return booleanExpr('(' + compileExpression(operand1) + ' && ' + compileExpression(operand2) + ')');
                 },
                 operator_or(block) {
                     const operand1 = block.inputs.OPERAND1;
                     const operand2 = block.inputs.OPERAND2;
-                    return '(' + compileExpression(operand1) + ' || ' + compileExpression(operand2) + ')';
+                    return booleanExpr('(' + compileExpression(operand1) + ' || ' + compileExpression(operand2) + ')');
                 },
                 operator_not(block) {
                     const operand = block.inputs.OPERAND;
-                    return '!(' + compileExpression(operand) + ')';
+                    return booleanExpr('!' + compileExpression(operand));
                 },
                 operator_join(block) {
                     const string1 = block.inputs.STRING1;
                     const string2 = block.inputs.STRING2;
-                    return '(' + compileExpression(string1, 'string') + ' + ' + compileExpression(string2) + ')';
+                    return stringExpr('(' + compileExpression(string1, 'string') + ' + ' + compileExpression(string2, 'string') + ')');
                 },
                 operator_letter_of(block) {
                     const string = block.inputs.STRING;
                     const letter = block.inputs.LETTER;
-                    return '((' + compileExpression(string, 'string') + ')[(' + compileExpression(letter, 'number') + ' | 0) - 1] || "")';
+                    return stringExpr('((' + compileExpression(string, 'string') + ')[(' + compileExpression(letter, 'number') + ' | 0) - 1] || "")');
                 },
                 operator_length(block) {
                     const string = block.inputs.STRING;
                     // TODO: parenthesis important?
-                    return '(' + compileExpression(string, 'string') + ').length';
+                    return numberExpr('(' + compileExpression(string, 'string') + ').length');
                 },
                 operator_contains(block) {
                     const string1 = block.inputs.STRING1;
                     const string2 = block.inputs.STRING2;
-                    return compileExpression(string1, 'string') + '.includes(' + compileExpression(string2, 'string') + ')';
+                    return booleanExpr(compileExpression(string1, 'string') + '.includes(' + compileExpression(string2, 'string') + ')');
                 },
                 operator_mod(block) {
                     const num1 = block.inputs.NUM1;
                     const num2 = block.inputs.NUM2;
-                    return '(' + compileExpression(num1) + ' % ' + compileExpression(num2) + ' || 0)';
+                    return numberExpr('(' + compileExpression(num1) + ' % ' + compileExpression(num2) + ' || 0)');
                 },
                 operator_round(block) {
                     const num = block.inputs.NUM;
-                    return 'Math.round(' + compileExpression(num, 'number') + ')';
+                    return numberExpr('Math.round(' + compileExpression(num, 'number') + ')');
                 },
                 operator_mathop(block) {
                     const operator = block.fields.OPERATOR[0];
                     const num = block.inputs.NUM;
                     // TODO: skip mathFunc overhead (probably very slight) for performance?
-                    return 'mathFunc(' + sanitize(operator, true) + ', ' + compileExpression(num, 'number') + ')';
+                    return 'mathFunc(' + sanitizedString(operator) + ', ' + compileExpression(num, 'number') + ')';
                 },
                 // Data
                 data_itemoflist(block) {
@@ -4990,34 +5008,35 @@ var P;
                 data_itemnumoflist(block) {
                     const list = block.fields.LIST[1];
                     const item = block.inputs.ITEM;
-                    return 'listIndexOf(' + listReference(list) + ', ' + compileExpression(item) + ')';
+                    return numberExpr('listIndexOf(' + listReference(list) + ', ' + compileExpression(item) + ')');
                 },
                 data_lengthoflist(block) {
                     const list = block.fields.LIST[1];
-                    return listReference(list) + '.length';
+                    return numberExpr(listReference(list) + '.length');
                 },
                 data_listcontainsitem(block) {
                     const list = block.fields.LIST[1];
                     const item = block.inputs.ITEM;
-                    return 'listContains(' + listReference(list) + ', ' + compileExpression(item) + ')';
+                    return booleanExpr('listContains(' + listReference(list) + ', ' + compileExpression(item) + ')');
                 },
                 // Procedures/arguments
                 argument_reporter_string_number(block) {
                     const name = block.fields.VALUE[0];
-                    return 'C.args[' + sanitize(name, true) + ']';
+                    return 'C.args[' + sanitizedString(name) + ']';
                 },
                 argument_reporter_boolean(block) {
                     const name = block.fields.VALUE[0];
-                    return asType('C.args[' + sanitize(name, true) + ']', 'boolean');
+                    // Forcibly convert to boolean
+                    return booleanExpr(asType('C.args[' + sanitizedString(name) + ']', 'boolean'));
                 },
                 // Pen (extension)
                 pen_menu_colorParam(block) {
                     const colorParam = block.fields.colorParam[0];
-                    return sanitize(colorParam, true);
+                    return sanitizedExpression(colorParam);
                 },
                 // Music (extension)
                 music_getTempo(block) {
-                    return 'self.tempoBPM';
+                    return numberExpr('self.tempoBPM');
                 },
             };
             // Contains statements.
@@ -5070,7 +5089,7 @@ var P;
                     forceQueue(id);
                     source += '}\n';
                     source += 'restore();\n';
-                    source += '}\n'; // if (to) {
+                    source += '}\n';
                 },
                 motion_glidesecstoxy(block) {
                     const secs = block.inputs.SECS;
@@ -5129,7 +5148,7 @@ var P;
                 },
                 motion_setrotationstyle(block) {
                     const style = block.fields.STYLE[0];
-                    source += 'S.rotationStyle = ' + sanitize(P.utils.parseRotationStyle(style), true) + ';\n';
+                    source += 'S.rotationStyle = ' + P.utils.parseRotationStyle(style) + ';\n';
                     visualCheck('visible');
                 },
                 // Looks
@@ -5214,14 +5233,14 @@ var P;
                 looks_changeeffectby(block) {
                     const effect = block.fields.EFFECT[0];
                     const change = block.inputs.CHANGE;
-                    source += 'S.changeFilter("' + sanitize(effect).toLowerCase() + '", ' + compileExpression(change, 'number') + ');\n';
+                    source += 'S.changeFilter(' + sanitizedString(effect).toLowerCase() + ', ' + compileExpression(change, 'number') + ');\n';
                     visualCheck('visible');
                 },
                 looks_seteffectto(block) {
                     const effect = block.fields.EFFECT[0];
                     const value = block.inputs.VALUE;
                     // Lowercase conversion is necessary to remove capitals, which we do not want.
-                    source += 'S.setFilter("' + sanitize(effect).toLowerCase() + '", ' + compileExpression(value, 'number') + ');\n';
+                    source += 'S.setFilter(' + sanitizedString(effect).toLowerCase() + ', ' + compileExpression(value, 'number') + ');\n';
                     visualCheck('visible');
                 },
                 looks_cleargraphiceffects(block) {
@@ -5488,12 +5507,12 @@ var P;
                 data_showvariable(block) {
                     const variable = block.fields.VARIABLE[1];
                     const scope = variableScope(variable);
-                    source += scope + '.showVariable(' + sanitize(variable, true) + ', true);\n';
+                    source += scope + '.showVariable(' + sanitizedString(variable) + ', true);\n';
                 },
                 data_hidevariable(block) {
                     const variable = block.fields.VARIABLE[1];
                     const scope = variableScope(variable);
-                    source += scope + '.showVariable(' + sanitize(variable, true) + ', false);\n';
+                    source += scope + '.showVariable(' + sanitizedString(variable) + ', false);\n';
                 },
                 data_addtolist(block) {
                     const list = block.fields.LIST[1];
@@ -5530,7 +5549,7 @@ var P;
                         return;
                     }
                     const id = nextLabel();
-                    source += 'call(S.procedures[' + sanitize(name, true) + '], ' + id + ', [\n';
+                    source += 'call(S.procedures[' + sanitizedString(name) + '], ' + id + ', [\n';
                     // The mutation has a stringified JSON list of input IDs... it's weird.
                     const inputIds = JSON.parse(mutation.argumentids);
                     for (const id of inputIds) {
@@ -5797,26 +5816,23 @@ var P;
                 }
                 return id;
             }
-            // Sanitizes a string to be used in a javascript string
-            // If includeQuotes is true, it will be encapsulated in double quotes.
-            function sanitize(thing, includeQuotes = false) {
-                const quote = includeQuotes ? '"' : '';
-                if (typeof thing === 'string') {
-                    return quote + thing
-                        .replace(/\\/g, '\\\\')
-                        .replace(/'/g, '\\\'')
-                        .replace(/"/g, '\\"')
-                        .replace(/\n/g, '\\n')
-                        .replace(/\r/g, '\\r')
-                        .replace(/\{/g, '\\x7b')
-                        .replace(/\}/g, '\\x7d') + quote;
+            // Sanitizes a string to be used in a javascript string enclosed in double quotes.
+            function sanitizedString(thing) {
+                if (typeof thing !== 'string') {
+                    thing = '' + thing;
                 }
-                else if (typeof thing === 'number') {
-                    return quote + thing.toString() + quote;
-                }
-                else {
-                    return sanitize(thing + '', includeQuotes);
-                }
+                return '"' + thing
+                    .replace(/\\/g, '\\\\')
+                    .replace(/'/g, '\\\'')
+                    .replace(/"/g, '\\"')
+                    .replace(/\n/g, '\\n')
+                    .replace(/\r/g, '\\r')
+                    .replace(/\{/g, '\\x7b')
+                    .replace(/\}/g, '\\x7d') + '"';
+            }
+            // Sanitizes a string using sanitizedString() as a compiled expression instead.
+            function sanitizedExpression(thing) {
+                return stringExpr(sanitizedString(thing));
             }
             // Adds JS to wait for a duration.
             // `duration` is a valid compiled JS expression.
@@ -5857,7 +5873,7 @@ var P;
             /// Compiling Functions
             ///
             // Compiles a '#ABCDEF' color
-            function convertColor(hexCode) {
+            function compileColor(hexCode) {
                 // Remove the leading # and use it to create a hexadecimal number
                 const hex = hexCode.substr(1);
                 // Ensure that it is actually a hex number.
@@ -5888,11 +5904,11 @@ var P;
                             return constant[1];
                         }
                         else {
-                            return sanitize(constant[1], true);
+                            return sanitizedString(constant[1]);
                         }
                     case PRIMATIVE_TYPES.TEXT:
                         // Text is compiled directly into a string.
-                        return sanitize(constant[1], true);
+                        return sanitizedString(constant[1]);
                     case PRIMATIVE_TYPES.VAR:
                         // For variable natives the second item is the name of the variable
                         // and the third is the ID of the variable. We only care about the ID.
@@ -5905,7 +5921,7 @@ var P;
                         return compileExpression(constant[2]);
                     case PRIMATIVE_TYPES.COLOR_PICKER:
                         // Colors are stored as strings like "#123ABC", so we must do some conversions.
-                        return convertColor(constant[1]);
+                        return compileColor(constant[1]);
                     default:
                         console.warn('unknown constant', type, constant);
                         return '""';
@@ -5948,18 +5964,12 @@ var P;
                 compile(id);
             }
             function asType(script, type) {
-                if (type === 'string') {
-                    return '("" + ' + script + ")";
+                switch (type) {
+                    case 'string': return '("" + ' + script + ")";
+                    case 'number': return '+' + script;
+                    case 'boolean': return '!!' + script;
                 }
-                else if (type === 'number') {
-                    return '+' + script;
-                }
-                else if (type === 'boolean') {
-                    return '!!' + script;
-                }
-                else {
-                    return script;
-                }
+                return source;
             }
             function fallbackValue(type) {
                 if (type === 'string') {
@@ -5983,7 +5993,7 @@ var P;
                 }
                 // TODO: use asType?
                 if (typeof expression === 'string') {
-                    return sanitize(expression, true);
+                    return sanitizedString(expression);
                 }
                 if (typeof expression === 'number') {
                     // I have a slight feeling this block never runs.
@@ -6007,7 +6017,14 @@ var P;
                 }
                 let result = compiler(block);
                 if (P.config.debug) {
-                    result = '/*' + opcode + '*/' + result;
+                    result = '/*' + opcode + '*/' + result.toString();
+                }
+                if (result instanceof CompiledExpression) {
+                    // If the expression is already of the indented type, no changes are needed.
+                    if (result.type === type) {
+                        return result.source;
+                    }
+                    return asType(result.source, type);
                 }
                 return asType(result, type);
             }
@@ -6235,20 +6252,30 @@ var P;
         // Converts an external string to an internally recognized rotation style.
         function parseRotationStyle(style) {
             switch (style) {
-                case 'left-right': return 1 /* LeftRight */;
-                case 'don\'t rotate': return 2 /* None */;
-                case 'all around': return 0 /* Normal */;
-                default: return 0 /* Normal */;
+                case 'leftRight':
+                case 'left-right':
+                    return 1 /* LeftRight */;
+                case 'none':
+                case 'don\'t rotate':
+                    return 2 /* None */;
+                case 'normal':
+                case 'all around':
+                    return 0 /* Normal */;
             }
+            console.warn('unknown rotation style', style);
+            return 0 /* Normal */;
         }
         utils.parseRotationStyle = parseRotationStyle;
         ;
         // Determines the type of a project with its project.json data
         function projectType(data) {
-            if (data.targets) {
+            if (typeof data !== 'object' || data === null) {
+                return;
+            }
+            if ('targets' in data) {
                 return 3;
             }
-            if (data.objName) {
+            if ('objName' in data) {
                 return 2;
             }
             throw new Error('unknown project: ' + JSON.stringify(data));

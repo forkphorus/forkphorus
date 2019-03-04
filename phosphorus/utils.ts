@@ -94,7 +94,7 @@ namespace P.utils {
 
   // Patches an SVG to make it behave more like Scratch.
   export function patchSVG(svg, element) {
-    const FONTS = {
+    const FONTS: ObjectMap<string> = {
       // TODO: Scratch 3
       '': 'Helvetica',
       Donegal: 'Donegal One',
@@ -103,7 +103,7 @@ namespace P.utils {
       Mystery: 'Mystery Quest'
     };
 
-    const LINE_HEIGHTS = {
+    const LINE_HEIGHTS: ObjectMap<number> = {
       // TODO: Scratch 3
       Helvetica: 1.13,
       'Donegal One': 1.25,
@@ -151,28 +151,38 @@ namespace P.utils {
 
   import RotationStyle = P.core.RotationStyle;
   // Converts an external string to an internally recognized rotation style.
-  export function parseRotationStyle(style): RotationStyle {
+  export function parseRotationStyle(style: string): RotationStyle {
     switch (style) {
-      case 'left-right': return RotationStyle.LeftRight;
-      case 'don\'t rotate': return RotationStyle.None;
-      case 'all around': return RotationStyle.Normal;
-      default: return RotationStyle.Normal;
+      case 'leftRight':
+      case 'left-right':
+        return RotationStyle.LeftRight;
+      case 'none':
+      case 'don\'t rotate':
+        return RotationStyle.None;
+      case 'normal':
+      case 'all around':
+        return RotationStyle.Normal;
     }
+    console.warn('unknown rotation style', style);
+    return RotationStyle.Normal;
   };
 
   // Determines the type of a project with its project.json data
-  export function projectType(data) {
-    if (data.targets) {
+  export function projectType(data: unknown) {
+    if (typeof data !== 'object' || data === null) {
+      return;
+    }
+    if ('targets' in data) {
       return 3;
     }
-    if (data.objName) {
+    if ('objName' in data) {
       return 2;
     }
     throw new Error('unknown project: ' + JSON.stringify(data));
   };
 
   // Converts RGB to HSL
-  export function rgbToHSL(rgb) {
+  export function rgbToHSL(rgb: number) {
     var r = (rgb >> 16 & 0xff) / 0xff;
     var g = (rgb >> 8 & 0xff) / 0xff;
     var b = (rgb & 0xff) / 0xff;
@@ -188,14 +198,14 @@ namespace P.utils {
     var l = (min + max) / 2;
     var s = c / (1 - Math.abs(2 * l - 1));
 
-    var h;
+    var h: number;
     switch (max) {
       case r: h = ((g - b) / c + 6) % 6; break;
       case g: h = (b - r) / c + 2; break;
       case b: h = (r - g) / c + 4; break;
     }
-    h *= 60;
+    h! *= 60;
 
-    return [h, s * 100, l * 100];
+    return [h!, s * 100, l * 100];
   }
 }

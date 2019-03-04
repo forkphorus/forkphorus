@@ -16,7 +16,7 @@ namespace P.audio {
   ];
   const ADPCM_INDEX = [-1, -1, -1, -1, 2, 4, 6, 8, -1, -1, -1, -1, 2, 4, 6, 8];
 
-  function decodeADPCMAudio(ab, cb) {
+  function decodeADPCMAudio(ab: ArrayBuffer, cb) {
     var dv = new DataView(ab);
     if (dv.getUint32(0) !== 0x52494646 || dv.getUint32(8) !== 0x57415645) {
       return cb(new Error('Unrecognized audio format'));
@@ -93,9 +93,9 @@ namespace P.audio {
     cb(new Error('Unrecognized WAV format ' + format));
   };
 
-  export function decodeAudio(ab): Promise<AudioBuffer | null> {
+  export function decodeAudio(ab: ArrayBuffer): Promise<AudioBuffer> {
     if (!context) {
-      return Promise.resolve(null);
+      return Promise.reject("No audio context");
     }
 
     return new Promise((resolve, reject) => {
@@ -105,6 +105,7 @@ namespace P.audio {
           resolve(buffer);
           return;
         }
+
         // Hope that the audio context will know what to do
         return audio.context.decodeAudioData(ab)
           .then((buffer) => resolve(buffer));

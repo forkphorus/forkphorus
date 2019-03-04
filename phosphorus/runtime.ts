@@ -512,7 +512,7 @@ namespace P.runtime {
       this.onError = this.onError.bind(this);
     }
 
-    startThread(sprite, base) {
+    startThread(sprite: core.Base, base) {
       const thread = new Thread(sprite, base, base, [{args: [], stack: [{}]}]);
 
       for (let i = 0; i < this.queue.length; i++) {

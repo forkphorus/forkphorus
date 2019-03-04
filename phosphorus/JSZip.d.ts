@@ -7,7 +7,10 @@ declare namespace JSZip {
   }
 
   export interface File {
-    async(type: string): Promise<string | ArrayBuffer>;
+    async(type: 'arrayBuffer'): Promise<ArrayBuffer>;
+    async(type: 'text'): Promise<string>;
+    async(type: 'binarystring'): Promise<string>;
+    async(type: 'base64'): Promise<string>;
     name: string;
   }
 

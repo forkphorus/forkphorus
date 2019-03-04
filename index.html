@@ -18,8 +18,8 @@
 
   <script>
     (function() {
-      'use strict';
-      // Implement theme selector early to remove most of the white loading flash.
+      // Implement theme selector early to remove any white loading flash there would otherwise be.
+      // localStorage is used to remember dark mode between reloads
       function toggleDark(dark) {
         document.documentElement.classList.toggle('dark', dark);
         localStorage.setItem('userPrefersDark', document.documentElement.classList.contains('dark'));

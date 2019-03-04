@@ -103,7 +103,7 @@ namespace P.core {
     // This object's audio node.
     public node: GainNode | null;
     // The rotation style of the object.
-    public rotationStyle: RotationStyle = RotationStyle.None;
+    public rotationStyle: RotationStyle = RotationStyle.Normal;
     // Variables of the object.
     public vars: ObjectMap<any> = {};
     // Variable watchers of the object.
@@ -123,7 +123,7 @@ namespace P.core {
       whenBackdropChanges: {},
       whenSceneStarts: [],
     };
-    public fns: any[] = []; // TODO
+    public fns: P.runtime.Fn[] = [];
     public filters = {
       color: 0,
       fisheye: 0,
@@ -142,14 +142,14 @@ namespace P.core {
 
     // Data/Loading methods
 
-    addSound(sound) {
+    addSound(sound: Sound) {
       this.soundRefs[sound.name] = sound;
       this.sounds.push(sound);
     }
 
     // Implementations of Scratch blocks
 
-    showVariable(name, visible) {
+    showVariable(name: string, visible: boolean) {
       let watcher = this.watchers[name];
 
       // Create watchers that might not exist
@@ -664,7 +664,7 @@ namespace P.core {
       this.backdropCanvas.style.filter = filter;
     }
 
-    setZoom(zoom) {
+    setZoom(zoom: number) {
       if (this.zoom === zoom) return;
       if (this.maxZoom < zoom * P.config.scale) {
         this.maxZoom = zoom * P.config.scale;
@@ -722,7 +722,7 @@ namespace P.core {
      * Gets an object with its name, ignoring clones.
      * '_stage_' points to the stage.
      */
-    getObject(name): P.core.Base | null {
+    getObject(name: string): P.core.Base | null {
       for (var i = 0; i < this.children.length; i++) {
         var c = this.children[i];
         if (c.name === name && !c.isClone) {
@@ -890,7 +890,7 @@ namespace P.core {
     public dragOffsetX: number = 0;
     public dragOffsetY: number = 0;
 
-    constructor(stage) {
+    constructor(stage: Stage) {
       super();
       this.stage = stage;
     }
@@ -980,14 +980,14 @@ namespace P.core {
     }
 
     // Moves forward some number of steps in the current direction.
-    forward(steps) {
+    forward(steps: number) {
       const d = (90 - this.direction) * Math.PI / 180;
       this.moveTo(this.scratchX + steps * Math.cos(d), this.scratchY + steps * Math.sin(d));
     }
 
     // Moves the sprite to a coordinate
     // Draws a line if the pen is currently down.
-    moveTo(x, y) {
+    moveTo(x: number, y: number) {
       var ox = this.scratchX;
       var oy = this.scratchY;
       if (ox === x && oy === y && !this.isPenDown) {
@@ -1034,7 +1034,7 @@ namespace P.core {
     }
 
     // Faces in a direction.
-    setDirection(degrees) {
+    setDirection(degrees: number) {
       var d = degrees % 360;
       if (d > 180) d -= 360;
       if (d <= -180) d += 360;
@@ -1044,20 +1044,15 @@ namespace P.core {
 
     // Clones this sprite.
     clone() {
-      var clone = this._clone();
+      const clone = this._clone();
       clone.isClone = true;
 
       // Copy variables and lists without passing reference
-      var keys = Object.keys(this.vars);
-      for (var i = keys.length; i--;) {
-        var k = keys[i];
-        clone.vars[k] = this.vars[k];
+      for (const key of Object.keys(this.vars)) {
+        clone.vars[key] = this.vars[key];
       }
-
-      var keys = Object.keys(this.lists);
-      for (var i = keys.length; i--;) {
-        var k = keys[i];
-        clone.lists[k] = this.lists[k].slice(0);
+      for (const key of Object.keys(this.lists)) {
+        clone.lists[key] = this.lists[key].slice(0);
       }
 
       clone.filters = {
@@ -1106,7 +1101,7 @@ namespace P.core {
 
     // Determines if the sprite is touching an object.
     // thing is the name of the object, '_mouse_', or '_edge_'
-    touching(thing) {
+    touching(thing: string) {
       var costume = this.costumes[this.currentCostumeIndex];
 
       if (thing === '_mouse_') {
@@ -1155,7 +1150,7 @@ namespace P.core {
           var top = Math.min(mb.top, ob.top);
           var right = Math.min(mb.right, ob.right);
           var bottom = Math.max(mb.bottom, ob.bottom);
-          
+
           if (right - left < 1 || top - bottom < 1) {
             continue;
           }
@@ -1188,8 +1183,8 @@ namespace P.core {
     }
 
     // Determines if this Sprite is touching a color.
-    touchingColor(rgb) {
-      var b = this.rotatedBounds();
+    touchingColor(rgb: number) {
+      const b = this.rotatedBounds();
 
       collisionCanvas.width = b.right - b.left;
       collisionCanvas.height = b.top - b.bottom;
@@ -1203,10 +1198,10 @@ namespace P.core {
 
       collisionRenderer.ctx.restore();
 
-      var data = collisionRenderer.ctx.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
+      const data = collisionRenderer.ctx.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
 
       rgb = rgb & 0xffffff;
-      var length = (b.right - b.left) * (b.top - b.bottom) * 4;
+      const length = (b.right - b.left) * (b.top - b.bottom) * 4;
       for (var i = 0; i < length; i += 4) {
         if ((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) === rgb && data[i + 3]) {
           return true;
@@ -1216,7 +1211,7 @@ namespace P.core {
       return false;
     }
 
-    colorTouchingColor(sourceColor, touchingColor) {
+    colorTouchingColor(sourceColor: number, touchingColor: number) {
       var rb = this.rotatedBounds();
 
       collisionCanvas.width = secondaryCollisionCanvas.width = rb.right - rb.left;
@@ -1286,7 +1281,7 @@ namespace P.core {
 
     // Determines the distance to another object.
     // thing is the name of the object, or '_mouse_'
-    distanceTo(thing) {
+    distanceTo(thing: string) {
       if (thing === '_mouse_') {
         var x = this.stage.mouseX;
         var y = this.stage.mouseY;
@@ -1301,7 +1296,7 @@ namespace P.core {
 
     // Goes to another object.
     // thing is anything that getPosition() accepts
-    gotoObject(thing) {
+    gotoObject(thing: string) {
       const position = this.stage.getPosition(thing);
       if (!position) {
         return 0;
@@ -1311,7 +1306,7 @@ namespace P.core {
 
     // Points towards an object.
     // thing is anything that getPosition() accepts
-    pointTowards(thing) {
+    pointTowards(thing: string) {
       const position = this.stage.getPosition(thing);
       if (!position) {
         return 0;
@@ -1366,7 +1361,7 @@ namespace P.core {
     }
 
     // Sets the RGB color of the pen.
-    setPenColor(color) {
+    setPenColor(color: number) {
       this.penColor = color;
       const r = this.penColor >> 16 & 0xff;
       const g = this.penColor >> 8 & 0xff;
@@ -1387,7 +1382,7 @@ namespace P.core {
     }
 
     // Sets a pen color HSL parameter.
-    setPenColorParam(param, value) {
+    setPenColorParam(param: string, value: number) {
       this.setPenColorHSL();
       switch (param) {
         case 'color':
@@ -1408,7 +1403,7 @@ namespace P.core {
     }
 
     // Changes a pen color HSL parameter.
-    changePenColorParam(param, value) {
+    changePenColorParam(param: string, value: number) {
       this.setPenColorHSL();
       switch (param) {
         case 'color':
@@ -1526,7 +1521,7 @@ namespace P.core {
     public duration: number;
     public node: AudioNode | null;
 
-    constructor(data) {
+    constructor(data: { name: string; buffer: AudioBuffer; }) {
       this.name = data.name;
       this.buffer = data.buffer;
       this.duration = this.buffer ? this.buffer.duration : 0;
@@ -1543,7 +1538,7 @@ namespace P.core {
     public y: number = 0;
     public visible: boolean = true;
 
-    constructor(stage, targetName) {
+    constructor(stage: Stage, targetName: string) {
       // The stage this variable watcher belongs to.
       this.stage = stage;
 
@@ -1559,7 +1554,7 @@ namespace P.core {
 
     // Changes the visibility of the watcher.
     // Expected to be overridden.
-    setVisible(visible) {
+    setVisible(visible: boolean) {
       this.visible = visible;
     }
 

@@ -15,12 +15,12 @@ namespace P.sb3 {
     private broadcastNames: ObjectMap<string> = {};
     public sb3data: any;
 
-    addBroadcast(id, name) {
+    addBroadcast(id: string, name: string) {
       this.broadcastNames[name] = id;
     }
 
     // Override getBroadcastId to use broadcast IDs
-    getBroadcastId(name) {
+    getBroadcastId(name: string) {
       // Use the mapped ID or fall back to the name.
       // Usually the name is the unique ID, but occasionally it is not.
       return this.broadcastNames[name] || name;
@@ -43,6 +43,19 @@ namespace P.sb3 {
 
   export type Target = Scratch3Stage | Scratch3Sprite;
 
+  interface VariableWatcherOptions {
+    spriteName: string;
+    visible: boolean;
+    id: string;
+    opcode: string;
+    mode: string;
+    params: any;
+    x: number;
+    y: number;
+    min: number;
+    max: number;
+  }
+
   // Implements a Scratch 3 VariableWatcher.
   // Adds Scratch 3-like styling
   export class Scratch3VariableWatcher extends P.core.VariableWatcher {
@@ -57,14 +70,13 @@ namespace P.sb3 {
     public containerEl: HTMLElement;
     public valueEl: HTMLElement;
 
-    constructor(stage: Scratch3Stage, data) {
+    constructor(stage: Scratch3Stage, data: VariableWatcherOptions) {
       super(stage, data.spriteName || '');
 
       // Unique ID
       this.id = data.id;
       // Operation code, similar to other parts of Scratch 3
       this.opcode = data.opcode;
-      // 'default', '', ''
       this.mode = data.mode;
       // Watcher options, varies by opcode.
       this.params = data.params;
@@ -107,7 +119,7 @@ namespace P.sb3 {
       this.updateLayout();
     }
 
-    setVisible(visible) {
+    setVisible(visible: boolean) {
       super.setVisible(visible);
       this.updateLayout();
     }
@@ -135,7 +147,7 @@ namespace P.sb3 {
 
     // Attempts to set the value of the watcher.
     // Will silently fail if this watcher cannot be set.
-    setValue(value) {
+    setValue(value: number) {
       // Not all opcodes have a set()
       if (this.libraryEntry.set) {
         this.libraryEntry.set(this, value);
@@ -210,8 +222,8 @@ namespace P.sb3 {
     }
 
     // Handles slider input events.
-    sliderChanged(e) {
-      const value = +e.target.value;
+    sliderChanged(e: Event) {
+      const value = +(e.target as HTMLInputElement).value;
       this.setValue(value);
     }
   }
@@ -219,7 +231,7 @@ namespace P.sb3 {
   // Implements a Scratch 3 procedure.
   // Scratch 3 uses names as references for arguments (Scratch 2 uses indexes I believe)
   export class Scratch3Procedure extends P.core.Procedure {
-    call(inputs) {
+    call(inputs: any[]) {
       const args = {};
       for (var i = 0; i < this.inputs.length; i++) {
         args[this.inputs[i]] = inputs[i];
@@ -247,7 +259,7 @@ namespace P.sb3 {
 
     // Determines the real index of a Scratch index.
     // Returns -1 if not found.
-    scratchIndex(index) {
+    scratchIndex(index: number): number {
       if (index < 1 || index > this.length) {
         return -1;
       }
@@ -256,7 +268,7 @@ namespace P.sb3 {
 
     // Deletes a line from the list.
     // index is a scratch index.
-    deleteLine(index) {
+    deleteLine(index: number | 'all') {
       if (index === 'all') {
         this.length = 0;
         return;
@@ -271,13 +283,13 @@ namespace P.sb3 {
     }
 
     // Adds an item to the list.
-    push(...items) {
+    push(...items: any[]) {
       return super.push(...items);
     }
 
     // Inserts an item at a spot in the list.
     // Index is a Scratch index.
-    insert(index, value) {
+    insert(index: number, value: any) {
       index = this.scratchIndex(index);
       if (index === this.length) {
         this.push(value);
@@ -287,7 +299,7 @@ namespace P.sb3 {
     }
 
     // Sets the index of something in the list.
-    set(index, value) {
+    set(index: number, value: any) {
       index = this.scratchIndex(index);
       this[index] = value;
     }
@@ -308,7 +320,7 @@ namespace P.sb3 {
     protected abstract getAsImage(path, format: string): Promise<HTMLImageElement>;
 
     // Loads and returns a costume from its sb3 JSON data
-    getImage(path, format): Promise<HTMLImageElement> {
+    getImage(path: string, format: string): Promise<HTMLImageElement> {
       if (format === 'svg') {
         return this.getAsText(path)
           .then((source) => {
@@ -373,7 +385,7 @@ namespace P.sb3 {
         }));
     }
 
-    loadWatcher(data, stage) {
+    loadWatcher(data, stage: Scratch3Stage) {
       /*
       data = {
         "id": "`jEk@4|i[#Fk?(8x)AV.-my variable",
@@ -440,14 +452,15 @@ namespace P.sb3 {
       return loadCostumes
         .then(() => loadSounds)
         .then(() => {
-          const target = new (data.isStage ? Scratch3Stage : Scratch3Sprite)(null);
+          // TODO: dirty hack for null stage
+          const target = new (data.isStage ? Scratch3Stage : Scratch3Sprite)(null as any);
 
           target.currentCostumeIndex = data.currentCostume;
           target.name = data.name;
           target.costumes = costumes;
           target.vars = variables;
           target.lists = lists;
-          sounds.forEach((sound) => target.addSound(sound));
+          sounds.forEach((sound: P.core.Sound) => target.addSound(sound));
 
           if (target.isStage) {
             const stage = target as Scratch3Stage;
@@ -511,33 +524,39 @@ namespace P.sb3 {
     private buffer: ArrayBuffer;
     private zip: JSZip.Zip;
 
-    constructor(buffer) {
+    constructor(buffer: ArrayBuffer) {
       super();
       this.buffer = buffer;
     }
 
-    getFile(path, type) {
+    getAsText(path: string) {
       P.IO.progressHooks.new();
-      return this.zip.file(path).async(type)
+      return this.zip.file(path).async('text')
         .then((response) => {
           P.IO.progressHooks.end();
           return response;
         });
     }
 
-    getAsText(path) {
-      return this.getFile(path, 'string') as Promise<string>;
+    getAsArrayBuffer(path: string) {
+      P.IO.progressHooks.new();
+      return this.zip.file(path).async('arrayBuffer')
+        .then((response) => {
+          P.IO.progressHooks.end();
+          return response;
+        });
     }
 
-    getAsArrayBuffer(path) {
-      return this.getFile(path, 'arrayBuffer') as Promise<ArrayBuffer>;
+    getAsBase64(path: string) {
+      P.IO.progressHooks.new();
+      return this.zip.file(path).async('base64')
+        .then((response) => {
+          P.IO.progressHooks.end();
+          return response;
+        });
     }
 
-    getAsBase64(path) {
-      return this.getFile(path, 'base64') as Promise<string>;
-    }
-
-    getAsImage(path, format) {
+    getAsImage(path: string, format: string) {
       P.IO.progressHooks.new();
       return this.getAsBase64(path)
         .then((imageData) => {
@@ -584,17 +603,17 @@ namespace P.sb3 {
       }
     }
 
-    getAsText(path) {
+    getAsText(path: string) {
       return P.IO.fetch(ASSETS_API.replace('$path', path))
         .then((request) => request.text());
     }
 
-    getAsArrayBuffer(path) {
+    getAsArrayBuffer(path: string) {
       return P.IO.fetch(ASSETS_API.replace('$path', path))
         .then((request) => request.arrayBuffer());
     }
 
-    getAsImage(path, format) {
+    getAsImage(path: string) {
       P.IO.progressHooks.new();
       return new Promise<HTMLImageElement>((resolve, reject) => {
         const image = new Image();
@@ -649,6 +668,43 @@ namespace P.sb3.compiler {
   Each of these are separated and compiled differently and in different spots.
   */
 
+  // A CompiledExpression is a type of expression made by an expression compiler with extra
+  // data such as types for sake of optimization.
+  class CompiledExpression {
+    /**
+     * The source code of this expression.
+     */
+    public source: string;
+
+    /**
+     * The type of this expression. Guarantees that, when evaluated, this expression will **always**
+     * return a value of a certain type to avoid type coercion overhead.
+     */
+    public type: ExpressionType;
+
+    constructor(source: string, type: ExpressionType) {
+      this.source = source;
+      this.type = type;
+    }
+  }
+
+  // Easier aliases for CompiledExpression
+  const numberExpr = (source: string) => new CompiledExpression(source, 'number');
+  const stringExpr = (source: string) => new CompiledExpression(source, 'number');
+  const booleanExpr = (source: string) => new CompiledExpression(source, 'number');
+
+  type ExpressionType = 'string' | 'boolean' | 'number';
+  type Block = any;
+  export type TopLevelCompiler = (block: Block, f: P.runtime.Fn) => void;
+  export type ExpressionCompiler = (block: Block) => string | CompiledExpression;
+  export type StatementCompiler = (block: Block) => void;
+  export interface WatchedValue {
+    init?(watcher: P.sb3.Scratch3VariableWatcher): void;
+    set?(watcher: P.sb3.Scratch3VariableWatcher, value: number): void;
+    evaluate(watcher: P.sb3.Scratch3VariableWatcher): any;
+    getLabel(watcher: P.sb3.Scratch3VariableWatcher): string;
+  }
+
   // IDs of primative types
   // https://github.com/LLK/scratch-vm/blob/36fe6378db930deb835e7cd342a39c23bb54dd72/src/serialization/sb3.js#L60-L79
   const PRIMATIVE_TYPES = {
@@ -675,17 +731,6 @@ namespace P.sb3.compiler {
     // A list reference
     LIST: 13,
   };
-
-  type Block = any;
-  export type TopLevelCompiler = (block: Block, f: P.runtime.Fn) => void;
-  export type ExpressionCompiler = (block: Block) => string;
-  export type StatementCompiler = (block: Block) => void;
-  export interface WatchedValue {
-    init?(watcher: P.sb3.Scratch3VariableWatcher): void;
-    set?(watcher: P.sb3.Scratch3VariableWatcher, value: number): void;
-    evaluate(watcher: P.sb3.Scratch3VariableWatcher): any;
-    getLabel(watcher: P.sb3.Scratch3VariableWatcher): string;
-  }
 
   // Contains top level blocks.
   export const topLevelLibrary: ObjectMap<TopLevelCompiler> = {
@@ -751,41 +796,41 @@ namespace P.sb3.compiler {
     // Motion
     motion_goto_menu(block) {
       const to = block.fields.TO[0];
-      return sanitize(to, true);
+      return sanitizedExpression(to);
     },
     motion_glideto_menu(block) {
       const to = block.fields.TO[0];
-      return sanitize(to, true);
+      return sanitizedExpression(to);
     },
     motion_pointtowards_menu(block) {
       const towards = block.fields.TOWARDS[0];
-      return sanitize(towards, true);
+      return sanitizedExpression(towards);
     },
     motion_xposition(block) {
-      return 'S.scratchX';
+      return numberExpr('S.scratchX');
     },
     motion_yposition(block) {
-      return 'S.scratchY';
+      return numberExpr('S.scratchY');
     },
     motion_direction() {
-      return 'S.direction';
+      return numberExpr('S.direction');
     },
 
     // Looks
     looks_costume(block) {
       const costume = block.fields.COSTUME;
-      return sanitize(costume[0], true);
+      return sanitizedExpression(costume[0]);
     },
     looks_backdrops(block) {
       const backdrop = block.fields.BACKDROP[0];
-      return sanitize(backdrop, true);
+      return sanitizedExpression(backdrop);
     },
     looks_costumenumbername(block) {
       const name = block.fields.NUMBER_NAME[0];
       if (name === 'number') {
-        return 'S.currentCostumeIndex + 1';
+        return numberExpr('(S.currentCostumeIndex + 1)');
       } else if (name === 'name') {
-        return 'S.costumes[S.currentCostumeIndex].name';
+        return stringExpr('S.costumes[S.currentCostumeIndex].name');
       } else {
         throw new Error('unknown NUMBER_NAME: ' + name);
       }
@@ -793,117 +838,116 @@ namespace P.sb3.compiler {
     looks_backdropnumbername(block) {
       const name = block.fields.NUMBER_NAME[0];
       if (name === 'number') {
-        return 'self.currentCostumeIndex + 1';
+        return numberExpr('(self.currentCostumeIndex + 1)');
       } else if (name === 'name') {
-        return 'self.costumes[self.currentCostumeIndex].name';
+        return stringExpr('self.costumes[self.currentCostumeIndex].name');
       } else {
         throw new Error('unknown NUMBER_NAME: ' + name);
       }
     },
     looks_size() {
-      return 'S.scale * 100';
+      return numberExpr('(S.scale * 100)');
     },
 
     // Sounds
     sound_sounds_menu(block) {
       const sound = block.fields.SOUND_MENU[0];
-      return '"' + sanitize(sound) + '"';
+      return sanitizedExpression(sound);
     },
     sound_volume() {
-      return '(S.volume * 100)'
+      return numberExpr('(S.volume * 100)');
     },
 
     // Control
     control_create_clone_of_menu(block) {
       const option = block.fields.CLONE_OPTION;
-      return '"' + sanitize(option[0]) + '"';
+      return sanitizedExpression(option[0]);
     },
 
     // Sensing
 
     sensing_touchingobject(block) {
       const object = block.inputs.TOUCHINGOBJECTMENU;
-      return 'S.touching(' + compileExpression(object) + ')';
+      return booleanExpr('S.touching(' + compileExpression(object) + ')');
     },
     sensing_touchingobjectmenu(block) {
       const object = block.fields.TOUCHINGOBJECTMENU;
-      return '"' + sanitize(object[0]) + '"';
+      return sanitizedExpression(object[0]);
     },
     sensing_touchingcolor(block) {
       const color = block.inputs.COLOR;
-      return 'S.touchingColor(' + compileExpression(color) + ')';
+      return booleanExpr('S.touchingColor(' + compileExpression(color) + ')');
     },
     sensing_coloristouchingcolor(block) {
       const color = block.inputs.COLOR;
       const color2 = block.inputs.COLOR2;
-      return 'S.colorTouchingColor(' + compileExpression(color) + ', ' + compileExpression(color2) + ')';
+      return booleanExpr('S.colorTouchingColor(' + compileExpression(color) + ', ' + compileExpression(color2) + ')');
     },
     sensing_distanceto(block) {
       const menu = block.inputs.DISTANCETOMENU;
-      return 'S.distanceTo(' + compileExpression(menu) + ')';
+      return numberExpr('S.distanceTo(' + compileExpression(menu) + ')');
     },
     sensing_distancetomenu(block) {
-      return sanitize(block.fields.DISTANCETOMENU[0], true);
+      return sanitizedExpression(block.fields.DISTANCETOMENU[0]);
     },
     sensing_answer(block) {
-      return 'self.answer';
+      return stringExpr('self.answer');
     },
     sensing_keypressed(block) {
       const key = block.inputs.KEY_OPTION;
-      return '!!self.keys[P.utils.getKeyCode(' + compileExpression(key) + ')]';
+      return booleanExpr('!!self.keys[P.utils.getKeyCode(' + compileExpression(key) + ')]');
     },
     sensing_keyoptions(block) {
       const key = block.fields.KEY_OPTION[0];
-      return '"' + sanitize(key) + '"';
+      return sanitizedExpression(key);
     },
     sensing_mousedown(block) {
-      return 'self.mousePressed';
+      return booleanExpr('self.mousePressed');
     },
     sensing_mousex(block) {
-      return 'self.mouseX';
+      return numberExpr('self.mouseX');
     },
     sensing_mousey(block) {
-      return 'self.mouseY';
+      return numberExpr('self.mouseY');
     },
     sensing_loudness(block) {
       // We don't implement loudness, we always return -1 which indicates that there is no microphone available.
-      return '-1';
+      return numberExpr('-1');
     },
     sensing_timer(block) {
-      return '((runtime.now - runtime.timerStart) / 1000)';
+      return numberExpr('((runtime.now - runtime.timerStart) / 1000)');
     },
     sensing_of(block) {
       const property = block.fields.PROPERTY[0];
       const object = block.inputs.OBJECT;
-      return 'attribute(' + sanitize(property, true) + ', ' + compileExpression(object, 'string') + ')';
+      return 'attribute(' + sanitizedString(property) + ', ' + compileExpression(object, 'string') + ')';
     },
     sensing_of_object_menu(block) {
       const object = block.fields.OBJECT[0];
-      return sanitize(object, true);
+      return sanitizedExpression(object);
     },
     sensing_current(block) {
       const current = block.fields.CURRENTMENU[0];
 
       switch (current) {
-        case 'YEAR': return 'new Date().getFullYear()';
-        case 'MONTH': return 'new Date().getMonth() + 1';
-        case 'DATE': return 'new Date().getDate()';
-        case 'DAYOFWEEK': return 'new Date().getDay() + 1';
-        case 'HOUR': return 'new Date().getHours()';
-        case 'MINUTE': return 'new Date().getMinutes()';
-        case 'SECOND': return 'new Date().getSeconds()';
+        case 'YEAR': return numberExpr('new Date().getFullYear()');
+        case 'MONTH': return numberExpr('(new Date().getMonth() + 1)');
+        case 'DATE': return numberExpr('new Date().getDate()');
+        case 'DAYOFWEEK': return numberExpr('(new Date().getDay() + 1)');
+        case 'HOUR': return numberExpr('new Date().getHours()');
+        case 'MINUTE': return numberExpr('new Date().getMinutes()');
+        case 'SECOND': return numberExpr('new Date().getSeconds()');
       }
 
       throw new Error('unknown CURRENTMENU: ' + current);
     },
     sensing_dayssince2000(block) {
-      return '((Date.now() - epoch) / 86400000)';
+      return numberExpr('((Date.now() - epoch) / 86400000)');
     },
     sensing_username(block) {
-      return 'self.username';
+      return stringExpr('self.username');
     },
     sensing_userid(block) {
-      // This is what Scratch 3 does.
       // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_sensing.js#L74
       return 'undefined';
     },
@@ -912,93 +956,93 @@ namespace P.sb3.compiler {
     operator_add(block) {
       const num1 = block.inputs.NUM1;
       const num2 = block.inputs.NUM2;
-      return '(' + compileExpression(num1, 'number') + ' + ' + compileExpression(num2, 'number') + ' || 0)';
+      return numberExpr('(' + compileExpression(num1, 'number') + ' + ' + compileExpression(num2, 'number') + ' || 0)');
     },
     operator_subtract(block) {
       const num1 = block.inputs.NUM1;
       const num2 = block.inputs.NUM2;
-      return '(' + compileExpression(num1, 'number') + ' - ' + compileExpression(num2, 'number') + ' || 0)';
+      return numberExpr('(' + compileExpression(num1, 'number') + ' - ' + compileExpression(num2, 'number') + ' || 0)');
     },
     operator_multiply(block) {
       const num1 = block.inputs.NUM1;
       const num2 = block.inputs.NUM2;
-      return '(' + compileExpression(num1, 'number') + ' * ' + compileExpression(num2, 'number') + ' || 0)';
+      return numberExpr('(' + compileExpression(num1, 'number') + ' * ' + compileExpression(num2, 'number') + ' || 0)');
     },
     operator_divide(block) {
       const num1 = block.inputs.NUM1;
       const num2 = block.inputs.NUM2;
-      return '(' + compileExpression(num1, 'number') + ' / ' + compileExpression(num2, 'number') + ' || 0)';
+      return numberExpr('(' + compileExpression(num1, 'number') + ' / ' + compileExpression(num2, 'number') + ' || 0)');
     },
     operator_random(block) {
       const from = block.inputs.FROM;
       const to = block.inputs.TO;
-      return 'random(' + compileExpression(from, 'number') + ', ' + compileExpression(to, 'number') + ')';
+      return numberExpr('random(' + compileExpression(from, 'number') + ', ' + compileExpression(to, 'number') + ')');
     },
     operator_gt(block) {
       const operand1 = block.inputs.OPERAND1;
       const operand2 = block.inputs.OPERAND2;
       // TODO: use numGreater?
-      return '(compare(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ') === 1)';
+      return booleanExpr('(compare(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ') === 1)');
     },
     operator_lt(block) {
       const operand1 = block.inputs.OPERAND1;
       const operand2 = block.inputs.OPERAND2;
       // TODO: use numLess?
-      return '(compare(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ') === -1)';
+      return booleanExpr('(compare(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ') === -1)');
     },
     operator_equals(block) {
       const operand1 = block.inputs.OPERAND1;
       const operand2 = block.inputs.OPERAND2;
-      return 'equal(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ')';
+      return booleanExpr('equal(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ')');
     },
     operator_and(block) {
       const operand1 = block.inputs.OPERAND1;
       const operand2 = block.inputs.OPERAND2;
-      return '(' + compileExpression(operand1) + ' && ' + compileExpression(operand2) + ')';
+      return booleanExpr('(' + compileExpression(operand1) + ' && ' + compileExpression(operand2) + ')');
     },
     operator_or(block) {
       const operand1 = block.inputs.OPERAND1;
       const operand2 = block.inputs.OPERAND2;
-      return '(' + compileExpression(operand1) + ' || ' + compileExpression(operand2) + ')';
+      return booleanExpr('(' + compileExpression(operand1) + ' || ' + compileExpression(operand2) + ')');
     },
     operator_not(block) {
       const operand = block.inputs.OPERAND;
-      return '!(' + compileExpression(operand) + ')';
+      return booleanExpr('!' + compileExpression(operand));
     },
     operator_join(block) {
       const string1 = block.inputs.STRING1;
       const string2 = block.inputs.STRING2;
-      return '(' + compileExpression(string1, 'string') + ' + ' + compileExpression(string2) + ')';
+      return stringExpr('(' + compileExpression(string1, 'string') + ' + ' + compileExpression(string2, 'string') + ')');
     },
     operator_letter_of(block) {
       const string = block.inputs.STRING;
       const letter = block.inputs.LETTER;
-      return '((' + compileExpression(string, 'string') + ')[(' + compileExpression(letter, 'number') + ' | 0) - 1] || "")';
+      return stringExpr('((' + compileExpression(string, 'string') + ')[(' + compileExpression(letter, 'number') + ' | 0) - 1] || "")');
     },
     operator_length(block) {
       const string = block.inputs.STRING;
       // TODO: parenthesis important?
-      return '(' + compileExpression(string, 'string') + ').length';
+      return numberExpr('(' + compileExpression(string, 'string') + ').length');
     },
     operator_contains(block) {
       const string1 = block.inputs.STRING1;
       const string2 = block.inputs.STRING2;
-      return compileExpression(string1, 'string') + '.includes(' + compileExpression(string2, 'string') + ')';
+      return booleanExpr(compileExpression(string1, 'string') + '.includes(' + compileExpression(string2, 'string') + ')');
     },
     operator_mod(block) {
       const num1 = block.inputs.NUM1;
       const num2 = block.inputs.NUM2;
-      return '(' + compileExpression(num1) + ' % ' + compileExpression(num2) + ' || 0)';
+      return numberExpr('(' + compileExpression(num1) + ' % ' + compileExpression(num2) + ' || 0)');
     },
     operator_round(block) {
       const num = block.inputs.NUM;
-      return 'Math.round(' + compileExpression(num, 'number') + ')';
+      return numberExpr('Math.round(' + compileExpression(num, 'number') + ')');
     },
     operator_mathop(block) {
       const operator = block.fields.OPERATOR[0];
       const num = block.inputs.NUM;
       // TODO: skip mathFunc overhead (probably very slight) for performance?
-      return 'mathFunc(' + sanitize(operator, true) + ', ' + compileExpression(num, 'number') + ')';
+      return 'mathFunc(' + sanitizedString(operator) + ', ' + compileExpression(num, 'number') + ')';
     },
 
     // Data
@@ -1010,37 +1054,38 @@ namespace P.sb3.compiler {
     data_itemnumoflist(block) {
       const list = block.fields.LIST[1];
       const item = block.inputs.ITEM;
-      return 'listIndexOf(' + listReference(list) + ', ' + compileExpression(item) + ')';
+      return numberExpr('listIndexOf(' + listReference(list) + ', ' + compileExpression(item) + ')');
     },
     data_lengthoflist(block) {
       const list = block.fields.LIST[1];
-      return listReference(list) + '.length';
+      return numberExpr(listReference(list) + '.length');
     },
     data_listcontainsitem(block) {
       const list = block.fields.LIST[1];
       const item = block.inputs.ITEM;
-      return 'listContains(' + listReference(list) + ', ' + compileExpression(item) + ')';
+      return booleanExpr('listContains(' + listReference(list) + ', ' + compileExpression(item) + ')');
     },
 
     // Procedures/arguments
     argument_reporter_string_number(block) {
       const name = block.fields.VALUE[0];
-      return 'C.args[' + sanitize(name, true) + ']';
+      return 'C.args[' + sanitizedString(name) + ']';
     },
     argument_reporter_boolean(block) {
       const name = block.fields.VALUE[0];
-      return asType('C.args[' + sanitize(name, true) + ']', 'boolean');
+      // Forcibly convert to boolean
+      return booleanExpr(asType('C.args[' + sanitizedString(name) + ']', 'boolean'));
     },
 
     // Pen (extension)
     pen_menu_colorParam(block) {
       const colorParam = block.fields.colorParam[0];
-      return sanitize(colorParam, true);
+      return sanitizedExpression(colorParam);
     },
 
     // Music (extension)
     music_getTempo(block) {
-      return 'self.tempoBPM';
+      return numberExpr('self.tempoBPM');
     },
   };
 
@@ -1095,7 +1140,7 @@ namespace P.sb3.compiler {
       forceQueue(id);
       source += '}\n';
       source += 'restore();\n';
-      source += '}\n'; // if (to) {
+      source += '}\n';
     },
     motion_glidesecstoxy(block) {
       const secs = block.inputs.SECS;
@@ -1155,7 +1200,7 @@ namespace P.sb3.compiler {
     },
     motion_setrotationstyle(block) {
       const style = block.fields.STYLE[0];
-      source += 'S.rotationStyle = ' + sanitize(P.utils.parseRotationStyle(style), true) + ';\n';
+      source += 'S.rotationStyle = ' + P.utils.parseRotationStyle(style) + ';\n';
       visualCheck('visible');
     },
 
@@ -1241,14 +1286,14 @@ namespace P.sb3.compiler {
     looks_changeeffectby(block) {
       const effect = block.fields.EFFECT[0];
       const change = block.inputs.CHANGE;
-      source += 'S.changeFilter("' + sanitize(effect).toLowerCase() + '", ' + compileExpression(change, 'number') + ');\n';
+      source += 'S.changeFilter(' + sanitizedString(effect).toLowerCase() + ', ' + compileExpression(change, 'number') + ');\n';
       visualCheck('visible');
     },
     looks_seteffectto(block) {
       const effect = block.fields.EFFECT[0];
       const value = block.inputs.VALUE;
       // Lowercase conversion is necessary to remove capitals, which we do not want.
-      source += 'S.setFilter("' + sanitize(effect).toLowerCase() + '", ' + compileExpression(value, 'number') + ');\n';
+      source += 'S.setFilter(' + sanitizedString(effect).toLowerCase() + ', ' + compileExpression(value, 'number') + ');\n';
       visualCheck('visible');
     },
     looks_cleargraphiceffects(block) {
@@ -1518,12 +1563,12 @@ namespace P.sb3.compiler {
     data_showvariable(block) {
       const variable = block.fields.VARIABLE[1];
       const scope = variableScope(variable);
-      source += scope + '.showVariable(' + sanitize(variable, true) + ', true);\n';
+      source += scope + '.showVariable(' + sanitizedString(variable) + ', true);\n';
     },
     data_hidevariable(block) {
       const variable = block.fields.VARIABLE[1];
       const scope = variableScope(variable);
-      source += scope + '.showVariable(' + sanitize(variable, true) + ', false);\n';
+      source += scope + '.showVariable(' + sanitizedString(variable) + ', false);\n';
     },
     data_addtolist(block) {
       const list = block.fields.LIST[1];
@@ -1563,7 +1608,7 @@ namespace P.sb3.compiler {
       }
 
       const id = nextLabel();
-      source += 'call(S.procedures[' + sanitize(name, true) + '], ' + id + ', [\n';
+      source += 'call(S.procedures[' + sanitizedString(name) + '], ' + id + ', [\n';
 
       // The mutation has a stringified JSON list of input IDs... it's weird.
       const inputIds = JSON.parse(mutation.argumentids);
@@ -1841,24 +1886,24 @@ namespace P.sb3.compiler {
     return id;
   }
 
-  // Sanitizes a string to be used in a javascript string
-  // If includeQuotes is true, it will be encapsulated in double quotes.
-  function sanitize(thing: any, includeQuotes: boolean = false): string {
-    const quote = includeQuotes ? '"' : '';
-    if (typeof thing === 'string') {
-      return quote + thing
-        .replace(/\\/g, '\\\\')
-        .replace(/'/g, '\\\'')
-        .replace(/"/g, '\\"')
-        .replace(/\n/g, '\\n')
-        .replace(/\r/g, '\\r')
-        .replace(/\{/g, '\\x7b')
-        .replace(/\}/g, '\\x7d') + quote;
-    } else if (typeof thing === 'number') {
-      return quote + thing.toString() + quote;
-    } else {
-      return sanitize(thing + '', includeQuotes);
+  // Sanitizes a string to be used in a javascript string enclosed in double quotes.
+  function sanitizedString(thing: any): string {
+    if (typeof thing !== 'string') {
+      thing = '' + thing;
     }
+    return '"' + thing
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, '\\\'')
+      .replace(/"/g, '\\"')
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r')
+      .replace(/\{/g, '\\x7b')
+      .replace(/\}/g, '\\x7d') + '"';
+  }
+
+  // Sanitizes a string using sanitizedString() as a compiled expression instead.
+  function sanitizedExpression(thing: any): CompiledExpression {
+    return stringExpr(sanitizedString(thing));
   }
 
   // Adds JS to wait for a duration.
@@ -1904,7 +1949,7 @@ namespace P.sb3.compiler {
   ///
 
   // Compiles a '#ABCDEF' color
-  function convertColor(hexCode: string): string {
+  function compileColor(hexCode: string): string {
     // Remove the leading # and use it to create a hexadecimal number
     const hex = hexCode.substr(1);
     // Ensure that it is actually a hex number.
@@ -1935,12 +1980,12 @@ namespace P.sb3.compiler {
         if (isFinite(constant[1])) {
           return constant[1];
         } else {
-          return sanitize(constant[1], true);
+          return sanitizedString(constant[1]);
         }
 
       case PRIMATIVE_TYPES.TEXT:
         // Text is compiled directly into a string.
-        return sanitize(constant[1], true);
+        return sanitizedString(constant[1]);
 
       case PRIMATIVE_TYPES.VAR:
         // For variable natives the second item is the name of the variable
@@ -1957,7 +2002,7 @@ namespace P.sb3.compiler {
 
       case PRIMATIVE_TYPES.COLOR_PICKER:
         // Colors are stored as strings like "#123ABC", so we must do some conversions.
-        return convertColor(constant[1]);
+        return compileColor(constant[1]);
 
       default:
         console.warn('unknown constant', type, constant);
@@ -2006,16 +2051,13 @@ namespace P.sb3.compiler {
     compile(id);
   }
 
-  function asType(script: string, type: string | undefined): string {
-    if (type === 'string') {
-      return '("" + ' + script + ")";
-    } else if (type === 'number') {
-      return '+' + script;
-    } else if (type === 'boolean') {
-      return '!!' + script;
-    } else {
-      return script;
+  function asType(script: string, type?: ExpressionType): string {
+    switch (type) {
+      case 'string': return '("" + ' + script + ")";
+      case 'number': return '+' + script;
+      case 'boolean': return '!!' + script;
     }
+    return source;
   }
 
   function fallbackValue(type: string | undefined): string {
@@ -2031,7 +2073,7 @@ namespace P.sb3.compiler {
   }
 
   // Returns a compiled expression as a JavaScript string.
-  function compileExpression(expression, type?: string): string {
+  function compileExpression(expression, type?: ExpressionType): string {
     // Expressions are also known as inputs.
 
     if (!expression) {
@@ -2040,7 +2082,7 @@ namespace P.sb3.compiler {
 
     // TODO: use asType?
     if (typeof expression === 'string') {
-      return sanitize(expression, true);
+      return sanitizedString(expression);
     }
     if (typeof expression === 'number') {
       // I have a slight feeling this block never runs.
@@ -2067,8 +2109,17 @@ namespace P.sb3.compiler {
     }
     let result = compiler(block);
     if (P.config.debug) {
-      result = '/*' + opcode + '*/' + result;
+      result = '/*' + opcode + '*/' + result.toString();
     }
+
+    if (result instanceof CompiledExpression) {
+      // If the expression is already of the indented type, no changes are needed.
+      if (result.type === type) {
+        return result.source;
+      }
+      return asType(result.source, type);
+    }
+
     return asType(result, type);
   }
 
