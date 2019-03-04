@@ -1,2 +1,2 @@
 # Don't include sourcemap in repo due to bloat
-phosphorus.js.map
+phosphorus.dist.js.map

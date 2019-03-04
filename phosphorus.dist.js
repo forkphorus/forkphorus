@@ -3,7 +3,7 @@
 Forkphorus: A JavaScript compiler for Scratch 2 and 3 projects.
 (A fork of phosphorus)
 
-Note: phosphorus.js is automatically generated from the files in `phosphorus`
+Note: phosphorus.dist.js is automatically generated from the files in `phosphorus`
 See the README for more information.
 
 The MIT License (MIT)

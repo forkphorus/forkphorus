@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "outFile": "./phosphorus.js",
+    "outFile": "./phosphorus.dist.js",
     "sourceMap": true,
     "target": "es6",
     "alwaysStrict": true,
