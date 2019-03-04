@@ -371,7 +371,7 @@ namespace P.sb2 {
   }
 
   // loads an image from a URL
-  export function loadImage(url) {
+  export function loadImage(url): Promise<HTMLImageElement> {
     P.IO.progressHooks.new();
 
     var image = new Image();
@@ -432,7 +432,7 @@ namespace P.sb2 {
     // don't bother attempting to load audio if it can't even be played
     if (!P.audio.context) return Promise.resolve();
 
-    const assets = [];
+    const assets: any[] = []; // TODO: type
     for (var name in WAV_FILES) {
       if (!wavBuffers[name]) {
         assets.push(
@@ -551,7 +551,7 @@ namespace P.sb2 {
   };
 
   export function loadSound(data) {
-    return loadMD5(data.md5, data.soundID, true)
+    return (loadMD5(data.md5, data.soundID, true) as Promise<any>)
       .then((buffer) => {
         return new P.core.Sound({
           name: data.soundName,
@@ -560,7 +560,7 @@ namespace P.sb2 {
       });
   };
 
-  export function loadSVG(source) {
+  export function loadSVG(source): Promise<HTMLImageElement> {
     // The fact that this works is truly a work of art.
     var parser = new DOMParser();
     var doc = parser.parseFromString(source, 'image/svg+xml');
@@ -590,7 +590,7 @@ namespace P.sb2 {
     var canvas = document.createElement('canvas');
     var image = new Image();
 
-    return new Promise((resolve, reject) => {
+    return new Promise<HTMLImageElement>((resolve, reject) => {
       canvg(canvas, new XMLSerializer().serializeToString(svg), {
         ignoreMouse: true,
         ignoreAnimation: true,
@@ -601,14 +601,14 @@ namespace P.sb2 {
             return;
           }
           image.onload = () => resolve(image);
-          image.onerror = (err) => reject('Failed to load SVG');
+          image.onerror = (err) => reject('Failed to load SVG: ' + err);
           image.src = canvas.toDataURL();
         }
       });
     });
   }
 
-  export function loadMD5(hash, id, isAudio = false) {
+  export function loadMD5(hash: string, id: string, isAudio: boolean = false): Promise<HTMLImageElement | AudioBuffer | null> {
     if (zipArchive) {
       var f = isAudio ? zipArchive.file(id + '.wav') : zipArchive.file(id + '.gif') || zipArchive.file(id + '.png') || zipArchive.file(id + '.jpg') || zipArchive.file(id + '.svg');
       hash = f.name;
@@ -618,7 +618,7 @@ namespace P.sb2 {
 
     if (ext === 'svg') {
       if (zipArchive) {
-        return f.async('text')
+        return f!.async('text')
           .then((text) => loadSVG(text));
       } else {
         return P.IO.fetch(ASSET_URL + hash + '/get/')
@@ -627,7 +627,7 @@ namespace P.sb2 {
       }
     } else if (ext === 'wav') {
       if (zipArchive) {
-        return f.async('arrayBuffer')
+        return f!.async('arrayBuffer')
           .then((buffer) => P.audio.decodeAudio(buffer));
       } else {
         return P.IO.fetch(ASSET_URL + hash + '/get/')
@@ -1017,20 +1017,24 @@ namespace P.sb2.compiler {
 
       } else if (e[0] === '<' || e[0] === '>') { /* Operators */
 
+        var less: boolean;
+        var x;
+        var y;
+
         if (typeof e[1] === 'string' && DIGIT.test(e[1]) || typeof e[1] === 'number') {
-          var less = e[0] === '<';
-          var x = e[1];
-          var y = e[2];
+          less = e[0] === '<';
+          x = e[1];
+          y = e[2];
         } else if (typeof e[2] === 'string' && DIGIT.test(e[2]) || typeof e[2] === 'number') {
-          var less = e[0] === '>';
-          var x = e[2];
-          var y = e[1];
+          less = e[0] === '>';
+          x = e[2];
+          y = e[1];
         }
         var nx = +x;
         if (x == null || nx !== nx) {
           return '(compare(' + val(e[1]) + ', ' + val(e[2]) + ') === ' + (e[0] === '<' ? -1 : 1) + ')';
         }
-        return (less ? 'numLess' : 'numGreater') + '(' + nx + ', ' + val(y) + ')';
+        return (less! ? 'numLess' : 'numGreater') + '(' + nx + ', ' + val(y) + ')';
 
       } else if (e[0] === '=') {
 
@@ -1746,7 +1750,8 @@ namespace P.sb2.compiler {
     if (script[0][0] === 'procDef') {
       let pre = '';
       for (let i = types.length; i--;) {
-        if (used[i]) {
+        // TODO: dirty hack to make used work; really this entire thing needs to be changed a lot
+        if (used![i]) {
           const t = types[i];
           if (t === '%d' || t === '%n' || t === '%c') {
             pre += 'C.numargs[' + i + '] = +C.args[' + i + '] || 0;\n';

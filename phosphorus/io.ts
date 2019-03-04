@@ -33,7 +33,7 @@ namespace P.IO {
 
     return new Promise((resolve, reject) => {
       fileReader.onloadend = function() {
-        resolve(fileReader.result);
+        resolve(fileReader.result as ArrayBuffer);
       };
 
       fileReader.onerror = function(err) {

@@ -461,7 +461,7 @@ namespace P.sb3 {
             sprite.scratchY = y;
             sprite.direction = direction;
             sprite.isDraggable = draggable;
-            sprite.rotationStyle = P.utils.asRotationStyle(data.rotationStyle);
+            sprite.rotationStyle = P.utils.parseRotationStyle(data.rotationStyle);
             sprite.scale = size / 100;
             sprite.visible = visible;
           }
@@ -1155,7 +1155,7 @@ namespace P.sb3.compiler {
     },
     motion_setrotationstyle(block) {
       const style = block.fields.STYLE[0];
-      source += 'S.rotationStyle = ' + sanitize(P.utils.asRotationStyle(style), true) + ';\n';
+      source += 'S.rotationStyle = ' + sanitize(P.utils.parseRotationStyle(style), true) + ';\n';
       visualCheck('visible');
     },
 

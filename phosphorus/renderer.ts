@@ -1,13 +1,16 @@
 /// <reference path="phosphorus.ts" />
 
 namespace P.renderer {
+  // Import aliases
+  import RotationStyle = P.core.RotationStyle;
+
   export class CanvasRenderer {
     public ctx: CanvasRenderingContext2D;
     public canvas: HTMLCanvasElement;
     public noEffects: boolean = false;
 
     constructor(canvas: HTMLCanvasElement) {
-      this.ctx = canvas.getContext('2d');
+      this.ctx = canvas.getContext('2d')!;
       this.canvas = canvas;
     }
 
@@ -31,9 +34,9 @@ namespace P.renderer {
         var z = c.stage.zoom * P.config.scale;
         if (P.core.isSprite(c)) {
           this.ctx.translate(((c.scratchX + 240) * z | 0) / z, ((180 - c.scratchY) * z | 0) / z);
-          if (c.rotationStyle === 'normal') {
+          if (c.rotationStyle === RotationStyle.Normal) {
             this.ctx.rotate((c.direction - 90) * Math.PI / 180);
-          } else if (c.rotationStyle === 'leftRight' && c.direction < 0) {
+          } else if (c.rotationStyle === RotationStyle.LeftRight && c.direction < 0) {
             this.ctx.scale(-1, 1);
           }
           this.ctx.scale(c.scale, c.scale);

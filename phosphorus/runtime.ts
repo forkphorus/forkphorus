@@ -326,9 +326,10 @@ namespace P.runtime {
     volumeNode.connect(audioContext.destination);
 
     var playNote = function(id, duration) {
+      var span;
       var spans = INSTRUMENTS[S.instrument];
       for (var i = 0, l = spans.length; i < l; i++) {
-        var span = spans[i];
+        span = spans[i];
         if (span.top >= id || span.top === 128) break;
       }
       playSpan(span, Math.max(0, Math.min(127, id)), duration);
@@ -497,7 +498,7 @@ namespace P.runtime {
   }
 
   export class Runtime {
-    public queue: (Thread | undefined)[] = [];
+    public queue: Thread[] = [];
     public isRunning: boolean = false;
     public timerStart: number = 0;
     public baseTime: number = 0;
@@ -626,7 +627,7 @@ namespace P.runtime {
             C = CALLS.pop();
             STACK = C.stack;
             R = STACK.pop();
-            queue[THREAD] = undefined;
+            delete queue[THREAD];
             WARP = 0;
 
             while (IMMEDIATE) {

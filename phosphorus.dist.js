@@ -3,7 +3,7 @@
 Forkphorus: A JavaScript compiler for Scratch 2 and 3 projects.
 (A fork of phosphorus)
 
-Note: phosphorus.dist.js is automatically generated from the files in `phosphorus`
+Note: phosphorus.dist.js is automatically generated from the `phosphorus` folder.
 See the README for more information.
 
 The MIT License (MIT)
@@ -187,10 +187,10 @@ var P;
                     var z = c.stage.zoom * P.config.scale;
                     if (P.core.isSprite(c)) {
                         this.ctx.translate(((c.scratchX + 240) * z | 0) / z, ((180 - c.scratchY) * z | 0) / z);
-                        if (c.rotationStyle === 'normal') {
+                        if (c.rotationStyle === 0 /* Normal */) {
                             this.ctx.rotate((c.direction - 90) * Math.PI / 180);
                         }
-                        else if (c.rotationStyle === 'leftRight' && c.direction < 0) {
+                        else if (c.rotationStyle === 1 /* LeftRight */ && c.direction < 0) {
                             this.ctx.scale(-1, 1);
                         }
                         this.ctx.scale(c.scale, c.scale);
@@ -224,32 +224,44 @@ var P;
 /// <reference path="phosphorus.ts" />
 /// <reference path="config.ts" />
 /// <reference path="renderer.ts" />
-// Phosphorus Core
-// Has some base classes that implement most functions while leaving some to implementations. (see P.sb2 and P.sb3)
+// Phosphorus base classes
+// Implements most functionality while leaving some specifics to implementations (P.sb2, P.sb3)
 var P;
 (function (P) {
     var core;
     (function (core) {
-        // Canvases used for various collision testing later on
+        // Used for collision testing
         const collisionCanvas = document.createElement('canvas');
         const collisionRenderer = new P.renderer.CanvasRenderer(collisionCanvas);
         const secondaryCollisionCanvas = document.createElement('canvas');
         const secondaryCollisionRenderer = new P.renderer.CanvasRenderer(secondaryCollisionCanvas);
         class Base {
             constructor() {
-                // Is this object a clone of another?
-                this.isClone = false;
-                // Is this object a stage?
+                /**
+                 * Is this a stage?
+                 */
                 this.isStage = false;
-                // Is this object a sprite?
+                /**
+                 * Is this a sprite?
+                 */
                 this.isSprite = false;
+                /**
+                 * Is this a clone of another?
+                 */
+                this.isClone = false;
                 // Is this sprite visible?
                 this.visible = true;
-                // The sprite's X coordinate in Scratch space.
+                /**
+                 * Th sprite's X coordinat eon the Scratch grid.
+                 */
                 this.scratchX = 0;
-                // The sprite's X coordinate in Scratch space.
+                /**
+                 * The sprite's Y coordinate on the Scratch grid.
+                 */
                 this.scratchY = 0;
-                // The name of the object.
+                /**
+                 * The name of this object.
+                 */
                 this.name = '';
                 // The costumes of the object.
                 this.costumes = [];
@@ -264,7 +276,7 @@ var P;
                 // Current volume, from 0-1
                 this.volume = 1;
                 // The rotation style of the object.
-                this.rotationStyle = 'normal';
+                this.rotationStyle = 2 /* None */;
                 // Variables of the object.
                 this.vars = {};
                 // Variable watchers of the object.
@@ -305,16 +317,16 @@ var P;
             }
             // Implementations of Scratch blocks
             showVariable(name, visible) {
-                var watcher = this.watchers[name];
-                var stage = this.stage;
+                let watcher = this.watchers[name];
+                // Create watchers that might not exist
                 if (!watcher) {
-                    watcher = this.createVariableWatcher(this, name);
-                    if (!watcher) {
+                    const newWatcher = this.createVariableWatcher(this, name);
+                    if (!newWatcher) {
                         return;
                     }
-                    watcher.init();
-                    this.watchers[name] = watcher;
-                    stage.allWatchers.push(watcher);
+                    newWatcher.init();
+                    this.watchers[name] = watcher = newWatcher;
+                    this.stage.allWatchers.push(watcher);
                 }
                 watcher.setVisible(visible);
             }
@@ -462,14 +474,16 @@ var P;
         class Stage extends Base {
             constructor() {
                 super();
-                // We are our own stage.
                 this.stage = this;
-                // We are a stage.
                 this.isStage = true;
-                // Child sprites
+                /**
+                 * Sprites inside of this stage.
+                 */
                 this.children = [];
                 this.dragging = {}; // TODO
-                // All watchers in the Stage
+                /**
+                 * All variable watchers in this stage.
+                 */
                 this.allWatchers = [];
                 this.answer = '';
                 this.promptId = 0;
@@ -484,15 +498,16 @@ var P;
                 this.mouseY = 0;
                 this.mousePressed = false;
                 this.username = '';
+                this.runtime = new P.runtime.Runtime(this);
+                // A dirty hack to create the KeyList interface
                 this.keys = [];
                 this.keys.any = 0;
-                this.runtime = new P.runtime.Runtime(this);
                 this.root = document.createElement('div');
                 this.root.classList.add('forkphorus-root');
                 this.root.style.position = 'absolute';
                 this.root.style.overflow = 'hidden';
                 this.root.style.userSelect = 'none';
-                var scale = P.config.scale;
+                const scale = P.config.scale;
                 this.backdropCanvas = document.createElement('canvas');
                 this.root.appendChild(this.backdropCanvas);
                 this.backdropCanvas.width = scale * 480;
@@ -769,7 +784,7 @@ var P;
                     return;
                 if (this.maxZoom < zoom * P.config.scale) {
                     this.maxZoom = zoom * P.config.scale;
-                    var canvas = document.createElement('canvas');
+                    const canvas = document.createElement('canvas');
                     canvas.width = this.penCanvas.width;
                     canvas.height = this.penCanvas.height;
                     canvas.getContext('2d').drawImage(this.penCanvas, 0, 0);
@@ -817,9 +832,10 @@ var P;
                     this.mouseSprite = undefined;
                 }
             }
-            // Gets an object with a name.
-            // Does not return clones.
-            // Can return the stage object itself if you pass '_stage_' or the name of the stage.
+            /**
+             * Gets an object with its name, ignoring clones.
+             * '_stage_' points to the stage.
+             */
             getObject(name) {
                 for (var i = 0; i < this.children.length; i++) {
                     var c = this.children[i];
@@ -830,12 +846,14 @@ var P;
                 if (name === '_stage_' || name === this.name) {
                     return this;
                 }
+                return null;
             }
-            // Gets all the objects with a name.
-            // Includes the original object and any clones.
-            // No special values like '_stage_' are supported.
+            /**
+             * Gets all the objects with a name, including clones.
+             * Special values such as '_stage_' are not supported.
+             */
             getObjects(name) {
-                var result = [];
+                const result = [];
                 for (var i = 0; i < this.children.length; i++) {
                     if (this.children[i].name === name) {
                         result.push(this.children[i]);
@@ -843,30 +861,27 @@ var P;
                 }
                 return result;
             }
-            // Determines the position of an object from its name, with support for '_random_' and '_mouse_'
-            // Returns {x: number, y: number} or null.
+            /**
+             * Determines the position of an object, with support for special values.
+             */
             getPosition(name) {
-                if (name === '_mouse_') {
-                    return {
+                switch (name) {
+                    case '_mouse_': return {
                         x: this.mouseX,
                         y: this.mouseY,
                     };
-                }
-                else if (name === '_random_') {
-                    return {
+                    case '_random_': return {
                         x: Math.round(480 * Math.random() - 240),
                         y: Math.round(360 * Math.random() - 180),
                     };
                 }
-                else {
-                    var sprite = this.getObject(name);
-                    if (!sprite)
-                        return null;
-                    return {
-                        x: sprite.scratchX,
-                        y: sprite.scratchY,
-                    };
-                }
+                const sprite = this.getObject(name);
+                if (!sprite)
+                    return null;
+                return {
+                    x: sprite.scratchX,
+                    y: sprite.scratchY,
+                };
             }
             // Draws the project.
             draw() {
@@ -991,8 +1006,8 @@ var P;
                 var top = costume.rotationCenterY * scale;
                 var right = left + costume.image.width * scale;
                 var bottom = top - costume.image.height * scale;
-                if (this.rotationStyle !== 'normal') {
-                    if (this.rotationStyle === 'leftRight' && this.direction < 0) {
+                if (this.rotationStyle !== 0 /* Normal */) {
+                    if (this.rotationStyle === 1 /* LeftRight */ && this.direction < 0) {
                         right = -left;
                         left = right - costume.image.width * costume.scale * this.scale;
                     }
@@ -1164,14 +1179,14 @@ var P;
                     }
                     var cx = (x - this.scratchX) / this.scale;
                     var cy = (this.scratchY - y) / this.scale;
-                    if (this.rotationStyle === 'normal' && this.direction !== 90) {
+                    if (this.rotationStyle === 0 /* Normal */ && this.direction !== 90) {
                         var d = (90 - this.direction) * Math.PI / 180;
                         var ox = cx;
                         var s = Math.sin(d), c = Math.cos(d);
                         cx = c * ox - s * cy;
                         cy = s * ox + c * cy;
                     }
-                    else if (this.rotationStyle === 'leftRight' && this.direction < 0) {
+                    else if (this.rotationStyle === 1 /* LeftRight */ && this.direction < 0) {
                         cx = -cx;
                     }
                     var positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
@@ -1490,11 +1505,11 @@ var P;
             remove() {
                 if (this.bubble) {
                     this.stage.ui.removeChild(this.bubble);
-                    this.bubble = null;
+                    delete this.bubble;
                 }
                 if (this.node) {
                     this.node.disconnect();
-                    this.node = null;
+                    delete this.bubble;
                 }
             }
         }
@@ -1572,10 +1587,16 @@ var P;
             }
         }
         core.Procedure = Procedure;
+        /**
+         * Determines if an object is a sprite.
+         */
         function isSprite(base) {
             return base.isSprite;
         }
         core.isSprite = isSprite;
+        /**
+         * Determines if an object is a stage.
+         */
         function isStage(base) {
             return base.isStage;
         }
@@ -2029,7 +2050,7 @@ var P;
             // don't bother attempting to load audio if it can't even be played
             if (!P.audio.context)
                 return Promise.resolve();
-            const assets = [];
+            const assets = []; // TODO: type
             for (var name in WAV_FILES) {
                 if (!sb2.wavBuffers[name]) {
                     assets.push(loadWavBuffer(name)
@@ -2197,7 +2218,7 @@ var P;
                             return;
                         }
                         image.onload = () => resolve(image);
-                        image.onerror = (err) => reject('Failed to load SVG');
+                        image.onerror = (err) => reject('Failed to load SVG: ' + err);
                         image.src = canvas.toDataURL();
                     }
                 });
@@ -2552,15 +2573,18 @@ var P;
                         return 'listContains(' + listRef(e[1]) + ', ' + val(e[2]) + ')';
                     }
                     else if (e[0] === '<' || e[0] === '>') { /* Operators */
+                        var less;
+                        var x;
+                        var y;
                         if (typeof e[1] === 'string' && DIGIT.test(e[1]) || typeof e[1] === 'number') {
-                            var less = e[0] === '<';
-                            var x = e[1];
-                            var y = e[2];
+                            less = e[0] === '<';
+                            x = e[1];
+                            y = e[2];
                         }
                         else if (typeof e[2] === 'string' && DIGIT.test(e[2]) || typeof e[2] === 'number') {
-                            var less = e[0] === '>';
-                            var x = e[2];
-                            var y = e[1];
+                            less = e[0] === '>';
+                            x = e[2];
+                            y = e[1];
                         }
                         var nx = +x;
                         if (x == null || nx !== nx) {
@@ -3162,6 +3186,7 @@ var P;
                 if (script[0][0] === 'procDef') {
                     let pre = '';
                     for (let i = types.length; i--;) {
+                        // TODO: dirty hack to make used work; really this entire thing needs to be changed a lot
                         if (used[i]) {
                             const t = types[i];
                             if (t === '%d' || t === '%n' || t === '%c') {
@@ -3549,9 +3574,10 @@ var P;
             volumeNode.gain.value = VOLUME;
             volumeNode.connect(audioContext.destination);
             var playNote = function (id, duration) {
+                var span;
                 var spans = INSTRUMENTS[S.instrument];
                 for (var i = 0, l = spans.length; i < l; i++) {
-                    var span = spans[i];
+                    span = spans[i];
                     if (span.top >= id || span.top === 128)
                         break;
                 }
@@ -3840,7 +3866,7 @@ var P;
                             C = CALLS.pop();
                             STACK = C.stack;
                             R = STACK.pop();
-                            queue[THREAD] = undefined;
+                            delete queue[THREAD];
                             WARP = 0;
                             while (IMMEDIATE) {
                                 const fn = IMMEDIATE;
@@ -4452,7 +4478,7 @@ var P;
                         sprite.scratchY = y;
                         sprite.direction = direction;
                         sprite.isDraggable = draggable;
-                        sprite.rotationStyle = P.utils.asRotationStyle(data.rotationStyle);
+                        sprite.rotationStyle = P.utils.parseRotationStyle(data.rotationStyle);
                         sprite.scale = size / 100;
                         sprite.visible = visible;
                     }
@@ -5103,7 +5129,7 @@ var P;
                 },
                 motion_setrotationstyle(block) {
                     const style = block.fields.STYLE[0];
-                    source += 'S.rotationStyle = ' + sanitize(P.utils.asRotationStyle(style), true) + ';\n';
+                    source += 'S.rotationStyle = ' + sanitize(P.utils.parseRotationStyle(style), true) + ';\n';
                     visualCheck('visible');
                 },
                 // Looks
@@ -6207,15 +6233,15 @@ var P;
         utils.patchSVG = patchSVG;
         ;
         // Converts an external string to an internally recognized rotation style.
-        function asRotationStyle(style) {
+        function parseRotationStyle(style) {
             switch (style) {
-                case 'left-right': return 'leftRight';
-                case 'don\'t rotate': return 'none';
-                case 'all around': return 'normal';
-                default: return 'normal';
+                case 'left-right': return 1 /* LeftRight */;
+                case 'don\'t rotate': return 2 /* None */;
+                case 'all around': return 0 /* Normal */;
+                default: return 0 /* Normal */;
             }
         }
-        utils.asRotationStyle = asRotationStyle;
+        utils.parseRotationStyle = parseRotationStyle;
         ;
         // Determines the type of a project with its project.json data
         function projectType(data) {
@@ -6260,4 +6286,4 @@ var P;
         utils.rgbToHSL = rgbToHSL;
     })(utils = P.utils || (P.utils = {}));
 })(P || (P = {}));
-//# sourceMappingURL=phosphorus.js.map
+//# sourceMappingURL=phosphorus.dist.js.map

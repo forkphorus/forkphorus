@@ -149,13 +149,14 @@ namespace P.utils {
     [].forEach.call(element.childNodes, patchSVG.bind(null, svg));
   };
 
+  import RotationStyle = P.core.RotationStyle;
   // Converts an external string to an internally recognized rotation style.
-  export function asRotationStyle(style) {
+  export function parseRotationStyle(style): RotationStyle {
     switch (style) {
-      case 'left-right': return 'leftRight';
-      case 'don\'t rotate': return 'none';
-      case 'all around': return 'normal';
-      default: return 'normal';
+      case 'left-right': return RotationStyle.LeftRight;
+      case 'don\'t rotate': return RotationStyle.None;
+      case 'all around': return RotationStyle.Normal;
+      default: return RotationStyle.Normal;
     }
   };
 

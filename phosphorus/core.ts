@@ -2,16 +2,25 @@
 /// <reference path="config.ts" />
 /// <reference path="renderer.ts" />
 
-// Phosphorus Core
-// Has some base classes that implement most functions while leaving some to implementations. (see P.sb2 and P.sb3)
+// Phosphorus base classes
+// Implements most functionality while leaving some specifics to implementations (P.sb2, P.sb3)
 namespace P.core {
-  // Canvases used for various collision testing later on
+  // Used for collision testing
   const collisionCanvas = document.createElement('canvas');
   const collisionRenderer = new P.renderer.CanvasRenderer(collisionCanvas);
   const secondaryCollisionCanvas = document.createElement('canvas');
   const secondaryCollisionRenderer = new P.renderer.CanvasRenderer(secondaryCollisionCanvas);
 
   interface RotatedBounds {
+    // A----------B
+    // |          |
+    // |          |
+    // C----------D
+    // Where top is the scratchY of A or B,
+    // bottom is the scratchY of C or D,
+    // left is the scratchX of B or D,
+    // and right is the scratchX of A or C
+
     top: number;
     bottom: number;
     left: number;
@@ -29,26 +38,55 @@ namespace P.core {
     // whenSensorGreaterThan: P.runtime.Fn[]
   }
 
+  export const enum RotationStyle {
+    /**
+     * Indicates this sprite may rotate in any direction.
+     */
+    Normal,
+    /**
+     * Indicates this sprite can only rotate left or right.
+     */
+    LeftRight,
+    /**
+     * Indicates this sprite cannot rotate.
+     */
+    None,
+  }
+
   export abstract class Base {
-    // The parent stage.
+    /**
+     * The stage this object belongs to.
+     */
     public stage: Stage;
 
-    // Is this object a clone of another?
-    public isClone: boolean = false;
-    // Is this object a stage?
+    /**
+     * Is this a stage?
+     */
     public isStage: boolean = false;
-    // Is this object a sprite?
+    /**
+     * Is this a sprite?
+     */
     public isSprite: boolean = false;
+    /**
+     * Is this a clone of another?
+     */
+    public isClone: boolean = false;
 
     // Is this sprite visible?
     public visible: boolean = true;
 
-    // The sprite's X coordinate in Scratch space.
+    /**
+     * Th sprite's X coordinat eon the Scratch grid.
+     */
     public scratchX: number = 0;
-    // The sprite's X coordinate in Scratch space.
+    /**
+     * The sprite's Y coordinate on the Scratch grid.
+     */
     public scratchY: number = 0;
 
-    // The name of the object.
+    /**
+     * The name of this object.
+     */
     public name: string = '';
     // The costumes of the object.
     public costumes: Costume[] = [];
@@ -63,9 +101,9 @@ namespace P.core {
     // Current volume, from 0-1
     public volume: number = 1;
     // This object's audio node.
-    public node: GainNode;
+    public node: GainNode | null;
     // The rotation style of the object.
-    public rotationStyle: 'normal' | 'leftRight' | 'none' = 'normal';
+    public rotationStyle: RotationStyle = RotationStyle.None;
     // Variables of the object.
     public vars: ObjectMap<any> = {};
     // Variable watchers of the object.
@@ -112,17 +150,17 @@ namespace P.core {
     // Implementations of Scratch blocks
 
     showVariable(name, visible) {
-      var watcher = this.watchers[name];
-      var stage = this.stage;
+      let watcher = this.watchers[name];
 
+      // Create watchers that might not exist
       if (!watcher) {
-        watcher = this.createVariableWatcher(this, name);
-        if (!watcher) {
+        const newWatcher = this.createVariableWatcher(this, name);
+        if (!newWatcher) {
           return;
         }
-        watcher.init();
-        this.watchers[name] = watcher;
-        stage.allWatchers.push(watcher);
+        newWatcher.init();
+        this.watchers[name] = watcher = newWatcher;
+        this.stage.allWatchers.push(watcher);
       }
 
       watcher.setVisible(visible);
@@ -266,16 +304,18 @@ namespace P.core {
 
   // A stage object
   export abstract class Stage extends Base {
-    // We are our own stage.
     public stage = this;
-    // We are a stage.
     public isStage = true;
 
-    // Child sprites
+    /**
+     * Sprites inside of this stage.
+     */
     public children: Sprite[] = [];
     public dragging: any = {}; // TODO
 
-    // All watchers in the Stage
+    /**
+     * All variable watchers in this stage.
+     */
     public allWatchers: VariableWatcher[] = [];
 
     public answer: string = '';
@@ -312,8 +352,7 @@ namespace P.core {
     public prompter: HTMLElement;
     public promptTitle: HTMLElement;
     public promptButton: HTMLElement;
-    public bubble: HTMLElement;
-    public mouseSprite: Sprite;
+    public mouseSprite: Sprite | undefined;
 
     private onTouchStart: EventListener;
     private onTouchEnd: EventListener;
@@ -325,9 +364,11 @@ namespace P.core {
     constructor() {
       super();
 
-      this.keys = [] as KeyList;
-      this.keys.any = 0;
       this.runtime = new P.runtime.Runtime(this);
+
+      // A dirty hack to create the KeyList interface
+      this.keys = [] as any;
+      this.keys.any = 0;
 
       this.root = document.createElement('div');
       this.root.classList.add('forkphorus-root');
@@ -335,13 +376,13 @@ namespace P.core {
       this.root.style.overflow = 'hidden';
       this.root.style.userSelect = 'none';
 
-      var scale = P.config.scale;
+      const scale = P.config.scale;
 
       this.backdropCanvas = document.createElement('canvas');
       this.root.appendChild(this.backdropCanvas);
       this.backdropCanvas.width = scale * 480;
       this.backdropCanvas.height = scale * 360;
-      this.backdropContext = this.backdropCanvas.getContext('2d');
+      this.backdropContext = this.backdropCanvas.getContext('2d')!;
 
       this.penCanvas = document.createElement('canvas');
       this.root.appendChild(this.penCanvas);
@@ -627,10 +668,10 @@ namespace P.core {
       if (this.zoom === zoom) return;
       if (this.maxZoom < zoom * P.config.scale) {
         this.maxZoom = zoom * P.config.scale;
-        var canvas = document.createElement('canvas');
+        const canvas = document.createElement('canvas');
         canvas.width = this.penCanvas.width;
         canvas.height = this.penCanvas.height;
-        canvas.getContext('2d').drawImage(this.penCanvas, 0, 0);
+        canvas.getContext('2d')!.drawImage(this.penCanvas, 0, 0);
         this.penCanvas.width = 480 * zoom * P.config.scale;
         this.penCanvas.height = 360 * zoom * P.config.scale;
         this.penRenderer.ctx.drawImage(canvas, 0, 0, 480 * zoom * P.config.scale, 360 * zoom * P.config.scale);
@@ -677,10 +718,11 @@ namespace P.core {
       }
     }
 
-    // Gets an object with a name.
-    // Does not return clones.
-    // Can return the stage object itself if you pass '_stage_' or the name of the stage.
-    getObject(name) {
+    /**
+     * Gets an object with its name, ignoring clones.
+     * '_stage_' points to the stage.
+     */
+    getObject(name): P.core.Base | null {
       for (var i = 0; i < this.children.length; i++) {
         var c = this.children[i];
         if (c.name === name && !c.isClone) {
@@ -690,13 +732,15 @@ namespace P.core {
       if (name === '_stage_' || name === this.name) {
         return this;
       }
+      return null;
     }
 
-    // Gets all the objects with a name.
-    // Includes the original object and any clones.
-    // No special values like '_stage_' are supported.
-    getObjects(name) {
-      var result = [];
+    /**
+     * Gets all the objects with a name, including clones.
+     * Special values such as '_stage_' are not supported.
+     */
+    getObjects(name: string): P.core.Base[] {
+      const result: P.core.Base[] = [];
       for (var i = 0; i < this.children.length; i++) {
         if (this.children[i].name === name) {
           result.push(this.children[i]);
@@ -705,27 +749,27 @@ namespace P.core {
       return result;
     }
 
-    // Determines the position of an object from its name, with support for '_random_' and '_mouse_'
-    // Returns {x: number, y: number} or null.
-    getPosition(name) {
-      if (name === '_mouse_') {
-        return {
+    /**
+     * Determines the position of an object, with support for special values.
+     */
+    getPosition(name: string): {x: number, y: number} | null {
+      switch (name) {
+        case '_mouse_': return {
           x: this.mouseX,
           y: this.mouseY,
         };
-      } else if (name === '_random_') {
-        return {
+        case '_random_': return {
           x: Math.round(480 * Math.random() - 240),
           y: Math.round(360 * Math.random() - 180),
         };
-      } else {
-        var sprite = this.getObject(name);
-        if (!sprite) return null;
-        return {
-          x: sprite.scratchX,
-          y: sprite.scratchY,
-        };
       }
+
+      const sprite = this.getObject(name);
+      if (!sprite) return null;
+      return {
+        x: sprite.scratchX,
+        y: sprite.scratchY,
+      };
     }
 
     // Draws the project.
@@ -876,8 +920,8 @@ namespace P.core {
       var right = left + costume.image.width * scale;
       var bottom = top - costume.image.height * scale;
 
-      if (this.rotationStyle !== 'normal') {
-        if (this.rotationStyle === 'leftRight' && this.direction < 0) {
+      if (this.rotationStyle !== RotationStyle.Normal) {
+        if (this.rotationStyle === RotationStyle.LeftRight && this.direction < 0) {
           right = -left;
           left = right - costume.image.width * costume.scale * this.scale;
         }
@@ -926,7 +970,7 @@ namespace P.core {
       div.style.top = (180 - bounds.top) + 'px';
       div.style.width = (bounds.right - bounds.left) + 'px';
       div.style.height = (bounds.top - bounds.bottom) + 'px';
-      this.stage.canvas.parentNode.appendChild(div);
+      this.stage.canvas.parentNode!.appendChild(div);
     }
 
     // Implementing Scratch blocks
@@ -1075,13 +1119,13 @@ namespace P.core {
 
         var cx = (x - this.scratchX) / this.scale;
         var cy = (this.scratchY - y) / this.scale;
-        if (this.rotationStyle === 'normal' && this.direction !== 90) {
+        if (this.rotationStyle === RotationStyle.Normal && this.direction !== 90) {
           var d = (90 - this.direction) * Math.PI / 180;
           var ox = cx;
           var s = Math.sin(d), c = Math.cos(d);
           cx = c * ox - s * cy;
           cy = s * ox + c * cy;
-        } else if (this.rotationStyle === 'leftRight' && this.direction < 0) {
+        } else if (this.rotationStyle === RotationStyle.LeftRight && this.direction < 0) {
           cx = -cx;
         }
 
@@ -1422,11 +1466,11 @@ namespace P.core {
     remove() {
       if (this.bubble) {
         this.stage.ui.removeChild(this.bubble);
-        this.bubble = null;
+        delete this.bubble;
       }
       if (this.node) {
         this.node.disconnect();
-        this.node = null;
+        delete this.bubble;
       }
     }
   }
@@ -1480,7 +1524,7 @@ namespace P.core {
     public name: string;
     public buffer: AudioBuffer;
     public duration: number;
-    public node: AudioNode;
+    public node: AudioNode | null;
 
     constructor(data) {
       this.name = data.name;
@@ -1529,7 +1573,7 @@ namespace P.core {
     public warp: boolean;
     public inputs: any[];
 
-    constructor(fn, warp, inputs) {
+    constructor(fn: runtime.Fn, warp: boolean, inputs: any[]) {
       this.fn = fn;
       this.warp = warp;
       this.inputs = inputs;
@@ -1540,11 +1584,17 @@ namespace P.core {
     abstract call(inputs: any[]): any;
   }
 
-  export function isSprite(base: any): base is P.core.Sprite {
+  /**
+   * Determines if an object is a sprite.
+   */
+  export function isSprite(base: P.core.Base): base is P.core.Sprite {
     return base.isSprite;
   }
 
-  export function isStage(base: any): base is P.core.Stage {
+  /**
+   * Determines if an object is a stage.
+   */
+  export function isStage(base: P.core.Base): base is P.core.Stage {
     return base.isStage;
   }
 }
