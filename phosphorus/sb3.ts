@@ -682,16 +682,16 @@ namespace P.sb3.compiler {
      */
     public type: ExpressionType;
 
-    constructor(source: string, type: ExpressionType) {
-      this.source = source;
+    constructor(src: string, type: ExpressionType) {
+      this.source = src;
       this.type = type;
     }
   }
 
   // Easier aliases for CompiledExpression
-  const numberExpr = (source: string) => new CompiledExpression(source, 'number');
-  const stringExpr = (source: string) => new CompiledExpression(source, 'number');
-  const booleanExpr = (source: string) => new CompiledExpression(source, 'number');
+  const numberExpr = (src: string) => new CompiledExpression(src, 'number');
+  const stringExpr = (src: string) => new CompiledExpression(src, 'number');
+  const booleanExpr = (src: string) => new CompiledExpression(src, 'number');
 
   type ExpressionType = 'string' | 'boolean' | 'number';
   type Block = any;
@@ -2057,19 +2057,16 @@ namespace P.sb3.compiler {
       case 'number': return '+' + script;
       case 'boolean': return '!!' + script;
     }
-    return source;
+    return script;
   }
 
-  function fallbackValue(type: string | undefined): string {
-    if (type === 'string') {
-      return '""';
-    } else if (type === 'number') {
-      return '0';
-    } else if (type === 'boolean') {
-      return 'false';
-    } else {
-      return '""';
+  function fallbackValue(type?: ExpressionType): string {
+    switch (type) {
+      case 'string': return '""';
+      case 'number': return '0';
+      case 'boolean': return 'false';
     }
+    return '""';
   }
 
   // Returns a compiled expression as a JavaScript string.
@@ -2108,16 +2105,19 @@ namespace P.sb3.compiler {
       return fallbackValue(type);
     }
     let result = compiler(block);
-    if (P.config.debug) {
-      result = '/*' + opcode + '*/' + result.toString();
-    }
 
     if (result instanceof CompiledExpression) {
-      // If the expression is already of the indented type, no changes are needed.
+      if (P.config.debug) {
+        result.source = '/*' + opcode + '*/' + result.source;
+      }
       if (result.type === type) {
         return result.source;
       }
       return asType(result.source, type);
+    }
+
+    if (P.config.debug) {
+      result = '/*' + opcode + '*/' + result;
     }
 
     return asType(result, type);

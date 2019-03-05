@@ -4661,15 +4661,15 @@ var P;
             // A CompiledExpression is a type of expression made by an expression compiler with extra
             // data such as types for sake of optimization.
             class CompiledExpression {
-                constructor(source, type) {
-                    this.source = source;
+                constructor(src, type) {
+                    this.source = src;
                     this.type = type;
                 }
             }
             // Easier aliases for CompiledExpression
-            const numberExpr = (source) => new CompiledExpression(source, 'number');
-            const stringExpr = (source) => new CompiledExpression(source, 'number');
-            const booleanExpr = (source) => new CompiledExpression(source, 'number');
+            const numberExpr = (src) => new CompiledExpression(src, 'number');
+            const stringExpr = (src) => new CompiledExpression(src, 'number');
+            const booleanExpr = (src) => new CompiledExpression(src, 'number');
             // IDs of primative types
             // https://github.com/LLK/scratch-vm/blob/36fe6378db930deb835e7cd342a39c23bb54dd72/src/serialization/sb3.js#L60-L79
             const PRIMATIVE_TYPES = {
@@ -5969,21 +5969,15 @@ var P;
                     case 'number': return '+' + script;
                     case 'boolean': return '!!' + script;
                 }
-                return source;
+                return script;
             }
             function fallbackValue(type) {
-                if (type === 'string') {
-                    return '""';
+                switch (type) {
+                    case 'string': return '""';
+                    case 'number': return '0';
+                    case 'boolean': return 'false';
                 }
-                else if (type === 'number') {
-                    return '0';
-                }
-                else if (type === 'boolean') {
-                    return 'false';
-                }
-                else {
-                    return '""';
-                }
+                return '""';
             }
             // Returns a compiled expression as a JavaScript string.
             function compileExpression(expression, type) {
@@ -6016,15 +6010,17 @@ var P;
                     return fallbackValue(type);
                 }
                 let result = compiler(block);
-                if (P.config.debug) {
-                    result = '/*' + opcode + '*/' + result.toString();
-                }
                 if (result instanceof CompiledExpression) {
-                    // If the expression is already of the indented type, no changes are needed.
+                    if (P.config.debug) {
+                        result.source = '/*' + opcode + '*/' + result.source;
+                    }
                     if (result.type === type) {
                         return result.source;
                     }
                     return asType(result.source, type);
+                }
+                if (P.config.debug) {
+                    result = '/*' + opcode + '*/' + result;
                 }
                 return asType(result, type);
             }
