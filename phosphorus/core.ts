@@ -7,9 +7,9 @@
 namespace P.core {
   // Used for collision testing
   const collisionCanvas = document.createElement('canvas');
-  const collisionRenderer = new P.renderer.CanvasRenderer(collisionCanvas);
+  const collisionRenderer = new P.renderer.SpriteRenderer(collisionCanvas);
   const secondaryCollisionCanvas = document.createElement('canvas');
-  const secondaryCollisionRenderer = new P.renderer.CanvasRenderer(secondaryCollisionCanvas);
+  const secondaryCollisionRenderer = new P.renderer.SpriteRenderer(secondaryCollisionCanvas);
 
   interface RotatedBounds {
     // A----------B
@@ -36,6 +36,16 @@ namespace P.core {
     whenBackdropChanges: ObjectMap<P.runtime.Fn[]>;
     whenSceneStarts: P.runtime.Fn[];
     // whenSensorGreaterThan: P.runtime.Fn[]
+  }
+
+  export interface Filters {
+    color: number;
+    fisheye: number;
+    whirl: number;
+    pixelate: number;
+    mosaic: number;
+    brightness: number;
+    ghost: number;
   }
 
   export const enum RotationStyle {
@@ -124,7 +134,7 @@ namespace P.core {
       whenSceneStarts: [],
     };
     public fns: P.runtime.Fn[] = [];
-    public filters = {
+    public filters: Filters = {
       color: 0,
       fisheye: 0,
       whirl: 0,
@@ -213,7 +223,7 @@ namespace P.core {
       if (isSprite(this) && this.saying) this.updateBubble();
     }
 
-    setFilter(name, value) {
+    setFilter(name: string, value: number) {
       switch (name) {
         case 'ghost':
           if (value < 0) value = 0;
@@ -232,7 +242,7 @@ namespace P.core {
       if (isStage(this)) this.updateFilters();
     }
 
-    changeFilter(name, value) {
+    changeFilter(name: string, value: number) {
       this.setFilter(name, this.filters[name] + value);
     }
 
@@ -343,11 +353,11 @@ namespace P.core {
     public root: HTMLElement;
     public ui: HTMLElement;
     public canvas: HTMLCanvasElement;
-    public renderer: P.renderer.CanvasRenderer;
+    public renderer: P.renderer.SpriteRenderer;
     public backdropCanvas: HTMLCanvasElement;
-    public backdropContext: CanvasRenderingContext2D;
+    public backdropRenderer: P.renderer.StageRenderer;
     public penCanvas: HTMLCanvasElement;
-    public penRenderer: P.renderer.CanvasRenderer;
+    public penRenderer: P.renderer.SpriteRenderer;
     public prompt: HTMLInputElement;
     public prompter: HTMLElement;
     public promptTitle: HTMLElement;
@@ -380,21 +390,20 @@ namespace P.core {
 
       this.backdropCanvas = document.createElement('canvas');
       this.root.appendChild(this.backdropCanvas);
-      this.backdropCanvas.width = scale * 480;
-      this.backdropCanvas.height = scale * 360;
-      this.backdropContext = this.backdropCanvas.getContext('2d')!;
+
+      this.backdropRenderer = new P.renderer.StageRenderer(this.backdropCanvas, this);
 
       this.penCanvas = document.createElement('canvas');
       this.root.appendChild(this.penCanvas);
       this.penCanvas.width = scale * 480;
       this.penCanvas.height = scale * 360;
-      this.penRenderer = new P.renderer.CanvasRenderer(this.penCanvas);
+      this.penRenderer = new P.renderer.SpriteRenderer(this.penCanvas);
       this.penRenderer.ctx.lineCap = 'round';
       this.penRenderer.ctx.scale(scale, scale);
 
       this.canvas = document.createElement('canvas');
       this.root.appendChild(this.canvas);
-      this.renderer = new P.renderer.CanvasRenderer(this.canvas);
+      this.renderer = new P.renderer.SpriteRenderer(this.canvas);
 
       this.ui = document.createElement('div');
       this.root.appendChild(this.ui);
@@ -640,28 +649,12 @@ namespace P.core {
     }
 
     updateBackdrop() {
-      this.backdropCanvas.width = this.zoom * P.config.scale * 480;
-      this.backdropCanvas.height = this.zoom * P.config.scale * 360;
-      var costume = this.costumes[this.currentCostumeIndex];
-      this.backdropContext.save();
-      var s = this.zoom * P.config.scale * costume.scale;
-      this.backdropContext.scale(s, s);
-      this.updateFilters();
-      this.backdropContext.drawImage(costume.image, 0, 0);
-      this.backdropContext.restore();
+      this.backdropRenderer.reset(this.zoom * P.config.scale);
+      this.backdropRenderer.drawStage();
     }
 
     updateFilters() {
-      this.backdropCanvas.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.filters.ghost / 100));
-
-      let filter = '';
-      if (this.filters.brightness) {
-        filter += 'brightness(' + (100 + this.filters.brightness) + '%) ';
-      }
-      if (this.filters.color) {
-        filter += 'hue-rotate(' + this.filters.color / 200 * 360 + 'deg) ';
-      }
-      this.backdropCanvas.style.filter = filter;
+      this.backdropRenderer.updateFilters();
     }
 
     setZoom(zoom: number) {
@@ -672,10 +665,8 @@ namespace P.core {
         canvas.width = this.penCanvas.width;
         canvas.height = this.penCanvas.height;
         canvas.getContext('2d')!.drawImage(this.penCanvas, 0, 0);
-        this.penCanvas.width = 480 * zoom * P.config.scale;
-        this.penCanvas.height = 360 * zoom * P.config.scale;
-        this.penRenderer.ctx.drawImage(canvas, 0, 0, 480 * zoom * P.config.scale, 360 * zoom * P.config.scale);
         this.penRenderer.reset(this.maxZoom);
+        this.penRenderer.ctx.drawImage(canvas, 0, 0, 480 * zoom * P.config.scale, 360 * zoom * P.config.scale);
         this.penRenderer.ctx.lineCap = 'round';
       }
       this.root.style.width =
@@ -793,7 +784,7 @@ namespace P.core {
     }
 
     // Draws all the children onto a renderer, optionally skipping an object.
-    drawChildren(renderer: P.renderer.CanvasRenderer, skip?: Sprite) {
+    drawChildren(renderer: P.renderer.SpriteRenderer, skip?: Sprite) {
       for (var i = 0; i < this.children.length; i++) {
         const c = this.children[i];
         if (c.isDragging) {
@@ -807,7 +798,7 @@ namespace P.core {
     }
 
     // Draws all the objects onto a renderer, optionally skipping an object.
-    drawAll(renderer: P.renderer.CanvasRenderer, skip?: Sprite) {
+    drawAll(renderer: P.renderer.SpriteRenderer, skip?: Sprite) {
       renderer.drawChild(this);
       renderer.drawImage(this.penCanvas, 0, 0);
       this.drawChildren(renderer, skip);
@@ -1470,26 +1461,34 @@ namespace P.core {
     }
   }
 
+  interface CostumeOptions {
+    name: string;
+    index: number;
+    bitmapResolution: number;
+    rotationCenterX: number;
+    rotationCenterY: number;
+    layers: HTMLImageElement[];
+  }
+
   // A costume
   export class Costume {
     public name: string;
     public rotationCenterX: number;
     public rotationCenterY: number;
-    public layers: HTMLImageElement[];
     public image: HTMLCanvasElement;
     public context: CanvasRenderingContext2D;
     public index: number;
     public bitmapResolution: number;
     public scale: number;
 
-    constructor(costumeData) {
+    constructor(costumeData: CostumeOptions) {
       this.index = costumeData.index;
       this.bitmapResolution = costumeData.bitmapResolution;
       this.scale = 1 / this.bitmapResolution;
       this.name = costumeData.name;
+
       this.rotationCenterX = costumeData.rotationCenterX;
       this.rotationCenterY = costumeData.rotationCenterY;
-      this.layers = costumeData.layers;
 
       this.image = document.createElement('canvas');
       const context = this.image.getContext('2d');
@@ -1499,14 +1498,15 @@ namespace P.core {
         throw new Error('No canvas 2d context');
       }
 
-      this.render();
+      this.render(costumeData.layers);
     }
 
-    render() {
-      this.image.width = Math.max(this.layers[0].width, 1);
-      this.image.height = Math.max(this.layers[0].height, 1);
+    render(layers: HTMLImageElement[]) {
+      // Width and height cannot be less than 1
+      this.image.width = Math.max(layers[0].width, 1);
+      this.image.height = Math.max(layers[0].height, 1);
 
-      for (const layer of this.layers) {
+      for (const layer of layers) {
         if (layer.width > 0 && layer.height > 0) {
           this.context.drawImage(layer, 0, 0);
         }

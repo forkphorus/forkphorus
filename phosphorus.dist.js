@@ -165,9 +165,22 @@ var P;
 (function (P) {
     var renderer;
     (function (renderer) {
-        class CanvasRenderer {
+        /**
+         * Creates the CSS filter for a Filter object.
+         * Includes brightness and color. Effects are generally _close enough_, but can be quite different.
+         */
+        function cssFilter(filters) {
+            let filter = '';
+            if (filters.brightness) {
+                filter += 'brightness(' + (100 + filters.brightness) + '%) ';
+            }
+            if (filters.color) {
+                filter += 'hue-rotate(' + (filters.color / 200 * 360) + 'deg) ';
+            }
+            return filter;
+        }
+        class Renderer {
             constructor(canvas) {
-                this.noEffects = false;
                 const ctx = canvas.getContext('2d');
                 if (!ctx) {
                     throw new Error('Cannot get 2d rendering context');
@@ -175,8 +188,10 @@ var P;
                 this.ctx = ctx;
                 this.canvas = canvas;
             }
+            /**
+             * Resizes and clears the renderer
+             */
             reset(scale) {
-                // resizes and clears the canvas
                 const effectiveScale = scale * P.config.scale;
                 this.canvas.width = 480 * effectiveScale;
                 this.canvas.height = 360 * effectiveScale;
@@ -185,6 +200,16 @@ var P;
             drawImage(image, x, y) {
                 this.ctx.drawImage(image, x, y);
             }
+        }
+        renderer.Renderer = Renderer;
+        /**
+         * A renderer for drawing sprites (or stages)
+         */
+        class SpriteRenderer extends Renderer {
+            constructor() {
+                super(...arguments);
+                this.noEffects = false;
+            }
             drawChild(c) {
                 const costume = c.costumes[c.currentCostumeIndex];
                 if (!costume) {
@@ -192,8 +217,9 @@ var P;
                 }
                 this.ctx.save();
                 const scale = c.stage.zoom * P.config.scale;
+                this.ctx.translate(((c.scratchX + 240) * scale | 0) / scale, ((180 - c.scratchY) * scale | 0) / scale);
+                // Apply direction transforms to only sprites.
                 if (P.core.isSprite(c)) {
-                    this.ctx.translate(((c.scratchX + 240) * scale | 0) / scale, ((180 - c.scratchY) * scale | 0) / scale);
                     if (c.rotationStyle === 0 /* Normal */) {
                         this.ctx.rotate((c.direction - 90) * Math.PI / 180);
                     }
@@ -203,19 +229,11 @@ var P;
                     this.ctx.scale(c.scale, c.scale);
                 }
                 this.ctx.scale(costume.scale, costume.scale);
-                if (c.isSprite) {
-                    this.ctx.translate(-costume.rotationCenterX, -costume.rotationCenterY);
-                }
+                this.ctx.translate(-costume.rotationCenterX, -costume.rotationCenterY);
                 if (!this.noEffects) {
                     this.ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
-                    let filter = '';
-                    if (c.filters.brightness) {
-                        filter += 'brightness(' + (100 + c.filters.brightness) + '%) ';
-                    }
-                    if (c.filters.color) {
-                        filter += 'hue-rotate(' + (c.filters.color / 200 * 360) + 'deg) ';
-                    }
-                    // Only apply a filter if necessary to fix Firefox performance issue
+                    const filter = cssFilter(c.filters);
+                    // Only apply a filter if necessary, otherwise Firefox performance nosedives.
                     if (filter !== '') {
                         this.ctx.filter = filter;
                     }
@@ -224,7 +242,33 @@ var P;
                 this.ctx.restore();
             }
         }
-        renderer.CanvasRenderer = CanvasRenderer;
+        renderer.SpriteRenderer = SpriteRenderer;
+        /**
+         * A renderer specifically for the backdrop of a project.
+         */
+        class StageRenderer extends SpriteRenderer {
+            constructor(canvas, stage) {
+                super(canvas);
+                this.stage = stage;
+                // We handle effects in other ways.
+                this.noEffects = true;
+            }
+            drawStage() {
+                this.drawChild(this.stage);
+                this.updateFilters();
+            }
+            updateFilters() {
+                const filter = cssFilter(this.stage.filters);
+                // Only reapply a CSS filter if it has changed.
+                // Might not be necessary here.
+                if (this.canvas.style.filter !== filter) {
+                    this.canvas.style.filter = filter;
+                }
+                // cssFilter does not include opacity; we apply it ourselves.
+                this.canvas.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
+            }
+        }
+        renderer.StageRenderer = StageRenderer;
     })(renderer = P.renderer || (P.renderer = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
@@ -238,9 +282,9 @@ var P;
     (function (core) {
         // Used for collision testing
         const collisionCanvas = document.createElement('canvas');
-        const collisionRenderer = new P.renderer.CanvasRenderer(collisionCanvas);
+        const collisionRenderer = new P.renderer.SpriteRenderer(collisionCanvas);
         const secondaryCollisionCanvas = document.createElement('canvas');
-        const secondaryCollisionRenderer = new P.renderer.CanvasRenderer(secondaryCollisionCanvas);
+        const secondaryCollisionRenderer = new P.renderer.SpriteRenderer(secondaryCollisionCanvas);
         class Base {
             constructor() {
                 /**
@@ -516,19 +560,17 @@ var P;
                 const scale = P.config.scale;
                 this.backdropCanvas = document.createElement('canvas');
                 this.root.appendChild(this.backdropCanvas);
-                this.backdropCanvas.width = scale * 480;
-                this.backdropCanvas.height = scale * 360;
-                this.backdropContext = this.backdropCanvas.getContext('2d');
+                this.backdropRenderer = new P.renderer.StageRenderer(this.backdropCanvas, this);
                 this.penCanvas = document.createElement('canvas');
                 this.root.appendChild(this.penCanvas);
                 this.penCanvas.width = scale * 480;
                 this.penCanvas.height = scale * 360;
-                this.penRenderer = new P.renderer.CanvasRenderer(this.penCanvas);
+                this.penRenderer = new P.renderer.SpriteRenderer(this.penCanvas);
                 this.penRenderer.ctx.lineCap = 'round';
                 this.penRenderer.ctx.scale(scale, scale);
                 this.canvas = document.createElement('canvas');
                 this.root.appendChild(this.canvas);
-                this.renderer = new P.renderer.CanvasRenderer(this.canvas);
+                this.renderer = new P.renderer.SpriteRenderer(this.canvas);
                 this.ui = document.createElement('div');
                 this.root.appendChild(this.ui);
                 this.ui.style.pointerEvents = 'none';
@@ -764,26 +806,11 @@ var P;
                 this.mouseY = y;
             }
             updateBackdrop() {
-                this.backdropCanvas.width = this.zoom * P.config.scale * 480;
-                this.backdropCanvas.height = this.zoom * P.config.scale * 360;
-                var costume = this.costumes[this.currentCostumeIndex];
-                this.backdropContext.save();
-                var s = this.zoom * P.config.scale * costume.scale;
-                this.backdropContext.scale(s, s);
-                this.updateFilters();
-                this.backdropContext.drawImage(costume.image, 0, 0);
-                this.backdropContext.restore();
+                this.backdropRenderer.reset(this.zoom * P.config.scale);
+                this.backdropRenderer.drawStage();
             }
             updateFilters() {
-                this.backdropCanvas.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.filters.ghost / 100));
-                let filter = '';
-                if (this.filters.brightness) {
-                    filter += 'brightness(' + (100 + this.filters.brightness) + '%) ';
-                }
-                if (this.filters.color) {
-                    filter += 'hue-rotate(' + this.filters.color / 200 * 360 + 'deg) ';
-                }
-                this.backdropCanvas.style.filter = filter;
+                this.backdropRenderer.updateFilters();
             }
             setZoom(zoom) {
                 if (this.zoom === zoom)
@@ -794,10 +821,8 @@ var P;
                     canvas.width = this.penCanvas.width;
                     canvas.height = this.penCanvas.height;
                     canvas.getContext('2d').drawImage(this.penCanvas, 0, 0);
-                    this.penCanvas.width = 480 * zoom * P.config.scale;
-                    this.penCanvas.height = 360 * zoom * P.config.scale;
-                    this.penRenderer.ctx.drawImage(canvas, 0, 0, 480 * zoom * P.config.scale, 360 * zoom * P.config.scale);
                     this.penRenderer.reset(this.maxZoom);
+                    this.penRenderer.ctx.drawImage(canvas, 0, 0, 480 * zoom * P.config.scale, 360 * zoom * P.config.scale);
                     this.penRenderer.ctx.lineCap = 'round';
                 }
                 this.root.style.width =
@@ -1525,7 +1550,6 @@ var P;
                 this.name = costumeData.name;
                 this.rotationCenterX = costumeData.rotationCenterX;
                 this.rotationCenterY = costumeData.rotationCenterY;
-                this.layers = costumeData.layers;
                 this.image = document.createElement('canvas');
                 const context = this.image.getContext('2d');
                 if (context) {
@@ -1534,12 +1558,13 @@ var P;
                 else {
                     throw new Error('No canvas 2d context');
                 }
-                this.render();
+                this.render(costumeData.layers);
             }
-            render() {
-                this.image.width = Math.max(this.layers[0].width, 1);
-                this.image.height = Math.max(this.layers[0].height, 1);
-                for (const layer of this.layers) {
+            render(layers) {
+                // Width and height cannot be less than 1
+                this.image.width = Math.max(layers[0].width, 1);
+                this.image.height = Math.max(layers[0].height, 1);
+                for (const layer of layers) {
                     if (layer.width > 0 && layer.height > 0) {
                         this.context.drawImage(layer, 0, 0);
                     }
@@ -2096,7 +2121,8 @@ var P;
                         lists[list.listName] = list.contents;
                     }
                 }
-                var object = new (isStage ? Scratch2Stage : Scratch2Sprite)(null);
+                // Dirty hack to construct a target with a null stage
+                const object = new (isStage ? Scratch2Stage : Scratch2Sprite)(null);
                 object.name = data.objName;
                 object.vars = variables;
                 object.lists = lists;
@@ -4086,6 +4112,7 @@ var P;
 /// <reference path="phosphorus.ts" />
 /// <reference path="core.ts" />
 /// <reference path="JSZip.d.ts" />
+/// <reference path="config.ts" />
 // Scratch 3 project loader and runtime objects
 var P;
 (function (P) {
@@ -4274,13 +4301,11 @@ var P;
         // An Array usable by the Scratch 3 compiler.
         // Implements Scratch list blocks and their behavior.
         class Scratch3List extends Array {
-            constructor() {
-                super();
-            }
             // Modified toString() that functions like Scratch.
             toString() {
-                for (let i = this.length; i--;) {
-                    if (this[i].toString().length !== 1) {
+                var i = this.length;
+                while (i--) {
+                    if (('' + this[i]).length !== 1) {
                         return this.join(' ');
                     }
                 }
@@ -4670,31 +4695,7 @@ var P;
             const numberExpr = (src) => new CompiledExpression(src, 'number');
             const stringExpr = (src) => new CompiledExpression(src, 'number');
             const booleanExpr = (src) => new CompiledExpression(src, 'number');
-            // IDs of primative types
-            // https://github.com/LLK/scratch-vm/blob/36fe6378db930deb835e7cd342a39c23bb54dd72/src/serialization/sb3.js#L60-L79
-            const PRIMATIVE_TYPES = {
-                // 1, 2, and 3 are used for substacks, which are compiled very differently
-                // Any number (???)
-                MATH_NUM: 4,
-                // Any positive number (maybe including zero?)
-                POSITIVE_NUM: 5,
-                // Any whole number, including 0
-                WHOLE_NUM: 6,
-                // Any integer
-                INTEGER_NUM: 7,
-                // An angle
-                ANGLE_NUM: 8,
-                // A color
-                COLOR_PICKER: 9,
-                // A text string
-                TEXT: 10,
-                // A broadcast
-                BROADCAST: 11,
-                // A variable reference
-                VAR: 12,
-                // A list reference
-                LIST: 13,
-            };
+            ;
             // Contains top level blocks.
             compiler_1.topLevelLibrary = {
                 // Events
@@ -5628,11 +5629,7 @@ var P;
             };
             // Contains data used for variable watchers.
             compiler_1.watcherLibrary = {
-                // Maps watcher opcode to an object determining their behavior.
-                // Objects must have an evalute(watcher) method that returns the current value of the watcher. (called every visible frame)
-                // They also must have a getLabel(watcher) that returns the label for the watcher. (called once during initialization)
-                // They optionally may have an init(watcher) that does any required initialization work.
-                // They also may optionally have a set(watcher, value) that sets the value of the watcher.
+                // Maps watcher opcode to the methods that define its behavior.
                 // Motion
                 motion_xposition: {
                     evaluate(watcher) { return watcher.target.scratchX; },
@@ -5787,7 +5784,6 @@ var P;
                     case 'always':
                         source += 'VISUAL = true;\n';
                         break;
-                    default: throw new Error('unknown visualCheck variant: ' + variant);
                 }
             }
             // Queues something to run with the forceQueue runtime method
@@ -5830,7 +5826,7 @@ var P;
                     .replace(/\{/g, '\\x7b')
                     .replace(/\}/g, '\\x7d') + '"';
             }
-            // Sanitizes a string using sanitizedString() as a compiled expression instead.
+            // Sanitizes a string using sanitizedString() as a compiled string expression.
             function sanitizedExpression(thing) {
                 return stringExpr(sanitizedString(thing));
             }
@@ -5870,7 +5866,7 @@ var P;
                 return 'S.lists[' + compileExpression(id) + ']';
             }
             ///
-            /// Compiling Functions
+            /// Compilers
             ///
             // Compiles a '#ABCDEF' color
             function compileColor(hexCode) {
@@ -5878,53 +5874,52 @@ var P;
                 const hex = hexCode.substr(1);
                 // Ensure that it is actually a hex number.
                 if (/^[0-9a-f]{6}$/.test(hex)) {
-                    return '0x' + hex;
+                    return numberExpr('0x' + hex);
                 }
                 else {
                     console.warn('expected hex color code but got', hex);
-                    return '0x0';
+                    return numberExpr('0x0');
                 }
             }
             // Compiles a native expression (number, string, data) to a JavaScript string
             function compileNative(constant) {
                 // Natives are arrays.
-                // The first value is the type of the native, see PRIMATIVE_TYPES
+                // The first value is the type of the native, see PrimativeTypes
                 // TODO: use another library instead?
                 const type = constant[0];
                 switch (type) {
                     // These all function as numbers. I believe they are only differentiated so the editor can be more helpful.
-                    case PRIMATIVE_TYPES.MATH_NUM:
-                    case PRIMATIVE_TYPES.POSITIVE_NUM:
-                    case PRIMATIVE_TYPES.WHOLE_NUM:
-                    case PRIMATIVE_TYPES.INTEGER_NUM:
-                    case PRIMATIVE_TYPES.ANGLE_NUM:
-                        // There are no actual guarantees that a number is present here.
-                        // In reality a non-number string could be present, which would be problematic to cast to number. (maybe even XSS)
+                    case 4 /* MATH_NUM */:
+                    case 5 /* POSITIVE_NUM */:
+                    case 6 /* WHOLE_NUM */:
+                    case 7 /* INTEGER_NUM */:
+                    case 8 /* ANGLE_NUM */:
                         if (isFinite(constant[1])) {
-                            return constant[1];
+                            return numberExpr(constant[1]);
                         }
                         else {
-                            return sanitizedString(constant[1]);
+                            // Non-numbers will be sanitized 
+                            return sanitizedExpression(constant[1]);
                         }
-                    case PRIMATIVE_TYPES.TEXT:
+                    case 10 /* TEXT */:
                         // Text is compiled directly into a string.
-                        return sanitizedString(constant[1]);
-                    case PRIMATIVE_TYPES.VAR:
+                        return sanitizedExpression(constant[1]);
+                    case 12 /* VAR */:
                         // For variable natives the second item is the name of the variable
                         // and the third is the ID of the variable. We only care about the ID.
                         return variableReference(constant[2]);
-                    case PRIMATIVE_TYPES.LIST:
+                    case 13 /* LIST */:
                         // Similar to variable references
                         return listReference(constant[2]);
-                    case PRIMATIVE_TYPES.BROADCAST:
+                    case 11 /* BROADCAST */:
                         // Similar to variable references.
                         return compileExpression(constant[2]);
-                    case PRIMATIVE_TYPES.COLOR_PICKER:
+                    case 9 /* COLOR_PICKER */:
                         // Colors are stored as strings like "#123ABC", so we must do some conversions.
                         return compileColor(constant[1]);
                     default:
                         console.warn('unknown constant', type, constant);
-                        return '""';
+                        return stringExpr('""');
                 }
             }
             // Compiles a block and adds it to the source. (Does not return source)
@@ -5964,6 +5959,13 @@ var P;
                 compile(id);
             }
             function asType(script, type) {
+                if (script instanceof CompiledExpression) {
+                    // If a compiled expression is already of the desired type, then simply return it.
+                    if (script.type === type) {
+                        return script.source;
+                    }
+                    script = script.source;
+                }
                 switch (type) {
                     case 'string': return '("" + ' + script + ")";
                     case 'number': return '+' + script;
@@ -5972,6 +5974,7 @@ var P;
                 return script;
             }
             function fallbackValue(type) {
+                // TODO: types for fallbacks
                 switch (type) {
                     case 'string': return '""';
                     case 'number': return '0';
@@ -6014,10 +6017,7 @@ var P;
                     if (P.config.debug) {
                         result.source = '/*' + opcode + '*/' + result.source;
                     }
-                    if (result.type === type) {
-                        return result.source;
-                    }
-                    return asType(result.source, type);
+                    return asType(result, type);
                 }
                 if (P.config.debug) {
                     result = '/*' + opcode + '*/' + result;

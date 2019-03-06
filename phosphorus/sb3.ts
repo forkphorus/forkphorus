@@ -1,6 +1,7 @@
 /// <reference path="phosphorus.ts" />
 /// <reference path="core.ts" />
 /// <reference path="JSZip.d.ts" />
+/// <reference path="config.ts" />
 
 // Scratch 3 project loader and runtime objects
 namespace P.sb3 {
@@ -243,14 +244,11 @@ namespace P.sb3 {
   // An Array usable by the Scratch 3 compiler.
   // Implements Scratch list blocks and their behavior.
   export class Scratch3List extends Array {
-    constructor() {
-      super();
-    }
-
     // Modified toString() that functions like Scratch.
     toString() {
-      for (let i = this.length; i--;) {
-        if (this[i].toString().length !== 1) {
+     var i = this.length;
+      while (i--) {
+        if (('' + this[i]).length !== 1) {
           return this.join(' ');
         }
       }
@@ -699,37 +697,37 @@ namespace P.sb3.compiler {
   export type ExpressionCompiler = (block: Block) => string | CompiledExpression;
   export type StatementCompiler = (block: Block) => void;
   export interface WatchedValue {
+    /**
+     * Initializes the watcher.
+     */
     init?(watcher: P.sb3.Scratch3VariableWatcher): void;
+    /**
+     * Sets the value of the watcher to a new number.
+     */
     set?(watcher: P.sb3.Scratch3VariableWatcher, value: number): void;
+    /**
+     * Evaluates the current value of the watcher. Called every visible frame.
+     */
     evaluate(watcher: P.sb3.Scratch3VariableWatcher): any;
+    /**
+     * Determines the label to display in the watcher. Called once during initialization (after init)
+     */
     getLabel(watcher: P.sb3.Scratch3VariableWatcher): string;
   }
 
   // IDs of primative types
   // https://github.com/LLK/scratch-vm/blob/36fe6378db930deb835e7cd342a39c23bb54dd72/src/serialization/sb3.js#L60-L79
-  const PRIMATIVE_TYPES = {
-    // 1, 2, and 3 are used for substacks, which are compiled very differently
-
-    // Any number (???)
-    MATH_NUM: 4,
-    // Any positive number (maybe including zero?)
-    POSITIVE_NUM: 5,
-    // Any whole number, including 0
-    WHOLE_NUM: 6,
-    // Any integer
-    INTEGER_NUM: 7,
-    // An angle
-    ANGLE_NUM: 8,
-    // A color
-    COLOR_PICKER: 9,
-    // A text string
-    TEXT: 10,
-    // A broadcast
-    BROADCAST: 11,
-    // A variable reference
-    VAR: 12,
-    // A list reference
-    LIST: 13,
+  const enum PrimativeTypes {
+    MATH_NUM = 4,
+    POSITIVE_NUM = 5,
+    WHOLE_NUM = 6,
+    INTEGER_NUM = 7,
+    ANGLE_NUM = 8,
+    COLOR_PICKER = 9,
+    TEXT = 10,
+    BROADCAST = 11,
+    VAR = 12,
+    LIST = 13,
   };
 
   // Contains top level blocks.
@@ -1693,11 +1691,7 @@ namespace P.sb3.compiler {
 
   // Contains data used for variable watchers.
   export const watcherLibrary: ObjectMap<WatchedValue> = {
-    // Maps watcher opcode to an object determining their behavior.
-    // Objects must have an evalute(watcher) method that returns the current value of the watcher. (called every visible frame)
-    // They also must have a getLabel(watcher) that returns the label for the watcher. (called once during initialization)
-    // They optionally may have an init(watcher) that does any required initialization work.
-    // They also may optionally have a set(watcher, value) that sets the value of the watcher.
+    // Maps watcher opcode to the methods that define its behavior.
 
     // Motion
     motion_xposition: {
@@ -1843,7 +1837,7 @@ namespace P.sb3.compiler {
   // 'drawing' will enable it if the sprite is visible or the pen is down (if the sprite is drawing something)
   // 'visible' will enable it if the sprite is visible
   // 'always' will always enable it
-  function visualCheck(variant: string) {
+  function visualCheck(variant: 'drawing' | 'visible' | 'always') {
     if (P.config.debug) {
       source += '/*visual:' + variant + '*/';
     }
@@ -1851,7 +1845,6 @@ namespace P.sb3.compiler {
       case 'drawing': source += 'if (S.visible || S.isPenDown) VISUAL = true;\n'; break;
       case 'visible': source += 'if (S.visible) VISUAL = true;\n'; break;
       case 'always':  source += 'VISUAL = true;\n'; break;
-      default: throw new Error('unknown visualCheck variant: ' + variant);
     }
   }
 
@@ -1887,7 +1880,7 @@ namespace P.sb3.compiler {
   }
 
   // Sanitizes a string to be used in a javascript string enclosed in double quotes.
-  function sanitizedString(thing: any): string {
+  function sanitizedString(thing: string): string {
     if (typeof thing !== 'string') {
       thing = '' + thing;
     }
@@ -1901,8 +1894,8 @@ namespace P.sb3.compiler {
       .replace(/\}/g, '\\x7d') + '"';
   }
 
-  // Sanitizes a string using sanitizedString() as a compiled expression instead.
-  function sanitizedExpression(thing: any): CompiledExpression {
+  // Sanitizes a string using sanitizedString() as a compiled string expression.
+  function sanitizedExpression(thing: string): CompiledExpression {
     return stringExpr(sanitizedString(thing));
   }
 
@@ -1945,68 +1938,67 @@ namespace P.sb3.compiler {
   }
 
   ///
-  /// Compiling Functions
+  /// Compilers
   ///
 
   // Compiles a '#ABCDEF' color
-  function compileColor(hexCode: string): string {
+  function compileColor(hexCode: string): CompiledExpression {
     // Remove the leading # and use it to create a hexadecimal number
     const hex = hexCode.substr(1);
     // Ensure that it is actually a hex number.
     if (/^[0-9a-f]{6}$/.test(hex)) {
-      return '0x' + hex;
+      return numberExpr('0x' + hex);
     } else {
       console.warn('expected hex color code but got', hex);
-      return '0x0';
+      return numberExpr('0x0');
     }
   }
 
   // Compiles a native expression (number, string, data) to a JavaScript string
-  function compileNative(constant): string {
+  function compileNative(constant): CompiledExpression | string {
     // Natives are arrays.
-    // The first value is the type of the native, see PRIMATIVE_TYPES
+    // The first value is the type of the native, see PrimativeTypes
     // TODO: use another library instead?
     const type = constant[0];
 
     switch (type) {
       // These all function as numbers. I believe they are only differentiated so the editor can be more helpful.
-      case PRIMATIVE_TYPES.MATH_NUM:
-      case PRIMATIVE_TYPES.POSITIVE_NUM:
-      case PRIMATIVE_TYPES.WHOLE_NUM:
-      case PRIMATIVE_TYPES.INTEGER_NUM:
-      case PRIMATIVE_TYPES.ANGLE_NUM:
-        // There are no actual guarantees that a number is present here.
-        // In reality a non-number string could be present, which would be problematic to cast to number. (maybe even XSS)
+      case PrimativeTypes.MATH_NUM:
+      case PrimativeTypes.POSITIVE_NUM:
+      case PrimativeTypes.WHOLE_NUM:
+      case PrimativeTypes.INTEGER_NUM:
+      case PrimativeTypes.ANGLE_NUM:
         if (isFinite(constant[1])) {
-          return constant[1];
+          return numberExpr(constant[1]);
         } else {
-          return sanitizedString(constant[1]);
+          // Non-numbers will be sanitized 
+          return sanitizedExpression(constant[1]);
         }
 
-      case PRIMATIVE_TYPES.TEXT:
+      case PrimativeTypes.TEXT:
         // Text is compiled directly into a string.
-        return sanitizedString(constant[1]);
+        return sanitizedExpression(constant[1]);
 
-      case PRIMATIVE_TYPES.VAR:
+      case PrimativeTypes.VAR:
         // For variable natives the second item is the name of the variable
         // and the third is the ID of the variable. We only care about the ID.
         return variableReference(constant[2]);
 
-      case PRIMATIVE_TYPES.LIST:
+      case PrimativeTypes.LIST:
         // Similar to variable references
         return listReference(constant[2]);
 
-      case PRIMATIVE_TYPES.BROADCAST:
+      case PrimativeTypes.BROADCAST:
         // Similar to variable references.
         return compileExpression(constant[2]);
 
-      case PRIMATIVE_TYPES.COLOR_PICKER:
+      case PrimativeTypes.COLOR_PICKER:
         // Colors are stored as strings like "#123ABC", so we must do some conversions.
         return compileColor(constant[1]);
 
       default:
         console.warn('unknown constant', type, constant);
-        return '""';
+        return stringExpr('""');
     }
   }
 
@@ -2051,7 +2043,14 @@ namespace P.sb3.compiler {
     compile(id);
   }
 
-  function asType(script: string, type?: ExpressionType): string {
+  function asType(script: string | CompiledExpression, type?: ExpressionType): string {
+    if (script instanceof CompiledExpression) {
+      // If a compiled expression is already of the desired type, then simply return it.
+      if (script.type === type) {
+        return script.source;
+      }
+      script = script.source;
+    }
     switch (type) {
       case 'string': return '("" + ' + script + ")";
       case 'number': return '+' + script;
@@ -2061,6 +2060,7 @@ namespace P.sb3.compiler {
   }
 
   function fallbackValue(type?: ExpressionType): string {
+    // TODO: types for fallbacks
     switch (type) {
       case 'string': return '""';
       case 'number': return '0';
@@ -2110,10 +2110,7 @@ namespace P.sb3.compiler {
       if (P.config.debug) {
         result.source = '/*' + opcode + '*/' + result.source;
       }
-      if (result.type === type) {
-        return result.source;
-      }
-      return asType(result.source, type);
+      return asType(result, type);
     }
 
     if (P.config.debug) {

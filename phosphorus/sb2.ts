@@ -479,7 +479,8 @@ namespace P.sb2 {
         }
       }
 
-      var object = new (isStage ? Scratch2Stage : Scratch2Sprite)(null);
+      // Dirty hack to construct a target with a null stage
+      const object = new (isStage ? Scratch2Stage : Scratch2Sprite)(null!);
 
       object.name = data.objName;
       object.vars = variables;
