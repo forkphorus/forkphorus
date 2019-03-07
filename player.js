@@ -156,7 +156,7 @@ P.player = (function() {
     id = +id;
 
     if (stage) stage.destroy();
-    while (player.firstChild) player.removeChild(player.lastChild);
+    while (player.firstChild) player.removeChild(player.firstChild);
     turbo.style.display = 'none';
     error.style.display = 'none';
 

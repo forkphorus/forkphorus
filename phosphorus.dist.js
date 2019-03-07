@@ -27,6 +27,9 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
+if (!('Promise' in window)) {
+    throw new Error('Browser does not support Promise');
+}
 /// <reference path="phosphorus.ts" />
 var P;
 (function (P) {
@@ -125,29 +128,26 @@ var P;
             }
             cb(new Error('Unrecognized WAV format ' + format));
         }
-        ;
         function decodeAudio(ab) {
             if (!audio.context) {
-                return Promise.reject("No audio context");
+                return Promise.reject('No audio context');
             }
             return new Promise((resolve, reject) => {
-                // Attempt to decode it as ADPCM audio
                 decodeADPCMAudio(ab, function (err, buffer) {
                     if (buffer) {
                         resolve(buffer);
                         return;
                     }
                     // Hope that the audio context will know what to do
-                    return audio.context.decodeAudioData(ab)
-                        .then((buffer) => resolve(buffer));
+                    audio.context.decodeAudioData(ab)
+                        .then((buffer) => resolve(buffer))
+                        .catch((err) => reject(err));
                 });
             });
         }
         audio.decodeAudio = decodeAudio;
-        ;
     })(audio = P.audio || (P.audio = {}));
 })(P || (P = {}));
-;
 /// <reference path="phosphorus.ts" />
 var P;
 (function (P) {
@@ -1196,68 +1196,71 @@ var P;
             // Determines if the sprite is touching an object.
             // thing is the name of the object, '_mouse_', or '_edge_'
             touching(thing) {
-                var costume = this.costumes[this.currentCostumeIndex];
+                const costume = this.costumes[this.currentCostumeIndex];
                 if (thing === '_mouse_') {
-                    var bounds = this.rotatedBounds();
-                    var x = this.stage.rawMouseX;
-                    var y = this.stage.rawMouseY;
+                    const bounds = this.rotatedBounds();
+                    const x = this.stage.rawMouseX;
+                    const y = this.stage.rawMouseY;
                     if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top) {
                         return false;
                     }
                     var cx = (x - this.scratchX) / this.scale;
                     var cy = (this.scratchY - y) / this.scale;
                     if (this.rotationStyle === 0 /* Normal */ && this.direction !== 90) {
-                        var d = (90 - this.direction) * Math.PI / 180;
-                        var ox = cx;
-                        var s = Math.sin(d), c = Math.cos(d);
+                        const d = (90 - this.direction) * Math.PI / 180;
+                        const ox = cx;
+                        const s = Math.sin(d), c = Math.cos(d);
                         cx = c * ox - s * cy;
                         cy = s * ox + c * cy;
                     }
                     else if (this.rotationStyle === 1 /* LeftRight */ && this.direction < 0) {
                         cx = -cx;
                     }
-                    var positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
-                    var positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
-                    var data = costume.context.getImageData(positionX, positionY, 1, 1).data;
+                    const positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
+                    const positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
+                    const data = costume.context.getImageData(positionX, positionY, 1, 1).data;
                     return data[3] !== 0;
                 }
                 else if (thing === '_edge_') {
-                    var bounds = this.rotatedBounds();
+                    const bounds = this.rotatedBounds();
                     return bounds.left <= -240 || bounds.right >= 240 || bounds.top >= 180 || bounds.bottom <= -180;
                 }
                 else {
                     if (!this.visible)
                         return false;
-                    var sprites = this.stage.getObjects(thing);
+                    const sprites = this.stage.getObjects(thing);
                     for (var i = sprites.length; i--;) {
-                        var sprite = sprites[i];
+                        const sprite = sprites[i];
                         if (!sprite.visible)
                             continue;
-                        var mb = this.rotatedBounds();
-                        var ob = sprite.rotatedBounds();
+                        const mb = this.rotatedBounds();
+                        const ob = sprite.rotatedBounds();
                         if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
                             continue;
                         }
-                        var left = Math.max(mb.left, ob.left);
-                        var top = Math.min(mb.top, ob.top);
-                        var right = Math.min(mb.right, ob.right);
-                        var bottom = Math.max(mb.bottom, ob.bottom);
-                        if (right - left < 1 || top - bottom < 1) {
+                        const left = Math.max(mb.left, ob.left);
+                        const top = Math.min(mb.top, ob.top);
+                        const right = Math.min(mb.right, ob.right);
+                        const bottom = Math.max(mb.bottom, ob.bottom);
+                        const width = right - left;
+                        const height = top - bottom;
+                        if (width < 1 || height < 1) {
                             continue;
                         }
-                        collisionRenderer.canvas.width = right - left;
-                        collisionRenderer.canvas.height = top - bottom;
+                        collisionRenderer.canvas.width = width;
+                        collisionRenderer.canvas.height = height;
                         collisionRenderer.ctx.save();
-                        collisionRenderer.ctx.translate(-(left + 240), -(180 - top));
                         collisionRenderer.noEffects = true;
+                        collisionRenderer.ctx.translate(-(left + 240), -(180 - top));
                         collisionRenderer.drawChild(this);
                         collisionRenderer.ctx.globalCompositeOperation = 'source-in';
                         collisionRenderer.drawChild(sprite);
                         collisionRenderer.noEffects = false;
                         collisionRenderer.ctx.restore();
-                        var data = collisionRenderer.ctx.getImageData(0, 0, right - left, top - bottom).data;
-                        var length = (right - left) * (top - bottom) * 4;
+                        const data = collisionRenderer.ctx.getImageData(0, 0, width, height).data;
+                        const length = data.length;
                         for (var j = 0; j < length; j += 4) {
+                            // check for the opacity byte being a non-zero number
                             if (data[j + 3]) {
                                 return true;
                             }
@@ -1354,20 +1357,14 @@ var P;
                 if (b.bottom < -180)
                     y += -180 - b.top;
             }
-            // Determines the distance to another object.
-            // thing is the name of the object, or '_mouse_'
+            // Determines the distance to point accepted by getPosition()
             distanceTo(thing) {
-                if (thing === '_mouse_') {
-                    var x = this.stage.mouseX;
-                    var y = this.stage.mouseY;
+                const p = this.stage.getPosition(thing);
+                if (!p) {
+                    return 10000;
                 }
-                else {
-                    var sprite = this.stage.getObject(thing);
-                    if (!sprite)
-                        return 10000;
-                    x = sprite.scratchX;
-                    y = sprite.scratchY;
-                }
+                const x = p.x;
+                const y = p.y;
                 return Math.sqrt((this.scratchX - x) * (this.scratchX - x) + (this.scratchY - y) * (this.scratchY - y));
             }
             // Goes to another object.
@@ -1584,7 +1581,7 @@ var P;
         // An abstract variable watcher
         class VariableWatcher {
             constructor(stage, targetName) {
-                this.valid = false;
+                this.valid = true;
                 this.x = 0;
                 this.y = 0;
                 this.visible = true;
@@ -1660,7 +1657,6 @@ var P;
             });
         }
         IO.fetch = fetch;
-        ;
         function fileAsArrayBuffer(file) {
             const fileReader = new FileReader();
             return new Promise((resolve, reject) => {
@@ -1677,10 +1673,8 @@ var P;
             });
         }
         IO.fileAsArrayBuffer = fileAsArrayBuffer;
-        ;
     })(IO = P.IO || (P.IO = {}));
 })(P || (P = {}));
-;
 /// <reference path="phosphorus.ts" />
 /// <reference path="core.ts" />
 /// <reference path="canvg.d.ts" />
@@ -2034,7 +2028,6 @@ var P;
             });
         }
         sb2.loadImage = loadImage;
-        ;
         // Loads a .sb2 file from an ArrayBuffer containing the .sb2 file
         function loadSB2Project(arrayBuffer) {
             return JSZip.loadAsync(arrayBuffer)
@@ -2048,7 +2041,6 @@ var P;
             });
         }
         sb2.loadSB2Project = loadSB2Project;
-        ;
         // Loads a project on the scratch.mit.edu website from its project.json
         function loadProject(data) {
             var children;
@@ -2071,7 +2063,6 @@ var P;
             });
         }
         sb2.loadProject = loadProject;
-        ;
         sb2.wavBuffers = {};
         function loadWavs() {
             // don't bother attempting to load audio if it can't even be played
@@ -2087,7 +2078,6 @@ var P;
             return Promise.all(assets);
         }
         sb2.loadWavs = loadWavs;
-        ;
         function loadWavBuffer(name) {
             return P.IO.fetch(SOUNDBANK_URL + WAV_FILES[name])
                 .then((request) => request.arrayBuffer())
@@ -2095,7 +2085,6 @@ var P;
                 .then((buffer) => sb2.wavBuffers[name] = buffer);
         }
         sb2.loadWavBuffer = loadWavBuffer;
-        ;
         function loadBase(data, isStage = false) {
             var costumes;
             var sounds;
@@ -2147,13 +2136,11 @@ var P;
             });
         }
         sb2.loadBase = loadBase;
-        ;
         // Array.map and Promise.all on steroids
         function loadArray(data, process) {
             return Promise.all((data || []).map((i, ind) => process(i, ind)));
         }
         sb2.loadArray = loadArray;
-        ;
         function loadObject(data) {
             if (data.cmd) {
                 return loadVariableWatcher(data);
@@ -2166,13 +2153,11 @@ var P;
             }
         }
         sb2.loadObject = loadObject;
-        ;
         function loadVariableWatcher(data) {
             const targetName = data.target;
             return new Scratch2VariableWatcher(null, targetName, data);
         }
         sb2.loadVariableWatcher = loadVariableWatcher;
-        ;
         function loadCostume(data, index) {
             const promises = [
                 loadMD5(data.baseLayerMD5, data.baseLayerID)
@@ -2195,7 +2180,6 @@ var P;
             });
         }
         sb2.loadCostume = loadCostume;
-        ;
         function loadSound(data) {
             return loadMD5(data.md5, data.soundID, true)
                 .then((buffer) => {
@@ -2206,7 +2190,6 @@ var P;
             });
         }
         sb2.loadSound = loadSound;
-        ;
         function loadSVG(source) {
             // The fact that this works is truly a work of art.
             var parser = new DOMParser();
@@ -2288,7 +2271,7 @@ var P;
                         image.onload = function () {
                             resolve(image);
                         };
-                        const data = f.async('binarystring')
+                        f.async('binarystring')
                             .then((data) => {
                             image.src = 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(data);
                         });
@@ -2300,7 +2283,6 @@ var P;
             }
         }
         sb2.loadMD5 = loadMD5;
-        ;
     })(sb2 = P.sb2 || (P.sb2 = {}));
 })(P || (P = {}));
 // Compiler for .sb2 projects
@@ -3286,7 +3268,6 @@ var P;
         })(compiler = sb2.compiler || (sb2.compiler = {}));
     })(sb2 = P.sb2 || (P.sb2 = {}));
 })(P || (P = {}));
-;
 /// <reference path="phosphorus.ts" />
 /// <reference path="sb2.ts" />
 /// <reference path="core.ts" />
@@ -4211,9 +4192,9 @@ var P;
             // Gets the value of the watcher as a string.
             getValue() {
                 const value = this.libraryEntry.evaluate(this);
-                // Round off numbers to the thousandths to avoid excess precision
+                // Round off numbers to the 6th decimal
                 if (typeof value === 'number') {
-                    return '' + (Math.round(value * 1000) / 1000);
+                    return '' + (Math.round(value * 1e6) / 1e6);
                 }
                 return '' + value;
             }
@@ -4371,7 +4352,7 @@ var P;
                         const image = new Image();
                         return new Promise((resolve, reject) => {
                             image.onload = () => resolve(image);
-                            image.onerror = (err) => reject("Failed to load SVG image");
+                            image.onerror = (err) => reject('Failed to load SVG image: ' + image.src);
                             image.src = 'data:image/svg+xml;,' + encodeURIComponent(source);
                         });
                     });
@@ -4405,7 +4386,10 @@ var P;
             }
             getAudioBuffer(path) {
                 return this.getAsArrayBuffer(path)
-                    .then((buffer) => P.audio.decodeAudio(buffer));
+                    .then((buffer) => P.audio.decodeAudio(buffer))
+                    .catch((err) => {
+                    throw new Error(`Could not load audio: ${path} (${err})`);
+                });
             }
             loadSound(data) {
                 /*
@@ -4479,8 +4463,7 @@ var P;
                     .then((c) => costumes = c);
                 const loadSounds = Promise.all(data.sounds.map((c) => this.loadSound(c)))
                     .then((s) => sounds = s);
-                return loadCostumes
-                    .then(() => loadSounds)
+                return Promise.all([loadCostumes, loadSounds])
                     .then(() => {
                     // TODO: dirty hack for null stage
                     const target = new (data.isStage ? Scratch3Stage : Scratch3Sprite)(null);
@@ -4634,7 +4617,7 @@ var P;
                     };
                     image.onerror = function (err) {
                         P.IO.progressHooks.error(err);
-                        reject('Failed to load iamge');
+                        reject('Failed to load image: ' + image.src);
                     };
                     image.crossOrigin = 'anonymous';
                     image.src = sb3.ASSETS_API.replace('$path', path);
@@ -4657,7 +4640,6 @@ var P;
         sb3.Scratch3Loader = Scratch3Loader;
     })(sb3 = P.sb3 || (P.sb3 = {}));
 })(P || (P = {}));
-;
 // Compiler for .sb3 projects
 (function (P) {
     var sb3;
@@ -4693,9 +4675,8 @@ var P;
             }
             // Easier aliases for CompiledExpression
             const numberExpr = (src) => new CompiledExpression(src, 'number');
-            const stringExpr = (src) => new CompiledExpression(src, 'number');
-            const booleanExpr = (src) => new CompiledExpression(src, 'number');
-            ;
+            const stringExpr = (src) => new CompiledExpression(src, 'string');
+            const booleanExpr = (src) => new CompiledExpression(src, 'boolean');
             // Contains top level blocks.
             compiler_1.topLevelLibrary = {
                 // Events
@@ -4904,10 +4885,6 @@ var P;
                 sensing_username(block) {
                     return stringExpr('self.username');
                 },
-                sensing_userid(block) {
-                    // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_sensing.js#L74
-                    return 'undefined';
-                },
                 // Operators
                 operator_add(block) {
                     const num1 = block.inputs.NUM1;
@@ -4997,8 +4974,40 @@ var P;
                 operator_mathop(block) {
                     const operator = block.fields.OPERATOR[0];
                     const num = block.inputs.NUM;
-                    // TODO: skip mathFunc overhead (probably very slight) for performance?
-                    return 'mathFunc(' + sanitizedString(operator) + ', ' + compileExpression(num, 'number') + ')';
+                    const compiledNum = compileExpression(num, 'number');
+                    switch (operator) {
+                        case 'abs':
+                            return numberExpr(`Math.abs(${compiledNum})`);
+                        case 'floor':
+                            return numberExpr(`Math.floor(${compiledNum})`);
+                        case 'sqrt':
+                            return numberExpr(`Math.sqrt(${compiledNum})`);
+                        case 'ceiling':
+                            return numberExpr(`Math.ceil(${compiledNum})`);
+                        case 'cos':
+                            return numberExpr(`Math.cos(${compiledNum} * Math.PI / 180)`);
+                        case 'sin':
+                            return numberExpr(`Math.sin(${compiledNum} * Math.PI / 180)`);
+                        case 'tan':
+                            return numberExpr(`Math.tan(${compiledNum} * Math.PI / 180)`);
+                        case 'asin':
+                            return numberExpr(`(Math.asin(${compiledNum}) * 180 / Math.PI)`);
+                        case 'acos':
+                            return numberExpr(`(Math.acos(${compiledNum}) * 180 / Math.PI)`);
+                        case 'atan':
+                            return numberExpr(`(Math.atan(${compiledNum}) * 180 / Math.PI)`);
+                        case 'ln':
+                            return numberExpr(`Math.log(${compiledNum})`);
+                        case 'log':
+                            return numberExpr(`(Math.log(${compiledNum}) / Math.LN10)`);
+                        case 'e ^':
+                            return numberExpr(`Math.exp(${compiledNum})`);
+                        case '10 ^':
+                            return numberExpr(`Math.exp(${compiledNum} * Math.LN10)`);
+                        default:
+                            // Unrecognized field or a non-constant field will fallback to the mathFunc runtime method
+                            return numberExpr(`mathFunc(${sanitizedString(operator)}, + ${compiledNum})`);
+                    }
                 },
                 // Data
                 data_itemoflist(block) {
@@ -5030,6 +5039,12 @@ var P;
                     // Forcibly convert to boolean
                     return booleanExpr(asType('C.args[' + sanitizedString(name) + ']', 'boolean'));
                 },
+                // The matrix, a little known expression. Only used in some of the robot extensions.
+                matrix(block) {
+                    const matrix = block.fields.MATRIX[0];
+                    // This is a string, not a number. It's not to be treated as binary digits to convert to base 10.
+                    return sanitizedExpression(matrix);
+                },
                 // Pen (extension)
                 pen_menu_colorParam(block) {
                     const colorParam = block.fields.colorParam[0];
@@ -5039,6 +5054,13 @@ var P;
                 music_getTempo(block) {
                     return numberExpr('self.tempoBPM');
                 },
+                // Legacy no-ops
+                // Here, returning an untyped undefined has the same effect as it does in Scratch 3.
+                // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_sensing.js#L74
+                sensing_userid() { return 'undefined'; },
+                // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L42-L43
+                motion_xscroll() { return 'undefined'; },
+                motion_yscroll() { return 'undefined'; },
             };
             // Contains statements.
             compiler_1.statementLibrary = {
@@ -5430,22 +5452,42 @@ var P;
                 },
                 control_stop(block) {
                     const option = block.fields.STOP_OPTION[0];
-                    source += 'switch (' + compileExpression(option) + ') {\n';
-                    source += '  case "all":\n';
-                    source += '    runtime.stopAll();\n';
-                    source += '    return;\n';
-                    source += '  case "this script":\n';
-                    source += '    endCall();\n';
-                    source += '    return;\n';
-                    source += '  case "other scripts in sprite":\n';
-                    source += '  case "other scripts in stage":\n';
-                    source += '    for (var i = 0; i < runtime.queue.length; i++) {\n';
-                    source += '      if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
-                    source += '        runtime.queue[i] = undefined;\n';
-                    source += '      }\n';
-                    source += '    }\n';
-                    source += '    break;\n';
-                    source += '}\n';
+                    switch (option) {
+                        case 'all':
+                            source += 'runtime.stopAll();\n';
+                            source += 'return;\n';
+                            break;
+                        case 'this script':
+                            source += 'endCall();\n';
+                            source += 'return;\n';
+                            break;
+                        case 'other scripts in sprite':
+                        case 'other scripts in stage':
+                            source += 'for (var i = 0; i < runtime.queue.length; i++) {\n';
+                            source += '  if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
+                            source += '    runtime.queue[i] = undefined;\n';
+                            source += '  }\n';
+                            source += '}\n';
+                            break;
+                        default:
+                            // If the field is not recognized or not a compile-time constant, then fallback to a large switch statement.
+                            source += 'switch (' + sanitizedString(option) + ') {\n';
+                            source += '  case "all":\n';
+                            source += '    runtime.stopAll();\n';
+                            source += '    return;\n';
+                            source += '  case "this script":\n';
+                            source += '    endCall();\n';
+                            source += '    return;\n';
+                            source += '  case "other scripts in sprite":\n';
+                            source += '  case "other scripts in stage":\n';
+                            source += '    for (var i = 0; i < runtime.queue.length; i++) {\n';
+                            source += '      if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
+                            source += '        runtime.queue[i] = undefined;\n';
+                            source += '      }\n';
+                            source += '    }\n';
+                            source += '    break;\n';
+                            source += '}\n';
+                    }
                 },
                 control_create_clone_of(block) {
                     const option = block.inputs.CLONE_OPTION;
@@ -5626,6 +5668,15 @@ var P;
                     const tempo = block.inputs.TEMPO;
                     source += 'self.tempoBPM += ' + compileExpression(tempo, 'number') + ';\n';
                 },
+                // Legacy no-ops. We don't even bother to compile any of their inputs or fields because they don't do anything.
+                // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L19
+                motion_scroll_right() { },
+                motion_scroll_up() { },
+                motion_align_scene() { },
+                // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_looks.js#L248
+                looks_changestretchby() { },
+                looks_setstretchto() { },
+                looks_hideallsprites() { },
             };
             // Contains data used for variable watchers.
             compiler_1.watcherLibrary = {
@@ -5894,7 +5945,8 @@ var P;
                     case 6 /* WHOLE_NUM */:
                     case 7 /* INTEGER_NUM */:
                     case 8 /* ANGLE_NUM */:
-                        if (isFinite(constant[1])) {
+                        // I think there's an easier way to handle this, but this seems to work.
+                        if (!isNaN(parseFloat(constant[1]))) {
                             return numberExpr(constant[1]);
                         }
                         else {
@@ -5967,7 +6019,7 @@ var P;
                     script = script.source;
                 }
                 switch (type) {
-                    case 'string': return '("" + ' + script + ")";
+                    case 'string': return '("" + ' + script + ')';
                     case 'number': return '+' + script;
                     case 'boolean': return '!!' + script;
                 }
@@ -6080,7 +6132,6 @@ var P;
         })(compiler = sb3.compiler || (sb3.compiler = {}));
     })(sb3 = P.sb3 || (P.sb3 = {}));
 })(P || (P = {}));
-;
 /// <reference path="phosphorus.ts" />
 var P;
 (function (P) {
@@ -6099,7 +6150,6 @@ var P;
             return keyName.toUpperCase().charCodeAt(0);
         }
         utils.getKeyCode = getKeyCode;
-        ;
         // Returns the string representation of an error.
         // TODO: does this need to be here?
         function stringifyError(error) {
@@ -6185,7 +6235,6 @@ var P;
             return P.runtime.scopedEval(result);
         }
         utils.createContinuation = createContinuation;
-        ;
         // Patches an SVG to make it behave more like Scratch.
         function patchSVG(svg, element) {
             const FONTS = {
@@ -6244,7 +6293,6 @@ var P;
             [].forEach.call(element.childNodes, patchSVG.bind(null, svg));
         }
         utils.patchSVG = patchSVG;
-        ;
         // Converts an external string to an internally recognized rotation style.
         function parseRotationStyle(style) {
             switch (style) {
@@ -6262,7 +6310,6 @@ var P;
             return 0 /* Normal */;
         }
         utils.parseRotationStyle = parseRotationStyle;
-        ;
         // Determines the type of a project with its project.json data
         function projectType(data) {
             if (typeof data !== 'object' || data === null) {
@@ -6277,7 +6324,6 @@ var P;
             throw new Error('unknown project: ' + JSON.stringify(data));
         }
         utils.projectType = projectType;
-        ;
         // Converts RGB to HSL
         function rgbToHSL(rgb) {
             var r = (rgb >> 16 & 0xff) / 0xff;

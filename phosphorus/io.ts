@@ -26,7 +26,7 @@ namespace P.IO {
         progressHooks.error(err);
         throw err;
       });
-  };
+  }
 
   export function fileAsArrayBuffer(file) {
     const fileReader = new FileReader();
@@ -46,5 +46,5 @@ namespace P.IO {
 
       fileReader.readAsArrayBuffer(file);
     });
-  };
-};
+  }
+}

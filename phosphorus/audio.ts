@@ -91,15 +91,14 @@ namespace P.audio {
       return cb(null, buffer);
     }
     cb(new Error('Unrecognized WAV format ' + format));
-  };
+  }
 
   export function decodeAudio(ab: ArrayBuffer): Promise<AudioBuffer> {
     if (!context) {
-      return Promise.reject("No audio context");
+      return Promise.reject('No audio context');
     }
 
     return new Promise((resolve, reject) => {
-      // Attempt to decode it as ADPCM audio
       decodeADPCMAudio(ab, function(err, buffer) {
         if (buffer) {
           resolve(buffer);
@@ -107,9 +106,10 @@ namespace P.audio {
         }
 
         // Hope that the audio context will know what to do
-        return audio.context.decodeAudioData(ab)
-          .then((buffer) => resolve(buffer));
+        audio.context.decodeAudioData(ab)
+          .then((buffer) => resolve(buffer))
+          .catch((err) => reject(err));
       });
     });
-  };
-};
+  }
+}

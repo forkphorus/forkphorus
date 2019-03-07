@@ -1093,12 +1093,12 @@ namespace P.core {
     // Determines if the sprite is touching an object.
     // thing is the name of the object, '_mouse_', or '_edge_'
     touching(thing: string) {
-      var costume = this.costumes[this.currentCostumeIndex];
+      const costume = this.costumes[this.currentCostumeIndex];
 
       if (thing === '_mouse_') {
-        var bounds = this.rotatedBounds();
-        var x = this.stage.rawMouseX;
-        var y = this.stage.rawMouseY;
+        const bounds = this.rotatedBounds();
+        const x = this.stage.rawMouseX;
+        const y = this.stage.rawMouseY;
         if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top) {
           return false;
         }
@@ -1106,69 +1106,74 @@ namespace P.core {
         var cx = (x - this.scratchX) / this.scale;
         var cy = (this.scratchY - y) / this.scale;
         if (this.rotationStyle === RotationStyle.Normal && this.direction !== 90) {
-          var d = (90 - this.direction) * Math.PI / 180;
-          var ox = cx;
-          var s = Math.sin(d), c = Math.cos(d);
+          const d = (90 - this.direction) * Math.PI / 180;
+          const ox = cx;
+          const s = Math.sin(d), c = Math.cos(d);
           cx = c * ox - s * cy;
           cy = s * ox + c * cy;
         } else if (this.rotationStyle === RotationStyle.LeftRight && this.direction < 0) {
           cx = -cx;
         }
 
-        var positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
-        var positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
-        var data = costume.context.getImageData(positionX, positionY, 1, 1).data;
+        const positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
+        const positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
+        const data = costume.context.getImageData(positionX, positionY, 1, 1).data;
         return data[3] !== 0;
       } else if (thing === '_edge_') {
-        var bounds = this.rotatedBounds();
+        const bounds = this.rotatedBounds();
         return bounds.left <= -240 || bounds.right >= 240 || bounds.top >= 180 || bounds.bottom <= -180;
       } else {
         if (!this.visible) return false;
-        var sprites = this.stage.getObjects(thing);
+        const sprites = this.stage.getObjects(thing);
 
         for (var i = sprites.length; i--;) {
-          var sprite = sprites[i];
+          const sprite = sprites[i];
           if (!sprite.visible) continue;
 
-          var mb = this.rotatedBounds();
-          var ob = sprite.rotatedBounds();
+          const mb = this.rotatedBounds();
+          const ob = sprite.rotatedBounds();
 
           if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
             continue;
           }
 
-          var left = Math.max(mb.left, ob.left);
-          var top = Math.min(mb.top, ob.top);
-          var right = Math.min(mb.right, ob.right);
-          var bottom = Math.max(mb.bottom, ob.bottom);
+          const left = Math.max(mb.left, ob.left);
+          const top = Math.min(mb.top, ob.top);
+          const right = Math.min(mb.right, ob.right);
+          const bottom = Math.max(mb.bottom, ob.bottom);
 
-          if (right - left < 1 || top - bottom < 1) {
+          const width = right - left;
+          const height = top - bottom;
+
+          if (width < 1 || height < 1) {
             continue;
           }
 
-          collisionRenderer.canvas.width = right - left;
-          collisionRenderer.canvas.height = top - bottom;
+          collisionRenderer.canvas.width = width;
+          collisionRenderer.canvas.height = height;
 
           collisionRenderer.ctx.save();
-          collisionRenderer.ctx.translate(-(left + 240), -(180 - top));
-
           collisionRenderer.noEffects = true;
+
+          collisionRenderer.ctx.translate(-(left + 240), -(180 - top));
           collisionRenderer.drawChild(this);
           collisionRenderer.ctx.globalCompositeOperation = 'source-in';
           collisionRenderer.drawChild(sprite);
-          collisionRenderer.noEffects = false;
 
+          collisionRenderer.noEffects = false;
           collisionRenderer.ctx.restore();
 
-          var data = collisionRenderer.ctx.getImageData(0, 0, right - left, top - bottom).data;
+          const data = collisionRenderer.ctx.getImageData(0, 0, width, height).data;
+          const length = data.length;
 
-          var length = (right - left) * (top - bottom) * 4;
           for (var j = 0; j < length; j += 4) {
+            // check for the opacity byte being a non-zero number
             if (data[j + 3]) {
               return true;
             }
           }
         }
+
         return false;
       }
     }
@@ -1270,18 +1275,14 @@ namespace P.core {
       if (b.bottom < -180) y += -180 - b.top;
     }
 
-    // Determines the distance to another object.
-    // thing is the name of the object, or '_mouse_'
+    // Determines the distance to point accepted by getPosition()
     distanceTo(thing: string) {
-      if (thing === '_mouse_') {
-        var x = this.stage.mouseX;
-        var y = this.stage.mouseY;
-      } else {
-        var sprite = this.stage.getObject(thing);
-        if (!sprite) return 10000;
-        x = sprite.scratchX;
-        y = sprite.scratchY;
+      const p = this.stage.getPosition(thing);
+      if (!p) {
+        return 10000;
       }
+      const x = p.x;
+      const y = p.y;
       return Math.sqrt((this.scratchX - x) * (this.scratchX - x) + (this.scratchY - y) * (this.scratchY - y));
     }
 
@@ -1533,7 +1534,7 @@ namespace P.core {
     public stage: Stage;
     public targetName: string;
     public target: Base;
-    public valid: boolean = false;
+    public valid: boolean = true;
     public x: number = 0;
     public y: number = 0;
     public visible: boolean = true;

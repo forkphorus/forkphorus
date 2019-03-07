@@ -139,9 +139,9 @@ namespace P.sb3 {
     // Gets the value of the watcher as a string.
     getValue() {
       const value = this.libraryEntry.evaluate(this);
-      // Round off numbers to the thousandths to avoid excess precision
+      // Round off numbers to the 6th decimal
       if (typeof value === 'number') {
-        return '' + (Math.round(value * 1000) / 1000);
+        return '' + (Math.round(value * 1e6) / 1e6);
       }
       return '' + value;
     }
@@ -323,10 +323,9 @@ namespace P.sb3 {
         return this.getAsText(path)
           .then((source) => {
             const image = new Image();
-
             return new Promise<HTMLImageElement>((resolve, reject) => {
               image.onload = () => resolve(image);
-              image.onerror = (err) => reject("Failed to load SVG image");
+              image.onerror = (err) => reject('Failed to load SVG image: ' + image.src);
               image.src = 'data:image/svg+xml;,' + encodeURIComponent(source);
             });
           });
@@ -361,7 +360,10 @@ namespace P.sb3 {
 
     getAudioBuffer(path) {
       return this.getAsArrayBuffer(path)
-        .then((buffer) => P.audio.decodeAudio(buffer));
+        .then((buffer) => P.audio.decodeAudio(buffer))
+        .catch((err) => {
+          throw new Error(`Could not load audio: ${path} (${err})`);
+        });
     }
 
     loadSound(data) {
@@ -441,14 +443,13 @@ namespace P.sb3 {
       var costumes;
       var sounds;
 
-      const loadCostumes = Promise.all(data.costumes.map((c, i) => this.loadCostume(c, i)))
+      const loadCostumes = Promise.all(data.costumes.map((c: any, i: any) => this.loadCostume(c, i)))
         .then((c) => costumes = c);
 
       const loadSounds = Promise.all(data.sounds.map((c) => this.loadSound(c)))
         .then((s) => sounds = s);
 
-      return loadCostumes
-        .then(() => loadSounds)
+      return Promise.all<any>([loadCostumes, loadSounds])
         .then(() => {
           // TODO: dirty hack for null stage
           const target = new (data.isStage ? Scratch3Stage : Scratch3Sprite)(null as any);
@@ -490,6 +491,7 @@ namespace P.sb3 {
       if (!Array.isArray(this.projectData.targets)) {
         throw new Error('no targets');
       }
+
       const targets = this.projectData.targets;
       // sort targets by their layerOrder to match how they will display
       targets.sort((a, b) => a.layerOrder - b.layerOrder);
@@ -621,7 +623,7 @@ namespace P.sb3 {
         };
         image.onerror = function(err) {
           P.IO.progressHooks.error(err);
-          reject('Failed to load iamge');
+          reject('Failed to load image: ' + image.src);
         };
         image.crossOrigin = 'anonymous';
         image.src = ASSETS_API.replace('$path', path);
@@ -641,7 +643,7 @@ namespace P.sb3 {
       }
     }
   }
-};
+}
 
 // Compiler for .sb3 projects
 namespace P.sb3.compiler {
@@ -688,8 +690,8 @@ namespace P.sb3.compiler {
 
   // Easier aliases for CompiledExpression
   const numberExpr = (src: string) => new CompiledExpression(src, 'number');
-  const stringExpr = (src: string) => new CompiledExpression(src, 'number');
-  const booleanExpr = (src: string) => new CompiledExpression(src, 'number');
+  const stringExpr = (src: string) => new CompiledExpression(src, 'string');
+  const booleanExpr = (src: string) => new CompiledExpression(src, 'boolean');
 
   type ExpressionType = 'string' | 'boolean' | 'number';
   type Block = any;
@@ -728,7 +730,7 @@ namespace P.sb3.compiler {
     BROADCAST = 11,
     VAR = 12,
     LIST = 13,
-  };
+  }
 
   // Contains top level blocks.
   export const topLevelLibrary: ObjectMap<TopLevelCompiler> = {
@@ -945,10 +947,6 @@ namespace P.sb3.compiler {
     sensing_username(block) {
       return stringExpr('self.username');
     },
-    sensing_userid(block) {
-      // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_sensing.js#L74
-      return 'undefined';
-    },
 
     // Operators
     operator_add(block) {
@@ -1039,8 +1037,41 @@ namespace P.sb3.compiler {
     operator_mathop(block) {
       const operator = block.fields.OPERATOR[0];
       const num = block.inputs.NUM;
-      // TODO: skip mathFunc overhead (probably very slight) for performance?
-      return 'mathFunc(' + sanitizedString(operator) + ', ' + compileExpression(num, 'number') + ')';
+      const compiledNum = compileExpression(num, 'number');
+
+      switch (operator) {
+        case 'abs':
+          return numberExpr(`Math.abs(${compiledNum})`);
+        case 'floor':
+          return numberExpr(`Math.floor(${compiledNum})`);
+        case 'sqrt':
+          return numberExpr(`Math.sqrt(${compiledNum})`);
+        case 'ceiling':
+          return numberExpr(`Math.ceil(${compiledNum})`);
+        case 'cos':
+          return numberExpr(`Math.cos(${compiledNum} * Math.PI / 180)`);
+        case 'sin':
+          return numberExpr(`Math.sin(${compiledNum} * Math.PI / 180)`);
+        case 'tan':
+          return numberExpr(`Math.tan(${compiledNum} * Math.PI / 180)`);
+        case 'asin':
+          return numberExpr(`(Math.asin(${compiledNum}) * 180 / Math.PI)`)
+        case 'acos':
+          return numberExpr(`(Math.acos(${compiledNum}) * 180 / Math.PI)`)
+        case 'atan':
+          return numberExpr(`(Math.atan(${compiledNum}) * 180 / Math.PI)`)
+        case 'ln':
+          return numberExpr(`Math.log(${compiledNum})`);
+        case 'log':
+          return numberExpr(`(Math.log(${compiledNum}) / Math.LN10)`);
+        case 'e ^':
+          return numberExpr(`Math.exp(${compiledNum})`);
+        case '10 ^':
+          return numberExpr(`Math.exp(${compiledNum} * Math.LN10)`);
+        default:
+          // Unrecognized field or a non-constant field will fallback to the mathFunc runtime method
+          return numberExpr(`mathFunc(${sanitizedString(operator)}, + ${compiledNum})`);
+      }
     },
 
     // Data
@@ -1075,6 +1106,13 @@ namespace P.sb3.compiler {
       return booleanExpr(asType('C.args[' + sanitizedString(name) + ']', 'boolean'));
     },
 
+    // The matrix, a little known expression. Only used in some of the robot extensions.
+    matrix(block) {
+      const matrix = block.fields.MATRIX[0];
+      // This is a string, not a number. It's not to be treated as binary digits to convert to base 10.
+      return sanitizedExpression(matrix);
+    },
+
     // Pen (extension)
     pen_menu_colorParam(block) {
       const colorParam = block.fields.colorParam[0];
@@ -1085,6 +1123,14 @@ namespace P.sb3.compiler {
     music_getTempo(block) {
       return numberExpr('self.tempoBPM');
     },
+
+    // Legacy no-ops
+    // Here, returning an untyped undefined has the same effect as it does in Scratch 3.
+    // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_sensing.js#L74
+    sensing_userid() { return 'undefined'; },
+    // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L42-L43
+    motion_xscroll() { return 'undefined'; },
+    motion_yscroll() { return 'undefined'; },
   };
 
   // Contains statements.
@@ -1127,7 +1173,7 @@ namespace P.sb3.compiler {
       source += 'R.baseX = S.scratchX;\n';
       source += 'R.baseY = S.scratchY;\n';
       source += 'var to = self.getPosition(' + compileExpression(to) + ');\n';
-      source += 'if (to) {'
+      source += 'if (to) {';
       source += 'R.deltaX = to.x - S.scratchX;\n';
       source += 'R.deltaY = to.y - S.scratchY;\n';
       const id = label();
@@ -1458,7 +1504,7 @@ namespace P.sb3.compiler {
       const condition = block.inputs.CONDITION;
       const substack = block.inputs.SUBSTACK;
       const id = label();
-      source += 'if (!' + compileExpression(condition) + ') {\n'
+      source += 'if (!' + compileExpression(condition) + ') {\n';
       compileSubstack(substack);
       queue(id);
       source += '}\n';
@@ -1468,7 +1514,7 @@ namespace P.sb3.compiler {
       const condition = block.inputs.CONDITION;
       const substack = block.inputs.SUBSTACK;
       const id = label();
-      source += 'if (' + compileExpression(condition, 'boolean') + ') {\n'
+      source += 'if (' + compileExpression(condition, 'boolean') + ') {\n';
       compileSubstack(substack);
       queue(id);
       source += '}\n';
@@ -1480,22 +1526,46 @@ namespace P.sb3.compiler {
     },
     control_stop(block) {
       const option = block.fields.STOP_OPTION[0];
-      source += 'switch (' + compileExpression(option) + ') {\n';
-      source += '  case "all":\n';
-      source += '    runtime.stopAll();\n';
-      source += '    return;\n';
-      source += '  case "this script":\n';
-      source += '    endCall();\n';
-      source += '    return;\n';
-      source += '  case "other scripts in sprite":\n';
-      source += '  case "other scripts in stage":\n';
-      source += '    for (var i = 0; i < runtime.queue.length; i++) {\n';
-      source += '      if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
-      source += '        runtime.queue[i] = undefined;\n';
-      source += '      }\n';
-      source += '    }\n';
-      source += '    break;\n';
-      source += '}\n';
+
+      switch (option) {
+        case 'all':
+          source += 'runtime.stopAll();\n';
+          source += 'return;\n';
+          break;
+
+        case 'this script':
+          source += 'endCall();\n';
+          source += 'return;\n';
+          break;
+
+        case 'other scripts in sprite':
+        case 'other scripts in stage':
+          source += 'for (var i = 0; i < runtime.queue.length; i++) {\n';
+          source += '  if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
+          source += '    runtime.queue[i] = undefined;\n';
+          source += '  }\n';
+          source += '}\n';
+          break;
+
+        default:
+          // If the field is not recognized or not a compile-time constant, then fallback to a large switch statement.
+          source += 'switch (' + sanitizedString(option) + ') {\n';
+          source += '  case "all":\n';
+          source += '    runtime.stopAll();\n';
+          source += '    return;\n';
+          source += '  case "this script":\n';
+          source += '    endCall();\n';
+          source += '    return;\n';
+          source += '  case "other scripts in sprite":\n';
+          source += '  case "other scripts in stage":\n';
+          source += '    for (var i = 0; i < runtime.queue.length; i++) {\n';
+          source += '      if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
+          source += '        runtime.queue[i] = undefined;\n';
+          source += '      }\n';
+          source += '    }\n';
+          source += '    break;\n';
+          source += '}\n';
+      }
     },
     control_create_clone_of(block) {
       const option = block.inputs.CLONE_OPTION;
@@ -1645,7 +1715,7 @@ namespace P.sb3.compiler {
     },
     pen_setPenHueToNumber(block) {
       const hue = block.inputs.HUE;
-      source += 'S.setPenColorParam("color", ' + compileExpression(hue, 'number') + ');\n'
+      source += 'S.setPenColorParam("color", ' + compileExpression(hue, 'number') + ');\n';
     },
     pen_changePenHueBy(block) {
       const hue = block.inputs.HUE;
@@ -1687,6 +1757,16 @@ namespace P.sb3.compiler {
       const tempo = block.inputs.TEMPO;
       source += 'self.tempoBPM += ' + compileExpression(tempo, 'number') + ';\n';
     },
+
+    // Legacy no-ops. We don't even bother to compile any of their inputs or fields because they don't do anything.
+    // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L19
+    motion_scroll_right() {},
+    motion_scroll_up() {},
+    motion_align_scene() {},
+    // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_looks.js#L248
+    looks_changestretchby() {},
+    looks_setstretchto() {},
+    looks_hideallsprites() {},
   };
 
   // Contains data used for variable watchers.
@@ -1874,7 +1954,7 @@ namespace P.sb3.compiler {
     const id = nextLabel();
     fns.push(source.length);
     if (P.config.debug) {
-      source += '/*label:' + id + '*/'
+      source += '/*label:' + id + '*/';
     }
     return id;
   }
@@ -1968,7 +2048,8 @@ namespace P.sb3.compiler {
       case PrimativeTypes.WHOLE_NUM:
       case PrimativeTypes.INTEGER_NUM:
       case PrimativeTypes.ANGLE_NUM:
-        if (isFinite(constant[1])) {
+        // I think there's an easier way to handle this, but this seems to work.
+        if (!isNaN(parseFloat(constant[1]))) {
           return numberExpr(constant[1]);
         } else {
           // Non-numbers will be sanitized 
@@ -2052,7 +2133,7 @@ namespace P.sb3.compiler {
       script = script.source;
     }
     switch (type) {
-      case 'string': return '("" + ' + script + ")";
+      case 'string': return '("" + ' + script + ')';
       case 'number': return '+' + script;
       case 'boolean': return '!!' + script;
     }
@@ -2182,4 +2263,4 @@ namespace P.sb3.compiler {
       }
     }
   }
-};
+}

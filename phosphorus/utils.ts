@@ -2,7 +2,7 @@
 
 namespace P.utils {
   // Gets the keycode for a key name
-  export function getKeyCode(keyName: string): number | "any" {
+  export function getKeyCode(keyName: string): number | 'any' {
     switch (keyName.toLowerCase()) {
       case 'space': return 32;
       case 'left arrow': return 37;
@@ -13,7 +13,7 @@ namespace P.utils {
     }
 
     return keyName.toUpperCase().charCodeAt(0);
-  };
+  }
 
   // Returns the string representation of an error.
   // TODO: does this need to be here?
@@ -90,7 +90,7 @@ namespace P.utils {
     }
     result += '})';
     return P.runtime.scopedEval(result);
-  };
+  }
 
   // Patches an SVG to make it behave more like Scratch.
   export function patchSVG(svg, element) {
@@ -147,7 +147,7 @@ namespace P.utils {
       element.setAttribute('y', 0);
     }
     [].forEach.call(element.childNodes, patchSVG.bind(null, svg));
-  };
+  }
 
   import RotationStyle = P.core.RotationStyle;
   // Converts an external string to an internally recognized rotation style.
@@ -165,7 +165,7 @@ namespace P.utils {
     }
     console.warn('unknown rotation style', style);
     return RotationStyle.Normal;
-  };
+  }
 
   // Determines the type of a project with its project.json data
   export function projectType(data: unknown) {
@@ -179,7 +179,7 @@ namespace P.utils {
       return 2;
     }
     throw new Error('unknown project: ' + JSON.stringify(data));
-  };
+  }
 
   // Converts RGB to HSL
   export function rgbToHSL(rgb: number) {

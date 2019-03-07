@@ -387,7 +387,7 @@ namespace P.sb2 {
       };
       image.src = url;
     });
-  };
+  }
 
   // Loads a .sb2 file from an ArrayBuffer containing the .sb2 file
   export function loadSB2Project(arrayBuffer) {
@@ -400,7 +400,7 @@ namespace P.sb2 {
         const project = JSON.parse(text);
         return loadProject(project);
       });
-  };
+  }
 
   // Loads a project on the scratch.mit.edu website from its project.json
   export function loadProject(data) {
@@ -425,7 +425,7 @@ namespace P.sb2 {
       P.sb2.compiler.compile(stage);
       return stage;
     });
-  };
+  }
 
   export const wavBuffers = {};
   export function loadWavs() {
@@ -442,14 +442,14 @@ namespace P.sb2 {
       }
     }
     return Promise.all(assets);
-  };
+  }
 
   export function loadWavBuffer(name) {
     return P.IO.fetch(SOUNDBANK_URL + WAV_FILES[name])
       .then((request) => request.arrayBuffer())
       .then((arrayBuffer) => P.audio.decodeAudio(arrayBuffer))
       .then((buffer) => wavBuffers[name] = buffer);
-  };
+  }
 
   export function loadBase(data, isStage = false) {
     var costumes;
@@ -498,7 +498,7 @@ namespace P.sb2 {
         sprite.direction = data.direction;
         sprite.isDraggable = data.isDraggable;
         sprite.rotationStyle = P.utils.parseRotationStyle(data.rotationStyle);
-        sprite.scale = data.scale
+        sprite.scale = data.scale;
         sprite.visible = data.visible;
       }
 
@@ -507,12 +507,12 @@ namespace P.sb2 {
 
       return object;
     });
-  };
+  }
 
   // Array.map and Promise.all on steroids
   export function loadArray(data, process) {
     return Promise.all((data || []).map((i, ind) => process(i, ind)));
-  };
+  }
 
   export function loadObject(data) {
     if (data.cmd) {
@@ -522,12 +522,12 @@ namespace P.sb2 {
     } else {
       return loadBase(data);
     }
-  };
+  }
 
   export function loadVariableWatcher(data) {
     const targetName = data.target;
     return new Scratch2VariableWatcher(null, targetName, data);
-  };
+  }
 
   export function loadCostume(data, index) {
     const promises = [
@@ -546,10 +546,10 @@ namespace P.sb2 {
           name: data.costumeName,
           rotationCenterX: data.rotationCenterX,
           rotationCenterY: data.rotationCenterY,
-          layers: layers,
+          layers: layers as HTMLImageElement[],
         });
       });
-  };
+  }
 
   export function loadSound(data) {
     return (loadMD5(data.md5, data.soundID, true) as Promise<any>)
@@ -559,7 +559,7 @@ namespace P.sb2 {
           buffer: buffer,
         });
       });
-  };
+  }
 
   export function loadSVG(source): Promise<HTMLImageElement> {
     // The fact that this works is truly a work of art.
@@ -633,7 +633,7 @@ namespace P.sb2 {
       } else {
         return P.IO.fetch(ASSET_URL + hash + '/get/')
           .then((request) => request.arrayBuffer())
-          .then((buffer) => P.audio.decodeAudio(buffer))
+          .then((buffer) => P.audio.decodeAudio(buffer));
       }
     } else {
       if (zipArchive) {
@@ -642,7 +642,7 @@ namespace P.sb2 {
           image.onload = function() {
             resolve(image);
           };
-          const data = f.async('binarystring')
+          f.async('binarystring')
             .then((data: string) => {
               image.src = 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(data);
             });
@@ -651,7 +651,7 @@ namespace P.sb2 {
         return loadImage(ASSET_URL + hash + '/get/');
       }
     }
-  };
+  }
 }
 
 // Compiler for .sb2 projects
@@ -1817,4 +1817,4 @@ namespace P.sb2.compiler {
       console.warn(key + (warnings[key] > 1 ? ' (repeated ' + warnings[key] + ' times)' : ''));
     }
   }
-};
+}
