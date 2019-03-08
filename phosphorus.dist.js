@@ -382,16 +382,12 @@ var P;
             }
             showNextCostume() {
                 this.currentCostumeIndex = (this.currentCostumeIndex + 1) % this.costumes.length;
-                if (isStage(this))
-                    this.updateBackdrop();
                 if (this.saying && isSprite(this))
                     this.updateBubble();
             }
             showPreviousCostume() {
                 var length = this.costumes.length;
                 this.currentCostumeIndex = (this.currentCostumeIndex + length - 1) % length;
-                if (isStage(this))
-                    this.updateBackdrop();
                 if (this.saying && isSprite(this))
                     this.updateBubble();
             }
@@ -404,8 +400,6 @@ var P;
                     for (var i = 0; i < this.costumes.length; i++) {
                         if (this.costumes[i].name === costume) {
                             this.currentCostumeIndex = i;
-                            if (isStage(this))
-                                this.updateBackdrop();
                             if (this.saying && isSprite(this))
                                 this.updateBubble();
                             return;
@@ -427,8 +421,6 @@ var P;
                 if (i < 0)
                     i += this.costumes.length;
                 this.currentCostumeIndex = i;
-                if (isStage(this))
-                    this.updateBackdrop();
                 if (isSprite(this) && this.saying)
                     this.updateBubble();
             }
@@ -453,8 +445,6 @@ var P;
                         break;
                 }
                 this.filters[name] = value;
-                if (isStage(this))
-                    this.updateFilters();
             }
             changeFilter(name, value) {
                 this.setFilter(name, this.filters[name] + value);
@@ -530,7 +520,6 @@ var P;
                  * Sprites inside of this stage.
                  */
                 this.children = [];
-                this.dragging = {}; // TODO
                 /**
                  * All variable watchers in this stage.
                  */
@@ -548,6 +537,7 @@ var P;
                 this.mouseY = 0;
                 this.mousePressed = false;
                 this.username = '';
+                this._currentCostumeIndex = this.currentCostumeIndex;
                 this.runtime = new P.runtime.Runtime(this);
                 // A dirty hack to create the KeyList interface
                 this.keys = [];
@@ -624,61 +614,66 @@ var P;
                     }
                 });
                 if (P.config.hasTouchEvents) {
-                    document.addEventListener('touchstart', this.onTouchStart = (e) => {
+                    document.addEventListener('touchstart', (e) => {
+                        if (!this.runtime.isRunning)
+                            return;
                         this.mousePressed = true;
                         const target = e.target;
                         for (var i = 0; i < e.changedTouches.length; i++) {
                             const t = e.changedTouches[i];
-                            this.updateMouse(t);
+                            this.updateMousePosition(t);
                             if (e.target === this.canvas) {
                                 this.clickMouse();
                             }
-                            else if (target.dataset.button != null || target.dataset.slider != null) {
-                                this.watcherStart(t.identifier, t, e);
-                            }
+                            this.ontouch(e, t);
                         }
                         if (e.target === this.canvas)
                             e.preventDefault();
                     });
-                    document.addEventListener('touchmove', this.onTouchMove = (e) => {
-                        this.updateMouse(e.changedTouches[0]);
+                    document.addEventListener('touchmove', (e) => {
+                        if (!this.runtime.isRunning)
+                            return;
+                        this.updateMousePosition(e.changedTouches[0]);
                         for (var i = 0; i < e.changedTouches.length; i++) {
                             const t = e.changedTouches[i];
-                            this.watcherMove(t.identifier, t, e);
+                            this.ontouch(e, t);
                         }
                     });
-                    document.addEventListener('touchend', this.onTouchEnd = (e) => {
+                    document.addEventListener('touchend', (e) => {
+                        if (!this.runtime.isRunning)
+                            return;
                         this.releaseMouse();
                         for (var i = 0; i < e.changedTouches.length; i++) {
                             const t = e.changedTouches[i];
-                            this.watcherEnd(t.identifier, t, e);
+                            this.ontouch(e, t);
                         }
                     });
                 }
                 else {
-                    document.addEventListener('mousedown', this.onMouseDown = (e) => {
-                        this.updateMouse(e);
+                    document.addEventListener('mousedown', (e) => {
+                        if (!this.runtime.isRunning)
+                            return;
                         this.mousePressed = true;
-                        const target = e.target;
+                        this.updateMousePosition(e);
                         if (e.target === this.canvas) {
                             this.clickMouse();
                             e.preventDefault();
                             this.canvas.focus();
                         }
-                        else {
-                            if (target.dataset.button != null || target.dataset.slider != null) {
-                                this.watcherStart('mouse', e, e);
-                            }
-                        }
+                        this.onmousedown(e);
                     });
-                    document.addEventListener('mousemove', this.onMouseMove = (e) => {
-                        this.updateMouse(e);
-                        this.watcherMove('mouse', e, e);
+                    document.addEventListener('mousemove', (e) => {
+                        if (!this.runtime.isRunning)
+                            return;
+                        this.updateMousePosition(e);
+                        this.onmousemove(e);
                     });
-                    document.addEventListener('mouseup', this.onMouseUp = (e) => {
-                        this.updateMouse(e);
+                    document.addEventListener('mouseup', (e) => {
+                        if (!this.runtime.isRunning)
+                            return;
+                        this.updateMousePosition(e);
                         this.releaseMouse();
-                        this.watcherEnd('mouse', e, e);
+                        this.onmouseup(e);
                     });
                 }
                 this.prompter = document.createElement('div');
@@ -734,52 +729,26 @@ var P;
                 });
                 this.promptButton.addEventListener(P.config.hasTouchEvents ? 'touchstart' : 'mousedown', this.submitPrompt.bind(this));
             }
-            // TODO: move to Scratch2Stage, it's not used in Scratch3Stage
-            watcherStart(id, t, e) {
-                var p = e.target;
-                while (p && p.dataset.watcher == null)
-                    p = p.parentElement;
-                if (!p)
-                    return;
-                var w = this.allWatchers[p.dataset.watcher];
-                this.dragging[id] = {
-                    watcher: w,
-                    offset: (e.target.dataset.button == null ? -w.button.offsetWidth / 2 | 0 : w.button.getBoundingClientRect().left - t.clientX) - w.slider.getBoundingClientRect().left
-                };
+            // Event hooks for implementing stages to optionally use
+            ontouch(e, t) {
             }
-            watcherMove(id, t, e) {
-                var d = this.dragging[id];
-                if (!d)
-                    return;
-                var w = d.watcher;
-                var sw = w.slider.offsetWidth;
-                var bw = w.button.offsetWidth;
-                var value = w.sliderMin + Math.max(0, Math.min(1, (t.clientX + d.offset) / (sw - bw))) * (w.sliderMax - w.sliderMin);
-                w.target.vars[w.param] = w.isDiscrete ? Math.round(value) : Math.round(value * 100) / 100;
-                w.update();
-                e.preventDefault();
+            onmousedown(e) {
             }
-            watcherEnd(id, t, e) {
-                this.watcherMove(id, t, e);
-                delete this.dragging[id];
+            onmouseup(e) {
             }
+            onmousemove(e) {
+            }
+            /**
+             * Delete the stage.
+             */
             destroy() {
                 this.runtime.stopAll();
                 this.runtime.pause();
                 this.stopAllSounds();
-                if (this.onTouchStart)
-                    document.removeEventListener('touchstart', this.onTouchStart);
-                if (this.onTouchMove)
-                    document.removeEventListener('touchmove', this.onTouchMove);
-                if (this.onTouchEnd)
-                    document.removeEventListener('touchend', this.onTouchEnd);
-                if (this.onMouseDown)
-                    document.removeEventListener('mousedown', this.onMouseDown);
-                if (this.onMouseMove)
-                    document.removeEventListener('mousemove', this.onMouseMove);
-                if (this.onMouseUp)
-                    document.removeEventListener('mouseup', this.onMouseUp);
             }
+            /**
+             * Give browser focus to the Stage.
+             */
             focus() {
                 if (this.promptId < this.nextPromptId) {
                     this.prompt.focus();
@@ -788,10 +757,10 @@ var P;
                     this.canvas.focus();
                 }
             }
-            updateMouse(e) {
-                var bb = this.canvas.getBoundingClientRect();
-                var x = (e.clientX - bb.left) / this.zoom - 240;
-                var y = 180 - (e.clientY - bb.top) / this.zoom;
+            updateMousePosition(e) {
+                var rect = this.canvas.getBoundingClientRect();
+                var x = (e.clientX - rect.left) / this.zoom - 240;
+                var y = 180 - (e.clientY - rect.top) / this.zoom;
                 this.rawMouseX = x;
                 this.rawMouseY = y;
                 if (x < -240)
@@ -805,13 +774,18 @@ var P;
                 this.mouseX = x;
                 this.mouseY = y;
             }
+            /**
+             * Update the visaul
+             */
             updateBackdrop() {
+                if (!this.backdropRenderer)
+                    return;
                 this.backdropRenderer.reset(this.zoom * P.config.scale);
                 this.backdropRenderer.drawStage();
             }
-            updateFilters() {
-                this.backdropRenderer.updateFilters();
-            }
+            /**
+             * Change the zoom level.
+             */
             setZoom(zoom) {
                 if (this.zoom === zoom)
                     return;
@@ -862,6 +836,11 @@ var P;
                     this.mouseSprite.mouseUp();
                     this.mouseSprite = undefined;
                 }
+            }
+            setFilter(name, value) {
+                // Override setFilter() to update the filters on the real stage.
+                super.setFilter(name, value);
+                this.backdropRenderer.updateFilters();
             }
             /**
              * Gets an object with its name, ignoring clones.
@@ -914,7 +893,9 @@ var P;
                     y: sprite.scratchY,
                 };
             }
-            // Draws the project.
+            /**
+             * Draws this stage on it's renderer.
+             */
             draw() {
                 this.renderer.reset(this.zoom);
                 this.drawChildren(this.renderer);
@@ -930,7 +911,10 @@ var P;
                     this.canvas.focus();
                 }
             }
-            // Draws all the children onto a renderer, optionally skipping an object.
+            /**
+             * Draws all the children (not including the Stage itself or pen layers) of this Stage on a renderer
+             * @param skip Optionally skip rendering of a single Sprite.
+             */
             drawChildren(renderer, skip) {
                 for (var i = 0; i < this.children.length; i++) {
                     const c = this.children[i];
@@ -943,11 +927,31 @@ var P;
                     }
                 }
             }
-            // Draws all the objects onto a renderer, optionally skipping an object.
+            /**
+             * Draws all parts of the Stage (including the stage itself and pen layers) on a renderer.
+             * @param skip Optionally skip rendering of a single Sprite.
+             */
             drawAll(renderer, skip) {
                 renderer.drawChild(this);
                 renderer.drawImage(this.penCanvas, 0, 0);
                 this.drawChildren(renderer, skip);
+            }
+            // Implement rotatedBounds() to return something.
+            rotatedBounds() {
+                return {
+                    top: 0,
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                };
+            }
+            // Override currentCostumeIndex to automatically update the backdrop when a change is made.
+            get currentCostumeIndex() {
+                return this._currentCostumeIndex;
+            }
+            set currentCostumeIndex(index) {
+                this._currentCostumeIndex = index;
+                this.updateBackdrop();
             }
             // Implementing Scratch blocks
             stopAllSounds() {
@@ -981,14 +985,6 @@ var P;
                 this.penRenderer.reset(this.maxZoom);
                 this.penRenderer.ctx.lineCap = 'round';
             }
-            rotatedBounds() {
-                return {
-                    top: 0,
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                };
-            }
         }
         core.Stage = Stage;
         // A sprite object
@@ -996,11 +992,25 @@ var P;
             constructor(stage) {
                 super();
                 this.isSprite = true;
+                /**
+                 * Is this Sprite a clone of another Sprite?
+                 */
                 this.isClone = false;
-                this.direction = 0;
+                /**
+                 * The direction this Sprite is facing.
+                 * 0 is directly up, and 90 is directly right.
+                 */
+                this.direction = 90;
+                /**
+                 * Can this Sprite be dragged?
+                 */
                 this.isDraggable = false;
+                /**
+                 * Is this Sprite currently being dragged?
+                 */
                 this.isDragging = false;
                 this.scale = 1;
+                // Pen data
                 this.penHue = 240;
                 this.penSaturation = 100;
                 this.penLightness = 50;
@@ -1618,13 +1628,6 @@ var P;
             return base.isSprite;
         }
         core.isSprite = isSprite;
-        /**
-         * Determines if an object is a stage.
-         */
-        function isStage(base) {
-            return base.isStage;
-        }
-        core.isStage = isStage;
     })(core = P.core || (P.core = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
@@ -1774,7 +1777,7 @@ var P;
                 this.sliderMax = data.sliderMax == null ? 100 : data.sliderMax;
                 this.sliderMin = data.sliderMin || 0;
                 this.targetName = data.target;
-                this.visible = data.visible == null ? true : data.visible;
+                this.visible = data.visible == null ? false : data.visible;
                 this.x = data.x || 0;
                 this.y = data.y || 0;
             }
@@ -1915,7 +1918,6 @@ var P;
                 this.el.style.left = this.el.style.top = '0';
                 this.el.style.transform = 'translate(' + (this.x | 0) / 10 + 'em,' + (this.y | 0) / 10 + 'em)';
                 this.el.style.cursor = 'default';
-                this.el.style.pointerEvents = 'auto';
                 if (this.mode === 2) {
                     this.el.appendChild(this.readout = document.createElement('div'));
                     this.readout.style.minWidth = (38 / 15) + 'em';
@@ -1962,6 +1964,7 @@ var P;
                     this.slider.style.margin = '.4em 0 .1em';
                     this.slider.style.boxShadow = 'inset .125em .125em .125em rgba(0,0,0,.5), inset -.125em -.125em .125em rgba(255,255,255,.5)';
                     this.slider.style.position = 'relative';
+                    this.slider.style.pointerEvents = 'auto';
                     this.slider.dataset.slider = '';
                     this.slider.style.paddingRight =
                         this.button.style.width =
@@ -1981,6 +1984,7 @@ var P;
         class Scratch2Stage extends P.core.Stage {
             constructor() {
                 super(...arguments);
+                this.dragging = {};
                 this.defaultWatcherX = 10;
                 this.defaultWatcherY = 10;
             }
@@ -2002,6 +2006,52 @@ var P;
                     x,
                     y,
                 });
+            }
+            watcherStart(id, t, e) {
+                var p = e.target;
+                while (p && p.dataset.watcher == null)
+                    p = p.parentElement;
+                if (!p)
+                    return;
+                var w = this.allWatchers[p.dataset.watcher];
+                this.dragging[id] = {
+                    watcher: w,
+                    offset: (e.target.dataset.button == null ? -w.button.offsetWidth / 2 | 0 : w.button.getBoundingClientRect().left - t.clientX) - w.slider.getBoundingClientRect().left
+                };
+            }
+            watcherMove(id, t, e) {
+                var d = this.dragging[id];
+                if (!d)
+                    return;
+                var w = d.watcher;
+                var sw = w.slider.offsetWidth;
+                var bw = w.button.offsetWidth;
+                var value = w.sliderMin + Math.max(0, Math.min(1, (t.clientX + d.offset) / (sw - bw))) * (w.sliderMax - w.sliderMin);
+                w.target.vars[w.param] = w.isDiscrete ? Math.round(value) : Math.round(value * 100) / 100;
+                w.update();
+                e.preventDefault();
+            }
+            watcherEnd(id, t, e) {
+                this.watcherMove(id, t, e);
+                delete this.dragging[id];
+            }
+            ontouch(event, touch) {
+                const target = event.target;
+                if (target.dataset.button != null || target.dataset.slider != null) {
+                    this.watcherStart(touch.identifier, touch, event);
+                }
+            }
+            onmousedown(e) {
+                const target = e.target;
+                if (target.dataset.button != null || target.dataset.slider != null) {
+                    this.watcherStart('mouse', e, e);
+                }
+            }
+            onmousemove(e) {
+                this.watcherMove('mouse', e, e);
+            }
+            onmouseup(e) {
+                this.watcherEnd('mouse', e, e);
             }
         }
         sb2.Scratch2Stage = Scratch2Stage;

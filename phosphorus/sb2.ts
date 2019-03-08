@@ -116,7 +116,7 @@ namespace P.sb2 {
       this.sliderMax = data.sliderMax == null ? 100 : data.sliderMax;
       this.sliderMin = data.sliderMin || 0;
       this.targetName = data.target;
-      this.visible = data.visible == null ? true : data.visible;
+      this.visible = data.visible == null ? false : data.visible;
       this.x = data.x || 0;
       this.y = data.y || 0;
     }
@@ -261,7 +261,6 @@ namespace P.sb2 {
       this.el.style.left = this.el.style.top = '0';
       this.el.style.transform = 'translate('+(this.x|0)/10+'em,'+(this.y|0)/10+'em)';
       this.el.style.cursor = 'default';
-      this.el.style.pointerEvents = 'auto';
 
       if (this.mode === 2) {
         this.el.appendChild(this.readout = document.createElement('div'));
@@ -314,6 +313,7 @@ namespace P.sb2 {
         this.slider.style.margin = '.4em 0 .1em';
         this.slider.style.boxShadow = 'inset .125em .125em .125em rgba(0,0,0,.5), inset -.125em -.125em .125em rgba(255,255,255,.5)';
         this.slider.style.position = 'relative';
+        this.slider.style.pointerEvents = 'auto';
         this.slider.dataset.slider = '';
 
         this.slider.style.paddingRight =
@@ -335,6 +335,7 @@ namespace P.sb2 {
   export class Scratch2Stage extends P.core.Stage {
     public scripts: any;
 
+    private dragging: any = {};
     private defaultWatcherX = 10;
     private defaultWatcherY = 10;
 
@@ -359,6 +360,51 @@ namespace P.sb2 {
         x,
         y,
       });
+    }
+
+    watcherStart(id, t, e) {
+      var p = e.target;
+      while (p && p.dataset.watcher == null) p = p.parentElement;
+      if (!p) return;
+      var w = this.allWatchers[p.dataset.watcher] as P.sb2.Scratch2VariableWatcher;
+      this.dragging[id] = {
+        watcher: w,
+        offset: (e.target.dataset.button == null ? -w.button.offsetWidth / 2 | 0 : w.button.getBoundingClientRect().left - t.clientX) - w.slider.getBoundingClientRect().left
+      };
+    }
+    watcherMove(id, t, e) {
+      var d = this.dragging[id];
+      if (!d) return;
+      var w = d.watcher as P.sb2.Scratch2VariableWatcher;
+      var sw = w.slider.offsetWidth;
+      var bw = w.button.offsetWidth;
+      var value = w.sliderMin + Math.max(0, Math.min(1, (t.clientX + d.offset) / (sw - bw))) * (w.sliderMax - w.sliderMin);
+      w.target.vars[w.param] = w.isDiscrete ? Math.round(value) : Math.round(value * 100) / 100;
+      w.update();
+      e.preventDefault();
+    }
+    watcherEnd(id, t, e) {
+      this.watcherMove(id, t, e);
+      delete this.dragging[id];
+    }
+
+    ontouch(event: TouchEvent, touch: Touch) {
+      const target = event.target as HTMLElement;
+      if (target.dataset.button != null || target.dataset.slider != null) {
+        this.watcherStart(touch.identifier, touch, event);
+      }
+    }
+    onmousedown(e: MouseEvent) {
+      const target = e.target as HTMLElement;
+      if (target.dataset.button != null || target.dataset.slider != null) {
+        this.watcherStart('mouse', e, e);
+      }
+    }
+    onmousemove(e: MouseEvent) {
+      this.watcherMove('mouse', e, e);
+    }
+    onmouseup(e: MouseEvent) {
+      this.watcherEnd('mouse', e, e);
     }
   }
 
@@ -526,7 +572,8 @@ namespace P.sb2 {
 
   export function loadVariableWatcher(data) {
     const targetName = data.target;
-    return new Scratch2VariableWatcher(null, targetName, data);
+    const watcher = new Scratch2VariableWatcher(null, targetName, data);
+    return watcher;
   }
 
   export function loadCostume(data, index) {
