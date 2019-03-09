@@ -170,8 +170,8 @@ namespace P.sb3 {
       const container = document.createElement('div');
       container.classList.add('s3-watcher-container');
       container.dataset.opcode = this.opcode;
-      container.style.top = this.y + 'px';
-      container.style.left = this.x + 'px';
+      container.style.top = (this.y / 10) + 'em';
+      container.style.left = (this.x / 10) + 'em';
 
       const value = document.createElement('div');
       value.classList.add('s3-watcher-value');

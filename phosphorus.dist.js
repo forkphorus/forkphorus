@@ -167,7 +167,8 @@ var P;
     (function (renderer) {
         /**
          * Creates the CSS filter for a Filter object.
-         * Includes brightness and color. Effects are generally _close enough_, but can be quite different.
+         * The filter is generally an estimation of the actual effect.
+         * Includes brightness and color. (does not include ghost)
          */
         function cssFilter(filters) {
             let filter = '';
@@ -218,7 +219,7 @@ var P;
                 this.ctx.save();
                 const scale = c.stage.zoom * P.config.scale;
                 this.ctx.translate(((c.scratchX + 240) * scale | 0) / scale, ((180 - c.scratchY) * scale | 0) / scale);
-                // Apply direction transforms to only sprites.
+                // Direction transforms are only applied to Sprites because Stages cannot be rotated.
                 if (P.core.isSprite(c)) {
                     if (c.rotationStyle === 0 /* Normal */) {
                         this.ctx.rotate((c.direction - 90) * Math.PI / 180);
@@ -244,13 +245,13 @@ var P;
         }
         renderer.SpriteRenderer = SpriteRenderer;
         /**
-         * A renderer specifically for the backdrop of a project.
+         * A renderer specifically for the backdrop of a Stage.
          */
         class StageRenderer extends SpriteRenderer {
             constructor(canvas, stage) {
                 super(canvas);
                 this.stage = stage;
-                // We handle effects in other ways.
+                // We handle effects in other ways, so forcibly disable SpriteRenderer's filters
                 this.noEffects = true;
             }
             drawStage() {
@@ -259,12 +260,12 @@ var P;
             }
             updateFilters() {
                 const filter = cssFilter(this.stage.filters);
-                // Only reapply a CSS filter if it has changed.
+                // Only reapply a CSS filter if it has changed for performance.
                 // Might not be necessary here.
                 if (this.canvas.style.filter !== filter) {
                     this.canvas.style.filter = filter;
                 }
-                // cssFilter does not include opacity; we apply it ourselves.
+                // cssFilter does not include ghost
                 this.canvas.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
             }
         }
@@ -2205,7 +2206,8 @@ var P;
         sb2.loadObject = loadObject;
         function loadVariableWatcher(data) {
             const targetName = data.target;
-            return new Scratch2VariableWatcher(null, targetName, data);
+            const watcher = new Scratch2VariableWatcher(null, targetName, data);
+            return watcher;
         }
         sb2.loadVariableWatcher = loadVariableWatcher;
         function loadCostume(data, index) {
@@ -4269,8 +4271,8 @@ var P;
                 const container = document.createElement('div');
                 container.classList.add('s3-watcher-container');
                 container.dataset.opcode = this.opcode;
-                container.style.top = this.y + 'px';
-                container.style.left = this.x + 'px';
+                container.style.top = (this.y / 10) + 'em';
+                container.style.left = (this.x / 10) + 'em';
                 const value = document.createElement('div');
                 value.classList.add('s3-watcher-value');
                 value.textContent = this.getValue();

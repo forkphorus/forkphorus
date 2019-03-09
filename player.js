@@ -151,6 +151,7 @@ P.player = (function() {
   });
 
   function load(id) {
+    progressBar.classList.remove('error');
     showProgress();
 
     id = +id;

@@ -6,7 +6,8 @@ namespace P.renderer {
 
   /**
    * Creates the CSS filter for a Filter object.
-   * Includes brightness and color. Effects are generally _close enough_, but can be quite different.
+   * The filter is generally an estimation of the actual effect.
+   * Includes brightness and color. (does not include ghost)
    */
   function cssFilter(filters: P.core.Filters) {
     let filter = '';
@@ -64,7 +65,7 @@ namespace P.renderer {
       const scale = c.stage.zoom * P.config.scale;
       this.ctx.translate(((c.scratchX + 240) * scale | 0) / scale, ((180 - c.scratchY) * scale | 0) / scale);
 
-      // Apply direction transforms to only sprites.
+      // Direction transforms are only applied to Sprites because Stages cannot be rotated.
       if (P.core.isSprite(c)) {
         if (c.rotationStyle === RotationStyle.Normal) {
           this.ctx.rotate((c.direction - 90) * Math.PI / 180);
@@ -93,12 +94,12 @@ namespace P.renderer {
   }
 
   /**
-   * A renderer specifically for the backdrop of a project.
+   * A renderer specifically for the backdrop of a Stage.
    */
   export class StageRenderer extends SpriteRenderer {
     constructor(canvas: HTMLCanvasElement, private stage: P.core.Stage) {
       super(canvas);
-      // We handle effects in other ways.
+      // We handle effects in other ways, so forcibly disable SpriteRenderer's filters
       this.noEffects = true;
     }
 
@@ -109,13 +110,13 @@ namespace P.renderer {
 
     updateFilters() {
       const filter = cssFilter(this.stage.filters);
-      // Only reapply a CSS filter if it has changed.
+      // Only reapply a CSS filter if it has changed for performance.
       // Might not be necessary here.
       if (this.canvas.style.filter !== filter) {
         this.canvas.style.filter = filter;
       }
 
-      // cssFilter does not include opacity; we apply it ourselves.
+      // cssFilter does not include ghost
       this.canvas.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
     }
   }
