@@ -18,8 +18,8 @@
 
   <script>
     (function() {
-      'use strict';
-      // Implement theme selector early to remove most of the white loading flash.
+      // Implement theme selector early to remove any white loading flash there would otherwise be.
+      // localStorage is used to remember dark mode between reloads
       function toggleDark(dark) {
         document.documentElement.classList.toggle('dark', dark);
         localStorage.setItem('userPrefersDark', document.documentElement.classList.contains('dark'));
@@ -37,7 +37,7 @@
 
     <div class=area id=title-area>
       <h1 class=title>forkphorus</h1>
-      <p>forkphorus runs Scratch projects really fast by compiling them to JavaScript. Try it out by pasting a project ID or URL into the field below, by <a class="upload-button">uploading<input id="upload-file-input" type="file" autocomplete="off" accept=".sb2,.sb3"></a> or dropping a project file on the page, or <a class=dropdown>by choosing an example<select id=examples>
+      <p>forkphorus runs Scratch 2 and 3 projects really fast by compiling them to JavaScript. Try it out by pasting a project ID or URL into the field below, by <a class="upload-button">selecting<input id="upload-file-input" type="file" autocomplete="off" accept=".sb2,.sb3"></a> or dropping a project file on the page, or by <a class=dropdown>choosing an example<select id=examples>
         <option value></option>
         <option value=276660763>Scratch 3.0 is here! by ScratchCat</option>
         <option value=280227362>Spring Physics by HowToLogic</option>
@@ -122,7 +122,7 @@
   <script src=lib/rgbcolor.js></script>
   <script src=lib/StackBlur.js></script>
   <script src=lib/canvg.js></script>
-  <script src="phosphorus.js"></script>
+  <script src="phosphorus.dist.js"></script>
   <script src="player.js"></script>
 
   <script>
@@ -201,10 +201,19 @@
 
     window.addEventListener('hashchange', function() {
       var id = location.hash.substr(1);
+      if (id === '') {
+        show('');
+        if (P.player.stage) {
+          P.player.stage.destroy();
+        }
+        return;
+      }
+
       if (id[0] !== '.') {
         if (+id !== +id) id = '';
         urlInput.value = PROJECT_PREFIX + id;
       }
+
       loadProject(id);
     });
 
@@ -212,7 +221,9 @@
       titleArea.style.height = id ? 0 : titleAreaHeight + 'px';
       playerArea.style.height = id ? playerAreaHeight + 'px' : 0
       projectArea.style.height = id ? projectAreaHeight + 'px' : 0;
-      if (!id) urlInput.focus();
+      if (!id) {
+        urlInput.focus();
+      }
     }
 
     function loadProject(id) {

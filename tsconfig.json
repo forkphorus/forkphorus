@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "outFile": "./phosphorus.dist.js",
+    // We generate a sourcemap to improve development,
+    // but we don't commit them to help reduce bloat.
+    "sourceMap": true,
+    "target": "es6",
+    // Make TypeScript more strict than it is by default without
+    // making it restrictive.
+    "alwaysStrict": true,
+    "noImplicitThis": true,
+    "strictBindCallApply": true,
+    "strictNullChecks": true,
+    // "noImplicitAny": true,
+  },
+  "include": [
+    "phosphorus/**/*",
+  ],
+}
