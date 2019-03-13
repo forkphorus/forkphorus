@@ -4,7 +4,7 @@
   height: 360px;
   font-size: 10px;
   background-color: #fff;
-  color: #000;
+  color: rgb(87, 94, 117);
 }
 
 /* Styles for Scratch 3 variable watchers */
@@ -14,11 +14,15 @@
   top: 0;
   left: 0;
   border: 1px solid rgba(0, 0, 0, 0.15);
-  border-radius: 0.25rem;
+  border-radius: 0.25em;
   display: flex;
   flex-direction: column;
   background: hsl(215, 100%, 95%);
   pointer-events: auto;
+  line-height: 1.25;
+}
+.s3-watcher-container > * {
+  font-size: 1.2em;
 }
 .s3-watcher-row {
   display: flex;
@@ -54,13 +58,13 @@
 }
 /* Normal watcher */
 .s3-watcher-container-normal {
-  padding: 0.3em;
+  padding: 3px;
 }
 .s3-watcher-row-normal {
-  font-size: 0.75rem;
+
 }
 .s3-watcher-row-normal .s3-watcher-value {
-  border-radius: 0.25rem;
+  border-radius: 0.25em;
   padding: 0 0.2px;
   margin: 0 0.5em;
   min-width: 4em;
@@ -73,9 +77,9 @@
 /* Large watcher */
 .s3-watcher-large .s3-watcher-value {
   border-radius: inherit;
-  font-size: 1rem;
-  min-height: 1.4rem;
-  min-width: 3rem;
+  font-size: 1.6em;
+  min-height: 1.4em;
+  min-width: 3em;
 }
 
 .s3-list-watcher-container {
