@@ -15,7 +15,7 @@ namespace P.IO {
     error(error) {},
   };
 
-  export function fetch(url, opts?) {
+  export function fetch(url: string, opts?: any) {
     progressHooks.new();
     return window.fetch(url, opts)
       .then((r) => {

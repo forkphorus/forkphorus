@@ -1,6 +1,7 @@
 /// <reference path="phosphorus.ts" />
+/// <reference path="utils.ts" />
 /// <reference path="core.ts" />
-/// <reference path="canvg.d.ts" />
+/// <reference path="config.ts" />
 
 namespace P.sb2 {
 

@@ -1,6 +1,6 @@
 /// <reference path="phosphorus.ts" />
+/// <reference path="utils.ts" />
 /// <reference path="core.ts" />
-/// <reference path="JSZip.d.ts" />
 /// <reference path="config.ts" />
 
 // Scratch 3 project loader and runtime objects
@@ -733,6 +733,7 @@ namespace P.sb3.compiler {
   }
 
   // Contains top level blocks.
+  const noopExpression = () => 'undefined';
   export const topLevelLibrary: ObjectMap<TopLevelCompiler> = {
     // Events
     event_whenflagclicked(block, f) {
@@ -829,20 +830,18 @@ namespace P.sb3.compiler {
       const name = block.fields.NUMBER_NAME[0];
       if (name === 'number') {
         return numberExpr('(S.currentCostumeIndex + 1)');
-      } else if (name === 'name') {
-        return stringExpr('S.costumes[S.currentCostumeIndex].name');
       } else {
-        throw new Error('unknown NUMBER_NAME: ' + name);
+        // `name` is probably 'name', but it doesn't matter
+        return stringExpr('S.costumes[S.currentCostumeIndex].name');
       }
     },
     looks_backdropnumbername(block) {
       const name = block.fields.NUMBER_NAME[0];
       if (name === 'number') {
         return numberExpr('(self.currentCostumeIndex + 1)');
-      } else if (name === 'name') {
-        return stringExpr('self.costumes[self.currentCostumeIndex].name');
       } else {
-        throw new Error('unknown NUMBER_NAME: ' + name);
+        // `name` is probably 'name', but it doesn't matter
+        return stringExpr('self.costumes[self.currentCostumeIndex].name');
       }
     },
     looks_size() {
@@ -914,6 +913,10 @@ namespace P.sb3.compiler {
       // We don't implement loudness, we always return -1 which indicates that there is no microphone available.
       return numberExpr('-1');
     },
+    sensing_loud(block) {
+      // see sensing_loudness above
+      return booleanExpr('false');
+    },
     sensing_timer(block) {
       return numberExpr('((runtime.now - runtime.timerStart) / 1000)');
     },
@@ -927,19 +930,19 @@ namespace P.sb3.compiler {
       return sanitizedExpression(object);
     },
     sensing_current(block) {
-      const current = block.fields.CURRENTMENU[0];
+      const current = block.fields.CURRENTMENU[0].toLowerCase();
 
       switch (current) {
-        case 'YEAR': return numberExpr('new Date().getFullYear()');
-        case 'MONTH': return numberExpr('(new Date().getMonth() + 1)');
-        case 'DATE': return numberExpr('new Date().getDate()');
-        case 'DAYOFWEEK': return numberExpr('(new Date().getDay() + 1)');
-        case 'HOUR': return numberExpr('new Date().getHours()');
-        case 'MINUTE': return numberExpr('new Date().getMinutes()');
-        case 'SECOND': return numberExpr('new Date().getSeconds()');
+        case 'year': return numberExpr('new Date().getFullYear()');
+        case 'month': return numberExpr('(new Date().getMonth() + 1)');
+        case 'date': return numberExpr('new Date().getDate()');
+        case 'dayofweek': return numberExpr('(new Date().getDay() + 1)');
+        case 'hour': return numberExpr('new Date().getHours()');
+        case 'minute': return numberExpr('new Date().getMinutes()');
+        case 'second': return numberExpr('new Date().getSeconds()');
       }
 
-      throw new Error('unknown CURRENTMENU: ' + current);
+      return numberExpr('0');
     },
     sensing_dayssince2000(block) {
       return numberExpr('((Date.now() - epoch) / 86400000)');
@@ -1069,8 +1072,7 @@ namespace P.sb3.compiler {
         case '10 ^':
           return numberExpr(`Math.exp(${compiledNum} * Math.LN10)`);
         default:
-          // Unrecognized field or a non-constant field will fallback to the mathFunc runtime method
-          return numberExpr(`mathFunc(${sanitizedString(operator)}, + ${compiledNum})`);
+          return numberExpr('0');
       }
     },
 
@@ -1127,12 +1129,13 @@ namespace P.sb3.compiler {
     // Legacy no-ops
     // Here, returning an untyped undefined has the same effect as it does in Scratch 3.
     // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_sensing.js#L74
-    sensing_userid() { return 'undefined'; },
+    sensing_userid: noopExpression,
     // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L42-L43
-    motion_xscroll() { return 'undefined'; },
-    motion_yscroll() { return 'undefined'; },
+    motion_xscroll: noopExpression,
+    motion_yscroll: noopExpression,
   };
 
+  const noopStatement = () => { source += '/* noop */'};
   // Contains statements.
   export const statementLibrary: ObjectMap<StatementCompiler> = {
     // Motion
@@ -1360,7 +1363,8 @@ namespace P.sb3.compiler {
       source += 'if (i !== -1) self.children.splice(i, 1);\n';
       if (frontBack === 'front') {
         source += 'self.children.push(S);\n';
-      } else if (frontBack === 'back') {
+      } else {
+        // `frontBack` is probably 'back', but it doesn't matter
         source += 'self.children.unshift(S);\n';
       }
     },
@@ -1370,12 +1374,11 @@ namespace P.sb3.compiler {
       source += 'var i = self.children.indexOf(S);\n';
       source += 'if (i !== -1) {\n';
       source += '  self.children.splice(i, 1);\n';
-      if (direction === 'backward') {
-        source += '  self.children.splice(Math.max(0, i - ' + compileExpression(number) + '), 0, S);\n';
-      } else if (direction === 'forward') {
+      if (direction === 'forward') {
         source += '  self.children.splice(Math.min(self.children.length - 1, i + ' + compileExpression(number) + '), 0, S);\n';
       } else {
-        throw new Error('unknown direction: ' + direction);
+        // `direction` is probably 'backward', but it doesn't matter
+        source += '  self.children.splice(Math.max(0, i - ' + compileExpression(number) + '), 0, S);\n';
       }
       source += '}\n';
     },
@@ -1532,12 +1535,10 @@ namespace P.sb3.compiler {
           source += 'runtime.stopAll();\n';
           source += 'return;\n';
           break;
-
         case 'this script':
           source += 'endCall();\n';
           source += 'return;\n';
           break;
-
         case 'other scripts in sprite':
         case 'other scripts in stage':
           source += 'for (var i = 0; i < runtime.queue.length; i++) {\n';
@@ -1546,7 +1547,6 @@ namespace P.sb3.compiler {
           source += '  }\n';
           source += '}\n';
           break;
-
         default:
           // If the field is not recognized or not a compile-time constant, then fallback to a large switch statement.
           source += 'switch (' + sanitizedString(option) + ') {\n';
@@ -1609,6 +1609,7 @@ namespace P.sb3.compiler {
       if (dragMode === 'draggable') {
         source += 'S.isDraggable = true;\n';
       } else {
+        // it doesn't matter what `dragMode` is at this point
         source += 'S.isDraggable = false;\n';
       }
     },
@@ -1671,7 +1672,7 @@ namespace P.sb3.compiler {
       const name = mutation.proccode;
 
       if (P.config.debug && name === 'forkphorus:debugger;') {
-        source += '/*procedures_call debugger*/debugger;\n';
+        source += '/* forkphorus debugger */debugger;\n';
         return;
       }
 
@@ -1758,15 +1759,15 @@ namespace P.sb3.compiler {
       source += 'self.tempoBPM += ' + compileExpression(tempo, 'number') + ';\n';
     },
 
-    // Legacy no-ops. We don't even bother to compile any of their inputs or fields because they don't do anything.
+    // Legacy no-ops.
     // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L19
-    motion_scroll_right() {},
-    motion_scroll_up() {},
-    motion_align_scene() {},
+    motion_scroll_right: noopStatement,
+    motion_scroll_up: noopStatement,
+    motion_align_scene: noopStatement,
     // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_looks.js#L248
-    looks_changestretchby() {},
-    looks_setstretchto() {},
-    looks_hideallsprites() {},
+    looks_changestretchby: noopStatement,
+    looks_setstretchto: noopStatement,
+    looks_hideallsprites: noopStatement,
   };
 
   // Contains data used for variable watchers.
@@ -1794,10 +1795,8 @@ namespace P.sb3.compiler {
         const param = watcher.params.NUMBER_NAME;
         if (param === 'number') {
           return target.currentCostumeIndex + 1;
-        } else if (param === 'name') {
-          return target.costumes[target.currentCostumeIndex].name;
         } else {
-          throw new Error('unknown watcher NUMBER_NAME: ' + param);
+          return target.costumes[target.currentCostumeIndex].name;
         }
       },
       getLabel(watcher) {
@@ -1810,10 +1809,8 @@ namespace P.sb3.compiler {
         const param = watcher.params.NUMBER_NAME;
         if (param === 'number') {
           return target.currentCostumeIndex + 1;
-        } else if (param === 'name') {
-          return target.costumes[target.currentCostumeIndex].name;
         } else {
-          throw new Error('unknown watcher NUMBER_NAME: ' + param);
+          return target.costumes[target.currentCostumeIndex].name;
         }
       },
       getLabel(watcher) {
@@ -1849,30 +1846,25 @@ namespace P.sb3.compiler {
     },
     sensing_current: {
       evaluate(watcher) {
-        const param = watcher.params.CURRENTMENU;
+        const param = watcher.params.CURRENTMENU.toLowerCase();
         switch (param) {
-          case 'YEAR': return new Date().getFullYear();
-          case 'MONTH': return new Date().getMonth() + 1;
-          case 'DATE': return new Date().getDate();
-          case 'DAYOFWEEK': return new Date().getDay() + 1;
-          case 'HOUR': return new Date().getHours();
-          case 'MINUTE': return new Date().getMinutes();
-          case 'SECOND': return new Date().getSeconds();
+          case 'year': return new Date().getFullYear();
+          case 'month': return new Date().getMonth() + 1;
+          case 'date': return new Date().getDate();
+          case 'dayofweek': return new Date().getDay() + 1;
+          case 'hour': return new Date().getHours();
+          case 'minute': return new Date().getMinutes();
+          case 'second': return new Date().getSeconds();
         }
-        throw new Error('unknown watcher CURRENTMENU: ' + param);
+        return 0;
       },
       getLabel(watcher) {
-        const param = watcher.params.CURRENTMENU;
-        switch (param) {
-          case 'YEAR': return 'year';
-          case 'MONTH': return 'month';
-          case 'DATE': return 'date';
-          case 'DAYOFWEEK': return 'day of week';
-          case 'HOUR': return 'hour';
-          case 'MINUTE': return 'minute';
-          case 'SECOND': return 'second';
+        const param = watcher.params.CURRENTMENU.toLowerCase();
+        // all expected params except DAYOFWEEK can just be lowercased and used directly
+        if (param === 'dayofweek') {
+          return 'day of week';
         }
-        throw new Error('unknown watcher CURRENTMENU: ' + param);
+        return param;
       }
     },
     sensing_username: {
@@ -2048,16 +2040,15 @@ namespace P.sb3.compiler {
       case PrimativeTypes.WHOLE_NUM:
       case PrimativeTypes.INTEGER_NUM:
       case PrimativeTypes.ANGLE_NUM:
-        // I think there's an easier way to handle this, but this seems to work.
+        // The value might not actually be a number.
         if (!isNaN(parseFloat(constant[1]))) {
           return numberExpr(constant[1]);
         } else {
-          // Non-numbers will be sanitized 
+          // Non-numbers will be sanitized
           return sanitizedExpression(constant[1]);
         }
 
       case PrimativeTypes.TEXT:
-        // Text is compiled directly into a string.
         return sanitizedExpression(constant[1]);
 
       case PrimativeTypes.VAR:
@@ -2074,7 +2065,7 @@ namespace P.sb3.compiler {
         return compileExpression(constant[2]);
 
       case PrimativeTypes.COLOR_PICKER:
-        // Colors are stored as strings like "#123ABC", so we must do some conversions.
+        // Colors are stored as strings like "#123ABC", so we must do some conversions to use them as numbers.
         return compileColor(constant[1]);
 
       default:
@@ -2135,7 +2126,7 @@ namespace P.sb3.compiler {
     switch (type) {
       case 'string': return '("" + ' + script + ')';
       case 'number': return '+' + script;
-      case 'boolean': return '!!' + script;
+      case 'boolean': return 'bool(' + script + ')';
     }
     return script;
   }
@@ -2220,6 +2211,7 @@ namespace P.sb3.compiler {
     const topLevelOpCode = topBlock.opcode;
     if (!(topLevelOpCode in topLevelLibrary)) {
       // Only log warnings if we wouldn't otherwise recognize the block.
+      // Some dangling non-top-level blocks is very common in many projects.
       if (!(topLevelOpCode in expressionLibrary) && !(topLevelOpCode in statementLibrary)) {
         console.warn('unknown top level block', topLevelOpCode, topBlock);
       }

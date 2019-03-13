@@ -17,23 +17,24 @@ namespace P.runtime {
   var self: P.core.Stage;
   // Current sprite or stage
   var S: P.core.Base;
-  // Used for resuming state
+  // Current thread state.
   var R;
-  // Stack of states (??)
+  // Stack of states (R) for this thread
   var STACK;
   // Current procedure call, if any. Contains arguments.
-  var C;
+  var C: ThreadCall;
+  // This thread's call (C) stack
+  var CALLS;
   // If level of layers of "Run without screen refresh" we are in
-  // Each subsequent procedure call will increment and decrement as they start and stop.
+  // Each level (usually procedures) of depth will increment and decrement as they start and stop.
+  // As long as this is greater than 0, functions will run without waiting for the screen.
   var WARP: number;
   // ??
-  var CALLS;
-  // ??
   var BASE;
-  // ??
-  var THREAD;
+  // The ID of the active thread in the Runtime's queue
+  var THREAD: number;
   // The next function to run immediately after this one.
-  var IMMEDIATE: Fn | null;
+  var IMMEDIATE: Fn | null | undefined;
   // Has a "visual change" been made in this frame?
   var VISUAL: boolean;
 
@@ -486,12 +487,20 @@ namespace P.runtime {
     runtime.queue[THREAD] = new Thread(S, BASE, S.fns[id], CALLS);
   };
 
+  type ThreadResume = any;
+
+  interface ThreadCall {
+    fn?: Fn;
+    stack: ThreadResume[];
+    [s: string]: any;
+  }
+
   class Thread {
     constructor(
       public sprite: P.core.Base,
-      public base: any,
-      public fn: any,
-      public calls: any,
+      public base: Fn,
+      public fn: Fn,
+      public calls: ThreadCall[],
     ) {
 
     }
@@ -513,8 +522,12 @@ namespace P.runtime {
     }
 
     startThread(sprite: core.Base, base) {
-      const thread = new Thread(sprite, base, base, [{args: [], stack: [{}]}]);
+      const thread = new Thread(sprite, base, base, [{
+        args: [],
+        stack: [{}],
+      }]);
 
+      // Replace an existing thread instead of adding a new one when possible.
       for (let i = 0; i < this.queue.length; i++) {
         const q = this.queue[i];
         if (q && q.sprite === sprite && q.base === base) {

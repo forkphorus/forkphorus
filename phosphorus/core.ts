@@ -78,7 +78,7 @@ namespace P.core {
      */
     public isSprite: boolean = false;
     /**
-     * Is this a clone of another?
+     * Was this Sprite created as a clone of another?
      */
     public isClone: boolean = false;
 
@@ -86,7 +86,7 @@ namespace P.core {
     public visible: boolean = true;
 
     /**
-     * Th sprite's X coordinat eon the Scratch grid.
+     * The sprite's X coordinate on the Scratch grid.
      */
     public scratchX: number = 0;
     /**
@@ -628,7 +628,7 @@ namespace P.core {
     }
 
     /**
-     * Update the visaul
+     * Updates the backdrop canvas to match the current backdrop.
      */
     updateBackdrop() {
       if (!this.backdropRenderer) return;
@@ -637,7 +637,7 @@ namespace P.core {
     }
 
     /**
-     * Change the zoom level.
+     * Changes the zoom level and resizes DOM elements.
      */
     setZoom(zoom: number) {
       if (this.zoom === zoom) return;

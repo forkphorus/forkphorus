@@ -297,13 +297,13 @@ var P;
                  */
                 this.isSprite = false;
                 /**
-                 * Is this a clone of another?
+                 * Was this Sprite created as a clone of another?
                  */
                 this.isClone = false;
                 // Is this sprite visible?
                 this.visible = true;
                 /**
-                 * Th sprite's X coordinat eon the Scratch grid.
+                 * The sprite's X coordinate on the Scratch grid.
                  */
                 this.scratchX = 0;
                 /**
@@ -776,7 +776,7 @@ var P;
                 this.mouseY = y;
             }
             /**
-             * Update the visaul
+             * Updates the backdrop canvas to match the current backdrop.
              */
             updateBackdrop() {
                 if (!this.backdropRenderer)
@@ -785,7 +785,7 @@ var P;
                 this.backdropRenderer.drawStage();
             }
             /**
-             * Change the zoom level.
+             * Changes the zoom level and resizes DOM elements.
              */
             setZoom(zoom) {
                 if (this.zoom === zoom)
@@ -1680,8 +1680,237 @@ var P;
     })(IO = P.IO || (P.IO = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
+var P;
+(function (P) {
+    var utils;
+    (function (utils) {
+        // Gets the keycode for a key name
+        function getKeyCode(keyName) {
+            switch (keyName.toLowerCase()) {
+                case 'space': return 32;
+                case 'left arrow': return 37;
+                case 'up arrow': return 38;
+                case 'right arrow': return 39;
+                case 'down arrow': return 40;
+                case 'any': return 'any';
+            }
+            return keyName.toUpperCase().charCodeAt(0);
+        }
+        utils.getKeyCode = getKeyCode;
+        // Returns the string representation of an error.
+        // TODO: does this need to be here?
+        function stringifyError(error) {
+            if (!error) {
+                return 'unknown error';
+            }
+            if (error.stack) {
+                return 'Message: ' + error.message + '\nStack:\n' + error.stack;
+            }
+            return error.toString();
+        }
+        utils.stringifyError = stringifyError;
+        function createContinuation(source) {
+            // TODO: make understandable
+            var result = '(function() {\n';
+            var brackets = 0;
+            var delBrackets = 0;
+            var shouldDelete = false;
+            var here = 0;
+            var length = source.length;
+            while (here < length) {
+                var i = source.indexOf('{', here);
+                var j = source.indexOf('}', here);
+                var k = source.indexOf('return;', here);
+                if (k === -1)
+                    k = length;
+                if (i === -1 && j === -1) {
+                    if (!shouldDelete) {
+                        result += source.slice(here, k);
+                    }
+                    break;
+                }
+                if (i === -1)
+                    i = length;
+                if (j === -1)
+                    j = length;
+                if (shouldDelete) {
+                    if (i < j) {
+                        delBrackets++;
+                        here = i + 1;
+                    }
+                    else {
+                        delBrackets--;
+                        if (!delBrackets) {
+                            shouldDelete = false;
+                        }
+                        here = j + 1;
+                    }
+                }
+                else {
+                    if (brackets === 0 && k < i && k < j) {
+                        result += source.slice(here, k);
+                        break;
+                    }
+                    if (i < j) {
+                        result += source.slice(here, i + 1);
+                        brackets++;
+                        here = i + 1;
+                    }
+                    else {
+                        result += source.slice(here, j);
+                        here = j + 1;
+                        if (source.substr(j, 8) === '} else {') {
+                            if (brackets > 0) {
+                                result += '} else {';
+                                here = j + 8;
+                            }
+                            else {
+                                shouldDelete = true;
+                                delBrackets = 0;
+                            }
+                        }
+                        else {
+                            if (brackets > 0) {
+                                result += '}';
+                                brackets--;
+                            }
+                        }
+                    }
+                }
+            }
+            result += '})';
+            return P.runtime.scopedEval(result);
+        }
+        utils.createContinuation = createContinuation;
+        // Patches an SVG to make it behave more like Scratch.
+        function patchSVG(svg, element) {
+            const FONTS = {
+                // TODO: Scratch 3
+                '': 'Helvetica',
+                Donegal: 'Donegal One',
+                Gloria: 'Gloria Hallelujah',
+                Marker: 'Permanent Marker',
+                Mystery: 'Mystery Quest'
+            };
+            const LINE_HEIGHTS = {
+                // TODO: Scratch 3
+                Helvetica: 1.13,
+                'Donegal One': 1.25,
+                'Gloria Hallelujah': 1.97,
+                'Permanent Marker': 1.43,
+                'Mystery Quest': 1.37
+            };
+            if (element.nodeType !== 1)
+                return;
+            if (element.nodeName === 'text') {
+                // Correct fonts
+                var font = element.getAttribute('font-family') || '';
+                font = FONTS[font] || font;
+                if (font) {
+                    element.setAttribute('font-family', font);
+                    if (font === 'Helvetica')
+                        element.style.fontWeight = 'bold';
+                }
+                var size = +element.getAttribute('font-size');
+                if (!size) {
+                    element.setAttribute('font-size', size = 18);
+                }
+                var bb = element.getBBox();
+                var x = 4 - .6 * element.transform.baseVal.consolidate().matrix.a;
+                var y = (element.getAttribute('y') - bb.y) * 1.1;
+                element.setAttribute('x', x);
+                element.setAttribute('y', y);
+                var lines = element.textContent.split('\n');
+                if (lines.length > 1) {
+                    element.textContent = lines[0];
+                    var lineHeight = LINE_HEIGHTS[font] || 1;
+                    for (var i = 1, l = lines.length; i < l; i++) {
+                        var tspan = document.createElementNS(null, 'tspan');
+                        tspan.textContent = lines[i];
+                        tspan.setAttribute('x', '' + x);
+                        tspan.setAttribute('y', '' + (y + size * i * lineHeight));
+                        element.appendChild(tspan);
+                    }
+                }
+            }
+            else if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
+                element.setAttribute('x', 0);
+                element.setAttribute('y', 0);
+            }
+            [].forEach.call(element.childNodes, patchSVG.bind(null, svg));
+        }
+        utils.patchSVG = patchSVG;
+        /**
+         * Parses a Scratch rotation style string to a RoationStyle enum
+         */
+        function parseRotationStyle(style) {
+            switch (style) {
+                case 'leftRight':
+                case 'left-right':
+                    return 1 /* LeftRight */;
+                case 'none':
+                case 'don\'t rotate':
+                    return 2 /* None */;
+                case 'normal':
+                case 'all around':
+                    return 0 /* Normal */;
+            }
+            console.warn('unknown rotation style', style);
+            return 0 /* Normal */;
+        }
+        utils.parseRotationStyle = parseRotationStyle;
+        // Determines the type of a project with its project.json data
+        function projectType(data) {
+            if (typeof data !== 'object' || data === null) {
+                return null;
+            }
+            if ('targets' in data) {
+                return 3;
+            }
+            if ('objName' in data) {
+                return 2;
+            }
+            return null;
+        }
+        utils.projectType = projectType;
+        /**
+         * Converts an RGB color to an HSL color
+         * @param rgb RGB Color
+         */
+        function rgbToHSL(rgb) {
+            var r = (rgb >> 16 & 0xff) / 0xff;
+            var g = (rgb >> 8 & 0xff) / 0xff;
+            var b = (rgb & 0xff) / 0xff;
+            var min = Math.min(r, g, b);
+            var max = Math.max(r, g, b);
+            if (min === max) {
+                return [0, 0, r * 100];
+            }
+            var c = max - min;
+            var l = (min + max) / 2;
+            var s = c / (1 - Math.abs(2 * l - 1));
+            var h;
+            switch (max) {
+                case r:
+                    h = ((g - b) / c + 6) % 6;
+                    break;
+                case g:
+                    h = (b - r) / c + 2;
+                    break;
+                case b:
+                    h = (r - g) / c + 4;
+                    break;
+            }
+            h *= 60;
+            return [h, s * 100, l * 100];
+        }
+        utils.rgbToHSL = rgbToHSL;
+    })(utils = P.utils || (P.utils = {}));
+})(P || (P = {}));
+/// <reference path="phosphorus.ts" />
+/// <reference path="utils.ts" />
 /// <reference path="core.ts" />
-/// <reference path="canvg.d.ts" />
+/// <reference path="config.ts" />
 var P;
 (function (P) {
     var sb2;
@@ -3338,20 +3567,21 @@ var P;
         var self;
         // Current sprite or stage
         var S;
-        // Used for resuming state
+        // Current thread state.
         var R;
-        // Stack of states (??)
+        // Stack of states (R) for this thread
         var STACK;
         // Current procedure call, if any. Contains arguments.
         var C;
+        // This thread's call (C) stack
+        var CALLS;
         // If level of layers of "Run without screen refresh" we are in
-        // Each subsequent procedure call will increment and decrement as they start and stop.
+        // Each level (usually procedures) of depth will increment and decrement as they start and stop.
+        // As long as this is greater than 0, functions will run without waiting for the screen.
         var WARP;
         // ??
-        var CALLS;
-        // ??
         var BASE;
-        // ??
+        // The ID of the active thread in the Runtime's queue
         var THREAD;
         // The next function to run immediately after this one.
         var IMMEDIATE;
@@ -3805,7 +4035,11 @@ var P;
                 this.onError = this.onError.bind(this);
             }
             startThread(sprite, base) {
-                const thread = new Thread(sprite, base, base, [{ args: [], stack: [{}] }]);
+                const thread = new Thread(sprite, base, base, [{
+                        args: [],
+                        stack: [{}],
+                    }]);
+                // Replace an existing thread instead of adding a new one when possible.
                 for (let i = 0; i < this.queue.length; i++) {
                     const q = this.queue[i];
                     if (q && q.sprite === sprite && q.base === base) {
@@ -4143,8 +4377,8 @@ var P;
     })(runtime = P.runtime || (P.runtime = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
+/// <reference path="utils.ts" />
 /// <reference path="core.ts" />
-/// <reference path="JSZip.d.ts" />
 /// <reference path="config.ts" />
 // Scratch 3 project loader and runtime objects
 var P;
@@ -4730,6 +4964,7 @@ var P;
             const stringExpr = (src) => new CompiledExpression(src, 'string');
             const booleanExpr = (src) => new CompiledExpression(src, 'boolean');
             // Contains top level blocks.
+            const noopExpression = () => 'undefined';
             compiler_1.topLevelLibrary = {
                 // Events
                 event_whenflagclicked(block, f) {
@@ -4822,11 +5057,9 @@ var P;
                     if (name === 'number') {
                         return numberExpr('(S.currentCostumeIndex + 1)');
                     }
-                    else if (name === 'name') {
-                        return stringExpr('S.costumes[S.currentCostumeIndex].name');
-                    }
                     else {
-                        throw new Error('unknown NUMBER_NAME: ' + name);
+                        // `name` is probably 'name', but it doesn't matter
+                        return stringExpr('S.costumes[S.currentCostumeIndex].name');
                     }
                 },
                 looks_backdropnumbername(block) {
@@ -4834,11 +5067,9 @@ var P;
                     if (name === 'number') {
                         return numberExpr('(self.currentCostumeIndex + 1)');
                     }
-                    else if (name === 'name') {
-                        return stringExpr('self.costumes[self.currentCostumeIndex].name');
-                    }
                     else {
-                        throw new Error('unknown NUMBER_NAME: ' + name);
+                        // `name` is probably 'name', but it doesn't matter
+                        return stringExpr('self.costumes[self.currentCostumeIndex].name');
                     }
                 },
                 looks_size() {
@@ -4906,6 +5137,10 @@ var P;
                     // We don't implement loudness, we always return -1 which indicates that there is no microphone available.
                     return numberExpr('-1');
                 },
+                sensing_loud(block) {
+                    // see sensing_loudness above
+                    return booleanExpr('false');
+                },
                 sensing_timer(block) {
                     return numberExpr('((runtime.now - runtime.timerStart) / 1000)');
                 },
@@ -4919,17 +5154,17 @@ var P;
                     return sanitizedExpression(object);
                 },
                 sensing_current(block) {
-                    const current = block.fields.CURRENTMENU[0];
+                    const current = block.fields.CURRENTMENU[0].toLowerCase();
                     switch (current) {
-                        case 'YEAR': return numberExpr('new Date().getFullYear()');
-                        case 'MONTH': return numberExpr('(new Date().getMonth() + 1)');
-                        case 'DATE': return numberExpr('new Date().getDate()');
-                        case 'DAYOFWEEK': return numberExpr('(new Date().getDay() + 1)');
-                        case 'HOUR': return numberExpr('new Date().getHours()');
-                        case 'MINUTE': return numberExpr('new Date().getMinutes()');
-                        case 'SECOND': return numberExpr('new Date().getSeconds()');
+                        case 'year': return numberExpr('new Date().getFullYear()');
+                        case 'month': return numberExpr('(new Date().getMonth() + 1)');
+                        case 'date': return numberExpr('new Date().getDate()');
+                        case 'dayofweek': return numberExpr('(new Date().getDay() + 1)');
+                        case 'hour': return numberExpr('new Date().getHours()');
+                        case 'minute': return numberExpr('new Date().getMinutes()');
+                        case 'second': return numberExpr('new Date().getSeconds()');
                     }
-                    throw new Error('unknown CURRENTMENU: ' + current);
+                    return numberExpr('0');
                 },
                 sensing_dayssince2000(block) {
                     return numberExpr('((Date.now() - epoch) / 86400000)');
@@ -5057,8 +5292,7 @@ var P;
                         case '10 ^':
                             return numberExpr(`Math.exp(${compiledNum} * Math.LN10)`);
                         default:
-                            // Unrecognized field or a non-constant field will fallback to the mathFunc runtime method
-                            return numberExpr(`mathFunc(${sanitizedString(operator)}, + ${compiledNum})`);
+                            return numberExpr('0');
                     }
                 },
                 // Data
@@ -5109,11 +5343,12 @@ var P;
                 // Legacy no-ops
                 // Here, returning an untyped undefined has the same effect as it does in Scratch 3.
                 // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_sensing.js#L74
-                sensing_userid() { return 'undefined'; },
+                sensing_userid: noopExpression,
                 // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L42-L43
-                motion_xscroll() { return 'undefined'; },
-                motion_yscroll() { return 'undefined'; },
+                motion_xscroll: noopExpression,
+                motion_yscroll: noopExpression,
             };
+            const noopStatement = () => { source += '/* noop */'; };
             // Contains statements.
             compiler_1.statementLibrary = {
                 // Motion
@@ -5339,7 +5574,8 @@ var P;
                     if (frontBack === 'front') {
                         source += 'self.children.push(S);\n';
                     }
-                    else if (frontBack === 'back') {
+                    else {
+                        // `frontBack` is probably 'back', but it doesn't matter
                         source += 'self.children.unshift(S);\n';
                     }
                 },
@@ -5349,14 +5585,12 @@ var P;
                     source += 'var i = self.children.indexOf(S);\n';
                     source += 'if (i !== -1) {\n';
                     source += '  self.children.splice(i, 1);\n';
-                    if (direction === 'backward') {
-                        source += '  self.children.splice(Math.max(0, i - ' + compileExpression(number) + '), 0, S);\n';
-                    }
-                    else if (direction === 'forward') {
+                    if (direction === 'forward') {
                         source += '  self.children.splice(Math.min(self.children.length - 1, i + ' + compileExpression(number) + '), 0, S);\n';
                     }
                     else {
-                        throw new Error('unknown direction: ' + direction);
+                        // `direction` is probably 'backward', but it doesn't matter
+                        source += '  self.children.splice(Math.max(0, i - ' + compileExpression(number) + '), 0, S);\n';
                     }
                     source += '}\n';
                 },
@@ -5581,6 +5815,7 @@ var P;
                         source += 'S.isDraggable = true;\n';
                     }
                     else {
+                        // it doesn't matter what `dragMode` is at this point
                         source += 'S.isDraggable = false;\n';
                     }
                 },
@@ -5640,7 +5875,7 @@ var P;
                     const mutation = block.mutation;
                     const name = mutation.proccode;
                     if (P.config.debug && name === 'forkphorus:debugger;') {
-                        source += '/*procedures_call debugger*/debugger;\n';
+                        source += '/* forkphorus debugger */debugger;\n';
                         return;
                     }
                     const id = nextLabel();
@@ -5720,15 +5955,15 @@ var P;
                     const tempo = block.inputs.TEMPO;
                     source += 'self.tempoBPM += ' + compileExpression(tempo, 'number') + ';\n';
                 },
-                // Legacy no-ops. We don't even bother to compile any of their inputs or fields because they don't do anything.
+                // Legacy no-ops.
                 // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L19
-                motion_scroll_right() { },
-                motion_scroll_up() { },
-                motion_align_scene() { },
+                motion_scroll_right: noopStatement,
+                motion_scroll_up: noopStatement,
+                motion_align_scene: noopStatement,
                 // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_looks.js#L248
-                looks_changestretchby() { },
-                looks_setstretchto() { },
-                looks_hideallsprites() { },
+                looks_changestretchby: noopStatement,
+                looks_setstretchto: noopStatement,
+                looks_hideallsprites: noopStatement,
             };
             // Contains data used for variable watchers.
             compiler_1.watcherLibrary = {
@@ -5754,11 +5989,8 @@ var P;
                         if (param === 'number') {
                             return target.currentCostumeIndex + 1;
                         }
-                        else if (param === 'name') {
-                            return target.costumes[target.currentCostumeIndex].name;
-                        }
                         else {
-                            throw new Error('unknown watcher NUMBER_NAME: ' + param);
+                            return target.costumes[target.currentCostumeIndex].name;
                         }
                     },
                     getLabel(watcher) {
@@ -5772,11 +6004,8 @@ var P;
                         if (param === 'number') {
                             return target.currentCostumeIndex + 1;
                         }
-                        else if (param === 'name') {
-                            return target.costumes[target.currentCostumeIndex].name;
-                        }
                         else {
-                            throw new Error('unknown watcher NUMBER_NAME: ' + param);
+                            return target.costumes[target.currentCostumeIndex].name;
                         }
                     },
                     getLabel(watcher) {
@@ -5810,30 +6039,25 @@ var P;
                 },
                 sensing_current: {
                     evaluate(watcher) {
-                        const param = watcher.params.CURRENTMENU;
+                        const param = watcher.params.CURRENTMENU.toLowerCase();
                         switch (param) {
-                            case 'YEAR': return new Date().getFullYear();
-                            case 'MONTH': return new Date().getMonth() + 1;
-                            case 'DATE': return new Date().getDate();
-                            case 'DAYOFWEEK': return new Date().getDay() + 1;
-                            case 'HOUR': return new Date().getHours();
-                            case 'MINUTE': return new Date().getMinutes();
-                            case 'SECOND': return new Date().getSeconds();
+                            case 'year': return new Date().getFullYear();
+                            case 'month': return new Date().getMonth() + 1;
+                            case 'date': return new Date().getDate();
+                            case 'dayofweek': return new Date().getDay() + 1;
+                            case 'hour': return new Date().getHours();
+                            case 'minute': return new Date().getMinutes();
+                            case 'second': return new Date().getSeconds();
                         }
-                        throw new Error('unknown watcher CURRENTMENU: ' + param);
+                        return 0;
                     },
                     getLabel(watcher) {
-                        const param = watcher.params.CURRENTMENU;
-                        switch (param) {
-                            case 'YEAR': return 'year';
-                            case 'MONTH': return 'month';
-                            case 'DATE': return 'date';
-                            case 'DAYOFWEEK': return 'day of week';
-                            case 'HOUR': return 'hour';
-                            case 'MINUTE': return 'minute';
-                            case 'SECOND': return 'second';
+                        const param = watcher.params.CURRENTMENU.toLowerCase();
+                        // all expected params except DAYOFWEEK can just be lowercased and used directly
+                        if (param === 'dayofweek') {
+                            return 'day of week';
                         }
-                        throw new Error('unknown watcher CURRENTMENU: ' + param);
+                        return param;
                     }
                 },
                 sensing_username: {
@@ -5997,16 +6221,15 @@ var P;
                     case 6 /* WHOLE_NUM */:
                     case 7 /* INTEGER_NUM */:
                     case 8 /* ANGLE_NUM */:
-                        // I think there's an easier way to handle this, but this seems to work.
+                        // The value might not actually be a number.
                         if (!isNaN(parseFloat(constant[1]))) {
                             return numberExpr(constant[1]);
                         }
                         else {
-                            // Non-numbers will be sanitized 
+                            // Non-numbers will be sanitized
                             return sanitizedExpression(constant[1]);
                         }
                     case 10 /* TEXT */:
-                        // Text is compiled directly into a string.
                         return sanitizedExpression(constant[1]);
                     case 12 /* VAR */:
                         // For variable natives the second item is the name of the variable
@@ -6019,7 +6242,7 @@ var P;
                         // Similar to variable references.
                         return compileExpression(constant[2]);
                     case 9 /* COLOR_PICKER */:
-                        // Colors are stored as strings like "#123ABC", so we must do some conversions.
+                        // Colors are stored as strings like "#123ABC", so we must do some conversions to use them as numbers.
                         return compileColor(constant[1]);
                     default:
                         console.warn('unknown constant', type, constant);
@@ -6073,7 +6296,7 @@ var P;
                 switch (type) {
                     case 'string': return '("" + ' + script + ')';
                     case 'number': return '+' + script;
-                    case 'boolean': return '!!' + script;
+                    case 'boolean': return 'bool(' + script + ')';
                 }
                 return script;
             }
@@ -6145,6 +6368,7 @@ var P;
                 const topLevelOpCode = topBlock.opcode;
                 if (!(topLevelOpCode in compiler_1.topLevelLibrary)) {
                     // Only log warnings if we wouldn't otherwise recognize the block.
+                    // Some dangling non-top-level blocks is very common in many projects.
                     if (!(topLevelOpCode in compiler_1.expressionLibrary) && !(topLevelOpCode in compiler_1.statementLibrary)) {
                         console.warn('unknown top level block', topLevelOpCode, topBlock);
                     }
@@ -6183,228 +6407,5 @@ var P;
             compiler_1.compileTarget = compileTarget;
         })(compiler = sb3.compiler || (sb3.compiler = {}));
     })(sb3 = P.sb3 || (P.sb3 = {}));
-})(P || (P = {}));
-/// <reference path="phosphorus.ts" />
-var P;
-(function (P) {
-    var utils;
-    (function (utils) {
-        // Gets the keycode for a key name
-        function getKeyCode(keyName) {
-            switch (keyName.toLowerCase()) {
-                case 'space': return 32;
-                case 'left arrow': return 37;
-                case 'up arrow': return 38;
-                case 'right arrow': return 39;
-                case 'down arrow': return 40;
-                case 'any': return 'any';
-            }
-            return keyName.toUpperCase().charCodeAt(0);
-        }
-        utils.getKeyCode = getKeyCode;
-        // Returns the string representation of an error.
-        // TODO: does this need to be here?
-        function stringifyError(error) {
-            if (!error) {
-                return 'unknown error';
-            }
-            if (error.stack) {
-                return 'Message: ' + error.message + '\nStack:\n' + error.stack;
-            }
-            return error.toString();
-        }
-        utils.stringifyError = stringifyError;
-        function createContinuation(source) {
-            // TODO: make understandable
-            var result = '(function() {\n';
-            var brackets = 0;
-            var delBrackets = 0;
-            var shouldDelete = false;
-            var here = 0;
-            var length = source.length;
-            while (here < length) {
-                var i = source.indexOf('{', here);
-                var j = source.indexOf('}', here);
-                var k = source.indexOf('return;', here);
-                if (k === -1)
-                    k = length;
-                if (i === -1 && j === -1) {
-                    if (!shouldDelete) {
-                        result += source.slice(here, k);
-                    }
-                    break;
-                }
-                if (i === -1)
-                    i = length;
-                if (j === -1)
-                    j = length;
-                if (shouldDelete) {
-                    if (i < j) {
-                        delBrackets++;
-                        here = i + 1;
-                    }
-                    else {
-                        delBrackets--;
-                        if (!delBrackets) {
-                            shouldDelete = false;
-                        }
-                        here = j + 1;
-                    }
-                }
-                else {
-                    if (brackets === 0 && k < i && k < j) {
-                        result += source.slice(here, k);
-                        break;
-                    }
-                    if (i < j) {
-                        result += source.slice(here, i + 1);
-                        brackets++;
-                        here = i + 1;
-                    }
-                    else {
-                        result += source.slice(here, j);
-                        here = j + 1;
-                        if (source.substr(j, 8) === '} else {') {
-                            if (brackets > 0) {
-                                result += '} else {';
-                                here = j + 8;
-                            }
-                            else {
-                                shouldDelete = true;
-                                delBrackets = 0;
-                            }
-                        }
-                        else {
-                            if (brackets > 0) {
-                                result += '}';
-                                brackets--;
-                            }
-                        }
-                    }
-                }
-            }
-            result += '})';
-            return P.runtime.scopedEval(result);
-        }
-        utils.createContinuation = createContinuation;
-        // Patches an SVG to make it behave more like Scratch.
-        function patchSVG(svg, element) {
-            const FONTS = {
-                // TODO: Scratch 3
-                '': 'Helvetica',
-                Donegal: 'Donegal One',
-                Gloria: 'Gloria Hallelujah',
-                Marker: 'Permanent Marker',
-                Mystery: 'Mystery Quest'
-            };
-            const LINE_HEIGHTS = {
-                // TODO: Scratch 3
-                Helvetica: 1.13,
-                'Donegal One': 1.25,
-                'Gloria Hallelujah': 1.97,
-                'Permanent Marker': 1.43,
-                'Mystery Quest': 1.37
-            };
-            if (element.nodeType !== 1)
-                return;
-            if (element.nodeName === 'text') {
-                // Correct fonts
-                var font = element.getAttribute('font-family') || '';
-                font = FONTS[font] || font;
-                if (font) {
-                    element.setAttribute('font-family', font);
-                    if (font === 'Helvetica')
-                        element.style.fontWeight = 'bold';
-                }
-                var size = +element.getAttribute('font-size');
-                if (!size) {
-                    element.setAttribute('font-size', size = 18);
-                }
-                var bb = element.getBBox();
-                var x = 4 - .6 * element.transform.baseVal.consolidate().matrix.a;
-                var y = (element.getAttribute('y') - bb.y) * 1.1;
-                element.setAttribute('x', x);
-                element.setAttribute('y', y);
-                var lines = element.textContent.split('\n');
-                if (lines.length > 1) {
-                    element.textContent = lines[0];
-                    var lineHeight = LINE_HEIGHTS[font] || 1;
-                    for (var i = 1, l = lines.length; i < l; i++) {
-                        var tspan = document.createElementNS(null, 'tspan');
-                        tspan.textContent = lines[i];
-                        tspan.setAttribute('x', '' + x);
-                        tspan.setAttribute('y', '' + (y + size * i * lineHeight));
-                        element.appendChild(tspan);
-                    }
-                }
-            }
-            else if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
-                element.setAttribute('x', 0);
-                element.setAttribute('y', 0);
-            }
-            [].forEach.call(element.childNodes, patchSVG.bind(null, svg));
-        }
-        utils.patchSVG = patchSVG;
-        // Converts an external string to an internally recognized rotation style.
-        function parseRotationStyle(style) {
-            switch (style) {
-                case 'leftRight':
-                case 'left-right':
-                    return 1 /* LeftRight */;
-                case 'none':
-                case 'don\'t rotate':
-                    return 2 /* None */;
-                case 'normal':
-                case 'all around':
-                    return 0 /* Normal */;
-            }
-            console.warn('unknown rotation style', style);
-            return 0 /* Normal */;
-        }
-        utils.parseRotationStyle = parseRotationStyle;
-        // Determines the type of a project with its project.json data
-        function projectType(data) {
-            if (typeof data !== 'object' || data === null) {
-                return;
-            }
-            if ('targets' in data) {
-                return 3;
-            }
-            if ('objName' in data) {
-                return 2;
-            }
-            throw new Error('unknown project: ' + JSON.stringify(data));
-        }
-        utils.projectType = projectType;
-        // Converts RGB to HSL
-        function rgbToHSL(rgb) {
-            var r = (rgb >> 16 & 0xff) / 0xff;
-            var g = (rgb >> 8 & 0xff) / 0xff;
-            var b = (rgb & 0xff) / 0xff;
-            var min = Math.min(r, g, b);
-            var max = Math.max(r, g, b);
-            if (min === max) {
-                return [0, 0, r * 100];
-            }
-            var c = max - min;
-            var l = (min + max) / 2;
-            var s = c / (1 - Math.abs(2 * l - 1));
-            var h;
-            switch (max) {
-                case r:
-                    h = ((g - b) / c + 6) % 6;
-                    break;
-                case g:
-                    h = (b - r) / c + 2;
-                    break;
-                case b:
-                    h = (r - g) / c + 4;
-                    break;
-            }
-            h *= 60;
-            return [h, s * 100, l * 100];
-        }
-        utils.rgbToHSL = rgbToHSL;
-    })(utils = P.utils || (P.utils = {}));
 })(P || (P = {}));
 //# sourceMappingURL=phosphorus.dist.js.map

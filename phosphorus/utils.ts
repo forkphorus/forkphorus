@@ -150,7 +150,9 @@ namespace P.utils {
   }
 
   import RotationStyle = P.core.RotationStyle;
-  // Converts an external string to an internally recognized rotation style.
+  /**
+   * Parses a Scratch rotation style string to a RoationStyle enum
+   */
   export function parseRotationStyle(style: string): RotationStyle {
     switch (style) {
       case 'leftRight':
@@ -168,9 +170,9 @@ namespace P.utils {
   }
 
   // Determines the type of a project with its project.json data
-  export function projectType(data: unknown) {
+  export function projectType(data: unknown): 2 | 3 | null {
     if (typeof data !== 'object' || data === null) {
-      return;
+      return null;
     }
     if ('targets' in data) {
       return 3;
@@ -178,11 +180,14 @@ namespace P.utils {
     if ('objName' in data) {
       return 2;
     }
-    throw new Error('unknown project: ' + JSON.stringify(data));
+    return null;
   }
 
-  // Converts RGB to HSL
-  export function rgbToHSL(rgb: number) {
+  /**
+   * Converts an RGB color to an HSL color
+   * @param rgb RGB Color
+   */
+  export function rgbToHSL(rgb: number): [number, number, number] {
     var r = (rgb >> 16 & 0xff) / 0xff;
     var g = (rgb >> 8 & 0xff) / 0xff;
     var b = (rgb & 0xff) / 0xff;

@@ -24,7 +24,7 @@
         document.documentElement.classList.toggle('dark', dark);
         localStorage.setItem('userPrefersDark', document.documentElement.classList.contains('dark'));
       }
-      document.querySelector('.theme-select a').addEventListener("click", function() {
+      document.querySelector('.theme-select a').addEventListener('click', function() {
         toggleDark();
       });
       if (localStorage.getItem('userPrefersDark') === 'true') {
