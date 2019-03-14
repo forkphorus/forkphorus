@@ -80,7 +80,7 @@ namespace P.sb2 {
 
   let zipArchive: JSZip.Zip;
 
-  export class Scratch2VariableWatcher extends P.core.VariableWatcher {
+  export class Scratch2VariableWatcher extends P.core.Watcher {
     private cmd: string;
     private type: string;
     private color: string;

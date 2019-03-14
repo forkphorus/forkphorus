@@ -117,7 +117,7 @@ namespace P.core {
     // Variables of the object.
     public vars: ObjectMap<any> = {};
     // Variable watchers of the object.
-    public watchers: ObjectMap<VariableWatcher> = {};
+    public watchers: ObjectMap<Watcher> = {};
     // Lists of the object.
     public lists: ObjectMap<Array<any>> = {};
     // Is this object saying something?
@@ -302,7 +302,7 @@ namespace P.core {
 
     abstract rotatedBounds(): RotatedBounds;
 
-    abstract createVariableWatcher(target: Base, variableName: string): VariableWatcher | null;
+    abstract createVariableWatcher(target: Base, variableName: string): Watcher | null;
   }
 
   type KeyList = Array<boolean | undefined> & { any: number; };
@@ -320,7 +320,7 @@ namespace P.core {
     /**
      * All variable watchers in this stage.
      */
-    public allWatchers: VariableWatcher[] = [];
+    public allWatchers: Watcher[] = [];
 
     public answer: string = '';
     public promptId: number = 0;
@@ -1555,15 +1555,14 @@ namespace P.core {
     }
   }
 
-  // An abstract variable watcher
-  export abstract class VariableWatcher {
+  export abstract class Watcher {
     public stage: Stage;
     public targetName: string;
     public target: Base;
     public valid: boolean = true;
+    public visible: boolean = true;
     public x: number = 0;
     public y: number = 0;
-    public visible: boolean = true;
 
     constructor(stage: Stage, targetName: string) {
       // The stage this variable watcher belongs to.
@@ -1573,14 +1572,13 @@ namespace P.core {
       this.targetName = targetName;
     }
 
-    // Initializes the VariableWatcher. Called once.
+    // Initializes the Watcher. Called once.
     // Expected to be overridden.
     init() {
       this.target = this.stage.getObject(this.targetName) || this.stage;
     }
 
-    // Changes the visibility of the watcher.
-    // Expected to be overridden.
+    // The intended way to change visibility
     setVisible(visible: boolean) {
       this.visible = visible;
     }

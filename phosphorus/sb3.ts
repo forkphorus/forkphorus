@@ -45,7 +45,7 @@ namespace P.sb3 {
   export type Target = Scratch3Stage | Scratch3Sprite;
 
   interface VariableWatcherOptions {
-    spriteName: string;
+    spriteName: string | null;
     visible: boolean;
     id: string;
     opcode: string;
@@ -53,13 +53,15 @@ namespace P.sb3 {
     params: any;
     x: number;
     y: number;
-    min: number;
-    max: number;
+    sliderMin?: number;
+    sliderMax?: number;
+    width?: number;
+    height?: number;
   }
 
   // Implements a Scratch 3 VariableWatcher.
   // Adds Scratch 3-like styling
-  export class Scratch3VariableWatcher extends P.core.VariableWatcher {
+  export class Scratch3VariableWatcher extends P.core.Watcher {
     public id: string;
     public opcode: string;
     public mode: string;
@@ -84,13 +86,12 @@ namespace P.sb3 {
       // This opcode's watcherLibrary entry.
       this.libraryEntry = P.sb3.compiler.watcherLibrary[this.opcode];
 
-      // From VariableWatcher
       this.x = data.x;
       this.y = data.y;
       this.visible = typeof data.visible === 'boolean' ? data.visible : true;
 
-      this.sliderMin = data.min;
-      this.sliderMax = data.max;
+      this.sliderMin = data.sliderMin || 0;
+      this.sliderMax = data.sliderMax || 0;
 
       // Mark ourselves as invalid if the opcode is not recognized.
       if (!this.libraryEntry) {
@@ -229,6 +230,146 @@ namespace P.sb3 {
     }
   }
 
+  interface ListRow {
+    row: HTMLElement;
+    index: HTMLElement;
+    value: HTMLElement;
+  }
+
+  export class Scratch3ListWatcher extends P.core.Watcher {
+    private id: string;
+    private params: any;
+    private width: number;
+    private height: number;
+    private list: Scratch3List;
+    private domRows: ListRow[] = [];
+    private containerEl: HTMLElement;
+    private topLabelEl: HTMLElement;
+    private bottomLabelEl: HTMLElement;
+    private contentEl: HTMLElement;
+
+    constructor(stage: Scratch3Stage, data: VariableWatcherOptions) {
+      super(stage, data.spriteName || '');
+
+      this.id = data.id;
+      this.params = data.params;
+      this.x = data.x;
+      this.y = data.y;
+      this.visible = typeof data.visible === 'boolean' ? data.visible : true;
+      this.width = data.width || 100;
+      this.height = data.height || 200;
+    }
+
+    update() {
+      if (!this.visible) {
+        return;
+      }
+
+      // Silently rest if the list has not been modified to improve performance for static lists.
+      if (!this.list.modified) {
+        return;
+      }
+      this.list.modified = false;
+      this.updateContents();
+    }
+
+    updateContents() {
+      const length = this.list.length;
+
+      if (this.domRows.length < length) {
+        while (this.domRows.length < length) {
+          const row = this.createRow();
+          this.domRows.push(row);
+          this.contentEl.appendChild(row.row);
+        }
+      } else if (this.domRows.length > length) {
+        while (this.domRows.length > length) {
+          this.domRows.pop();
+          this.contentEl.removeChild(this.contentEl.lastChild!);
+        }
+      }
+
+      for (var i = 0; i < length; i++) {
+        const { row, index, value } = this.domRows[i];
+        const newValue = '' + this.list[i];
+        if (newValue !== value.textContent) {
+          value.textContent = newValue;
+        }
+      }
+
+      const bottomLabelText = this.getBottomLabel();
+      if (this.bottomLabelEl.textContent !== bottomLabelText) {
+        this.bottomLabelEl.textContent = this.getBottomLabel();
+      }
+    }
+
+    init() {
+      super.init();
+      this.list = this.target.lists[this.id] as Scratch3List;
+      this.target.watchers[this.id] = this;
+      this.updateLayout();
+      this.updateContents();
+    }
+
+    getTopLabel() {
+      return this.params.LIST;
+    }
+    getBottomLabel() {
+      return 'length ' + this.list.length;
+    }
+
+    updateLayout() {
+      if (!this.containerEl) {
+        this.createLayout();
+      }
+      this.containerEl.style.display = this.visible ? '' : 'none';
+    }
+
+    setVisible(visible: boolean) {
+      super.setVisible(visible);
+      this.updateLayout();
+    }
+
+    createRow(): ListRow {
+      const row = document.createElement('div');
+      const index = document.createElement('div');
+      const value = document.createElement('div');
+      row.classList.add('s3-list-row');
+      index.classList.add('s3-list-index');
+      value.classList.add('s3-list-value');
+      index.textContent = (this.domRows.length + 1).toString();
+      row.appendChild(index);
+      row.appendChild(value);
+      return { row, index, value };
+    }
+
+    createLayout() {
+      this.containerEl = document.createElement('div');
+      this.topLabelEl = document.createElement('div');
+      this.bottomLabelEl = document.createElement('div');
+      this.contentEl = document.createElement('div');
+
+      this.containerEl.style.top = (this.y / 10) + 'em';
+      this.containerEl.style.left = (this.x / 10) + 'em';
+      this.containerEl.style.height = (this.height / 10) + 'em';
+      this.containerEl.style.width = (this.width / 10) + 'em';
+      this.containerEl.classList.add('s3-list-container');
+
+      this.topLabelEl.textContent = this.getTopLabel();
+      this.topLabelEl.classList.add('s3-list-top-label');
+
+      this.bottomLabelEl.textContent = this.getBottomLabel();
+      this.bottomLabelEl.classList.add('s3-list-bottom-label');
+
+      this.contentEl.classList.add('s3-list-content');
+
+      this.containerEl.appendChild(this.topLabelEl);
+      this.containerEl.appendChild(this.contentEl);
+      this.containerEl.appendChild(this.bottomLabelEl);
+      this.stage.ui.appendChild(this.containerEl);
+    }
+  }
+
   // Implements a Scratch 3 procedure.
   // Scratch 3 uses names as references for arguments (Scratch 2 uses indexes I believe)
   export class Scratch3Procedure extends P.core.Procedure {
@@ -244,9 +385,12 @@ namespace P.sb3 {
   // An Array usable by the Scratch 3 compiler.
   // Implements Scratch list blocks and their behavior.
   export class Scratch3List extends Array {
+    public watcher: Scratch3ListWatcher;
+    public modified: boolean = false;
+
     // Modified toString() that functions like Scratch.
     toString() {
-     var i = this.length;
+      var i = this.length;
       while (i--) {
         if (('' + this[i]).length !== 1) {
           return this.join(' ');
@@ -278,10 +422,12 @@ namespace P.sb3 {
       } else if (index !== -1) {
         this.splice(index, 1);
       }
+      this.modified = true;
     }
 
     // Adds an item to the list.
     push(...items: any[]) {
+      this.modified = true;
       return super.push(...items);
     }
 
@@ -294,12 +440,14 @@ namespace P.sb3 {
       } else if (index !== -1) {
         this.splice(index, 0, value);
       }
+      this.modified = true;
     }
 
     // Sets the index of something in the list.
     set(index: number, value: any) {
       index = this.scratchIndex(index);
       this[index] = value;
+      this.modified = true;
     }
   }
 
@@ -407,7 +555,7 @@ namespace P.sb3 {
       */
 
       if (data.mode === 'list') {
-        return null;
+        return new Scratch3ListWatcher(stage, data);
       }
 
       return new Scratch3VariableWatcher(stage, data);
@@ -1639,6 +1787,16 @@ namespace P.sb3.compiler {
       const scope = variableScope(variable);
       source += scope + '.showVariable(' + sanitizedString(variable) + ', false);\n';
     },
+    data_showlist(block) {
+      const list = block.fields.LIST[1];
+      const scope = listScope(list);
+      source += scope + '.showVariable(' + sanitizedString(list) + ', true);\n';
+    },
+    data_hidelist(block) {
+      const list = block.fields.LIST[1];
+      const scope = listScope(list);
+      source += scope + '.showVariable(' + sanitizedString(list) + ', false);\n';
+    },
     data_addtolist(block) {
       const list = block.fields.LIST[1];
       const item = block.inputs.ITEM;
@@ -1995,6 +2153,14 @@ namespace P.sb3.compiler {
     }
   }
 
+  function listScope(id: string) {
+    if (id in currentTarget.stage.lists) {
+      return 'self';
+    } else {
+      return 'S';
+    }
+  }
+
   // Returns a reference to a variable with an ID
   function variableReference(id: string) {
     const scope = variableScope(id);
@@ -2003,10 +2169,8 @@ namespace P.sb3.compiler {
 
   // Returns a reference to a list with a ID
   function listReference(id: string) {
-    if (id in currentTarget.stage.lists) {
-      return 'self.lists[' + compileExpression(id) + ']';
-    }
-    return 'S.lists[' + compileExpression(id) + ']';
+    const scope = listScope(id);
+    return scope + '.lists[' + compileExpression(id) + ']';
   }
 
   ///
