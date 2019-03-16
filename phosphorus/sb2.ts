@@ -228,7 +228,7 @@ namespace P.sb2 {
       }
     }
 
-    timeAndDate(format) {
+    timeAndDate(format: any): number {
       switch (format) {
         case 'year':
           return new Date().getFullYear();

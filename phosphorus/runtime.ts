@@ -314,6 +314,26 @@ namespace P.runtime {
     return 0;
   };
 
+  var timeAndDate = function(format: any): number {
+    switch (format) {
+      case 'year':
+        return new Date().getFullYear();
+      case 'month':
+        return new Date().getMonth() + 1;
+      case 'date':
+        return new Date().getDate();
+      case 'day of week':
+        return new Date().getDay() + 1;
+      case 'hour':
+        return new Date().getHours();
+      case 'minute':
+        return new Date().getMinutes();
+      case 'second':
+        return new Date().getSeconds();
+    }
+    return 0;
+  }
+
   // TODO: configurable volume
   var VOLUME = 0.3;
 
