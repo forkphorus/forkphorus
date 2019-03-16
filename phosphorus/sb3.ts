@@ -5,16 +5,117 @@
 
 // Scratch 3 project loader and runtime objects
 namespace P.sb3 {
-  // The path to remote assets.
-  // Replace $path with the md5ext of the file
-  export const ASSETS_API = 'https://assets.scratch.mit.edu/internalapi/asset/$path/get/';
+  // "Scratch3*" classes implement some part of the Scratch 3 runtime.
+  // "SB3*" interfaces are just types for Scratch 3 projects
+
+  /**
+   * The path to fetch remote assets from.
+   * Replace $md5ext with the md5sum and the format of the asset. (just use md5ext)
+   */
+  export const ASSETS_API = 'https://assets.scratch.mit.edu/internalapi/asset/$md5ext/get/';
+
+  interface SB3Project {
+    targets: SB3Target[];
+    monitors: SB3Watcher[];
+    meta: any;
+  }
+
+  export interface SB3Target {
+    name: string;
+    isStage: boolean;
+    sounds: SB3Sound[];
+    costumes: SB3Costume[];
+    draggable: boolean;
+    size: number;
+    direction: number;
+    visible: boolean;
+    x: number;
+    y: number;
+    currentCostume: number;
+    rotationStyle: string;
+    layerOrder: number;
+    lists: ObjectMap<SB3List>;
+    variables: ObjectMap<SB3Variable>;
+    blocks: ObjectMap<SB3Block>;
+    broadcasts: ObjectMap<string>;
+  }
+
+  interface SB3Costume {
+    /**
+     * The ID of the asset. Should be its md5sum.
+     * Example: "b61b1077b0ea1931abee9dbbfa7903ff"
+     */
+    assetId: string;
+    name: string;
+    /**
+     * "Real pixels per image pixel"
+     */
+    bitmapResolution: number;
+    /**
+     * The ID of the asset with its extension.
+     * Example: "b61b1077b0ea1931abee9dbbfa7903ff.png"
+     */
+    md5ext: string;
+    /**
+     * The format of the image.
+     * Usually "png" or "svg"
+     */
+    dataFormat: string;
+    rotationCenterX: number;
+    rotationCenterY: number;
+  }
+
+  interface SB3Sound {
+    assetId: string,
+    name: string;
+    dataFormat: string;
+    format: string;
+    rate: number;
+    sampleCount: number;
+    md5ext: string;
+  }
+
+  export interface SB3Block {
+    opcode: string;
+    topLevel: boolean;
+    inputs: ObjectMap<any>;
+    fields: ObjectMap<any>;
+    mutation: any;
+    parent: string | null;
+    next: string | null;
+  }
+
+  interface SB3Watcher {
+    spriteName: string | null;
+    visible: boolean;
+    id: string;
+    opcode: string;
+    mode: string;
+    params: any;
+    x: number;
+    y: number;
+    sliderMin?: number;
+    sliderMax?: number;
+    width?: number;
+    height?: number;
+  }
+
+  /**
+   * Tuple of name and initial value
+   */
+  type SB3List = [string, any[]];
+
+  /**
+   * Tuple of name and initial value
+   */
+  type SB3Variable = [string, any];
 
   // Implements a Scratch 3 Stage.
   // Adds Scratch 3 specific things such as broadcastReferences
   export class Scratch3Stage extends P.core.Stage {
     // Scratch 3 uses unique IDs for broadcasts and the visual name for different things.
     private broadcastNames: ObjectMap<string> = {};
-    public sb3data: any;
+    public sb3data: SB3Target;
 
     addBroadcast(id: string, name: string) {
       this.broadcastNames[name] = id;
@@ -44,21 +145,6 @@ namespace P.sb3 {
 
   export type Target = Scratch3Stage | Scratch3Sprite;
 
-  interface VariableWatcherOptions {
-    spriteName: string | null;
-    visible: boolean;
-    id: string;
-    opcode: string;
-    mode: string;
-    params: any;
-    x: number;
-    y: number;
-    sliderMin?: number;
-    sliderMax?: number;
-    width?: number;
-    height?: number;
-  }
-
   // Implements a Scratch 3 VariableWatcher.
   // Adds Scratch 3-like styling
   export class Scratch3VariableWatcher extends P.core.Watcher {
@@ -73,7 +159,7 @@ namespace P.sb3 {
     public containerEl: HTMLElement;
     public valueEl: HTMLElement;
 
-    constructor(stage: Scratch3Stage, data: VariableWatcherOptions) {
+    constructor(stage: Scratch3Stage, data: SB3Watcher) {
       super(stage, data.spriteName || '');
 
       // Unique ID
@@ -248,7 +334,7 @@ namespace P.sb3 {
     private bottomLabelEl: HTMLElement;
     private contentEl: HTMLElement;
 
-    constructor(stage: Scratch3Stage, data: VariableWatcherOptions) {
+    constructor(stage: Scratch3Stage, data: SB3Watcher) {
       super(stage, data.spriteName || '');
 
       this.id = data.id;
@@ -453,17 +539,13 @@ namespace P.sb3 {
 
   // Implements base SB3 loading logic.
   // Needs to be extended to add file loading methods.
+  // Implementations are expected to set `this.projectData` to something before calling super.load()
   export abstract class BaseSB3Loader {
-    protected projectData: any;
+    protected projectData: SB3Project;
 
-    constructor() {
-      // Implementations are expected to set projectData in load() before calling super.load()
-      this.projectData = null;
-    }
-
-    protected abstract getAsText(path): Promise<string>;
-    protected abstract getAsArrayBuffer(path): Promise<ArrayBuffer>;
-    protected abstract getAsImage(path, format: string): Promise<HTMLImageElement>;
+    protected abstract getAsText(path: string): Promise<string>;
+    protected abstract getAsArrayBuffer(path: string): Promise<ArrayBuffer>;
+    protected abstract getAsImage(path: string, format: string): Promise<HTMLImageElement>;
 
     // Loads and returns a costume from its sb3 JSON data
     getImage(path: string, format: string): Promise<HTMLImageElement> {
@@ -482,18 +564,7 @@ namespace P.sb3 {
       }
     }
 
-    loadCostume(data, index) {
-      /*
-      data = {
-        "assetId": "b61b1077b0ea1931abee9dbbfa7903ff",
-        "name": "aaa",
-        "bitmapResolution": 2,
-        "md5ext": "b61b1077b0ea1931abee9dbbfa7903ff.png",
-        "dataFormat": "png",
-        "rotationCenterX": 480,
-        "rotationCenterY": 360
-      }
-      */
+    loadCostume(data: SB3Costume, index: number) {
       const path = data.assetId + '.' + data.dataFormat;
       return this.getImage(path, data.dataFormat)
         .then((image) => new P.core.Costume({
@@ -506,7 +577,7 @@ namespace P.sb3 {
         }));
     }
 
-    getAudioBuffer(path) {
+    getAudioBuffer(path: string) {
       return this.getAsArrayBuffer(path)
         .then((buffer) => P.audio.decodeAudio(buffer))
         .catch((err) => {
@@ -514,18 +585,7 @@ namespace P.sb3 {
         });
     }
 
-    loadSound(data) {
-      /*
-      data = {
-        "assetId": "83a9787d4cb6f3b7632b4ddfebf74367",
-        "name": "pop",
-        "dataFormat": "wav",
-        "format": "",
-        "rate": 48000,
-        "sampleCount": 1124,
-        "md5ext": "83a9787d4cb6f3b7632b4ddfebf74367.wav"
-      }
-      */
+    loadSound(data: SB3Sound) {
       return this.getAudioBuffer(data.md5ext)
         .then((buffer) => new P.core.Sound({
           name: data.name,
@@ -533,27 +593,7 @@ namespace P.sb3 {
         }));
     }
 
-    loadWatcher(data, stage: Scratch3Stage) {
-      /*
-      data = {
-        "id": "`jEk@4|i[#Fk?(8x)AV.-my variable",
-        "mode": "default",
-        "opcode": "data_variable",
-        "params": {
-          "VARIABLE": "my variable"
-        },
-        "spriteName": null,
-        "value": 4,
-        "width": 0,
-        "height": 0,
-        "x": 5,
-        "y": 5,
-        "visible": true,
-        "min": 0,
-        "max": 100
-      }
-      */
-
+    loadWatcher(data: SB3Watcher, stage: Scratch3Stage) {
       if (data.mode === 'list') {
         return new Scratch3ListWatcher(stage, data);
       }
@@ -561,7 +601,7 @@ namespace P.sb3 {
       return new Scratch3VariableWatcher(stage, data);
     }
 
-    loadTarget(data): Promise<Target> {
+    loadTarget(data: SB3Target): Promise<Target> {
       const variables = {};
       for (const id of Object.keys(data.variables)) {
         const variable = data.variables[id];
@@ -571,7 +611,7 @@ namespace P.sb3 {
       const lists = {};
       for (const id of Object.keys(data.lists)) {
         const list = data.lists[id];
-        // Use Scratch3List instead of a normal array.
+        // Use Scratch3List instead of a normal array so we can customize behavior easier
         lists[id] = new Scratch3List().concat(list[1]);
       }
 
@@ -588,17 +628,14 @@ namespace P.sb3 {
       const size = data.size;
       const draggable = data.draggable;
 
-      var costumes;
-      var sounds;
+      const costumesPromise = Promise.all<P.core.Costume>(data.costumes.map((c: any, i: any) => this.loadCostume(c, i)));
+      const soundsPromise = Promise.all<P.core.Sound>(data.sounds.map((c) => this.loadSound(c)));
 
-      const loadCostumes = Promise.all(data.costumes.map((c: any, i: any) => this.loadCostume(c, i)))
-        .then((c) => costumes = c);
+      return Promise.all<P.core.Costume[], P.core.Sound[]>([costumesPromise, soundsPromise])
+        .then((result) => {
+          const costumes = result[0];
+          const sounds = result[1];
 
-      const loadSounds = Promise.all(data.sounds.map((c) => this.loadSound(c)))
-        .then((s) => sounds = s);
-
-      return Promise.all<any>([loadCostumes, loadSounds])
-        .then(() => {
           // TODO: dirty hack for null stage
           const target = new (data.isStage ? Scratch3Stage : Scratch3Sprite)(null as any);
 
@@ -752,12 +789,12 @@ namespace P.sb3 {
     }
 
     getAsText(path: string) {
-      return P.IO.fetch(ASSETS_API.replace('$path', path))
+      return P.IO.fetch(ASSETS_API.replace('$md5ext', path))
         .then((request) => request.text());
     }
 
     getAsArrayBuffer(path: string) {
-      return P.IO.fetch(ASSETS_API.replace('$path', path))
+      return P.IO.fetch(ASSETS_API.replace('$md5ext', path))
         .then((request) => request.arrayBuffer());
     }
 
@@ -774,7 +811,7 @@ namespace P.sb3 {
           reject('Failed to load image: ' + image.src);
         };
         image.crossOrigin = 'anonymous';
-        image.src = ASSETS_API.replace('$path', path);
+        image.src = ASSETS_API.replace('$md5ext', path);
       });
     }
 
@@ -800,9 +837,11 @@ namespace P.sb3.compiler {
   // The target being compiled.
   let currentTarget: P.sb3.Target;
   // The blocks of the target.
-  let blocks: Block[];
+  let blocks: ObjectMap<Block>;
   // Points to the position of functions within the source.
   let fns: number[];
+
+  import Block = P.sb3.SB3Block;
 
   /*
   In Scratch 3 all blocks have a unique identifier.
@@ -842,7 +881,6 @@ namespace P.sb3.compiler {
   const booleanExpr = (src: string) => new CompiledExpression(src, 'boolean');
 
   type ExpressionType = 'string' | 'boolean' | 'number';
-  type Block = any;
   export type TopLevelCompiler = (block: Block, f: P.runtime.Fn) => void;
   export type ExpressionCompiler = (block: Block) => string | CompiledExpression;
   export type StatementCompiler = (block: Block) => void;
@@ -2238,8 +2276,11 @@ namespace P.sb3.compiler {
     }
   }
 
-  // Compiles a block and adds it to the source. (Does not return source)
-  function compile(block) {
+  /**
+   * Compiles a block
+   * The source code is in the source variable (does not return)
+   */
+  function compile(block: Block | string) {
     if (typeof block === 'string') {
       block = blocks[block];
     }
@@ -2247,7 +2288,7 @@ namespace P.sb3.compiler {
       return;
     }
 
-    while (block) {
+    while (true) {
       const opcode = block.opcode;
       const compiler = statementLibrary[opcode];
       if (!compiler) {
@@ -2257,6 +2298,10 @@ namespace P.sb3.compiler {
           source += '/*' + opcode + '*/';
         }
         compiler(block);
+      }
+
+      if (!block.next) {
+        break;
       }
       block = blocks[block.next];
     }
@@ -2275,7 +2320,7 @@ namespace P.sb3.compiler {
     // TODO: check type?
     // const type = substack[0];
 
-    const id = substack[1];
+    const id: string = substack[1];
     compile(id);
   }
 
@@ -2296,7 +2341,6 @@ namespace P.sb3.compiler {
   }
 
   function fallbackValue(type?: ExpressionType): string {
-    // TODO: types for fallbacks
     switch (type) {
       case 'string': return '""';
       case 'number': return '0';
@@ -2305,10 +2349,14 @@ namespace P.sb3.compiler {
     return '""';
   }
 
-  // Returns a compiled expression as a JavaScript string.
+  /**
+   * Compiles a Scratch 3 expression or input.
+   *
+   * @param The expression to compile
+   * @param The requested type of the expression
+   * @return The source of the compiled expression with any required type conversions
+   */
   function compileExpression(expression, type?: ExpressionType): string {
-    // Expressions are also known as inputs.
-
     if (!expression) {
       return fallbackValue(type);
     }
@@ -2356,66 +2404,76 @@ namespace P.sb3.compiler {
     return asType(result, type);
   }
 
-  function compileListener(topBlock): string {
-    let block = blocks[topBlock.next];
-    source = '';
-
-    /*
-    block = {
-      "opcode": "category_block",
-      "next": "id_or_null",
-      "parent": "id_or_null",
-      "inputs": {},
-      "fields": {},
-      "shadow": false,
-      "topLevel": false
-    }
-    */
-
+  /**
+   * Compiles a top block listener from the top down.
+   * The resulting source code is in the `source` variable of P.sb3.compiler
+   * @returns {boolean} Successful compiling
+   */
+  function compileListener(topBlock: Block): boolean {
+    // Ignore blocks where we don't recognize the opcode
     const topLevelOpCode = topBlock.opcode;
     if (!(topLevelOpCode in topLevelLibrary)) {
       // Only log warnings if we wouldn't otherwise recognize the block.
-      // Some dangling non-top-level blocks is very common in many projects.
+      // Some dangling non-top-level blocks is very common.
       if (!(topLevelOpCode in expressionLibrary) && !(topLevelOpCode in statementLibrary)) {
         console.warn('unknown top level block', topLevelOpCode, topBlock);
       }
-      return '';
+      return false;
     }
+
+    // We can completely ignore empty listeners (those without any children)
+    if (!topBlock.next) {
+      return false;
+    }
+
+    source = '';
+    const block = blocks[topBlock.next];
 
     compile(block);
 
     // Procedure definitions need special care to properly end calls.
+    // In the future this should be refactored so that things like this are part of the top level library
     if (topLevelOpCode === 'procedures_definition') {
       source += 'endCall(); return\n';
     }
 
-    return source;
+    return true;
   }
 
-  export function compileTarget(target: P.sb3.Target, data) {
+  /**
+   * Compiles a Scratch 3 Target (Sprite/Stage)
+   *
+   * @param target The constructed instance of P.sb3.Target
+   * @param data The raw sb3 data of the target
+   */
+  export function compileTarget(target: P.sb3.Target, data: P.sb3.SB3Target) {
     currentTarget = target;
     blocks = data.blocks;
+
+    // We compile blocks from the top level down to their children, so extract top level blocks
     const topLevelBlocks = Object.keys(data.blocks)
       .map((id) => data.blocks[id])
       .filter((block) => block.topLevel);
 
     for (const block of topLevelBlocks) {
+      // The first function points to the very start at index 0
       fns = [0];
-      const source = compileListener(block);
-      const topOpcode = block.opcode;
 
-      if (!source) {
+      const compilingSuccess = compileListener(block);
+      if (!compilingSuccess) {
         continue;
       }
 
-      const startFn = currentTarget.fns.length;
+      const startFn = target.fns.length;
       for (var i = 0; i < fns.length; i++) {
         target.fns.push(P.utils.createContinuation(source.slice(fns[i])));
       }
-      topLevelLibrary[topOpcode](block, target.fns[startFn]);
+
+      const topLevelHandler = topLevelLibrary[block.opcode];
+      topLevelHandler(block, target.fns[startFn]);
 
       if (P.config.debug) {
-        console.log('compiled listener', block.opcode, source, target);
+        console.log('compiled sb3 script', block.opcode, source, target);
       }
     }
   }

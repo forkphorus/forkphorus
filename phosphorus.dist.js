@@ -4402,9 +4402,13 @@ var P;
 (function (P) {
     var sb3;
     (function (sb3) {
-        // The path to remote assets.
-        // Replace $path with the md5ext of the file
-        sb3.ASSETS_API = 'https://assets.scratch.mit.edu/internalapi/asset/$path/get/';
+        // "Scratch3*" classes implement some part of the Scratch 3 runtime.
+        // "SB3*" interfaces are just types for Scratch 3 projects
+        /**
+         * The path to fetch remote assets from.
+         * Replace $md5ext with the md5sum and the format of the asset. (just use md5ext)
+         */
+        sb3.ASSETS_API = 'https://assets.scratch.mit.edu/internalapi/asset/$md5ext/get/';
         // Implements a Scratch 3 Stage.
         // Adds Scratch 3 specific things such as broadcastReferences
         class Scratch3Stage extends P.core.Stage {
@@ -4756,11 +4760,8 @@ var P;
         sb3.Scratch3List = Scratch3List;
         // Implements base SB3 loading logic.
         // Needs to be extended to add file loading methods.
+        // Implementations are expected to set `this.projectData` to something before calling super.load()
         class BaseSB3Loader {
-            constructor() {
-                // Implementations are expected to set projectData in load() before calling super.load()
-                this.projectData = null;
-            }
             // Loads and returns a costume from its sb3 JSON data
             getImage(path, format) {
                 if (format === 'svg') {
@@ -4779,17 +4780,6 @@ var P;
                 }
             }
             loadCostume(data, index) {
-                /*
-                data = {
-                  "assetId": "b61b1077b0ea1931abee9dbbfa7903ff",
-                  "name": "aaa",
-                  "bitmapResolution": 2,
-                  "md5ext": "b61b1077b0ea1931abee9dbbfa7903ff.png",
-                  "dataFormat": "png",
-                  "rotationCenterX": 480,
-                  "rotationCenterY": 360
-                }
-                */
                 const path = data.assetId + '.' + data.dataFormat;
                 return this.getImage(path, data.dataFormat)
                     .then((image) => new P.core.Costume({
@@ -4809,17 +4799,6 @@ var P;
                 });
             }
             loadSound(data) {
-                /*
-                data = {
-                  "assetId": "83a9787d4cb6f3b7632b4ddfebf74367",
-                  "name": "pop",
-                  "dataFormat": "wav",
-                  "format": "",
-                  "rate": 48000,
-                  "sampleCount": 1124,
-                  "md5ext": "83a9787d4cb6f3b7632b4ddfebf74367.wav"
-                }
-                */
                 return this.getAudioBuffer(data.md5ext)
                     .then((buffer) => new P.core.Sound({
                     name: data.name,
@@ -4827,25 +4806,6 @@ var P;
                 }));
             }
             loadWatcher(data, stage) {
-                /*
-                data = {
-                  "id": "`jEk@4|i[#Fk?(8x)AV.-my variable",
-                  "mode": "default",
-                  "opcode": "data_variable",
-                  "params": {
-                    "VARIABLE": "my variable"
-                  },
-                  "spriteName": null,
-                  "value": 4,
-                  "width": 0,
-                  "height": 0,
-                  "x": 5,
-                  "y": 5,
-                  "visible": true,
-                  "min": 0,
-                  "max": 100
-                }
-                */
                 if (data.mode === 'list') {
                     return new Scratch3ListWatcher(stage, data);
                 }
@@ -4860,7 +4820,7 @@ var P;
                 const lists = {};
                 for (const id of Object.keys(data.lists)) {
                     const list = data.lists[id];
-                    // Use Scratch3List instead of a normal array.
+                    // Use Scratch3List instead of a normal array so we can customize behavior easier
                     lists[id] = new Scratch3List().concat(list[1]);
                 }
                 const broadcasts = {};
@@ -4874,14 +4834,12 @@ var P;
                 const direction = data.direction;
                 const size = data.size;
                 const draggable = data.draggable;
-                var costumes;
-                var sounds;
-                const loadCostumes = Promise.all(data.costumes.map((c, i) => this.loadCostume(c, i)))
-                    .then((c) => costumes = c);
-                const loadSounds = Promise.all(data.sounds.map((c) => this.loadSound(c)))
-                    .then((s) => sounds = s);
-                return Promise.all([loadCostumes, loadSounds])
-                    .then(() => {
+                const costumesPromise = Promise.all(data.costumes.map((c, i) => this.loadCostume(c, i)));
+                const soundsPromise = Promise.all(data.sounds.map((c) => this.loadSound(c)));
+                return Promise.all([costumesPromise, soundsPromise])
+                    .then((result) => {
+                    const costumes = result[0];
+                    const sounds = result[1];
                     // TODO: dirty hack for null stage
                     const target = new (data.isStage ? Scratch3Stage : Scratch3Sprite)(null);
                     target.currentCostumeIndex = data.currentCostume;
@@ -5017,11 +4975,11 @@ var P;
                 }
             }
             getAsText(path) {
-                return P.IO.fetch(sb3.ASSETS_API.replace('$path', path))
+                return P.IO.fetch(sb3.ASSETS_API.replace('$md5ext', path))
                     .then((request) => request.text());
             }
             getAsArrayBuffer(path) {
-                return P.IO.fetch(sb3.ASSETS_API.replace('$path', path))
+                return P.IO.fetch(sb3.ASSETS_API.replace('$md5ext', path))
                     .then((request) => request.arrayBuffer());
             }
             getAsImage(path) {
@@ -5037,7 +4995,7 @@ var P;
                         reject('Failed to load image: ' + image.src);
                     };
                     image.crossOrigin = 'anonymous';
-                    image.src = sb3.ASSETS_API.replace('$path', path);
+                    image.src = sb3.ASSETS_API.replace('$md5ext', path);
                 });
             }
             load() {
@@ -6396,7 +6354,10 @@ var P;
                         return stringExpr('""');
                 }
             }
-            // Compiles a block and adds it to the source. (Does not return source)
+            /**
+             * Compiles a block
+             * The source code is in the source variable (does not return)
+             */
             function compile(block) {
                 if (typeof block === 'string') {
                     block = blocks[block];
@@ -6404,7 +6365,7 @@ var P;
                 if (!block) {
                     return;
                 }
-                while (block) {
+                while (true) {
                     const opcode = block.opcode;
                     const compiler = compiler_1.statementLibrary[opcode];
                     if (!compiler) {
@@ -6415,6 +6376,9 @@ var P;
                             source += '/*' + opcode + '*/';
                         }
                         compiler(block);
+                    }
+                    if (!block.next) {
+                        break;
                     }
                     block = blocks[block.next];
                 }
@@ -6448,7 +6412,6 @@ var P;
                 return script;
             }
             function fallbackValue(type) {
-                // TODO: types for fallbacks
                 switch (type) {
                     case 'string': return '""';
                     case 'number': return '0';
@@ -6456,9 +6419,14 @@ var P;
                 }
                 return '""';
             }
-            // Returns a compiled expression as a JavaScript string.
+            /**
+             * Compiles a Scratch 3 expression or input.
+             *
+             * @param The expression to compile
+             * @param The requested type of the expression
+             * @return The source of the compiled expression with any required type conversions
+             */
             function compileExpression(expression, type) {
-                // Expressions are also known as inputs.
                 if (!expression) {
                     return fallbackValue(type);
                 }
@@ -6498,56 +6466,64 @@ var P;
                 }
                 return asType(result, type);
             }
+            /**
+             * Compiles a top block listener from the top down.
+             * The resulting source code is in the `source` variable of P.sb3.compiler
+             * @returns {boolean} Successful compiling
+             */
             function compileListener(topBlock) {
-                let block = blocks[topBlock.next];
-                source = '';
-                /*
-                block = {
-                  "opcode": "category_block",
-                  "next": "id_or_null",
-                  "parent": "id_or_null",
-                  "inputs": {},
-                  "fields": {},
-                  "shadow": false,
-                  "topLevel": false
-                }
-                */
+                // Ignore blocks where we don't recognize the opcode
                 const topLevelOpCode = topBlock.opcode;
                 if (!(topLevelOpCode in compiler_1.topLevelLibrary)) {
                     // Only log warnings if we wouldn't otherwise recognize the block.
-                    // Some dangling non-top-level blocks is very common in many projects.
+                    // Some dangling non-top-level blocks is very common.
                     if (!(topLevelOpCode in compiler_1.expressionLibrary) && !(topLevelOpCode in compiler_1.statementLibrary)) {
                         console.warn('unknown top level block', topLevelOpCode, topBlock);
                     }
-                    return '';
+                    return false;
                 }
+                // We can completely ignore empty listeners (those without any children)
+                if (!topBlock.next) {
+                    return false;
+                }
+                source = '';
+                const block = blocks[topBlock.next];
                 compile(block);
                 // Procedure definitions need special care to properly end calls.
+                // In the future this should be refactored so that things like this are part of the top level library
                 if (topLevelOpCode === 'procedures_definition') {
                     source += 'endCall(); return\n';
                 }
-                return source;
+                return true;
             }
+            /**
+             * Compiles a Scratch 3 Target (Sprite/Stage)
+             *
+             * @param target The constructed instance of P.sb3.Target
+             * @param data The raw sb3 data of the target
+             */
             function compileTarget(target, data) {
                 currentTarget = target;
                 blocks = data.blocks;
+                // We compile blocks from the top level down to their children, so extract top level blocks
                 const topLevelBlocks = Object.keys(data.blocks)
                     .map((id) => data.blocks[id])
                     .filter((block) => block.topLevel);
                 for (const block of topLevelBlocks) {
+                    // The first function points to the very start at index 0
                     fns = [0];
-                    const source = compileListener(block);
-                    const topOpcode = block.opcode;
-                    if (!source) {
+                    const compilingSuccess = compileListener(block);
+                    if (!compilingSuccess) {
                         continue;
                     }
-                    const startFn = currentTarget.fns.length;
+                    const startFn = target.fns.length;
                     for (var i = 0; i < fns.length; i++) {
                         target.fns.push(P.utils.createContinuation(source.slice(fns[i])));
                     }
-                    compiler_1.topLevelLibrary[topOpcode](block, target.fns[startFn]);
+                    const topLevelHandler = compiler_1.topLevelLibrary[block.opcode];
+                    topLevelHandler(block, target.fns[startFn]);
                     if (P.config.debug) {
-                        console.log('compiled listener', block.opcode, source, target);
+                        console.log('compiled sb3 script', block.opcode, source, target);
                     }
                 }
             }
