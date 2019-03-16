@@ -5383,7 +5383,7 @@ var P;
                 operator_mod(block) {
                     const num1 = block.inputs.NUM1;
                     const num2 = block.inputs.NUM2;
-                    return numberExpr('(' + compileExpression(num1) + ' % ' + compileExpression(num2) + ' || 0)');
+                    return numberExpr('mod(' + compileExpression(num1) + ', ' + compileExpression(num2) + ')');
                 },
                 operator_round(block) {
                     const num = block.inputs.NUM;
