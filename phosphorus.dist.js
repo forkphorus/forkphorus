@@ -5052,8 +5052,9 @@ var P;
             const numberExpr = (src) => new CompiledExpression(src, 'number');
             const stringExpr = (src) => new CompiledExpression(src, 'string');
             const booleanExpr = (src) => new CompiledExpression(src, 'boolean');
-            // Contains top level blocks.
-            const noopExpression = () => 'undefined';
+            /**
+             * Maps opcodes of top level blocks to their handler
+             */
             compiler_1.topLevelLibrary = {
                 // Events
                 event_whenflagclicked(block, f) {
@@ -5074,7 +5075,6 @@ var P;
                     currentTarget.listeners.whenClicked.push(f);
                 },
                 event_whenstageclicked(block, f) {
-                    // same as "when this sprite clicked"
                     currentTarget.listeners.whenClicked.push(f);
                 },
                 event_whenbackdropswitchesto(block, f) {
@@ -5108,7 +5108,10 @@ var P;
                     currentTarget.procedures[name] = procedure;
                 },
             };
-            // Contains expressions.
+            const noopExpression = () => 'undefined';
+            /**
+             * Maps expression opcodes to their handler
+             */
             compiler_1.expressionLibrary = {
                 // Motion
                 motion_goto_menu(block) {
@@ -5437,8 +5440,10 @@ var P;
                 motion_xscroll: noopExpression,
                 motion_yscroll: noopExpression,
             };
-            const noopStatement = () => { source += '/* noop */'; };
-            // Contains statements.
+            const noopStatement = () => { source += '/* noop */\n'; };
+            /**
+             * Maps statement opcodes to their handler
+             */
             compiler_1.statementLibrary = {
                 // Motion
                 motion_movesteps(block) {

@@ -903,9 +903,9 @@ namespace P.sb3.compiler {
     getLabel(watcher: P.sb3.Scratch3VariableWatcher): string;
   }
 
-  // IDs of primative types
+  // IDs of primitive types
   // https://github.com/LLK/scratch-vm/blob/36fe6378db930deb835e7cd342a39c23bb54dd72/src/serialization/sb3.js#L60-L79
-  const enum PrimativeTypes {
+  const enum PrimitiveTypes {
     MATH_NUM = 4,
     POSITIVE_NUM = 5,
     WHOLE_NUM = 6,
@@ -918,8 +918,9 @@ namespace P.sb3.compiler {
     LIST = 13,
   }
 
-  // Contains top level blocks.
-  const noopExpression = () => 'undefined';
+  /**
+   * Maps opcodes of top level blocks to their handler
+   */
   export const topLevelLibrary: ObjectMap<TopLevelCompiler> = {
     // Events
     event_whenflagclicked(block, f) {
@@ -939,7 +940,6 @@ namespace P.sb3.compiler {
       currentTarget.listeners.whenClicked.push(f);
     },
     event_whenstageclicked(block, f) {
-      // same as "when this sprite clicked"
       currentTarget.listeners.whenClicked.push(f);
     },
     event_whenbackdropswitchesto(block, f) {
@@ -978,7 +978,11 @@ namespace P.sb3.compiler {
     },
   };
 
-  // Contains expressions.
+  const noopExpression = () => 'undefined';
+
+  /**
+   * Maps expression opcodes to their handler
+   */
   export const expressionLibrary: ObjectMap<ExpressionCompiler> = {
     // Motion
     motion_goto_menu(block) {
@@ -1321,8 +1325,11 @@ namespace P.sb3.compiler {
     motion_yscroll: noopExpression,
   };
 
-  const noopStatement = () => { source += '/* noop */'};
-  // Contains statements.
+  const noopStatement = () => { source += '/* noop */\n'};
+
+  /**
+   * Maps statement opcodes to their handler
+   */
   export const statementLibrary: ObjectMap<StatementCompiler> = {
     // Motion
     motion_movesteps(block) {
@@ -2237,11 +2244,11 @@ namespace P.sb3.compiler {
 
     switch (type) {
       // These all function as numbers. I believe they are only differentiated so the editor can be more helpful.
-      case PrimativeTypes.MATH_NUM:
-      case PrimativeTypes.POSITIVE_NUM:
-      case PrimativeTypes.WHOLE_NUM:
-      case PrimativeTypes.INTEGER_NUM:
-      case PrimativeTypes.ANGLE_NUM:
+      case PrimitiveTypes.MATH_NUM:
+      case PrimitiveTypes.POSITIVE_NUM:
+      case PrimitiveTypes.WHOLE_NUM:
+      case PrimitiveTypes.INTEGER_NUM:
+      case PrimitiveTypes.ANGLE_NUM:
         // The value might not actually be a number.
         if (!isNaN(parseFloat(constant[1]))) {
           return numberExpr(constant[1]);
@@ -2250,23 +2257,23 @@ namespace P.sb3.compiler {
           return sanitizedExpression(constant[1]);
         }
 
-      case PrimativeTypes.TEXT:
+      case PrimitiveTypes.TEXT:
         return sanitizedExpression(constant[1]);
 
-      case PrimativeTypes.VAR:
+      case PrimitiveTypes.VAR:
         // For variable natives the second item is the name of the variable
         // and the third is the ID of the variable. We only care about the ID.
         return variableReference(constant[2]);
 
-      case PrimativeTypes.LIST:
+      case PrimitiveTypes.LIST:
         // Similar to variable references
         return listReference(constant[2]);
 
-      case PrimativeTypes.BROADCAST:
+      case PrimitiveTypes.BROADCAST:
         // Similar to variable references.
         return compileExpression(constant[2]);
 
-      case PrimativeTypes.COLOR_PICKER:
+      case PrimitiveTypes.COLOR_PICKER:
         // Colors are stored as strings like "#123ABC", so we must do some conversions to use them as numbers.
         return compileColor(constant[1]);
 
