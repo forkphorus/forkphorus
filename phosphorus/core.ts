@@ -344,6 +344,8 @@ namespace P.core {
 
     public runtime: P.runtime.Runtime;
 
+    public counter: number = 0;
+
     public root: HTMLElement;
     public ui: HTMLElement;
     public canvas: HTMLCanvasElement;

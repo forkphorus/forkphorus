@@ -674,6 +674,7 @@ var P;
                 this.mouseY = 0;
                 this.mousePressed = false;
                 this.username = '';
+                this.counter = 0;
                 this._currentCostumeIndex = this.currentCostumeIndex;
                 this.runtime = new P.runtime.Runtime(this);
                 // A dirty hack to create the KeyList interface
@@ -5181,6 +5182,9 @@ var P;
                     const option = block.fields.CLONE_OPTION;
                     return sanitizedExpression(option[0]);
                 },
+                control_get_counter(block) {
+                    return numberExpr('self.counter');
+                },
                 // Sensing
                 sensing_touchingobject(block) {
                     const object = block.inputs.TOUCHINGOBJECTMENU;
@@ -5887,6 +5891,12 @@ var P;
                     source += '  return;\n';
                     source += '}\n';
                 },
+                control_incr_counter(block) {
+                    source += 'self.counter++;\n';
+                },
+                control_clear_counter(block) {
+                    source += 'self.counter = 0;\n';
+                },
                 // Sensing
                 sensing_askandwait(block) {
                     const question = block.inputs.QUESTION;
@@ -5896,7 +5906,7 @@ var P;
                     source += 'if (self.promptId < R.id) {\n';
                     forceQueue(id1);
                     source += '}\n';
-                    source += 'S.ask(' + compileExpression(question) + ');\n';
+                    source += 'S.ask(' + compileExpression(question, 'string') + ');\n';
                     // 2 - wait until the prompt has been answered
                     const id2 = label();
                     source += 'if (self.promptId === R.id) {\n';
@@ -6321,9 +6331,7 @@ var P;
             }
             // Compiles a native expression (number, string, data) to a JavaScript string
             function compileNative(constant) {
-                // Natives are arrays.
-                // The first value is the type of the native, see PrimativeTypes
-                // TODO: use another library instead?
+                // Natives are arrays, where the first value is the type ID. (see PrimitiveTypes)
                 const type = constant[0];
                 switch (type) {
                     // These all function as numbers. I believe they are only differentiated so the editor can be more helpful.

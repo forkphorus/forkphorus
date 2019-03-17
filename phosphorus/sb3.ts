@@ -778,7 +778,7 @@ namespace P.sb3 {
   export class Scratch3Loader extends BaseSB3Loader {
     private projectId: number | null;
 
-    constructor(idOrData) {
+    constructor(idOrData: number | SB3Project) {
       super();
       if (typeof idOrData === 'object') {
         this.projectData = idOrData;
@@ -1052,9 +1052,11 @@ namespace P.sb3.compiler {
       const option = block.fields.CLONE_OPTION;
       return sanitizedExpression(option[0]);
     },
+    control_get_counter(block) {
+      return numberExpr('self.counter');
+    },
 
     // Sensing
-
     sensing_touchingobject(block) {
       const object = block.inputs.TOUCHINGOBJECTMENU;
       return booleanExpr('S.touching(' + compileExpression(object) + ')');
@@ -1777,6 +1779,12 @@ namespace P.sb3.compiler {
       source += '  return;\n';
       source += '}\n';
     },
+    control_incr_counter(block) {
+      source += 'self.counter++;\n';
+    },
+    control_clear_counter(block) {
+      source += 'self.counter = 0;\n';
+    },
 
     // Sensing
     sensing_askandwait(block) {
@@ -1788,7 +1796,7 @@ namespace P.sb3.compiler {
       forceQueue(id1);
       source += '}\n';
 
-      source += 'S.ask(' + compileExpression(question) + ');\n';
+      source += 'S.ask(' + compileExpression(question, 'string') + ');\n';
       // 2 - wait until the prompt has been answered
       const id2 = label();
       source += 'if (self.promptId === R.id) {\n';
@@ -2237,9 +2245,7 @@ namespace P.sb3.compiler {
 
   // Compiles a native expression (number, string, data) to a JavaScript string
   function compileNative(constant): CompiledExpression | string {
-    // Natives are arrays.
-    // The first value is the type of the native, see PrimativeTypes
-    // TODO: use another library instead?
+    // Natives are arrays, where the first value is the type ID. (see PrimitiveTypes)
     const type = constant[0];
 
     switch (type) {
