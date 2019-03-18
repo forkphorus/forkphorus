@@ -2197,19 +2197,38 @@ namespace P.sb3.compiler {
     source += 'restore();\n';
   }
 
-  // Returns the runtime object that contains a variable ID.
+  /**
+   * Determines the runtime object that owns a variable.
+   * If the variable does not exist, it will be created.
+   * @param id The Scratch 3 variable ID
+   */
   function variableScope(id: string) {
     if (id in currentTarget.stage.vars) {
       return 'self';
+    } else if (id in currentTarget.vars) {
+      return 'S';
     } else {
+      // We make sure all variables exist at compile time.
+      // We'll use 0 as a default value because I **think** this is what Scratch 3 does.
+      currentTarget.vars[id] = 0;
       return 'S';
     }
   }
 
+  /**
+   * Determines the runtime object that owns a list.
+   * If the list does not exist, it will be created.
+   * @param id The Scratch 3 list ID
+   */
   function listScope(id: string) {
     if (id in currentTarget.stage.lists) {
       return 'self';
+    } else if (id in currentTarget.lists) {
+      return 'S';
     } else {
+      // We make sure all lists exist at compile time.
+      // Unknown lists become empty lists. This is probably what Scratch 3 does.
+      currentTarget.lists[id] = new Scratch3List();
       return 'S';
     }
   }
