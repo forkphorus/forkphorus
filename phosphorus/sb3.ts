@@ -347,6 +347,8 @@ namespace P.sb3 {
     }
 
     update() {
+      // We're not visible, so no changes would be seen. We'd only be wasting CPU cycles.
+      // If the list was modified, we'll find out after we become visible.
       if (!this.visible) {
         return;
       }
@@ -377,9 +379,9 @@ namespace P.sb3 {
 
       for (var i = 0; i < length; i++) {
         const { row, index, value } = this.domRows[i];
-        const newValue = '' + this.list[i];
-        if (newValue !== value.textContent) {
-          value.textContent = newValue;
+        const rowText = '' + this.list[i];
+        if (rowText !== value.textContent) {
+          value.textContent = rowText;
         }
       }
 

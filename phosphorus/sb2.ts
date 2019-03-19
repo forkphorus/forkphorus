@@ -110,7 +110,7 @@ namespace P.sb2 {
         this.color = '#ee7d16';
       }
 
-      this.isDiscrete = data.isDiscrete || true;
+      this.isDiscrete = data.isDiscrete == null ? true : data.isDiscrete;
       this.label = data.label || '';
       this.mode = data.mode || 1;
       this.param = data.param;
