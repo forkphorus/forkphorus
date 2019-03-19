@@ -4,7 +4,7 @@
   height: 360px;
   font-size: 10px;
   background-color: #fff;
-  color: rgb(87, 94, 117);
+  color: black;
 }
 
 /* Styles for Scratch 3 variable watchers */
@@ -13,6 +13,7 @@
   position: absolute;
   top: 0;
   left: 0;
+  color: rgb(87, 94, 117);
   border: 1px solid rgba(0, 0, 0, 0.15);
   border-radius: 0.25em;
   display: flex;

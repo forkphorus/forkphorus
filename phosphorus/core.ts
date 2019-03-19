@@ -12,14 +12,14 @@ namespace P.core {
   const secondaryCollisionRenderer = new P.renderer.SpriteRenderer(secondaryCollisionCanvas);
 
   interface RotatedBounds {
-    // A----------B
+    // A----------+
     // |          |
     // |          |
-    // C----------D
-    // Where top is the scratchY of A or B,
-    // bottom is the scratchY of C or D,
-    // left is the scratchX of B or D,
-    // and right is the scratchX of A or C
+    // +----------B
+    // Where top is the scratchY of A,
+    // bottom is the scratchY of B,
+    // left is the scratchX of A,
+    // and right is the scratchX of B
 
     top: number;
     bottom: number;
@@ -68,7 +68,6 @@ namespace P.core {
      * The stage this object belongs to.
      */
     public stage: Stage;
-
     /**
      * Is this a stage?
      */
@@ -81,10 +80,10 @@ namespace P.core {
      * Was this Sprite created as a clone of another?
      */
     public isClone: boolean = false;
-
-    // Is this sprite visible?
+    /**
+     * Is this object visible?
+     */
     public visible: boolean = true;
-
     /**
      * The sprite's X coordinate on the Scratch grid.
      */
@@ -93,36 +92,72 @@ namespace P.core {
      * The sprite's Y coordinate on the Scratch grid.
      */
     public scratchY: number = 0;
-
     /**
      * The name of this object.
      */
     public name: string = '';
-    // The costumes of the object.
+    /**
+     * Costumes that belong to this object.
+     */
     public costumes: Costume[] = [];
-    // The index of the currently selected costume.
+    /**
+     * The index of the currently selected costume in its costume list.
+     */
     public currentCostumeIndex: number = 0;
-    // The sounds of the objects.
+    /**
+     * Sounds that belong to this object.
+     */
     public sounds: Sound[] = [];
-    // Map of sound name to the Sound object. TODO: remove?
+    /**
+     * Maps the names of sounds to the corresponding Sound
+     */
     public soundRefs: ObjectMap<Sound> = {};
-    // Current instrument
+    /**
+     * Currently selected instrument
+     */
     public instrument: number = 0;
-    // Current volume, from 0-1
+    /**
+     * The volume of this object, with 1 being 100%
+     */
     public volume: number = 1;
-    // This object's audio node.
+    /**
+     * The audio node that this object outputs to.
+     */
     public node: GainNode | null;
-    // The rotation style of the object.
-    public rotationStyle: RotationStyle = RotationStyle.Normal;
-    // Variables of the object.
-    public vars: ObjectMap<any> = {};
-    // Variable watchers of the object.
+    /**
+     * Maps names (or ids) of variables or lists to their Watcher, if any.
+     */
     public watchers: ObjectMap<Watcher> = {};
-    // Lists of the object.
+    /**
+     * Variables of this object.
+     * Maps variable names (or ids) to their value.
+     * Values can be of any type and should likely be converted first.
+     */
+    public vars: ObjectMap<any> = {};
+    /**
+     * Lists of this object.
+     * Maps list names (or ids) to their list.
+     * Each list can contain objects of any type, and should be converted first.
+     */
     public lists: ObjectMap<Array<any>> = {};
-    // Is this object saying something?
+    /**
+     * Is this object saying something?
+     */
     public saying: boolean = false;
-    // Procedures of the object.
+    /**
+     * Should this object's speach bubble be a thinking bubble instead?
+     */
+    public thinking: boolean = false;
+    /**
+     * The ID of the last thing said.
+     */
+    public sayId: number = 0;
+    public bubbleContainer: HTMLElement;
+    public bubblePointer: HTMLElement;
+    public bubbleText: Text;
+    /**
+     * Maps procedure names (usually includes parameters) to the Procedure object
+     */
     public procedures: ObjectMap<Procedure> = {};
     public listeners: Listeners = {
       whenClicked: [],
@@ -143,7 +178,6 @@ namespace P.core {
       brightness: 0,
       ghost: 0,
     };
-
     constructor() {
       for (var i = 0; i < 128; i++) {
         this.listeners.whenKeyPressed.push([]);
@@ -267,6 +301,9 @@ namespace P.core {
       }
     }
 
+    /**
+     * Stops all sounds in this object. Does not include children.
+     */
     stopSounds() {
       if (this.node) {
         this.node.disconnect();
@@ -281,7 +318,7 @@ namespace P.core {
       }
     }
 
-    ask(question) {
+    ask(question: string) {
       var stage = this.stage;
       if (question) {
         if (this.visible && isSprite(this)) {
@@ -300,8 +337,118 @@ namespace P.core {
       stage.prompt.focus();
     }
 
+    /**
+     * Makes this object say some text.
+     * @param text The text to say
+     * @param thinking If the text box should be in the thinking style or just speaking
+     * @returns A unique ID for this bubble
+     */
+    say(text: string, thinking: boolean = false): number {
+      text = text.toString();
+
+      // Empty strings disable saying anything.
+      if (text.length === 0) {
+        this.saying = false;
+        if (this.bubbleContainer) this.bubbleContainer.style.display = 'none';
+        return ++this.sayId;
+      }
+
+      this.saying = true;
+      this.thinking = thinking;
+      if (!this.bubbleContainer) {
+        this.bubbleContainer = document.createElement('div');
+        this.bubbleContainer.style.maxWidth = (127/14)+'em';
+        this.bubbleContainer.style.minWidth = (48/14)+'em';
+        this.bubbleContainer.style.padding = (8/14)+'em '+(10/14)+'em';
+        this.bubbleContainer.style.border = (3/14)+'em solid rgb(160, 160, 160)';
+        this.bubbleContainer.style.borderRadius = (10/14)+'em';
+        this.bubbleContainer.style.background = '#fff';
+        this.bubbleContainer.style.position = 'absolute';
+        this.bubbleContainer.style.font = 'bold 1.4em sans-serif';
+        this.bubbleContainer.style.whiteSpace = 'pre-wrap';
+        this.bubbleContainer.style.wordWrap = 'break-word';
+        this.bubbleContainer.style.textAlign = 'center';
+        this.bubbleContainer.style.cursor = 'default';
+        this.bubbleContainer.style.pointerEvents = 'auto';
+        this.bubbleContainer.appendChild(this.bubbleText = document.createTextNode(''));
+        this.bubbleContainer.appendChild(this.bubblePointer = document.createElement('div'));
+        this.bubblePointer.style.position = 'absolute';
+        this.bubblePointer.style.height = (21 / 14) + 'em';
+        this.bubblePointer.style.width = (44 / 14) + 'em';
+        this.bubblePointer.style.background = 'url("icons.svg")';
+        this.bubblePointer.style.backgroundSize = (384/14) + 'em ' + (64/14) + 'em';
+        this.bubblePointer.style.backgroundPositionY = (-4/14) + 'em';
+        this.stage.ui.appendChild(this.bubbleContainer);
+      }
+      this.bubblePointer.style.backgroundPositionX = (thinking ? -323 : -259) / 14 + 'em';
+      this.bubbleContainer.style.display = 'block';
+      this.bubbleText.nodeValue = text;
+      this.updateBubble();
+      return ++this.sayId;
+    }
+
+    /**
+     * Updates the position of the speech bubble, or hides it.
+     */
+    updateBubble() {
+      if (!this.visible || !this.saying) {
+        this.bubbleContainer.style.display = 'none';
+        return;
+      }
+
+      const b = this.rotatedBounds();
+      const left = 240 + b.right;
+      var bottom = 180 + b.top;
+      const width = this.bubbleContainer.offsetWidth / this.stage.zoom;
+      const height = this.bubbleContainer.offsetHeight / this.stage.zoom;
+      this.bubblePointer.style.top = ((height - 6) / 14) + 'em';
+      if (left + width + 2 > 480) {
+        this.bubbleContainer.style.right = ((240 - b.left) / 14) + 'em';
+        this.bubbleContainer.style.left = 'auto';
+        this.bubblePointer.style.right = (3/14)+'em';
+        this.bubblePointer.style.left = 'auto';
+        this.bubblePointer.style.backgroundPositionY = (-36/14)+'em';
+      } else {
+        this.bubbleContainer.style.left = (left / 14) + 'em';
+        this.bubbleContainer.style.right = 'auto';
+        this.bubblePointer.style.left = (3/14)+'em';
+        this.bubblePointer.style.right = 'auto';
+        this.bubblePointer.style.backgroundPositionY = (-4/14)+'em';
+      }
+      if (bottom + height + 2 > 360) {
+        bottom = 360 - height - 2;
+      }
+      if (bottom < 19) {
+        bottom = 19;
+      }
+      this.bubbleContainer.style.bottom = (bottom / 14) + 'em';
+    }
+
+    /**
+     * Tells this object to cleanup some of the things it may have created.
+     */
+    remove() {
+      if (this.bubbleContainer) {
+        this.stage.ui.removeChild(this.bubbleContainer);
+        // I don't think doing this is necessary.
+        delete this.bubbleContainer;
+      }
+      if (this.node) {
+        this.node.disconnect();
+        this.node = null;
+      }
+    }
+
+    /**
+     * Gets the rectangular bounds that contain this sprite in its entirety.
+     */
     abstract rotatedBounds(): RotatedBounds;
 
+    /**
+     * Create a Watcher for a variable.
+     * @param target The sprite that will own the watcher
+     * @param variableName The name (or id) of the variable to monitor
+     */
     abstract createVariableWatcher(target: Base, variableName: string): Watcher | null;
   }
 
@@ -879,6 +1026,10 @@ namespace P.core {
      */
     public direction: number = 90;
     /**
+     * How this object rotates.
+     */
+    public rotationStyle: RotationStyle = RotationStyle.Normal;
+    /**
      * Can this Sprite be dragged?
      */
     public isDraggable: boolean = false;
@@ -886,6 +1037,10 @@ namespace P.core {
      * Is this Sprite currently being dragged?
      */
     public isDragging: boolean = false;
+    /**
+     * This sprite's size, with 1 being 100% (normal size)
+     * Sprites are scaled from their costume's center
+     */
     public scale: number = 1;
 
     // Pen data
@@ -897,13 +1052,7 @@ namespace P.core {
     public penColor: number = 0x000000;
     public isPenDown: boolean = false;
 
-    // Related to text bubbles
-    public bubble: HTMLElement;
-    public thinking: boolean = false;
-    public sayId: number = 0;
-    public bubblePointer: HTMLElement;
-    public bubbleText: Text;
-
+    // It's related to dragging sprites.
     public dragStartX: number = 0;
     public dragStartY: number = 0;
     public dragOffsetX: number = 0;
@@ -923,6 +1072,7 @@ namespace P.core {
     }
 
     mouseUp() {
+      // We consider a sprite to be clicked if it has been dragged to the same start & end points
       if (this.isDragging && this.scratchX === this.dragStartX && this.scratchY === this.dragStartY) {
         this.stage.runtime.triggerFor(this, 'whenClicked');
       }
@@ -995,6 +1145,7 @@ namespace P.core {
     // Implementing Scratch blocks
 
     createVariableWatcher(target: P.core.Base, variableName: string) {
+      // Asking our parent to handle it is easier.
       return this.stage.createVariableWatcher(target, variableName);
     }
 
@@ -1116,7 +1267,7 @@ namespace P.core {
     }
 
     // Must return a new instance of this Sprite's constructor. Data copying will be handled in clone()
-    abstract _clone(): P.core.Sprite;
+    protected abstract _clone(): P.core.Sprite;
 
     // Determines if the sprite is touching an object.
     // thing is the name of the object, '_mouse_', or '_edge_'
@@ -1337,49 +1488,6 @@ namespace P.core {
       if (this.saying) this.updateBubble();
     }
 
-    // Says some text.
-    say(text: string, thinking: boolean = false) {
-      text = text.toString();
-      if (!text) {
-        this.saying = false;
-        if (!this.bubble) return;
-        this.bubble.style.display = 'none';
-        return ++this.sayId;
-      }
-      this.saying = true;
-      this.thinking = thinking;
-      if (!this.bubble) {
-        this.bubble = document.createElement('div');
-        this.bubble.style.maxWidth = ''+(127/14)+'em';
-        this.bubble.style.minWidth = ''+(48/14)+'em';
-        this.bubble.style.padding = ''+(8/14)+'em '+(10/14)+'em';
-        this.bubble.style.border = ''+(3/14)+'em solid rgb(160, 160, 160)';
-        this.bubble.style.borderRadius = ''+(10/14)+'em';
-        this.bubble.style.background = '#fff';
-        this.bubble.style.position = 'absolute';
-        this.bubble.style.font = 'bold 1.4em sans-serif';
-        this.bubble.style.whiteSpace = 'pre-wrap';
-        this.bubble.style.wordWrap = 'break-word';
-        this.bubble.style.textAlign = 'center';
-        this.bubble.style.cursor = 'default';
-        this.bubble.style.pointerEvents = 'auto';
-        this.bubble.appendChild(this.bubbleText = document.createTextNode(''));
-        this.bubble.appendChild(this.bubblePointer = document.createElement('div'));
-        this.bubblePointer.style.position = 'absolute';
-        this.bubblePointer.style.height = (21 / 14) + 'em';
-        this.bubblePointer.style.width = (44 / 14) + 'em';
-        this.bubblePointer.style.background = 'url("icons.svg")';
-        this.bubblePointer.style.backgroundSize = (384/14) + 'em ' + (64/14) + 'em';
-        this.bubblePointer.style.backgroundPositionY = (-4/14) + 'em';
-        this.stage.ui.appendChild(this.bubble);
-      }
-      this.bubblePointer.style.backgroundPositionX = (thinking ? -323 : -259) / 14 + 'em';
-      this.bubble.style.display = 'block';
-      this.bubbleText.nodeValue = text;
-      this.updateBubble();
-      return ++this.sayId;
-    }
-
     // Sets the RGB color of the pen.
     setPenColor(color: number) {
       this.penColor = color;
@@ -1440,52 +1548,6 @@ namespace P.core {
           }
           this.penSaturation = 100;
           break;
-      }
-    }
-
-    // Updates the text bubble.
-    updateBubble() {
-      if (!this.visible || !this.saying) {
-        this.bubble.style.display = 'none';
-        return;
-      }
-      var b = this.rotatedBounds();
-      var left = 240 + b.right;
-      var bottom = 180 + b.top;
-      var width = this.bubble.offsetWidth / this.stage.zoom;
-      var height = this.bubble.offsetHeight / this.stage.zoom;
-      this.bubblePointer.style.top = ((height - 6) / 14) + 'em';
-      if (left + width + 2 > 480) {
-        this.bubble.style.right = ((240 - b.left) / 14) + 'em';
-        this.bubble.style.left = 'auto';
-        this.bubblePointer.style.right = (3/14)+'em';
-        this.bubblePointer.style.left = 'auto';
-        this.bubblePointer.style.backgroundPositionY = (-36/14)+'em';
-      } else {
-        this.bubble.style.left = (left / 14) + 'em';
-        this.bubble.style.right = 'auto';
-        this.bubblePointer.style.left = (3/14)+'em';
-        this.bubblePointer.style.right = 'auto';
-        this.bubblePointer.style.backgroundPositionY = (-4/14)+'em';
-      }
-      if (bottom + height + 2 > 360) {
-        bottom = 360 - height - 2;
-      }
-      if (bottom < 19) {
-        bottom = 19;
-      }
-      this.bubble.style.bottom = (bottom / 14) + 'em';
-    }
-
-    // Deletes the Sprite
-    remove() {
-      if (this.bubble) {
-        this.stage.ui.removeChild(this.bubble);
-        delete this.bubble;
-      }
-      if (this.node) {
-        this.node.disconnect();
-        delete this.bubble;
       }
     }
   }
@@ -1607,7 +1669,8 @@ namespace P.core {
   }
 
   /**
-   * Determines if an object is a sprite.
+   * Determines if an object is a sprite
+   * Can be used to ease type assertions.
    */
   export function isSprite(base: P.core.Base): base is P.core.Sprite {
     return base.isSprite;

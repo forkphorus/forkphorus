@@ -334,6 +334,8 @@ namespace P.sb2 {
   }
 
   export class Scratch2Stage extends P.core.Stage {
+    // Used to tell the compiler what scripts this sprite uses.
+    // TODO: should the compiler delete after use?
     public scripts: any;
 
     private dragging: any = {};
@@ -361,6 +363,12 @@ namespace P.sb2 {
         x,
         y,
       });
+    }
+
+    say(text: string, thinking?: boolean) {
+      // The stage cannot say things in Scratch 2.
+      if (this.isStage) return ++this.sayId;
+      return super.say(text, thinking);
     }
 
     watcherStart(id, t, e) {
