@@ -4706,6 +4706,10 @@ var P;
             }
             init() {
                 super.init();
+                if (!(this.id in this.target.lists)) {
+                    // We'll create it then.
+                    this.target.lists[this.id] = new Scratch3List();
+                }
                 this.list = this.target.lists[this.id];
                 this.target.watchers[this.id] = this;
                 this.updateLayout();
@@ -5109,7 +5113,7 @@ var P;
             let currentTarget;
             // The blocks of the target.
             let blocks;
-            // Points to the position of functions within the source.
+            // Points to the position of functions (by string index) within the compiled source.
             let fns;
             /*
             In Scratch 3 all blocks have a unique identifier.
@@ -5182,7 +5186,7 @@ var P;
                     const customBlockId = block.inputs.custom_block[1];
                     const mutation = blocks[customBlockId].mutation;
                     const name = mutation.proccode;
-                    // Warp is either a boolean or a string representation of that boolean.
+                    // Warp is either a boolean or a string representation of that boolean for some reason.
                     const warp = typeof mutation.warp === 'string' ? mutation.warp === 'true' : mutation.warp;
                     // It's a stringified JSON array.
                     const argumentNames = JSON.parse(mutation.argumentnames);
@@ -5190,6 +5194,8 @@ var P;
                     currentTarget.procedures[name] = procedure;
                 },
             };
+            // A noop compiles to undefined (the javascript primitive) in Scratch 3.
+            // When used as a string, it becomes "undefined", and becomes 0 when used as a number.
             const noopExpression = () => 'undefined';
             /**
              * Maps expression opcodes to their handler
@@ -6283,15 +6289,16 @@ var P;
             ///
             /// Helpers
             ///
-            // Adds JS to update the speech bubble if necessary
+            /**
+             * Adds JS to update the speech bubble if necessary
+             */
             function updateBubble() {
                 source += 'if (S.saying) S.updateBubble();\n';
             }
-            // Adds JS to enable the VISUAL flag when necessary.
-            // `variant` can be:
-            // 'drawing' will enable it if the sprite is visible or the pen is down (if the sprite is drawing something)
-            // 'visible' will enable it if the sprite is visible
-            // 'always' will always enable it
+            /**
+             * Adds JS to enable the VISUAL runtime flag when necessary
+             * @param variant 'drawing', 'visible', or 'always'
+             */
             function visualCheck(variant) {
                 if (P.config.debug) {
                     source += '/*visual:' + variant + '*/';

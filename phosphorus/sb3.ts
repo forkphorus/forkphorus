@@ -401,6 +401,11 @@ namespace P.sb3 {
 
     init() {
       super.init();
+      if (!(this.id in this.target.lists)) {
+        // Create the list if it doesn't exist.
+        // It might be better to mark ourselves as invalid instead, but this works just fine.
+        this.target.lists[this.id] = new Scratch3List();
+      }
       this.list = this.target.lists[this.id] as Scratch3List;
       this.target.watchers[this.id] = this;
       this.updateLayout();
@@ -846,9 +851,10 @@ namespace P.sb3.compiler {
   let currentTarget: P.sb3.Target;
   // The blocks of the target.
   let blocks: ObjectMap<Block>;
-  // Points to the position of functions within the source.
+  // Points to the position of functions (by string index) within the compiled source.
   let fns: number[];
 
+  // Alias Block so you don't have you type as much
   import Block = P.sb3.SB3Block;
 
   /*
@@ -888,10 +894,16 @@ namespace P.sb3.compiler {
   const stringExpr = (src: string) => new CompiledExpression(src, 'string');
   const booleanExpr = (src: string) => new CompiledExpression(src, 'boolean');
 
+  // All possible types you can compile an expression into.
   type ExpressionType = 'string' | 'boolean' | 'number';
+
+  // Compiler for a top level block
   export type TopLevelCompiler = (block: Block, f: P.runtime.Fn) => void;
+  // Compiler for an expression
   export type ExpressionCompiler = (block: Block) => string | CompiledExpression;
+  // Compiler for a statement
   export type StatementCompiler = (block: Block) => void;
+  // Compiler/handler for a watcher
   export interface WatchedValue {
     /**
      * Initializes the watcher.
@@ -976,7 +988,7 @@ namespace P.sb3.compiler {
       const mutation = blocks[customBlockId].mutation;
 
       const name = mutation.proccode;
-      // Warp is either a boolean or a string representation of that boolean.
+      // Warp is either a boolean or a string representation of that boolean for some reason.
       const warp = typeof mutation.warp === 'string' ? mutation.warp === 'true' : mutation.warp;
       // It's a stringified JSON array.
       const argumentNames = JSON.parse(mutation.argumentnames);
@@ -986,6 +998,8 @@ namespace P.sb3.compiler {
     },
   };
 
+  // A noop compiles to undefined (the javascript primitive) in Scratch 3.
+  // When used as a string, it becomes "undefined", and becomes 0 when used as a number.
   const noopExpression = () => 'undefined';
 
   /**
@@ -2118,16 +2132,17 @@ namespace P.sb3.compiler {
   /// Helpers
   ///
 
-  // Adds JS to update the speech bubble if necessary
+  /**
+   * Adds JS to update the speech bubble if necessary
+   */
   function updateBubble() {
     source += 'if (S.saying) S.updateBubble();\n';
   }
 
-  // Adds JS to enable the VISUAL flag when necessary.
-  // `variant` can be:
-  // 'drawing' will enable it if the sprite is visible or the pen is down (if the sprite is drawing something)
-  // 'visible' will enable it if the sprite is visible
-  // 'always' will always enable it
+  /**
+   * Adds JS to enable the VISUAL runtime flag when necessary
+   * @param variant 'drawing', 'visible', or 'always'
+   */
   function visualCheck(variant: 'drawing' | 'visible' | 'always') {
     if (P.config.debug) {
       source += '/*visual:' + variant + '*/';
