@@ -7,9 +7,9 @@
 namespace P.core {
   // Used for collision testing
   const collisionCanvas = document.createElement('canvas');
-  const collisionRenderer = new P.renderer.SpriteRenderer(collisionCanvas);
+  const collisionRenderer = new P.renderer.SpriteRenderer2D(collisionCanvas);
   const secondaryCollisionCanvas = document.createElement('canvas');
-  const secondaryCollisionRenderer = new P.renderer.SpriteRenderer(secondaryCollisionCanvas);
+  const secondaryCollisionRenderer = new P.renderer.SpriteRenderer2D(secondaryCollisionCanvas);
 
   interface RotatedBounds {
     // A----------+
@@ -440,6 +440,13 @@ namespace P.core {
     }
 
     /**
+     * Determines the value of a variable from its name.
+     * Please use .vars instead for most use cases.
+     * @param name The name of the variable, as displayed in the Scratch interface.
+     */
+    abstract lookupVariable(name: string): any;
+
+    /**
      * Gets the rectangular bounds that contain this sprite in its entirety.
      */
     abstract rotatedBounds(): RotatedBounds;
@@ -495,12 +502,16 @@ namespace P.core {
 
     public root: HTMLElement;
     public ui: HTMLElement;
+
     public canvas: HTMLCanvasElement;
-    public renderer: P.renderer.SpriteRenderer;
+    public renderer: P.renderer.Renderer;
+
     public backdropCanvas: HTMLCanvasElement;
     public backdropRenderer: P.renderer.StageRenderer;
+
     public penCanvas: HTMLCanvasElement;
-    public penRenderer: P.renderer.SpriteRenderer;
+    public penRenderer: P.renderer.SpriteRenderer2D;
+
     public prompt: HTMLInputElement;
     public prompter: HTMLElement;
     public promptTitle: HTMLElement;
@@ -535,13 +546,13 @@ namespace P.core {
       this.root.appendChild(this.penCanvas);
       this.penCanvas.width = scale * 480;
       this.penCanvas.height = scale * 360;
-      this.penRenderer = new P.renderer.SpriteRenderer(this.penCanvas);
+      this.penRenderer = new P.renderer.SpriteRenderer2D(this.penCanvas);
       this.penRenderer.ctx.lineCap = 'round';
       this.penRenderer.ctx.scale(scale, scale);
 
       this.canvas = document.createElement('canvas');
       this.root.appendChild(this.canvas);
-      this.renderer = new P.renderer.SpriteRenderer(this.canvas);
+      this.renderer = new P.renderer.SpriteRenderer2D(this.canvas);
 
       this.ui = document.createElement('div');
       this.root.appendChild(this.ui);
@@ -926,7 +937,7 @@ namespace P.core {
      * Draws all the children (not including the Stage itself or pen layers) of this Stage on a renderer
      * @param skip Optionally skip rendering of a single Sprite.
      */
-    drawChildren(renderer: P.renderer.SpriteRenderer, skip?: Sprite) {
+    drawChildren(renderer: P.renderer.Renderer, skip?: Sprite) {
       for (var i = 0; i < this.children.length; i++) {
         const c = this.children[i];
         if (c.isDragging) {
@@ -943,7 +954,7 @@ namespace P.core {
      * Draws all parts of the Stage (including the stage itself and pen layers) on a renderer.
      * @param skip Optionally skip rendering of a single Sprite.
      */
-    drawAll(renderer: P.renderer.SpriteRenderer, skip?: Sprite) {
+    drawAll(renderer: P.renderer.Renderer, skip?: Sprite) {
       renderer.drawChild(this);
       renderer.drawImage(this.penCanvas, 0, 0);
       this.drawChildren(renderer, skip);
@@ -953,7 +964,7 @@ namespace P.core {
      * Determines the internal ID for a broadcast.
      * @param name The name of the broadcast. It's what you see in the Scratch editor.
      */
-    abstract getBroadcastId(name: string): string;
+    abstract lookupBroadcast(name: string): string;
 
     // Implement rotatedBounds() to return something.
     rotatedBounds() {

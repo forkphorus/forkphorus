@@ -342,9 +342,13 @@ namespace P.sb2 {
     private defaultWatcherX = 10;
     private defaultWatcherY = 10;
 
-    getBroadcastId(name: string) {
+    lookupBroadcast(name: string) {
       // Scratch 2 uses names as IDs.
       return name;
+    }
+
+    lookupVariable(name: string) {
+      return this.vars[name];
     }
 
     createVariableWatcher(target: P.core.Base, variableName: string) {
@@ -366,9 +370,12 @@ namespace P.sb2 {
     }
 
     say(text: string, thinking?: boolean) {
-      // The stage cannot say things in Scratch 2.
-      if (this.isStage) return ++this.sayId;
-      return super.say(text, thinking);
+      // Stage cannot say things in Scratch 2.
+      return ++this.sayId;
+    }
+
+    updateBubble() {
+      // Stage ecannot say things in Scratch 2.
     }
 
     watcherStart(id, t, e) {
@@ -419,6 +426,10 @@ namespace P.sb2 {
 
   export class Scratch2Sprite extends P.core.Sprite {
     public scripts: any;
+
+    lookupVariable(name: string): string {
+      return this.vars[name];
+    }
 
     _clone() {
       return new Scratch2Sprite(this.stage);

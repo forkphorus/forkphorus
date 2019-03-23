@@ -290,7 +290,8 @@ namespace P.runtime {
   };
 
   var attribute = function(attr, objName) {
-    var o = self.getObject(objName);
+    // https://github.com/LLK/scratch-vm/blob/e236d29ff5e03f7c4d77a614751da860521771fd/src/blocks/scratch3_sensing.js#L280
+    const o = self.getObject(objName);
     if (!o) return 0;
     if (P.core.isSprite(o)) {
       switch (attr) {
@@ -300,17 +301,17 @@ namespace P.runtime {
         case 'costume #': return o.currentCostumeIndex + 1;
         case 'costume name': return o.costumes[o.currentCostumeIndex].name;
         case 'size': return o.scale * 100;
-        case 'volume': return 0; // TODO
+        case 'volume': return o.volume * 100;
       }
     } else {
       switch (attr) {
         case 'background #':
         case 'backdrop #': return o.currentCostumeIndex + 1;
         case 'backdrop name': return o.costumes[o.currentCostumeIndex].name;
-        case 'volume': return 0; // TODO
+        case 'volume': return o.volume * 100;
       }
     }
-    var value = o.vars[attr];
+    const value = o.lookupVariable(attr);
     if (value !== undefined) {
       return value;
     }
@@ -489,7 +490,7 @@ namespace P.runtime {
   }
 
   var broadcast = function(name) {
-    return runtime.trigger('whenIReceive', self.getBroadcastId(name));
+    return runtime.trigger('whenIReceive', self.lookupBroadcast(name));
   };
 
   var running = function(bases) {

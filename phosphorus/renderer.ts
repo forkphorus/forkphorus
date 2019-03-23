@@ -20,15 +20,18 @@ namespace P.renderer {
     return filter;
   }
 
-  export class Renderer {
+  export interface Renderer {
+    reset(scale: number): void;
+    drawChild(child: P.core.Base): void;
+    drawImage(image: HTMLImageElement | HTMLCanvasElement, x: number, y: number): void;
+  }
+
+  export abstract class Base2DRenderer implements Renderer {
     public ctx: CanvasRenderingContext2D;
     public canvas: HTMLCanvasElement;
 
     constructor(canvas: HTMLCanvasElement) {
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        throw new Error('Cannot get 2d rendering context');
-      }
+      const ctx = canvas.getContext('2d')!;
       this.ctx = ctx;
       this.canvas = canvas;
     }
@@ -46,12 +49,14 @@ namespace P.renderer {
     drawImage(image: CanvasImageSource, x: number, y: number) {
       this.ctx.drawImage(image, x, y);
     }
+
+    abstract drawChild(child: P.core.Base): void;
   }
 
   /**
    * A renderer for drawing sprites (or stages)
    */
-  export class SpriteRenderer extends Renderer {
+  export class SpriteRenderer2D extends Base2DRenderer {
     public noEffects: boolean = false;
 
     drawChild(c: P.core.Base) {
@@ -96,7 +101,7 @@ namespace P.renderer {
   /**
    * A renderer specifically for the backdrop of a Stage.
    */
-  export class StageRenderer extends SpriteRenderer {
+  export class StageRenderer extends SpriteRenderer2D {
     constructor(canvas: HTMLCanvasElement, private stage: P.core.Stage) {
       super(canvas);
       // We handle effects in other ways, so forcibly disable SpriteRenderer's filters

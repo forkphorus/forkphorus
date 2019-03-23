@@ -205,12 +205,9 @@ var P;
             }
             return filter;
         }
-        class Renderer {
+        class Base2DRenderer {
             constructor(canvas) {
                 const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                    throw new Error('Cannot get 2d rendering context');
-                }
                 this.ctx = ctx;
                 this.canvas = canvas;
             }
@@ -227,11 +224,11 @@ var P;
                 this.ctx.drawImage(image, x, y);
             }
         }
-        renderer.Renderer = Renderer;
+        renderer.Base2DRenderer = Base2DRenderer;
         /**
          * A renderer for drawing sprites (or stages)
          */
-        class SpriteRenderer extends Renderer {
+        class SpriteRenderer2D extends Base2DRenderer {
             constructor() {
                 super(...arguments);
                 this.noEffects = false;
@@ -268,11 +265,11 @@ var P;
                 this.ctx.restore();
             }
         }
-        renderer.SpriteRenderer = SpriteRenderer;
+        renderer.SpriteRenderer2D = SpriteRenderer2D;
         /**
          * A renderer specifically for the backdrop of a Stage.
          */
-        class StageRenderer extends SpriteRenderer {
+        class StageRenderer extends SpriteRenderer2D {
             constructor(canvas, stage) {
                 super(canvas);
                 this.stage = stage;
@@ -308,9 +305,9 @@ var P;
     (function (core) {
         // Used for collision testing
         const collisionCanvas = document.createElement('canvas');
-        const collisionRenderer = new P.renderer.SpriteRenderer(collisionCanvas);
+        const collisionRenderer = new P.renderer.SpriteRenderer2D(collisionCanvas);
         const secondaryCollisionCanvas = document.createElement('canvas');
-        const secondaryCollisionRenderer = new P.renderer.SpriteRenderer(secondaryCollisionCanvas);
+        const secondaryCollisionRenderer = new P.renderer.SpriteRenderer2D(secondaryCollisionCanvas);
         class Base {
             constructor() {
                 /**
@@ -717,12 +714,12 @@ var P;
                 this.root.appendChild(this.penCanvas);
                 this.penCanvas.width = scale * 480;
                 this.penCanvas.height = scale * 360;
-                this.penRenderer = new P.renderer.SpriteRenderer(this.penCanvas);
+                this.penRenderer = new P.renderer.SpriteRenderer2D(this.penCanvas);
                 this.penRenderer.ctx.lineCap = 'round';
                 this.penRenderer.ctx.scale(scale, scale);
                 this.canvas = document.createElement('canvas');
                 this.root.appendChild(this.canvas);
-                this.renderer = new P.renderer.SpriteRenderer(this.canvas);
+                this.renderer = new P.renderer.SpriteRenderer2D(this.canvas);
                 this.ui = document.createElement('div');
                 this.root.appendChild(this.ui);
                 this.ui.style.pointerEvents = 'none';
@@ -2299,9 +2296,12 @@ var P;
                 this.defaultWatcherX = 10;
                 this.defaultWatcherY = 10;
             }
-            getBroadcastId(name) {
+            lookupBroadcast(name) {
                 // Scratch 2 uses names as IDs.
                 return name;
+            }
+            lookupVariable(name) {
+                return this.vars[name];
             }
             createVariableWatcher(target, variableName) {
                 const x = this.defaultWatcherX;
@@ -2319,10 +2319,11 @@ var P;
                 });
             }
             say(text, thinking) {
-                // The stage cannot say things in Scratch 2.
-                if (this.isStage)
-                    return ++this.sayId;
-                return super.say(text, thinking);
+                // Stage cannot say things in Scratch 2.
+                return ++this.sayId;
+            }
+            updateBubble() {
+                // Stage ecannot say things in Scratch 2.
             }
             watcherStart(id, t, e) {
                 var p = e.target;
@@ -2373,6 +2374,9 @@ var P;
         }
         sb2.Scratch2Stage = Scratch2Stage;
         class Scratch2Sprite extends P.core.Sprite {
+            lookupVariable(name) {
+                return this.vars[name];
+            }
             _clone() {
                 return new Scratch2Sprite(this.stage);
             }
@@ -3914,7 +3918,8 @@ var P;
             return 0;
         };
         var attribute = function (attr, objName) {
-            var o = self.getObject(objName);
+            // https://github.com/LLK/scratch-vm/blob/e236d29ff5e03f7c4d77a614751da860521771fd/src/blocks/scratch3_sensing.js#L280
+            const o = self.getObject(objName);
             if (!o)
                 return 0;
             if (P.core.isSprite(o)) {
@@ -3925,7 +3930,7 @@ var P;
                     case 'costume #': return o.currentCostumeIndex + 1;
                     case 'costume name': return o.costumes[o.currentCostumeIndex].name;
                     case 'size': return o.scale * 100;
-                    case 'volume': return 0; // TODO
+                    case 'volume': return o.volume * 100;
                 }
             }
             else {
@@ -3933,10 +3938,10 @@ var P;
                     case 'background #':
                     case 'backdrop #': return o.currentCostumeIndex + 1;
                     case 'backdrop name': return o.costumes[o.currentCostumeIndex].name;
-                    case 'volume': return 0; // TODO
+                    case 'volume': return o.volume * 100;
                 }
             }
-            var value = o.vars[attr];
+            const value = o.lookupVariable(attr);
             if (value !== undefined) {
                 return value;
             }
@@ -4101,7 +4106,7 @@ var P;
             return runtime.trigger('whenBackdropChanges', self.getCostumeName());
         }
         var broadcast = function (name) {
-            return runtime.trigger('whenIReceive', self.getBroadcastId(name));
+            return runtime.trigger('whenIReceive', self.lookupBroadcast(name));
         };
         var running = function (bases) {
             for (var j = 0; j < runtime.queue.length; j++) {
@@ -4479,17 +4484,19 @@ var P;
         class Scratch3Stage extends P.core.Stage {
             constructor() {
                 super(...arguments);
-                // Scratch 3 uses unique IDs for broadcasts and the visual name for different things.
-                this.broadcastNames = {};
+                this.broadcastReferences = {};
+                this.variableNames = {};
             }
-            addBroadcast(id, name) {
-                this.broadcastNames[name] = id;
+            addBroadcast(name, id) {
+                this.broadcastReferences[name] = id;
             }
-            // Override getBroadcastId to use broadcast IDs
-            getBroadcastId(name) {
+            lookupBroadcast(name) {
                 // Use the mapped ID or fall back to the name.
                 // Usually the name is the unique ID, but occasionally it is not.
-                return this.broadcastNames[name] || name;
+                return this.broadcastReferences[name] || name;
+            }
+            lookupVariable(name) {
+                return this.vars[this.variableNames[name]];
             }
             createVariableWatcher(target, variableName) {
                 // TODO: implement
@@ -4499,6 +4506,13 @@ var P;
         sb3.Scratch3Stage = Scratch3Stage;
         // Implements a Scratch 3 Sprite.
         class Scratch3Sprite extends P.core.Sprite {
+            constructor() {
+                super(...arguments);
+                this.variableNames = {};
+            }
+            lookupVariable(name) {
+                return this.vars[this.variableNames[name]];
+            }
             _clone() {
                 return new Scratch3Sprite(this.stage);
             }
@@ -4893,60 +4907,47 @@ var P;
                 return new Scratch3VariableWatcher(stage, data);
             }
             loadTarget(data) {
-                const variables = {};
+                // dirty hack for null stage
+                const target = new (data.isStage ? Scratch3Stage : Scratch3Sprite)(null);
                 for (const id of Object.keys(data.variables)) {
                     const variable = data.variables[id];
-                    variables[id] = variable[1];
+                    const name = variable[0];
+                    const value = variable[1];
+                    target.vars[id] = value;
+                    target.variableNames[name] = id;
                 }
-                const lists = {};
                 for (const id of Object.keys(data.lists)) {
                     const list = data.lists[id];
-                    // Use Scratch3List instead of a normal array so we can customize behavior easier
-                    lists[id] = new Scratch3List().concat(list[1]);
+                    target.lists[id] = new Scratch3List().concat(list[1]);
                 }
-                const broadcasts = {};
-                for (const id of Object.keys(data.broadcasts)) {
-                    const name = data.broadcasts[id];
-                    broadcasts[name] = id;
+                target.name = data.name;
+                target.currentCostumeIndex = data.currentCostume;
+                target.sb3data = data;
+                if (target.isStage) {
+                    const stage = target;
+                    for (const id of Object.keys(data.broadcasts)) {
+                        const name = data.broadcasts[id];
+                        stage.addBroadcast(name, id);
+                    }
                 }
-                const x = data.x;
-                const y = data.y;
-                const visible = data.visible;
-                const direction = data.direction;
-                const size = data.size;
-                const draggable = data.draggable;
+                else {
+                    const sprite = target;
+                    sprite.scratchX = data.x;
+                    sprite.scratchY = data.y;
+                    sprite.visible = data.visible;
+                    sprite.direction = data.direction;
+                    sprite.scale = data.size / 100;
+                    sprite.isDraggable = data.draggable;
+                    sprite.rotationStyle = P.utils.parseRotationStyle(data.rotationStyle);
+                }
                 const costumesPromise = Promise.all(data.costumes.map((c, i) => this.loadCostume(c, i)));
                 const soundsPromise = Promise.all(data.sounds.map((c) => this.loadSound(c)));
                 return Promise.all([costumesPromise, soundsPromise])
                     .then((result) => {
                     const costumes = result[0];
                     const sounds = result[1];
-                    // TODO: dirty hack for null stage
-                    const target = new (data.isStage ? Scratch3Stage : Scratch3Sprite)(null);
-                    target.currentCostumeIndex = data.currentCostume;
-                    target.name = data.name;
                     target.costumes = costumes;
-                    target.vars = variables;
-                    target.lists = lists;
                     sounds.forEach((sound) => target.addSound(sound));
-                    if (target.isStage) {
-                        const stage = target;
-                        for (const id of Object.keys(data.broadcasts)) {
-                            const name = data.broadcasts[id];
-                            stage.addBroadcast(id, name);
-                        }
-                    }
-                    else {
-                        const sprite = target;
-                        sprite.scratchX = x;
-                        sprite.scratchY = y;
-                        sprite.direction = direction;
-                        sprite.isDraggable = draggable;
-                        sprite.rotationStyle = P.utils.parseRotationStyle(data.rotationStyle);
-                        sprite.scale = size / 100;
-                        sprite.visible = visible;
-                    }
-                    target.sb3data = data;
                     return target;
                 });
             }

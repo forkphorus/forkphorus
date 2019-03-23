@@ -113,19 +113,22 @@ namespace P.sb3 {
   // Implements a Scratch 3 Stage.
   // Adds Scratch 3 specific things such as broadcastReferences
   export class Scratch3Stage extends P.core.Stage {
-    // Scratch 3 uses unique IDs for broadcasts and the visual name for different things.
-    private broadcastNames: ObjectMap<string> = {};
+    private broadcastReferences: ObjectMap<string> = {};
+    public variableNames: ObjectMap<string> = {};
     public sb3data: SB3Target;
 
-    addBroadcast(id: string, name: string) {
-      this.broadcastNames[name] = id;
+    addBroadcast(name: string, id: string) {
+      this.broadcastReferences[name] = id;
     }
 
-    // Override getBroadcastId to use broadcast IDs
-    getBroadcastId(name: string) {
+    lookupBroadcast(name: string) {
       // Use the mapped ID or fall back to the name.
       // Usually the name is the unique ID, but occasionally it is not.
-      return this.broadcastNames[name] || name;
+      return this.broadcastReferences[name] || name;
+    }
+
+    lookupVariable(name: string) {
+      return this.vars[this.variableNames[name]];
     }
 
     createVariableWatcher(target: P.core.Base, variableName: string) {
@@ -137,6 +140,11 @@ namespace P.sb3 {
   // Implements a Scratch 3 Sprite.
   export class Scratch3Sprite extends P.core.Sprite {
     public sb3data: any;
+    public variableNames: ObjectMap<string> = {};
+
+    lookupVariable(name: string) {
+      return this.vars[this.variableNames[name]];
+    }
 
     _clone() {
       return new Scratch3Sprite(this.stage);
@@ -617,31 +625,42 @@ namespace P.sb3 {
     }
 
     loadTarget(data: SB3Target): Promise<Target> {
-      const variables = {};
+      // dirty hack for null stage
+      const target = new (data.isStage ? Scratch3Stage : Scratch3Sprite)(null as any);
+
       for (const id of Object.keys(data.variables)) {
         const variable = data.variables[id];
-        variables[id] = variable[1];
+        const name = variable[0];
+        const value = variable[1];
+        target.vars[id] = value;
+        target.variableNames[name] = id;
       }
 
-      const lists = {};
       for (const id of Object.keys(data.lists)) {
         const list = data.lists[id];
-        // Use Scratch3List instead of a normal array so we can customize behavior easier
-        lists[id] = new Scratch3List().concat(list[1]);
+        target.lists[id] = new Scratch3List().concat(list[1]);
       }
 
-      const broadcasts = {};
-      for (const id of Object.keys(data.broadcasts)) {
-        const name = data.broadcasts[id];
-        broadcasts[name] = id;
-      }
+      target.name = data.name;
+      target.currentCostumeIndex = data.currentCostume;
+      target.sb3data = data;
 
-      const x = data.x;
-      const y = data.y;
-      const visible = data.visible;
-      const direction = data.direction;
-      const size = data.size;
-      const draggable = data.draggable;
+      if (target.isStage) {
+        const stage = target as Scratch3Stage;
+        for (const id of Object.keys(data.broadcasts)) {
+          const name = data.broadcasts[id];
+          stage.addBroadcast(name, id);
+        }
+      } else {
+        const sprite = target as Scratch3Sprite;
+        sprite.scratchX = data.x;
+        sprite.scratchY = data.y;
+        sprite.visible = data.visible;
+        sprite.direction = data.direction;
+        sprite.scale = data.size / 100;
+        sprite.isDraggable = data.draggable;
+        sprite.rotationStyle = P.utils.parseRotationStyle(data.rotationStyle);
+      }
 
       const costumesPromise = Promise.all<P.core.Costume>(data.costumes.map((c: any, i: any) => this.loadCostume(c, i)));
       const soundsPromise = Promise.all<P.core.Sound>(data.sounds.map((c) => this.loadSound(c)));
@@ -651,34 +670,8 @@ namespace P.sb3 {
           const costumes = result[0];
           const sounds = result[1];
 
-          // TODO: dirty hack for null stage
-          const target = new (data.isStage ? Scratch3Stage : Scratch3Sprite)(null as any);
-
-          target.currentCostumeIndex = data.currentCostume;
-          target.name = data.name;
           target.costumes = costumes;
-          target.vars = variables;
-          target.lists = lists;
           sounds.forEach((sound: P.core.Sound) => target.addSound(sound));
-
-          if (target.isStage) {
-            const stage = target as Scratch3Stage;
-            for (const id of Object.keys(data.broadcasts)) {
-              const name = data.broadcasts[id];
-              stage.addBroadcast(id, name);
-            }
-          } else {
-            const sprite = target as Scratch3Sprite;
-            sprite.scratchX = x;
-            sprite.scratchY = y;
-            sprite.direction = direction;
-            sprite.isDraggable = draggable;
-            sprite.rotationStyle = P.utils.parseRotationStyle(data.rotationStyle);
-            sprite.scale = size / 100;
-            sprite.visible = visible;
-          }
-
-          target.sb3data = data;
 
           return target;
         });
