@@ -4,26 +4,14 @@ namespace P.renderer {
   // Import aliases
   import RotationStyle = P.core.RotationStyle;
 
-  /**
-   * Creates the CSS filter for a Filter object.
-   * The filter is generally an estimation of the actual effect.
-   * Includes brightness and color. (does not include ghost)
-   */
-  function cssFilter(filters: P.core.Filters) {
-    let filter = '';
-    if (filters.brightness) {
-      filter += 'brightness(' + (100 + filters.brightness) + '%) ';
-    }
-    if (filters.color) {
-      filter += 'hue-rotate(' + (filters.color / 200 * 360) + 'deg) ';
-    }
-    return filter;
-  }
-
+  type Renderable = HTMLImageElement | HTMLCanvasElement | P.core.Base;
   export interface Renderer {
+    /**
+     * Resets and resizes the renderer
+     */
     reset(scale: number): void;
-    drawChild(child: P.core.Base): void;
-    drawImage(image: HTMLImageElement | HTMLCanvasElement, x: number, y: number): void;
+    drawChildren(children: Renderable[]): void;
+    drawChild(child: Renderable): void;
   }
 
   interface WebGLCostume extends P.core.Costume {
@@ -57,9 +45,7 @@ namespace P.renderer {
     uniform sampler2D u_texture;
 
     void main() {
-      // gl_FragColor = vec4(0.5, 0.5, 0.5, 1);
       gl_FragColor = texture2D(u_texture, v_texcoord);
-      if (gl_FragColor.a < .5) discard;
     }
     `;
 
@@ -81,11 +67,17 @@ namespace P.renderer {
 
       this.program = this.compileProgram(WebGLRenderer.vertexShader, WebGLRenderer.fragmentShader)!;
 
+      // Enable transparency blending.
+      this.gl.enable(this.gl.BLEND);
+      this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+
+      // Cache attribute/uniform locations for later
       this.a_scratchPosition = this.gl.getAttribLocation(this.program, 'a_scratchPosition');
       this.a_texcoord = this.gl.getAttribLocation(this.program, 'a_texcoord');
       this.u_resolution = this.gl.getUniformLocation(this.program, 'u_resolution')!;
       this.u_texcoord = this.gl.getUniformLocation(this.program, 'u_texcoord')!;
 
+      // This buffer never changes, so we'll just create it once.
       this.texCoordsBuffer = this.gl.createBuffer()!;
       this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.texCoordsBuffer);
       this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
@@ -97,10 +89,10 @@ namespace P.renderer {
         0, 1,
       ]), this.gl.STATIC_DRAW);
 
+      // We only have a single shader program, so just get that setup now.
+      this.gl.useProgram(this.program);
       this.gl.enableVertexAttribArray(this.a_scratchPosition);
       this.gl.enableVertexAttribArray(this.a_texcoord);
-
-      this.gl.useProgram(this.program);
     }
 
     compileShader(type: number, source: string): WebGLShader | null {
@@ -157,7 +149,8 @@ namespace P.renderer {
       return texture!;
     }
 
-    drawChild(child: P.core.Base) {
+    drawChild(child: Renderable) {
+
       const rb = child.rotatedBounds();
 
       // Positioning
@@ -191,9 +184,27 @@ namespace P.renderer {
       this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
     }
 
-    drawImage(image, x, y) {
-
+    drawChildren(children: Renderable[]) {
+      for (const child of children) {
+        this.drawChild(child);
+      }
     }
+  }
+
+  /**
+   * Creates the CSS filter for a Filter object.
+   * The filter is generally an estimation of the actual effect.
+   * Includes brightness and color. (does not include ghost)
+   */
+  function cssFilter(filters: P.core.Filters) {
+    let filter = '';
+    if (filters.brightness) {
+      filter += 'brightness(' + (100 + filters.brightness) + '%) ';
+    }
+    if (filters.color) {
+      filter += 'hue-rotate(' + (filters.color / 200 * 360) + 'deg) ';
+    }
+    return filter;
   }
 
   export abstract class Base2DRenderer implements Renderer {
