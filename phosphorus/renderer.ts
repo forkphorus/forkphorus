@@ -26,6 +26,10 @@ namespace P.renderer {
     drawImage(image: HTMLImageElement | HTMLCanvasElement, x: number, y: number): void;
   }
 
+  interface WebGLCostume extends P.core.Costume {
+    _texture: WebGLTexture;
+  }
+
   export class WebGLRenderer implements Renderer {
     public static vertexShader: string = `
     attribute vec2 a_scratchPosition;
@@ -55,6 +59,7 @@ namespace P.renderer {
     void main() {
       // gl_FragColor = vec4(0.5, 0.5, 0.5, 1);
       gl_FragColor = texture2D(u_texture, v_texcoord);
+      if (gl_FragColor.a < .5) discard;
     }
     `;
 
@@ -67,6 +72,8 @@ namespace P.renderer {
     private u_resolution: WebGLUniformLocation;
     private u_texcoord: WebGLUniformLocation;
 
+    private texCoordsBuffer: WebGLBuffer;
+
     constructor(public canvas: HTMLCanvasElement) {
       this.gl = canvas.getContext('webgl')!;
       this.gl.clearColor(0, 0, 0, 1);
@@ -78,6 +85,22 @@ namespace P.renderer {
       this.a_texcoord = this.gl.getAttribLocation(this.program, 'a_texcoord');
       this.u_resolution = this.gl.getUniformLocation(this.program, 'u_resolution')!;
       this.u_texcoord = this.gl.getUniformLocation(this.program, 'u_texcoord')!;
+
+      this.texCoordsBuffer = this.gl.createBuffer()!;
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.texCoordsBuffer);
+      this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
+        1, 0,
+        0, 0,
+        1, 1,
+        1, 1,
+        0, 0,
+        0, 1,
+      ]), this.gl.STATIC_DRAW);
+
+      this.gl.enableVertexAttribArray(this.a_scratchPosition);
+      this.gl.enableVertexAttribArray(this.a_texcoord);
+
+      this.gl.useProgram(this.program);
     }
 
     compileShader(type: number, source: string): WebGLShader | null {
@@ -112,70 +135,57 @@ namespace P.renderer {
       return program;
     }
 
-    createTexture(costume: P.core.Costume): WebGLTexture {
-      const texture = this.gl.createTexture()!;
-      this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
-      this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, costume.image);
-      this.gl.generateMipmap(this.gl.TEXTURE_2D);
-      return texture;
-    }
-
     reset(scale: number) {
       this.canvas.width = scale * 480;
       this.canvas.height = scale * 360;
+      this.gl.uniform2f(this.u_resolution, this.canvas.width, this.canvas.height);
 
       // Clear the canvas
       this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
       this.gl.clearColor(0, 0, 0, 0);
       this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-
-      // Init our shader
-      this.gl.useProgram(this.program);
-      this.gl.uniform2f(this.u_resolution, this.canvas.width, this.canvas.height);
     }
 
-    drawChild(child: P.core.Base) {
-      const rb = child.rotatedBounds();
-
-      // Send position data into a buffer
-      const positionBuffer = this.gl.createBuffer();
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, positionBuffer);
-      const positions = [
-        rb.right, rb.top,
-        rb.left, rb.top,
-        rb.right, rb.bottom,
-        rb.right, rb.bottom,
-        rb.left, rb.top,
-        rb.left, rb.bottom,
-      ];
-      this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(positions), this.gl.STATIC_DRAW);
-
-      // Upload position data
-      this.gl.enableVertexAttribArray(this.a_scratchPosition);
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, positionBuffer);
-      this.gl.vertexAttribPointer(this.a_scratchPosition, 2, this.gl.FLOAT, false, 0, 0);
-
-      const texCoordBuffer = this.gl.createBuffer();
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, texCoordBuffer);
-      this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
-        0, 0,
-        1, 0,
-        0, 1,
-
-        0, 1,
-        1, 0,
-        1, 1,
-      ]), this.gl.STATIC_DRAW);
-      this.gl.enableVertexAttribArray(this.a_texcoord);
-      this.gl.vertexAttribPointer(this.a_texcoord, 2, this.gl.FLOAT, false, 0, 0);
-
+    createTexture(costume: P.core.Costume): WebGLTexture {
       const texture = this.gl.createTexture();
       this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
       this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
       this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
       this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
       this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
-      this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, child.costumes[child.currentCostumeIndex].image);
+      this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, costume.image);
+      return texture!;
+    }
+
+    drawChild(child: P.core.Base) {
+      const rb = child.rotatedBounds();
+
+      // Positioning
+      // TODO: calculate bounds on GPU and things like that
+      const positionBuffer = this.gl.createBuffer();
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, positionBuffer);
+      this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
+        rb.right, rb.top,
+        rb.left, rb.top,
+        rb.right, rb.bottom,
+        rb.right, rb.bottom,
+        rb.left, rb.top,
+        rb.left, rb.bottom,
+      ]), this.gl.STATIC_DRAW);
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, positionBuffer);
+      this.gl.vertexAttribPointer(this.a_scratchPosition, 2, this.gl.FLOAT, false, 0, 0);
+
+      // Texture coordinates
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.texCoordsBuffer);
+      this.gl.vertexAttribPointer(this.a_texcoord, 2, this.gl.FLOAT, false, 0, 0);
+
+      // Texture
+      const costume = child.costumes[child.currentCostumeIndex] as WebGLCostume;
+      if (!costume._texture) {
+        const texture = this.createTexture(costume);
+        costume._texture = texture;
+      }
+      this.gl.bindTexture(this.gl.TEXTURE_2D, costume._texture);
 
       // And draw.
       this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
