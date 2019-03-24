@@ -1,17 +1,17 @@
 /// <reference path="phosphorus.ts" />
+/// <reference path="matrix.ts" />
 
 namespace P.renderer {
   // Import aliases
   import RotationStyle = P.core.RotationStyle;
 
-  type Renderable = HTMLImageElement | HTMLCanvasElement | P.core.Base;
   export interface Renderer {
     /**
      * Resets and resizes the renderer
      */
     reset(scale: number): void;
-    drawChildren(children: Renderable[]): void;
-    drawChild(child: Renderable): void;
+    drawChildren(children: P.core.Base[]): void;
+    drawChild(child: P.core.Base): void;
   }
 
   interface WebGLCostume extends P.core.Costume {
@@ -20,18 +20,15 @@ namespace P.renderer {
 
   export class WebGLRenderer implements Renderer {
     public static vertexShader: string = `
-    attribute vec2 a_scratchPosition;
+    attribute vec2 a_position;
     attribute vec2 a_texcoord;
 
-    uniform vec2 u_resolution;
+    uniform mat3 u_matrix;
 
     varying vec2 v_texcoord;
 
     void main() {
-      vec2 canvasPosition = a_scratchPosition + vec2(240, 180);
-      vec2 clipSpace = (canvasPosition / u_resolution) * 2.0 - 1.0;
-
-      gl_Position = vec4(clipSpace, 0, 1);
+      gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
 
       v_texcoord = a_texcoord;
     }
@@ -53,84 +50,98 @@ namespace P.renderer {
 
     private program: WebGLProgram;
 
-    private a_scratchPosition: number;
+    private a_position: number;
     private a_texcoord: number;
-    private u_resolution: WebGLUniformLocation;
-    private u_texcoord: WebGLUniformLocation;
+    private u_matrix: WebGLUniformLocation;
 
     private texCoordsBuffer: WebGLBuffer;
+    private positionBuffer: WebGLBuffer;
 
     constructor(public canvas: HTMLCanvasElement) {
       this.gl = canvas.getContext('webgl')!;
       this.gl.clearColor(0, 0, 0, 1);
       this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
-      this.program = this.compileProgram(WebGLRenderer.vertexShader, WebGLRenderer.fragmentShader)!;
+      this.program = this.compileProgram(WebGLRenderer.vertexShader, WebGLRenderer.fragmentShader);
 
       // Enable transparency blending.
       this.gl.enable(this.gl.BLEND);
       this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
 
       // Cache attribute/uniform locations for later
-      this.a_scratchPosition = this.gl.getAttribLocation(this.program, 'a_scratchPosition');
+      this.a_position = this.gl.getAttribLocation(this.program, 'a_position');
       this.a_texcoord = this.gl.getAttribLocation(this.program, 'a_texcoord');
-      this.u_resolution = this.gl.getUniformLocation(this.program, 'u_resolution')!;
-      this.u_texcoord = this.gl.getUniformLocation(this.program, 'u_texcoord')!;
+      this.u_matrix = this.gl.getUniformLocation(this.program, 'u_matrix')!;
 
-      // This buffer never changes, so we'll just create it once.
       this.texCoordsBuffer = this.gl.createBuffer()!;
       this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.texCoordsBuffer);
       this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
-        1, 0,
-        0, 0,
-        1, 1,
-        1, 1,
         0, 0,
         0, 1,
+        1, 0,
+        1, 0,
+        0, 1,
+        1, 1,
+      ]), this.gl.STATIC_DRAW);
+
+      this.positionBuffer = this.gl.createBuffer()!;
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionBuffer);
+      this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
+        0, 0,
+        0, 1,
+        1, 0,
+        1, 0,
+        0, 1,
+        1, 1,
       ]), this.gl.STATIC_DRAW);
 
       // We only have a single shader program, so just get that setup now.
       this.gl.useProgram(this.program);
-      this.gl.enableVertexAttribArray(this.a_scratchPosition);
+      this.gl.enableVertexAttribArray(this.a_position);
       this.gl.enableVertexAttribArray(this.a_texcoord);
     }
 
-    compileShader(type: number, source: string): WebGLShader | null {
-      const shader = this.gl.createShader(type)!;
+    compileShader(type: number, source: string): WebGLShader {
+      const shader = this.gl.createShader(type);
+      if (!shader) {
+        throw new Error('Cannot create shader');
+      }
       this.gl.shaderSource(shader, source);
       this.gl.compileShader(shader);
 
       if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
-        console.error(this.gl.getShaderInfoLog(shader));
+        const error = this.gl.getProgramInfoLog(shader);
         this.gl.deleteShader(shader);
-        return null;
+        throw new Error('Shader compilation error: ' + error);
       }
 
       return shader;
     }
 
-    compileProgram(vs: string, fs: string): WebGLProgram | null {
-      const vertexShader = this.compileShader(this.gl.VERTEX_SHADER, vs)!;
-      const fragmentShader = this.compileShader(this.gl.FRAGMENT_SHADER, fs)!;
+    compileProgram(vs: string, fs: string): WebGLProgram {
+      const vertexShader = this.compileShader(this.gl.VERTEX_SHADER, vs);
+      const fragmentShader = this.compileShader(this.gl.FRAGMENT_SHADER, fs);
 
-      const program = this.gl.createProgram()!;
+      const program = this.gl.createProgram();
+      if (!program) {
+        throw new Error('Cannot create program');
+      }
       this.gl.attachShader(program, vertexShader);
       this.gl.attachShader(program, fragmentShader);
       this.gl.linkProgram(program);
 
       if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
-        console.error(this.gl.getProgramInfoLog(program));
+        const error = this.gl.getProgramInfoLog(program);
         this.gl.deleteProgram(program);
-        return null;
+        throw new Error('Program compilation error: ' + error);
       }
-    
+
       return program;
     }
 
     reset(scale: number) {
       this.canvas.width = scale * 480;
       this.canvas.height = scale * 360;
-      this.gl.uniform2f(this.u_resolution, this.canvas.width, this.canvas.height);
 
       // Clear the canvas
       this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
@@ -140,38 +151,24 @@ namespace P.renderer {
 
     createTexture(costume: P.core.Costume): WebGLTexture {
       const texture = this.gl.createTexture();
+      if (!texture) {
+        throw new Error('Cannot create texture');
+      }
       this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+      // this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+      // this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+      // this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
+      // this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
+
       this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
       this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
-      this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
-      this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
+      this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+
       this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, costume.image);
-      return texture!;
+      return texture;
     }
 
-    drawChild(child: Renderable) {
-
-      const rb = child.rotatedBounds();
-
-      // Positioning
-      // TODO: calculate bounds on GPU and things like that
-      const positionBuffer = this.gl.createBuffer();
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, positionBuffer);
-      this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
-        rb.right, rb.top,
-        rb.left, rb.top,
-        rb.right, rb.bottom,
-        rb.right, rb.bottom,
-        rb.left, rb.top,
-        rb.left, rb.bottom,
-      ]), this.gl.STATIC_DRAW);
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, positionBuffer);
-      this.gl.vertexAttribPointer(this.a_scratchPosition, 2, this.gl.FLOAT, false, 0, 0);
-
-      // Texture coordinates
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.texCoordsBuffer);
-      this.gl.vertexAttribPointer(this.a_texcoord, 2, this.gl.FLOAT, false, 0, 0);
-
+    drawChild(child: P.core.Base) {
       // Texture
       const costume = child.costumes[child.currentCostumeIndex] as WebGLCostume;
       if (!costume._texture) {
@@ -180,11 +177,29 @@ namespace P.renderer {
       }
       this.gl.bindTexture(this.gl.TEXTURE_2D, costume._texture);
 
-      // And draw.
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.texCoordsBuffer);
+      this.gl.vertexAttribPointer(this.a_texcoord, 2, this.gl.FLOAT, false, 0, 0);
+
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionBuffer);
+      this.gl.vertexAttribPointer(this.a_position, 2, this.gl.FLOAT, false, 0, 0);
+
+      // TODO: do this in the shader
+      var matrix = P.m3.projection(this.canvas.width, this.canvas.height);
+      matrix = P.m3.multiply(matrix, P.m3.translation(240 + child.scratchX, 180 - child.scratchY));
+      if (P.core.isSprite(child)) {
+        matrix = P.m3.multiply(matrix, P.m3.rotation(90 - child.direction));
+        matrix = P.m3.multiply(matrix, P.m3.scaling(child.scale, child.scale));
+      }
+      matrix = P.m3.multiply(matrix, P.m3.scaling(costume.scale, costume.scale));
+      matrix = P.m3.multiply(matrix, P.m3.translation(-costume.rotationCenterX, -costume.rotationCenterY));
+      matrix = P.m3.multiply(matrix, P.m3.scaling(costume.image.width, costume.image.height));
+
+      this.gl.uniformMatrix3fv(this.u_matrix, false, new Float32Array(matrix));
+
       this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
     }
 
-    drawChildren(children: Renderable[]) {
+    drawChildren(children: P.core.Base[]) {
       for (const child of children) {
         this.drawChild(child);
       }
@@ -232,6 +247,12 @@ namespace P.renderer {
     }
 
     abstract drawChild(child: P.core.Base): void;
+
+    drawChildren(children: P.core.Base[]): void {
+      for (const child of children) {
+        this.drawChild(child);
+      }
+    }
   }
 
   /**
