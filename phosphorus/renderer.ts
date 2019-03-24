@@ -26,6 +26,152 @@ namespace P.renderer {
     drawImage(image: HTMLImageElement | HTMLCanvasElement, x: number, y: number): void;
   }
 
+  export class WebGLRenderer implements Renderer {
+    public static vertexShader: string = `
+    attribute vec2 a_scratchPosition;
+    attribute vec2 a_texcoord;
+
+    uniform vec2 u_resolution;
+
+    varying vec2 v_texcoord;
+
+    void main() {
+      vec2 canvasPosition = a_scratchPosition + vec2(240, 180);
+      vec2 zeroToOne = canvasPosition / u_resolution;
+      vec2 zeroToTwo = zeroToOne * 2.0;
+      vec2 clipSpace = zeroToTwo - 1.0;
+
+      gl_Position = vec4(clipSpace, 0, 1);
+
+      v_texcoord = a_texcoord;
+    }
+    `;
+
+    public static fragmentShader: string = `
+    precision mediump float;
+
+    varying vec2 v_texcoord;
+
+    uniform sampler2D u_texture;
+
+    void main() {
+      // gl_FragColor = vec4(0.5, 0.5, 0.5, 1);
+      gl_FragColor = texture2D(u_texture, v_texcoord);
+    }
+    `;
+
+    public gl: WebGLRenderingContext;
+
+    private program: WebGLProgram;
+
+    private a_scratchPosition: number;
+    private a_texcoord: number;
+    private u_resolution: WebGLUniformLocation;
+    private u_texcoord: WebGLUniformLocation;
+
+    constructor(public canvas: HTMLCanvasElement) {
+      this.gl = canvas.getContext('webgl')!;
+      this.gl.clearColor(0, 0, 0, 1);
+      this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+
+      this.program = this.compileProgram(WebGLRenderer.vertexShader, WebGLRenderer.fragmentShader)!;
+
+      this.a_scratchPosition = this.gl.getAttribLocation(this.program, 'a_scratchPosition');
+      this.a_texcoord = this.gl.getAttribLocation(this.program, 'a_texcoord');
+      this.u_resolution = this.gl.getUniformLocation(this.program, 'u_resolution')!;
+      this.u_texcoord = this.gl.getUniformLocation(this.program, 'u_texcoord')!;
+    }
+
+    compileShader(type: number, source: string): WebGLShader | null {
+      const shader = this.gl.createShader(type)!;
+      this.gl.shaderSource(shader, source);
+      this.gl.compileShader(shader);
+
+      if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
+        console.error(this.gl.getShaderInfoLog(shader));
+        this.gl.deleteShader(shader);
+        return null;
+      }
+
+      return shader;
+    }
+
+    compileProgram(vs: string, fs: string): WebGLProgram | null {
+      const vertexShader = this.compileShader(this.gl.VERTEX_SHADER, vs)!;
+      const fragmentShader = this.compileShader(this.gl.FRAGMENT_SHADER, fs)!;
+
+      const program = this.gl.createProgram()!;
+      this.gl.attachShader(program, vertexShader);
+      this.gl.attachShader(program, fragmentShader);
+      this.gl.linkProgram(program);
+
+      if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
+        console.error(this.gl.getProgramInfoLog(program));
+        this.gl.deleteProgram(program);
+        return null;
+      }
+    
+      return program;
+    }
+
+    createTexture(costume: P.core.Costume): WebGLTexture {
+      const texture = this.gl.createTexture()!;
+      this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+      this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, costume.image);
+      this.gl.generateMipmap(this.gl.TEXTURE_2D);
+      return texture;
+    }
+
+    reset(scale: number) {
+      this.canvas.width = scale * 480;
+      this.canvas.height = scale * 360;
+
+      // Clear the canvas
+      this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+      this.gl.clearColor(0, 0, 0, 0);
+      this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+
+      // Init our shader
+      this.gl.useProgram(this.program);
+      this.gl.uniform2f(this.u_resolution, this.canvas.width, this.canvas.height);
+    }
+
+    drawChild(child: P.core.Base) {
+      const rb = child.rotatedBounds();
+
+      // Send position data into a buffer
+      const positionBuffer = this.gl.createBuffer();
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, positionBuffer);
+      const positions = [
+        rb.right, rb.top,
+        rb.left, rb.top,
+        rb.right, rb.bottom,
+        rb.right, rb.bottom,
+        rb.left, rb.top,
+        rb.left, rb.bottom,
+      ];
+      this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(positions), this.gl.STATIC_DRAW);
+
+      // Upload position data
+      this.gl.enableVertexAttribArray(this.a_scratchPosition);
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, positionBuffer);
+      this.gl.vertexAttribPointer(this.a_scratchPosition, 2, this.gl.FLOAT, false, 0, 0);
+
+      // Buffer for texcoords
+      // const textureBuffer = this.gl.createBuffer();
+      // this.gl.bindBuffer(this.gl.ARRAY_BUFFER, textureBuffer);
+      // this.gl.enableVertexAttribArray(this.a_texcoord);
+      // this.gl.vertexAttribPointer(this.a_texcoord, 2, this.gl.FLOAT, false, 0, 0);
+
+      // And draw.
+      this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+    }
+
+    drawImage(image, x, y) {
+
+    }
+  }
+
   export abstract class Base2DRenderer implements Renderer {
     public ctx: CanvasRenderingContext2D;
     public canvas: HTMLCanvasElement;

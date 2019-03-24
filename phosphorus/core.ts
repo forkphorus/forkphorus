@@ -552,7 +552,7 @@ namespace P.core {
 
       this.canvas = document.createElement('canvas');
       this.root.appendChild(this.canvas);
-      this.renderer = new P.renderer.SpriteRenderer2D(this.canvas);
+      this.renderer = new P.renderer.WebGLRenderer(this.canvas);
 
       this.ui = document.createElement('div');
       this.root.appendChild(this.ui);
