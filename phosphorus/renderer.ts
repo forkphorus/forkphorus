@@ -37,9 +37,7 @@ namespace P.renderer {
 
     void main() {
       vec2 canvasPosition = a_scratchPosition + vec2(240, 180);
-      vec2 zeroToOne = canvasPosition / u_resolution;
-      vec2 zeroToTwo = zeroToOne * 2.0;
-      vec2 clipSpace = zeroToTwo - 1.0;
+      vec2 clipSpace = (canvasPosition / u_resolution) * 2.0 - 1.0;
 
       gl_Position = vec4(clipSpace, 0, 1);
 
@@ -157,11 +155,27 @@ namespace P.renderer {
       this.gl.bindBuffer(this.gl.ARRAY_BUFFER, positionBuffer);
       this.gl.vertexAttribPointer(this.a_scratchPosition, 2, this.gl.FLOAT, false, 0, 0);
 
-      // Buffer for texcoords
-      // const textureBuffer = this.gl.createBuffer();
-      // this.gl.bindBuffer(this.gl.ARRAY_BUFFER, textureBuffer);
-      // this.gl.enableVertexAttribArray(this.a_texcoord);
-      // this.gl.vertexAttribPointer(this.a_texcoord, 2, this.gl.FLOAT, false, 0, 0);
+      const texCoordBuffer = this.gl.createBuffer();
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, texCoordBuffer);
+      this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
+        0, 0,
+        1, 0,
+        0, 1,
+
+        0, 1,
+        1, 0,
+        1, 1,
+      ]), this.gl.STATIC_DRAW);
+      this.gl.enableVertexAttribArray(this.a_texcoord);
+      this.gl.vertexAttribPointer(this.a_texcoord, 2, this.gl.FLOAT, false, 0, 0);
+
+      const texture = this.gl.createTexture();
+      this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+      this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+      this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+      this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
+      this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
+      this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, child.costumes[child.currentCostumeIndex].image);
 
       // And draw.
       this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
