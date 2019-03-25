@@ -504,13 +504,13 @@ namespace P.core {
     public ui: HTMLElement;
 
     public canvas: HTMLCanvasElement;
-    public renderer: P.renderer.Renderer;
+    public renderer: P.renderer.ProjectRenderer;
 
     public backdropCanvas: HTMLCanvasElement;
-    public backdropRenderer: P.renderer.StageRenderer;
+    public backdropRenderer: P.renderer.StageRenderer2D;
 
     public penCanvas: HTMLCanvasElement;
-    public penRenderer: P.renderer.SpriteRenderer2D;
+    public penRenderer: P.renderer.PenRenderer;
 
     public prompt: HTMLInputElement;
     public prompter: HTMLElement;
@@ -540,15 +540,14 @@ namespace P.core {
       this.backdropCanvas = document.createElement('canvas');
       this.root.appendChild(this.backdropCanvas);
 
-      this.backdropRenderer = new P.renderer.StageRenderer(this.backdropCanvas, this);
+      this.backdropRenderer = new P.renderer.StageRenderer2D(this.backdropCanvas, this);
 
       this.penCanvas = document.createElement('canvas');
       this.root.appendChild(this.penCanvas);
       this.penCanvas.width = scale * 480;
       this.penCanvas.height = scale * 360;
-      this.penRenderer = new P.renderer.SpriteRenderer2D(this.penCanvas);
-      this.penRenderer.ctx.lineCap = 'round';
-      this.penRenderer.ctx.scale(scale, scale);
+      this.penRenderer = new P.renderer.PenRenderer2D(this.penCanvas);
+      this.penRenderer.resize(scale);
 
       this.canvas = document.createElement('canvas');
       this.root.appendChild(this.canvas);
@@ -802,14 +801,7 @@ namespace P.core {
     setZoom(zoom: number) {
       if (this.zoom === zoom) return;
       if (this.maxZoom < zoom * P.config.scale) {
-        this.maxZoom = zoom * P.config.scale;
-        const canvas = document.createElement('canvas');
-        canvas.width = this.penCanvas.width;
-        canvas.height = this.penCanvas.height;
-        canvas.getContext('2d')!.drawImage(this.penCanvas, 0, 0);
-        this.penRenderer.reset(this.maxZoom);
-        this.penRenderer.ctx.drawImage(canvas, 0, 0, 480 * zoom * P.config.scale, 360 * zoom * P.config.scale);
-        this.penRenderer.ctx.lineCap = 'round';
+        this.penRenderer.resize(this.maxZoom);
       }
       this.root.style.width =
       this.canvas.style.width =
@@ -937,7 +929,7 @@ namespace P.core {
      * Draws all the children (not including the Stage itself or pen layers) of this Stage on a renderer
      * @param skip Optionally skip rendering of a single Sprite.
      */
-    drawChildren(renderer: P.renderer.Renderer, skip?: Sprite) {
+    drawChildren(renderer: P.renderer.ProjectRenderer, skip?: Sprite) {
       for (var i = 0; i < this.children.length; i++) {
         const c = this.children[i];
         if (c.isDragging) {
@@ -954,7 +946,7 @@ namespace P.core {
      * Draws all parts of the Stage (including the stage itself and pen layers) on a renderer.
      * @param skip Optionally skip rendering of a single Sprite.
      */
-    drawAll(renderer: P.renderer.Renderer, skip?: Sprite) {
+    drawAll(renderer: P.renderer.ProjectRenderer, skip?: Sprite) {
       renderer.drawChild(this);
       renderer.drawImage(this.penCanvas, 0, 0);
       this.drawChildren(renderer, skip);
@@ -1019,8 +1011,7 @@ namespace P.core {
     }
 
     clearPen() {
-      this.penRenderer.reset(this.maxZoom);
-      this.penRenderer.ctx.lineCap = 'round';
+      this.penRenderer.clear();
     }
   }
 
@@ -1178,19 +1169,8 @@ namespace P.core {
       this.scratchY = y;
 
       if (this.isPenDown && !this.isDragging) {
-        var context = this.stage.penRenderer.ctx;
-        if (this.penSize % 2 > .5 && this.penSize % 2 < 1.5) {
-          ox -= .5;
-          oy -= .5;
-          x -= .5;
-          y -= .5;
-        }
-        context.strokeStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
-        context.lineWidth = this.penSize;
-        context.beginPath();
-        context.moveTo(240 + ox, 180 - oy);
-        context.lineTo(240 + x, 180 - y);
-        context.stroke();
+        const color = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
+        this.stage.penRenderer.drawLine(color, this.penSize, ox, oy, x, y);
       }
 
       if (this.saying) {
@@ -1200,18 +1180,13 @@ namespace P.core {
 
     // Makes a pen dot at the current location.
     dotPen() {
-      var context = this.stage.penRenderer.ctx;
-      var x = this.scratchX;
-      var y = this.scratchY;
-      context.fillStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
-      context.beginPath();
-      context.arc(240 + x, 180 - y, this.penSize / 2, 0, 2 * Math.PI, false);
-      context.fill();
+      const color = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
+      this.stage.penRenderer.dot(color, this.penSize, this.scratchX, this.scratchY);
     }
 
     // Stamps the sprite onto the pen layer.
     stamp() {
-      this.stage.penRenderer.drawChild(this);
+      this.stage.penRenderer.stamp(this);
     }
 
     // Faces in a direction.

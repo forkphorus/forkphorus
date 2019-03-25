@@ -5,20 +5,36 @@ namespace P.renderer {
   // Import aliases
   import RotationStyle = P.core.RotationStyle;
 
-  export interface Renderer {
+  export interface ProjectRenderer {
     /**
      * Resets and resizes the renderer
      */
     reset(scale: number): void;
+    /**
+     * Draws several Sprites or Stages at once, allowing for the renderer
+     * to optimize the rendering.
+     */
     drawChildren(children: P.core.Base[]): void;
+    /**
+     * Draws a Sprite or Stage on this renderer
+     */
     drawChild(child: P.core.Base): void;
+    // spriteTouches(sprite: P.core.Sprite): boolean;
+  }
+
+  export interface PenRenderer {
+    drawLine(color: string, size: number, x1: number, y1: number, x2: number, y2: number): void;
+    dot(color: string, size: number, x: number, y: number): void;
+    stamp(child: P.core.Sprite): void;
+    resize(scale: number): void;
+    clear(): void;
   }
 
   interface WebGLCostume extends P.core.Costume {
-    _texture: WebGLTexture;
+    _glTexture: WebGLTexture;
   }
 
-  export class WebGLRenderer implements Renderer {
+  export class WebGLRenderer implements ProjectRenderer {
     public static vertexShader: string = `
     attribute vec2 a_position;
     attribute vec2 a_texcoord;
@@ -29,7 +45,6 @@ namespace P.renderer {
 
     void main() {
       gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
-
       v_texcoord = a_texcoord;
     }
     `;
@@ -49,18 +64,14 @@ namespace P.renderer {
     public gl: WebGLRenderingContext;
 
     private program: WebGLProgram;
+    private quadBuffer: WebGLBuffer;
 
     private a_position: number;
     private a_texcoord: number;
     private u_matrix: WebGLUniformLocation;
 
-    private texCoordsBuffer: WebGLBuffer;
-    private positionBuffer: WebGLBuffer;
-
     constructor(public canvas: HTMLCanvasElement) {
       this.gl = canvas.getContext('webgl')!;
-      this.gl.clearColor(0, 0, 0, 1);
-      this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
       this.program = this.compileProgram(WebGLRenderer.vertexShader, WebGLRenderer.fragmentShader);
 
@@ -73,19 +84,8 @@ namespace P.renderer {
       this.a_texcoord = this.gl.getAttribLocation(this.program, 'a_texcoord');
       this.u_matrix = this.gl.getUniformLocation(this.program, 'u_matrix')!;
 
-      this.texCoordsBuffer = this.gl.createBuffer()!;
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.texCoordsBuffer);
-      this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
-        0, 0,
-        0, 1,
-        1, 0,
-        1, 0,
-        0, 1,
-        1, 1,
-      ]), this.gl.STATIC_DRAW);
-
-      this.positionBuffer = this.gl.createBuffer()!;
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionBuffer);
+      this.quadBuffer = this.gl.createBuffer()!;
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
       this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
         0, 0,
         0, 1,
@@ -140,8 +140,8 @@ namespace P.renderer {
     }
 
     reset(scale: number) {
-      this.canvas.width = scale * 480;
-      this.canvas.height = scale * 360;
+      this.canvas.width = scale * P.config.scale * 480;
+      this.canvas.height = scale * P.config.scale * 360;
 
       // Clear the canvas
       this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
@@ -155,10 +155,6 @@ namespace P.renderer {
         throw new Error('Cannot create texture');
       }
       this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
-      // this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
-      // this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
-      // this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
-      // this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
 
       this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
       this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
@@ -171,16 +167,16 @@ namespace P.renderer {
     drawChild(child: P.core.Base) {
       // Texture
       const costume = child.costumes[child.currentCostumeIndex] as WebGLCostume;
-      if (!costume._texture) {
+      if (!costume._glTexture) {
         const texture = this.createTexture(costume);
-        costume._texture = texture;
+        costume._glTexture = texture;
       }
-      this.gl.bindTexture(this.gl.TEXTURE_2D, costume._texture);
+      this.gl.bindTexture(this.gl.TEXTURE_2D, costume._glTexture);
 
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.texCoordsBuffer);
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
       this.gl.vertexAttribPointer(this.a_texcoord, 2, this.gl.FLOAT, false, 0, 0);
 
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionBuffer);
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
       this.gl.vertexAttribPointer(this.a_position, 2, this.gl.FLOAT, false, 0, 0);
 
       // TODO: do this in the shader
@@ -222,7 +218,7 @@ namespace P.renderer {
     return filter;
   }
 
-  export abstract class Base2DRenderer implements Renderer {
+  export abstract class Base2DRenderer implements ProjectRenderer {
     public ctx: CanvasRenderingContext2D;
     public canvas: HTMLCanvasElement;
 
@@ -255,9 +251,6 @@ namespace P.renderer {
     }
   }
 
-  /**
-   * A renderer for drawing sprites (or stages)
-   */
   export class SpriteRenderer2D extends Base2DRenderer {
     public noEffects: boolean = false;
 
@@ -300,10 +293,7 @@ namespace P.renderer {
     }
   }
 
-  /**
-   * A renderer specifically for the backdrop of a Stage.
-   */
-  export class StageRenderer extends SpriteRenderer2D {
+  export class StageRenderer2D extends SpriteRenderer2D {
     constructor(canvas: HTMLCanvasElement, private stage: P.core.Stage) {
       super(canvas);
       // We handle effects in other ways, so forcibly disable SpriteRenderer's filters
@@ -325,6 +315,51 @@ namespace P.renderer {
 
       // cssFilter does not include ghost
       this.canvas.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
+    }
+  }
+
+  export class PenRenderer2D extends SpriteRenderer2D implements PenRenderer {
+    private currentSize: number;
+
+    drawLine(color: string, size: number, x1: number, y1: number, x2: number, y2: number) {
+      this.ctx.lineCap = 'round';
+      if (size % 2 > .5 && size % 2 < 1.5) {
+        x1 -= .5;
+        y1 -= .5;
+        x2 -= .5;
+        y2 -= .5;
+      }
+      this.ctx.strokeStyle = color;
+      this.ctx.lineWidth = size;
+      this.ctx.beginPath();
+      this.ctx.moveTo(240 + x1, 180 - y1);
+      this.ctx.lineTo(240 + x2, 180 - y2);
+      this.ctx.stroke();
+    }
+
+    dot(color: string, size: number, x: number, y: number) {
+      this.ctx.fillStyle = color;
+      this.ctx.beginPath();
+      this.ctx.arc(240 + x, 180 - y, size / 2, 0, 2 * Math.PI, false);
+      this.ctx.fill();
+    }
+
+    stamp(child: core.Base) {
+      this.drawChild(child);
+    }
+
+    resize(scale: number) {
+      const cachedCanvas = document.createElement('canvas');
+      cachedCanvas.width = this.canvas.width;
+      cachedCanvas.height = this.canvas.height;
+      cachedCanvas.getContext('2d')!.drawImage(this.canvas, 0, 0);
+      super.reset(scale);
+      this.ctx.drawImage(cachedCanvas, 0, 0, this.canvas.width, this.canvas.height);
+    }
+
+    clear() {
+      this.canvas.width = this.canvas.width;
+      this.canvas.height = this.canvas.height;
     }
   }
 }
