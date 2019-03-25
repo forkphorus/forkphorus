@@ -215,10 +215,8 @@ namespace P.renderer {
       var matrix = P.m3.projection(this.canvas.width, this.canvas.height);
       matrix = P.m3.multiply(matrix, P.m3.translation(240 + child.scratchX, 180 - child.scratchY));
       if (P.core.isSprite(child)) {
-        if (child.rotationStyle === RotationStyle.Normal) {
-          if (child.direction !== 90) {
-            matrix = P.m3.multiply(matrix, P.m3.rotation(90 - child.direction));
-          }
+        if (child.rotationStyle === RotationStyle.Normal && child.direction !== 90) {
+          matrix = P.m3.multiply(matrix, P.m3.rotation(90 - child.direction));
         } else if (child.rotationStyle === RotationStyle.LeftRight && child.direction < 0) {
           matrix = P.m3.multiply(matrix, horizontalInvertMatrix);
         }
@@ -259,8 +257,28 @@ namespace P.renderer {
     }
   }
 
-  // export class WebGLPenRednerer extends WebGLProjectRenderer {
-  // }
+  export class WebGLPenRednerer extends WebGLProjectRenderer implements PenRenderer {
+    drawLine(color, size, x1, y1, x2, y2) {
+      // TODO
+    }
+
+    dot(color, size, x, y) {
+      // TODO
+    }
+
+    stamp(child) {
+      // this.drawChild(child);
+    }
+
+    resize(scale) {
+      // TODO
+    }
+
+    clear() {
+      this.gl.clearColor(0, 0, 0, 0);
+      this.gl.clearDepth(this.gl.COLOR_BUFFER_BIT);
+    }
+  }
 
   /**
    * Creates the CSS filter for a Filter object.
