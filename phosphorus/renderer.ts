@@ -19,14 +19,39 @@ namespace P.renderer {
      * Draws a Sprite or Stage on this renderer
      */
     drawChild(child: P.core.Base): void;
-    // spriteTouches(sprite: P.core.Sprite): boolean;
+    drawLayer(canvas: HTMLCanvasElement): void;
   }
 
   export interface PenRenderer {
+    /**
+     * Draws a line
+     * @param color Color of the line (canvas fillStyle)
+     * @param size Width of the line (think radius)
+     * @param x1 X coordinate of start, in the Scratch grid.
+     * @param y1 Y coordinate of start, in the Scratch grid.
+     * @param x2 X coordinate of end, in the Scratch grid.
+     * @param y2 Y coordinate of end, in the Scratch grid.
+     */
     drawLine(color: string, size: number, x1: number, y1: number, x2: number, y2: number): void;
+    /**
+     * Creates a pen dot.
+     * @param color Color
+     * @param size Radius
+     * @param x X coordinate, in the Scratch grid.
+     * @param y Y coordinate, in the Scratch grid.
+     */
     dot(color: string, size: number, x: number, y: number): void;
+    /**
+     * Stamps a Sprite.
+     */
     stamp(child: P.core.Sprite): void;
+    /**
+     * Resizes the renderer while preserving the canvas's content
+     */
     resize(scale: number): void;
+    /**
+     * Clear the renderer
+     */
     clear(): void;
   }
 
@@ -34,7 +59,9 @@ namespace P.renderer {
     _glTexture: WebGLTexture;
   }
 
-  export class WebGLRenderer implements ProjectRenderer {
+  const horizontalInvertMatrix = P.m3.scaling(-1, 1);
+
+  export class WebGLProjectRenderer implements ProjectRenderer {
     public static vertexShader: string = `
     attribute vec2 a_position;
     attribute vec2 a_texcoord;
@@ -55,9 +82,12 @@ namespace P.renderer {
     varying vec2 v_texcoord;
 
     uniform sampler2D u_texture;
+    uniform float u_opacity;
 
     void main() {
-      gl_FragColor = texture2D(u_texture, v_texcoord);
+      vec4 color = texture2D(u_texture, v_texcoord);
+      color.a *= u_opacity;
+      gl_FragColor = color;
     }
     `;
 
@@ -69,11 +99,12 @@ namespace P.renderer {
     private a_position: number;
     private a_texcoord: number;
     private u_matrix: WebGLUniformLocation;
+    private u_opacity: WebGLUniformLocation;
 
     constructor(public canvas: HTMLCanvasElement) {
       this.gl = canvas.getContext('webgl')!;
 
-      this.program = this.compileProgram(WebGLRenderer.vertexShader, WebGLRenderer.fragmentShader);
+      this.program = this.compileProgram(WebGLProjectRenderer.vertexShader, WebGLProjectRenderer.fragmentShader);
 
       // Enable transparency blending.
       this.gl.enable(this.gl.BLEND);
@@ -83,6 +114,7 @@ namespace P.renderer {
       this.a_position = this.gl.getAttribLocation(this.program, 'a_position');
       this.a_texcoord = this.gl.getAttribLocation(this.program, 'a_texcoord');
       this.u_matrix = this.gl.getUniformLocation(this.program, 'u_matrix')!;
+      this.u_opacity = this.gl.getUniformLocation(this.program, 'u_opacity')!;
 
       this.quadBuffer = this.gl.createBuffer()!;
       this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
@@ -110,7 +142,7 @@ namespace P.renderer {
       this.gl.compileShader(shader);
 
       if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
-        const error = this.gl.getProgramInfoLog(shader);
+        const error = this.gl.getShaderInfoLog(shader);
         this.gl.deleteShader(shader);
         throw new Error('Shader compilation error: ' + error);
       }
@@ -149,7 +181,7 @@ namespace P.renderer {
       this.gl.clear(this.gl.COLOR_BUFFER_BIT);
     }
 
-    createTexture(costume: P.core.Costume): WebGLTexture {
+    createTexture(canvas: HTMLCanvasElement): WebGLTexture {
       const texture = this.gl.createTexture();
       if (!texture) {
         throw new Error('Cannot create texture');
@@ -160,7 +192,7 @@ namespace P.renderer {
       this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
       this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
 
-      this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, costume.image);
+      this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
       return texture;
     }
 
@@ -168,7 +200,7 @@ namespace P.renderer {
       // Texture
       const costume = child.costumes[child.currentCostumeIndex] as WebGLCostume;
       if (!costume._glTexture) {
-        const texture = this.createTexture(costume);
+        const texture = this.createTexture(costume.image);
         costume._glTexture = texture;
       }
       this.gl.bindTexture(this.gl.TEXTURE_2D, costume._glTexture);
@@ -183,14 +215,21 @@ namespace P.renderer {
       var matrix = P.m3.projection(this.canvas.width, this.canvas.height);
       matrix = P.m3.multiply(matrix, P.m3.translation(240 + child.scratchX, 180 - child.scratchY));
       if (P.core.isSprite(child)) {
-        matrix = P.m3.multiply(matrix, P.m3.rotation(90 - child.direction));
+        if (child.rotationStyle === RotationStyle.Normal) {
+          if (child.direction !== 90) {
+            matrix = P.m3.multiply(matrix, P.m3.rotation(90 - child.direction));
+          }
+        } else if (child.rotationStyle === RotationStyle.LeftRight && child.direction < 0) {
+          matrix = P.m3.multiply(matrix, horizontalInvertMatrix);
+        }
         matrix = P.m3.multiply(matrix, P.m3.scaling(child.scale, child.scale));
       }
       matrix = P.m3.multiply(matrix, P.m3.scaling(costume.scale, costume.scale));
       matrix = P.m3.multiply(matrix, P.m3.translation(-costume.rotationCenterX, -costume.rotationCenterY));
       matrix = P.m3.multiply(matrix, P.m3.scaling(costume.image.width, costume.image.height));
+      this.gl.uniformMatrix3fv(this.u_matrix, false, matrix);
 
-      this.gl.uniformMatrix3fv(this.u_matrix, false, new Float32Array(matrix));
+      this.gl.uniform1f(this.u_opacity, 1 - child.filters.ghost / 100);
 
       this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
     }
@@ -200,7 +239,28 @@ namespace P.renderer {
         this.drawChild(child);
       }
     }
+
+    drawLayer(canvas: HTMLCanvasElement) {
+      const texture = this.createTexture(canvas);
+      this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
+      this.gl.vertexAttribPointer(this.a_texcoord, 2, this.gl.FLOAT, false, 0, 0);
+
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
+      this.gl.vertexAttribPointer(this.a_position, 2, this.gl.FLOAT, false, 0, 0);
+
+      const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
+      this.gl.uniformMatrix3fv(this.u_matrix, false, matrix);
+
+      this.gl.uniform1f(this.u_opacity, 1);
+
+      this.gl.deleteTexture(texture);
+    }
   }
+
+  // export class WebGLPenRednerer extends WebGLProjectRenderer {
+  // }
 
   /**
    * Creates the CSS filter for a Filter object.
@@ -248,6 +308,10 @@ namespace P.renderer {
       for (const child of children) {
         this.drawChild(child);
       }
+    }
+
+    drawLayer(canvas: HTMLCanvasElement) {
+      this.ctx.drawImage(canvas, 0, 0, this.canvas.width, this.canvas.height);
     }
   }
 

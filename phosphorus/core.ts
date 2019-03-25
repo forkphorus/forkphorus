@@ -551,7 +551,7 @@ namespace P.core {
 
       this.canvas = document.createElement('canvas');
       this.root.appendChild(this.canvas);
-      this.renderer = new P.renderer.WebGLRenderer(this.canvas);
+      this.renderer = new P.renderer.WebGLProjectRenderer(this.canvas);
 
       this.ui = document.createElement('div');
       this.root.appendChild(this.ui);
@@ -948,7 +948,7 @@ namespace P.core {
      */
     drawAll(renderer: P.renderer.ProjectRenderer, skip?: Sprite) {
       renderer.drawChild(this);
-      renderer.drawImage(this.penCanvas, 0, 0);
+      renderer.drawLayer(this.penCanvas);
       this.drawChildren(renderer, skip);
     }
 
