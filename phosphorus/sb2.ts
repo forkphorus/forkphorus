@@ -568,7 +568,8 @@ namespace P.sb2 {
         sprite.visible = data.visible;
       }
 
-      // Dirty hack expected by the sb2 compiler, TODO: remove
+      // We store the scripts on the Sprite so the compiler can find them easier
+      // TODO: to something different?
       object.scripts = data.scripts || [];
 
       return object;
@@ -1816,7 +1817,7 @@ namespace P.sb2.compiler {
     if (script[0][0] === 'procDef') {
       let pre = '';
       for (let i = types.length; i--;) {
-        // TODO: dirty hack to make used work; really this entire thing needs to be changed a lot
+        // We know `used` is defined at this point, but typescript doesn't.
         if (used![i]) {
           const t = types[i];
           if (t === '%d' || t === '%n' || t === '%c') {

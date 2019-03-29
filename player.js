@@ -140,13 +140,13 @@ P.player = (function() {
 
   window.addEventListener('resize', updateFullScreen);
 
-  document.addEventListener("fullscreenchange", function () {
+  document.addEventListener('fullscreenchange', function () {
     if (isFullScreen !== document.fullscreen) fullScreenClick();
   });
-  document.addEventListener("mozfullscreenchange", function () {
+  document.addEventListener('mozfullscreenchange', function () {
     if (isFullScreen !== document.mozFullScreen) fullScreenClick();
   });
-  document.addEventListener("webkitfullscreenchange", function () {
+  document.addEventListener('webkitfullscreenchange', function () {
     if (isFullScreen !== document.webkitIsFullScreen) fullScreenClick();
   });
 
@@ -196,7 +196,7 @@ P.player = (function() {
   function createBugLink(before, after) {
     var url = P.player.projectURL || '(no url)';
     var id = P.player.projectId || '(no id)';
-    var title = encodeURIComponent(P.player.projectTitle || P.player.projectURL || "Project Bug");
+    var title = encodeURIComponent(P.player.projectTitle || P.player.projectURL || 'Project Bug');
     var baseBody = '\n\n\n----\nProject URL: ' + url + '\nProject ID: ' + id + '\n' + location.href + '\n' + navigator.userAgent + '\n';
     return 'https://github.com/forkphorus/forkphorus.github.io/issues/new?title=' + title + '&body=' + encodeURIComponent(before + baseBody + after) + '&labels=bug';
   }
@@ -206,7 +206,7 @@ P.player = (function() {
     setProgress(1);
     progressBar.classList.add('error');
     error.style.display = 'block';
-    errorBugLink.href = createBugLink("Describe what you were doing to cause this error:", '```\n' + P.utils.stringifyError(e) + '\n```');
+    errorBugLink.href = createBugLink('Describe what you were doing to cause this error:', '```\n' + P.utils.stringifyError(e) + '\n```');
     console.error(e);
   }
 

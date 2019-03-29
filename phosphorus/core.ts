@@ -63,6 +63,13 @@ namespace P.core {
     None,
   }
 
+  export const enum SpecialObjects {
+    Mouse = '_mouse_',
+    Stage = '_stage_',
+    Random = '_random_',
+    Edge = '_edge_',
+  }
+
   export abstract class Base {
     /**
      * The stage this object belongs to.
@@ -178,6 +185,7 @@ namespace P.core {
       brightness: 0,
       ghost: 0,
     };
+
     constructor() {
       for (var i = 0; i < 128; i++) {
         this.listeners.whenKeyPressed.push([]);
@@ -774,7 +782,7 @@ namespace P.core {
       this.mouseSprite = undefined;
       for (var i = this.children.length; i--;) {
         var c = this.children[i];
-        if (c.visible && c.filters.ghost < 100 && c.touching('_mouse_')) {
+        if (c.visible && c.filters.ghost < 100 && c.touching(SpecialObjects.Mouse)) {
           if (c.isDraggable) {
             this.mouseSprite = c;
             c.mouseDown();
@@ -803,7 +811,7 @@ namespace P.core {
 
     /**
      * Gets an object with its name, ignoring clones.
-     * '_stage_' points to the stage.
+     * SpecialObjects.Stage will point to the stage.
      */
     getObject(name: string): Base | null {
       for (var i = 0; i < this.children.length; i++) {
@@ -812,7 +820,7 @@ namespace P.core {
           return c;
         }
       }
-      if (name === '_stage_' || name === this.name) {
+      if (name === SpecialObjects.Stage || name === this.name) {
         return this;
       }
       return null;
@@ -820,7 +828,7 @@ namespace P.core {
 
     /**
      * Gets all the objects with a name, including clones.
-     * Special values such as '_stage_' are not supported.
+     * Special values are not supported.
      */
     getObjects(name: string): P.core.Base[] {
       const result: P.core.Base[] = [];
@@ -837,11 +845,11 @@ namespace P.core {
      */
     getPosition(name: string): {x: number, y: number} | null {
       switch (name) {
-        case '_mouse_': return {
+        case SpecialObjects.Mouse: return {
           x: this.mouseX,
           y: this.mouseY,
         };
-        case '_random_': return {
+        case SpecialObjects.Random: return {
           x: Math.round(480 * Math.random() - 240),
           y: Math.round(360 * Math.random() - 180),
         };
@@ -1207,12 +1215,13 @@ namespace P.core {
     // Must return a new instance of this Sprite's constructor. Data copying will be handled in clone()
     protected abstract _clone(): P.core.Sprite;
 
-    // Determines if the sprite is touching an object.
-    // thing is the name of the object, '_mouse_', or '_edge_'
+    /**
+     * Determines if this sprite is touching another object.
+     * @param thing The name of the other object(s)
+     */
     touching(thing: string) {
-      const costume = this.costumes[this.currentCostumeIndex];
-
-      if (thing === '_mouse_') {
+      if (thing === SpecialObjects.Mouse) {
+        const costume = this.costumes[this.currentCostumeIndex];
         const bounds = this.rotatedBounds();
         const x = this.stage.rawMouseX;
         const y = this.stage.rawMouseY;
@@ -1236,7 +1245,7 @@ namespace P.core {
         const positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
         const data = costume.context.getImageData(positionX, positionY, 1, 1).data;
         return data[3] !== 0;
-      } else if (thing === '_edge_') {
+      } else if (thing === SpecialObjects.Edge) {
         const bounds = this.rotatedBounds();
         return bounds.left <= -240 || bounds.right >= 240 || bounds.top >= 180 || bounds.bottom <= -180;
       } else {
@@ -1295,7 +1304,10 @@ namespace P.core {
       }
     }
 
-    // Determines if this Sprite is touching a color.
+    /**
+     * Determines if this Sprite is touching a color.
+     * @param rgb RGB color, as a single number.
+     */
     touchingColor(rgb: number) {
       const b = this.rotatedBounds();
 
@@ -1324,6 +1336,11 @@ namespace P.core {
       return false;
     }
 
+    /**
+     * Determines if one of this Sprite's colors are touching another color.
+     * @param sourceColor This sprite's color, as an RGB color.
+     * @param touchingColor The other color, as an RGB color.
+     */
     colorTouchingColor(sourceColor: number, touchingColor: number) {
       var rb = this.rotatedBounds();
 
@@ -1358,7 +1375,9 @@ namespace P.core {
       return false;
     }
 
-    // Bounces off an edge of the stage, if it is touching one.
+    /**
+     * Bounces this Sprite off of an edge of the Stage, if this Sprite is touching one.
+     */
     bounceOffEdge() {
       var b = this.rotatedBounds();
       var dl = 240 + b.left;
@@ -1392,7 +1411,10 @@ namespace P.core {
       if (b.bottom < -180) y += -180 - b.top;
     }
 
-    // Determines the distance to point accepted by getPosition()
+    /**
+     * Determines the distance from this Sprite's center to another position.
+     * @param thing The name of any position or Sprite, as accepted by getPosition()
+     */
     distanceTo(thing: string) {
       const p = this.stage.getPosition(thing);
       if (!p) {
@@ -1403,8 +1425,10 @@ namespace P.core {
       return Math.sqrt((this.scratchX - x) * (this.scratchX - x) + (this.scratchY - y) * (this.scratchY - y));
     }
 
-    // Goes to another object.
-    // thing is anything that getPosition() accepts
+    /**
+     * Makes this Sprite go to another Sprite
+     * @param thing The name of any position or Sprite, as accepted by getPosition()
+     */
     gotoObject(thing: string) {
       const position = this.stage.getPosition(thing);
       if (!position) {
@@ -1413,8 +1437,10 @@ namespace P.core {
       this.moveTo(position.x, position.y);
     }
 
-    // Points towards an object.
-    // thing is anything that getPosition() accepts
+    /**
+     * Makes this Sprite point towards another object.
+     * @param thing The name of any position or Sprite, as accepted by getPosition()
+     */
     pointTowards(thing: string) {
       const position = this.stage.getPosition(thing);
       if (!position) {
@@ -1426,7 +1452,9 @@ namespace P.core {
       if (this.saying) this.updateBubble();
     }
 
-    // Sets the RGB color of the pen.
+    /**
+     * Set the RGB color of the pen.
+     */
     setPenColor(color: number) {
       this.penColor = color;
       const r = this.penColor >> 16 & 0xff;
@@ -1436,7 +1464,9 @@ namespace P.core {
       this.penCSS = 'rgba(' + r + ', ' + g + ', ' + b + ', ' + a + ')';
     }
 
-    // Converts the pen's color to HSL
+    /**
+     * Convert the pen's color from RGB to HSL
+     */
     setPenColorHSL() {
       if (this.penCSS) {
         const hsl = P.utils.rgbToHSL(this.penColor);
