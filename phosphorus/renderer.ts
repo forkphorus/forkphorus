@@ -5,54 +5,69 @@ namespace P.renderer {
   // Import aliases
   import RotationStyle = P.core.RotationStyle;
 
-  export interface ProjectRenderer {
+  export interface SpriteRenderer {
+    canvas: HTMLCanvasElement;
     /**
      * Resets and resizes the renderer
      */
     reset(scale: number): void;
     /**
-     * Draws several Sprites or Stages at once, allowing for the renderer
-     * to optimize the rendering.
-     */
-    drawChildren(children: P.core.Base[]): void;
-    /**
      * Draws a Sprite or Stage on this renderer
      */
     drawChild(child: P.core.Base): void;
+    /**
+     * Draws a canvas covering the full dimensions of this renderer
+     */
     drawLayer(canvas: HTMLCanvasElement): void;
   }
 
-  export interface PenRenderer {
+  export interface ProjectRenderer extends SpriteRenderer {
     /**
-     * Draws a line
-     * @param color Color of the line (canvas fillStyle)
-     * @param size Width of the line (think radius)
-     * @param x1 X coordinate of start, in the Scratch grid.
-     * @param y1 Y coordinate of start, in the Scratch grid.
-     * @param x2 X coordinate of end, in the Scratch grid.
-     * @param y2 Y coordinate of end, in the Scratch grid.
+     * The canvas where pen things are drawn
      */
-    drawLine(color: string, size: number, x1: number, y1: number, x2: number, y2: number): void;
+    penLayer: HTMLCanvasElement;
     /**
-     * Creates a pen dot.
-     * @param color Color
-     * @param size Radius
-     * @param x X coordinate, in the Scratch grid.
-     * @param y Y coordinate, in the Scratch grid.
+     * The canvas where the stage is drawn
      */
-    dot(color: string, size: number, x: number, y: number): void;
+    stageLayer: HTMLCanvasElement;
     /**
-     * Stamps a Sprite.
+     * Draws a line on the pen canvas
+     * @param color Color of the line
+     * @param size Width of the line
+     * @param x Starting X coordinate in Sratch
+     * @param y Starting Y coordinate in Sratch
+     * @param x2 Ending X coordinate in Sratch
+     * @param y2 Starting Y coordinate in Sratch
      */
-    stamp(child: P.core.Sprite): void;
+    penLine(color: string, size: number, x: number, y: number, x2: number, y2: number): void;
     /**
-     * Resizes the renderer while preserving the canvas's content
+     * Draws a circular dot on the pen canvas
+     * @param color Color of the dot
+     * @param size Diameter of the circle
+     * @param x Central X coordinate in Scratch
+     * @param y Central Y coordinate in Scratch
      */
-    resize(scale: number): void;
+    penDot(color: string, size: number, x: number, y: number): void;
     /**
-     * Clear the renderer
+     * Stamp a Sprite on the pen layer
      */
-    clear(): void;
+    penStamp(sprite: P.core.Sprite): void;
+    /**
+     * Clear the pen canvas
+     */
+    penClear(): void;
+    /**
+     * Resizes the pen canvas without losing the existing drawing.
+     */
+    penResize(scale: number): void;
+    /**
+     * Updates & resize the Stage layer. Implicitly calls updateStageFilters()
+     */
+    updateStage(scale: number): void;
+    /**
+     * Updates the filters applied to the Stage layer.
+     */
+    updateStageFilters(): void;
   }
 
   interface WebGLCostume extends P.core.Costume {
@@ -61,7 +76,7 @@ namespace P.renderer {
 
   const horizontalInvertMatrix = P.m3.scaling(-1, 1);
 
-  export class WebGLProjectRenderer implements ProjectRenderer {
+  export class WebGLSpriteRenderer implements SpriteRenderer {
     public static vertexShader: string = `
     attribute vec2 a_position;
     attribute vec2 a_texcoord;
@@ -104,7 +119,7 @@ namespace P.renderer {
     constructor(public canvas: HTMLCanvasElement) {
       this.gl = canvas.getContext('webgl')!;
 
-      this.program = this.compileProgram(WebGLProjectRenderer.vertexShader, WebGLProjectRenderer.fragmentShader);
+      this.program = this.compileProgram(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader);
 
       // Enable transparency blending.
       this.gl.enable(this.gl.BLEND);
@@ -257,29 +272,6 @@ namespace P.renderer {
     }
   }
 
-  export class WebGLPenRednerer extends WebGLProjectRenderer implements PenRenderer {
-    drawLine(color, size, x1, y1, x2, y2) {
-      // TODO
-    }
-
-    dot(color, size, x, y) {
-      // TODO
-    }
-
-    stamp(child) {
-      // this.drawChild(child);
-    }
-
-    resize(scale) {
-      // TODO
-    }
-
-    clear() {
-      this.gl.clearColor(0, 0, 0, 0);
-      this.gl.clearDepth(this.gl.COLOR_BUFFER_BIT);
-    }
-  }
-
   /**
    * Creates the CSS filter for a Filter object.
    * The filter is generally an estimation of the actual effect.
@@ -296,152 +288,157 @@ namespace P.renderer {
     return filter;
   }
 
-  export abstract class Base2DRenderer implements ProjectRenderer {
+  export class SpriteRenderer2D implements SpriteRenderer {
     public ctx: CanvasRenderingContext2D;
     public canvas: HTMLCanvasElement;
+    public noEffects: boolean = false;
 
-    constructor(canvas: HTMLCanvasElement) {
-      const ctx = canvas.getContext('2d')!;
-      this.ctx = ctx;
-      this.canvas = canvas;
+    constructor() {
+      this.canvas = this._createCanvas();
+      this.ctx = this.canvas.getContext('2d')!;
     }
 
-    /**
-     * Resizes and clears the renderer
-     */
     reset(scale: number) {
-      const effectiveScale = scale * P.config.scale;
-      this.canvas.width = 480 * effectiveScale;
-      this.canvas.height = 360 * effectiveScale;
-      this.ctx.scale(effectiveScale, effectiveScale);
+      this._reset(this.ctx, scale);
     }
 
     drawImage(image: CanvasImageSource, x: number, y: number) {
       this.ctx.drawImage(image, x, y);
     }
 
-    abstract drawChild(child: P.core.Base): void;
-
-    drawChildren(children: P.core.Base[]): void {
-      for (const child of children) {
-        this.drawChild(child);
-      }
+    drawChild(c: P.core.Base) {
+      this._drawChild(c, this.ctx);
     }
 
     drawLayer(canvas: HTMLCanvasElement) {
-      this.ctx.drawImage(canvas, 0, 0, this.canvas.width, this.canvas.height);
+      this.ctx.drawImage(canvas, 0, 0, 480, 360);
     }
-  }
 
-  export class SpriteRenderer2D extends Base2DRenderer {
-    public noEffects: boolean = false;
+    protected _reset(ctx: CanvasRenderingContext2D, scale: number) {
+      const effectiveScale = scale * P.config.scale;
+      ctx.canvas.width = 480 * effectiveScale;
+      ctx.canvas.height = 360 * effectiveScale;
+      ctx.scale(effectiveScale, effectiveScale);
+    }
 
-    drawChild(c: P.core.Base) {
+    protected _drawChild(c: P.core.Base, ctx: CanvasRenderingContext2D) {
       const costume = c.costumes[c.currentCostumeIndex];
       if (!costume) {
         return;
       }
 
-      this.ctx.save();
+      ctx.save();
 
       const scale = c.stage.zoom * P.config.scale;
-      this.ctx.translate(((c.scratchX + 240) * scale | 0) / scale, ((180 - c.scratchY) * scale | 0) / scale);
+      ctx.translate(((c.scratchX + 240) * scale | 0) / scale, ((180 - c.scratchY) * scale | 0) / scale);
 
       // Direction transforms are only applied to Sprites because Stages cannot be rotated.
       if (P.core.isSprite(c)) {
         if (c.rotationStyle === RotationStyle.Normal) {
-          this.ctx.rotate((c.direction - 90) * Math.PI / 180);
+          ctx.rotate((c.direction - 90) * Math.PI / 180);
         } else if (c.rotationStyle === RotationStyle.LeftRight && c.direction < 0) {
-          this.ctx.scale(-1, 1);
+          ctx.scale(-1, 1);
         }
-        this.ctx.scale(c.scale, c.scale);
+        ctx.scale(c.scale, c.scale);
       }
 
-      this.ctx.scale(costume.scale, costume.scale);
-      this.ctx.translate(-costume.rotationCenterX, -costume.rotationCenterY);
+      ctx.scale(costume.scale, costume.scale);
+      ctx.translate(-costume.rotationCenterX, -costume.rotationCenterY);
 
       if (!this.noEffects) {
-        this.ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
+        ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
 
         const filter = cssFilter(c.filters);
         // Only apply a filter if necessary, otherwise Firefox performance nosedives.
         if (filter !== '') {
-          this.ctx.filter = filter;
+          ctx.filter = filter;
         }
       }
 
-      this.ctx.drawImage(costume.image, 0, 0);
-      this.ctx.restore();
+      ctx.drawImage(costume.image, 0, 0);
+      ctx.restore();
+    }
+
+    protected _createCanvas() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 480;
+      canvas.height = 360;
+      return canvas;
     }
   }
 
-  export class StageRenderer2D extends SpriteRenderer2D {
-    constructor(canvas: HTMLCanvasElement, private stage: P.core.Stage) {
-      super(canvas);
-      // We handle effects in other ways, so forcibly disable SpriteRenderer's filters
+  export class ProjectRenderer2D extends SpriteRenderer2D implements ProjectRenderer {
+    public stageLayer: HTMLCanvasElement;
+    public stageContext: CanvasRenderingContext2D;
+    public penLayer: HTMLCanvasElement;
+    public penContext: CanvasRenderingContext2D;
+
+    constructor(public stage: P.core.Stage) {
+      super();
+      this.stageLayer = this._createCanvas();
+      this.stageContext = this.stageLayer.getContext('2d')!;
+      this.penLayer = this._createCanvas();
+      this.penContext = this.penLayer.getContext('2d')!;
+    }
+
+    updateStage(scale: number) {
+      this._reset(this.stageContext, scale);
       this.noEffects = true;
+      this._drawChild(this.stage, this.stageContext);
+      this.noEffects = false;
+      this.updateStageFilters();
     }
 
-    drawStage() {
-      this.drawChild(this.stage);
-      this.updateFilters();
-    }
-
-    updateFilters() {
+    updateStageFilters() {
       const filter = cssFilter(this.stage.filters);
       // Only reapply a CSS filter if it has changed for performance.
       // Might not be necessary here.
-      if (this.canvas.style.filter !== filter) {
-        this.canvas.style.filter = filter;
+      if (this.stageLayer.style.filter !== filter) {
+        this.stageLayer.style.filter = filter;
       }
 
       // cssFilter does not include ghost
-      this.canvas.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
+      this.stageLayer.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
     }
-  }
 
-  export class PenRenderer2D extends SpriteRenderer2D implements PenRenderer {
-    private currentSize: number;
+    penClear() {
+      this.penContext.clearRect(0, 0, this.penLayer.width, this.penLayer.height);
+    }
 
-    drawLine(color: string, size: number, x1: number, y1: number, x2: number, y2: number) {
-      this.ctx.lineCap = 'round';
+    penResize(scale: number) {
+      const cachedCanvas = document.createElement('canvas');
+      cachedCanvas.width = this.penLayer.width;
+      cachedCanvas.height = this.penLayer.height;
+      cachedCanvas.getContext('2d')!.drawImage(this.penLayer, 0, 0);
+      this._reset(this.penContext, scale);
+      this.penContext.drawImage(cachedCanvas, 0, 0, 480, 360);
+    }
+
+    penDot(color: string, size: number, x: number, y: number) {
+      this.penContext.fillStyle = color;
+      this.penContext.beginPath();
+      this.penContext.arc(240 + x, 180 - y, size / 2, 0, 2 * Math.PI, false);
+      this.penContext.fill();
+    }
+
+    penLine(color: string, size: number, x1: number, y1: number, x2: number, y2: number) {
+      this.penContext.lineCap = 'round';
       if (size % 2 > .5 && size % 2 < 1.5) {
         x1 -= .5;
         y1 -= .5;
         x2 -= .5;
         y2 -= .5;
       }
-      this.ctx.strokeStyle = color;
-      this.ctx.lineWidth = size;
-      this.ctx.beginPath();
-      this.ctx.moveTo(240 + x1, 180 - y1);
-      this.ctx.lineTo(240 + x2, 180 - y2);
-      this.ctx.stroke();
+      this.penContext.strokeStyle = color;
+      this.penContext.lineWidth = size;
+      this.penContext.beginPath();
+      this.penContext.moveTo(240 + x1, 180 - y1);
+      this.penContext.lineTo(240 + x2, 180 - y2);
+      this.penContext.stroke();
     }
 
-    dot(color: string, size: number, x: number, y: number) {
-      this.ctx.fillStyle = color;
-      this.ctx.beginPath();
-      this.ctx.arc(240 + x, 180 - y, size / 2, 0, 2 * Math.PI, false);
-      this.ctx.fill();
-    }
-
-    stamp(child: core.Base) {
-      this.drawChild(child);
-    }
-
-    resize(scale: number) {
-      const cachedCanvas = document.createElement('canvas');
-      cachedCanvas.width = this.canvas.width;
-      cachedCanvas.height = this.canvas.height;
-      cachedCanvas.getContext('2d')!.drawImage(this.canvas, 0, 0);
-      super.reset(scale);
-      this.ctx.drawImage(cachedCanvas, 0, 0, this.canvas.width, this.canvas.height);
-    }
-
-    clear() {
-      this.canvas.width = this.canvas.width;
-      this.canvas.height = this.canvas.height;
+    penStamp(sprite: P.core.Sprite) {
+      this._drawChild(sprite, this.penContext);
     }
   }
 }

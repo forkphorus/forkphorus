@@ -7,9 +7,9 @@
 namespace P.core {
   // Used for collision testing
   const collisionCanvas = document.createElement('canvas');
-  const collisionRenderer = new P.renderer.SpriteRenderer2D(collisionCanvas);
+  const collisionRenderer = new P.renderer.SpriteRenderer2D();
   const secondaryCollisionCanvas = document.createElement('canvas');
-  const secondaryCollisionRenderer = new P.renderer.SpriteRenderer2D(secondaryCollisionCanvas);
+  const secondaryCollisionRenderer = new P.renderer.SpriteRenderer2D();
 
   interface RotatedBounds {
     // A----------+
@@ -506,11 +506,8 @@ namespace P.core {
     public canvas: HTMLCanvasElement;
     public renderer: P.renderer.ProjectRenderer;
 
-    public backdropCanvas: HTMLCanvasElement;
-    public backdropRenderer: P.renderer.StageRenderer2D;
-
-    public penCanvas: HTMLCanvasElement;
-    public penRenderer: P.renderer.PenRenderer;
+    // public penCanvas: HTMLCanvasElement;
+    // public penRenderer: P.renderer.PenRenderer;
 
     public prompt: HTMLInputElement;
     public prompter: HTMLElement;
@@ -525,7 +522,6 @@ namespace P.core {
 
       this.runtime = new P.runtime.Runtime(this);
 
-      // A dirty hack to create the KeyList interface
       this.keys = [] as any;
       this.keys.any = 0;
 
@@ -537,21 +533,14 @@ namespace P.core {
 
       const scale = P.config.scale;
 
-      this.backdropCanvas = document.createElement('canvas');
-      this.root.appendChild(this.backdropCanvas);
+      this.renderer = new P.renderer.ProjectRenderer2D(this);
+      this.renderer.reset(scale);
+      this.renderer.penResize(1);
 
-      this.backdropRenderer = new P.renderer.StageRenderer2D(this.backdropCanvas, this);
-
-      this.penCanvas = document.createElement('canvas');
-      this.root.appendChild(this.penCanvas);
-      this.penCanvas.width = scale * 480;
-      this.penCanvas.height = scale * 360;
-      this.penRenderer = new P.renderer.PenRenderer2D(this.penCanvas);
-      this.penRenderer.resize(scale);
-
-      this.canvas = document.createElement('canvas');
+      this.canvas = this.renderer.canvas;
+      this.root.appendChild(this.renderer.stageLayer);
+      this.root.appendChild(this.renderer.penLayer);
       this.root.appendChild(this.canvas);
-      this.renderer = new P.renderer.WebGLProjectRenderer(this.canvas);
 
       this.ui = document.createElement('div');
       this.root.appendChild(this.ui);
@@ -559,35 +548,6 @@ namespace P.core {
 
       this.canvas.tabIndex = 0;
       this.canvas.style.outline = 'none';
-
-      this.backdropCanvas.style.position =
-        this.penCanvas.style.position =
-        this.canvas.style.position =
-        this.ui.style.position = 'absolute';
-
-      this.backdropCanvas.style.left =
-        this.penCanvas.style.left =
-        this.canvas.style.left =
-        this.ui.style.left =
-        this.backdropCanvas.style.top =
-        this.penCanvas.style.top =
-        this.canvas.style.top =
-        this.ui.style.top = '0';
-
-      this.backdropCanvas.style.width =
-        this.penCanvas.style.width =
-        this.canvas.style.width =
-        this.ui.style.width = '480px';
-
-      this.backdropCanvas.style.height =
-        this.penCanvas.style.height =
-        this.canvas.style.height =
-        this.ui.style.height = '360px';
-
-      this.backdropCanvas.style.transform =
-        this.penCanvas.style.transform =
-        this.canvas.style.transform =
-        this.ui.style.transform = 'translateZ(0)';
 
       this.root.addEventListener('keydown', (e) => {
         var c = e.keyCode;
@@ -790,9 +750,8 @@ namespace P.core {
      * Updates the backdrop canvas to match the current backdrop.
      */
     updateBackdrop() {
-      if (!this.backdropRenderer) return;
-      this.backdropRenderer.reset(this.zoom * P.config.scale);
-      this.backdropRenderer.drawStage();
+      if (!this.renderer) return;
+      this.renderer.updateStage(this.zoom * P.config.scale);
     }
 
     /**
@@ -801,18 +760,11 @@ namespace P.core {
     setZoom(zoom: number) {
       if (this.zoom === zoom) return;
       if (this.maxZoom < zoom * P.config.scale) {
-        this.penRenderer.resize(this.maxZoom);
+        this.maxZoom = zoom * P.config.scale;
+        this.renderer.penResize(this.maxZoom);
       }
-      this.root.style.width =
-      this.canvas.style.width =
-      this.backdropCanvas.style.width =
-      this.penCanvas.style.width =
-      this.ui.style.width = (480 * zoom | 0) + 'px';
-      this.root.style.height =
-      this.canvas.style.height =
-      this.backdropCanvas.style.height =
-      this.penCanvas.style.height =
-      this.ui.style.height = (360 * zoom | 0) + 'px';
+      this.root.style.width = (480 * zoom | 0) + 'px';
+      this.root.style.height = (360 * zoom | 0) + 'px';
       this.root.style.fontSize = (zoom*10) + 'px';
       this.zoom = zoom;
       this.updateBackdrop();
@@ -846,7 +798,7 @@ namespace P.core {
     setFilter(name: string, value: number) {
       // Override setFilter() to update the filters on the real stage.
       super.setFilter(name, value);
-      this.backdropRenderer.updateFilters();
+      this.renderer.updateStageFilters();
     }
 
     /**
@@ -929,7 +881,7 @@ namespace P.core {
      * Draws all the children (not including the Stage itself or pen layers) of this Stage on a renderer
      * @param skip Optionally skip rendering of a single Sprite.
      */
-    drawChildren(renderer: P.renderer.ProjectRenderer, skip?: Sprite) {
+    drawChildren(renderer: P.renderer.SpriteRenderer, skip?: Sprite) {
       for (var i = 0; i < this.children.length; i++) {
         const c = this.children[i];
         if (c.isDragging) {
@@ -946,9 +898,9 @@ namespace P.core {
      * Draws all parts of the Stage (including the stage itself and pen layers) on a renderer.
      * @param skip Optionally skip rendering of a single Sprite.
      */
-    drawAll(renderer: P.renderer.ProjectRenderer, skip?: Sprite) {
+    drawAll(renderer: P.renderer.SpriteRenderer, skip?: Sprite) {
       renderer.drawChild(this);
-      renderer.drawLayer(this.penCanvas);
+      renderer.drawLayer(this.renderer.penLayer);
       this.drawChildren(renderer, skip);
     }
 
@@ -1011,7 +963,7 @@ namespace P.core {
     }
 
     clearPen() {
-      this.penRenderer.clear();
+      this.renderer.penClear();
     }
   }
 
@@ -1170,7 +1122,7 @@ namespace P.core {
 
       if (this.isPenDown && !this.isDragging) {
         const color = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
-        this.stage.penRenderer.drawLine(color, this.penSize, ox, oy, x, y);
+        this.stage.renderer.penLine(color, this.penSize, ox, oy, x, y);
       }
 
       if (this.saying) {
@@ -1181,12 +1133,12 @@ namespace P.core {
     // Makes a pen dot at the current location.
     dotPen() {
       const color = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
-      this.stage.penRenderer.dot(color, this.penSize, this.scratchX, this.scratchY);
+      this.stage.renderer.penDot(color, this.penSize, this.scratchX, this.scratchY);
     }
 
     // Stamps the sprite onto the pen layer.
     stamp() {
-      this.stage.penRenderer.stamp(this);
+      this.stage.renderer.penStamp(this);
     }
 
     // Faces in a direction.

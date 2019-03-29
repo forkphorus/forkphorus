@@ -1,3 +1,5 @@
+/// <reference path="phosphorus.ts" />
+
 namespace P.m3 {
   // Most of this is from:
   // https://webglfundamentals.org/webgl/lessons/webgl-2d-matrices.html

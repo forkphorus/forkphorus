@@ -7,6 +7,15 @@
   color: black;
 }
 
+.forkphorus-root > * {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translateZ(0);
+  width: 100%;
+  height: 100%;
+}
+
 /* Styles for Scratch 3 variable watchers */
 /* Many of these values are taken directly from Scratch 3. */
 .s3-watcher-container {
