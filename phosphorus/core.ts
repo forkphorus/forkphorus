@@ -541,7 +541,11 @@ namespace P.core {
 
       const scale = P.config.scale;
 
-      this.renderer = new P.renderer.ProjectRenderer2D(this);
+      if (P.config.useWebGL) {
+        this.renderer = new P.renderer.WebGLProjectRenderer(this);
+      } else {
+        this.renderer = new P.renderer.ProjectRenderer2D(this);
+      }
       this.renderer.reset(scale);
       this.renderer.penResize(1);
 

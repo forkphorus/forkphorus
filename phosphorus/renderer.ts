@@ -70,11 +70,40 @@ namespace P.renderer {
     updateStageFilters(): void;
   }
 
+  /**
+   * Create an HTML canvas.
+   */
+  function createCanvas() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 480;
+    canvas.height = 360;
+    return canvas;
+  }
+
+  /**
+   * Creates the CSS filter for a Filter object.
+   * The filter is generally an estimation of the actual effect.
+   * Includes brightness and color. (does not include ghost)
+   */
+  function cssFilter(filters: P.core.Filters) {
+    let filter = '';
+    if (filters.brightness) {
+      filter += 'brightness(' + (100 + filters.brightness) + '%) ';
+    }
+    if (filters.color) {
+      filter += 'hue-rotate(' + (filters.color / 200 * 360) + 'deg) ';
+    }
+    return filter;
+  }
+
+  // Used in the WebGL renderer for inverting sprites.
+  // Create it only once for memory reasons.
+  const horizontalInvertMatrix = P.m3.scaling(-1, 1);
+
+  // Extension of Costume to store the webgl textures
   interface WebGLCostume extends P.core.Costume {
     _glTexture: WebGLTexture;
   }
-
-  const horizontalInvertMatrix = P.m3.scaling(-1, 1);
 
   export class WebGLSpriteRenderer implements SpriteRenderer {
     public static vertexShader: string = `
@@ -106,18 +135,22 @@ namespace P.renderer {
     }
     `;
 
+    public canvas: HTMLCanvasElement;
     public gl: WebGLRenderingContext;
 
     private program: WebGLProgram;
     private quadBuffer: WebGLBuffer;
+
+    private globalScaleMatrix: P.m3.Matrix3;
 
     private a_position: number;
     private a_texcoord: number;
     private u_matrix: WebGLUniformLocation;
     private u_opacity: WebGLUniformLocation;
 
-    constructor(public canvas: HTMLCanvasElement) {
-      this.gl = canvas.getContext('webgl')!;
+    constructor() {
+      this.canvas = createCanvas();
+      this.gl = this.canvas.getContext('webgl')!;
 
       this.program = this.compileProgram(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader);
 
@@ -131,6 +164,7 @@ namespace P.renderer {
       this.u_matrix = this.gl.getUniformLocation(this.program, 'u_matrix')!;
       this.u_opacity = this.gl.getUniformLocation(this.program, 'u_opacity')!;
 
+      // Create the quad buffer that we'll use for positioning, textures later.
       this.quadBuffer = this.gl.createBuffer()!;
       this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
       this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
@@ -148,6 +182,11 @@ namespace P.renderer {
       this.gl.enableVertexAttribArray(this.a_texcoord);
     }
 
+    /**
+     * Compile a single shader
+     * @param type The type of the shader. Use this.gl.VERTEX_SHADER or FRAGMENT_SHADER
+     * @param source The string source of the shader.
+     */
     compileShader(type: number, source: string): WebGLShader {
       const shader = this.gl.createShader(type);
       if (!shader) {
@@ -165,6 +204,11 @@ namespace P.renderer {
       return shader;
     }
 
+    /**
+     * Compiles a vertex shader and fragment shader into a program.
+     * @param vs Vertex shader source.
+     * @param fs Fragment shader source.
+     */
     compileProgram(vs: string, fs: string): WebGLProgram {
       const vertexShader = this.compileShader(this.gl.VERTEX_SHADER, vs);
       const fragmentShader = this.compileShader(this.gl.FRAGMENT_SHADER, fs);
@@ -186,16 +230,10 @@ namespace P.renderer {
       return program;
     }
 
-    reset(scale: number) {
-      this.canvas.width = scale * P.config.scale * 480;
-      this.canvas.height = scale * P.config.scale * 360;
-
-      // Clear the canvas
-      this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-      this.gl.clearColor(0, 0, 0, 0);
-      this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-    }
-
+    /**
+     * Create a WebGL texture
+     * @param canvas The source canvas. Dimensions do not matter.
+     */
     createTexture(canvas: HTMLCanvasElement): WebGLTexture {
       const texture = this.gl.createTexture();
       if (!texture) {
@@ -211,8 +249,21 @@ namespace P.renderer {
       return texture;
     }
 
+    reset(scale: number) {
+      // Scale the actual canvas
+      this.canvas.width = scale * P.config.scale * 480;
+      this.canvas.height = scale * P.config.scale * 360;
+      this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+      this.globalScaleMatrix = P.m3.scaling(scale, scale);
+
+      // Clear the canvas
+      this.gl.clearColor(0, 0, 0, 0);
+      this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+    }
+
     drawChild(child: P.core.Base) {
-      // Texture
+      // Create the texture if it doesn't already exist.
+      // We'll create a texture only once for performance, memory, etc.
       const costume = child.costumes[child.currentCostumeIndex] as WebGLCostume;
       if (!costume._glTexture) {
         const texture = this.createTexture(costume.image);
@@ -226,31 +277,31 @@ namespace P.renderer {
       this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
       this.gl.vertexAttribPointer(this.a_position, 2, this.gl.FLOAT, false, 0, 0);
 
-      // TODO: do this in the shader
-      var matrix = P.m3.projection(this.canvas.width, this.canvas.height);
-      matrix = P.m3.multiply(matrix, P.m3.translation(240 + child.scratchX, 180 - child.scratchY));
+      // TODO: do this in the shader if its possible/faster
+      const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
+      P.m3.multiply(matrix, this.globalScaleMatrix);
+      P.m3.multiply(matrix, P.m3.translation(240 + child.scratchX, 180 - child.scratchY));
       if (P.core.isSprite(child)) {
         if (child.rotationStyle === RotationStyle.Normal && child.direction !== 90) {
-          matrix = P.m3.multiply(matrix, P.m3.rotation(90 - child.direction));
+          P.m3.multiply(matrix, P.m3.rotation(90 - child.direction));
         } else if (child.rotationStyle === RotationStyle.LeftRight && child.direction < 0) {
-          matrix = P.m3.multiply(matrix, horizontalInvertMatrix);
+          P.m3.multiply(matrix, horizontalInvertMatrix);
         }
-        matrix = P.m3.multiply(matrix, P.m3.scaling(child.scale, child.scale));
+        if (child.scale !== 1) {
+          P.m3.multiply(matrix, P.m3.scaling(child.scale, child.scale));
+        }
       }
-      matrix = P.m3.multiply(matrix, P.m3.scaling(costume.scale, costume.scale));
-      matrix = P.m3.multiply(matrix, P.m3.translation(-costume.rotationCenterX, -costume.rotationCenterY));
-      matrix = P.m3.multiply(matrix, P.m3.scaling(costume.image.width, costume.image.height));
+      if (costume.scale !== 1) {
+        P.m3.multiply(matrix, P.m3.scaling(costume.scale, costume.scale));
+      }
+      P.m3.multiply(matrix, P.m3.translation(-costume.rotationCenterX, -costume.rotationCenterY));
+      P.m3.multiply(matrix, P.m3.scaling(costume.image.width, costume.image.height));
       this.gl.uniformMatrix3fv(this.u_matrix, false, matrix);
 
+      // Effects
       this.gl.uniform1f(this.u_opacity, 1 - child.filters.ghost / 100);
 
       this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
-    }
-
-    drawChildren(children: P.core.Base[]) {
-      for (const child of children) {
-        this.drawChild(child);
-      }
     }
 
     drawLayer(canvas: HTMLCanvasElement) {
@@ -264,28 +315,53 @@ namespace P.renderer {
       this.gl.vertexAttribPointer(this.a_position, 2, this.gl.FLOAT, false, 0, 0);
 
       const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
+      P.m3.multiply(matrix, this.globalScaleMatrix);
       this.gl.uniformMatrix3fv(this.u_matrix, false, matrix);
 
       this.gl.uniform1f(this.u_opacity, 1);
 
+      // TODO: is it necessary to delete textures?
       this.gl.deleteTexture(texture);
     }
   }
 
-  /**
-   * Creates the CSS filter for a Filter object.
-   * The filter is generally an estimation of the actual effect.
-   * Includes brightness and color. (does not include ghost)
-   */
-  function cssFilter(filters: P.core.Filters) {
-    let filter = '';
-    if (filters.brightness) {
-      filter += 'brightness(' + (100 + filters.brightness) + '%) ';
+  export class WebGLProjectRenderer extends WebGLSpriteRenderer implements ProjectRenderer {
+    public penLayer: HTMLCanvasElement;
+    public stageLayer: HTMLCanvasElement;
+
+    constructor(public stage: P.core.Stage) {
+      super();
+      this.penLayer = createCanvas();
+      this.stageLayer = createCanvas();
     }
-    if (filters.color) {
-      filter += 'hue-rotate(' + (filters.color / 200 * 360) + 'deg) ';
+
+    penLine(color: string, size: number, x: number, y: number, x2: number, y2: number): void {
+
     }
-    return filter;
+
+    penDot(color: string, size: number, x: number, y: number): void {
+
+    }
+
+    penStamp(sprite: core.Sprite): void {
+
+    }
+
+    penClear(): void {
+
+    }
+
+    penResize(scale: number): void {
+
+    }
+
+    updateStage(scale: number): void {
+
+    }
+
+    updateStageFilters(): void {
+
+    }
   }
 
   export class SpriteRenderer2D implements SpriteRenderer {
@@ -294,7 +370,7 @@ namespace P.renderer {
     public noEffects: boolean = false;
 
     constructor() {
-      this.canvas = this._createCanvas();
+      this.canvas = createCanvas();
       this.ctx = this.canvas.getContext('2d')!;
     }
 
@@ -358,13 +434,6 @@ namespace P.renderer {
       ctx.drawImage(costume.image, 0, 0);
       ctx.restore();
     }
-
-    protected _createCanvas() {
-      const canvas = document.createElement('canvas');
-      canvas.width = 480;
-      canvas.height = 360;
-      return canvas;
-    }
   }
 
   export class ProjectRenderer2D extends SpriteRenderer2D implements ProjectRenderer {
@@ -375,9 +444,9 @@ namespace P.renderer {
 
     constructor(public stage: P.core.Stage) {
       super();
-      this.stageLayer = this._createCanvas();
+      this.stageLayer = createCanvas();
       this.stageContext = this.stageLayer.getContext('2d')!;
-      this.penLayer = this._createCanvas();
+      this.penLayer = createCanvas();
       this.penContext = this.penLayer.getContext('2d')!;
     }
 
@@ -441,4 +510,5 @@ namespace P.renderer {
       this._drawChild(sprite, this.penContext);
     }
   }
+
 }
