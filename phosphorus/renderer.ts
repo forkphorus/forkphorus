@@ -84,6 +84,7 @@ namespace P.renderer {
    * Creates the CSS filter for a Filter object.
    * The filter is generally an estimation of the actual effect.
    * Includes brightness and color. (does not include ghost)
+   * @param T gay
    */
   function cssFilter(filters: P.core.Filters) {
     let filter = '';
@@ -329,38 +330,41 @@ namespace P.renderer {
     public penLayer: HTMLCanvasElement;
     public stageLayer: HTMLCanvasElement;
 
+    protected fallbackRenderer: ProjectRenderer;
+
     constructor(public stage: P.core.Stage) {
       super();
-      this.penLayer = createCanvas();
-      this.stageLayer = createCanvas();
+      this.fallbackRenderer = new ProjectRenderer2D(stage);
+      this.penLayer = this.fallbackRenderer.penLayer;
+      this.stageLayer = this.fallbackRenderer.stageLayer;
     }
 
     penLine(color: string, size: number, x: number, y: number, x2: number, y2: number): void {
-
+      this.fallbackRenderer.penLine(color, size, x, y, x2, y2);
     }
 
     penDot(color: string, size: number, x: number, y: number): void {
-
+      this.fallbackRenderer.penDot(color, size, x, y);
     }
 
-    penStamp(sprite: core.Sprite): void {
-
+    penStamp(sprite: P.core.Sprite): void {
+      this.fallbackRenderer.penStamp(sprite);
     }
 
     penClear(): void {
-
+      this.fallbackRenderer.penClear();
     }
 
     penResize(scale: number): void {
-
+      this.fallbackRenderer.penResize(scale);
     }
 
     updateStage(scale: number): void {
-
+      this.fallbackRenderer.updateStage(scale);
     }
 
     updateStageFilters(): void {
-
+      this.fallbackRenderer.updateStageFilters();
     }
   }
 
