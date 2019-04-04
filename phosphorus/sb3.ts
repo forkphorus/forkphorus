@@ -610,7 +610,7 @@ namespace P.sb3 {
 
             const canvas = document.createElement('canvas');
 
-            return new Promise((resolve, reject) => {
+            return new Promise<HTMLCanvasElement | HTMLImageElement>((resolve, reject) => {
               canvg(canvas, new XMLSerializer().serializeToString(svg), {
                 ignoreMouse: true,
                 ignoreAnimation: true,
