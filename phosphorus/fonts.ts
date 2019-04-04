@@ -25,7 +25,7 @@ namespace P.fonts {
       loadFont('Handlee'),
       loadFont('Pixel'),
       loadFont('Griffy'),
-      // TODO: Serif, Sans Serif, Scratch
+      loadFont('Scratch'),
     ]).then(() => undefined);
   }
 
@@ -38,7 +38,7 @@ namespace P.fonts {
       loadFont('Gloria Hallelujah'),
       loadFont('Mystery Quest'),
       loadFont('Permanent Marker'),
-      // TODO: Scratch
+      loadFont('Scratch'),
     ]).then(() => undefined);
   }
 }

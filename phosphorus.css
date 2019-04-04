@@ -27,7 +27,6 @@
   src: url("fonts/Griffy/Griffy-Regular.woff") format("woff"),
     url("fonts/Griffy/Griffy-Regular.woff2") format("woff2");
 }
-
 /* Scratch 2 Fonts */
 @font-face {
   font-family: "Donegal One";
@@ -49,8 +48,11 @@
   src: url("fonts/Permanent_Marker/PermanentMarker-Regular.woff") format("woff"),
     url("fonts/Permanent_Marker/PermanentMarker-Regular.woff2") format("woff2");
 }
-
-
+/* Scratch 2 & 3*/
+@font-face {
+  font-family: "Scratch";
+  src: url("fonts/Scratch/Scratch.ttf") format("truetype");
+}
 
 /* Scratch 3 Variable Watchers */
 .s3-watcher-container {

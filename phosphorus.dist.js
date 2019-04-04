@@ -1732,6 +1732,7 @@ var P;
                 loadFont('Handlee'),
                 loadFont('Pixel'),
                 loadFont('Griffy'),
+                loadFont('Scratch'),
             ]).then(() => undefined);
         }
         fonts.loadScratch3 = loadScratch3;
@@ -1744,6 +1745,7 @@ var P;
                 loadFont('Gloria Hallelujah'),
                 loadFont('Mystery Quest'),
                 loadFont('Permanent Marker'),
+                loadFont('Scratch'),
             ]).then(() => undefined);
         }
         fonts.loadScratch2 = loadScratch2;
