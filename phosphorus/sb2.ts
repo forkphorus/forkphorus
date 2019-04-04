@@ -1,6 +1,7 @@
 /// <reference path="phosphorus.ts" />
 /// <reference path="utils.ts" />
 /// <reference path="core.ts" />
+/// <reference path="fonts.ts" />
 /// <reference path="config.ts" />
 
 namespace P.sb2 {
@@ -77,6 +78,7 @@ namespace P.sb2 {
     'Vibraslap': 'drums/Vibraslap(1)_22k.wav',
     'WoodBlock': 'drums/WoodBlock(1)_22k.wav'
   };
+  export const wavBuffers = {};
 
   let zipArchive: JSZip.Zip;
 
@@ -473,27 +475,28 @@ namespace P.sb2 {
     var children;
     var stage;
 
-    return Promise.all<any>([
-      loadWavs(),
-      loadArray(data.children, loadObject).then((c) => children = c),
-      loadBase(data, true).then((s) => stage = s),
-    ]).then(() => {
-      children = children.filter((i) => i);
-      children.forEach((c) => c.stage = stage);
-      var sprites = children.filter((i) => i instanceof Scratch2Sprite);
-      var watchers = children.filter((i) => i instanceof Scratch2VariableWatcher);
+    return loadFonts()
+      .then(() => Promise.all<any>([
+        loadWavs(),
+        loadArray(data.children, loadObject).then((c) => children = c),
+        loadBase(data, true).then((s) => stage = s),
+      ]))
+      .then(() => {
+        children = children.filter((i) => i);
+        children.forEach((c) => c.stage = stage);
+        var sprites = children.filter((i) => i instanceof Scratch2Sprite);
+        var watchers = children.filter((i) => i instanceof Scratch2VariableWatcher);
 
-      stage.children = sprites;
-      stage.allWatchers = watchers;
-      stage.allWatchers.forEach((w) => w.init());
-      stage.updateBackdrop();
+        stage.children = sprites;
+        stage.allWatchers = watchers;
+        stage.allWatchers.forEach((w) => w.init());
+        stage.updateBackdrop();
 
-      P.sb2.compiler.compile(stage);
-      return stage;
-    });
+        P.sb2.compiler.compile(stage);
+        return stage;
+      });
   }
 
-  export const wavBuffers = {};
   export function loadWavs() {
     // don't bother attempting to load audio if it can't even be played
     if (!P.audio.context) return Promise.resolve();
@@ -575,9 +578,13 @@ namespace P.sb2 {
     });
   }
 
-  // Array.map and Promise.all on steroids
+  // A weird mix of Array.map and Promise.all
   export function loadArray(data, process) {
     return Promise.all((data || []).map((i, ind) => process(i, ind)));
+  }
+
+  export function loadFonts(): Promise<void> {
+    return P.fonts.loadScratch2();
   }
 
   export function loadObject(data) {
@@ -628,11 +635,65 @@ namespace P.sb2 {
       });
   }
 
+  export function patchSVG(svg, element) {
+    const FONTS: ObjectMap<string> = {
+      '': 'Helvetica',
+      Donegal: 'Donegal One',
+      Gloria: 'Gloria Hallelujah',
+      Marker: 'Permanent Marker',
+      Mystery: 'Mystery Quest'
+    };
+
+    const LINE_HEIGHTS: ObjectMap<number> = {
+      Helvetica: 1.13,
+      'Donegal One': 1.25,
+      'Gloria Hallelujah': 1.97,
+      'Permanent Marker': 1.43,
+      'Mystery Quest': 1.37
+    };
+
+    if (element.nodeType !== 1) return;
+    if (element.nodeName === 'text') {
+      // Correct fonts
+      var font = element.getAttribute('font-family') || '';
+      font = FONTS[font] || font;
+      if (font) {
+        element.setAttribute('font-family', font);
+        if (font === 'Helvetica') element.style.fontWeight = 'bold';
+      }
+      var size = +element.getAttribute('font-size');
+      if (!size) {
+        element.setAttribute('font-size', size = 18);
+      }
+      var bb = element.getBBox();
+      var x = 4 - .6 * element.transform.baseVal.consolidate().matrix.a;
+      var y = (element.getAttribute('y') - bb.y) * 1.1;
+      element.setAttribute('x', x);
+      element.setAttribute('y', y);
+      var lines = element.textContent.split('\n');
+      if (lines.length > 1) {
+        element.textContent = lines[0];
+        var lineHeight = LINE_HEIGHTS[font] || 1;
+        for (var i = 1, l = lines.length; i < l; i++) {
+          var tspan = document.createElementNS(null, 'tspan');
+          tspan.textContent = lines[i];
+          tspan.setAttribute('x', '' + x);
+          tspan.setAttribute('y', '' + (y + size * i * lineHeight));
+          element.appendChild(tspan);
+        }
+      }
+    } else if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
+      element.setAttribute('x', 0);
+      element.setAttribute('y', 0);
+    }
+    [].forEach.call(element.childNodes, patchSVG.bind(null, svg));
+  }
+
   export function loadSVG(source): Promise<HTMLImageElement> {
-    // The fact that this works is truly a work of art.
-    var parser = new DOMParser();
+    // canvg needs and actual SVG element, not the source.
+    const parser = new DOMParser();
     var doc = parser.parseFromString(source, 'image/svg+xml');
-    var svg = doc.documentElement as any; // TODO
+    var svg = doc.documentElement as any;
     if (!svg.style) {
       doc = parser.parseFromString('<body>' + source, 'text/html');
       svg = doc.querySelector('svg');
@@ -642,7 +703,7 @@ namespace P.sb2 {
     svg.style.left = '-10000px';
     svg.style.top = '-10000px';
     document.body.appendChild(svg);
-    var viewBox = svg.viewBox.baseVal;
+    const viewBox = svg.viewBox.baseVal;
     if (viewBox && (viewBox.x || viewBox.y)) {
       svg.width.baseVal.value = viewBox.width - viewBox.x;
       svg.height.baseVal.value = viewBox.height - viewBox.y;
@@ -651,12 +712,12 @@ namespace P.sb2 {
       viewBox.width = 0;
       viewBox.height = 0;
     }
-    P.utils.patchSVG(svg, svg);
+    patchSVG(svg, svg);
     document.body.removeChild(svg);
     svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
 
-    var canvas = document.createElement('canvas');
-    var image = new Image();
+    const canvas = document.createElement('canvas');
+    const image = new Image();
 
     return new Promise<HTMLImageElement>((resolve, reject) => {
       canvg(canvas, new XMLSerializer().serializeToString(svg), {

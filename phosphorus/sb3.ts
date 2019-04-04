@@ -1,6 +1,7 @@
 /// <reference path="phosphorus.ts" />
 /// <reference path="utils.ts" />
 /// <reference path="core.ts" />
+/// <reference path="fonts.ts" />
 /// <reference path="config.ts" />
 
 // Scratch 3 project loader and runtime objects
@@ -565,6 +566,28 @@ namespace P.sb3 {
     }
   }
 
+  // Modifies a Scratch 3 SVG to work properly in our environment.
+  function patchSVG(svg: SVGElement) {
+    // Adjust Scratch's font names to match what we name them.
+    const FONTS: ObjectMap<string> = {
+      'Marker': 'Knewave',
+      'Handwriting': 'Handlee',
+      'Curly': 'Griffy',
+      'Serif': 'serif',
+      'Sans Serif': 'sans-serif',
+      // 'Serif': 'Source Serif Pro',
+      // 'Sans Serif': 'Noto Sans',
+    };
+
+    const textElements = svg.querySelectorAll('text');
+    for (const el of textElements) {
+      const font = el.getAttribute('font-family') || '';
+      if (FONTS[font]) {
+        el.setAttribute('font-family', FONTS[font]);
+      }
+    }
+  }
+
   // Implements base SB3 loading logic.
   // Needs to be extended to add file loading methods.
   // Implementations are expected to set `this.projectData` to something before calling super.load()
@@ -576,15 +599,30 @@ namespace P.sb3 {
     protected abstract getAsImage(path: string, format: string): Promise<HTMLImageElement>;
 
     // Loads and returns a costume from its sb3 JSON data
-    getImage(path: string, format: string): Promise<HTMLImageElement> {
+    getImage(path: string, format: string): Promise<HTMLImageElement | HTMLCanvasElement> {
       if (format === 'svg') {
         return this.getAsText(path)
           .then((source) => {
-            const image = new Image();
-            return new Promise<HTMLImageElement>((resolve, reject) => {
-              image.onload = () => resolve(image);
-              image.onerror = (err) => reject('Failed to load SVG image: ' + image.src);
-              image.src = 'data:image/svg+xml;,' + encodeURIComponent(source);
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(source, 'image/svg+xml');
+            const svg = doc.documentElement as any;
+            patchSVG(svg);
+
+            const canvas = document.createElement('canvas');
+
+            return new Promise<HTMLCanvasElement | HTMLImageElement>((resolve, reject) => {
+              canvg(canvas, new XMLSerializer().serializeToString(svg), {
+                ignoreMouse: true,
+                ignoreAnimation: true,
+                ignoreClear: true,
+                renderCallback: function() {
+                  if (canvas.width === 0 || canvas.height === 0) {
+                    resolve(new Image());
+                    return;
+                  }
+                  resolve(canvas);
+                }
+              });
             });
           });
       } else {
@@ -592,7 +630,7 @@ namespace P.sb3 {
       }
     }
 
-    loadCostume(data: SB3Costume, index: number) {
+    loadCostume(data: SB3Costume, index: number): Promise<P.core.Costume> {
       const path = data.assetId + '.' + data.dataFormat;
       return this.getImage(path, data.dataFormat)
         .then((image) => new P.core.Costume({
@@ -613,7 +651,7 @@ namespace P.sb3 {
         });
     }
 
-    loadSound(data: SB3Sound) {
+    loadSound(data: SB3Sound): Promise<P.core.Sound> {
       return this.getAudioBuffer(data.md5ext)
         .then((buffer) => new P.core.Sound({
           name: data.name,
@@ -621,7 +659,7 @@ namespace P.sb3 {
         }));
     }
 
-    loadWatcher(data: SB3Watcher, stage: Scratch3Stage) {
+    loadWatcher(data: SB3Watcher, stage: Scratch3Stage): P.core.Watcher {
       if (data.mode === 'list') {
         return new Scratch3ListWatcher(stage, data);
       }
@@ -682,6 +720,10 @@ namespace P.sb3 {
         });
     }
 
+    loadFonts(): Promise<void> {
+      return P.fonts.loadScratch3();
+    }
+
     load() {
       if (!this.projectData) {
         throw new Error('invalid project data');
@@ -694,7 +736,8 @@ namespace P.sb3 {
       // sort targets by their layerOrder to match how they will display
       targets.sort((a, b) => a.layerOrder - b.layerOrder);
 
-      return Promise.all(targets.map((data) => this.loadTarget(data)))
+      return this.loadFonts()
+        .then(() => Promise.all(targets.map((data) => this.loadTarget(data))))
         .then((targets: any) => {
           const stage = targets.filter((i) => i.isStage)[0] as Scratch3Stage;
           if (!stage) {
@@ -998,8 +1041,8 @@ namespace P.sb3.compiler {
     },
   };
 
-  // A noop compiles to undefined (the javascript primitive) in Scratch 3.
-  // When used as a string, it becomes "undefined", and becomes 0 when used as a number.
+  // An untyped undefined works as it does in Scratch 3.
+  // Becomes "undefined" when used as a string, becomes 0 when used as number, false when used as boolean.
   const noopExpression = () => 'undefined';
 
   /**
@@ -1341,7 +1384,6 @@ namespace P.sb3.compiler {
     },
 
     // Legacy no-ops
-    // Here, returning an untyped undefined has the same effect as it does in Scratch 3.
     // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_sensing.js#L74
     sensing_userid: noopExpression,
     // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L42-L43
