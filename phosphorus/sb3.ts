@@ -592,8 +592,6 @@ namespace P.sb3 {
   // Needs to be extended to add file loading methods.
   // Implementations are expected to set `this.projectData` to something before calling super.load()
   export abstract class BaseSB3Loader {
-    protected static fontsLoaded: boolean = false;
-
     protected projectData: SB3Project;
 
     protected abstract getAsText(path: string): Promise<string>;
@@ -601,7 +599,7 @@ namespace P.sb3 {
     protected abstract getAsImage(path: string, format: string): Promise<HTMLImageElement>;
 
     // Loads and returns a costume from its sb3 JSON data
-    getImage(path: string, format: string): Promise<HTMLImageElement> {
+    getImage(path: string, format: string): Promise<HTMLImageElement | HTMLCanvasElement> {
       if (format === 'svg') {
         return this.getAsText(path)
           .then((source) => {
@@ -610,10 +608,9 @@ namespace P.sb3 {
             const svg = doc.documentElement as any;
             patchSVG(svg);
 
-            const image = new Image();
             const canvas = document.createElement('canvas');
 
-            return new Promise<HTMLImageElement>((resolve, reject) => {
+            return new Promise((resolve, reject) => {
               canvg(canvas, new XMLSerializer().serializeToString(svg), {
                 ignoreMouse: true,
                 ignoreAnimation: true,
@@ -623,19 +620,17 @@ namespace P.sb3 {
                     resolve(new Image());
                     return;
                   }
-                  image.onload = () => resolve(image);
-                  image.onerror = (err) => reject('Failed to load SVG: ' + err);
-                  image.src = canvas.toDataURL();
+                  resolve(canvas);
                 }
               });
-            })
+            });
           });
       } else {
         return this.getAsImage(path, format);
       }
     }
 
-    loadCostume(data: SB3Costume, index: number) {
+    loadCostume(data: SB3Costume, index: number): Promise<P.core.Costume> {
       const path = data.assetId + '.' + data.dataFormat;
       return this.getImage(path, data.dataFormat)
         .then((image) => new P.core.Costume({
@@ -656,7 +651,7 @@ namespace P.sb3 {
         });
     }
 
-    loadSound(data: SB3Sound) {
+    loadSound(data: SB3Sound): Promise<P.core.Sound> {
       return this.getAudioBuffer(data.md5ext)
         .then((buffer) => new P.core.Sound({
           name: data.name,
@@ -664,7 +659,7 @@ namespace P.sb3 {
         }));
     }
 
-    loadWatcher(data: SB3Watcher, stage: Scratch3Stage) {
+    loadWatcher(data: SB3Watcher, stage: Scratch3Stage): P.core.Watcher {
       if (data.mode === 'list') {
         return new Scratch3ListWatcher(stage, data);
       }
@@ -726,11 +721,7 @@ namespace P.sb3 {
     }
 
     loadFonts(): Promise<void> {
-      if (BaseSB3Loader.fontsLoaded) {
-        return Promise.resolve();
-      }
-      return P.fonts.loadScratch3()
-        .then(() => void (BaseSB3Loader.fontsLoaded = true));
+      return P.fonts.loadScratch3();
     }
 
     load() {

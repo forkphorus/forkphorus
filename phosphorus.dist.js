@@ -1723,32 +1723,40 @@ var P;
             return observer.load();
         }
         fonts.loadFont = loadFont;
-        /**
-         * Loads all Scratch 3 associated fonts
-         */
-        function loadScratch3() {
-            return Promise.all([
-                loadFont('Knewave'),
-                loadFont('Handlee'),
-                loadFont('Pixel'),
-                loadFont('Griffy'),
-                loadFont('Scratch'),
-            ]).then(() => undefined);
-        }
-        fonts.loadScratch3 = loadScratch3;
+        var loadedScratch2 = false;
+        var loadedScratch3 = false;
         /**
          * Loads all Scratch 2 associated fonts
          */
         function loadScratch2() {
+            if (loadedScratch2) {
+                return Promise.resolve();
+            }
             return Promise.all([
                 loadFont('Donegal One'),
                 loadFont('Gloria Hallelujah'),
                 loadFont('Mystery Quest'),
                 loadFont('Permanent Marker'),
                 loadFont('Scratch'),
-            ]).then(() => undefined);
+            ]).then(() => void (loadedScratch2 = true));
         }
         fonts.loadScratch2 = loadScratch2;
+        /**
+         * Loads all Scratch 3 associated fonts
+         */
+        function loadScratch3() {
+            if (loadedScratch3) {
+                return Promise.resolve();
+            }
+            return Promise.all([
+                loadFont('Knewave'),
+                loadFont('Handlee'),
+                loadFont('Pixel'),
+                loadFont('Griffy'),
+                loadFont('Scratch'),
+            ]).then(() => void (loadedScratch3 = true));
+        }
+        fonts.loadScratch3 = loadScratch3;
     })(fonts = P.fonts || (P.fonts = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
@@ -2051,7 +2059,6 @@ var P;
             'WoodBlock': 'drums/WoodBlock(1)_22k.wav'
         };
         sb2.wavBuffers = {};
-        let loadedFonts = false;
         let zipArchive;
         class Scratch2VariableWatcher extends P.core.Watcher {
             constructor(stage, targetName, data) {
@@ -2501,11 +2508,7 @@ var P;
         }
         sb2.loadArray = loadArray;
         function loadFonts() {
-            if (loadedFonts) {
-                return Promise.resolve();
-            }
-            return P.fonts.loadScratch2()
-                .then(() => void (loadedFonts = true));
+            return P.fonts.loadScratch2();
         }
         sb2.loadFonts = loadFonts;
         function loadObject(data) {
@@ -4941,7 +4944,6 @@ var P;
                         const doc = parser.parseFromString(source, 'image/svg+xml');
                         const svg = doc.documentElement;
                         patchSVG(svg);
-                        const image = new Image();
                         const canvas = document.createElement('canvas');
                         return new Promise((resolve, reject) => {
                             canvg(canvas, new XMLSerializer().serializeToString(svg), {
@@ -4953,9 +4955,7 @@ var P;
                                         resolve(new Image());
                                         return;
                                     }
-                                    image.onload = () => resolve(image);
-                                    image.onerror = (err) => reject('Failed to load SVG: ' + err);
-                                    image.src = canvas.toDataURL();
+                                    resolve(canvas);
                                 }
                             });
                         });
@@ -5043,11 +5043,7 @@ var P;
                 });
             }
             loadFonts() {
-                if (BaseSB3Loader.fontsLoaded) {
-                    return Promise.resolve();
-                }
-                return P.fonts.loadScratch3()
-                    .then(() => void (BaseSB3Loader.fontsLoaded = true));
+                return P.fonts.loadScratch3();
             }
             load() {
                 if (!this.projectData) {
@@ -5080,7 +5076,6 @@ var P;
                 });
             }
         }
-        BaseSB3Loader.fontsLoaded = false;
         sb3.BaseSB3Loader = BaseSB3Loader;
         // Loads a .sb3 file
         class SB3FileLoader extends BaseSB3Loader {

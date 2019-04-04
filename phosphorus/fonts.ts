@@ -16,29 +16,38 @@ namespace P.fonts {
     return observer.load();
   }
 
-  /**
-   * Loads all Scratch 3 associated fonts
-   */
-  export function loadScratch3(): Promise<void> {
-    return Promise.all([
-      loadFont('Knewave'),
-      loadFont('Handlee'),
-      loadFont('Pixel'),
-      loadFont('Griffy'),
-      loadFont('Scratch'),
-    ]).then(() => undefined);
-  }
+  var loadedScratch2: boolean = false;
+  var loadedScratch3: boolean = false;
 
   /**
    * Loads all Scratch 2 associated fonts
    */
   export function loadScratch2(): Promise<void> {
+    if (loadedScratch2) {
+      return Promise.resolve();
+    }
     return Promise.all([
       loadFont('Donegal One'),
       loadFont('Gloria Hallelujah'),
       loadFont('Mystery Quest'),
       loadFont('Permanent Marker'),
       loadFont('Scratch'),
-    ]).then(() => undefined);
+    ]).then(() => void (loadedScratch2 = true));
+  }
+
+  /**
+   * Loads all Scratch 3 associated fonts
+   */
+  export function loadScratch3(): Promise<void> {
+    if (loadedScratch3) {
+      return Promise.resolve();
+    }
+    return Promise.all([
+      loadFont('Knewave'),
+      loadFont('Handlee'),
+      loadFont('Pixel'),
+      loadFont('Griffy'),
+      loadFont('Scratch'),
+    ]).then(() => void (loadedScratch3 = true));
   }
 }

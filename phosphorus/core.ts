@@ -1569,7 +1569,7 @@ namespace P.core {
     bitmapResolution: number;
     rotationCenterX: number;
     rotationCenterY: number;
-    layers: HTMLImageElement[];
+    layers: Array<HTMLCanvasElement | HTMLImageElement>;
   }
 
   // A costume
@@ -1603,7 +1603,7 @@ namespace P.core {
       this.render(costumeData.layers);
     }
 
-    render(layers: HTMLImageElement[]) {
+    render(layers: Array<HTMLImageElement | HTMLCanvasElement>) {
       // Width and height cannot be less than 1
       this.image.width = Math.max(layers[0].width, 1);
       this.image.height = Math.max(layers[0].height, 1);

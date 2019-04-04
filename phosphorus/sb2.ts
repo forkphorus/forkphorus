@@ -80,8 +80,6 @@ namespace P.sb2 {
   };
   export const wavBuffers = {};
 
-  let loadedFonts: boolean = false;
-
   let zipArchive: JSZip.Zip;
 
   export class Scratch2VariableWatcher extends P.core.Watcher {
@@ -586,11 +584,7 @@ namespace P.sb2 {
   }
 
   export function loadFonts(): Promise<void> {
-    if (loadedFonts) {
-      return Promise.resolve();
-    }
-    return P.fonts.loadScratch2()
-      .then(() => void (loadedFonts = true));
+    return P.fonts.loadScratch2();
   }
 
   export function loadObject(data) {
