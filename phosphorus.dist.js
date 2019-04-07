@@ -6750,6 +6750,23 @@ var P;
                 }
             }
             compiler_1.compileTarget = compileTarget;
+            /**
+             * External hooks
+             */
+            compiler_1.hooks = {
+                getSource() {
+                    return source;
+                },
+                setSource(src) {
+                    source = src;
+                },
+                appendSource(src) {
+                    source += src;
+                },
+                expression(expression) {
+                    return compileExpression(expression);
+                },
+            };
         })(compiler = sb3.compiler || (sb3.compiler = {}));
     })(sb3 = P.sb3 || (P.sb3 = {}));
 })(P || (P = {}));

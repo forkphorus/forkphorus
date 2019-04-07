@@ -2576,4 +2576,22 @@ namespace P.sb3.compiler {
       }
     }
   }
+
+  /**
+   * External hooks
+   */
+  export const hooks = {
+    getSource() {
+      return source;
+    },
+    setSource(src: string) {
+      source = src;
+    },
+    appendSource(src: string) {
+      source += src;
+    },
+    expression(expression) {
+      return compileExpression(expression);
+    },
+  };
 }
