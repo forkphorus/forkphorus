@@ -1710,6 +1710,56 @@ var P;
     })(core = P.core || (P.core = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
+var P;
+(function (P) {
+    var fonts;
+    (function (fonts) {
+        /**
+         * Dynamically load a remote font
+         * @param name The name of the font (font-family)
+         */
+        function loadFont(name) {
+            const observer = new FontFaceObserver(name);
+            return observer.load();
+        }
+        fonts.loadFont = loadFont;
+        var loadedScratch2 = false;
+        var loadedScratch3 = false;
+        /**
+         * Loads all Scratch 2 associated fonts
+         */
+        function loadScratch2() {
+            if (loadedScratch2) {
+                return Promise.resolve();
+            }
+            return Promise.all([
+                loadFont('Donegal One'),
+                loadFont('Gloria Hallelujah'),
+                loadFont('Mystery Quest'),
+                loadFont('Permanent Marker'),
+                loadFont('Scratch'),
+            ]).then(() => void (loadedScratch2 = true));
+        }
+        fonts.loadScratch2 = loadScratch2;
+        /**
+         * Loads all Scratch 3 associated fonts
+         */
+        function loadScratch3() {
+            if (loadedScratch3) {
+                return Promise.resolve();
+            }
+            return Promise.all([
+                loadFont('Knewave'),
+                loadFont('Handlee'),
+                loadFont('Pixel'),
+                loadFont('Griffy'),
+                loadFont('Scratch'),
+            ]).then(() => void (loadedScratch3 = true));
+        }
+        fonts.loadScratch3 = loadScratch3;
+    })(fonts = P.fonts || (P.fonts = {}));
+})(P || (P = {}));
+/// <reference path="phosphorus.ts" />
 // IO helpers and hooks
 var P;
 (function (P) {
@@ -1860,64 +1910,6 @@ var P;
             return P.runtime.scopedEval(result);
         }
         utils.createContinuation = createContinuation;
-        // Patches an SVG to make it behave more like Scratch.
-        function patchSVG(svg, element) {
-            const FONTS = {
-                // TODO: Scratch 3
-                '': 'Helvetica',
-                Donegal: 'Donegal One',
-                Gloria: 'Gloria Hallelujah',
-                Marker: 'Permanent Marker',
-                Mystery: 'Mystery Quest'
-            };
-            const LINE_HEIGHTS = {
-                // TODO: Scratch 3
-                Helvetica: 1.13,
-                'Donegal One': 1.25,
-                'Gloria Hallelujah': 1.97,
-                'Permanent Marker': 1.43,
-                'Mystery Quest': 1.37
-            };
-            if (element.nodeType !== 1)
-                return;
-            if (element.nodeName === 'text') {
-                // Correct fonts
-                var font = element.getAttribute('font-family') || '';
-                font = FONTS[font] || font;
-                if (font) {
-                    element.setAttribute('font-family', font);
-                    if (font === 'Helvetica')
-                        element.style.fontWeight = 'bold';
-                }
-                var size = +element.getAttribute('font-size');
-                if (!size) {
-                    element.setAttribute('font-size', size = 18);
-                }
-                var bb = element.getBBox();
-                var x = 4 - .6 * element.transform.baseVal.consolidate().matrix.a;
-                var y = (element.getAttribute('y') - bb.y) * 1.1;
-                element.setAttribute('x', x);
-                element.setAttribute('y', y);
-                var lines = element.textContent.split('\n');
-                if (lines.length > 1) {
-                    element.textContent = lines[0];
-                    var lineHeight = LINE_HEIGHTS[font] || 1;
-                    for (var i = 1, l = lines.length; i < l; i++) {
-                        var tspan = document.createElementNS(null, 'tspan');
-                        tspan.textContent = lines[i];
-                        tspan.setAttribute('x', '' + x);
-                        tspan.setAttribute('y', '' + (y + size * i * lineHeight));
-                        element.appendChild(tspan);
-                    }
-                }
-            }
-            else if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
-                element.setAttribute('x', 0);
-                element.setAttribute('y', 0);
-            }
-            [].forEach.call(element.childNodes, patchSVG.bind(null, svg));
-        }
-        utils.patchSVG = patchSVG;
         /**
          * Parses a Scratch rotation style string to a RoationStyle enum
          */
@@ -1988,6 +1980,7 @@ var P;
 /// <reference path="phosphorus.ts" />
 /// <reference path="utils.ts" />
 /// <reference path="core.ts" />
+/// <reference path="fonts.ts" />
 /// <reference path="config.ts" />
 var P;
 (function (P) {
@@ -2065,6 +2058,7 @@ var P;
             'Vibraslap': 'drums/Vibraslap(1)_22k.wav',
             'WoodBlock': 'drums/WoodBlock(1)_22k.wav'
         };
+        sb2.wavBuffers = {};
         let zipArchive;
         class Scratch2VariableWatcher extends P.core.Watcher {
             constructor(stage, targetName, data) {
@@ -2416,11 +2410,13 @@ var P;
         function loadProject(data) {
             var children;
             var stage;
-            return Promise.all([
+            return loadFonts()
+                .then(() => Promise.all([
                 loadWavs(),
                 loadArray(data.children, loadObject).then((c) => children = c),
                 loadBase(data, true).then((s) => stage = s),
-            ]).then(() => {
+            ]))
+                .then(() => {
                 children = children.filter((i) => i);
                 children.forEach((c) => c.stage = stage);
                 var sprites = children.filter((i) => i instanceof Scratch2Sprite);
@@ -2434,7 +2430,6 @@ var P;
             });
         }
         sb2.loadProject = loadProject;
-        sb2.wavBuffers = {};
         function loadWavs() {
             // don't bother attempting to load audio if it can't even be played
             if (!P.audio.context)
@@ -2507,11 +2502,15 @@ var P;
             });
         }
         sb2.loadBase = loadBase;
-        // Array.map and Promise.all on steroids
+        // A weird mix of Array.map and Promise.all
         function loadArray(data, process) {
             return Promise.all((data || []).map((i, ind) => process(i, ind)));
         }
         sb2.loadArray = loadArray;
+        function loadFonts() {
+            return P.fonts.loadScratch2();
+        }
+        sb2.loadFonts = loadFonts;
         function loadObject(data) {
             if (data.cmd) {
                 return loadVariableWatcher(data);
@@ -2562,11 +2561,66 @@ var P;
             });
         }
         sb2.loadSound = loadSound;
+        function patchSVG(svg, element) {
+            const FONTS = {
+                '': 'Helvetica',
+                Donegal: 'Donegal One',
+                Gloria: 'Gloria Hallelujah',
+                Marker: 'Permanent Marker',
+                Mystery: 'Mystery Quest'
+            };
+            const LINE_HEIGHTS = {
+                Helvetica: 1.13,
+                'Donegal One': 1.25,
+                'Gloria Hallelujah': 1.97,
+                'Permanent Marker': 1.43,
+                'Mystery Quest': 1.37
+            };
+            if (element.nodeType !== 1)
+                return;
+            if (element.nodeName === 'text') {
+                // Correct fonts
+                var font = element.getAttribute('font-family') || '';
+                font = FONTS[font] || font;
+                if (font) {
+                    element.setAttribute('font-family', font);
+                    if (font === 'Helvetica')
+                        element.style.fontWeight = 'bold';
+                }
+                var size = +element.getAttribute('font-size');
+                if (!size) {
+                    element.setAttribute('font-size', size = 18);
+                }
+                var bb = element.getBBox();
+                var x = 4 - .6 * element.transform.baseVal.consolidate().matrix.a;
+                var y = (element.getAttribute('y') - bb.y) * 1.1;
+                element.setAttribute('x', x);
+                element.setAttribute('y', y);
+                var lines = element.textContent.split('\n');
+                if (lines.length > 1) {
+                    element.textContent = lines[0];
+                    var lineHeight = LINE_HEIGHTS[font] || 1;
+                    for (var i = 1, l = lines.length; i < l; i++) {
+                        var tspan = document.createElementNS(null, 'tspan');
+                        tspan.textContent = lines[i];
+                        tspan.setAttribute('x', '' + x);
+                        tspan.setAttribute('y', '' + (y + size * i * lineHeight));
+                        element.appendChild(tspan);
+                    }
+                }
+            }
+            else if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
+                element.setAttribute('x', 0);
+                element.setAttribute('y', 0);
+            }
+            [].forEach.call(element.childNodes, patchSVG.bind(null, svg));
+        }
+        sb2.patchSVG = patchSVG;
         function loadSVG(source) {
-            // The fact that this works is truly a work of art.
-            var parser = new DOMParser();
+            // canvg needs and actual SVG element, not the source.
+            const parser = new DOMParser();
             var doc = parser.parseFromString(source, 'image/svg+xml');
-            var svg = doc.documentElement; // TODO
+            var svg = doc.documentElement;
             if (!svg.style) {
                 doc = parser.parseFromString('<body>' + source, 'text/html');
                 svg = doc.querySelector('svg');
@@ -2576,7 +2630,7 @@ var P;
             svg.style.left = '-10000px';
             svg.style.top = '-10000px';
             document.body.appendChild(svg);
-            var viewBox = svg.viewBox.baseVal;
+            const viewBox = svg.viewBox.baseVal;
             if (viewBox && (viewBox.x || viewBox.y)) {
                 svg.width.baseVal.value = viewBox.width - viewBox.x;
                 svg.height.baseVal.value = viewBox.height - viewBox.y;
@@ -2585,11 +2639,11 @@ var P;
                 viewBox.width = 0;
                 viewBox.height = 0;
             }
-            P.utils.patchSVG(svg, svg);
+            patchSVG(svg, svg);
             document.body.removeChild(svg);
             svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
-            var canvas = document.createElement('canvas');
-            var image = new Image();
+            const canvas = document.createElement('canvas');
+            const image = new Image();
             return new Promise((resolve, reject) => {
                 canvg(canvas, new XMLSerializer().serializeToString(svg), {
                     ignoreMouse: true,
@@ -4466,6 +4520,7 @@ var P;
 /// <reference path="phosphorus.ts" />
 /// <reference path="utils.ts" />
 /// <reference path="core.ts" />
+/// <reference path="fonts.ts" />
 /// <reference path="config.ts" />
 // Scratch 3 project loader and runtime objects
 var P;
@@ -4707,7 +4762,8 @@ var P;
             init() {
                 super.init();
                 if (!(this.id in this.target.lists)) {
-                    // We'll create it then.
+                    // Create the list if it doesn't exist.
+                    // It might be better to mark ourselves as invalid instead, but this works just fine.
                     this.target.lists[this.id] = new Scratch3List();
                 }
                 this.list = this.target.lists[this.id];
@@ -4857,6 +4913,24 @@ var P;
             }
         }
         sb3.Scratch3List = Scratch3List;
+        // Modifies a Scratch 3 SVG to work properly in our environment.
+        function patchSVG(svg) {
+            // Adjust Scratch's font names to match what we name them.
+            const FONTS = {
+                'Marker': 'Knewave',
+                'Handwriting': 'Handlee',
+                'Curly': 'Griffy',
+                'Serif': 'serif',
+                'Sans Serif': 'sans-serif',
+            };
+            const textElements = svg.querySelectorAll('text');
+            for (const el of textElements) {
+                const font = el.getAttribute('font-family') || '';
+                if (FONTS[font]) {
+                    el.setAttribute('font-family', FONTS[font]);
+                }
+            }
+        }
         // Implements base SB3 loading logic.
         // Needs to be extended to add file loading methods.
         // Implementations are expected to set `this.projectData` to something before calling super.load()
@@ -4866,11 +4940,24 @@ var P;
                 if (format === 'svg') {
                     return this.getAsText(path)
                         .then((source) => {
-                        const image = new Image();
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(source, 'image/svg+xml');
+                        const svg = doc.documentElement;
+                        patchSVG(svg);
+                        const canvas = document.createElement('canvas');
                         return new Promise((resolve, reject) => {
-                            image.onload = () => resolve(image);
-                            image.onerror = (err) => reject('Failed to load SVG image: ' + image.src);
-                            image.src = 'data:image/svg+xml;,' + encodeURIComponent(source);
+                            canvg(canvas, new XMLSerializer().serializeToString(svg), {
+                                ignoreMouse: true,
+                                ignoreAnimation: true,
+                                ignoreClear: true,
+                                renderCallback: function () {
+                                    if (canvas.width === 0 || canvas.height === 0) {
+                                        resolve(new Image());
+                                        return;
+                                    }
+                                    resolve(canvas);
+                                }
+                            });
                         });
                     });
                 }
@@ -4955,6 +5042,9 @@ var P;
                     return target;
                 });
             }
+            loadFonts() {
+                return P.fonts.loadScratch3();
+            }
             load() {
                 if (!this.projectData) {
                     throw new Error('invalid project data');
@@ -4965,7 +5055,8 @@ var P;
                 const targets = this.projectData.targets;
                 // sort targets by their layerOrder to match how they will display
                 targets.sort((a, b) => a.layerOrder - b.layerOrder);
-                return Promise.all(targets.map((data) => this.loadTarget(data)))
+                return this.loadFonts()
+                    .then(() => Promise.all(targets.map((data) => this.loadTarget(data))))
                     .then((targets) => {
                     const stage = targets.filter((i) => i.isStage)[0];
                     if (!stage) {
@@ -5194,8 +5285,8 @@ var P;
                     currentTarget.procedures[name] = procedure;
                 },
             };
-            // A noop compiles to undefined (the javascript primitive) in Scratch 3.
-            // When used as a string, it becomes "undefined", and becomes 0 when used as a number.
+            // An untyped undefined works as it does in Scratch 3.
+            // Becomes "undefined" when used as a string, becomes 0 when used as number, false when used as boolean.
             const noopExpression = () => 'undefined';
             /**
              * Maps expression opcodes to their handler
@@ -5524,7 +5615,6 @@ var P;
                     return numberExpr('self.tempoBPM');
                 },
                 // Legacy no-ops
-                // Here, returning an untyped undefined has the same effect as it does in Scratch 3.
                 // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_sensing.js#L74
                 sensing_userid: noopExpression,
                 // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L42-L43
