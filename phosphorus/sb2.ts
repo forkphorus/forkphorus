@@ -1712,7 +1712,7 @@ namespace P.sb2.compiler {
 
         var id = label();
         source += 'var f = (runtime.now - R.start) / (R.duration * 1000);\n';
-        source += 'if (f > 1) f = 1;\n';
+        source += 'if (f > 1 || isNaN(f)) f = 1;\n';
         source += 'S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
 
         source += 'if (f < 1) {\n';

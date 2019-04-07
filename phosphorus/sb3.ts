@@ -1394,16 +1394,16 @@ namespace P.sb3.compiler {
       source += 'R.baseY = S.scratchY;\n';
       source += 'var to = self.getPosition(' + compileExpression(to) + ');\n';
       source += 'if (to) {';
-      source += 'R.deltaX = to.x - S.scratchX;\n';
-      source += 'R.deltaY = to.y - S.scratchY;\n';
+      source += '  R.deltaX = to.x - S.scratchX;\n';
+      source += '  R.deltaY = to.y - S.scratchY;\n';
       const id = label();
-      source += 'var f = (runtime.now - R.start) / (R.duration * 1000);\n';
-      source += 'if (f > 1) f = 1;\n';
-      source += 'S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
-      source += 'if (f < 1) {\n';
+      source += '  var f = (runtime.now - R.start) / (R.duration * 1000);\n';
+      source += '  if (f > 1 || isNaN(f)) f = 1;\n';
+      source += '  S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
+      source += '  if (f < 1) {\n';
       forceQueue(id);
-      source += '}\n';
-      source += 'restore();\n';
+      source += '  }\n';
+      source += '  restore();\n';
       source += '}\n';
     },
     motion_glidesecstoxy(block) {
