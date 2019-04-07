@@ -5,6 +5,8 @@ const suite = {
   stage: null,
   projectMeta: {},
   timeout: 0,
+  startTime: 0,
+  suiteStartTime: 0,
 
   containerEl: document.getElementById('suite-container'),
   tableEl: document.getElementById('suite-table'),
@@ -15,7 +17,7 @@ const suite = {
   addProject(path, meta) {
     this.projects.push({
       path: path,
-      timeout: meta.timeout || 1000,
+      timeout: meta.timeout || 2000,
     });
   },
 
@@ -46,15 +48,14 @@ const suite = {
         this.stage = stage;
         this.projectMeta = meta;
 
-        while (this.containerEl.firstChild) {
-          this.containerEl.removeChild(this.containerEl.firstChild);
-        }
+        this.emptyContainer();
         this.containerEl.appendChild(stage.root);
 
         return new Promise((resolve, reject) => {
           this._resolve = resolve;
           this._reject = reject;
 
+          this.startTime = performance.now();
           this.timeout = setTimeout(() => {
             this.testFail('Timed out');
           }, meta.timeout);
@@ -63,41 +64,73 @@ const suite = {
       });
   },
 
-  testFail(reason) {
+  testFail(message) {
     clearInterval(this.timeout);
     this.stage.runtime.stopAll();
-    this._reject(reason);
-    this.endTest('FAIL: ' + reason);
+
+    if (message) {
+      message = 'FAIL: ' + message;
+    } else {
+      message = 'FAIL';
+    }
+
+    this.endTest(message);
+    this._reject(message);
   },
 
-  testOkay() {
+  testOkay(message) {
     clearInterval(this.timeout);
     this.stage.runtime.stopAll();
-    this._resolve();
-    this.endTest('OKAY');
+
+    if (message) {
+      message = 'OKAY: ' + message;
+    } else {
+      message = 'OKAY';
+    }
+
+    this.endTest(message);
+    this._resolve(message);
   },
 
   endTest(message) {
-    const row = document.createElement('tr');
+    const endTime = performance.now();
+    const testTime = endTime - this.startTime;
 
-    const name = document.createElement('td');
-    name.className = 'name';
-    name.textContent = this.projectMeta.path;
+    const rowEl = document.createElement('tr');
 
-    const result = document.createElement('td');
-    result.className = 'result';
-    result.textContent = message;
+    const nameEl = document.createElement('td');
+    nameEl.className = 'name';
+    nameEl.textContent = this.projectMeta.path;
 
-    row.appendChild(name);
-    row.appendChild(result);
-    this.tableEl.appendChild(row);
+    const resultEl = document.createElement('td');
+    resultEl.className = 'result';
+    resultEl.textContent = message;
+
+    const timeEl = document.createElement('td');
+    timeEl.className = 'time';
+    timeEl.textContent = testTime + 'ms';
+
+    rowEl.appendChild(nameEl);
+    rowEl.appendChild(resultEl);
+    rowEl.appendChild(timeEl);
+    this.tableEl.appendChild(rowEl);
+  },
+
+  emptyContainer() {
+    while (this.containerEl.firstChild) {
+      this.containerEl.removeChild(this.containerEl.firstChild);
+    }
   },
 
   async start() {
+    this.suiteStartTime = performance.now();
     while (this.projects.length > 0) {
       const project = this.projects.shift();
       await this.testProject(project);
     }
-    console.log('DONE');
+    this.emptyContainer();
+    const suiteEndTime = performance.now();
+    const suiteTime = suiteEndTime - this.suiteStartTime;
+    this.containerEl.textContent = 'DONE in ' + suiteTime + 'ms';
   },
 };
