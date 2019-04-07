@@ -4748,7 +4748,7 @@ var P;
                     }
                 }
                 for (var i = 0; i < length; i++) {
-                    const { row, index, value } = this.domRows[i];
+                    const { value } = this.domRows[i];
                     const rowText = '' + this.list[i];
                     if (rowText !== value.textContent) {
                         value.textContent = rowText;
@@ -4769,7 +4769,9 @@ var P;
                 this.list = this.target.lists[this.id];
                 this.target.watchers[this.id] = this;
                 this.updateLayout();
-                this.updateContents();
+                if (this.visible) {
+                    this.updateContents();
+                }
             }
             getTopLabel() {
                 return this.params.LIST;
@@ -4979,7 +4981,7 @@ var P;
                     name: data.name,
                     rotationCenterX: data.rotationCenterX,
                     rotationCenterY: data.rotationCenterY,
-                    layers: [image],
+                    image,
                 }));
             }
             getAudioBuffer(path) {

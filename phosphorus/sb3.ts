@@ -387,7 +387,7 @@ namespace P.sb3 {
       }
 
       for (var i = 0; i < length; i++) {
-        const { row, index, value } = this.domRows[i];
+        const { value } = this.domRows[i];
         const rowText = '' + this.list[i];
         if (rowText !== value.textContent) {
           value.textContent = rowText;
@@ -410,7 +410,9 @@ namespace P.sb3 {
       this.list = this.target.lists[this.id] as Scratch3List;
       this.target.watchers[this.id] = this;
       this.updateLayout();
-      this.updateContents();
+      if (this.visible) {
+        this.updateContents();
+      }
     }
 
     getTopLabel() {
