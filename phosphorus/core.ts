@@ -1569,7 +1569,7 @@ namespace P.core {
     bitmapResolution: number;
     rotationCenterX: number;
     rotationCenterY: number;
-    layers: Array<HTMLCanvasElement | HTMLImageElement>;
+    image: HTMLCanvasElement | HTMLImageElement;
   }
 
   // A costume
@@ -1577,7 +1577,7 @@ namespace P.core {
     public name: string;
     public rotationCenterX: number;
     public rotationCenterY: number;
-    public image: HTMLCanvasElement;
+    public image: HTMLCanvasElement | HTMLImageElement;
     public context: CanvasRenderingContext2D;
     public index: number;
     public bitmapResolution: number;
@@ -1592,27 +1592,7 @@ namespace P.core {
       this.rotationCenterX = costumeData.rotationCenterX;
       this.rotationCenterY = costumeData.rotationCenterY;
 
-      this.image = document.createElement('canvas');
-      const context = this.image.getContext('2d');
-      if (context) {
-        this.context = context;
-      } else {
-        throw new Error('No canvas 2d context');
-      }
-
-      this.render(costumeData.layers);
-    }
-
-    render(layers: Array<HTMLImageElement | HTMLCanvasElement>) {
-      // Width and height cannot be less than 1
-      this.image.width = Math.max(layers[0].width, 1);
-      this.image.height = Math.max(layers[0].height, 1);
-
-      for (const layer of layers) {
-        if (layer.width > 0 && layer.height > 0) {
-          this.context.drawImage(layer, 0, 0);
-        }
-      }
+      this.image = costumeData.image;
     }
   }
 

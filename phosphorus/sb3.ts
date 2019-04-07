@@ -641,7 +641,7 @@ namespace P.sb3 {
           name: data.name,
           rotationCenterX: data.rotationCenterX,
           rotationCenterY: data.rotationCenterY,
-          layers: [image],
+          image,
         }));
     }
 

@@ -1637,25 +1637,7 @@ var P;
                 this.name = costumeData.name;
                 this.rotationCenterX = costumeData.rotationCenterX;
                 this.rotationCenterY = costumeData.rotationCenterY;
-                this.image = document.createElement('canvas');
-                const context = this.image.getContext('2d');
-                if (context) {
-                    this.context = context;
-                }
-                else {
-                    throw new Error('No canvas 2d context');
-                }
-                this.render(costumeData.layers);
-            }
-            render(layers) {
-                // Width and height cannot be less than 1
-                this.image.width = Math.max(layers[0].width, 1);
-                this.image.height = Math.max(layers[0].height, 1);
-                for (const layer of layers) {
-                    if (layer.width > 0 && layer.height > 0) {
-                        this.context.drawImage(layer, 0, 0);
-                    }
-                }
+                this.image = costumeData.image;
             }
         }
         core.Costume = Costume;
@@ -2545,13 +2527,26 @@ var P;
             }
             return Promise.all(promises)
                 .then((layers) => {
+                var image;
+                if (layers.length > 1) {
+                    image = document.createElement('canvas');
+                    const ctx = image.getContext('2d');
+                    image.width = Math.max(layers[0].width, 1);
+                    image.height = Math.max(layers[0].height, 1);
+                    for (const layer of layers) {
+                        ctx.drawImage(layer, 0, 0);
+                    }
+                }
+                else {
+                    image = layers[0];
+                }
                 return new P.core.Costume({
                     index: index,
                     bitmapResolution: data.bitmapResolution,
                     name: data.costumeName,
                     rotationCenterX: data.rotationCenterX,
                     rotationCenterY: data.rotationCenterY,
-                    layers: layers,
+                    image,
                 });
             });
         }

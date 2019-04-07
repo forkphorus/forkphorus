@@ -613,14 +613,27 @@ namespace P.sb2 {
         .then((asset) => data.$text = asset));
     }
     return Promise.all(promises)
-      .then((layers) => {
+      .then((layers: any[]) => {
+        var image;
+        if (layers.length > 1) {
+          image = document.createElement('canvas');
+          const ctx = image.getContext('2d')!;
+          image.width = Math.max(layers[0].width, 1);
+          image.height = Math.max(layers[0].height, 1);
+          for (const layer of layers) {
+            ctx.drawImage(layer, 0, 0);
+          }
+        } else {
+          image = layers[0];
+        }
+
         return new P.core.Costume({
           index: index,
           bitmapResolution: data.bitmapResolution,
           name: data.costumeName,
           rotationCenterX: data.rotationCenterX,
           rotationCenterY: data.rotationCenterY,
-          layers: layers as HTMLImageElement[],
+          image,
         });
       });
   }
