@@ -51,6 +51,8 @@ namespace P.fonts {
       loadFont('Pixel'),
       loadFont('Griffy'),
       loadFont('Scratch'),
+      loadFont('Source Serif Pro'),
+      loadFont('Noto Sans'),
     ]).then(() => void (loadedScratch3 = true));
   }
 }

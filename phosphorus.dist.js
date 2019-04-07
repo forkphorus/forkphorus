@@ -1757,6 +1757,8 @@ var P;
                 loadFont('Pixel'),
                 loadFont('Griffy'),
                 loadFont('Scratch'),
+                loadFont('Source Serif Pro'),
+                loadFont('Noto Sans'),
             ]).then(() => void (loadedScratch3 = true));
         }
         fonts.loadScratch3 = loadScratch3;
@@ -4918,19 +4920,24 @@ var P;
         sb3.Scratch3List = Scratch3List;
         // Modifies a Scratch 3 SVG to work properly in our environment.
         function patchSVG(svg) {
-            // Adjust Scratch's font names to match what we name them.
+            // SVGs made by Scratch 3 use font names such as 'Sans Serif', which we convert to their real names.
             const FONTS = {
                 'Marker': 'Knewave',
                 'Handwriting': 'Handlee',
                 'Curly': 'Griffy',
-                'Serif': 'serif',
-                'Sans Serif': 'sans-serif',
+                'Scratch': 'Scratch',
+                'Serif': 'Source Serif Pro',
+                'Sans Serif': 'Noto Sans',
             };
             const textElements = svg.querySelectorAll('text');
             for (const el of textElements) {
                 const font = el.getAttribute('font-family') || '';
                 if (FONTS[font]) {
                     el.setAttribute('font-family', FONTS[font]);
+                }
+                else {
+                    // Scratch 3 replaces unknown fonts with sans serif.
+                    el.setAttribute('font-family', FONTS['Sans Serif']);
                 }
             }
         }

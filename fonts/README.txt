@@ -37,7 +37,17 @@ Copyright (c) 2012 by Font Diner, Inc DBA Sideshow (diner@fontdiner.com) with Re
 SIL Open Font License, 1.1
 https://fonts.google.com/specimen/Mystery+Quest
 
+Noto Sans
+NotoSans-Regular.ttf: Copyright 2012 Google Inc. All Rights Reserved.
+Apache License, version 2.0
+https://fonts.google.com/specimen/Noto+Sans
+
 Permanent Marker
 Copyright (c) 2010 by Font Diner, Inc. All rights reserved.
 Apache License, version 2.0
 https://fonts.google.com/specimen/Permanent+Marker
+
+Source Serif Pro
+Copyright 2014 Adobe Systems Incorporated. All Rights Reserved.
+SIL Open FOnt License, 1.1
+https://fonts.google.com/specimen/Source+Serif+Pro

@@ -27,6 +27,16 @@
   src: url("fonts/Griffy/Griffy-Regular.woff") format("woff"),
     url("fonts/Griffy/Griffy-Regular.woff2") format("woff2");
 }
+@font-face {
+  font-family: "Source Serif Pro";
+  src: url("fonts/Source_Serif_Pro/SourceSerifPro-Regular.woff") format("woff"),
+    url("fonts/Source_Serif_Pro/SourceSerifPro-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Noto Sans";
+  src: url("fonts/Noto_Sans/NotoSans-Regular.woff") format("woff"),
+    url("fonts/Noto_Sans/NotoSans-Regular.woff2") format("woff2");
+}
 /* Scratch 2 Fonts */
 @font-face {
   font-family: "Donegal One";

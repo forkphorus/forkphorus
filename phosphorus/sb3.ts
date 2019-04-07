@@ -568,15 +568,14 @@ namespace P.sb3 {
 
   // Modifies a Scratch 3 SVG to work properly in our environment.
   function patchSVG(svg: SVGElement) {
-    // Adjust Scratch's font names to match what we name them.
-    const FONTS: ObjectMap<string> = {
+    // SVGs made by Scratch 3 use font names such as 'Sans Serif', which we convert to their real names.
+    const FONTS = {
       'Marker': 'Knewave',
       'Handwriting': 'Handlee',
       'Curly': 'Griffy',
-      'Serif': 'serif',
-      'Sans Serif': 'sans-serif',
-      // 'Serif': 'Source Serif Pro',
-      // 'Sans Serif': 'Noto Sans',
+      'Scratch': 'Scratch',
+      'Serif': 'Source Serif Pro',
+      'Sans Serif': 'Noto Sans',
     };
 
     const textElements = svg.querySelectorAll('text');
@@ -584,6 +583,9 @@ namespace P.sb3 {
       const font = el.getAttribute('font-family') || '';
       if (FONTS[font]) {
         el.setAttribute('font-family', FONTS[font]);
+      } else {
+        // Scratch 3 replaces unknown fonts with sans serif.
+        el.setAttribute('font-family', FONTS['Sans Serif']);
       }
     }
   }
