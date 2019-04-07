@@ -1719,8 +1719,11 @@ var P;
          * @param name The name of the font (font-family)
          */
         function loadFont(name) {
+            P.IO.progressHooks.new();
             const observer = new FontFaceObserver(name);
-            return observer.load();
+            return observer.load().then(() => {
+                P.IO.progressHooks.end();
+            });
         }
         fonts.loadFont = loadFont;
         var loadedScratch2 = false;
