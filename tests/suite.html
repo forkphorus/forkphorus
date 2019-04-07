@@ -1,40 +1,51 @@
-<link rel="stylesheet" href="../phosphorus.css">
-<script src="../lib/fontfaceobserver.standalone.js"></script>
-<script src="../lib/jszip.min.js"></script>
-<script src="../lib/rgbcolor.js"></script>
-<script src="../lib/StackBlur.js"></script>
-<script src="../lib/canvg.js"></script>
-<script src="../phosphorus.dist.js"></script>
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Suite</title>
+  <!-- phosphorus itself -->
+  <link rel="stylesheet" href="../phosphorus.css">
+  <script src="../lib/fontfaceobserver.standalone.js"></script>
+  <script src="../lib/jszip.min.js"></script>
+  <script src="../lib/rgbcolor.js"></script>
+  <script src="../lib/StackBlur.js"></script>
+  <script src="../lib/canvg.js"></script>
+  <script src="../phosphorus.dist.js"></script>
 
-<style>
-#suite-container {
-  border: 1px solid black;
-  width: 480px;
-  height: 360px;
-}
-</style>
+  <style>
+  #suite-container {
+    border: 1px solid black;
+    width: 480px;
+    height: 360px;
+  }
+  </style>
+</head>
 
-<h1>Test suite</h1>
+<body>
+  <h1>Test suite</h1>
+  
+  <p>Significant work in progress.</p>
+  
+  <div id="suite-container"></div>
+  
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Result</th>
+        <th>Total Time</th>
+      </tr>
+    </thead>
+    <tbody id="suite-table">
+  
+    </tbody>
+  </table>
+  
+  <script src="suite.js"></script>
+  <script src="sb3.js"></script>
+  <script>
+    // The suite must be manually started.
+    suite.start();
+  </script>
+</body>
 
-<p>Significant work in progress.</p>
-
-<div id="suite-container"></div>
-
-<table>
-  <thead>
-    <tr>
-      <th>Name</th>
-      <th>Result</th>
-      <th>Time</th>
-    </tr>
-  </thead>
-  <tbody id="suite-table">
-
-  </tbody>
-</table>
-
-<script src="suite.js"></script>
-<script src="sb3.js"></script>
-<script>
-suite.start();
-</script>
+</html>

@@ -54,7 +54,7 @@
   suite.addProject('sb3/sb3-template.sb3', {
 
   });
-  
+
   suite.addProject('sb3/quicksort.sb3', {
     timeout: longTimeout,
   });

@@ -42,6 +42,7 @@ const suite = {
   },
 
   testProject(meta) {
+    this.startTime = performance.now();
     return this.getProject(meta.path)
       .then((stage) => {
 
@@ -55,7 +56,6 @@ const suite = {
           this._resolve = resolve;
           this._reject = reject;
 
-          this.startTime = performance.now();
           this.timeout = setTimeout(() => {
             this.testFail('Timed out');
           }, meta.timeout);
