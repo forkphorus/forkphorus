@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <title>Test Suite</title>
-  <!-- phosphorus itself -->
+
   <link rel="stylesheet" href="../phosphorus.css">
   <script src="../lib/fontfaceobserver.standalone.js"></script>
   <script src="../lib/jszip.min.js"></script>
@@ -27,16 +28,17 @@
     border: 1px solid black;
   }
 
-  table .time {
-    text-align: center;
+  .cell-name {
+    font-family: monospace;
   }
-
-  .test-result {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 25px;
+  .cell-result-okay {
+    background-color: #4aea4a;
+  }
+  .cell-result-fail {
+    background-color: #ea5b5b;
+  }
+  .cell-total-time, .cell-project-time {
+    text-align: center;
   }
   </style>
 </head>
@@ -44,27 +46,62 @@
 <body>
   <h1>Test suite</h1>
 
-  <div id="suite-container"></div>
+  <p>
+    The test suite automatically runs a few Scratch projects and checks to make sure that they function correctly.
+    Some test failures are to be expected.
+    <a href="https://github.com/forkphorus/forkphorus.github.io/tree/master/tests#readme">More information</a>.
+  </p>
 
+  <button id="ui-run-sb3">Run Scratch 3 tests</button>
+
+  <div id="suite-container"></div>
+  <div id="suite-final-results"></div>
   <table>
     <thead>
       <tr>
-        <th>Name</th>
+        <th><!-- Project Path --></th>
         <th>Result</th>
         <th>Total Time</th>
+        <th>Project Time</th>
       </tr>
     </thead>
-    <tbody id="suite-table">
-
-    </tbody>
+    <tbody id="suite-table"></tbody>
   </table>
 
   <script src="suite.js"></script>
-  <script src="sb3.js"></script>
   <script>
-    // The suite must be manually started.
-    suite.start();
+    (function() {
+      'use strict';
+
+      P.suite.defaults.repeatCount = 1;
+
+      const sb3button = document.getElementById('ui-run-sb3');
+
+      function toggleInputs(enabled) {
+        sb3button.disabled = !enabled;
+      }
+  
+      function loadScriptAndRunSuite(path) {
+        toggleInputs(false);
+        const script = document.createElement('script');
+        script.onload = function() {
+          P.suite.run().then(() => toggleInputs(true));
+        };
+        script.src = path;
+        document.body.appendChild(script);
+      }
+
+      sb3button.addEventListener('click', function() {
+        loadScriptAndRunSuite('sb3.js');
+        location.hash = '#sb3';
+      });
+
+      if (location.hash === '#sb3') {
+        loadScriptAndRunSuite('sb3.js');
+      }
+    }());
   </script>
+    
 </body>
 
 </html>

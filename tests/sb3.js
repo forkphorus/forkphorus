@@ -20,24 +20,22 @@
   compiler.statementLibrary['procedures_call'] = function procedureCall(block) {
     switch (block.mutation.proccode) {
       case 'FAIL':
-        compiler.hooks.appendSource('suite.testFail("no message");\n');
-        compiler.hooks.appendSource('return;\n');
+        compiler.hooks.appendSource('if (runtime.testFail("no message")) { return; }\n');
         break;
 
       case 'FAIL %s':
-        compiler.hooks.appendSource('suite.testFail(' + getArguments(block) + ' || "no message");\n');
-        compiler.hooks.appendSource('return;\n');
+        compiler.hooks.appendSource('if (runtime.testFail(' + getArguments(block) + ' || "no message")) { return; }\n');
         break;
 
       case 'OKAY':
       case 'OK':
-        compiler.hooks.appendSource('suite.testOkay("");\n');
+        compiler.hooks.appendSource('runtime.testOkay("");\n');
         compiler.hooks.appendSource('return;\n');
         break;
 
       case 'OKAY %s':
       case 'OK %s':
-        compiler.hooks.appendSource('suite.testOkay(' + getArguments(block) + ' || "");\n');
+        compiler.hooks.appendSource('runtime.testOkay(' + getArguments(block) + ' || "");\n');
         compiler.hooks.appendSource('return;\n');
         break;
 
@@ -47,7 +45,7 @@
   };
 }(P.sb3.compiler));
 
-(function() {
+(function(suite) {
   suite.addProject('sb3/sb3-template.sb3', {
 
   });
@@ -67,4 +65,4 @@
   suite.addProject('sb3/operators.sb3', {
 
   });
-}());
+}(P.suite));

@@ -4139,6 +4139,9 @@ var P;
                 }
                 this.queue.push(thread);
             }
+            /**
+             * Triggers an event for a single sprite.
+             */
             triggerFor(sprite, event, arg) {
                 let threads;
                 switch (event) {
@@ -4173,6 +4176,9 @@ var P;
                 }
                 return threads || [];
             }
+            /**
+             * Triggers an event on all sprites.
+             */
             trigger(event, arg) {
                 let threads = [];
                 for (let i = this.stage.children.length; i--;) {
@@ -4180,10 +4186,17 @@ var P;
                 }
                 return threads.concat(this.triggerFor(this.stage, event, arg));
             }
+            /**
+             * Trigger's the project's green flag.
+             */
             triggerGreenFlag() {
                 this.timerStart = this.rightNow();
                 this.trigger('whenGreenFlag');
             }
+            /**
+             * Begins the runtime's event loop.
+             * Does not start any scripts.
+             */
             start() {
                 this.isRunning = true;
                 if (this.interval)
@@ -4194,6 +4207,9 @@ var P;
                 if (audioContext)
                     audioContext.resume();
             }
+            /**
+             * Pauses the event loop
+             */
             pause() {
                 if (this.interval) {
                     this.baseNow = this.rightNow();
@@ -4227,9 +4243,15 @@ var P;
                     }
                 }
             }
+            /**
+             * The current time in the project
+             */
             rightNow() {
                 return this.baseNow + Date.now() - this.baseTime;
             }
+            /**
+             * Advances one frame into the future.
+             */
             step() {
                 // Reset runtime variables
                 self = this.stage;

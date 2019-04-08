@@ -564,6 +564,9 @@ namespace P.runtime {
       this.queue.push(thread);
     }
 
+    /**
+     * Triggers an event for a single sprite.
+     */
     triggerFor(sprite: P.core.Base, event: string, arg?: any): Thread[] {
       let threads;
       switch (event) {
@@ -587,6 +590,9 @@ namespace P.runtime {
       return threads || [];
     }
 
+    /**
+     * Triggers an event on all sprites.
+     */
     trigger(event: string, arg?: any) {
       let threads: Thread[] = [];
       for (let i = this.stage.children.length; i--;) {
@@ -595,11 +601,18 @@ namespace P.runtime {
       return threads.concat(this.triggerFor(this.stage, event, arg));
     }
 
+    /**
+     * Trigger's the project's green flag.
+     */
     triggerGreenFlag() {
       this.timerStart = this.rightNow();
       this.trigger('whenGreenFlag');
     }
 
+    /**
+     * Begins the runtime's event loop.
+     * Does not start any scripts.
+     */
     start() {
       this.isRunning = true;
       if (this.interval) return;
@@ -609,6 +622,9 @@ namespace P.runtime {
       if (audioContext) audioContext.resume();
     }
 
+    /**
+     * Pauses the event loop
+     */
     pause() {
       if (this.interval) {
         this.baseNow = this.rightNow();
@@ -641,10 +657,16 @@ namespace P.runtime {
       }
     }
 
+    /**
+     * The current time in the project
+     */
     rightNow(): number {
       return this.baseNow + Date.now() - this.baseTime;
     }
 
+    /**
+     * Advances one frame into the future.
+     */
     step() {
       // Reset runtime variables
       self = this.stage;
