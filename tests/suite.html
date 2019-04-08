@@ -13,20 +13,39 @@
 
   <style>
   #suite-container {
+    position: relative;
     border: 1px solid black;
     width: 480px;
     height: 360px;
+    margin: 5px;
+  }
+
+  table {
+    border-collapse: collapse;
+  }
+  table, td, th {
+    border: 1px solid black;
+  }
+
+  table .time {
+    text-align: center;
+  }
+
+  .test-result {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 25px;
   }
   </style>
 </head>
 
 <body>
   <h1>Test suite</h1>
-  
-  <p>Significant work in progress.</p>
-  
+
   <div id="suite-container"></div>
-  
+
   <table>
     <thead>
       <tr>
@@ -36,10 +55,10 @@
       </tr>
     </thead>
     <tbody id="suite-table">
-  
+
     </tbody>
   </table>
-  
+
   <script src="suite.js"></script>
   <script src="sb3.js"></script>
   <script>

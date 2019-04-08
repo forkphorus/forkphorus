@@ -48,18 +48,23 @@
 }(P.sb3.compiler));
 
 (function() {
-  // 10 second timeout should be long enough for all projects that need it
-  const longTimeout = 10000;
-
   suite.addProject('sb3/sb3-template.sb3', {
 
   });
 
   suite.addProject('sb3/quicksort.sb3', {
-    timeout: longTimeout,
+
   });
 
   suite.addProject('sb3/befunge-eratosthenes.sb3', {
+
+  });
+
+  suite.addProject('sb3/string-functions.sb3', {
+
+  });
+
+  suite.addProject('sb3/operators.sb3', {
 
   });
 }());

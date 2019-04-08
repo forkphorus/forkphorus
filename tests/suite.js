@@ -17,7 +17,7 @@ const suite = {
   addProject(path, meta) {
     this.projects.push({
       path: path,
-      timeout: meta.timeout || 2000,
+      timeout: meta.timeout || 5000,
     });
   },
 
@@ -126,11 +126,19 @@ const suite = {
     this.suiteStartTime = performance.now();
     while (this.projects.length > 0) {
       const project = this.projects.shift();
-      await this.testProject(project);
+      try {
+        await this.testProject(project);
+      } catch (e) {
+        console.error(e);
+      }
     }
     this.emptyContainer();
     const suiteEndTime = performance.now();
     const suiteTime = suiteEndTime - this.suiteStartTime;
-    this.containerEl.textContent = 'DONE in ' + suiteTime + 'ms';
+
+    const testResultEl = document.createElement('div');
+    testResultEl.className = 'test-result';
+    testResultEl.textContent = 'Done in ' + suiteTime + 'ms';
+    this.containerEl.appendChild(testResultEl);
   },
 };
