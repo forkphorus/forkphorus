@@ -614,17 +614,12 @@ namespace P.sb2 {
     }
     return Promise.all(promises)
       .then((layers: any[]) => {
-        var image;
-        if (layers.length > 1) {
-          image = document.createElement('canvas');
-          const ctx = image.getContext('2d')!;
-          image.width = Math.max(layers[0].width, 1);
-          image.height = Math.max(layers[0].height, 1);
-          for (const layer of layers) {
-            ctx.drawImage(layer, 0, 0);
-          }
-        } else {
-          image = layers[0];
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d')!;
+        canvas.width = Math.max(layers[0].width, 1);
+        canvas.height = Math.max(layers[0].height, 1);
+        for (const layer of layers) {
+          context.drawImage(layer, 0, 0);
         }
 
         return new P.core.Costume({
@@ -633,7 +628,8 @@ namespace P.sb2 {
           name: data.costumeName,
           rotationCenterX: data.rotationCenterX,
           rotationCenterY: data.rotationCenterY,
-          image,
+          canvas,
+          context,
         });
       });
   }
@@ -1909,7 +1905,7 @@ namespace P.sb2.compiler {
     }
 
     for (let i = 0; i < fns.length; i++) {
-      object.fns.push(P.utils.createContinuation(source.slice(fns[i])));
+      object.fns.push(P.runtime.createContinuation(source.slice(fns[i])));
     }
 
     var f = object.fns[startfn];

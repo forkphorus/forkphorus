@@ -643,14 +643,22 @@ namespace P.sb3 {
     loadCostume(data: SB3Costume, index: number): Promise<P.core.Costume> {
       const path = data.assetId + '.' + data.dataFormat;
       return this.getImage(path, data.dataFormat)
-        .then((image) => new P.core.Costume({
-          index: index,
-          bitmapResolution: data.bitmapResolution,
-          name: data.name,
-          rotationCenterX: data.rotationCenterX,
-          rotationCenterY: data.rotationCenterY,
-          image,
-        }));
+        .then((image) => {
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, image.width);
+          canvas.height = Math.max(1, image.height);
+          const context = canvas.getContext('2d')!;
+          context.drawImage(image, 0, 0);
+          return new P.core.Costume({
+            index: index,
+            bitmapResolution: data.bitmapResolution,
+            name: data.name,
+            rotationCenterX: data.rotationCenterX,
+            rotationCenterY: data.rotationCenterY,
+            canvas,
+            context,
+          });
+        });
     }
 
     getAudioBuffer(path: string) {
@@ -2573,7 +2581,7 @@ namespace P.sb3.compiler {
 
       const startFn = target.fns.length;
       for (var i = 0; i < fns.length; i++) {
-        target.fns.push(P.utils.createContinuation(source.slice(fns[i])));
+        target.fns.push(P.runtime.createContinuation(source.slice(fns[i])));
       }
 
       const topLevelHandler = topLevelLibrary[block.opcode];

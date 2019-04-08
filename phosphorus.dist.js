@@ -261,7 +261,7 @@ var P;
                         this.ctx.filter = filter;
                     }
                 }
-                this.ctx.drawImage(costume.image, 0, 0);
+                this.ctx.drawImage(costume.canvas, 0, 0);
                 this.ctx.restore();
             }
         }
@@ -1212,12 +1212,12 @@ var P;
                 const scale = costume.scale * this.scale;
                 var left = -costume.rotationCenterX * scale;
                 var top = costume.rotationCenterY * scale;
-                var right = left + costume.image.width * scale;
-                var bottom = top - costume.image.height * scale;
+                var right = left + costume.canvas.width * scale;
+                var bottom = top - costume.canvas.height * scale;
                 if (this.rotationStyle !== 0 /* Normal */) {
                     if (this.rotationStyle === 1 /* LeftRight */ && this.direction < 0) {
                         right = -left;
-                        left = right - costume.image.width * costume.scale * this.scale;
+                        left = right - costume.canvas.width * costume.scale * this.scale;
                     }
                     return {
                         left: this.scratchX + left,
@@ -1637,7 +1637,8 @@ var P;
                 this.name = costumeData.name;
                 this.rotationCenterX = costumeData.rotationCenterX;
                 this.rotationCenterY = costumeData.rotationCenterY;
-                this.image = costumeData.image;
+                this.canvas = costumeData.canvas;
+                this.context = costumeData.context;
             }
         }
         core.Costume = Costume;
@@ -1824,79 +1825,6 @@ var P;
             return error.toString();
         }
         utils.stringifyError = stringifyError;
-        function createContinuation(source) {
-            // TODO: make understandable
-            var result = '(function() {\n';
-            var brackets = 0;
-            var delBrackets = 0;
-            var shouldDelete = false;
-            var here = 0;
-            var length = source.length;
-            while (here < length) {
-                var i = source.indexOf('{', here);
-                var j = source.indexOf('}', here);
-                var k = source.indexOf('return;', here);
-                if (k === -1)
-                    k = length;
-                if (i === -1 && j === -1) {
-                    if (!shouldDelete) {
-                        result += source.slice(here, k);
-                    }
-                    break;
-                }
-                if (i === -1)
-                    i = length;
-                if (j === -1)
-                    j = length;
-                if (shouldDelete) {
-                    if (i < j) {
-                        delBrackets++;
-                        here = i + 1;
-                    }
-                    else {
-                        delBrackets--;
-                        if (!delBrackets) {
-                            shouldDelete = false;
-                        }
-                        here = j + 1;
-                    }
-                }
-                else {
-                    if (brackets === 0 && k < i && k < j) {
-                        result += source.slice(here, k);
-                        break;
-                    }
-                    if (i < j) {
-                        result += source.slice(here, i + 1);
-                        brackets++;
-                        here = i + 1;
-                    }
-                    else {
-                        result += source.slice(here, j);
-                        here = j + 1;
-                        if (source.substr(j, 8) === '} else {') {
-                            if (brackets > 0) {
-                                result += '} else {';
-                                here = j + 8;
-                            }
-                            else {
-                                shouldDelete = true;
-                                delBrackets = 0;
-                            }
-                        }
-                        else {
-                            if (brackets > 0) {
-                                result += '}';
-                                brackets--;
-                            }
-                        }
-                    }
-                }
-            }
-            result += '})';
-            return P.runtime.scopedEval(result);
-        }
-        utils.createContinuation = createContinuation;
         /**
          * Parses a Scratch rotation style string to a RoationStyle enum
          */
@@ -2527,18 +2455,12 @@ var P;
             }
             return Promise.all(promises)
                 .then((layers) => {
-                var image;
-                if (layers.length > 1) {
-                    image = document.createElement('canvas');
-                    const ctx = image.getContext('2d');
-                    image.width = Math.max(layers[0].width, 1);
-                    image.height = Math.max(layers[0].height, 1);
-                    for (const layer of layers) {
-                        ctx.drawImage(layer, 0, 0);
-                    }
-                }
-                else {
-                    image = layers[0];
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = Math.max(layers[0].width, 1);
+                canvas.height = Math.max(layers[0].height, 1);
+                for (const layer of layers) {
+                    context.drawImage(layer, 0, 0);
                 }
                 return new P.core.Costume({
                     index: index,
@@ -2546,7 +2468,8 @@ var P;
                     name: data.costumeName,
                     rotationCenterX: data.rotationCenterX,
                     rotationCenterY: data.rotationCenterY,
-                    image,
+                    canvas,
+                    context,
                 });
             });
         }
@@ -3639,7 +3562,7 @@ var P;
                     source += 'return;\n';
                 }
                 for (let i = 0; i < fns.length; i++) {
-                    object.fns.push(P.utils.createContinuation(source.slice(fns[i])));
+                    object.fns.push(P.runtime.createContinuation(source.slice(fns[i])));
                 }
                 var f = object.fns[startfn];
                 if (script[0][0] === 'whenClicked') {
@@ -4510,6 +4433,79 @@ var P;
                 { top: 128, name: 'SynthPad_C6', baseRatio: 2.3820424708835755, loop: true, loopStart: 0.11678004535147392, loopEnd: 0.41732426303854875, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
             ]
         ];
+        function createContinuation(source) {
+            // TODO: make understandable
+            var result = '(function() {\n';
+            var brackets = 0;
+            var delBrackets = 0;
+            var shouldDelete = false;
+            var here = 0;
+            var length = source.length;
+            while (here < length) {
+                var i = source.indexOf('{', here);
+                var j = source.indexOf('}', here);
+                var k = source.indexOf('return;', here);
+                if (k === -1)
+                    k = length;
+                if (i === -1 && j === -1) {
+                    if (!shouldDelete) {
+                        result += source.slice(here, k);
+                    }
+                    break;
+                }
+                if (i === -1)
+                    i = length;
+                if (j === -1)
+                    j = length;
+                if (shouldDelete) {
+                    if (i < j) {
+                        delBrackets++;
+                        here = i + 1;
+                    }
+                    else {
+                        delBrackets--;
+                        if (!delBrackets) {
+                            shouldDelete = false;
+                        }
+                        here = j + 1;
+                    }
+                }
+                else {
+                    if (brackets === 0 && k < i && k < j) {
+                        result += source.slice(here, k);
+                        break;
+                    }
+                    if (i < j) {
+                        result += source.slice(here, i + 1);
+                        brackets++;
+                        here = i + 1;
+                    }
+                    else {
+                        result += source.slice(here, j);
+                        here = j + 1;
+                        if (source.substr(j, 8) === '} else {') {
+                            if (brackets > 0) {
+                                result += '} else {';
+                                here = j + 8;
+                            }
+                            else {
+                                shouldDelete = true;
+                                delBrackets = 0;
+                            }
+                        }
+                        else {
+                            if (brackets > 0) {
+                                result += '}';
+                                brackets--;
+                            }
+                        }
+                    }
+                }
+            }
+            result += '})';
+            return scopedEval(result);
+        }
+        runtime_1.createContinuation = createContinuation;
         // Evaluate JavaScript within the scope of the runtime.
         function scopedEval(source) {
             return eval(source);
@@ -4981,14 +4977,22 @@ var P;
             loadCostume(data, index) {
                 const path = data.assetId + '.' + data.dataFormat;
                 return this.getImage(path, data.dataFormat)
-                    .then((image) => new P.core.Costume({
-                    index: index,
-                    bitmapResolution: data.bitmapResolution,
-                    name: data.name,
-                    rotationCenterX: data.rotationCenterX,
-                    rotationCenterY: data.rotationCenterY,
-                    image,
-                }));
+                    .then((image) => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.max(1, image.width);
+                    canvas.height = Math.max(1, image.height);
+                    const context = canvas.getContext('2d');
+                    context.drawImage(image, 0, 0);
+                    return new P.core.Costume({
+                        index: index,
+                        bitmapResolution: data.bitmapResolution,
+                        name: data.name,
+                        rotationCenterX: data.rotationCenterX,
+                        rotationCenterY: data.rotationCenterY,
+                        canvas,
+                        context,
+                    });
+                });
             }
             getAudioBuffer(path) {
                 return this.getAsArrayBuffer(path)
@@ -6743,7 +6747,7 @@ var P;
                     }
                     const startFn = target.fns.length;
                     for (var i = 0; i < fns.length; i++) {
-                        target.fns.push(P.utils.createContinuation(source.slice(fns[i])));
+                        target.fns.push(P.runtime.createContinuation(source.slice(fns[i])));
                     }
                     const topLevelHandler = compiler_1.topLevelLibrary[block.opcode];
                     topLevelHandler(block, target.fns[startFn]);

@@ -1097,13 +1097,13 @@ namespace P.core {
       const scale = costume.scale * this.scale;
       var left = -costume.rotationCenterX * scale;
       var top = costume.rotationCenterY * scale;
-      var right = left + costume.image.width * scale;
-      var bottom = top - costume.image.height * scale;
+      var right = left + costume.canvas.width * scale;
+      var bottom = top - costume.canvas.height * scale;
 
       if (this.rotationStyle !== RotationStyle.Normal) {
         if (this.rotationStyle === RotationStyle.LeftRight && this.direction < 0) {
           right = -left;
-          left = right - costume.image.width * costume.scale * this.scale;
+          left = right - costume.canvas.width * costume.scale * this.scale;
         }
         return {
           left: this.scratchX + left,
@@ -1569,7 +1569,8 @@ namespace P.core {
     bitmapResolution: number;
     rotationCenterX: number;
     rotationCenterY: number;
-    image: HTMLCanvasElement | HTMLImageElement;
+    canvas: HTMLCanvasElement;
+    context: CanvasRenderingContext2D;
   }
 
   // A costume
@@ -1577,7 +1578,7 @@ namespace P.core {
     public name: string;
     public rotationCenterX: number;
     public rotationCenterY: number;
-    public image: HTMLCanvasElement | HTMLImageElement;
+    public canvas: HTMLCanvasElement;
     public context: CanvasRenderingContext2D;
     public index: number;
     public bitmapResolution: number;
@@ -1592,7 +1593,8 @@ namespace P.core {
       this.rotationCenterX = costumeData.rotationCenterX;
       this.rotationCenterY = costumeData.rotationCenterY;
 
-      this.image = costumeData.image;
+      this.canvas = costumeData.canvas;
+      this.context = costumeData.context;
     }
   }
 

@@ -857,6 +857,71 @@ namespace P.runtime {
     ]
   ];
 
+  export function createContinuation(source: string): P.runtime.Fn {
+    // TODO: make understandable
+    var result = '(function() {\n';
+    var brackets = 0;
+    var delBrackets = 0;
+    var shouldDelete = false;
+    var here = 0;
+    var length = source.length;
+    while (here < length) {
+      var i = source.indexOf('{', here);
+      var j = source.indexOf('}', here);
+      var k = source.indexOf('return;', here);
+      if (k === -1) k = length;
+      if (i === -1 && j === -1) {
+        if (!shouldDelete) {
+          result += source.slice(here, k);
+        }
+        break;
+      }
+      if (i === -1) i = length;
+      if (j === -1) j = length;
+      if (shouldDelete) {
+        if (i < j) {
+          delBrackets++;
+          here = i + 1;
+        } else {
+          delBrackets--;
+          if (!delBrackets) {
+            shouldDelete = false;
+          }
+          here = j + 1;
+        }
+      } else {
+        if (brackets === 0 && k < i && k < j) {
+          result += source.slice(here, k);
+          break;
+        }
+        if (i < j) {
+          result += source.slice(here, i + 1);
+          brackets++;
+          here = i + 1;
+        } else {
+          result += source.slice(here, j);
+          here = j + 1;
+          if (source.substr(j, 8) === '} else {') {
+            if (brackets > 0) {
+              result += '} else {';
+              here = j + 8;
+            } else {
+              shouldDelete = true;
+              delBrackets = 0;
+            }
+          } else {
+            if (brackets > 0) {
+              result += '}';
+              brackets--;
+            }
+          }
+        }
+      }
+    }
+    result += '})';
+    return scopedEval(result);
+  }
+
   // Evaluate JavaScript within the scope of the runtime.
   export function scopedEval(source: string): any {
     return eval(source);
