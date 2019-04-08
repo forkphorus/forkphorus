@@ -4895,6 +4895,12 @@ var P;
             // Inserts an item at a spot in the list.
             // Index is a Scratch index.
             insert(index, value) {
+                // TODO: simplify/refactor
+                if (+index === 1) {
+                    this.modified = true;
+                    this.unshift(value);
+                    return;
+                }
                 index = this.scratchIndex(index);
                 if (index === this.length) {
                     this.modified = true;
