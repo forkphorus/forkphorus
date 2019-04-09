@@ -1,4 +1,8 @@
-### Scratch 3 Projects
+# Test Suite
+
+Automated test suite for forkphorus.
+
+## Scratch 3
 
 | Project | Description |
 |---------|-------------|
@@ -18,6 +22,12 @@ If the operation did work as expected, then call the `OKAY` or `OK` block, optio
 
 All projects must run `FAIL` or `OK` once. The test will end when either of these is run.
 
-### Scratch 2 Tests
+## Scratch 2
 
-Eventually
+| Project | Description |
+|---------|-------------|
+| `sb2/sb2-template.sb2` | Tests the test suite itself. Acts as a template for other test projects. |
+
+### Writing Scratch 2 Tests
+
+The same process as writing Scratch 3 tests, but just save them as .sb2 instead of .sb3. You can find a roughly equivalent "Template" in sb2/sb2-template.sb2.

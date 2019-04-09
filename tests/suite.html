@@ -53,6 +53,7 @@
   </p>
 
   <button id="ui-run-sb3">Run Scratch 3 tests</button>
+  <button id="ui-run-sb2">Run Scratch 2 tests</button>
 
   <div id="suite-container"></div>
   <div id="suite-final-results"></div>
@@ -76,9 +77,11 @@
       P.suite.defaults.repeatCount = 1;
 
       const sb3button = document.getElementById('ui-run-sb3');
+      const sb2button = document.getElementById('ui-run-sb2');
 
       function toggleInputs(enabled) {
         sb3button.disabled = !enabled;
+        sb2button.disabled = !enabled;
       }
   
       function loadScriptAndRunSuite(path) {
@@ -95,9 +98,16 @@
         loadScriptAndRunSuite('sb3.js');
         location.hash = '#sb3';
       });
+      sb2button.addEventListener('click', function() {
+        loadScriptAndRunSuite('sb2.js');
+        location.hash = '#sb2';
+      });
 
       if (location.hash === '#sb3') {
         loadScriptAndRunSuite('sb3.js');
+      }
+      if (location.hash === '#sb2') {
+        loadScriptAndRunSuite('sb2.js');
       }
     }());
   </script>

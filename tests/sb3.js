@@ -29,14 +29,12 @@
 
       case 'OKAY':
       case 'OK':
-        compiler.hooks.appendSource('runtime.testOkay("");\n');
-        compiler.hooks.appendSource('return;\n');
+        compiler.hooks.appendSource('runtime.testOkay(""); return;\n');
         break;
 
       case 'OKAY %s':
       case 'OK %s':
-        compiler.hooks.appendSource('runtime.testOkay(' + getArguments(block) + ' || "");\n');
-        compiler.hooks.appendSource('return;\n');
+        compiler.hooks.appendSource('runtime.testOkay(' + getArguments(block) + ' || ""); return;\n');
         break;
 
       default:

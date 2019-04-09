@@ -80,7 +80,7 @@ P.suite = (function() {
    * @param {string} path
    * @param {ProjectMeta} metadata 
    */
-  function addProject(path, metadata) {
+  function addProject(path, metadata = {}) {
     metadata.path = path;
     const clonedDefaults = Object.assign({}, defaultMetadata);
     projectList.push(Object.assign(clonedDefaults, metadata));
@@ -285,8 +285,10 @@ P.suite = (function() {
    * @returns {Promise} Resolves when the test is done.
    */
   async function run() {
-    const startTime = performance.now();
+    removeChildren(tableBodyEl);
+
     const allTestResults = [];
+    const startTime = performance.now();
 
     while (projectList.length > 0) {
       const projectMetadata = projectList.shift();
