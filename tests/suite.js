@@ -139,7 +139,7 @@ P.suite = (function() {
       /**
        * @param {TestResult} result
        */
-      function resolve(result) {
+      const resolve = (result) => {
         const endTime = performance.now();
         result.projectTime = endTime - startTime;
 
@@ -155,7 +155,7 @@ P.suite = (function() {
        * @param {string} message
        * @returns {boolean} Stop the program's execution after this failure?
        */
-      function testFail(message) {
+      const testFail = (message) => {
         if (metadata.ignoredFailures.includes(message)) {
           return false;
         }
@@ -170,7 +170,7 @@ P.suite = (function() {
        * Test test has passed.
        * @param {string} message
        */
-      function testOkay(message) {
+      const testOkay = (message) => {
         resolve({
           success: true,
           message,
@@ -181,7 +181,7 @@ P.suite = (function() {
        * testFail() when the project encounters an error
        * @param {ErrorEvent} e
        */
-      function handleError(e) {
+      const handleError = (e) => {
         const error = e.error;
         const message = P.utils.stringifyError(error);
         stage.runtime.testFail('ERROR: ' + message);
@@ -190,7 +190,7 @@ P.suite = (function() {
       /**
        * The project has not completed in a reasonable amount of time
        */
-      function timeout() {
+      const timeout = () => {
         testFail('timeout');
       }
 
