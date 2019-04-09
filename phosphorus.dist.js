@@ -261,7 +261,7 @@ var P;
                         this.ctx.filter = filter;
                     }
                 }
-                this.ctx.drawImage(costume.canvas, 0, 0);
+                this.ctx.drawImage(costume.image, 0, 0);
                 this.ctx.restore();
             }
         }
@@ -1212,12 +1212,12 @@ var P;
                 const scale = costume.scale * this.scale;
                 var left = -costume.rotationCenterX * scale;
                 var top = costume.rotationCenterY * scale;
-                var right = left + costume.canvas.width * scale;
-                var bottom = top - costume.canvas.height * scale;
+                var right = left + costume.image.width * scale;
+                var bottom = top - costume.image.height * scale;
                 if (this.rotationStyle !== 0 /* Normal */) {
                     if (this.rotationStyle === 1 /* LeftRight */ && this.direction < 0) {
                         right = -left;
-                        left = right - costume.canvas.width * costume.scale * this.scale;
+                        left = right - costume.image.width * costume.scale * this.scale;
                     }
                     return {
                         left: this.scratchX + left,
@@ -1396,7 +1396,7 @@ var P;
                     }
                     const positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
                     const positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
-                    const data = costume.context.getImageData(positionX, positionY, 1, 1).data;
+                    const data = costume.context().getImageData(positionX, positionY, 1, 1).data;
                     return data[3] !== 0;
                 }
                 else if (thing === '_edge_') {
@@ -1637,8 +1637,29 @@ var P;
                 this.name = costumeData.name;
                 this.rotationCenterX = costumeData.rotationCenterX;
                 this.rotationCenterY = costumeData.rotationCenterY;
-                this.canvas = costumeData.canvas;
-                this.context = costumeData.context;
+                const source = costumeData.source;
+                this.image = source;
+                if (source.tagName === 'CANVAS') {
+                    this._context = source.getContext('2d');
+                }
+                else {
+                    this._context = null;
+                }
+            }
+            context() {
+                if (this._context) {
+                    return this._context;
+                }
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    throw new Error('cannot get 2d rendering context');
+                }
+                canvas.width = this.image.width;
+                canvas.height = this.image.height;
+                ctx.drawImage(this.image, 0, 0);
+                this._context = ctx;
+                return ctx;
             }
         }
         core.Costume = Costume;
@@ -2302,7 +2323,7 @@ var P;
                     resolve(image);
                 };
                 image.onerror = function (err) {
-                    reject('Failed to load image');
+                    reject('Failed to load image: ' + image.src);
                 };
                 image.src = url;
             });
@@ -2455,12 +2476,18 @@ var P;
             }
             return Promise.all(promises)
                 .then((layers) => {
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                canvas.width = Math.max(layers[0].width, 1);
-                canvas.height = Math.max(layers[0].height, 1);
-                for (const layer of layers) {
-                    context.drawImage(layer, 0, 0);
+                var image;
+                if (layers.length > 1) {
+                    image = document.createElement('canvas');
+                    const ctx = image.getContext('2d');
+                    image.width = Math.max(layers[0].width, 1);
+                    image.height = Math.max(layers[0].height, 1);
+                    for (const layer of layers) {
+                        ctx.drawImage(layer, 0, 0);
+                    }
+                }
+                else {
+                    image = layers[0];
                 }
                 return new P.core.Costume({
                     index: index,
@@ -2468,8 +2495,7 @@ var P;
                     name: data.costumeName,
                     rotationCenterX: data.rotationCenterX,
                     rotationCenterY: data.rotationCenterY,
-                    canvas,
-                    context,
+                    source: image,
                 });
             });
         }
@@ -2565,9 +2591,9 @@ var P;
             patchSVG(svg, svg);
             document.body.removeChild(svg);
             svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
-            const canvas = document.createElement('canvas');
-            const image = new Image();
+            // TODO: use native renderer
             return new Promise((resolve, reject) => {
+                const canvas = document.createElement('canvas');
                 canvg(canvas, new XMLSerializer().serializeToString(svg), {
                     ignoreMouse: true,
                     ignoreAnimation: true,
@@ -2577,9 +2603,7 @@ var P;
                             resolve(new Image());
                             return;
                         }
-                        image.onload = () => resolve(image);
-                        image.onerror = (err) => reject('Failed to load SVG: ' + err);
-                        image.src = canvas.toDataURL();
+                        resolve(canvas);
                     }
                 });
             });
@@ -4976,20 +5000,19 @@ var P;
                         const doc = parser.parseFromString(source, 'image/svg+xml');
                         const svg = doc.documentElement;
                         patchSVG(svg);
-                        const canvas = document.createElement('canvas');
+                        const patchedSource = svg.outerHTML;
                         return new Promise((resolve, reject) => {
-                            canvg(canvas, new XMLSerializer().serializeToString(svg), {
-                                ignoreMouse: true,
-                                ignoreAnimation: true,
-                                ignoreClear: true,
-                                renderCallback: function () {
-                                    if (canvas.width === 0 || canvas.height === 0) {
-                                        resolve(new Image());
-                                        return;
-                                    }
-                                    resolve(canvas);
+                            const image = new Image();
+                            image.onload = () => {
+                                // 0 width/height images cause issues
+                                if (image.width === 0 || image.height === 0) {
+                                    resolve(new Image(1, 1));
+                                    return;
                                 }
-                            });
+                                resolve(image);
+                            };
+                            image.onerror = (err) => reject('Failed to load SVG image: ' + image.src);
+                            image.src = 'data:image/svg+xml;,' + encodeURIComponent(patchedSource);
                         });
                     });
                 }
@@ -5000,22 +5023,14 @@ var P;
             loadCostume(data, index) {
                 const path = data.assetId + '.' + data.dataFormat;
                 return this.getImage(path, data.dataFormat)
-                    .then((image) => {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = Math.max(1, image.width);
-                    canvas.height = Math.max(1, image.height);
-                    const context = canvas.getContext('2d');
-                    context.drawImage(image, 0, 0);
-                    return new P.core.Costume({
-                        index: index,
-                        bitmapResolution: data.bitmapResolution,
-                        name: data.name,
-                        rotationCenterX: data.rotationCenterX,
-                        rotationCenterY: data.rotationCenterY,
-                        canvas,
-                        context,
-                    });
-                });
+                    .then((image) => new P.core.Costume({
+                    index: index,
+                    bitmapResolution: data.bitmapResolution,
+                    name: data.name,
+                    rotationCenterX: data.rotationCenterX,
+                    rotationCenterY: data.rotationCenterY,
+                    source: image,
+                }));
             }
             getAudioBuffer(path) {
                 return this.getAsArrayBuffer(path)

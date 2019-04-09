@@ -615,24 +615,22 @@ namespace P.sb3 {
           .then((source) => {
             const parser = new DOMParser();
             const doc = parser.parseFromString(source, 'image/svg+xml');
-            const svg = doc.documentElement as any;
+            const svg = doc.documentElement as any as SVGElement;
             patchSVG(svg);
+            const patchedSource = svg.outerHTML;
 
-            const canvas = document.createElement('canvas');
-
-            return new Promise<HTMLCanvasElement | HTMLImageElement>((resolve, reject) => {
-              canvg(canvas, new XMLSerializer().serializeToString(svg), {
-                ignoreMouse: true,
-                ignoreAnimation: true,
-                ignoreClear: true,
-                renderCallback: function() {
-                  if (canvas.width === 0 || canvas.height === 0) {
-                    resolve(new Image());
-                    return;
-                  }
-                  resolve(canvas);
+            return new Promise<HTMLImageElement>((resolve, reject) => {
+              const image = new Image();
+              image.onload = () => {
+                // 0 width/height images cause issues
+                if (image.width === 0 || image.height === 0) {
+                  resolve(new Image(1, 1));
+                  return;
                 }
-              });
+                resolve(image);
+              };
+              image.onerror = (err) => reject('Failed to load SVG image: ' + image.src);
+              image.src = 'data:image/svg+xml;,' + encodeURIComponent(patchedSource);
             });
           });
       } else {
@@ -643,22 +641,14 @@ namespace P.sb3 {
     loadCostume(data: SB3Costume, index: number): Promise<P.core.Costume> {
       const path = data.assetId + '.' + data.dataFormat;
       return this.getImage(path, data.dataFormat)
-        .then((image) => {
-          const canvas = document.createElement('canvas');
-          canvas.width = Math.max(1, image.width);
-          canvas.height = Math.max(1, image.height);
-          const context = canvas.getContext('2d')!;
-          context.drawImage(image, 0, 0);
-          return new P.core.Costume({
-            index: index,
-            bitmapResolution: data.bitmapResolution,
-            name: data.name,
-            rotationCenterX: data.rotationCenterX,
-            rotationCenterY: data.rotationCenterY,
-            canvas,
-            context,
-          });
-        });
+        .then((image) => new P.core.Costume({
+          index: index,
+          bitmapResolution: data.bitmapResolution,
+          name: data.name,
+          rotationCenterX: data.rotationCenterX,
+          rotationCenterY: data.rotationCenterY,
+          source: image,
+        }));
     }
 
     getAudioBuffer(path: string) {

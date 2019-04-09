@@ -451,7 +451,7 @@ namespace P.sb2 {
         resolve(image);
       };
       image.onerror = function(err) {
-        reject('Failed to load image');
+        reject('Failed to load image: ' + image.src);
       };
       image.src = url;
     });
@@ -614,12 +614,17 @@ namespace P.sb2 {
     }
     return Promise.all(promises)
       .then((layers: any[]) => {
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d')!;
-        canvas.width = Math.max(layers[0].width, 1);
-        canvas.height = Math.max(layers[0].height, 1);
-        for (const layer of layers) {
-          context.drawImage(layer, 0, 0);
+        var image;
+        if (layers.length > 1) {
+          image = document.createElement('canvas');
+          const ctx = image.getContext('2d')!;
+          image.width = Math.max(layers[0].width, 1);
+          image.height = Math.max(layers[0].height, 1);
+          for (const layer of layers) {
+            ctx.drawImage(layer, 0, 0);
+          }
+        } else {
+          image = layers[0];
         }
 
         return new P.core.Costume({
@@ -628,8 +633,7 @@ namespace P.sb2 {
           name: data.costumeName,
           rotationCenterX: data.rotationCenterX,
           rotationCenterY: data.rotationCenterY,
-          canvas,
-          context,
+          source: image,
         });
       });
   }
@@ -698,7 +702,7 @@ namespace P.sb2 {
     [].forEach.call(element.childNodes, patchSVG.bind(null, svg));
   }
 
-  export function loadSVG(source): Promise<HTMLImageElement> {
+  export function loadSVG(source): Promise<HTMLCanvasElement | HTMLImageElement> {
     // canvg needs and actual SVG element, not the source.
     const parser = new DOMParser();
     var doc = parser.parseFromString(source, 'image/svg+xml');
@@ -725,10 +729,9 @@ namespace P.sb2 {
     document.body.removeChild(svg);
     svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
 
-    const canvas = document.createElement('canvas');
-    const image = new Image();
-
-    return new Promise<HTMLImageElement>((resolve, reject) => {
+    // TODO: use native renderer
+    return new Promise<HTMLCanvasElement | HTMLImageElement>((resolve, reject) => {
+      const canvas = document.createElement('canvas');
       canvg(canvas, new XMLSerializer().serializeToString(svg), {
         ignoreMouse: true,
         ignoreAnimation: true,
@@ -738,15 +741,13 @@ namespace P.sb2 {
             resolve(new Image());
             return;
           }
-          image.onload = () => resolve(image);
-          image.onerror = (err) => reject('Failed to load SVG: ' + err);
-          image.src = canvas.toDataURL();
+          resolve(canvas);
         }
       });
     });
   }
 
-  export function loadMD5(hash: string, id: string, isAudio: boolean = false): Promise<HTMLImageElement | AudioBuffer | null> {
+  export function loadMD5(hash: string, id: string, isAudio: boolean = false): Promise<HTMLImageElement | HTMLCanvasElement | AudioBuffer | null> {
     if (zipArchive) {
       var f = isAudio ? zipArchive.file(id + '.wav') : zipArchive.file(id + '.gif') || zipArchive.file(id + '.png') || zipArchive.file(id + '.jpg') || zipArchive.file(id + '.svg');
       hash = f.name;

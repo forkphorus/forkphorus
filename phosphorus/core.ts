@@ -1097,13 +1097,13 @@ namespace P.core {
       const scale = costume.scale * this.scale;
       var left = -costume.rotationCenterX * scale;
       var top = costume.rotationCenterY * scale;
-      var right = left + costume.canvas.width * scale;
-      var bottom = top - costume.canvas.height * scale;
+      var right = left + costume.image.width * scale;
+      var bottom = top - costume.image.height * scale;
 
       if (this.rotationStyle !== RotationStyle.Normal) {
         if (this.rotationStyle === RotationStyle.LeftRight && this.direction < 0) {
           right = -left;
-          left = right - costume.canvas.width * costume.scale * this.scale;
+          left = right - costume.image.width * costume.scale * this.scale;
         }
         return {
           left: this.scratchX + left,
@@ -1307,7 +1307,7 @@ namespace P.core {
 
         const positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
         const positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
-        const data = costume.context.getImageData(positionX, positionY, 1, 1).data;
+        const data = costume.context().getImageData(positionX, positionY, 1, 1).data;
         return data[3] !== 0;
       } else if (thing === '_edge_') {
         const bounds = this.rotatedBounds();
@@ -1569,8 +1569,7 @@ namespace P.core {
     bitmapResolution: number;
     rotationCenterX: number;
     rotationCenterY: number;
-    canvas: HTMLCanvasElement;
-    context: CanvasRenderingContext2D;
+    source: HTMLImageElement | HTMLCanvasElement;
   }
 
   // A costume
@@ -1578,12 +1577,13 @@ namespace P.core {
     public name: string;
     public rotationCenterX: number;
     public rotationCenterY: number;
-    public canvas: HTMLCanvasElement;
-    public context: CanvasRenderingContext2D;
+    public image: HTMLImageElement | HTMLCanvasElement;
     public index: number;
     public bitmapResolution: number;
     public scale: number;
 
+    protected _context: CanvasRenderingContext2D | null;
+    
     constructor(costumeData: CostumeOptions) {
       this.index = costumeData.index;
       this.bitmapResolution = costumeData.bitmapResolution;
@@ -1593,8 +1593,30 @@ namespace P.core {
       this.rotationCenterX = costumeData.rotationCenterX;
       this.rotationCenterY = costumeData.rotationCenterY;
 
-      this.canvas = costumeData.canvas;
-      this.context = costumeData.context;
+      const source = costumeData.source;
+      this.image = source;
+      if (source.tagName === 'CANVAS') {
+        this._context = (source as HTMLCanvasElement).getContext('2d')!;
+      } else {
+        this._context = null;
+      }
+    }
+
+    context(): CanvasRenderingContext2D {
+      if (this._context) {
+        return this._context;
+      }
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('cannot get 2d rendering context');
+      }
+      canvas.width = this.image.width;
+      canvas.height = this.image.height;
+      ctx.drawImage(this.image, 0, 0);
+      this._context = ctx;
+      return ctx;
     }
   }
 

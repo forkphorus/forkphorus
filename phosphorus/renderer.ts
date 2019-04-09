@@ -93,7 +93,7 @@ namespace P.renderer {
         }
       }
 
-      this.ctx.drawImage(costume.canvas, 0, 0);
+      this.ctx.drawImage(costume.image, 0, 0);
       this.ctx.restore();
     }
   }
