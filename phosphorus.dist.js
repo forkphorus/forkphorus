@@ -2648,6 +2648,7 @@ var P;
                     return inputs;
                 }
             }
+            compiler.Scratch2Procedure = Scratch2Procedure;
             var EVENT_SELECTORS = [
                 'procDef',
                 'whenClicked',
@@ -2660,14 +2661,14 @@ var P;
             ];
             var compileScripts = function (object) {
                 for (var i = 0; i < object.scripts.length; i++) {
-                    compileListener(object, object.scripts[i][2]);
+                    compiler.compileListener(object, object.scripts[i][2]);
                 }
             };
             var warnings;
             var warn = function (message) {
                 warnings[message] = (warnings[message] || 0) + 1;
             };
-            var compileListener = function (object, script) {
+            compiler.compileListener = function (object, script) {
                 if (!script[0] || EVENT_SELECTORS.indexOf(script[0][0]) === -1)
                     return;
                 var nextLabel = function () {

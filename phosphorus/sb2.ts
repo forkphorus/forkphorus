@@ -797,7 +797,7 @@ namespace P.sb2.compiler {
 
   // Implements a Scratch 2 procedure.
   // Scratch 2 argument references just go by index, so its very simple.
-  class Scratch2Procedure extends P.core.Procedure {
+  export class Scratch2Procedure extends P.core.Procedure {
     call(inputs) {
       return inputs;
     }
@@ -825,7 +825,7 @@ namespace P.sb2.compiler {
     warnings[message] = (warnings[message] || 0) + 1;
   };
 
-  var compileListener = function(object, script) {
+  export var compileListener = function(object, script) {
     if (!script[0] || EVENT_SELECTORS.indexOf(script[0][0]) === -1) return;
 
     var nextLabel = function() {
