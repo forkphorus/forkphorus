@@ -18,14 +18,22 @@
     border: 1px solid black;
     width: 480px;
     height: 360px;
-    margin: 5px;
+    margin: 5px 0;
   }
 
   table {
     border-collapse: collapse;
   }
+  th {
+    min-width: 100px;
+  }
   table, td, th {
     border: 1px solid black;
+  }
+
+  .table-placeholder {
+    text-align: center;
+    font-style: italic;
   }
 
   .cell-name {
@@ -51,8 +59,9 @@
   <h1>Test suite</h1>
 
   <p>
-    The test suite automatically runs a few Scratch projects and checks to make sure that they function correctly.
-    Some test failures are to be expected.
+    The test suite automatically runs a few Scratch projects and verifies that they function correctly.
+    Some tests (specifically <code>operators</code>) are expected to fail.
+    More tests will be added later.
     <a href="https://github.com/forkphorus/forkphorus.github.io/tree/master/tests#readme">More information</a>.
   </p>
 
@@ -70,7 +79,11 @@
         <th>Project Time</th>
       </tr>
     </thead>
-    <tbody id="suite-table"></tbody>
+    <tbody id="suite-table">
+      <tr>
+        <td class="table-placeholder" colspan="4">waiting for tests...</td>
+      </tr>
+    </tbody>
   </table>
 
   <script src="suite.js"></script>

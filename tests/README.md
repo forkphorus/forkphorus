@@ -1,6 +1,8 @@
 # Test Suite
 
-Automated test suite for forkphorus.
+https://forkphorus.github.io/tests/suite.html
+
+Test suite for forkphorus.
 
 ## Scratch 3
 
@@ -14,20 +16,23 @@ Automated test suite for forkphorus.
 
 ### Writing Scratch 3 Tests
 
-The easiest way to write a new test is by copying `sb3/sb3-template.sb3`. When the green flag is clicked, you should do some operations and then check that they worked correctly.
+The easiest way to write a new test is by copying the template file, `sb3/sb3-template.sb3`.
 
-If the operation did not work as expected, then call the `FAIL` block, optionally with a string explaining why it failed. Forkphorus will its definition with some custom JavaScript when it is being tested.
+You write the behavior you want to test in a `When green flag clicked` block, and you check that they function correctly. For example, you might move a Sprite, then check that the coordinates match what you expect.
 
-If the operation did work as expected, then call the `OKAY` or `OK` block, optionally providing some extra information. These custom blocks will, like `FAIL`, be replaced during tests.
+The template project provides some custom blocks. The custom blocks `OK` (or `OKAY`) and `FAIL` are treated specially during the tests; their definition is replaced with a special JavaScript implementation during the test (whatever you write in them is ignored and is only a development convenience).
 
-All projects must run `FAIL` or `OK` once. The test will end when either of these is run.
+When `FAIL` is called (with an optional message), the project will stop execution and the test will fail. When `OK`/`OKAY` is called (again, with an optional message), the project will stop execution and the tests passes.
+
+`assertTrue` is a utility function that calls `FAIL` with a supplied message when the given boolean is false. `assertFalse` is the opposite.
 
 ## Scratch 2
 
 | Project | Description |
 |---------|-------------|
 | `sb2/sb2-template.sb2` | Tests the test suite itself. Acts as a template for other test projects. |
+| `sb2/operators.sb2` | Tests operator blocks. Currently expected to fail. |
 
 ### Writing Scratch 2 Tests
 
-The same process as writing Scratch 3 tests, but just save them as .sb2 instead of .sb3. You can find a roughly equivalent "Template" in sb2/sb2-template.sb2.
+The same process as writing Scratch 3 tests, but just save them as .sb2 instead of .sb3. The template file is `sb2/sb2-template.sb2`.

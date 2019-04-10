@@ -199,6 +199,16 @@ P.suite = (function() {
   }
 
   /**
+   * Converts a duration to a human readable string
+   * @param {number} time Time, in milliseconds, to format
+   * @returns {string} Human readable string
+   */
+  function formatTime(time) {
+    const precision = 1e2; // two decimal places
+    return Math.round(time * precision) / precision + 'ms';
+  }
+
+  /**
    * Displays the result of a test
    * @param {ProjectMeta} projectMeta
    * @param {TestResult} result
@@ -222,12 +232,12 @@ P.suite = (function() {
 
     row.appendChild(createElement('td', {
       className: 'cell-total-time',
-      textContent: result.totalTime + 'ms',
+      textContent: formatTime(result.totalTime),
     }));
 
     row.appendChild(createElement('td', {
       className: 'cell-project-time',
-      textContent: result.projectTime + 'ms',
+      textContent: formatTime(result.projectTime),
     }));
 
     tableBodyEl.appendChild(row);
@@ -240,7 +250,7 @@ P.suite = (function() {
     const listEl = createElement('ul');
 
     listEl.appendChild(createElement('li', {
-      textContent: 'Done in ' + result.time + 'ms',
+      textContent: 'Done in ' + formatTime(result.time),
     }));
     
     const totalTests = result.tests.length;
