@@ -41,6 +41,7 @@
    */
   const sb2 = () => [
     createProjectMeta('sb2/sb2-template.sb2'),
+    createProjectMeta('sb2/operators.sb2'),
   ];
 
   P.suite.sb2 = sb2;
