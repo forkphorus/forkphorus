@@ -31,6 +31,10 @@
   .cell-name {
     font-family: monospace;
   }
+  .cell-result {
+    font-family: monospace;
+    white-space: pre-wrap;
+  }
   .cell-result-okay {
     background-color: #4aea4a;
   }
@@ -70,11 +74,12 @@
   </table>
 
   <script src="suite.js"></script>
+  <script src="tests.js"></script>
   <script>
     (function() {
       'use strict';
 
-      if (location.search.includes('benchmark')) {
+      if (location.search.indexOf('benchmark') > -1) {
         P.suite.defaults.repeatCount = 50;
       }
 
@@ -86,30 +91,35 @@
         sb2button.disabled = !enabled;
       }
   
-      function loadScriptAndRunSuite(path) {
+      function runSuite(tests) {
         toggleInputs(false);
-        const script = document.createElement('script');
-        script.onload = function() {
-          P.suite.run().then(() => toggleInputs(true));
-        };
-        script.src = path;
-        document.body.appendChild(script);
+        return P.suite.run(tests)
+          .then(() => {
+            toggleInputs(true);
+          });
+      }
+
+      function runSB3() {
+        return runSuite(P.suite.sb3());
+      }
+      function runSB2() {
+        return runSuite(P.suite.sb2());
       }
 
       sb3button.addEventListener('click', function() {
-        loadScriptAndRunSuite('sb3.js');
+        runSB3();
         location.hash = '#sb3';
       });
       sb2button.addEventListener('click', function() {
-        loadScriptAndRunSuite('sb2.js');
+        runSB2();
         location.hash = '#sb2';
       });
 
       if (location.hash === '#sb3') {
-        loadScriptAndRunSuite('sb3.js');
+        runSB3();
       }
       if (location.hash === '#sb2') {
-        loadScriptAndRunSuite('sb2.js');
+        runSB2();
       }
     }());
   </script>

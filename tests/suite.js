@@ -32,21 +32,6 @@ var P = P || {};
 P.suite = (function() {
   'use strict';
 
-  /**
-   * @type {ProjectMeta[]}
-   */
-  const projectList = [];
-
-  /**
-   * Default options to override the default options
-   * @type {ProjectMeta}
-   */
-  const defaultMetadata = {
-    timeout: 5000,
-    ignoredFailures: [],
-    repeatCount: 1,
-  };
-
   const containerEl = document.getElementById('suite-container');
   const tableBodyEl = document.getElementById('suite-table');
   const finalResultsEl = document.getElementById('suite-final-results');
@@ -74,16 +59,6 @@ P.suite = (function() {
       el[key] = value;
     }
     return el;
-  }
-
-  /**
-   * @param {string} path
-   * @param {ProjectMeta} metadata 
-   */
-  function addProject(path, metadata = {}) {
-    metadata.path = path;
-    const clonedDefaults = Object.assign({}, defaultMetadata);
-    projectList.push(Object.assign(clonedDefaults, metadata));
   }
 
   /**
@@ -179,11 +154,9 @@ P.suite = (function() {
 
       /**
        * testFail() when the project encounters an error
-       * @param {ErrorEvent} e
        */
       const handleError = (e) => {
-        const error = e.error;
-        const message = P.utils.stringifyError(error);
+        const message = P.utils.stringifyError(e);
         stage.runtime.testFail('ERROR: ' + message);
       };
 
@@ -273,8 +246,9 @@ P.suite = (function() {
     const totalTests = result.tests.length;
     const passingTests = result.tests.filter((i) => i.success).length;
     const failingTests = totalTests - passingTests;
+    const percentPassing = Math.round((passingTests / totalTests) * 100);
     listEl.appendChild(createElement('li', {
-      textContent: 'Passed ' + passingTests + ' and failed ' + failingTests + ' of ' + totalTests,
+      textContent: `Of ${totalTests} test, ${passingTests} passed and ${failingTests} failed. (${percentPassing}% passing)`,
     }));
 
     finalResultsEl.appendChild(listEl);
@@ -282,9 +256,10 @@ P.suite = (function() {
 
   /**
    * Start the test suite
+   * @param {ProjectMeta[]} projectList
    * @returns {Promise} Resolves when the test is done.
    */
-  async function run() {
+  async function run(projectList) {
     removeChildren(tableBodyEl);
 
     const allTestResults = [];
@@ -314,8 +289,100 @@ P.suite = (function() {
   }
 
   return {
-    addProject,
     run,
-    defaults: defaultMetadata,
   };
 }());
+
+/**
+ * SB3 compiler hook
+ */
+(function(compiler) {
+  // Works by replacing calls to certain procedures.
+
+  const originalProcedureCall = compiler.statementLibrary['procedures_call'];
+
+  function getArguments(block) {
+    var source = '';
+    const mutation = block.mutation;
+    const inputIds = JSON.parse(mutation.argumentids);
+    for (let i = 0; i < inputIds.length; i++) {
+      const id = inputIds[i];
+      const input = block.inputs[id];
+      source += compiler.hooks.expression(input) + ', ';
+    }
+    return source.substr(0, source.length - 2);
+  }
+
+  compiler.statementLibrary['procedures_call'] = function procedureCall(block) {
+    switch (block.mutation.proccode) {
+      case 'FAIL':
+        compiler.hooks.appendSource('if (runtime.testFail("no message")) { return; }\n');
+        break;
+
+      case 'FAIL %s':
+        compiler.hooks.appendSource('if (runtime.testFail(' + getArguments(block) + ' || "no message")) { return; }\n');
+        break;
+
+      case 'OKAY':
+      case 'OK':
+        compiler.hooks.appendSource('runtime.testOkay(""); return;\n');
+        break;
+
+      case 'OKAY %s':
+      case 'OK %s':
+        compiler.hooks.appendSource('runtime.testOkay(' + getArguments(block) + ' || ""); return;\n');
+        break;
+
+      default:
+        originalProcedureCall(block);
+    }
+  };
+}(P.sb3.compiler));
+
+/**
+ * SB2 compiler hook
+ */
+(function(compiler) {
+  // Works by overriding the compiler for listeners, and replacing the body of certain procedure definitions.
+  const procedureOverrides = [
+    'OK %s',
+  ];
+  const originalCompileListener = compiler.compileListener;
+  compiler.compileListener = function compileListener(object, script) {
+    const opcode = script[0][0];
+    if (opcode !== 'procDef') {
+      return originalCompileListener(object, script);
+    }
+
+    const proccode = script[0][1];
+    if (procedureOverrides.includes(proccode)) {
+      var source;
+      switch (proccode) {
+        case 'OK':
+        case 'OKAY':
+          source = 'runtime.testOkay("no message"); return;\n';
+          break;
+
+        case 'OK %s':
+        case 'OKAY %s':
+          source = 'runtime.testOkay(C.args[0]); return;\n';
+          break;
+        
+        case 'FAIL':
+          source = 'if (runtime.testFail("no message")) { return; }\n';
+          break;
+
+        case 'FAIL %s':
+          source = 'if (runtime.testFail(C.args[1])) { return; }\n';
+          break;
+      }
+      source += 'endCall();\n';
+      const f = P.runtime.createContinuation(source);
+      object.fns.push(f);
+      object.procedures[proccode] = new compiler.Scratch2Procedure(f, false, []);
+      return;
+    }
+
+    return originalCompileListener(object, script);
+  };
+}(P.sb2.compiler));
