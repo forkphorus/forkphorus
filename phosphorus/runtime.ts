@@ -564,6 +564,9 @@ namespace P.runtime {
       this.queue.push(thread);
     }
 
+    /**
+     * Triggers an event for a single sprite.
+     */
     triggerFor(sprite: P.core.Base, event: string, arg?: any): Thread[] {
       let threads;
       switch (event) {
@@ -587,6 +590,9 @@ namespace P.runtime {
       return threads || [];
     }
 
+    /**
+     * Triggers an event on all sprites.
+     */
     trigger(event: string, arg?: any) {
       let threads: Thread[] = [];
       for (let i = this.stage.children.length; i--;) {
@@ -595,11 +601,18 @@ namespace P.runtime {
       return threads.concat(this.triggerFor(this.stage, event, arg));
     }
 
+    /**
+     * Trigger's the project's green flag.
+     */
     triggerGreenFlag() {
       this.timerStart = this.rightNow();
       this.trigger('whenGreenFlag');
     }
 
+    /**
+     * Begins the runtime's event loop.
+     * Does not start any scripts.
+     */
     start() {
       this.isRunning = true;
       if (this.interval) return;
@@ -609,6 +622,9 @@ namespace P.runtime {
       if (audioContext) audioContext.resume();
     }
 
+    /**
+     * Pauses the event loop
+     */
     pause() {
       if (this.interval) {
         this.baseNow = this.rightNow();
@@ -641,10 +657,16 @@ namespace P.runtime {
       }
     }
 
+    /**
+     * The current time in the project
+     */
     rightNow(): number {
       return this.baseNow + Date.now() - this.baseTime;
     }
 
+    /**
+     * Advances one frame into the future.
+     */
     step() {
       // Reset runtime variables
       self = this.stage;
@@ -856,6 +878,71 @@ namespace P.runtime {
       {top:128,name:'SynthPad_C6',baseRatio:2.3820424708835755,loop:true,loopStart:0.11678004535147392,loopEnd:0.41732426303854875,attackEnd:0,holdEnd:0,decayEnd:0}
     ]
   ];
+
+  export function createContinuation(source: string): P.runtime.Fn {
+    // TODO: make understandable
+    var result = '(function() {\n';
+    var brackets = 0;
+    var delBrackets = 0;
+    var shouldDelete = false;
+    var here = 0;
+    var length = source.length;
+    while (here < length) {
+      var i = source.indexOf('{', here);
+      var j = source.indexOf('}', here);
+      var k = source.indexOf('return;', here);
+      if (k === -1) k = length;
+      if (i === -1 && j === -1) {
+        if (!shouldDelete) {
+          result += source.slice(here, k);
+        }
+        break;
+      }
+      if (i === -1) i = length;
+      if (j === -1) j = length;
+      if (shouldDelete) {
+        if (i < j) {
+          delBrackets++;
+          here = i + 1;
+        } else {
+          delBrackets--;
+          if (!delBrackets) {
+            shouldDelete = false;
+          }
+          here = j + 1;
+        }
+      } else {
+        if (brackets === 0 && k < i && k < j) {
+          result += source.slice(here, k);
+          break;
+        }
+        if (i < j) {
+          result += source.slice(here, i + 1);
+          brackets++;
+          here = i + 1;
+        } else {
+          result += source.slice(here, j);
+          here = j + 1;
+          if (source.substr(j, 8) === '} else {') {
+            if (brackets > 0) {
+              result += '} else {';
+              here = j + 8;
+            } else {
+              shouldDelete = true;
+              delBrackets = 0;
+            }
+          } else {
+            if (brackets > 0) {
+              result += '}';
+              brackets--;
+            }
+          }
+        }
+      }
+    }
+    result += '})';
+    return scopedEval(result);
+  }
 
   // Evaluate JavaScript within the scope of the runtime.
   export function scopedEval(source: string): any {

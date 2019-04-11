@@ -1396,7 +1396,7 @@ var P;
                     }
                     const positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
                     const positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
-                    const data = costume.context.getImageData(positionX, positionY, 1, 1).data;
+                    const data = costume.context().getImageData(positionX, positionY, 1, 1).data;
                     return data[3] !== 0;
                 }
                 else if (thing === '_edge_') {
@@ -1637,25 +1637,29 @@ var P;
                 this.name = costumeData.name;
                 this.rotationCenterX = costumeData.rotationCenterX;
                 this.rotationCenterY = costumeData.rotationCenterY;
-                this.image = document.createElement('canvas');
-                const context = this.image.getContext('2d');
-                if (context) {
-                    this.context = context;
+                const source = costumeData.source;
+                this.image = source;
+                if (source.tagName === 'CANVAS') {
+                    this._context = source.getContext('2d');
                 }
                 else {
-                    throw new Error('No canvas 2d context');
+                    this._context = null;
                 }
-                this.render(costumeData.layers);
             }
-            render(layers) {
-                // Width and height cannot be less than 1
-                this.image.width = Math.max(layers[0].width, 1);
-                this.image.height = Math.max(layers[0].height, 1);
-                for (const layer of layers) {
-                    if (layer.width > 0 && layer.height > 0) {
-                        this.context.drawImage(layer, 0, 0);
-                    }
+            context() {
+                if (this._context) {
+                    return this._context;
                 }
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    throw new Error('cannot get 2d rendering context');
+                }
+                canvas.width = this.image.width;
+                canvas.height = this.image.height;
+                ctx.drawImage(this.image, 0, 0);
+                this._context = ctx;
+                return ctx;
             }
         }
         core.Costume = Costume;
@@ -1708,6 +1712,61 @@ var P;
         }
         core.isSprite = isSprite;
     })(core = P.core || (P.core = {}));
+})(P || (P = {}));
+/// <reference path="phosphorus.ts" />
+var P;
+(function (P) {
+    var fonts;
+    (function (fonts) {
+        /**
+         * Dynamically load a remote font
+         * @param name The name of the font (font-family)
+         */
+        function loadFont(name) {
+            P.IO.progressHooks.new();
+            const observer = new FontFaceObserver(name);
+            return observer.load().then(() => {
+                P.IO.progressHooks.end();
+            });
+        }
+        fonts.loadFont = loadFont;
+        var loadedScratch2 = false;
+        var loadedScratch3 = false;
+        /**
+         * Loads all Scratch 2 associated fonts
+         */
+        function loadScratch2() {
+            if (loadedScratch2) {
+                return Promise.resolve();
+            }
+            return Promise.all([
+                loadFont('Donegal One'),
+                loadFont('Gloria Hallelujah'),
+                loadFont('Mystery Quest'),
+                loadFont('Permanent Marker'),
+                loadFont('Scratch'),
+            ]).then(() => void (loadedScratch2 = true));
+        }
+        fonts.loadScratch2 = loadScratch2;
+        /**
+         * Loads all Scratch 3 associated fonts
+         */
+        function loadScratch3() {
+            if (loadedScratch3) {
+                return Promise.resolve();
+            }
+            return Promise.all([
+                loadFont('Knewave'),
+                loadFont('Handlee'),
+                loadFont('Pixel'),
+                loadFont('Griffy'),
+                loadFont('Scratch'),
+                loadFont('Source Serif Pro'),
+                loadFont('Noto Sans'),
+            ]).then(() => void (loadedScratch3 = true));
+        }
+        fonts.loadScratch3 = loadScratch3;
+    })(fonts = P.fonts || (P.fonts = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
 // IO helpers and hooks
@@ -1787,137 +1846,6 @@ var P;
             return error.toString();
         }
         utils.stringifyError = stringifyError;
-        function createContinuation(source) {
-            // TODO: make understandable
-            var result = '(function() {\n';
-            var brackets = 0;
-            var delBrackets = 0;
-            var shouldDelete = false;
-            var here = 0;
-            var length = source.length;
-            while (here < length) {
-                var i = source.indexOf('{', here);
-                var j = source.indexOf('}', here);
-                var k = source.indexOf('return;', here);
-                if (k === -1)
-                    k = length;
-                if (i === -1 && j === -1) {
-                    if (!shouldDelete) {
-                        result += source.slice(here, k);
-                    }
-                    break;
-                }
-                if (i === -1)
-                    i = length;
-                if (j === -1)
-                    j = length;
-                if (shouldDelete) {
-                    if (i < j) {
-                        delBrackets++;
-                        here = i + 1;
-                    }
-                    else {
-                        delBrackets--;
-                        if (!delBrackets) {
-                            shouldDelete = false;
-                        }
-                        here = j + 1;
-                    }
-                }
-                else {
-                    if (brackets === 0 && k < i && k < j) {
-                        result += source.slice(here, k);
-                        break;
-                    }
-                    if (i < j) {
-                        result += source.slice(here, i + 1);
-                        brackets++;
-                        here = i + 1;
-                    }
-                    else {
-                        result += source.slice(here, j);
-                        here = j + 1;
-                        if (source.substr(j, 8) === '} else {') {
-                            if (brackets > 0) {
-                                result += '} else {';
-                                here = j + 8;
-                            }
-                            else {
-                                shouldDelete = true;
-                                delBrackets = 0;
-                            }
-                        }
-                        else {
-                            if (brackets > 0) {
-                                result += '}';
-                                brackets--;
-                            }
-                        }
-                    }
-                }
-            }
-            result += '})';
-            return P.runtime.scopedEval(result);
-        }
-        utils.createContinuation = createContinuation;
-        // Patches an SVG to make it behave more like Scratch.
-        function patchSVG(svg, element) {
-            const FONTS = {
-                // TODO: Scratch 3
-                '': 'Helvetica',
-                Donegal: 'Donegal One',
-                Gloria: 'Gloria Hallelujah',
-                Marker: 'Permanent Marker',
-                Mystery: 'Mystery Quest'
-            };
-            const LINE_HEIGHTS = {
-                // TODO: Scratch 3
-                Helvetica: 1.13,
-                'Donegal One': 1.25,
-                'Gloria Hallelujah': 1.97,
-                'Permanent Marker': 1.43,
-                'Mystery Quest': 1.37
-            };
-            if (element.nodeType !== 1)
-                return;
-            if (element.nodeName === 'text') {
-                // Correct fonts
-                var font = element.getAttribute('font-family') || '';
-                font = FONTS[font] || font;
-                if (font) {
-                    element.setAttribute('font-family', font);
-                    if (font === 'Helvetica')
-                        element.style.fontWeight = 'bold';
-                }
-                var size = +element.getAttribute('font-size');
-                if (!size) {
-                    element.setAttribute('font-size', size = 18);
-                }
-                var bb = element.getBBox();
-                var x = 4 - .6 * element.transform.baseVal.consolidate().matrix.a;
-                var y = (element.getAttribute('y') - bb.y) * 1.1;
-                element.setAttribute('x', x);
-                element.setAttribute('y', y);
-                var lines = element.textContent.split('\n');
-                if (lines.length > 1) {
-                    element.textContent = lines[0];
-                    var lineHeight = LINE_HEIGHTS[font] || 1;
-                    for (var i = 1, l = lines.length; i < l; i++) {
-                        var tspan = document.createElementNS(null, 'tspan');
-                        tspan.textContent = lines[i];
-                        tspan.setAttribute('x', '' + x);
-                        tspan.setAttribute('y', '' + (y + size * i * lineHeight));
-                        element.appendChild(tspan);
-                    }
-                }
-            }
-            else if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
-                element.setAttribute('x', 0);
-                element.setAttribute('y', 0);
-            }
-            [].forEach.call(element.childNodes, patchSVG.bind(null, svg));
-        }
-        utils.patchSVG = patchSVG;
         /**
          * Parses a Scratch rotation style string to a RoationStyle enum
          */
@@ -1988,6 +1916,7 @@ var P;
 /// <reference path="phosphorus.ts" />
 /// <reference path="utils.ts" />
 /// <reference path="core.ts" />
+/// <reference path="fonts.ts" />
 /// <reference path="config.ts" />
 var P;
 (function (P) {
@@ -2065,6 +1994,7 @@ var P;
             'Vibraslap': 'drums/Vibraslap(1)_22k.wav',
             'WoodBlock': 'drums/WoodBlock(1)_22k.wav'
         };
+        sb2.wavBuffers = {};
         let zipArchive;
         class Scratch2VariableWatcher extends P.core.Watcher {
             constructor(stage, targetName, data) {
@@ -2393,7 +2323,7 @@ var P;
                     resolve(image);
                 };
                 image.onerror = function (err) {
-                    reject('Failed to load image');
+                    reject('Failed to load image: ' + image.src);
                 };
                 image.src = url;
             });
@@ -2416,11 +2346,13 @@ var P;
         function loadProject(data) {
             var children;
             var stage;
-            return Promise.all([
+            return loadFonts()
+                .then(() => Promise.all([
                 loadWavs(),
                 loadArray(data.children, loadObject).then((c) => children = c),
                 loadBase(data, true).then((s) => stage = s),
-            ]).then(() => {
+            ]))
+                .then(() => {
                 children = children.filter((i) => i);
                 children.forEach((c) => c.stage = stage);
                 var sprites = children.filter((i) => i instanceof Scratch2Sprite);
@@ -2434,7 +2366,6 @@ var P;
             });
         }
         sb2.loadProject = loadProject;
-        sb2.wavBuffers = {};
         function loadWavs() {
             // don't bother attempting to load audio if it can't even be played
             if (!P.audio.context)
@@ -2507,11 +2438,15 @@ var P;
             });
         }
         sb2.loadBase = loadBase;
-        // Array.map and Promise.all on steroids
+        // A weird mix of Array.map and Promise.all
         function loadArray(data, process) {
             return Promise.all((data || []).map((i, ind) => process(i, ind)));
         }
         sb2.loadArray = loadArray;
+        function loadFonts() {
+            return P.fonts.loadScratch2();
+        }
+        sb2.loadFonts = loadFonts;
         function loadObject(data) {
             if (data.cmd) {
                 return loadVariableWatcher(data);
@@ -2541,13 +2476,26 @@ var P;
             }
             return Promise.all(promises)
                 .then((layers) => {
+                var image;
+                if (layers.length > 1) {
+                    image = document.createElement('canvas');
+                    const ctx = image.getContext('2d');
+                    image.width = Math.max(layers[0].width, 1);
+                    image.height = Math.max(layers[0].height, 1);
+                    for (const layer of layers) {
+                        ctx.drawImage(layer, 0, 0);
+                    }
+                }
+                else {
+                    image = layers[0];
+                }
                 return new P.core.Costume({
                     index: index,
                     bitmapResolution: data.bitmapResolution,
                     name: data.costumeName,
                     rotationCenterX: data.rotationCenterX,
                     rotationCenterY: data.rotationCenterY,
-                    layers: layers,
+                    source: image,
                 });
             });
         }
@@ -2562,11 +2510,66 @@ var P;
             });
         }
         sb2.loadSound = loadSound;
+        function patchSVG(svg, element) {
+            const FONTS = {
+                '': 'Helvetica',
+                Donegal: 'Donegal One',
+                Gloria: 'Gloria Hallelujah',
+                Marker: 'Permanent Marker',
+                Mystery: 'Mystery Quest'
+            };
+            const LINE_HEIGHTS = {
+                Helvetica: 1.13,
+                'Donegal One': 1.25,
+                'Gloria Hallelujah': 1.97,
+                'Permanent Marker': 1.43,
+                'Mystery Quest': 1.37
+            };
+            if (element.nodeType !== 1)
+                return;
+            if (element.nodeName === 'text') {
+                // Correct fonts
+                var font = element.getAttribute('font-family') || '';
+                font = FONTS[font] || font;
+                if (font) {
+                    element.setAttribute('font-family', font);
+                    if (font === 'Helvetica')
+                        element.style.fontWeight = 'bold';
+                }
+                var size = +element.getAttribute('font-size');
+                if (!size) {
+                    element.setAttribute('font-size', size = 18);
+                }
+                var bb = element.getBBox();
+                var x = 4 - .6 * element.transform.baseVal.consolidate().matrix.a;
+                var y = (element.getAttribute('y') - bb.y) * 1.1;
+                element.setAttribute('x', x);
+                element.setAttribute('y', y);
+                var lines = element.textContent.split('\n');
+                if (lines.length > 1) {
+                    element.textContent = lines[0];
+                    var lineHeight = LINE_HEIGHTS[font] || 1;
+                    for (var i = 1, l = lines.length; i < l; i++) {
+                        var tspan = document.createElementNS(null, 'tspan');
+                        tspan.textContent = lines[i];
+                        tspan.setAttribute('x', '' + x);
+                        tspan.setAttribute('y', '' + (y + size * i * lineHeight));
+                        element.appendChild(tspan);
+                    }
+                }
+            }
+            else if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
+                element.setAttribute('x', 0);
+                element.setAttribute('y', 0);
+            }
+            [].forEach.call(element.childNodes, patchSVG.bind(null, svg));
+        }
+        sb2.patchSVG = patchSVG;
         function loadSVG(source) {
-            // The fact that this works is truly a work of art.
-            var parser = new DOMParser();
+            // canvg needs and actual SVG element, not the source.
+            const parser = new DOMParser();
             var doc = parser.parseFromString(source, 'image/svg+xml');
-            var svg = doc.documentElement; // TODO
+            var svg = doc.documentElement;
             if (!svg.style) {
                 doc = parser.parseFromString('<body>' + source, 'text/html');
                 svg = doc.querySelector('svg');
@@ -2576,7 +2579,7 @@ var P;
             svg.style.left = '-10000px';
             svg.style.top = '-10000px';
             document.body.appendChild(svg);
-            var viewBox = svg.viewBox.baseVal;
+            const viewBox = svg.viewBox.baseVal;
             if (viewBox && (viewBox.x || viewBox.y)) {
                 svg.width.baseVal.value = viewBox.width - viewBox.x;
                 svg.height.baseVal.value = viewBox.height - viewBox.y;
@@ -2585,12 +2588,12 @@ var P;
                 viewBox.width = 0;
                 viewBox.height = 0;
             }
-            P.utils.patchSVG(svg, svg);
+            patchSVG(svg, svg);
             document.body.removeChild(svg);
             svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
-            var canvas = document.createElement('canvas');
-            var image = new Image();
+            // TODO: use native renderer
             return new Promise((resolve, reject) => {
+                const canvas = document.createElement('canvas');
                 canvg(canvas, new XMLSerializer().serializeToString(svg), {
                     ignoreMouse: true,
                     ignoreAnimation: true,
@@ -2600,9 +2603,7 @@ var P;
                             resolve(new Image());
                             return;
                         }
-                        image.onload = () => resolve(image);
-                        image.onerror = (err) => reject('Failed to load SVG: ' + err);
-                        image.src = canvas.toDataURL();
+                        resolve(canvas);
                     }
                 });
             });
@@ -2671,6 +2672,7 @@ var P;
                     return inputs;
                 }
             }
+            compiler.Scratch2Procedure = Scratch2Procedure;
             var EVENT_SELECTORS = [
                 'procDef',
                 'whenClicked',
@@ -2683,14 +2685,14 @@ var P;
             ];
             var compileScripts = function (object) {
                 for (var i = 0; i < object.scripts.length; i++) {
-                    compileListener(object, object.scripts[i][2]);
+                    compiler.compileListener(object, object.scripts[i][2]);
                 }
             };
             var warnings;
             var warn = function (message) {
                 warnings[message] = (warnings[message] || 0) + 1;
             };
-            var compileListener = function (object, script) {
+            compiler.compileListener = function (object, script) {
                 if (!script[0] || EVENT_SELECTORS.indexOf(script[0][0]) === -1)
                     return;
                 var nextLabel = function () {
@@ -3480,7 +3482,7 @@ var P;
                         source += 'R.deltaY = ' + num(block[3]) + ' - S.scratchY;\n';
                         var id = label();
                         source += 'var f = (runtime.now - R.start) / (R.duration * 1000);\n';
-                        source += 'if (f > 1) f = 1;\n';
+                        source += 'if (f > 1 || isNaN(f)) f = 1;\n';
                         source += 'S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
                         source += 'if (f < 1) {\n';
                         forceQueue(id);
@@ -3585,7 +3587,7 @@ var P;
                     source += 'return;\n';
                 }
                 for (let i = 0; i < fns.length; i++) {
-                    object.fns.push(P.utils.createContinuation(source.slice(fns[i])));
+                    object.fns.push(P.runtime.createContinuation(source.slice(fns[i])));
                 }
                 var f = object.fns[startfn];
                 if (script[0][0] === 'whenClicked') {
@@ -4162,6 +4164,9 @@ var P;
                 }
                 this.queue.push(thread);
             }
+            /**
+             * Triggers an event for a single sprite.
+             */
             triggerFor(sprite, event, arg) {
                 let threads;
                 switch (event) {
@@ -4196,6 +4201,9 @@ var P;
                 }
                 return threads || [];
             }
+            /**
+             * Triggers an event on all sprites.
+             */
             trigger(event, arg) {
                 let threads = [];
                 for (let i = this.stage.children.length; i--;) {
@@ -4203,10 +4211,17 @@ var P;
                 }
                 return threads.concat(this.triggerFor(this.stage, event, arg));
             }
+            /**
+             * Trigger's the project's green flag.
+             */
             triggerGreenFlag() {
                 this.timerStart = this.rightNow();
                 this.trigger('whenGreenFlag');
             }
+            /**
+             * Begins the runtime's event loop.
+             * Does not start any scripts.
+             */
             start() {
                 this.isRunning = true;
                 if (this.interval)
@@ -4217,6 +4232,9 @@ var P;
                 if (audioContext)
                     audioContext.resume();
             }
+            /**
+             * Pauses the event loop
+             */
             pause() {
                 if (this.interval) {
                     this.baseNow = this.rightNow();
@@ -4250,9 +4268,15 @@ var P;
                     }
                 }
             }
+            /**
+             * The current time in the project
+             */
             rightNow() {
                 return this.baseNow + Date.now() - this.baseTime;
             }
+            /**
+             * Advances one frame into the future.
+             */
             step() {
                 // Reset runtime variables
                 self = this.stage;
@@ -4456,6 +4480,79 @@ var P;
                 { top: 128, name: 'SynthPad_C6', baseRatio: 2.3820424708835755, loop: true, loopStart: 0.11678004535147392, loopEnd: 0.41732426303854875, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
             ]
         ];
+        function createContinuation(source) {
+            // TODO: make understandable
+            var result = '(function() {\n';
+            var brackets = 0;
+            var delBrackets = 0;
+            var shouldDelete = false;
+            var here = 0;
+            var length = source.length;
+            while (here < length) {
+                var i = source.indexOf('{', here);
+                var j = source.indexOf('}', here);
+                var k = source.indexOf('return;', here);
+                if (k === -1)
+                    k = length;
+                if (i === -1 && j === -1) {
+                    if (!shouldDelete) {
+                        result += source.slice(here, k);
+                    }
+                    break;
+                }
+                if (i === -1)
+                    i = length;
+                if (j === -1)
+                    j = length;
+                if (shouldDelete) {
+                    if (i < j) {
+                        delBrackets++;
+                        here = i + 1;
+                    }
+                    else {
+                        delBrackets--;
+                        if (!delBrackets) {
+                            shouldDelete = false;
+                        }
+                        here = j + 1;
+                    }
+                }
+                else {
+                    if (brackets === 0 && k < i && k < j) {
+                        result += source.slice(here, k);
+                        break;
+                    }
+                    if (i < j) {
+                        result += source.slice(here, i + 1);
+                        brackets++;
+                        here = i + 1;
+                    }
+                    else {
+                        result += source.slice(here, j);
+                        here = j + 1;
+                        if (source.substr(j, 8) === '} else {') {
+                            if (brackets > 0) {
+                                result += '} else {';
+                                here = j + 8;
+                            }
+                            else {
+                                shouldDelete = true;
+                                delBrackets = 0;
+                            }
+                        }
+                        else {
+                            if (brackets > 0) {
+                                result += '}';
+                                brackets--;
+                            }
+                        }
+                    }
+                }
+            }
+            result += '})';
+            return scopedEval(result);
+        }
+        runtime_1.createContinuation = createContinuation;
         // Evaluate JavaScript within the scope of the runtime.
         function scopedEval(source) {
             return eval(source);
@@ -4466,6 +4563,7 @@ var P;
 /// <reference path="phosphorus.ts" />
 /// <reference path="utils.ts" />
 /// <reference path="core.ts" />
+/// <reference path="fonts.ts" />
 /// <reference path="config.ts" />
 // Scratch 3 project loader and runtime objects
 var P;
@@ -4693,7 +4791,7 @@ var P;
                     }
                 }
                 for (var i = 0; i < length; i++) {
-                    const { row, index, value } = this.domRows[i];
+                    const { value } = this.domRows[i];
                     const rowText = '' + this.list[i];
                     if (rowText !== value.textContent) {
                         value.textContent = rowText;
@@ -4707,13 +4805,16 @@ var P;
             init() {
                 super.init();
                 if (!(this.id in this.target.lists)) {
-                    // We'll create it then.
+                    // Create the list if it doesn't exist.
+                    // It might be better to mark ourselves as invalid instead, but this works just fine.
                     this.target.lists[this.id] = new Scratch3List();
                 }
                 this.list = this.target.lists[this.id];
                 this.target.watchers[this.id] = this;
                 this.updateLayout();
-                this.updateContents();
+                if (this.visible) {
+                    this.updateContents();
+                }
             }
             getTopLabel() {
                 return this.params.LIST;
@@ -4837,6 +4938,12 @@ var P;
             // Inserts an item at a spot in the list.
             // Index is a Scratch index.
             insert(index, value) {
+                // TODO: simplify/refactor
+                if (+index === 1) {
+                    this.modified = true;
+                    this.unshift(value);
+                    return;
+                }
                 index = this.scratchIndex(index);
                 if (index === this.length) {
                     this.modified = true;
@@ -4857,6 +4964,29 @@ var P;
             }
         }
         sb3.Scratch3List = Scratch3List;
+        // Modifies a Scratch 3 SVG to work properly in our environment.
+        function patchSVG(svg) {
+            // SVGs made by Scratch 3 use font names such as 'Sans Serif', which we convert to their real names.
+            const FONTS = {
+                'Marker': 'Knewave',
+                'Handwriting': 'Handlee',
+                'Curly': 'Griffy',
+                'Scratch': 'Scratch',
+                'Serif': 'Source Serif Pro',
+                'Sans Serif': 'Noto Sans',
+            };
+            const textElements = svg.querySelectorAll('text');
+            for (const el of textElements) {
+                const font = el.getAttribute('font-family') || '';
+                if (FONTS[font]) {
+                    el.setAttribute('font-family', FONTS[font]);
+                }
+                else {
+                    // Scratch 3 replaces unknown fonts with sans serif.
+                    el.setAttribute('font-family', FONTS['Sans Serif']);
+                }
+            }
+        }
         // Implements base SB3 loading logic.
         // Needs to be extended to add file loading methods.
         // Implementations are expected to set `this.projectData` to something before calling super.load()
@@ -4866,11 +4996,23 @@ var P;
                 if (format === 'svg') {
                     return this.getAsText(path)
                         .then((source) => {
-                        const image = new Image();
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(source, 'image/svg+xml');
+                        const svg = doc.documentElement;
+                        patchSVG(svg);
+                        const patchedSource = svg.outerHTML;
                         return new Promise((resolve, reject) => {
-                            image.onload = () => resolve(image);
+                            const image = new Image();
+                            image.onload = () => {
+                                // 0 width/height images cause issues
+                                if (image.width === 0 || image.height === 0) {
+                                    resolve(new Image(1, 1));
+                                    return;
+                                }
+                                resolve(image);
+                            };
                             image.onerror = (err) => reject('Failed to load SVG image: ' + image.src);
-                            image.src = 'data:image/svg+xml;,' + encodeURIComponent(source);
+                            image.src = 'data:image/svg+xml;,' + encodeURIComponent(patchedSource);
                         });
                     });
                 }
@@ -4887,7 +5029,7 @@ var P;
                     name: data.name,
                     rotationCenterX: data.rotationCenterX,
                     rotationCenterY: data.rotationCenterY,
-                    layers: [image],
+                    source: image,
                 }));
             }
             getAudioBuffer(path) {
@@ -4955,6 +5097,9 @@ var P;
                     return target;
                 });
             }
+            loadFonts() {
+                return P.fonts.loadScratch3();
+            }
             load() {
                 if (!this.projectData) {
                     throw new Error('invalid project data');
@@ -4965,7 +5110,8 @@ var P;
                 const targets = this.projectData.targets;
                 // sort targets by their layerOrder to match how they will display
                 targets.sort((a, b) => a.layerOrder - b.layerOrder);
-                return Promise.all(targets.map((data) => this.loadTarget(data)))
+                return this.loadFonts()
+                    .then(() => Promise.all(targets.map((data) => this.loadTarget(data))))
                     .then((targets) => {
                     const stage = targets.filter((i) => i.isStage)[0];
                     if (!stage) {
@@ -5194,8 +5340,8 @@ var P;
                     currentTarget.procedures[name] = procedure;
                 },
             };
-            // A noop compiles to undefined (the javascript primitive) in Scratch 3.
-            // When used as a string, it becomes "undefined", and becomes 0 when used as a number.
+            // An untyped undefined works as it does in Scratch 3.
+            // Becomes "undefined" when used as a string, becomes 0 when used as number, false when used as boolean.
             const noopExpression = () => 'undefined';
             /**
              * Maps expression opcodes to their handler
@@ -5524,7 +5670,6 @@ var P;
                     return numberExpr('self.tempoBPM');
                 },
                 // Legacy no-ops
-                // Here, returning an untyped undefined has the same effect as it does in Scratch 3.
                 // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_sensing.js#L74
                 sensing_userid: noopExpression,
                 // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L42-L43
@@ -5574,16 +5719,16 @@ var P;
                     source += 'R.baseY = S.scratchY;\n';
                     source += 'var to = self.getPosition(' + compileExpression(to) + ');\n';
                     source += 'if (to) {';
-                    source += 'R.deltaX = to.x - S.scratchX;\n';
-                    source += 'R.deltaY = to.y - S.scratchY;\n';
+                    source += '  R.deltaX = to.x - S.scratchX;\n';
+                    source += '  R.deltaY = to.y - S.scratchY;\n';
                     const id = label();
-                    source += 'var f = (runtime.now - R.start) / (R.duration * 1000);\n';
-                    source += 'if (f > 1) f = 1;\n';
-                    source += 'S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
-                    source += 'if (f < 1) {\n';
+                    source += '  var f = (runtime.now - R.start) / (R.duration * 1000);\n';
+                    source += '  if (f > 1 || isNaN(f)) f = 1;\n';
+                    source += '  S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
+                    source += '  if (f < 1) {\n';
                     forceQueue(id);
-                    source += '}\n';
-                    source += 'restore();\n';
+                    source += '  }\n';
+                    source += '  restore();\n';
                     source += '}\n';
                 },
                 motion_glidesecstoxy(block) {
@@ -6640,7 +6785,7 @@ var P;
                     }
                     const startFn = target.fns.length;
                     for (var i = 0; i < fns.length; i++) {
-                        target.fns.push(P.utils.createContinuation(source.slice(fns[i])));
+                        target.fns.push(P.runtime.createContinuation(source.slice(fns[i])));
                     }
                     const topLevelHandler = compiler_1.topLevelLibrary[block.opcode];
                     topLevelHandler(block, target.fns[startFn]);
@@ -6650,6 +6795,23 @@ var P;
                 }
             }
             compiler_1.compileTarget = compileTarget;
+            /**
+             * External hooks
+             */
+            compiler_1.hooks = {
+                getSource() {
+                    return source;
+                },
+                setSource(src) {
+                    source = src;
+                },
+                appendSource(src) {
+                    source += src;
+                },
+                expression(expression) {
+                    return compileExpression(expression);
+                },
+            };
         })(compiler = sb3.compiler || (sb3.compiler = {}));
     })(sb3 = P.sb3 || (P.sb3 = {}));
 })(P || (P = {}));

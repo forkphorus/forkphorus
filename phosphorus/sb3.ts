@@ -1,6 +1,7 @@
 /// <reference path="phosphorus.ts" />
 /// <reference path="utils.ts" />
 /// <reference path="core.ts" />
+/// <reference path="fonts.ts" />
 /// <reference path="config.ts" />
 
 // Scratch 3 project loader and runtime objects
@@ -386,7 +387,7 @@ namespace P.sb3 {
       }
 
       for (var i = 0; i < length; i++) {
-        const { row, index, value } = this.domRows[i];
+        const { value } = this.domRows[i];
         const rowText = '' + this.list[i];
         if (rowText !== value.textContent) {
           value.textContent = rowText;
@@ -409,7 +410,9 @@ namespace P.sb3 {
       this.list = this.target.lists[this.id] as Scratch3List;
       this.target.watchers[this.id] = this;
       this.updateLayout();
-      this.updateContents();
+      if (this.visible) {
+        this.updateContents();
+      }
     }
 
     getTopLabel() {
@@ -545,6 +548,12 @@ namespace P.sb3 {
     // Inserts an item at a spot in the list.
     // Index is a Scratch index.
     insert(index: number, value: any) {
+      // TODO: simplify/refactor
+      if (+index === 1) {
+        this.modified = true;
+        this.unshift(value);
+        return;
+      }
       index = this.scratchIndex(index);
       if (index === this.length) {
         this.modified = true;
@@ -565,6 +574,30 @@ namespace P.sb3 {
     }
   }
 
+  // Modifies a Scratch 3 SVG to work properly in our environment.
+  function patchSVG(svg: SVGElement) {
+    // SVGs made by Scratch 3 use font names such as 'Sans Serif', which we convert to their real names.
+    const FONTS = {
+      'Marker': 'Knewave',
+      'Handwriting': 'Handlee',
+      'Curly': 'Griffy',
+      'Scratch': 'Scratch',
+      'Serif': 'Source Serif Pro',
+      'Sans Serif': 'Noto Sans',
+    };
+
+    const textElements = svg.querySelectorAll('text');
+    for (const el of textElements) {
+      const font = el.getAttribute('font-family') || '';
+      if (FONTS[font]) {
+        el.setAttribute('font-family', FONTS[font]);
+      } else {
+        // Scratch 3 replaces unknown fonts with sans serif.
+        el.setAttribute('font-family', FONTS['Sans Serif']);
+      }
+    }
+  }
+
   // Implements base SB3 loading logic.
   // Needs to be extended to add file loading methods.
   // Implementations are expected to set `this.projectData` to something before calling super.load()
@@ -576,15 +609,28 @@ namespace P.sb3 {
     protected abstract getAsImage(path: string, format: string): Promise<HTMLImageElement>;
 
     // Loads and returns a costume from its sb3 JSON data
-    getImage(path: string, format: string): Promise<HTMLImageElement> {
+    getImage(path: string, format: string): Promise<HTMLImageElement | HTMLCanvasElement> {
       if (format === 'svg') {
         return this.getAsText(path)
           .then((source) => {
-            const image = new Image();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(source, 'image/svg+xml');
+            const svg = doc.documentElement as any as SVGElement;
+            patchSVG(svg);
+            const patchedSource = svg.outerHTML;
+
             return new Promise<HTMLImageElement>((resolve, reject) => {
-              image.onload = () => resolve(image);
+              const image = new Image();
+              image.onload = () => {
+                // 0 width/height images cause issues
+                if (image.width === 0 || image.height === 0) {
+                  resolve(new Image(1, 1));
+                  return;
+                }
+                resolve(image);
+              };
               image.onerror = (err) => reject('Failed to load SVG image: ' + image.src);
-              image.src = 'data:image/svg+xml;,' + encodeURIComponent(source);
+              image.src = 'data:image/svg+xml;,' + encodeURIComponent(patchedSource);
             });
           });
       } else {
@@ -592,7 +638,7 @@ namespace P.sb3 {
       }
     }
 
-    loadCostume(data: SB3Costume, index: number) {
+    loadCostume(data: SB3Costume, index: number): Promise<P.core.Costume> {
       const path = data.assetId + '.' + data.dataFormat;
       return this.getImage(path, data.dataFormat)
         .then((image) => new P.core.Costume({
@@ -601,7 +647,7 @@ namespace P.sb3 {
           name: data.name,
           rotationCenterX: data.rotationCenterX,
           rotationCenterY: data.rotationCenterY,
-          layers: [image],
+          source: image,
         }));
     }
 
@@ -613,7 +659,7 @@ namespace P.sb3 {
         });
     }
 
-    loadSound(data: SB3Sound) {
+    loadSound(data: SB3Sound): Promise<P.core.Sound> {
       return this.getAudioBuffer(data.md5ext)
         .then((buffer) => new P.core.Sound({
           name: data.name,
@@ -621,7 +667,7 @@ namespace P.sb3 {
         }));
     }
 
-    loadWatcher(data: SB3Watcher, stage: Scratch3Stage) {
+    loadWatcher(data: SB3Watcher, stage: Scratch3Stage): P.core.Watcher {
       if (data.mode === 'list') {
         return new Scratch3ListWatcher(stage, data);
       }
@@ -682,6 +728,10 @@ namespace P.sb3 {
         });
     }
 
+    loadFonts(): Promise<void> {
+      return P.fonts.loadScratch3();
+    }
+
     load() {
       if (!this.projectData) {
         throw new Error('invalid project data');
@@ -694,7 +744,8 @@ namespace P.sb3 {
       // sort targets by their layerOrder to match how they will display
       targets.sort((a, b) => a.layerOrder - b.layerOrder);
 
-      return Promise.all(targets.map((data) => this.loadTarget(data)))
+      return this.loadFonts()
+        .then(() => Promise.all(targets.map((data) => this.loadTarget(data))))
         .then((targets: any) => {
           const stage = targets.filter((i) => i.isStage)[0] as Scratch3Stage;
           if (!stage) {
@@ -998,8 +1049,8 @@ namespace P.sb3.compiler {
     },
   };
 
-  // A noop compiles to undefined (the javascript primitive) in Scratch 3.
-  // When used as a string, it becomes "undefined", and becomes 0 when used as a number.
+  // An untyped undefined works as it does in Scratch 3.
+  // Becomes "undefined" when used as a string, becomes 0 when used as number, false when used as boolean.
   const noopExpression = () => 'undefined';
 
   /**
@@ -1341,7 +1392,6 @@ namespace P.sb3.compiler {
     },
 
     // Legacy no-ops
-    // Here, returning an untyped undefined has the same effect as it does in Scratch 3.
     // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_sensing.js#L74
     sensing_userid: noopExpression,
     // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L42-L43
@@ -1394,16 +1444,16 @@ namespace P.sb3.compiler {
       source += 'R.baseY = S.scratchY;\n';
       source += 'var to = self.getPosition(' + compileExpression(to) + ');\n';
       source += 'if (to) {';
-      source += 'R.deltaX = to.x - S.scratchX;\n';
-      source += 'R.deltaY = to.y - S.scratchY;\n';
+      source += '  R.deltaX = to.x - S.scratchX;\n';
+      source += '  R.deltaY = to.y - S.scratchY;\n';
       const id = label();
-      source += 'var f = (runtime.now - R.start) / (R.duration * 1000);\n';
-      source += 'if (f > 1) f = 1;\n';
-      source += 'S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
-      source += 'if (f < 1) {\n';
+      source += '  var f = (runtime.now - R.start) / (R.duration * 1000);\n';
+      source += '  if (f > 1 || isNaN(f)) f = 1;\n';
+      source += '  S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
+      source += '  if (f < 1) {\n';
       forceQueue(id);
-      source += '}\n';
-      source += 'restore();\n';
+      source += '  }\n';
+      source += '  restore();\n';
       source += '}\n';
     },
     motion_glidesecstoxy(block) {
@@ -2521,7 +2571,7 @@ namespace P.sb3.compiler {
 
       const startFn = target.fns.length;
       for (var i = 0; i < fns.length; i++) {
-        target.fns.push(P.utils.createContinuation(source.slice(fns[i])));
+        target.fns.push(P.runtime.createContinuation(source.slice(fns[i])));
       }
 
       const topLevelHandler = topLevelLibrary[block.opcode];
@@ -2532,4 +2582,22 @@ namespace P.sb3.compiler {
       }
     }
   }
+
+  /**
+   * External hooks
+   */
+  export const hooks = {
+    getSource() {
+      return source;
+    },
+    setSource(src: string) {
+      source = src;
+    },
+    appendSource(src: string) {
+      source += src;
+    },
+    expression(expression) {
+      return compileExpression(expression);
+    },
+  };
 }

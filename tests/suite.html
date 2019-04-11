@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Test Suite</title>
+
+  <link rel="stylesheet" href="../phosphorus.css">
+  <script src="../lib/fontfaceobserver.standalone.js"></script>
+  <script src="../lib/jszip.min.js"></script>
+  <script src="../lib/rgbcolor.js"></script>
+  <script src="../lib/StackBlur.js"></script>
+  <script src="../lib/canvg.js"></script>
+  <script src="../phosphorus.dist.js"></script>
+
+  <style>
+  #suite-container {
+    position: relative;
+    border: 1px solid black;
+    width: 480px;
+    height: 360px;
+    margin: 5px 0;
+  }
+
+  table {
+    border-collapse: collapse;
+  }
+  th {
+    min-width: 100px;
+  }
+  table, td, th {
+    border: 1px solid black;
+  }
+
+  .table-placeholder {
+    text-align: center;
+    font-style: italic;
+  }
+
+  .cell-name {
+    font-family: monospace;
+  }
+  .cell-result {
+    font-family: monospace;
+    white-space: pre-wrap;
+  }
+  .cell-result-okay {
+    background-color: #4aea4a;
+  }
+  .cell-result-fail {
+    background-color: #ea5b5b;
+  }
+  .cell-total-time, .cell-project-time {
+    text-align: center;
+  }
+  </style>
+</head>
+
+<body>
+  <h1>Test suite</h1>
+
+  <p>
+    The test suite automatically runs a few Scratch projects and verifies that they function correctly.
+    Some tests (specifically <code>operators</code>) are expected to fail.
+    More tests will be added later.
+    <a href="https://github.com/forkphorus/forkphorus.github.io/tree/master/tests#readme">More information</a>.
+  </p>
+
+  <button id="ui-run-sb3">Run Scratch 3 tests</button>
+  <button id="ui-run-sb2">Run Scratch 2 tests</button>
+
+  <div id="suite-container"></div>
+  <div id="suite-final-results"></div>
+  <table>
+    <thead>
+      <tr>
+        <th><!-- Project Path --></th>
+        <th>Result</th>
+        <th>Total Time</th>
+        <th>Project Time</th>
+      </tr>
+    </thead>
+    <tbody id="suite-table">
+      <tr>
+        <td class="table-placeholder" colspan="4">waiting for tests...</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <script src="suite.js"></script>
+  <script src="tests.js"></script>
+  <script>
+    (function() {
+      'use strict';
+
+      if (!P.suite) {
+        alert('test suite could not load');
+      }
+      if (location.protocol === 'file:') {
+        alert('test suite does not work from file: url');
+      }
+
+      if (location.search.indexOf('benchmark') > -1) {
+        P.suite.defaults.repeatCount = 50;
+      }
+
+      const sb3button = document.getElementById('ui-run-sb3');
+      const sb2button = document.getElementById('ui-run-sb2');
+
+      function toggleInputs(enabled) {
+        sb3button.disabled = !enabled;
+        sb2button.disabled = !enabled;
+      }
+  
+      function runSuite(tests) {
+        toggleInputs(false);
+        return P.suite.run(tests)
+          .then(() => {
+            toggleInputs(true);
+          });
+      }
+
+      function runSB3() {
+        return runSuite(P.suite.sb3());
+      }
+      function runSB2() {
+        return runSuite(P.suite.sb2());
+      }
+
+      sb3button.addEventListener('click', function() {
+        runSB3();
+        location.hash = '#sb3';
+      });
+      sb2button.addEventListener('click', function() {
+        runSB2();
+        location.hash = '#sb2';
+      });
+
+      if (location.hash === '#sb3') {
+        runSB3();
+      }
+      if (location.hash === '#sb2') {
+        runSB2();
+      }
+    }());
+  </script>
+    
+</body>
+
+</html>

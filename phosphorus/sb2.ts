@@ -1,6 +1,7 @@
 /// <reference path="phosphorus.ts" />
 /// <reference path="utils.ts" />
 /// <reference path="core.ts" />
+/// <reference path="fonts.ts" />
 /// <reference path="config.ts" />
 
 namespace P.sb2 {
@@ -77,6 +78,7 @@ namespace P.sb2 {
     'Vibraslap': 'drums/Vibraslap(1)_22k.wav',
     'WoodBlock': 'drums/WoodBlock(1)_22k.wav'
   };
+  export const wavBuffers = {};
 
   let zipArchive: JSZip.Zip;
 
@@ -449,7 +451,7 @@ namespace P.sb2 {
         resolve(image);
       };
       image.onerror = function(err) {
-        reject('Failed to load image');
+        reject('Failed to load image: ' + image.src);
       };
       image.src = url;
     });
@@ -473,27 +475,28 @@ namespace P.sb2 {
     var children;
     var stage;
 
-    return Promise.all<any>([
-      loadWavs(),
-      loadArray(data.children, loadObject).then((c) => children = c),
-      loadBase(data, true).then((s) => stage = s),
-    ]).then(() => {
-      children = children.filter((i) => i);
-      children.forEach((c) => c.stage = stage);
-      var sprites = children.filter((i) => i instanceof Scratch2Sprite);
-      var watchers = children.filter((i) => i instanceof Scratch2VariableWatcher);
+    return loadFonts()
+      .then(() => Promise.all<any>([
+        loadWavs(),
+        loadArray(data.children, loadObject).then((c) => children = c),
+        loadBase(data, true).then((s) => stage = s),
+      ]))
+      .then(() => {
+        children = children.filter((i) => i);
+        children.forEach((c) => c.stage = stage);
+        var sprites = children.filter((i) => i instanceof Scratch2Sprite);
+        var watchers = children.filter((i) => i instanceof Scratch2VariableWatcher);
 
-      stage.children = sprites;
-      stage.allWatchers = watchers;
-      stage.allWatchers.forEach((w) => w.init());
-      stage.updateBackdrop();
+        stage.children = sprites;
+        stage.allWatchers = watchers;
+        stage.allWatchers.forEach((w) => w.init());
+        stage.updateBackdrop();
 
-      P.sb2.compiler.compile(stage);
-      return stage;
-    });
+        P.sb2.compiler.compile(stage);
+        return stage;
+      });
   }
 
-  export const wavBuffers = {};
   export function loadWavs() {
     // don't bother attempting to load audio if it can't even be played
     if (!P.audio.context) return Promise.resolve();
@@ -576,9 +579,13 @@ namespace P.sb2 {
     });
   }
 
-  // Array.map and Promise.all on steroids
+  // A weird mix of Array.map and Promise.all
   export function loadArray(data, process) {
     return Promise.all((data || []).map((i, ind) => process(i, ind)));
+  }
+
+  export function loadFonts(): Promise<void> {
+    return P.fonts.loadScratch2();
   }
 
   export function loadObject(data) {
@@ -607,14 +614,27 @@ namespace P.sb2 {
         .then((asset) => data.$text = asset));
     }
     return Promise.all(promises)
-      .then((layers) => {
+      .then((layers: any[]) => {
+        var image;
+        if (layers.length > 1) {
+          image = document.createElement('canvas');
+          const ctx = image.getContext('2d')!;
+          image.width = Math.max(layers[0].width, 1);
+          image.height = Math.max(layers[0].height, 1);
+          for (const layer of layers) {
+            ctx.drawImage(layer, 0, 0);
+          }
+        } else {
+          image = layers[0];
+        }
+
         return new P.core.Costume({
           index: index,
           bitmapResolution: data.bitmapResolution,
           name: data.costumeName,
           rotationCenterX: data.rotationCenterX,
           rotationCenterY: data.rotationCenterY,
-          layers: layers as HTMLImageElement[],
+          source: image,
         });
       });
   }
@@ -629,11 +649,65 @@ namespace P.sb2 {
       });
   }
 
-  export function loadSVG(source): Promise<HTMLImageElement> {
-    // The fact that this works is truly a work of art.
-    var parser = new DOMParser();
+  export function patchSVG(svg, element) {
+    const FONTS: ObjectMap<string> = {
+      '': 'Helvetica',
+      Donegal: 'Donegal One',
+      Gloria: 'Gloria Hallelujah',
+      Marker: 'Permanent Marker',
+      Mystery: 'Mystery Quest'
+    };
+
+    const LINE_HEIGHTS: ObjectMap<number> = {
+      Helvetica: 1.13,
+      'Donegal One': 1.25,
+      'Gloria Hallelujah': 1.97,
+      'Permanent Marker': 1.43,
+      'Mystery Quest': 1.37
+    };
+
+    if (element.nodeType !== 1) return;
+    if (element.nodeName === 'text') {
+      // Correct fonts
+      var font = element.getAttribute('font-family') || '';
+      font = FONTS[font] || font;
+      if (font) {
+        element.setAttribute('font-family', font);
+        if (font === 'Helvetica') element.style.fontWeight = 'bold';
+      }
+      var size = +element.getAttribute('font-size');
+      if (!size) {
+        element.setAttribute('font-size', size = 18);
+      }
+      var bb = element.getBBox();
+      var x = 4 - .6 * element.transform.baseVal.consolidate().matrix.a;
+      var y = (element.getAttribute('y') - bb.y) * 1.1;
+      element.setAttribute('x', x);
+      element.setAttribute('y', y);
+      var lines = element.textContent.split('\n');
+      if (lines.length > 1) {
+        element.textContent = lines[0];
+        var lineHeight = LINE_HEIGHTS[font] || 1;
+        for (var i = 1, l = lines.length; i < l; i++) {
+          var tspan = document.createElementNS(null, 'tspan');
+          tspan.textContent = lines[i];
+          tspan.setAttribute('x', '' + x);
+          tspan.setAttribute('y', '' + (y + size * i * lineHeight));
+          element.appendChild(tspan);
+        }
+      }
+    } else if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
+      element.setAttribute('x', 0);
+      element.setAttribute('y', 0);
+    }
+    [].forEach.call(element.childNodes, patchSVG.bind(null, svg));
+  }
+
+  export function loadSVG(source): Promise<HTMLCanvasElement | HTMLImageElement> {
+    // canvg needs and actual SVG element, not the source.
+    const parser = new DOMParser();
     var doc = parser.parseFromString(source, 'image/svg+xml');
-    var svg = doc.documentElement as any; // TODO
+    var svg = doc.documentElement as any;
     if (!svg.style) {
       doc = parser.parseFromString('<body>' + source, 'text/html');
       svg = doc.querySelector('svg');
@@ -643,7 +717,7 @@ namespace P.sb2 {
     svg.style.left = '-10000px';
     svg.style.top = '-10000px';
     document.body.appendChild(svg);
-    var viewBox = svg.viewBox.baseVal;
+    const viewBox = svg.viewBox.baseVal;
     if (viewBox && (viewBox.x || viewBox.y)) {
       svg.width.baseVal.value = viewBox.width - viewBox.x;
       svg.height.baseVal.value = viewBox.height - viewBox.y;
@@ -652,14 +726,13 @@ namespace P.sb2 {
       viewBox.width = 0;
       viewBox.height = 0;
     }
-    P.utils.patchSVG(svg, svg);
+    patchSVG(svg, svg);
     document.body.removeChild(svg);
     svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
 
-    var canvas = document.createElement('canvas');
-    var image = new Image();
-
-    return new Promise<HTMLImageElement>((resolve, reject) => {
+    // TODO: use native renderer
+    return new Promise<HTMLCanvasElement | HTMLImageElement>((resolve, reject) => {
+      const canvas = document.createElement('canvas');
       canvg(canvas, new XMLSerializer().serializeToString(svg), {
         ignoreMouse: true,
         ignoreAnimation: true,
@@ -669,15 +742,13 @@ namespace P.sb2 {
             resolve(new Image());
             return;
           }
-          image.onload = () => resolve(image);
-          image.onerror = (err) => reject('Failed to load SVG: ' + err);
-          image.src = canvas.toDataURL();
+          resolve(canvas);
         }
       });
     });
   }
 
-  export function loadMD5(hash: string, id: string, isAudio: boolean = false): Promise<HTMLImageElement | AudioBuffer | null> {
+  export function loadMD5(hash: string, id: string, isAudio: boolean = false): Promise<HTMLImageElement | HTMLCanvasElement | AudioBuffer | null> {
     if (zipArchive) {
       var f = isAudio ? zipArchive.file(id + '.wav') : zipArchive.file(id + '.gif') || zipArchive.file(id + '.png') || zipArchive.file(id + '.jpg') || zipArchive.file(id + '.svg');
       hash = f.name;
@@ -728,7 +799,7 @@ namespace P.sb2.compiler {
 
   // Implements a Scratch 2 procedure.
   // Scratch 2 argument references just go by index, so its very simple.
-  class Scratch2Procedure extends P.core.Procedure {
+  export class Scratch2Procedure extends P.core.Procedure {
     call(inputs) {
       return inputs;
     }
@@ -756,7 +827,7 @@ namespace P.sb2.compiler {
     warnings[message] = (warnings[message] || 0) + 1;
   };
 
-  var compileListener = function(object, script) {
+  export var compileListener = function(object, script) {
     if (!script[0] || EVENT_SELECTORS.indexOf(script[0][0]) === -1) return;
 
     var nextLabel = function() {
@@ -1713,7 +1784,7 @@ namespace P.sb2.compiler {
 
         var id = label();
         source += 'var f = (runtime.now - R.start) / (R.duration * 1000);\n';
-        source += 'if (f > 1) f = 1;\n';
+        source += 'if (f > 1 || isNaN(f)) f = 1;\n';
         source += 'S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
 
         source += 'if (f < 1) {\n';
@@ -1836,7 +1907,7 @@ namespace P.sb2.compiler {
     }
 
     for (let i = 0; i < fns.length; i++) {
-      object.fns.push(P.utils.createContinuation(source.slice(fns[i])));
+      object.fns.push(P.runtime.createContinuation(source.slice(fns[i])));
     }
 
     var f = object.fns[startfn];

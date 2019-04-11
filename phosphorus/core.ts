@@ -1247,7 +1247,7 @@ namespace P.core {
 
         const positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
         const positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
-        const data = costume.context.getImageData(positionX, positionY, 1, 1).data;
+        const data = costume.context().getImageData(positionX, positionY, 1, 1).data;
         return data[3] !== 0;
       } else if (thing === SpecialObjects.Edge) {
         const bounds = this.rotatedBounds();
@@ -1530,7 +1530,7 @@ namespace P.core {
     bitmapResolution: number;
     rotationCenterX: number;
     rotationCenterY: number;
-    layers: HTMLImageElement[];
+    source: HTMLImageElement | HTMLCanvasElement;
   }
 
   // A costume
@@ -1538,12 +1538,13 @@ namespace P.core {
     public name: string;
     public rotationCenterX: number;
     public rotationCenterY: number;
-    public image: HTMLCanvasElement;
-    public context: CanvasRenderingContext2D;
+    public image: HTMLImageElement | HTMLCanvasElement;
     public index: number;
     public bitmapResolution: number;
     public scale: number;
 
+    protected _context: CanvasRenderingContext2D | null;
+    
     constructor(costumeData: CostumeOptions) {
       this.index = costumeData.index;
       this.bitmapResolution = costumeData.bitmapResolution;
@@ -1553,27 +1554,30 @@ namespace P.core {
       this.rotationCenterX = costumeData.rotationCenterX;
       this.rotationCenterY = costumeData.rotationCenterY;
 
-      this.image = document.createElement('canvas');
-      const context = this.image.getContext('2d');
-      if (context) {
-        this.context = context;
+      const source = costumeData.source;
+      this.image = source;
+      if (source.tagName === 'CANVAS') {
+        this._context = (source as HTMLCanvasElement).getContext('2d')!;
       } else {
-        throw new Error('No canvas 2d context');
+        this._context = null;
       }
-
-      this.render(costumeData.layers);
     }
 
-    render(layers: HTMLImageElement[]) {
-      // Width and height cannot be less than 1
-      this.image.width = Math.max(layers[0].width, 1);
-      this.image.height = Math.max(layers[0].height, 1);
-
-      for (const layer of layers) {
-        if (layer.width > 0 && layer.height > 0) {
-          this.context.drawImage(layer, 0, 0);
-        }
+    context(): CanvasRenderingContext2D {
+      if (this._context) {
+        return this._context;
       }
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('cannot get 2d rendering context');
+      }
+      canvas.width = this.image.width;
+      canvas.height = this.image.height;
+      ctx.drawImage(this.image, 0, 0);
+      this._context = ctx;
+      return ctx;
     }
   }
 
