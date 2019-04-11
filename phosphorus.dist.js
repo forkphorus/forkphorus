@@ -178,18 +178,110 @@ var P;
 (function (P) {
     var config;
     (function (config) {
+        const features = location.search.replace('?', '').split(',');
+        config.debug = features.indexOf('debug') > -1;
+        config.useWebGL = features.indexOf('webgl') > -1;
         config.scale = window.devicePixelRatio || 1;
         config.hasTouchEvents = 'ontouchstart' in document;
         config.framerate = 30;
-        config.debug = window.location.search.includes("debug");
         config.PROJECT_API = 'https://projects.scratch.mit.edu/$id';
     })(config = P.config || (P.config = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
 var P;
 (function (P) {
+    var m3;
+    (function (m3) {
+        // Most of this is heavily based on:
+        // https://webglfundamentals.org/webgl/lessons/webgl-2d-matrices.html
+        // Eventually I want to move this to the shader itself.
+        /**
+         * Multiplies two 3x3 matrices together
+         * @param out The first matrix. The result will be stored here.
+         * @param other The second matrix.
+         */
+        function multiply(out, other) {
+            const a0 = out[0];
+            const a1 = out[1];
+            const a2 = out[2];
+            const a3 = out[3];
+            const a4 = out[4];
+            const a5 = out[5];
+            const a6 = out[6];
+            const a7 = out[7];
+            const a8 = out[8];
+            const b0 = other[0];
+            const b1 = other[1];
+            const b2 = other[2];
+            const b3 = other[3];
+            const b4 = other[4];
+            const b5 = other[5];
+            const b6 = other[6];
+            const b7 = other[7];
+            const b8 = other[8];
+            out[0] = b0 * a0 + b1 * a3 + b2 * a6;
+            out[1] = b0 * a1 + b1 * a4 + b2 * a7;
+            out[2] = b0 * a2 + b1 * a5 + b2 * a8;
+            out[3] = b3 * a0 + b4 * a3 + b5 * a6;
+            out[4] = b3 * a1 + b4 * a4 + b5 * a7;
+            out[5] = b3 * a2 + b4 * a5 + b5 * a8;
+            out[6] = b6 * a0 + b7 * a3 + b8 * a6;
+            out[7] = b6 * a1 + b7 * a4 + b8 * a7;
+            out[8] = b6 * a2 + b7 * a5 + b8 * a8;
+        }
+        m3.multiply = multiply;
+        function translation(x, y) {
+            return [
+                1, 0, 0,
+                0, 1, 0,
+                x, y, 1,
+            ];
+        }
+        m3.translation = translation;
+        function rotation(degrees) {
+            const radians = degrees * Math.PI / 180;
+            const cos = Math.cos(radians);
+            const sin = Math.sin(radians);
+            return [
+                cos, -sin, 0,
+                sin, cos, 0,
+                0, 0, 1,
+            ];
+        }
+        m3.rotation = rotation;
+        function scaling(x, y) {
+            return [
+                x, 0, 0,
+                0, y, 0,
+                0, 0, 1,
+            ];
+        }
+        m3.scaling = scaling;
+        function projection(width, height) {
+            return [
+                2 / width, 0, 0,
+                0, -2 / height, 0,
+                -1, 1, 1,
+            ];
+        }
+        m3.projection = projection;
+    })(m3 = P.m3 || (P.m3 = {}));
+})(P || (P = {}));
+/// <reference path="phosphorus.ts" />
+/// <reference path="matrix.ts" />
+var P;
+(function (P) {
     var renderer;
     (function (renderer) {
+        /**
+         * Create an HTML canvas.
+         */
+        function createCanvas() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 480;
+            canvas.height = 360;
+            return canvas;
+        }
         /**
          * Creates the CSS filter for a Filter object.
          * The filter is generally an estimation of the actual effect.
@@ -205,93 +297,337 @@ var P;
             }
             return filter;
         }
-        class Base2DRenderer {
-            constructor(canvas) {
-                const ctx = canvas.getContext('2d');
-                this.ctx = ctx;
-                this.canvas = canvas;
+        // Used in the WebGL renderer for inverting sprites.
+        // Create it only once for memory reasons.
+        const horizontalInvertMatrix = P.m3.scaling(-1, 1);
+        class WebGLSpriteRenderer {
+            constructor() {
+                this.canvas = createCanvas();
+                this.gl = this.canvas.getContext('webgl');
+                this.program = this.compileProgram(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader);
+                // Enable transparency blending.
+                this.gl.enable(this.gl.BLEND);
+                this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+                // Cache attribute/uniform locations for later
+                this.a_position = this.gl.getAttribLocation(this.program, 'a_position');
+                this.a_texcoord = this.gl.getAttribLocation(this.program, 'a_texcoord');
+                this.u_matrix = this.gl.getUniformLocation(this.program, 'u_matrix');
+                this.u_opacity = this.gl.getUniformLocation(this.program, 'u_opacity');
+                // Create the quad buffer that we'll use for positioning, textures later.
+                this.quadBuffer = this.gl.createBuffer();
+                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
+                this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
+                    0, 0,
+                    0, 1,
+                    1, 0,
+                    1, 0,
+                    0, 1,
+                    1, 1,
+                ]), this.gl.STATIC_DRAW);
+                // We only have a single shader program, so just get that setup now.
+                this.gl.useProgram(this.program);
+                this.gl.enableVertexAttribArray(this.a_position);
+                this.gl.enableVertexAttribArray(this.a_texcoord);
             }
             /**
-             * Resizes and clears the renderer
+             * Compile a single shader
+             * @param type The type of the shader. Use this.gl.VERTEX_SHADER or FRAGMENT_SHADER
+             * @param source The string source of the shader.
              */
+            compileShader(type, source) {
+                const shader = this.gl.createShader(type);
+                if (!shader) {
+                    throw new Error('Cannot create shader');
+                }
+                this.gl.shaderSource(shader, source);
+                this.gl.compileShader(shader);
+                if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
+                    const error = this.gl.getShaderInfoLog(shader);
+                    this.gl.deleteShader(shader);
+                    throw new Error('Shader compilation error: ' + error);
+                }
+                return shader;
+            }
+            /**
+             * Compiles a vertex shader and fragment shader into a program.
+             * @param vs Vertex shader source.
+             * @param fs Fragment shader source.
+             */
+            compileProgram(vs, fs) {
+                const vertexShader = this.compileShader(this.gl.VERTEX_SHADER, vs);
+                const fragmentShader = this.compileShader(this.gl.FRAGMENT_SHADER, fs);
+                const program = this.gl.createProgram();
+                if (!program) {
+                    throw new Error('Cannot create program');
+                }
+                this.gl.attachShader(program, vertexShader);
+                this.gl.attachShader(program, fragmentShader);
+                this.gl.linkProgram(program);
+                if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
+                    const error = this.gl.getProgramInfoLog(program);
+                    this.gl.deleteProgram(program);
+                    throw new Error('Program compilation error: ' + error);
+                }
+                return program;
+            }
+            /**
+             * Create a WebGL texture
+             * @param canvas The source canvas. Dimensions do not matter.
+             */
+            createTexture(canvas) {
+                const texture = this.gl.createTexture();
+                if (!texture) {
+                    throw new Error('Cannot create texture');
+                }
+                this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+                this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+                this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+                this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+                this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
+                return texture;
+            }
             reset(scale) {
-                const effectiveScale = scale * P.config.scale;
-                this.canvas.width = 480 * effectiveScale;
-                this.canvas.height = 360 * effectiveScale;
-                this.ctx.scale(effectiveScale, effectiveScale);
+                // Scale the actual canvas
+                this.canvas.width = scale * P.config.scale * 480;
+                this.canvas.height = scale * P.config.scale * 360;
+                this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+                this.globalScaleMatrix = P.m3.scaling(scale, scale);
+                // Clear the canvas
+                this.gl.clearColor(0, 0, 0, 0);
+                this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+            }
+            drawChild(child) {
+                // Create the texture if it doesn't already exist.
+                // We'll create a texture only once for performance, memory, etc.
+                const costume = child.costumes[child.currentCostumeIndex];
+                if (!costume._glTexture) {
+                    const texture = this.createTexture(costume.context().canvas);
+                    costume._glTexture = texture;
+                }
+                this.gl.bindTexture(this.gl.TEXTURE_2D, costume._glTexture);
+                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
+                this.gl.vertexAttribPointer(this.a_texcoord, 2, this.gl.FLOAT, false, 0, 0);
+                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
+                this.gl.vertexAttribPointer(this.a_position, 2, this.gl.FLOAT, false, 0, 0);
+                // TODO: do this in the shader if its possible/faster
+                const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
+                P.m3.multiply(matrix, this.globalScaleMatrix);
+                P.m3.multiply(matrix, P.m3.translation(240 + child.scratchX, 180 - child.scratchY));
+                if (P.core.isSprite(child)) {
+                    if (child.rotationStyle === 0 /* Normal */ && child.direction !== 90) {
+                        P.m3.multiply(matrix, P.m3.rotation(90 - child.direction));
+                    }
+                    else if (child.rotationStyle === 1 /* LeftRight */ && child.direction < 0) {
+                        P.m3.multiply(matrix, horizontalInvertMatrix);
+                    }
+                    if (child.scale !== 1) {
+                        P.m3.multiply(matrix, P.m3.scaling(child.scale, child.scale));
+                    }
+                }
+                if (costume.scale !== 1) {
+                    P.m3.multiply(matrix, P.m3.scaling(costume.scale, costume.scale));
+                }
+                P.m3.multiply(matrix, P.m3.translation(-costume.rotationCenterX, -costume.rotationCenterY));
+                P.m3.multiply(matrix, P.m3.scaling(costume.image.width, costume.image.height));
+                this.gl.uniformMatrix3fv(this.u_matrix, false, matrix);
+                // Effects
+                this.gl.uniform1f(this.u_opacity, 1 - child.filters.ghost / 100);
+                this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+            }
+            drawLayer(canvas) {
+                const texture = this.createTexture(canvas);
+                this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
+                this.gl.vertexAttribPointer(this.a_texcoord, 2, this.gl.FLOAT, false, 0, 0);
+                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
+                this.gl.vertexAttribPointer(this.a_position, 2, this.gl.FLOAT, false, 0, 0);
+                const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
+                P.m3.multiply(matrix, this.globalScaleMatrix);
+                this.gl.uniformMatrix3fv(this.u_matrix, false, matrix);
+                this.gl.uniform1f(this.u_opacity, 1);
+                // TODO: is it necessary to delete textures?
+                this.gl.deleteTexture(texture);
+            }
+        }
+        WebGLSpriteRenderer.vertexShader = `
+    attribute vec2 a_position;
+    attribute vec2 a_texcoord;
+
+    uniform mat3 u_matrix;
+
+    varying vec2 v_texcoord;
+
+    void main() {
+      gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
+      v_texcoord = a_texcoord;
+    }
+    `;
+        WebGLSpriteRenderer.fragmentShader = `
+    precision mediump float;
+
+    varying vec2 v_texcoord;
+
+    uniform sampler2D u_texture;
+    uniform float u_opacity;
+
+    void main() {
+      vec4 color = texture2D(u_texture, v_texcoord);
+      color.a *= u_opacity;
+      gl_FragColor = color;
+    }
+    `;
+        renderer.WebGLSpriteRenderer = WebGLSpriteRenderer;
+        class WebGLProjectRenderer extends WebGLSpriteRenderer {
+            constructor(stage) {
+                super();
+                this.stage = stage;
+                this.fallbackRenderer = new ProjectRenderer2D(stage);
+                this.penLayer = this.fallbackRenderer.penLayer;
+                this.stageLayer = this.fallbackRenderer.stageLayer;
+            }
+            penLine(color, size, x, y, x2, y2) {
+                this.fallbackRenderer.penLine(color, size, x, y, x2, y2);
+            }
+            penDot(color, size, x, y) {
+                this.fallbackRenderer.penDot(color, size, x, y);
+            }
+            penStamp(sprite) {
+                this.fallbackRenderer.penStamp(sprite);
+            }
+            penClear() {
+                this.fallbackRenderer.penClear();
+            }
+            penResize(scale) {
+                this.fallbackRenderer.penResize(scale);
+            }
+            updateStage(scale) {
+                this.fallbackRenderer.updateStage(scale);
+            }
+            updateStageFilters() {
+                this.fallbackRenderer.updateStageFilters();
+            }
+        }
+        renderer.WebGLProjectRenderer = WebGLProjectRenderer;
+        class SpriteRenderer2D {
+            constructor() {
+                this.noEffects = false;
+                this.canvas = createCanvas();
+                this.ctx = this.canvas.getContext('2d');
+            }
+            reset(scale) {
+                this._reset(this.ctx, scale);
             }
             drawImage(image, x, y) {
                 this.ctx.drawImage(image, x, y);
             }
-        }
-        renderer.Base2DRenderer = Base2DRenderer;
-        /**
-         * A renderer for drawing sprites (or stages)
-         */
-        class SpriteRenderer2D extends Base2DRenderer {
-            constructor() {
-                super(...arguments);
-                this.noEffects = false;
-            }
             drawChild(c) {
+                this._drawChild(c, this.ctx);
+            }
+            drawLayer(canvas) {
+                this.ctx.drawImage(canvas, 0, 0, 480, 360);
+            }
+            _reset(ctx, scale) {
+                const effectiveScale = scale * P.config.scale;
+                ctx.canvas.width = 480 * effectiveScale;
+                ctx.canvas.height = 360 * effectiveScale;
+                ctx.scale(effectiveScale, effectiveScale);
+            }
+            _drawChild(c, ctx) {
                 const costume = c.costumes[c.currentCostumeIndex];
                 if (!costume) {
                     return;
                 }
-                this.ctx.save();
+                ctx.save();
                 const scale = c.stage.zoom * P.config.scale;
-                this.ctx.translate(((c.scratchX + 240) * scale | 0) / scale, ((180 - c.scratchY) * scale | 0) / scale);
+                ctx.translate(((c.scratchX + 240) * scale | 0) / scale, ((180 - c.scratchY) * scale | 0) / scale);
                 // Direction transforms are only applied to Sprites because Stages cannot be rotated.
                 if (P.core.isSprite(c)) {
                     if (c.rotationStyle === 0 /* Normal */) {
-                        this.ctx.rotate((c.direction - 90) * Math.PI / 180);
+                        ctx.rotate((c.direction - 90) * Math.PI / 180);
                     }
                     else if (c.rotationStyle === 1 /* LeftRight */ && c.direction < 0) {
-                        this.ctx.scale(-1, 1);
+                        ctx.scale(-1, 1);
                     }
-                    this.ctx.scale(c.scale, c.scale);
+                    ctx.scale(c.scale, c.scale);
                 }
-                this.ctx.scale(costume.scale, costume.scale);
-                this.ctx.translate(-costume.rotationCenterX, -costume.rotationCenterY);
+                ctx.scale(costume.scale, costume.scale);
+                ctx.translate(-costume.rotationCenterX, -costume.rotationCenterY);
                 if (!this.noEffects) {
-                    this.ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
+                    ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
                     const filter = cssFilter(c.filters);
                     // Only apply a filter if necessary, otherwise Firefox performance nosedives.
                     if (filter !== '') {
-                        this.ctx.filter = filter;
+                        ctx.filter = filter;
                     }
                 }
-                this.ctx.drawImage(costume.image, 0, 0);
-                this.ctx.restore();
+                ctx.drawImage(costume.image, 0, 0);
+                ctx.restore();
             }
         }
         renderer.SpriteRenderer2D = SpriteRenderer2D;
-        /**
-         * A renderer specifically for the backdrop of a Stage.
-         */
-        class StageRenderer extends SpriteRenderer2D {
-            constructor(canvas, stage) {
-                super(canvas);
+        class ProjectRenderer2D extends SpriteRenderer2D {
+            constructor(stage) {
+                super();
                 this.stage = stage;
-                // We handle effects in other ways, so forcibly disable SpriteRenderer's filters
+                this.stageLayer = createCanvas();
+                this.stageContext = this.stageLayer.getContext('2d');
+                this.penLayer = createCanvas();
+                this.penContext = this.penLayer.getContext('2d');
+            }
+            updateStage(scale) {
+                this._reset(this.stageContext, scale);
                 this.noEffects = true;
+                this._drawChild(this.stage, this.stageContext);
+                this.noEffects = false;
+                this.updateStageFilters();
             }
-            drawStage() {
-                this.drawChild(this.stage);
-                this.updateFilters();
-            }
-            updateFilters() {
+            updateStageFilters() {
                 const filter = cssFilter(this.stage.filters);
                 // Only reapply a CSS filter if it has changed for performance.
                 // Might not be necessary here.
-                if (this.canvas.style.filter !== filter) {
-                    this.canvas.style.filter = filter;
+                if (this.stageLayer.style.filter !== filter) {
+                    this.stageLayer.style.filter = filter;
                 }
                 // cssFilter does not include ghost
-                this.canvas.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
+                this.stageLayer.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
+            }
+            penClear() {
+                this.penContext.clearRect(0, 0, this.penLayer.width, this.penLayer.height);
+            }
+            penResize(scale) {
+                const cachedCanvas = document.createElement('canvas');
+                cachedCanvas.width = this.penLayer.width;
+                cachedCanvas.height = this.penLayer.height;
+                cachedCanvas.getContext('2d').drawImage(this.penLayer, 0, 0);
+                this._reset(this.penContext, scale);
+                this.penContext.drawImage(cachedCanvas, 0, 0, 480, 360);
+            }
+            penDot(color, size, x, y) {
+                this.penContext.fillStyle = color;
+                this.penContext.beginPath();
+                this.penContext.arc(240 + x, 180 - y, size / 2, 0, 2 * Math.PI, false);
+                this.penContext.fill();
+            }
+            penLine(color, size, x1, y1, x2, y2) {
+                this.penContext.lineCap = 'round';
+                if (size % 2 > .5 && size % 2 < 1.5) {
+                    x1 -= .5;
+                    y1 -= .5;
+                    x2 -= .5;
+                    y2 -= .5;
+                }
+                this.penContext.strokeStyle = color;
+                this.penContext.lineWidth = size;
+                this.penContext.beginPath();
+                this.penContext.moveTo(240 + x1, 180 - y1);
+                this.penContext.lineTo(240 + x2, 180 - y2);
+                this.penContext.stroke();
+            }
+            penStamp(sprite) {
+                this._drawChild(sprite, this.penContext);
             }
         }
-        renderer.StageRenderer = StageRenderer;
+        renderer.ProjectRenderer2D = ProjectRenderer2D;
     })(renderer = P.renderer || (P.renderer = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
@@ -305,9 +641,9 @@ var P;
     (function (core) {
         // Used for collision testing
         const collisionCanvas = document.createElement('canvas');
-        const collisionRenderer = new P.renderer.SpriteRenderer2D(collisionCanvas);
+        const collisionRenderer = new P.renderer.SpriteRenderer2D();
         const secondaryCollisionCanvas = document.createElement('canvas');
-        const secondaryCollisionRenderer = new P.renderer.SpriteRenderer2D(secondaryCollisionCanvas);
+        const secondaryCollisionRenderer = new P.renderer.SpriteRenderer2D();
         class Base {
             constructor() {
                 /**
@@ -698,7 +1034,6 @@ var P;
                 this.counter = 0;
                 this._currentCostumeIndex = this.currentCostumeIndex;
                 this.runtime = new P.runtime.Runtime(this);
-                // A dirty hack to create the KeyList interface
                 this.keys = [];
                 this.keys.any = 0;
                 this.root = document.createElement('div');
@@ -707,48 +1042,23 @@ var P;
                 this.root.style.overflow = 'hidden';
                 this.root.style.userSelect = 'none';
                 const scale = P.config.scale;
-                this.backdropCanvas = document.createElement('canvas');
-                this.root.appendChild(this.backdropCanvas);
-                this.backdropRenderer = new P.renderer.StageRenderer(this.backdropCanvas, this);
-                this.penCanvas = document.createElement('canvas');
-                this.root.appendChild(this.penCanvas);
-                this.penCanvas.width = scale * 480;
-                this.penCanvas.height = scale * 360;
-                this.penRenderer = new P.renderer.SpriteRenderer2D(this.penCanvas);
-                this.penRenderer.ctx.lineCap = 'round';
-                this.penRenderer.ctx.scale(scale, scale);
-                this.canvas = document.createElement('canvas');
+                if (P.config.useWebGL) {
+                    this.renderer = new P.renderer.WebGLProjectRenderer(this);
+                }
+                else {
+                    this.renderer = new P.renderer.ProjectRenderer2D(this);
+                }
+                this.renderer.reset(scale);
+                this.renderer.penResize(1);
+                this.canvas = this.renderer.canvas;
+                this.root.appendChild(this.renderer.stageLayer);
+                this.root.appendChild(this.renderer.penLayer);
                 this.root.appendChild(this.canvas);
-                this.renderer = new P.renderer.SpriteRenderer2D(this.canvas);
                 this.ui = document.createElement('div');
                 this.root.appendChild(this.ui);
                 this.ui.style.pointerEvents = 'none';
                 this.canvas.tabIndex = 0;
                 this.canvas.style.outline = 'none';
-                this.backdropCanvas.style.position =
-                    this.penCanvas.style.position =
-                        this.canvas.style.position =
-                            this.ui.style.position = 'absolute';
-                this.backdropCanvas.style.left =
-                    this.penCanvas.style.left =
-                        this.canvas.style.left =
-                            this.ui.style.left =
-                                this.backdropCanvas.style.top =
-                                    this.penCanvas.style.top =
-                                        this.canvas.style.top =
-                                            this.ui.style.top = '0';
-                this.backdropCanvas.style.width =
-                    this.penCanvas.style.width =
-                        this.canvas.style.width =
-                            this.ui.style.width = '480px';
-                this.backdropCanvas.style.height =
-                    this.penCanvas.style.height =
-                        this.canvas.style.height =
-                            this.ui.style.height = '360px';
-                this.backdropCanvas.style.transform =
-                    this.penCanvas.style.transform =
-                        this.canvas.style.transform =
-                            this.ui.style.transform = 'translateZ(0)';
                 this.root.addEventListener('keydown', (e) => {
                     var c = e.keyCode;
                     if (!this.keys[c])
@@ -937,10 +1247,9 @@ var P;
              * Updates the backdrop canvas to match the current backdrop.
              */
             updateBackdrop() {
-                if (!this.backdropRenderer)
+                if (!this.renderer)
                     return;
-                this.backdropRenderer.reset(this.zoom * P.config.scale);
-                this.backdropRenderer.drawStage();
+                this.renderer.updateStage(this.zoom * P.config.scale);
             }
             /**
              * Changes the zoom level and resizes DOM elements.
@@ -950,24 +1259,10 @@ var P;
                     return;
                 if (this.maxZoom < zoom * P.config.scale) {
                     this.maxZoom = zoom * P.config.scale;
-                    const canvas = document.createElement('canvas');
-                    canvas.width = this.penCanvas.width;
-                    canvas.height = this.penCanvas.height;
-                    canvas.getContext('2d').drawImage(this.penCanvas, 0, 0);
-                    this.penRenderer.reset(this.maxZoom);
-                    this.penRenderer.ctx.drawImage(canvas, 0, 0, 480 * zoom * P.config.scale, 360 * zoom * P.config.scale);
-                    this.penRenderer.ctx.lineCap = 'round';
+                    this.renderer.penResize(this.maxZoom);
                 }
-                this.root.style.width =
-                    this.canvas.style.width =
-                        this.backdropCanvas.style.width =
-                            this.penCanvas.style.width =
-                                this.ui.style.width = (480 * zoom | 0) + 'px';
-                this.root.style.height =
-                    this.canvas.style.height =
-                        this.backdropCanvas.style.height =
-                            this.penCanvas.style.height =
-                                this.ui.style.height = (360 * zoom | 0) + 'px';
+                this.root.style.width = (480 * zoom | 0) + 'px';
+                this.root.style.height = (360 * zoom | 0) + 'px';
                 this.root.style.fontSize = (zoom * 10) + 'px';
                 this.zoom = zoom;
                 this.updateBackdrop();
@@ -976,7 +1271,7 @@ var P;
                 this.mouseSprite = undefined;
                 for (var i = this.children.length; i--;) {
                     var c = this.children[i];
-                    if (c.visible && c.filters.ghost < 100 && c.touching('_mouse_')) {
+                    if (c.visible && c.filters.ghost < 100 && c.touching("_mouse_" /* Mouse */)) {
                         if (c.isDraggable) {
                             this.mouseSprite = c;
                             c.mouseDown();
@@ -999,11 +1294,11 @@ var P;
             setFilter(name, value) {
                 // Override setFilter() to update the filters on the real stage.
                 super.setFilter(name, value);
-                this.backdropRenderer.updateFilters();
+                this.renderer.updateStageFilters();
             }
             /**
              * Gets an object with its name, ignoring clones.
-             * '_stage_' points to the stage.
+             * SpecialObjects.Stage will point to the stage.
              */
             getObject(name) {
                 for (var i = 0; i < this.children.length; i++) {
@@ -1012,14 +1307,14 @@ var P;
                         return c;
                     }
                 }
-                if (name === '_stage_' || name === this.name) {
+                if (name === "_stage_" /* Stage */ || name === this.name) {
                     return this;
                 }
                 return null;
             }
             /**
              * Gets all the objects with a name, including clones.
-             * Special values such as '_stage_' are not supported.
+             * Special values are not supported.
              */
             getObjects(name) {
                 const result = [];
@@ -1035,11 +1330,11 @@ var P;
              */
             getPosition(name) {
                 switch (name) {
-                    case '_mouse_': return {
+                    case "_mouse_" /* Mouse */: return {
                         x: this.mouseX,
                         y: this.mouseY,
                     };
-                    case '_random_': return {
+                    case "_random_" /* Random */: return {
                         x: Math.round(480 * Math.random() - 240),
                         y: Math.round(360 * Math.random() - 180),
                     };
@@ -1092,7 +1387,7 @@ var P;
              */
             drawAll(renderer, skip) {
                 renderer.drawChild(this);
-                renderer.drawImage(this.penCanvas, 0, 0);
+                renderer.drawLayer(this.renderer.penLayer);
                 this.drawChildren(renderer, skip);
             }
             // Implement rotatedBounds() to return something.
@@ -1141,8 +1436,7 @@ var P;
                 }
             }
             clearPen() {
-                this.penRenderer.reset(this.maxZoom);
-                this.penRenderer.ctx.lineCap = 'round';
+                this.renderer.penClear();
             }
         }
         core.Stage = Stage;
@@ -1280,19 +1574,8 @@ var P;
                 this.scratchX = x;
                 this.scratchY = y;
                 if (this.isPenDown && !this.isDragging) {
-                    var context = this.stage.penRenderer.ctx;
-                    if (this.penSize % 2 > .5 && this.penSize % 2 < 1.5) {
-                        ox -= .5;
-                        oy -= .5;
-                        x -= .5;
-                        y -= .5;
-                    }
-                    context.strokeStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
-                    context.lineWidth = this.penSize;
-                    context.beginPath();
-                    context.moveTo(240 + ox, 180 - oy);
-                    context.lineTo(240 + x, 180 - y);
-                    context.stroke();
+                    const color = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
+                    this.stage.renderer.penLine(color, this.penSize, ox, oy, x, y);
                 }
                 if (this.saying) {
                     this.updateBubble();
@@ -1300,17 +1583,12 @@ var P;
             }
             // Makes a pen dot at the current location.
             dotPen() {
-                var context = this.stage.penRenderer.ctx;
-                var x = this.scratchX;
-                var y = this.scratchY;
-                context.fillStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
-                context.beginPath();
-                context.arc(240 + x, 180 - y, this.penSize / 2, 0, 2 * Math.PI, false);
-                context.fill();
+                const color = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
+                this.stage.renderer.penDot(color, this.penSize, this.scratchX, this.scratchY);
             }
             // Stamps the sprite onto the pen layer.
             stamp() {
-                this.stage.penRenderer.drawChild(this);
+                this.stage.renderer.penStamp(this);
             }
             // Faces in a direction.
             setDirection(degrees) {
@@ -1371,11 +1649,13 @@ var P;
                 clone.isPenDown = this.isPenDown;
                 return clone;
             }
-            // Determines if the sprite is touching an object.
-            // thing is the name of the object, '_mouse_', or '_edge_'
+            /**
+             * Determines if this sprite is touching another object.
+             * @param thing The name of the other object(s)
+             */
             touching(thing) {
-                const costume = this.costumes[this.currentCostumeIndex];
-                if (thing === '_mouse_') {
+                if (thing === "_mouse_" /* Mouse */) {
+                    const costume = this.costumes[this.currentCostumeIndex];
                     const bounds = this.rotatedBounds();
                     const x = this.stage.rawMouseX;
                     const y = this.stage.rawMouseY;
@@ -1399,7 +1679,7 @@ var P;
                     const data = costume.context().getImageData(positionX, positionY, 1, 1).data;
                     return data[3] !== 0;
                 }
-                else if (thing === '_edge_') {
+                else if (thing === "_edge_" /* Edge */) {
                     const bounds = this.rotatedBounds();
                     return bounds.left <= -240 || bounds.right >= 240 || bounds.top >= 180 || bounds.bottom <= -180;
                 }
@@ -1447,7 +1727,10 @@ var P;
                     return false;
                 }
             }
-            // Determines if this Sprite is touching a color.
+            /**
+             * Determines if this Sprite is touching a color.
+             * @param rgb RGB color, as a single number.
+             */
             touchingColor(rgb) {
                 const b = this.rotatedBounds();
                 collisionCanvas.width = b.right - b.left;
@@ -1468,6 +1751,11 @@ var P;
                 }
                 return false;
             }
+            /**
+             * Determines if one of this Sprite's colors are touching another color.
+             * @param sourceColor This sprite's color, as an RGB color.
+             * @param touchingColor The other color, as an RGB color.
+             */
             colorTouchingColor(sourceColor, touchingColor) {
                 var rb = this.rotatedBounds();
                 collisionCanvas.width = secondaryCollisionCanvas.width = rb.right - rb.left;
@@ -1493,7 +1781,9 @@ var P;
                 }
                 return false;
             }
-            // Bounces off an edge of the stage, if it is touching one.
+            /**
+             * Bounces this Sprite off of an edge of the Stage, if this Sprite is touching one.
+             */
             bounceOffEdge() {
                 var b = this.rotatedBounds();
                 var dl = 240 + b.left;
@@ -1535,7 +1825,10 @@ var P;
                 if (b.bottom < -180)
                     y += -180 - b.top;
             }
-            // Determines the distance to point accepted by getPosition()
+            /**
+             * Determines the distance from this Sprite's center to another position.
+             * @param thing The name of any position or Sprite, as accepted by getPosition()
+             */
             distanceTo(thing) {
                 const p = this.stage.getPosition(thing);
                 if (!p) {
@@ -1545,8 +1838,10 @@ var P;
                 const y = p.y;
                 return Math.sqrt((this.scratchX - x) * (this.scratchX - x) + (this.scratchY - y) * (this.scratchY - y));
             }
-            // Goes to another object.
-            // thing is anything that getPosition() accepts
+            /**
+             * Makes this Sprite go to another Sprite
+             * @param thing The name of any position or Sprite, as accepted by getPosition()
+             */
             gotoObject(thing) {
                 const position = this.stage.getPosition(thing);
                 if (!position) {
@@ -1554,8 +1849,10 @@ var P;
                 }
                 this.moveTo(position.x, position.y);
             }
-            // Points towards an object.
-            // thing is anything that getPosition() accepts
+            /**
+             * Makes this Sprite point towards another object.
+             * @param thing The name of any position or Sprite, as accepted by getPosition()
+             */
             pointTowards(thing) {
                 const position = this.stage.getPosition(thing);
                 if (!position) {
@@ -1567,7 +1864,9 @@ var P;
                 if (this.saying)
                     this.updateBubble();
             }
-            // Sets the RGB color of the pen.
+            /**
+             * Set the RGB color of the pen.
+             */
             setPenColor(color) {
                 this.penColor = color;
                 const r = this.penColor >> 16 & 0xff;
@@ -1576,7 +1875,9 @@ var P;
                 const a = this.penColor >> 24 & 0xff / 0xff || 1;
                 this.penCSS = 'rgba(' + r + ', ' + g + ', ' + b + ', ' + a + ')';
             }
-            // Converts the pen's color to HSL
+            /**
+             * Convert the pen's color from RGB to HSL
+             */
             setPenColorHSL() {
                 if (this.penCSS) {
                     const hsl = P.utils.rgbToHSL(this.penColor);
@@ -2432,7 +2733,8 @@ var P;
                     sprite.scale = data.scale;
                     sprite.visible = data.visible;
                 }
-                // Dirty hack expected by the sb2 compiler, TODO: remove
+                // We store the scripts on the Sprite so the compiler can find them easier
+                // TODO: to something different?
                 object.scripts = data.scripts || [];
                 return object;
             });
@@ -3568,7 +3870,7 @@ var P;
                 if (script[0][0] === 'procDef') {
                     let pre = '';
                     for (let i = types.length; i--;) {
-                        // TODO: dirty hack to make used work; really this entire thing needs to be changed a lot
+                        // We know `used` is defined at this point, but typescript doesn't.
                         if (used[i]) {
                             const t = types[i];
                             if (t === '%d' || t === '%n' || t === '%c') {

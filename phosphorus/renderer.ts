@@ -84,7 +84,6 @@ namespace P.renderer {
    * Creates the CSS filter for a Filter object.
    * The filter is generally an estimation of the actual effect.
    * Includes brightness and color. (does not include ghost)
-   * @param T gay
    */
   function cssFilter(filters: P.core.Filters) {
     let filter = '';
@@ -267,7 +266,7 @@ namespace P.renderer {
       // We'll create a texture only once for performance, memory, etc.
       const costume = child.costumes[child.currentCostumeIndex] as WebGLCostume;
       if (!costume._glTexture) {
-        const texture = this.createTexture(costume.image);
+        const texture = this.createTexture(costume.context().canvas);
         costume._glTexture = texture;
       }
       this.gl.bindTexture(this.gl.TEXTURE_2D, costume._glTexture);
