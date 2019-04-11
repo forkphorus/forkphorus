@@ -138,15 +138,15 @@ namespace P.renderer {
     public canvas: HTMLCanvasElement;
     public gl: WebGLRenderingContext;
 
-    private program: WebGLProgram;
-    private quadBuffer: WebGLBuffer;
+    protected program: WebGLProgram;
+    protected quadBuffer: WebGLBuffer;
 
-    private globalScaleMatrix: P.m3.Matrix3;
+    protected globalScaleMatrix: P.m3.Matrix3;
 
-    private a_position: number;
-    private a_texcoord: number;
-    private u_matrix: WebGLUniformLocation;
-    private u_opacity: WebGLUniformLocation;
+    protected a_position: number;
+    protected a_texcoord: number;
+    protected u_matrix: WebGLUniformLocation;
+    protected u_opacity: WebGLUniformLocation;
 
     constructor() {
       this.canvas = createCanvas();
@@ -234,7 +234,7 @@ namespace P.renderer {
      * Create a WebGL texture
      * @param canvas The source canvas. Dimensions do not matter.
      */
-    createTexture(canvas: HTMLCanvasElement): WebGLTexture {
+    createTexture(canvas: HTMLImageElement | HTMLCanvasElement): WebGLTexture {
       const texture = this.gl.createTexture();
       if (!texture) {
         throw new Error('Cannot create texture');
@@ -266,7 +266,7 @@ namespace P.renderer {
       // We'll create a texture only once for performance, memory, etc.
       const costume = child.costumes[child.currentCostumeIndex] as WebGLCostume;
       if (!costume._glTexture) {
-        const texture = this.createTexture(costume.context().canvas);
+        const texture = this.createTexture(costume.image);
         costume._glTexture = texture;
       }
       this.gl.bindTexture(this.gl.TEXTURE_2D, costume._glTexture);

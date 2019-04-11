@@ -401,7 +401,7 @@ var P;
                 // We'll create a texture only once for performance, memory, etc.
                 const costume = child.costumes[child.currentCostumeIndex];
                 if (!costume._glTexture) {
-                    const texture = this.createTexture(costume.context().canvas);
+                    const texture = this.createTexture(costume.image);
                     costume._glTexture = texture;
                 }
                 this.gl.bindTexture(this.gl.TEXTURE_2D, costume._glTexture);
