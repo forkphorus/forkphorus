@@ -178,7 +178,7 @@ var P;
 (function (P) {
     var config;
     (function (config) {
-        const features = location.search.replace('?', '').split(',');
+        const features = location.search.replace('?', '').split('&');
         config.debug = features.indexOf('debug') > -1;
         config.useWebGL = features.indexOf('webgl') > -1;
         config.scale = window.devicePixelRatio || 1;

@@ -1,7 +1,7 @@
 /// <reference path="phosphorus.ts" />
 
 namespace P.config {
-  const features = location.search.replace('?', '').split(',');
+  const features = location.search.replace('?', '').split('&');
   export const debug = features.indexOf('debug') > -1;
   export const useWebGL = features.indexOf('webgl') > -1;
 
