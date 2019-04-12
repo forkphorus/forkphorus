@@ -127,10 +127,57 @@ namespace P.renderer {
 
     uniform sampler2D u_texture;
     uniform float u_opacity;
+    uniform float u_brightness;
+    uniform float u_color;
+
+    const float minimumAlpha = 1.0 / 250.0;
+
+    // http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl
+    vec3 rgb2hsv(vec3 c) {
+      vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+      vec4 p = c.g < c.b ? vec4(c.bg, K.wz) : vec4(c.gb, K.xy);
+      vec4 q = c.r < p.x ? vec4(p.xyw, c.r) : vec4(c.r, p.yzx);
+      float d = q.x - min(q.w, q.y);
+      float e = 1.0e-10;
+      return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+    }
+    vec3 hsv2rgb(vec3 c) {
+      vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+      vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+      return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+    }
 
     void main() {
       vec4 color = texture2D(u_texture, v_texcoord);
+      if (color.a < minimumAlpha) discard;
+
+      // apply ghost effect
       color.a *= u_opacity;
+      // handle premultiplied alpha
+      color.rgb *= u_opacity;
+
+      // apply brightness effect
+      color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
+
+      // the color effect is rather long
+      // see https://github.com/LLK/scratch-render/blob/008dc5b15b30961301e6b9a08628a063b967a001/src/shaders/sprite.frag#L175-L189
+      {
+        vec3 hsv = rgb2hsv(color.rgb);
+        // hsv.x = hue
+        // hsv.y = saturation
+        // hsv.z = value
+
+        // scratch forces all colors to have some minimal amount saturation so there is a visual change
+        const float minValue = 0.11 / 2.0;
+        const float minSaturation = 0.09;
+        if (hsv.z < minValue) hsv = vec3(0.0, 1.0, minValue);
+        else if (hsv.y < minSaturation) hsv = vec3(0.0, minSaturation, hsv.z);
+
+        hsv.x = mod(hsv.x + u_color, 1.0);
+        if (hsv.x < 0.0) hsv.x += 1.0;
+        color = vec4(hsv2rgb(hsv), color.a);  
+      }
+
       gl_FragColor = color;
     }
     `;
@@ -147,24 +194,33 @@ namespace P.renderer {
     protected a_texcoord: number;
     protected u_matrix: WebGLUniformLocation;
     protected u_opacity: WebGLUniformLocation;
+    protected u_brightness: WebGLUniformLocation;
+    protected u_color: WebGLUniformLocation;
 
     constructor() {
       this.canvas = createCanvas();
-      this.gl = this.canvas.getContext('webgl')!;
+      const gl = this.canvas.getContext('webgl');
+      if (!gl) {
+        throw new Error('cannot get webgl rendering context');
+      }
+      this.gl = gl;
 
       this.program = this.compileProgram(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader);
 
       // Enable transparency blending.
       this.gl.enable(this.gl.BLEND);
+      // TODO: investigate other blending modes
       this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
 
       // Cache attribute/uniform locations for later
       this.a_position = this.gl.getAttribLocation(this.program, 'a_position');
       this.a_texcoord = this.gl.getAttribLocation(this.program, 'a_texcoord');
-      this.u_matrix = this.gl.getUniformLocation(this.program, 'u_matrix')!;
-      this.u_opacity = this.gl.getUniformLocation(this.program, 'u_opacity')!;
+      this.u_matrix = this.getUniformLocation(this.program, 'u_matrix');
+      this.u_opacity = this.getUniformLocation(this.program, 'u_opacity');
+      this.u_brightness = this.getUniformLocation(this.program, 'u_brightness');
+      this.u_color = this.getUniformLocation(this.program, 'u_color');
 
-      // Create the quad buffer that we'll use for positioning, textures later.
+      // Create the quad buffer that we'll use for positioning and texture coordinates later.
       this.quadBuffer = this.gl.createBuffer()!;
       this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
       this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
@@ -249,6 +305,17 @@ namespace P.renderer {
       return texture;
     }
 
+    /**
+     * Get the location of a uniform, or throw an error if it doesn't exist.
+     */
+    getUniformLocation(program: WebGLProgram, name: string): WebGLUniformLocation {
+      const uniform = this.gl.getUniformLocation(program, name);
+      if (!uniform) {
+        throw new Error('Unknown uniform: ' + name);
+      }
+      return uniform;
+    }
+
     reset(scale: number) {
       // Scale the actual canvas
       this.canvas.width = scale * P.config.scale * 480;
@@ -263,7 +330,7 @@ namespace P.renderer {
 
     drawChild(child: P.core.Base) {
       // Create the texture if it doesn't already exist.
-      // We'll create a texture only once for performance, memory, etc.
+      // We'll create a texture only once for performance.
       const costume = child.costumes[child.currentCostumeIndex] as WebGLCostume;
       if (!costume._glTexture) {
         const texture = this.createTexture(costume.image);
@@ -300,6 +367,8 @@ namespace P.renderer {
 
       // Effects
       this.gl.uniform1f(this.u_opacity, 1 - child.filters.ghost / 100);
+      this.gl.uniform1f(this.u_brightness, child.filters.brightness / 100);
+      this.gl.uniform1f(this.u_color, child.filters.color / 200);
 
       this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
     }
