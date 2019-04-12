@@ -5,11 +5,7 @@ namespace P.m3 {
   // https://webglfundamentals.org/webgl/lessons/webgl-2d-matrices.html
   // Eventually I want to move this to the shader itself.
 
-  export type Matrix3 = [
-    number, number, number,
-    number, number, number,
-    number, number, number
-  ];
+  export type Matrix3 = Float32List;
 
   /**
    * Multiplies two 3x3 matrices together
@@ -47,37 +43,61 @@ namespace P.m3 {
   }
 
   export function translation(x: number, y: number): Matrix3 {
-    return [
-      1, 0, 0,
-      0, 1, 0,
-      x, y, 1,
-    ];
+    const array = new Float32Array(9);
+    array[0] = 1;
+    // array[1] = 0;
+    // array[2] = 0;
+    // array[3] = 0;
+    array[4] = 1;
+    // array[5] = 0;
+    array[6] = x;
+    array[7] = y;
+    array[8] = 1;
+    return array;
   }
 
   export function rotation(degrees: number): Matrix3 {
     const radians = degrees * Math.PI / 180;
     const cos = Math.cos(radians);
     const sin = Math.sin(radians);
-    return [
-      cos, -sin, 0,
-      sin, cos, 0,
-      0, 0, 1,
-    ];
+    const array = new Float32Array(9);
+    array[0] = cos;
+    array[1] = -sin;
+    // array[2] = 0;
+    array[3] = sin;
+    array[4] = cos;
+    // array[5] = 0;
+    // array[6] = 0;
+    // array[7] = 0;
+    array[8] = 1;
+    return array;
   }
 
   export function scaling(x: number, y: number): Matrix3 {
-    return [
-      x, 0, 0,
-      0, y, 0,
-      0, 0, 1,
-    ];
+    const array = new Float32Array(9);
+    array[0] = x;
+    // array[1] = 0;
+    // array[2] = 0;
+    // array[3] = 0;
+    array[4] = y;
+    // array[5] = 0;
+    // array[6] = 0;
+    // array[7] = 0;
+    array[8] = 1;
+    return array;
   }
 
   export function projection(width: number, height: number): Matrix3 {
-    return [
-      2 / width, 0, 0,
-      0, -2 / height, 0,
-      -1, 1, 1,
-    ];
+    const array = new Float32Array(9);
+    array[0] = 2 / width;
+    // array[1] = 0;
+    // array[2] = 0;
+    // array[3] = 0;
+    array[4] = -2 / height;
+    // array[5] = 0;
+    array[6] = -1;
+    array[7] = 1;
+    array[8] = 1;
+    return array;
   }
 }

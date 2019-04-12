@@ -231,38 +231,62 @@ var P;
         }
         m3.multiply = multiply;
         function translation(x, y) {
-            return [
-                1, 0, 0,
-                0, 1, 0,
-                x, y, 1,
-            ];
+            const array = new Float32Array(9);
+            array[0] = 1;
+            // array[1] = 0;
+            // array[2] = 0;
+            // array[3] = 0;
+            array[4] = 1;
+            // array[5] = 0;
+            array[6] = x;
+            array[7] = y;
+            array[8] = 1;
+            return array;
         }
         m3.translation = translation;
         function rotation(degrees) {
             const radians = degrees * Math.PI / 180;
             const cos = Math.cos(radians);
             const sin = Math.sin(radians);
-            return [
-                cos, -sin, 0,
-                sin, cos, 0,
-                0, 0, 1,
-            ];
+            const array = new Float32Array(9);
+            array[0] = cos;
+            array[1] = -sin;
+            // array[2] = 0;
+            array[3] = sin;
+            array[4] = cos;
+            // array[5] = 0;
+            // array[6] = 0;
+            // array[7] = 0;
+            array[8] = 1;
+            return array;
         }
         m3.rotation = rotation;
         function scaling(x, y) {
-            return [
-                x, 0, 0,
-                0, y, 0,
-                0, 0, 1,
-            ];
+            const array = new Float32Array(9);
+            array[0] = x;
+            // array[1] = 0;
+            // array[2] = 0;
+            // array[3] = 0;
+            array[4] = y;
+            // array[5] = 0;
+            // array[6] = 0;
+            // array[7] = 0;
+            array[8] = 1;
+            return array;
         }
         m3.scaling = scaling;
         function projection(width, height) {
-            return [
-                2 / width, 0, 0,
-                0, -2 / height, 0,
-                -1, 1, 1,
-            ];
+            const array = new Float32Array(9);
+            array[0] = 2 / width;
+            // array[1] = 0;
+            // array[2] = 0;
+            // array[3] = 0;
+            array[4] = -2 / height;
+            // array[5] = 0;
+            array[6] = -1;
+            array[7] = 1;
+            array[8] = 1;
+            return array;
         }
         m3.projection = projection;
     })(m3 = P.m3 || (P.m3 = {}));
