@@ -68,6 +68,32 @@ namespace P.renderer {
      * Updates the filters applied to the Stage layer.
      */
     updateStageFilters(): void;
+    /**
+     * Determines if a Sprite is intersecting a point
+     * @param sprite The sprite
+     * @param x X coordinate, in Scratch space
+     * @param y Y coordinate, in Scratch space
+     */
+    spriteTouchesPoint(sprite: P.core.Sprite, x: number, y: number): boolean;
+    /**
+     * Determines if a Sprite is touching another Sprite
+     * @param spriteA The first sprite
+     * @param spriteB The other sprite
+     */
+    spritesIntersect(spriteA: P.core.Base, spriteB: P.core.Base): boolean;
+    /**
+     * Determines if a Sprite is touching a color
+     * @param sprite The sprite
+     * @param color The RGB color, in number form.
+     */
+    spriteTouchesColor(sprite: P.core.Base, color: number): boolean;
+    /**
+     * Determines if one Sprite's color touches another Sprite's color
+     * @param sprite The sprite
+     * @param spriteColor The color on the Sprite
+     * @param otherColor The color on the rest of the stage
+     */
+    spriteColorTouchesColor(sprite: P.core.Base, spriteColor: number, otherColor: number): boolean;
   }
 
   /**
@@ -397,7 +423,6 @@ namespace P.renderer {
   export class WebGLProjectRenderer extends WebGLSpriteRenderer implements ProjectRenderer {
     public penLayer: HTMLCanvasElement;
     public stageLayer: HTMLCanvasElement;
-
     protected fallbackRenderer: ProjectRenderer;
 
     constructor(public stage: P.core.Stage) {
@@ -433,6 +458,22 @@ namespace P.renderer {
 
     updateStageFilters(): void {
       this.fallbackRenderer.updateStageFilters();
+    }
+
+    spriteTouchesPoint(spriteA: core.Sprite, x: number, y: number): boolean {
+      return this.fallbackRenderer.spriteTouchesPoint(spriteA, x, y);
+    }
+
+    spritesIntersect(spriteA: core.Sprite, spriteB: core.Sprite): boolean {
+      return this.fallbackRenderer.spritesIntersect(spriteA, spriteB);
+    }
+
+    spriteTouchesColor(sprite: core.Base, color: number): boolean {
+      return this.fallbackRenderer.spriteTouchesColor(sprite, color);
+    }
+
+    spriteColorTouchesColor(sprite: core.Base, spriteColor: number, otherColor: number): boolean {
+      return this.spriteColorTouchesColor(sprite, spriteColor, otherColor);
     }
   }
 
@@ -497,7 +538,8 @@ namespace P.renderer {
         ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
 
         const filter = cssFilter(c.filters);
-        // Only apply a filter if necessary, otherwise Firefox performance nosedives.
+        // Only apply a filter if necessary, otherwise Firefox performance
+        // nosedives.
         if (filter !== '') {
           ctx.filter = filter;
         }
@@ -507,6 +549,10 @@ namespace P.renderer {
       ctx.restore();
     }
   }
+
+  // Renderers used for some features such as collision detection
+  const workingRenderer = new SpriteRenderer2D();
+  const workingRenderer2 = new SpriteRenderer2D();
 
   export class ProjectRenderer2D extends SpriteRenderer2D implements ProjectRenderer {
     public stageLayer: HTMLCanvasElement;
@@ -581,6 +627,141 @@ namespace P.renderer {
     penStamp(sprite: P.core.Sprite) {
       this._drawChild(sprite, this.penContext);
     }
-  }
 
+    spriteTouchesPoint(sprite: P.core.Sprite, x: number, y: number) {
+      const costume = sprite.costumes[sprite.currentCostumeIndex];
+      const bounds = sprite.rotatedBounds();
+      if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top) {
+        return false;
+      }
+
+      var cx = (x - sprite.scratchX) / sprite.scale;
+      var cy = (sprite.scratchY - y) / sprite.scale;
+      if (sprite.rotationStyle === RotationStyle.Normal && sprite.direction !== 90) {
+        const d = (90 - sprite.direction) * Math.PI / 180;
+        const ox = cx;
+        const s = Math.sin(d), c = Math.cos(d);
+        cx = c * ox - s * cy;
+        cy = s * ox + c * cy;
+      } else if (sprite.rotationStyle === RotationStyle.LeftRight && sprite.direction < 0) {
+        cx = -cx;
+      }
+
+      const positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
+      const positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
+      const data = costume.context().getImageData(positionX, positionY, 1, 1).data;
+      return data[3] !== 0;
+    }
+
+    spritesIntersect(spriteA: P.core.Base, spriteB: P.core.Base) {
+      if (!spriteB.visible) return false;
+
+      const mb = spriteA.rotatedBounds();
+      const ob = spriteB.rotatedBounds();
+
+      if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
+        return false;
+      }
+
+      const left = Math.max(mb.left, ob.left);
+      const top = Math.min(mb.top, ob.top);
+      const right = Math.min(mb.right, ob.right);
+      const bottom = Math.max(mb.bottom, ob.bottom);
+
+      const width = right - left;
+      const height = top - bottom;
+
+      if (width < 1 || height < 1) {
+        return false;
+      }
+
+      workingRenderer.canvas.width = width;
+      workingRenderer.canvas.height = height;
+
+      workingRenderer.ctx.save();
+      workingRenderer.noEffects = true;
+
+      workingRenderer.ctx.translate(-(left + 240), -(180 - top));
+      workingRenderer.drawChild(spriteA);
+      workingRenderer.ctx.globalCompositeOperation = 'source-in';
+      workingRenderer.drawChild(spriteB);
+
+      workingRenderer.noEffects = false;
+      workingRenderer.ctx.restore();
+
+      const data = workingRenderer.ctx.getImageData(0, 0, width, height).data;
+      const length = data.length;
+
+      for (var j = 0; j < length; j += 4) {
+        // check for the opacity byte being a non-zero number
+        if (data[j + 3]) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    spriteTouchesColor(sprite: P.core.Base, color: number) {
+      const b = sprite.rotatedBounds();
+
+      workingRenderer.canvas.width = b.right - b.left;
+      workingRenderer.canvas.height = b.top - b.bottom;
+
+      workingRenderer.ctx.save();
+      workingRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
+
+      sprite.stage.drawAll(workingRenderer, sprite);
+      workingRenderer.ctx.globalCompositeOperation = 'destination-in';
+      workingRenderer.drawChild(sprite);
+
+      workingRenderer.ctx.restore();
+
+      const data = workingRenderer.ctx.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
+
+      color = color & 0xffffff;
+      const length = (b.right - b.left) * (b.top - b.bottom) * 4;
+      for (var i = 0; i < length; i += 4) {
+        if ((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) === color && data[i + 3]) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    spriteColorTouchesColor(sprite: P.core.Base, spriteColor: number, otherColor: number) {
+      var rb = sprite.rotatedBounds();
+
+      workingRenderer.canvas.width = workingRenderer2.canvas.width = rb.right - rb.left;
+      workingRenderer.canvas.height = workingRenderer2.canvas.height = rb.top - rb.bottom;
+
+      workingRenderer.ctx.save();
+      workingRenderer2.ctx.save();
+      workingRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
+      workingRenderer2.ctx.translate(-(240 + rb.left), -(180 - rb.top));
+
+      sprite.stage.drawAll(workingRenderer, sprite);
+      workingRenderer.drawChild(sprite);
+
+      workingRenderer.ctx.restore();
+
+      var dataA = workingRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
+      var dataB = workingRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
+
+      spriteColor = spriteColor & 0xffffff;
+      otherColor = otherColor & 0xffffff;
+
+      var length = dataA.length;
+      for (var i = 0; i < length; i += 4) {
+        var touchesSource = (dataB[i] << 16 | dataB[i + 1] << 8 | dataB[i + 2]) === spriteColor && dataB[i + 3];
+        var touchesOther = (dataA[i] << 16 | dataA[i + 1] << 8 | dataA[i + 2]) === otherColor && dataA[i + 3];
+        if (touchesSource && touchesOther) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+  }
 }

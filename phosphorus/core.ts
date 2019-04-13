@@ -5,12 +5,6 @@
 // Phosphorus base classes
 // Implements most functionality while leaving some specifics to implementations (P.sb2, P.sb3)
 namespace P.core {
-  // Used for collision testing
-  const collisionCanvas = document.createElement('canvas');
-  const collisionRenderer = new P.renderer.SpriteRenderer2D();
-  const secondaryCollisionCanvas = document.createElement('canvas');
-  const secondaryCollisionRenderer = new P.renderer.SpriteRenderer2D();
-
   interface RotatedBounds {
     // A----------+
     // |          |
@@ -514,9 +508,6 @@ namespace P.core {
     public canvas: HTMLCanvasElement;
     public renderer: P.renderer.ProjectRenderer;
 
-    // public penCanvas: HTMLCanvasElement;
-    // public penRenderer: P.renderer.PenRenderer;
-
     public prompt: HTMLInputElement;
     public prompter: HTMLElement;
     public promptTitle: HTMLElement;
@@ -893,7 +884,7 @@ namespace P.core {
      * Draws all the children (not including the Stage itself or pen layers) of this Stage on a renderer
      * @param skip Optionally skip rendering of a single Sprite.
      */
-    drawChildren(renderer: P.renderer.SpriteRenderer, skip?: Sprite) {
+    drawChildren(renderer: P.renderer.SpriteRenderer, skip?: Base) {
       for (var i = 0; i < this.children.length; i++) {
         const c = this.children[i];
         if (c.isDragging) {
@@ -910,7 +901,7 @@ namespace P.core {
      * Draws all parts of the Stage (including the stage itself and pen layers) on a renderer.
      * @param skip Optionally skip rendering of a single Sprite.
      */
-    drawAll(renderer: P.renderer.SpriteRenderer, skip?: Sprite) {
+    drawAll(renderer: P.renderer.SpriteRenderer, skip?: Base) {
       renderer.drawChild(this);
       renderer.drawLayer(this.renderer.penLayer);
       this.drawChildren(renderer, skip);
@@ -1225,82 +1216,21 @@ namespace P.core {
      */
     touching(thing: string) {
       if (thing === SpecialObjects.Mouse) {
-        const costume = this.costumes[this.currentCostumeIndex];
-        const bounds = this.rotatedBounds();
         const x = this.stage.rawMouseX;
         const y = this.stage.rawMouseY;
-        if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top) {
-          return false;
-        }
-
-        var cx = (x - this.scratchX) / this.scale;
-        var cy = (this.scratchY - y) / this.scale;
-        if (this.rotationStyle === RotationStyle.Normal && this.direction !== 90) {
-          const d = (90 - this.direction) * Math.PI / 180;
-          const ox = cx;
-          const s = Math.sin(d), c = Math.cos(d);
-          cx = c * ox - s * cy;
-          cy = s * ox + c * cy;
-        } else if (this.rotationStyle === RotationStyle.LeftRight && this.direction < 0) {
-          cx = -cx;
-        }
-
-        const positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
-        const positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
-        const data = costume.context().getImageData(positionX, positionY, 1, 1).data;
-        return data[3] !== 0;
+        return this.stage.renderer.spriteTouchesPoint(this, x, y);
       } else if (thing === SpecialObjects.Edge) {
         const bounds = this.rotatedBounds();
         return bounds.left <= -240 || bounds.right >= 240 || bounds.top >= 180 || bounds.bottom <= -180;
       } else {
         if (!this.visible) return false;
         const sprites = this.stage.getObjects(thing);
+        const renderer = this.stage.renderer;
 
         for (var i = sprites.length; i--;) {
           const sprite = sprites[i];
-          if (!sprite.visible) continue;
-
-          const mb = this.rotatedBounds();
-          const ob = sprite.rotatedBounds();
-
-          if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
-            continue;
-          }
-
-          const left = Math.max(mb.left, ob.left);
-          const top = Math.min(mb.top, ob.top);
-          const right = Math.min(mb.right, ob.right);
-          const bottom = Math.max(mb.bottom, ob.bottom);
-
-          const width = right - left;
-          const height = top - bottom;
-
-          if (width < 1 || height < 1) {
-            continue;
-          }
-
-          collisionRenderer.canvas.width = width;
-          collisionRenderer.canvas.height = height;
-
-          collisionRenderer.ctx.save();
-          collisionRenderer.noEffects = true;
-
-          collisionRenderer.ctx.translate(-(left + 240), -(180 - top));
-          collisionRenderer.drawChild(this);
-          collisionRenderer.ctx.globalCompositeOperation = 'source-in';
-          collisionRenderer.drawChild(sprite);
-
-          collisionRenderer.noEffects = false;
-          collisionRenderer.ctx.restore();
-
-          const data = collisionRenderer.ctx.getImageData(0, 0, width, height).data;
-          const length = data.length;
-
-          for (var j = 0; j < length; j += 4) {
-            // check for the opacity byte being a non-zero number
-            if (data[j + 3]) {
-              return true;
-            }
+          if (renderer.spritesIntersect(this, sprite)) {
+            return true;
           }
         }
 
@@ -1310,34 +1240,10 @@ namespace P.core {
 
     /**
      * Determines if this Sprite is touching a color.
-     * @param rgb RGB color, as a single number.
+     * @param color RGB color, as a single number.
      */
-    touchingColor(rgb: number) {
-      const b = this.rotatedBounds();
-
-      collisionCanvas.width = b.right - b.left;
-      collisionCanvas.height = b.top - b.bottom;
-
-      collisionRenderer.ctx.save();
-      collisionRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
-
-      this.stage.drawAll(collisionRenderer, this);
-      collisionRenderer.ctx.globalCompositeOperation = 'destination-in';
-      collisionRenderer.drawChild(this);
-
-      collisionRenderer.ctx.restore();
-
-      const data = collisionRenderer.ctx.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
-
-      rgb = rgb & 0xffffff;
-      const length = (b.right - b.left) * (b.top - b.bottom) * 4;
-      for (var i = 0; i < length; i += 4) {
-        if ((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) === rgb && data[i + 3]) {
-          return true;
-        }
-      }
-
-      return false;
+    touchingColor(color: number) {
+      return this.stage.renderer.spriteTouchesColor(this, color);
     }
 
     /**
@@ -1346,37 +1252,7 @@ namespace P.core {
      * @param touchingColor The other color, as an RGB color.
      */
     colorTouchingColor(sourceColor: number, touchingColor: number) {
-      var rb = this.rotatedBounds();
-
-      collisionCanvas.width = secondaryCollisionCanvas.width = rb.right - rb.left;
-      collisionCanvas.height = secondaryCollisionCanvas.height = rb.top - rb.bottom;
-
-      collisionRenderer.ctx.save();
-      secondaryCollisionRenderer.ctx.save();
-      collisionRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
-      secondaryCollisionRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
-
-      this.stage.drawAll(collisionRenderer, this);
-      secondaryCollisionRenderer.drawChild(this);
-
-      collisionRenderer.ctx.restore();
-
-      var dataA = collisionRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
-      var dataB = secondaryCollisionRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
-
-      sourceColor = sourceColor & 0xffffff;
-      touchingColor = touchingColor & 0xffffff;
-
-      var length = dataA.length;
-      for (var i = 0; i < length; i += 4) {
-        var touchesSource = (dataB[i] << 16 | dataB[i + 1] << 8 | dataB[i + 2]) === sourceColor && dataB[i + 3];
-        var touchesOther = (dataA[i] << 16 | dataA[i + 1] << 8 | dataA[i + 2]) === touchingColor && dataA[i + 3];
-        if (touchesSource && touchesOther) {
-          return true;
-        }
-      }
-
-      return false;
+      return this.stage.renderer.spriteColorTouchesColor(this, sourceColor, touchingColor);
     }
 
     /**
