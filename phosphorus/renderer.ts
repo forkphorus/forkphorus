@@ -373,7 +373,7 @@ namespace P.renderer {
       // TODO: do this in the shader if its possible/faster
       const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
       P.m3.multiply(matrix, this.globalScaleMatrix);
-      P.m3.multiply(matrix, P.m3.translation(240 + child.scratchX, 180 - child.scratchY));
+      P.m3.multiply(matrix, P.m3.translation(240 + child.scratchX | 0, 180 - child.scratchY | 0));
       if (P.core.isSprite(child)) {
         if (child.rotationStyle === RotationStyle.Normal && child.direction !== 90) {
           P.m3.multiply(matrix, P.m3.rotation(90 - child.direction));
