@@ -122,6 +122,17 @@ namespace P.renderer {
     return filter;
   }
 
+  /**
+   * Determines if a Sprite's filters will change its shape.
+   * @param filters The Sprite's filters
+   */
+  function filtersChangeShape(filters: P.core.Filters): boolean {
+    return filters.fisheye !== 0 ||
+      filters.mosaic !== 0 ||
+      filters.pixelate !== 0 ||
+      filters.whirl !== 0;
+  }
+
   // Used in the WebGL renderer for inverting sprites.
   // Create it only once for memory reasons.
   const horizontalInvertMatrix = P.m3.scaling(-1, 1);
@@ -586,9 +597,11 @@ namespace P.renderer {
     }
 
     spriteTouchesPoint(sprite: core.Sprite, x: number, y: number): boolean {
-      // TODO: use CPU when it makes sense (perhaps when it's very small, or
-      // there are no effects that would make the sprite go outside of its
-      // box)
+      // If filters will not change the shape of the sprite, it would be faster
+      // to avoid going to the GPU
+      if (!filtersChangeShape(sprite.filters)) {
+        return this.fallbackRenderer.spriteTouchesPoint(sprite, x, y);
+      }
 
       // Setup WebGL to render to a texture
       const texture = this.createTexture();
