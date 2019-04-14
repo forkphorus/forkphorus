@@ -91,4 +91,14 @@ namespace P.utils {
 
     return [h!, s * 100, l * 100];
   }
+
+  /**
+   * Clamps a number within a range
+   * @param number The number
+   * @param min Minimum, inclusive
+   * @param max Maximum, inclusive
+   */
+  export function clamp(number: number, min: number, max: number) {
+    return Math.min(max, Math.max(min, number));
+  }
 }

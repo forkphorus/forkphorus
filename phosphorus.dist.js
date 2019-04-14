@@ -320,6 +320,11 @@ var P;
                 this.u_opacity = this.getUniformLocation(this.program, 'u_opacity');
                 this.u_brightness = this.getUniformLocation(this.program, 'u_brightness');
                 this.u_color = this.getUniformLocation(this.program, 'u_color');
+                this.u_mosaic = this.getUniformLocation(this.program, 'u_mosaic');
+                this.u_whirl = this.getUniformLocation(this.program, 'u_whirl');
+                this.u_fisheye = this.getUniformLocation(this.program, 'u_fisheye');
+                this.u_pixelate = this.getUniformLocation(this.program, 'u_pixelate');
+                this.u_size = this.getUniformLocation(this.program, 'u_size');
                 // Create the quad buffer that we'll use for positioning and texture coordinates later.
                 this.quadBuffer = this.gl.createBuffer();
                 this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
@@ -441,6 +446,10 @@ var P;
                 this.canvas.height = scale * P.config.scale * 360;
                 this.resetBuffer(scale);
             }
+            /**
+             * Resizes and resets the current buffer
+             * @param scale Scale
+             */
             resetBuffer(scale) {
                 this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
                 this.globalScaleMatrix = P.m3.scaling(scale, scale);
@@ -452,6 +461,11 @@ var P;
                 this.gl.useProgram(this.program);
                 this._drawChild(child);
             }
+            /**
+             * Real implementation of drawChild()
+             * Shader must be set before calling (allows for using a different shader)
+             * @param child The child to draw
+             */
             _drawChild(child) {
                 this.gl.enableVertexAttribArray(this.a_position);
                 this.gl.enableVertexAttribArray(this.a_texcoord);
@@ -492,6 +506,12 @@ var P;
                 this.gl.uniform1f(this.u_opacity, 1 - child.filters.ghost / 100);
                 this.gl.uniform1f(this.u_brightness, child.filters.brightness / 100);
                 this.gl.uniform1f(this.u_color, child.filters.color / 200);
+                const mosaic = Math.round((Math.abs(child.filters.mosaic) + 10) / 10);
+                this.gl.uniform1f(this.u_mosaic, P.utils.clamp(mosaic, 1, 512));
+                this.gl.uniform1f(this.u_whirl, child.filters.whirl * Math.PI / -180);
+                this.gl.uniform1f(this.u_fisheye, Math.max(0, (child.filters.fisheye + 100) / 100));
+                this.gl.uniform1f(this.u_pixelate, Math.abs(child.filters.pixelate) / 10);
+                this.gl.uniform2f(this.u_size, costume.image.width, costume.image.height);
                 this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
             }
             drawLayer(canvas) {
@@ -531,8 +551,14 @@ var P;
     uniform float u_opacity;
     uniform float u_brightness;
     uniform float u_color;
+    uniform float u_mosaic;
+    uniform float u_whirl;
+    uniform float u_fisheye;
+    uniform float u_pixelate;
+    uniform vec2 u_size;
 
     const float minimumAlpha = 1.0 / 250.0;
+    const vec2 vecCenter = vec2(0.5, 0.5);
 
     // http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl
     vec3 rgb2hsv(vec3 c) {
@@ -550,7 +576,44 @@ var P;
     }
 
     void main() {
-      vec4 color = texture2D(u_texture, v_texcoord);
+      // varyings cannot be modified
+      vec2 texcoord = v_texcoord;
+
+      // apply mosaic
+      texcoord = fract(u_mosaic * v_texcoord);
+
+      // apply pixelate
+      if (u_pixelate != 0.0) {
+        vec2 texelSize = u_size / u_pixelate;
+        texcoord = (floor(texcoord * texelSize) + vecCenter) / texelSize;
+      }
+
+      // apply whirl
+      {
+        const float radius = 0.5;
+        vec2 offset = texcoord - vecCenter;
+        float offsetMagnitude = length(offset);
+        float whirlFactor = max(1.0 - (offsetMagnitude / radius), 0.0);
+        float whirlActual = u_whirl * whirlFactor * whirlFactor;
+        float sinWhirl = sin(whirlActual);
+        float cosWhirl = cos(whirlActual);
+        mat2 rotationMatrix = mat2(
+          cosWhirl, -sinWhirl,
+          sinWhirl, cosWhirl
+        );
+        texcoord = rotationMatrix * offset + vecCenter;
+      }
+
+      // apply fisheye
+      {
+        vec2 vec = (texcoord - vecCenter) / vecCenter;
+        float vecLength = length(vec);
+        float r = pow(min(vecLength, 1.0), u_fisheye) * max(1.0, vecLength);
+        vec2 unit = vec / vecLength;
+        texcoord = vecCenter + r * unit * vecCenter;
+      }
+
+      vec4 color = texture2D(u_texture, texcoord);
       if (color.a < minimumAlpha) {
         discard;
       }
@@ -566,7 +629,7 @@ var P;
       // the color effect is rather long
       // see https://github.com/LLK/scratch-render/blob/008dc5b15b30961301e6b9a08628a063b967a001/src/shaders/sprite.frag#L175-L189
       // code block to avoid leaking variables
-      {
+      if (u_color != 0.0) {
         vec3 hsv = rgb2hsv(color.rgb);
         // hsv.x = hue
         // hsv.y = saturation
@@ -637,6 +700,7 @@ var P;
                 // Allocate 4 bytes to store 1 RGBA pixel
                 const result = new Uint8Array(4);
                 // Coordinates are in pixels from the lower left corner
+                // We only care about 1 pixel, the pixel at the mouse cursor.
                 this.gl.readPixels(240 + x | 0, 180 + y | 0, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, result);
                 // Send rendering back to the canvas and not the buffer
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
@@ -2376,6 +2440,16 @@ var P;
             return [h, s * 100, l * 100];
         }
         utils.rgbToHSL = rgbToHSL;
+        /**
+         * Clamps a number within a range
+         * @param number The number
+         * @param min Minimum, inclusive
+         * @param max Maximum, inclusive
+         */
+        function clamp(number, min, max) {
+            return Math.min(max, Math.max(min, number));
+        }
+        utils.clamp = clamp;
     })(utils = P.utils || (P.utils = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
