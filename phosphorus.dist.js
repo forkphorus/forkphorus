@@ -1181,6 +1181,7 @@ var P;
                 this.penHue = 240;
                 this.penSaturation = 100;
                 this.penLightness = 50;
+                this.penAlpha = 1;
                 this.penCSS = '';
                 this.penSize = 1;
                 this.penColor = 0x000000;
@@ -1287,7 +1288,7 @@ var P;
                         x -= .5;
                         y -= .5;
                     }
-                    context.strokeStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
+                    context.strokeStyle = this.penCSS || 'hsla(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
                     context.lineWidth = this.penSize;
                     context.beginPath();
                     context.moveTo(240 + ox, 180 - oy);
@@ -1303,7 +1304,7 @@ var P;
                 var context = this.stage.penRenderer.ctx;
                 var x = this.scratchX;
                 var y = this.scratchY;
-                context.fillStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
+                context.fillStyle = this.penCSS || 'hsla(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
                 context.beginPath();
                 context.arc(240 + x, 180 - y, this.penSize / 2, 0, 2 * Math.PI, false);
                 context.fill();
@@ -1583,6 +1584,7 @@ var P;
                     this.penHue = hsl[0];
                     this.penSaturation = hsl[1];
                     this.penLightness = hsl[2];
+                    this.penAlpha = this.penColor >> 24 & 0xff / 0xff || 1;
                     this.penCSS = '';
                 }
             }
@@ -1604,6 +1606,13 @@ var P;
                         }
                         this.penSaturation = 100;
                         break;
+                    case 'transparency':
+                        this.penAlpha -= value / 100;
+                        if (this.penAlpha > 1)
+                            this.penAlpha = 1;
+                        if (this.penAlpha < 0)
+                            this.penAlpha = 0;
+                        break;
                 }
             }
             // Changes a pen color HSL parameter.
@@ -1623,6 +1632,9 @@ var P;
                             this.penLightness += 200;
                         }
                         this.penSaturation = 100;
+                        break;
+                    case 'transparency':
+                        this.penAlpha = Math.max(0, Math.min(1, value / 100));
                         break;
                 }
             }

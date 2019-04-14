@@ -1058,6 +1058,7 @@ namespace P.core {
     public penHue: number = 240;
     public penSaturation: number = 100;
     public penLightness: number = 50;
+    public penAlpha: number = 1;
     public penCSS: string = '';
     public penSize: number = 1;
     public penColor: number = 0x000000;
@@ -1185,7 +1186,7 @@ namespace P.core {
           x -= .5;
           y -= .5;
         }
-        context.strokeStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
+        context.strokeStyle = this.penCSS || 'hsla(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
         context.lineWidth = this.penSize;
         context.beginPath();
         context.moveTo(240 + ox, 180 - oy);
@@ -1203,7 +1204,7 @@ namespace P.core {
       var context = this.stage.penRenderer.ctx;
       var x = this.scratchX;
       var y = this.scratchY;
-      context.fillStyle = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
+      context.fillStyle = this.penCSS || 'hsla(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
       context.beginPath();
       context.arc(240 + x, 180 - y, this.penSize / 2, 0, 2 * Math.PI, false);
       context.fill();
@@ -1516,6 +1517,7 @@ namespace P.core {
         this.penHue = hsl[0];
         this.penSaturation = hsl[1];
         this.penLightness = hsl[2];
+        this.penAlpha = this.penColor >> 24 & 0xff / 0xff || 1;
         this.penCSS = '';
       }
     }
@@ -1538,6 +1540,11 @@ namespace P.core {
           }
           this.penSaturation = 100;
           break;
+        case 'transparency':
+          this.penAlpha -= value / 100;
+          if (this.penAlpha > 1) this.penAlpha = 1;
+          if (this.penAlpha < 0) this.penAlpha = 0;
+          break;
       }
     }
 
@@ -1558,6 +1565,9 @@ namespace P.core {
             this.penLightness += 200;
           }
           this.penSaturation = 100;
+          break;
+        case 'transparency':
+          this.penAlpha = Math.max(0, Math.min(1, value / 100));
           break;
       }
     }
