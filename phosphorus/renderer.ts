@@ -175,7 +175,9 @@ namespace P.renderer {
 
     void main() {
       vec4 color = texture2D(u_texture, v_texcoord);
-      if (color.a < minimumAlpha) discard;
+      if (color.a < minimumAlpha) {
+        discard;
+      }
 
       // apply ghost effect
       color.a *= u_opacity;
@@ -187,6 +189,7 @@ namespace P.renderer {
 
       // the color effect is rather long
       // see https://github.com/LLK/scratch-render/blob/008dc5b15b30961301e6b9a08628a063b967a001/src/shaders/sprite.frag#L175-L189
+      // code block to avoid leaking variables
       {
         vec3 hsv = rgb2hsv(color.rgb);
         // hsv.x = hue
@@ -257,23 +260,29 @@ namespace P.renderer {
         0, 1,
         1, 1,
       ]), this.gl.STATIC_DRAW);
-
-      // We only have a single shader program, so just get that setup now.
-      this.gl.useProgram(this.program);
-      this.gl.enableVertexAttribArray(this.a_position);
-      this.gl.enableVertexAttribArray(this.a_texcoord);
     }
 
     /**
      * Compile a single shader
      * @param type The type of the shader. Use this.gl.VERTEX_SHADER or FRAGMENT_SHADER
      * @param source The string source of the shader.
+     * @param definitions Flags to define in the shader source.
      */
-    compileShader(type: number, source: string): WebGLShader {
+    compileShader(type: number, source: string, definitions?: string[]): WebGLShader {
+      const addDefinition = (def: string) => {
+        source = '#define ' + def + '\n' + source;
+      }
+      if (definitions) {
+        for (const def of definitions) {
+          addDefinition(def);
+        }
+      }
+
       const shader = this.gl.createShader(type);
       if (!shader) {
         throw new Error('Cannot create shader');
       }
+
       this.gl.shaderSource(shader, source);
       this.gl.compileShader(shader);
 
@@ -290,10 +299,11 @@ namespace P.renderer {
      * Compiles a vertex shader and fragment shader into a program.
      * @param vs Vertex shader source.
      * @param fs Fragment shader source.
+     * @param definitions Things to define in the source of both shaders.
      */
-    compileProgram(vs: string, fs: string): WebGLProgram {
-      const vertexShader = this.compileShader(this.gl.VERTEX_SHADER, vs);
-      const fragmentShader = this.compileShader(this.gl.FRAGMENT_SHADER, fs);
+    compileProgram(vs: string, fs: string, definitions?: string[]): WebGLProgram {
+      const vertexShader = this.compileShader(this.gl.VERTEX_SHADER, vs, definitions);
+      const fragmentShader = this.compileShader(this.gl.FRAGMENT_SHADER, fs, definitions);
 
       const program = this.gl.createProgram();
       if (!program) {
@@ -313,10 +323,19 @@ namespace P.renderer {
     }
 
     /**
-     * Create a WebGL texture
-     * @param canvas The source canvas. Dimensions do not matter.
+     * Compiles the default shader
+     * @param definitions Things to define in the shader
      */
-    createTexture(canvas: HTMLImageElement | HTMLCanvasElement): WebGLTexture {
+    compileDefaultShader(definitions?: string[]) {
+      return this.compileProgram(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, definitions);
+    }
+
+    /**
+     * Creates a new texture without inserting data.
+     * Texture will be bound to TEXTURE_2D, so you can texImage2D() on it
+     * Mipmapping will be disabled to allow for any size texture.
+     */
+    createTexture(): WebGLTexture {
       const texture = this.gl.createTexture();
       if (!texture) {
         throw new Error('Cannot create texture');
@@ -327,6 +346,15 @@ namespace P.renderer {
       this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
       this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
 
+      return texture;
+    }
+
+    /**
+     * Converts a canvas to a WebGL texture
+     * @param canvas The source canvas. Dimensions do not matter.
+     */
+    convertToTexture(canvas: HTMLImageElement | HTMLCanvasElement): WebGLTexture {
+      const texture = this.createTexture();
       this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
       return texture;
     }
@@ -342,10 +370,26 @@ namespace P.renderer {
       return uniform;
     }
 
+    /**
+     * Creates a new framebuffer
+     */
+    createFramebuffer(): WebGLFramebuffer {
+      const frameBuffer = this.gl.createFramebuffer();
+      if (!frameBuffer) {
+        throw new Error('cannot create frame buffer');
+      }
+      return frameBuffer;
+    }
+
     reset(scale: number) {
       // Scale the actual canvas
       this.canvas.width = scale * P.config.scale * 480;
       this.canvas.height = scale * P.config.scale * 360;
+
+      this.resetBuffer(scale);
+    }
+
+    resetBuffer(scale: number) {
       this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
       this.globalScaleMatrix = P.m3.scaling(scale, scale);
 
@@ -355,11 +399,19 @@ namespace P.renderer {
     }
 
     drawChild(child: P.core.Base) {
+      this.gl.useProgram(this.program);
+      this._drawChild(child);
+    }
+
+    _drawChild(child: P.core.Base) {
+      this.gl.enableVertexAttribArray(this.a_position);
+      this.gl.enableVertexAttribArray(this.a_texcoord);
+
       // Create the texture if it doesn't already exist.
       // We'll create a texture only once for performance.
       const costume = child.costumes[child.currentCostumeIndex] as WebGLCostume;
       if (!costume._glTexture) {
-        const texture = this.createTexture(costume.image);
+        const texture = this.convertToTexture(costume.image);
         costume._glTexture = texture;
       }
       this.gl.bindTexture(this.gl.TEXTURE_2D, costume._glTexture);
@@ -400,7 +452,7 @@ namespace P.renderer {
     }
 
     drawLayer(canvas: HTMLCanvasElement) {
-      const texture = this.createTexture(canvas);
+      const texture = this.convertToTexture(canvas);
       this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
 
       this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
@@ -424,6 +476,11 @@ namespace P.renderer {
     public penLayer: HTMLCanvasElement;
     public stageLayer: HTMLCanvasElement;
     protected fallbackRenderer: ProjectRenderer;
+
+    protected frameBuffer1: WebGLFramebuffer = this.createFramebuffer();
+    protected frameBuffer2: WebGLFramebuffer = this.createFramebuffer();
+
+    protected spriteIntersectsSpriteProgram = this.compileDefaultShader(['SPRITE_INTERSECTS_SPRITE']);
 
     constructor(public stage: P.core.Stage) {
       super();
@@ -460,8 +517,38 @@ namespace P.renderer {
       this.fallbackRenderer.updateStageFilters();
     }
 
-    spriteTouchesPoint(spriteA: core.Sprite, x: number, y: number): boolean {
-      return this.fallbackRenderer.spriteTouchesPoint(spriteA, x, y);
+    spriteTouchesPoint(sprite: core.Sprite, x: number, y: number): boolean {
+      // TODO: use CPU when it makes sense (perhaps when it's very small, or
+      // there are no effects that would make the sprite go outside of its
+      // box)
+
+      // Setup WebGL to render to a texture
+      const texture = this.createTexture();
+      // null = no image data
+      this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 480, 360, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
+      const framebuffer = this.createFramebuffer();
+      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, framebuffer);
+      const attachmentPoint = this.gl.COLOR_ATTACHMENT0;
+      this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, attachmentPoint, this.gl.TEXTURE_2D, texture, 0);
+
+      // Resizes and properly clears our buffer
+      this.resetBuffer(1);
+
+      this.drawChild(sprite);
+
+      // Allocate 4 bytes to store 1 RGBA pixel
+      const result = new Uint8Array(4);
+      // Coordinates are in pixels from the lower left corner
+      this.gl.readPixels(240 + x | 0, 180 + y | 0, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, result);
+
+      // Send rendering back to the canvas and not the buffer
+      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+      // I don't know if it's necessary to delete these
+      this.gl.deleteTexture(texture);
+      this.gl.deleteFramebuffer(framebuffer);
+
+      // Just look for a non-zero alpha channel
+      return result[3] !== 0;
     }
 
     spritesIntersect(spriteA: core.Sprite, spriteB: core.Sprite): boolean {

@@ -331,17 +331,22 @@ var P;
                     0, 1,
                     1, 1,
                 ]), this.gl.STATIC_DRAW);
-                // We only have a single shader program, so just get that setup now.
-                this.gl.useProgram(this.program);
-                this.gl.enableVertexAttribArray(this.a_position);
-                this.gl.enableVertexAttribArray(this.a_texcoord);
             }
             /**
              * Compile a single shader
              * @param type The type of the shader. Use this.gl.VERTEX_SHADER or FRAGMENT_SHADER
              * @param source The string source of the shader.
+             * @param definitions Flags to define in the shader source.
              */
-            compileShader(type, source) {
+            compileShader(type, source, definitions) {
+                const addDefinition = (def) => {
+                    source = '#define ' + def + '\n' + source;
+                };
+                if (definitions) {
+                    for (const def of definitions) {
+                        addDefinition(def);
+                    }
+                }
                 const shader = this.gl.createShader(type);
                 if (!shader) {
                     throw new Error('Cannot create shader');
@@ -359,10 +364,11 @@ var P;
              * Compiles a vertex shader and fragment shader into a program.
              * @param vs Vertex shader source.
              * @param fs Fragment shader source.
+             * @param definitions Things to define in the source of both shaders.
              */
-            compileProgram(vs, fs) {
-                const vertexShader = this.compileShader(this.gl.VERTEX_SHADER, vs);
-                const fragmentShader = this.compileShader(this.gl.FRAGMENT_SHADER, fs);
+            compileProgram(vs, fs, definitions) {
+                const vertexShader = this.compileShader(this.gl.VERTEX_SHADER, vs, definitions);
+                const fragmentShader = this.compileShader(this.gl.FRAGMENT_SHADER, fs, definitions);
                 const program = this.gl.createProgram();
                 if (!program) {
                     throw new Error('Cannot create program');
@@ -378,10 +384,18 @@ var P;
                 return program;
             }
             /**
-             * Create a WebGL texture
-             * @param canvas The source canvas. Dimensions do not matter.
+             * Compiles the default shader
+             * @param definitions Things to define in the shader
              */
-            createTexture(canvas) {
+            compileDefaultShader(definitions) {
+                return this.compileProgram(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, definitions);
+            }
+            /**
+             * Creates a new texture without inserting data.
+             * Texture will be bound to TEXTURE_2D, so you can texImage2D() on it
+             * Mipmapping will be disabled to allow for any size texture.
+             */
+            createTexture() {
                 const texture = this.gl.createTexture();
                 if (!texture) {
                     throw new Error('Cannot create texture');
@@ -390,6 +404,14 @@ var P;
                 this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
                 this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
                 this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+                return texture;
+            }
+            /**
+             * Converts a canvas to a WebGL texture
+             * @param canvas The source canvas. Dimensions do not matter.
+             */
+            convertToTexture(canvas) {
+                const texture = this.createTexture();
                 this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
                 return texture;
             }
@@ -403,10 +425,23 @@ var P;
                 }
                 return uniform;
             }
+            /**
+             * Creates a new framebuffer
+             */
+            createFramebuffer() {
+                const frameBuffer = this.gl.createFramebuffer();
+                if (!frameBuffer) {
+                    throw new Error('cannot create frame buffer');
+                }
+                return frameBuffer;
+            }
             reset(scale) {
                 // Scale the actual canvas
                 this.canvas.width = scale * P.config.scale * 480;
                 this.canvas.height = scale * P.config.scale * 360;
+                this.resetBuffer(scale);
+            }
+            resetBuffer(scale) {
                 this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
                 this.globalScaleMatrix = P.m3.scaling(scale, scale);
                 // Clear the canvas
@@ -414,11 +449,17 @@ var P;
                 this.gl.clear(this.gl.COLOR_BUFFER_BIT);
             }
             drawChild(child) {
+                this.gl.useProgram(this.program);
+                this._drawChild(child);
+            }
+            _drawChild(child) {
+                this.gl.enableVertexAttribArray(this.a_position);
+                this.gl.enableVertexAttribArray(this.a_texcoord);
                 // Create the texture if it doesn't already exist.
                 // We'll create a texture only once for performance.
                 const costume = child.costumes[child.currentCostumeIndex];
                 if (!costume._glTexture) {
-                    const texture = this.createTexture(costume.image);
+                    const texture = this.convertToTexture(costume.image);
                     costume._glTexture = texture;
                 }
                 this.gl.bindTexture(this.gl.TEXTURE_2D, costume._glTexture);
@@ -429,7 +470,7 @@ var P;
                 // TODO: do this in the shader if its possible/faster
                 const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
                 P.m3.multiply(matrix, this.globalScaleMatrix);
-                P.m3.multiply(matrix, P.m3.translation(240 + child.scratchX, 180 - child.scratchY));
+                P.m3.multiply(matrix, P.m3.translation(240 + child.scratchX | 0, 180 - child.scratchY | 0));
                 if (P.core.isSprite(child)) {
                     if (child.rotationStyle === 0 /* Normal */ && child.direction !== 90) {
                         P.m3.multiply(matrix, P.m3.rotation(90 - child.direction));
@@ -454,7 +495,7 @@ var P;
                 this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
             }
             drawLayer(canvas) {
-                const texture = this.createTexture(canvas);
+                const texture = this.convertToTexture(canvas);
                 this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
                 this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
                 this.gl.vertexAttribPointer(this.a_texcoord, 2, this.gl.FLOAT, false, 0, 0);
@@ -510,7 +551,9 @@ var P;
 
     void main() {
       vec4 color = texture2D(u_texture, v_texcoord);
-      if (color.a < minimumAlpha) discard;
+      if (color.a < minimumAlpha) {
+        discard;
+      }
 
       // apply ghost effect
       color.a *= u_opacity;
@@ -522,6 +565,7 @@ var P;
 
       // the color effect is rather long
       // see https://github.com/LLK/scratch-render/blob/008dc5b15b30961301e6b9a08628a063b967a001/src/shaders/sprite.frag#L175-L189
+      // code block to avoid leaking variables
       {
         vec3 hsv = rgb2hsv(color.rgb);
         // hsv.x = hue
@@ -547,6 +591,9 @@ var P;
             constructor(stage) {
                 super();
                 this.stage = stage;
+                this.frameBuffer1 = this.createFramebuffer();
+                this.frameBuffer2 = this.createFramebuffer();
+                this.spriteIntersectsSpriteProgram = this.compileDefaultShader(['SPRITE_INTERSECTS_SPRITE']);
                 this.fallbackRenderer = new ProjectRenderer2D(stage);
                 this.penLayer = this.fallbackRenderer.penLayer;
                 this.stageLayer = this.fallbackRenderer.stageLayer;
@@ -572,8 +619,32 @@ var P;
             updateStageFilters() {
                 this.fallbackRenderer.updateStageFilters();
             }
-            spriteTouchesPoint(spriteA, x, y) {
-                return this.fallbackRenderer.spriteTouchesPoint(spriteA, x, y);
+            spriteTouchesPoint(sprite, x, y) {
+                // TODO: use CPU when it makes sense (perhaps when it's very small, or
+                // there are no effects that would make the sprite go outside of its
+                // box)
+                // Setup WebGL to render to a texture
+                const texture = this.createTexture();
+                // null = no image data
+                this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 480, 360, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
+                const framebuffer = this.createFramebuffer();
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, framebuffer);
+                const attachmentPoint = this.gl.COLOR_ATTACHMENT0;
+                this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, attachmentPoint, this.gl.TEXTURE_2D, texture, 0);
+                // Resizes and properly clears our buffer
+                this.resetBuffer(1);
+                this.drawChild(sprite);
+                // Allocate 4 bytes to store 1 RGBA pixel
+                const result = new Uint8Array(4);
+                // Coordinates are in pixels from the lower left corner
+                this.gl.readPixels(240 + x | 0, 180 + y | 0, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, result);
+                // Send rendering back to the canvas and not the buffer
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+                // I don't know if it's necessary to delete these
+                this.gl.deleteTexture(texture);
+                this.gl.deleteFramebuffer(framebuffer);
+                // Just look for a non-zero alpha channel
+                return result[3] !== 0;
             }
             spritesIntersect(spriteA, spriteB) {
                 return this.fallbackRenderer.spritesIntersect(spriteA, spriteB);
