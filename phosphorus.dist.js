@@ -583,15 +583,31 @@ var P;
                 P.m3.multiply(matrix, P.m3.scaling(costume.image.width, costume.image.height));
                 shader.uniformMatrix3('u_matrix', matrix);
                 // Effects
-                shader.uniform1f('u_opacity', 1 - child.filters.ghost / 100);
-                shader.uniform1f('u_brightness', child.filters.brightness / 100);
-                shader.uniform1f('u_color', child.filters.color / 200);
-                const mosaic = Math.round((Math.abs(child.filters.mosaic) + 10) / 10);
-                shader.uniform1f('u_mosaic', P.utils.clamp(mosaic, 1, 512));
-                shader.uniform1f('u_whirl', child.filters.whirl * Math.PI / -180);
-                shader.uniform1f('u_fisheye', Math.max(0, (child.filters.fisheye + 100) / 100));
-                shader.uniform1f('u_pixelate', Math.abs(child.filters.pixelate) / 10);
-                shader.uniform2f('u_size', costume.image.width, costume.image.height);
+                if (shader.hasUniform('u_opacity')) {
+                    shader.uniform1f('u_opacity', 1 - child.filters.ghost / 100);
+                }
+                if (shader.hasUniform('u_brightness')) {
+                    shader.uniform1f('u_brightness', child.filters.brightness / 100);
+                }
+                if (shader.hasUniform('u_color')) {
+                    shader.uniform1f('u_color', child.filters.color / 200);
+                }
+                if (shader.hasUniform('u_mosaic')) {
+                    const mosaic = Math.round((Math.abs(child.filters.mosaic) + 10) / 10);
+                    shader.uniform1f('u_mosaic', P.utils.clamp(mosaic, 1, 512));
+                }
+                if (shader.hasUniform('u_whirl')) {
+                    shader.uniform1f('u_whirl', child.filters.whirl * Math.PI / -180);
+                }
+                if (shader.hasUniform('u_fisheye')) {
+                    shader.uniform1f('u_fisheye', Math.max(0, (child.filters.fisheye + 100) / 100));
+                }
+                if (shader.hasUniform('u_pixelate')) {
+                    shader.uniform1f('u_pixelate', Math.abs(child.filters.pixelate) / 10);
+                }
+                if (shader.hasUniform('u_size')) {
+                    shader.uniform2f('u_size', costume.image.width, costume.image.height);
+                }
                 this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
             }
             drawLayer(canvas) {
@@ -628,9 +644,11 @@ var P;
     varying vec2 v_texcoord;
 
     uniform sampler2D u_texture;
+    #ifndef ONLY_SHAPE_FILTERS
+      uniform float u_brightness;
+      uniform float u_color;
+    #endif
     uniform float u_opacity;
-    uniform float u_brightness;
-    uniform float u_color;
     uniform float u_mosaic;
     uniform float u_whirl;
     uniform float u_fisheye;
@@ -706,10 +724,13 @@ var P;
       color.rgb *= u_opacity;
 
       // apply brightness effect
-      color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
+      #ifndef ONLY_SHAPE_FILTERS
+        color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
+      #endif
 
-      // the color effect is rather long
-      // see https://github.com/LLK/scratch-render/blob/008dc5b15b30961301e6b9a08628a063b967a001/src/shaders/sprite.frag#L175-L189
+      // The color effect is rather complicated. See:
+      // https://github.com/LLK/scratch-render/blob/008dc5b15b30961301e6b9a08628a063b967a001/src/shaders/sprite.frag#L175-L189
+      #ifndef ONLY_SHAPE_FILTERS
       if (u_color != 0.0) {
         vec3 hsv = rgb2hsv(color.rgb);
         // hsv.x = hue
@@ -726,6 +747,7 @@ var P;
         if (hsv.x < 0.0) hsv.x += 1.0;
         color = vec4(hsv2rgb(hsv), color.a);  
       }
+      #endif
 
       gl_FragColor = color;
     }
@@ -735,10 +757,34 @@ var P;
             constructor(stage) {
                 super();
                 this.stage = stage;
-                this.programIgnoreColor = this.compileVariant(['IGNORE_COLOR']);
+                this.shaderOnlyShapeFilters = this.compileVariant(['ONLY_SHAPE_FILTERS']);
                 this.fallbackRenderer = new ProjectRenderer2D(stage);
                 this.penLayer = this.fallbackRenderer.penLayer;
                 this.stageLayer = this.fallbackRenderer.stageLayer;
+            }
+            /**
+             * Sets this renderer to render to a framebuffer.
+             * Initializes, binds, attaches, and clears the texture and framebuffer.
+             * Framebuffer must be reset later.
+             * @param framebuffer The framebuffer
+             * @param texture The texture
+             */
+            setRenderToFramebuffer(framebuffer, texture) {
+                // setup framebuffer
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, framebuffer);
+                // setup texture
+                this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+                this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 480, 360, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
+                this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, texture, 0);
+                // fix viewport/clear
+                // always use a scale of 1 for now
+                this.resetFramebuffer(1);
+            }
+            /**
+             * Sets this renderer to render to the canvas instead of a framebuffer
+             */
+            resetRenderFramebuffer() {
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
             }
             penLine(color, size, x, y, x2, y2) {
                 this.fallbackRenderer.penLine(color, size, x, y, x2, y2);
@@ -767,24 +813,16 @@ var P;
                 if (!filtersAffectShape(sprite.filters)) {
                     return this.fallbackRenderer.spriteTouchesPoint(sprite, x, y);
                 }
-                // Setup WebGL to render to a texture
                 const texture = this.createTexture();
-                // null = no image data
-                this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 480, 360, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
                 const framebuffer = this.createFramebuffer();
-                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, framebuffer);
-                const attachmentPoint = this.gl.COLOR_ATTACHMENT0;
-                this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, attachmentPoint, this.gl.TEXTURE_2D, texture, 0);
-                // Resizes and properly clears our buffer
-                this.resetFramebuffer(1);
-                this.drawChild(sprite);
+                this.setRenderToFramebuffer(framebuffer, texture);
+                this._drawChild(sprite, this.shaderOnlyShapeFilters);
                 // Allocate 4 bytes to store 1 RGBA pixel
                 const result = new Uint8Array(4);
                 // Coordinates are in pixels from the lower left corner
                 // We only care about 1 pixel, the pixel at the mouse cursor.
                 this.gl.readPixels(240 + x | 0, 180 + y | 0, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, result);
-                // Send rendering back to the canvas and not the buffer
-                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+                this.resetRenderFramebuffer();
                 // I don't know if it's necessary to delete these
                 this.gl.deleteTexture(texture);
                 this.gl.deleteFramebuffer(framebuffer);
@@ -792,7 +830,30 @@ var P;
                 return result[3] !== 0;
             }
             spritesIntersect(spriteA, spriteB) {
-                return this.fallbackRenderer.spritesIntersect(spriteA, spriteB);
+                const textureA = this.createTexture();
+                const framebufferA = this.createFramebuffer();
+                const textureB = this.createTexture();
+                const framebufferB = this.createFramebuffer();
+                this.setRenderToFramebuffer(framebufferA, textureA);
+                this._drawChild(spriteA, this.shaderOnlyShapeFilters);
+                const resultA = new Uint8Array(480 * 360 * 4);
+                this.gl.readPixels(0, 0, 480, 360, this.gl.RGBA, this.gl.UNSIGNED_BYTE, resultA);
+                this.setRenderToFramebuffer(framebufferB, textureB);
+                this._drawChild(spriteB, this.shaderOnlyShapeFilters);
+                const resultB = new Uint8Array(480 * 360 * 4);
+                this.gl.readPixels(0, 0, 480, 360, this.gl.RGBA, this.gl.UNSIGNED_BYTE, resultB);
+                this.resetRenderFramebuffer();
+                this.gl.deleteTexture(textureA);
+                this.gl.deleteFramebuffer(framebufferA);
+                this.gl.deleteTexture(textureB);
+                this.gl.deleteFramebuffer(framebufferB);
+                const length = 480 * 360 * 4;
+                for (var i = 0; i < length; i += 4) {
+                    if (resultA[i + 3] && resultB[i + 3]) {
+                        return true;
+                    }
+                }
+                return false;
             }
             spriteTouchesColor(sprite, color) {
                 return this.fallbackRenderer.spriteTouchesColor(sprite, color);
