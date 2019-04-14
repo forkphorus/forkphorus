@@ -273,6 +273,7 @@ var P;
 (function (P) {
     var renderer;
     (function (renderer) {
+        // HELPERS
         /**
          * Create an HTML canvas.
          */
@@ -283,33 +284,127 @@ var P;
             return canvas;
         }
         /**
-         * Creates the CSS filter for a Filter object.
-         * The filter is generally an estimation of the actual effect.
-         * Includes brightness and color. (does not include ghost)
-         */
-        function cssFilter(filters) {
-            let filter = '';
-            if (filters.brightness) {
-                filter += 'brightness(' + (100 + filters.brightness) + '%) ';
-            }
-            if (filters.color) {
-                filter += 'hue-rotate(' + (filters.color / 200 * 360) + 'deg) ';
-            }
-            return filter;
-        }
-        /**
          * Determines if a Sprite's filters will change its shape.
          * @param filters The Sprite's filters
          */
-        function filtersChangeShape(filters) {
+        function filtersAffectShape(filters) {
             return filters.fisheye !== 0 ||
                 filters.mosaic !== 0 ||
                 filters.pixelate !== 0 ||
                 filters.whirl !== 0;
         }
+        // WEBGL
         // Used in the WebGL renderer for inverting sprites.
-        // Create it only once for memory reasons.
         const horizontalInvertMatrix = P.m3.scaling(-1, 1);
+        class ShaderVariant {
+            constructor(gl, program) {
+                // When loaded we'll lookup all of our attributes and uniforms, and store
+                // their locations locally.
+                // WebGL can tell us how many there are, so we can do lookups.
+                this.gl = gl;
+                this.program = program;
+                this.uniformLocations = {};
+                this.attributeLocations = {};
+                const activeUniforms = gl.getProgramParameter(program, this.gl.ACTIVE_UNIFORMS);
+                for (let index = 0; index < activeUniforms; index++) {
+                    const info = gl.getActiveUniform(program, index);
+                    if (!info) {
+                        throw new Error('uniform at index ' + index + ' does not exist');
+                    }
+                    const name = info.name;
+                    const location = gl.getUniformLocation(program, name);
+                    if (!location) {
+                        throw new Error('uniform named ' + name + ' does not exist');
+                    }
+                    this.uniformLocations[name] = location;
+                }
+                const activeAttributes = gl.getProgramParameter(program, this.gl.ACTIVE_ATTRIBUTES);
+                for (let index = 0; index < activeAttributes; index++) {
+                    const info = gl.getActiveAttrib(program, index);
+                    if (!info) {
+                        throw new Error('attribute at index ' + index + ' does not exist');
+                    }
+                    // Attribute index is location, I believe.
+                    this.attributeLocations[info.name] = index;
+                }
+            }
+            /**
+             * Sets a uniform to a float
+             * @param name The name of the uniform
+             * @param value A float
+             */
+            uniform1f(name, value) {
+                const location = this.getUniform(name);
+                this.gl.uniform1f(location, value);
+            }
+            /**
+             * Sets a uniform to a vec2
+             * @param name The name of the uniform
+             * @param a The first value
+             * @param b The second value
+             */
+            uniform2f(name, a, b) {
+                const location = this.getUniform(name);
+                this.gl.uniform2f(location, a, b);
+            }
+            /**
+             * Sets a uniform to a 3x3 matrix
+             * @param name The name of the uniform
+             * @param value The 3x3 matrix
+             */
+            uniformMatrix3(name, value) {
+                const location = this.getUniform(name);
+                this.gl.uniformMatrix3fv(location, false, value);
+            }
+            /**
+             * Determines if this shader variant contains a uniform.
+             * @param name The name of the uniform
+             */
+            hasUniform(name) {
+                return this.uniformLocations.hasOwnProperty(name);
+            }
+            /**
+             * Determines the location of a uniform, or errors if it does not exist.
+             * @param name The name of the uniform
+             */
+            getUniform(name) {
+                if (!this.hasUniform(name)) {
+                    throw new Error('uniform of name ' + name + ' does not exist');
+                }
+                return this.uniformLocations[name];
+            }
+            /**
+             * Binds a buffer to an attribute
+             * @param name The name of the attribute
+             * @param value The WebGL buffer to bind
+             */
+            attributeBuffer(name, value) {
+                if (!this.hasAttribute(name)) {
+                    throw new Error('attribute of name ' + name + ' does not exist');
+                }
+                const location = this.attributeLocations[name];
+                this.gl.enableVertexAttribArray(location);
+                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, value);
+                this.gl.vertexAttribPointer(location, 2, this.gl.FLOAT, false, 0, 0);
+            }
+            /**
+             * Determines if this shader contains an attribute
+             * @param name The name of the attribute
+             */
+            hasAttribute(name) {
+                return this.attributeLocations.hasOwnProperty(name);
+            }
+            /**
+             * Determines the location of an attribute, and errors if it does not exist.
+             * @param name The name of the attribute
+             */
+            getAttribute(name) {
+                if (!this.hasAttribute(name)) {
+                    throw new Error('attribute of name ' + name + ' does not exist');
+                }
+                return this.attributeLocations[name];
+            }
+        }
         class WebGLSpriteRenderer {
             constructor() {
                 this.canvas = createCanvas();
@@ -318,23 +413,11 @@ var P;
                     throw new Error('cannot get webgl rendering context');
                 }
                 this.gl = gl;
-                this.program = this.compileProgram(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader);
+                this.renderingShader = this.compileVariant([]);
                 // Enable transparency blending.
                 this.gl.enable(this.gl.BLEND);
                 // TODO: investigate other blending modes
                 this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
-                // Cache attribute/uniform locations for later
-                this.a_position = this.gl.getAttribLocation(this.program, 'a_position');
-                this.a_texcoord = this.gl.getAttribLocation(this.program, 'a_texcoord');
-                this.u_matrix = this.getUniformLocation(this.program, 'u_matrix');
-                this.u_opacity = this.getUniformLocation(this.program, 'u_opacity');
-                this.u_brightness = this.getUniformLocation(this.program, 'u_brightness');
-                this.u_color = this.getUniformLocation(this.program, 'u_color');
-                this.u_mosaic = this.getUniformLocation(this.program, 'u_mosaic');
-                this.u_whirl = this.getUniformLocation(this.program, 'u_whirl');
-                this.u_fisheye = this.getUniformLocation(this.program, 'u_fisheye');
-                this.u_pixelate = this.getUniformLocation(this.program, 'u_pixelate');
-                this.u_size = this.getUniformLocation(this.program, 'u_size');
                 // Create the quad buffer that we'll use for positioning and texture coordinates later.
                 this.quadBuffer = this.gl.createBuffer();
                 this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
@@ -399,11 +482,12 @@ var P;
                 return program;
             }
             /**
-             * Compiles the default shader
+             * Compiles a variant of the default shader.
              * @param definitions Things to define in the shader
              */
-            compileDefaultShader(definitions) {
-                return this.compileProgram(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, definitions);
+            compileVariant(definitions) {
+                const program = this.compileProgram(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, definitions);
+                return new ShaderVariant(this.gl, program);
             }
             /**
              * Creates a new texture without inserting data.
@@ -431,16 +515,6 @@ var P;
                 return texture;
             }
             /**
-             * Get the location of a uniform, or throw an error if it doesn't exist.
-             */
-            getUniformLocation(program, name) {
-                const uniform = this.gl.getUniformLocation(program, name);
-                if (!uniform) {
-                    throw new Error('Unknown uniform: ' + name);
-                }
-                return uniform;
-            }
-            /**
              * Creates a new framebuffer
              */
             createFramebuffer() {
@@ -454,13 +528,13 @@ var P;
                 // Scale the actual canvas
                 this.canvas.width = scale * P.config.scale * 480;
                 this.canvas.height = scale * P.config.scale * 360;
-                this.resetBuffer(scale);
+                this.resetFramebuffer(scale);
             }
             /**
-             * Resizes and resets the current buffer
+             * Resizes and resets the current framebuffer
              * @param scale Scale
              */
-            resetBuffer(scale) {
+            resetFramebuffer(scale) {
                 this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
                 this.globalScaleMatrix = P.m3.scaling(scale, scale);
                 // Clear the canvas
@@ -468,17 +542,15 @@ var P;
                 this.gl.clear(this.gl.COLOR_BUFFER_BIT);
             }
             drawChild(child) {
-                this.gl.useProgram(this.program);
-                this._drawChild(child);
+                this._drawChild(child, this.renderingShader);
             }
             /**
              * Real implementation of drawChild()
              * Shader must be set before calling (allows for using a different shader)
              * @param child The child to draw
              */
-            _drawChild(child) {
-                this.gl.enableVertexAttribArray(this.a_position);
-                this.gl.enableVertexAttribArray(this.a_texcoord);
+            _drawChild(child, shader) {
+                this.gl.useProgram(shader.program);
                 // Create the texture if it doesn't already exist.
                 // We'll create a texture only once for performance.
                 const costume = child.costumes[child.currentCostumeIndex];
@@ -487,10 +559,8 @@ var P;
                     costume._glTexture = texture;
                 }
                 this.gl.bindTexture(this.gl.TEXTURE_2D, costume._glTexture);
-                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
-                this.gl.vertexAttribPointer(this.a_texcoord, 2, this.gl.FLOAT, false, 0, 0);
-                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
-                this.gl.vertexAttribPointer(this.a_position, 2, this.gl.FLOAT, false, 0, 0);
+                shader.attributeBuffer('a_texcoord', this.quadBuffer);
+                shader.attributeBuffer('a_position', this.quadBuffer);
                 // TODO: do this in the shader if its possible/faster
                 const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
                 P.m3.multiply(matrix, this.globalScaleMatrix);
@@ -511,30 +581,30 @@ var P;
                 }
                 P.m3.multiply(matrix, P.m3.translation(-costume.rotationCenterX, -costume.rotationCenterY));
                 P.m3.multiply(matrix, P.m3.scaling(costume.image.width, costume.image.height));
-                this.gl.uniformMatrix3fv(this.u_matrix, false, matrix);
+                shader.uniformMatrix3('u_matrix', matrix);
                 // Effects
-                this.gl.uniform1f(this.u_opacity, 1 - child.filters.ghost / 100);
-                this.gl.uniform1f(this.u_brightness, child.filters.brightness / 100);
-                this.gl.uniform1f(this.u_color, child.filters.color / 200);
+                shader.uniform1f('u_opacity', 1 - child.filters.ghost / 100);
+                shader.uniform1f('u_brightness', child.filters.brightness / 100);
+                shader.uniform1f('u_color', child.filters.color / 200);
                 const mosaic = Math.round((Math.abs(child.filters.mosaic) + 10) / 10);
-                this.gl.uniform1f(this.u_mosaic, P.utils.clamp(mosaic, 1, 512));
-                this.gl.uniform1f(this.u_whirl, child.filters.whirl * Math.PI / -180);
-                this.gl.uniform1f(this.u_fisheye, Math.max(0, (child.filters.fisheye + 100) / 100));
-                this.gl.uniform1f(this.u_pixelate, Math.abs(child.filters.pixelate) / 10);
-                this.gl.uniform2f(this.u_size, costume.image.width, costume.image.height);
+                shader.uniform1f('u_mosaic', P.utils.clamp(mosaic, 1, 512));
+                shader.uniform1f('u_whirl', child.filters.whirl * Math.PI / -180);
+                shader.uniform1f('u_fisheye', Math.max(0, (child.filters.fisheye + 100) / 100));
+                shader.uniform1f('u_pixelate', Math.abs(child.filters.pixelate) / 10);
+                shader.uniform2f('u_size', costume.image.width, costume.image.height);
                 this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
             }
             drawLayer(canvas) {
+                const shader = this.renderingShader;
+                this.gl.useProgram(shader.program);
                 const texture = this.convertToTexture(canvas);
                 this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
-                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
-                this.gl.vertexAttribPointer(this.a_texcoord, 2, this.gl.FLOAT, false, 0, 0);
-                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
-                this.gl.vertexAttribPointer(this.a_position, 2, this.gl.FLOAT, false, 0, 0);
+                shader.attributeBuffer('a_texcoord', this.quadBuffer);
+                shader.attributeBuffer('a_position', this.quadBuffer);
                 const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
                 P.m3.multiply(matrix, this.globalScaleMatrix);
-                this.gl.uniformMatrix3fv(this.u_matrix, false, matrix);
-                this.gl.uniform1f(this.u_opacity, 1);
+                shader.uniformMatrix3('u_matrix', matrix);
+                shader.uniform1f('u_opacity', 1);
                 // TODO: is it necessary to delete textures?
                 this.gl.deleteTexture(texture);
             }
@@ -590,7 +660,9 @@ var P;
       vec2 texcoord = v_texcoord;
 
       // apply mosaic
-      texcoord = fract(u_mosaic * v_texcoord);
+      {
+        texcoord = fract(u_mosaic * v_texcoord);
+      }
 
       // apply pixelate
       if (u_pixelate != 0.0) {
@@ -638,7 +710,6 @@ var P;
 
       // the color effect is rather long
       // see https://github.com/LLK/scratch-render/blob/008dc5b15b30961301e6b9a08628a063b967a001/src/shaders/sprite.frag#L175-L189
-      // code block to avoid leaking variables
       if (u_color != 0.0) {
         vec3 hsv = rgb2hsv(color.rgb);
         // hsv.x = hue
@@ -664,9 +735,7 @@ var P;
             constructor(stage) {
                 super();
                 this.stage = stage;
-                this.frameBuffer1 = this.createFramebuffer();
-                this.frameBuffer2 = this.createFramebuffer();
-                this.spriteIntersectsSpriteProgram = this.compileDefaultShader(['SPRITE_INTERSECTS_SPRITE']);
+                this.programIgnoreColor = this.compileVariant(['IGNORE_COLOR']);
                 this.fallbackRenderer = new ProjectRenderer2D(stage);
                 this.penLayer = this.fallbackRenderer.penLayer;
                 this.stageLayer = this.fallbackRenderer.stageLayer;
@@ -695,7 +764,7 @@ var P;
             spriteTouchesPoint(sprite, x, y) {
                 // If filters will not change the shape of the sprite, it would be faster
                 // to avoid going to the GPU
-                if (!filtersChangeShape(sprite.filters)) {
+                if (!filtersAffectShape(sprite.filters)) {
                     return this.fallbackRenderer.spriteTouchesPoint(sprite, x, y);
                 }
                 // Setup WebGL to render to a texture
@@ -707,7 +776,7 @@ var P;
                 const attachmentPoint = this.gl.COLOR_ATTACHMENT0;
                 this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, attachmentPoint, this.gl.TEXTURE_2D, texture, 0);
                 // Resizes and properly clears our buffer
-                this.resetBuffer(1);
+                this.resetFramebuffer(1);
                 this.drawChild(sprite);
                 // Allocate 4 bytes to store 1 RGBA pixel
                 const result = new Uint8Array(4);
@@ -733,6 +802,22 @@ var P;
             }
         }
         renderer.WebGLProjectRenderer = WebGLProjectRenderer;
+        // 2D
+        /**
+         * Creates the CSS filter for a Filter object.
+         * The filter is generally an estimation of the actual effect.
+         * Includes brightness and color. (does not include ghost)
+         */
+        function cssFilter(filters) {
+            let filter = '';
+            if (filters.brightness) {
+                filter += 'brightness(' + (100 + filters.brightness) + '%) ';
+            }
+            if (filters.color) {
+                filter += 'hue-rotate(' + (filters.color / 200 * 360) + 'deg) ';
+            }
+            return filter;
+        }
         class SpriteRenderer2D {
             constructor() {
                 this.noEffects = false;
