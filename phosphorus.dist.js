@@ -5012,19 +5012,20 @@ var P;
                         const doc = parser.parseFromString(source, 'image/svg+xml');
                         const svg = doc.documentElement;
                         patchSVG(svg);
-                        const patchedSource = svg.outerHTML;
+                        const canvas = document.createElement('canvas');
                         return new Promise((resolve, reject) => {
-                            const image = new Image();
-                            image.onload = () => {
-                                // 0 width/height images cause issues
-                                if (image.width === 0 || image.height === 0) {
-                                    resolve(new Image(1, 1));
-                                    return;
+                            canvg(canvas, new XMLSerializer().serializeToString(svg), {
+                                ignoreMouse: true,
+                                ignoreAnimation: true,
+                                ignoreClear: true,
+                                renderCallback: function () {
+                                    if (canvas.width === 0 || canvas.height === 0) {
+                                        resolve(new Image());
+                                        return;
+                                    }
+                                    resolve(canvas);
                                 }
-                                resolve(image);
-                            };
-                            image.onerror = (err) => reject('Failed to load SVG image: ' + image.src);
-                            image.src = 'data:image/svg+xml;,' + encodeURIComponent(patchedSource);
+                            });
                         });
                     });
                 }
