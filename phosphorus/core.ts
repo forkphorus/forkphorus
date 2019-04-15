@@ -1229,16 +1229,7 @@ namespace P.core {
       } else {
         if (!this.visible) return false;
         const sprites = this.stage.getObjects(thing);
-        const renderer = this.stage.renderer;
-
-        for (var i = sprites.length; i--;) {
-          const sprite = sprites[i];
-          if (renderer.spritesIntersect(this, sprite)) {
-            return true;
-          }
-        }
-
-        return false;
+        return this.stage.renderer.spritesIntersect(this, sprites);
       }
     }
 

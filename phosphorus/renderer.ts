@@ -78,9 +78,9 @@ namespace P.renderer {
     /**
      * Determines if a Sprite is touching another Sprite
      * @param spriteA The first sprite
-     * @param spriteB The other sprite
+     * @param spriteB Other sprites to test for collision
      */
-    spritesIntersect(spriteA: P.core.Base, spriteB: P.core.Base): boolean;
+    spritesIntersect(spriteA: P.core.Base, otherSprites: P.core.Base[]): boolean;
     /**
      * Determines if a Sprite is touching a color
      * @param sprite The sprite
@@ -735,36 +735,39 @@ namespace P.renderer {
       return result[3] !== 0;
     }
 
-    spritesIntersect(spriteA: core.Sprite, spriteB: core.Sprite): boolean {
-      const textureA = this.createTexture();
-      const framebufferA = this.createFramebuffer();
+    spritesIntersect(spriteA: core.Sprite, otherSprites: core.Base[]): boolean {
+      // Render the original Sprite into a buffer just once
+      const baseResult = new Uint8Array(480 * 360 * 4);
+      const baseTexture = this.createTexture();
+      const baseBuffer = this.createFramebuffer();
+      this.setRenderToFramebuffer(baseBuffer, baseTexture);
+      this._drawChild(spriteA, this.shaderOnlyShapeFilters);
+      this.gl.readPixels(0, 0, 480, 360, this.gl.RGBA, this.gl.UNSIGNED_BYTE, baseResult);
+
+      // Setup the rendering for the other sprite just once for performance
+      const otherResult = new Uint8Array(480 * 360 * 4);
       const textureB = this.createTexture();
       const framebufferB = this.createFramebuffer();
-
-      this.setRenderToFramebuffer(framebufferA, textureA);
-      this._drawChild(spriteA, this.shaderOnlyShapeFilters);
-      const resultA = new Uint8Array(480 * 360 * 4);
-      this.gl.readPixels(0, 0, 480, 360, this.gl.RGBA, this.gl.UNSIGNED_BYTE, resultA);
-
       this.setRenderToFramebuffer(framebufferB, textureB);
-      this._drawChild(spriteB, this.shaderOnlyShapeFilters);
-      const resultB = new Uint8Array(480 * 360 * 4);
-      this.gl.readPixels(0, 0, 480, 360, this.gl.RGBA, this.gl.UNSIGNED_BYTE, resultB);
 
-      this.resetRenderFramebuffer();
+      for (var i = 0; i < otherSprites.length; i++) {
+        const otherSprite = otherSprites[i];
+        if (!otherSprite.visible) continue;
 
-      this.gl.deleteTexture(textureA);
-      this.gl.deleteFramebuffer(framebufferA);
-      this.gl.deleteTexture(textureB);
-      this.gl.deleteFramebuffer(framebufferB);
+        // Does the rendering of the sprite
+        this._drawChild(otherSprite, this.shaderOnlyShapeFilters);
+        this.gl.readPixels(0, 0, 480, 360, this.gl.RGBA, this.gl.UNSIGNED_BYTE, otherResult)
 
-      const length = 480 * 360 * 4;
-      for (var i = 0; i < length; i += 4) {
-        if (resultA[i + 3] && resultB[i + 3]) {
-          return true;
+        const length = 480 * 360 * 4;
+        for (var i = 0; i < length; i += 4) {
+          if (baseResult[i + 3] && otherResult[i + 3]) {
+            this.resetRenderFramebuffer();
+            return true;
+          }
         }
       }
 
+      this.resetRenderFramebuffer();
       return false;
     }
 
@@ -971,52 +974,55 @@ namespace P.renderer {
       return data[3] !== 0;
     }
 
-    spritesIntersect(spriteA: P.core.Base, spriteB: P.core.Base) {
-      if (!spriteB.visible) return false;
-
-      const mb = spriteA.rotatedBounds();
-      const ob = spriteB.rotatedBounds();
-
-      if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
-        return false;
-      }
-
-      const left = Math.max(mb.left, ob.left);
-      const top = Math.min(mb.top, ob.top);
-      const right = Math.min(mb.right, ob.right);
-      const bottom = Math.max(mb.bottom, ob.bottom);
-
-      const width = right - left;
-      const height = top - bottom;
-
-      if (width < 1 || height < 1) {
-        return false;
-      }
-
-      workingRenderer.canvas.width = width;
-      workingRenderer.canvas.height = height;
-
-      workingRenderer.ctx.save();
-      workingRenderer.noEffects = true;
-
-      workingRenderer.ctx.translate(-(left + 240), -(180 - top));
-      workingRenderer.drawChild(spriteA);
-      workingRenderer.ctx.globalCompositeOperation = 'source-in';
-      workingRenderer.drawChild(spriteB);
-
-      workingRenderer.noEffects = false;
-      workingRenderer.ctx.restore();
-
-      const data = workingRenderer.ctx.getImageData(0, 0, width, height).data;
-      const length = data.length;
-
-      for (var j = 0; j < length; j += 4) {
-        // check for the opacity byte being a non-zero number
-        if (data[j + 3]) {
-          return true;
+    spritesIntersect(spriteA: core.Base, otherSprites: core.Base[]) {
+      for (var i = 0; i < otherSprites.length; i++) {
+        const spriteB = otherSprites[i];
+        if (!spriteB.visible) continue;
+  
+        const mb = spriteA.rotatedBounds();
+        const ob = spriteB.rotatedBounds();
+  
+        if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
+          return false;
         }
-      }
+  
+        const left = Math.max(mb.left, ob.left);
+        const top = Math.min(mb.top, ob.top);
+        const right = Math.min(mb.right, ob.right);
+        const bottom = Math.max(mb.bottom, ob.bottom);
+  
+        const width = right - left;
+        const height = top - bottom;
+  
+        if (width < 1 || height < 1) {
+          return false;
+        }
+  
+        workingRenderer.canvas.width = width;
+        workingRenderer.canvas.height = height;
+  
+        workingRenderer.ctx.save();
+        workingRenderer.noEffects = true;
+  
+        workingRenderer.ctx.translate(-(left + 240), -(180 - top));
+        workingRenderer.drawChild(spriteA);
+        workingRenderer.ctx.globalCompositeOperation = 'source-in';
+        workingRenderer.drawChild(spriteB);
+  
+        workingRenderer.noEffects = false;
+        workingRenderer.ctx.restore();
+  
+        const data = workingRenderer.ctx.getImageData(0, 0, width, height).data;
+        const length = data.length;
+  
+        for (var j = 0; j < length; j += 4) {
+          // check for the opacity byte being a non-zero number
+          if (data[j + 3]) {
+            return true;
+          }
+        }
 
+      }
       return false;
     }
 
