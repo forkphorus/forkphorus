@@ -1950,6 +1950,7 @@ var P;
                 this.penHue = 240;
                 this.penSaturation = 100;
                 this.penLightness = 50;
+                this.penAlpha = 1;
                 this.penCSS = '';
                 this.penSize = 1;
                 this.penColor = 0x000000;
@@ -2049,8 +2050,7 @@ var P;
                 this.scratchX = x;
                 this.scratchY = y;
                 if (this.isPenDown && !this.isDragging) {
-                    const color = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
-                    this.stage.renderer.penLine(color, this.penSize, ox, oy, x, y);
+                    this.stage.renderer.penLine(this.getPenCSS(), this.penSize, ox, oy, x, y);
                 }
                 if (this.saying) {
                     this.updateBubble();
@@ -2058,12 +2058,15 @@ var P;
             }
             // Makes a pen dot at the current location.
             dotPen() {
-                const color = this.penCSS || 'hsl(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%)';
-                this.stage.renderer.penDot(color, this.penSize, this.scratchX, this.scratchY);
+                this.stage.renderer.penDot(this.getPenCSS(), this.penSize, this.scratchX, this.scratchY);
             }
             // Stamps the sprite onto the pen layer.
             stamp() {
                 this.stage.renderer.penStamp(this);
+            }
+            getPenCSS() {
+                // This is only temporary
+                return this.penCSS || 'hsla(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
             }
             // Faces in a direction.
             setDirection(degrees) {
@@ -2270,6 +2273,7 @@ var P;
                     this.penHue = hsl[0];
                     this.penSaturation = hsl[1];
                     this.penLightness = hsl[2];
+                    this.penAlpha = this.penColor >> 24 & 0xff / 0xff || 1;
                     this.penCSS = '';
                 }
             }
@@ -2291,6 +2295,13 @@ var P;
                         }
                         this.penSaturation = 100;
                         break;
+                    case 'transparency':
+                        this.penAlpha -= value / 100;
+                        if (this.penAlpha > 1)
+                            this.penAlpha = 1;
+                        if (this.penAlpha < 0)
+                            this.penAlpha = 0;
+                        break;
                 }
             }
             // Changes a pen color HSL parameter.
@@ -2310,6 +2321,9 @@ var P;
                             this.penLightness += 200;
                         }
                         this.penSaturation = 100;
+                        break;
+                    case 'transparency':
+                        this.penAlpha = Math.max(0, Math.min(1, value / 100));
                         break;
                 }
             }
@@ -5698,19 +5712,20 @@ var P;
                         const doc = parser.parseFromString(source, 'image/svg+xml');
                         const svg = doc.documentElement;
                         patchSVG(svg);
-                        const patchedSource = svg.outerHTML;
+                        const canvas = document.createElement('canvas');
                         return new Promise((resolve, reject) => {
-                            const image = new Image();
-                            image.onload = () => {
-                                // 0 width/height images cause issues
-                                if (image.width === 0 || image.height === 0) {
-                                    resolve(new Image(1, 1));
-                                    return;
+                            canvg(canvas, new XMLSerializer().serializeToString(svg), {
+                                ignoreMouse: true,
+                                ignoreAnimation: true,
+                                ignoreClear: true,
+                                renderCallback: function () {
+                                    if (canvas.width === 0 || canvas.height === 0) {
+                                        resolve(new Image());
+                                        return;
+                                    }
+                                    resolve(canvas);
                                 }
-                                resolve(image);
-                            };
-                            image.onerror = (err) => reject('Failed to load SVG image: ' + image.src);
-                            image.src = 'data:image/svg+xml;,' + encodeURIComponent(patchedSource);
+                            });
                         });
                     });
                 }
