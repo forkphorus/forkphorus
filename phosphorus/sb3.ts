@@ -1049,6 +1049,33 @@ namespace P.sb3.compiler {
       const procedure = new P.sb3.Scratch3Procedure(f, warp, argumentNames);
       currentTarget.procedures[name] = procedure;
     },
+
+    // Makey Makey (extension)
+    makeymakey_whenMakeyKeyPressed(block, f) {
+      const key = compileExpression(block.inputs.KEY);
+      const keyMap = {
+        // The key will be a full expression, including quotes around strings.
+        '"SPACE"': 'space',
+        '"UP"': 'up arrow',
+        '"DOWN"': 'down arrow',
+        '"LEFT"': 'left arrow',
+        '"RIGHT"': 'right arrow',
+        '"w"': 'w',
+        '"a"': 'a',
+        '"s"': 's',
+        '"d"': 'd',
+        '"f"': 'f',
+        '"g"': 'g',
+        // TODO: are other keys supported?
+        // TODO: support non-compile-time constants
+      };
+      if (keyMap.hasOwnProperty(key)) {
+        const keyCode = P.utils.getKeyCode(keyMap[key]);
+        currentTarget.listeners.whenKeyPressed[keyCode].push(f);
+      } else {
+        console.warn('unknown makey makey key', key);
+      }
+    },
   };
 
   // An untyped undefined works as it does in Scratch 3.
@@ -1391,6 +1418,12 @@ namespace P.sb3.compiler {
     // Music (extension)
     music_getTempo(block) {
       return numberExpr('self.tempoBPM');
+    },
+
+    // Makey Makey (extension)
+    makeymakey_menu_KEY(block) {
+      const key = block.fields.KEY[0];
+      return sanitizedExpression(key);
     },
 
     // Legacy no-ops
