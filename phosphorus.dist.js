@@ -1288,7 +1288,7 @@ var P;
                         x -= .5;
                         y -= .5;
                     }
-                    context.strokeStyle = this.penCSS || 'hsla(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
+                    context.strokeStyle = this.penCSS || 'hsla(' + this.penHue + 'deg,' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
                     context.lineWidth = this.penSize;
                     context.beginPath();
                     context.moveTo(240 + ox, 180 - oy);
@@ -1304,7 +1304,7 @@ var P;
                 var context = this.stage.penRenderer.ctx;
                 var x = this.scratchX;
                 var y = this.scratchY;
-                context.fillStyle = this.penCSS || 'hsla(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
+                context.fillStyle = this.penCSS || 'hsla(' + this.penHue + 'deg,' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
                 context.beginPath();
                 context.arc(240 + x, 180 - y, this.penSize / 2, 0, 2 * Math.PI, false);
                 context.fill();
@@ -1593,8 +1593,7 @@ var P;
                 this.setPenColorHSL();
                 switch (param) {
                     case 'color':
-                        this.penHue = value * 360 / 200;
-                        this.penSaturation = 100;
+                        this.penHue = value * 360 / 100;
                         break;
                     case 'saturation':
                         this.penSaturation = value;
@@ -1604,7 +1603,6 @@ var P;
                         if (this.penLightness < 0) {
                             this.penLightness += 200;
                         }
-                        this.penSaturation = 100;
                         break;
                     case 'transparency':
                         this.penAlpha -= value / 100;
@@ -1620,8 +1618,7 @@ var P;
                 this.setPenColorHSL();
                 switch (param) {
                     case 'color':
-                        this.penHue += value * 360 / 200;
-                        this.penSaturation = 100;
+                        this.penHue += value * 360 / 100;
                         break;
                     case 'saturation':
                         this.penSaturation += value;
@@ -1631,7 +1628,6 @@ var P;
                         if (this.penLightness < 0) {
                             this.penLightness += 200;
                         }
-                        this.penSaturation = 100;
                         break;
                     case 'transparency':
                         this.penAlpha = Math.max(0, Math.min(1, value / 100));
