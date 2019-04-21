@@ -7,7 +7,7 @@
 namespace P.sb2 {
 
   const ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
-  const SOUNDBANK_URL = 'https://raw.githubusercontent.com/LLK/scratch-flash/v429/src/soundbank/';
+  const SOUNDBANK_URL = P.config.canUseCORS ? 'soundbank/' : 'https://forkphorus.github.com/soundbank/';
   const WAV_FILES = {
     'AcousticGuitar_F3': 'instruments/AcousticGuitar_F3_22k.wav',
     'AcousticPiano_As3': 'instruments/AcousticPiano(5)_A%233_22k.wav',

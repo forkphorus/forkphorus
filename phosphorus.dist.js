@@ -183,6 +183,7 @@ var P;
         config.framerate = 30;
         config.debug = window.location.search.includes("debug");
         config.PROJECT_API = 'https://projects.scratch.mit.edu/$id';
+        config.canUseCORS = ['http:', 'https:'].indexOf(location.protocol) > -1;
     })(config = P.config || (P.config = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
@@ -1931,7 +1932,7 @@ var P;
     var sb2;
     (function (sb2) {
         const ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
-        const SOUNDBANK_URL = 'https://raw.githubusercontent.com/LLK/scratch-flash/v429/src/soundbank/';
+        const SOUNDBANK_URL = P.config.canUseCORS ? 'soundbank/' : 'https://forkphorus.github.com/soundbank/';
         const WAV_FILES = {
             'AcousticGuitar_F3': 'instruments/AcousticGuitar_F3_22k.wav',
             'AcousticPiano_As3': 'instruments/AcousticPiano(5)_A%233_22k.wav',
