@@ -1,8 +1,10 @@
 # Test Suite
 
-https://forkphorus.github.io/tests/suite.html
+Test suite for forkphorus. Automatically runs a few Scratch projects and validates they function correctly.
 
-Test suite for forkphorus.
+To visit the test suite: [https://forkphorus.github.io/tests/suite.html](https://forkphorus.github.io/tests/suite.html)
+
+To visit the test suite in benchmark mode: [https://forkphorus.github.io/tests/suite.html?benchmark](https://forkphorus.github.io/tests/suite.html?benchmark) (runs each test 50 times)
 
 ## Scratch 3
 
