@@ -29,7 +29,7 @@ namespace P.utils {
 
   import RotationStyle = P.core.RotationStyle;
   /**
-   * Parses a Scratch rotation style string to a RoationStyle enum
+   * Parses a Scratch rotation style string to a RotationStyle enum
    */
   export function parseRotationStyle(style: string): RotationStyle {
     switch (style) {
