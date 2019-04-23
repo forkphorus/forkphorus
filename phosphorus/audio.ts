@@ -99,16 +99,16 @@ namespace P.audio {
     }
 
     return new Promise((resolve, reject) => {
-      decodeADPCMAudio(ab, function(err, buffer) {
+      decodeADPCMAudio(ab, function(err1: any, buffer: AudioBuffer) {
         if (buffer) {
           resolve(buffer);
           return;
         }
 
         // Hope that the audio context will know what to do
-        audio.context.decodeAudioData(ab)
+        audio.context!.decodeAudioData(ab)
           .then((buffer) => resolve(buffer))
-          .catch((err) => reject(err));
+          .catch((err2) => reject(`Could not decode audio: ${err1} | ${err2}`));
       });
     });
   }
