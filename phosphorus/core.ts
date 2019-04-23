@@ -1631,7 +1631,9 @@ namespace P.core {
     public name: string;
     public buffer: AudioBuffer;
     public duration: number;
-    public node: AudioNode | null;
+    public node: GainNode | null = null;
+    public source: AudioBufferSourceNode;
+    public target: Base;
 
     constructor(data: { name: string; buffer: AudioBuffer; }) {
       this.name = data.name;

@@ -33,9 +33,370 @@ if (!('Promise' in window)) {
 /// <reference path="phosphorus.ts" />
 var P;
 (function (P) {
+    var config;
+    (function (config) {
+        config.scale = window.devicePixelRatio || 1;
+        config.hasTouchEvents = 'ontouchstart' in document;
+        config.framerate = 30;
+        config.debug = window.location.search.includes("debug");
+        config.PROJECT_API = 'https://projects.scratch.mit.edu/$id';
+        config.canUseCORS = ['http:', 'https:'].indexOf(location.protocol) > -1;
+    })(config = P.config || (P.config = {}));
+})(P || (P = {}));
+/// <reference path="phosphorus.ts" />
+/// <reference path="config.ts" />
+var P;
+(function (P) {
     var audio;
     (function (audio) {
-        audio.context = new AudioContext();
+        audio.context = getAudioContext();
+        if (audio.context) {
+            var volume = 0.3;
+            var volumeNode = audio.context.createGain();
+            volumeNode.gain.value = volume;
+            volumeNode.connect(audio.context.destination);
+        }
+        function getAudioContext() {
+            if (window.AudioContext) {
+                return new AudioContext();
+            }
+            else if (window.webkitAudioContext) {
+                return new window.webkitAudioContext();
+            }
+            else {
+                return null;
+            }
+        }
+        function playSound(sound, sprite) {
+            if (!audio.context)
+                return;
+            if (!sound.buffer)
+                return;
+            if (sound.source) {
+                sound.source.disconnect();
+            }
+            sound.source = audio.context.createBufferSource();
+            sound.source.buffer = sound.buffer;
+            sound.source.connect(sound.node);
+            sound.source.start(audio.context.currentTime);
+        }
+        audio.playSound = playSound;
+        function playSpan(span, key, duration, connection) {
+            if (!audio.context) {
+                return;
+            }
+            var source = audio.context.createBufferSource();
+            var note = audio.context.createGain();
+            var buffer = soundbank[span.name];
+            if (!buffer)
+                return;
+            source.buffer = buffer;
+            if (source.loop = span.loop) {
+                source.loopStart = span.loopStart;
+                source.loopEnd = span.loopEnd;
+            }
+            source.connect(note);
+            note.connect(connection);
+            var time = audio.context.currentTime;
+            source.playbackRate.value = Math.pow(2, (key - 69) / 12) / span.baseRatio;
+            var gain = note.gain;
+            gain.value = 0;
+            gain.setValueAtTime(0, time);
+            if (span.attackEnd < duration) {
+                gain.linearRampToValueAtTime(1, time + span.attackEnd);
+                if (span.decayTime > 0 && span.holdEnd < duration) {
+                    gain.linearRampToValueAtTime(1, time + span.holdEnd);
+                    if (span.decayEnd < duration) {
+                        gain.linearRampToValueAtTime(0, time + span.decayEnd);
+                    }
+                    else {
+                        gain.linearRampToValueAtTime(1 - (duration - span.holdEnd) / span.decayTime, time + duration);
+                    }
+                }
+                else {
+                    gain.linearRampToValueAtTime(1, time + duration);
+                }
+            }
+            else {
+                gain.linearRampToValueAtTime(1, time + duration);
+            }
+            gain.linearRampToValueAtTime(0, time + duration + 0.02267573696);
+            source.start(time);
+            source.stop(time + duration + 0.02267573696);
+        }
+        audio.playSpan = playSpan;
+        /*
+          copy(JSON.stringify(drums.map(function(d) {
+            var decayTime = d[4] || 0;
+            var baseRatio = Math.pow(2, (60 - d[1] - 69) / 12);
+            if (d[2]) {
+              var length = d[3] - d[2];
+              baseRatio = 22050 * Math.round(length * 440 * baseRatio / 22050) / length / 440;
+            }
+            return {
+              name: d[0],
+              baseRatio: baseRatio,
+              loop: !!d[2],
+              loopStart: d[2] / 22050,
+              loopEnd: d[3] / 22050,
+              attackEnd: 0,
+              holdEnd: 0,
+              decayEnd: decayTime
+            }
+          }))
+        */
+        audio.drums = [
+            { name: 'SnareDrum', baseRatio: 0.5946035575013605, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+            { name: 'Tom', baseRatio: 0.5946035575013605, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+            { name: 'SideStick', baseRatio: 0.5946035575013605, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+            { name: 'Crash', baseRatio: 0.8908987181403393, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+            { name: 'HiHatOpen', baseRatio: 0.9438743126816935, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+            { name: 'HiHatClosed', baseRatio: 0.5946035575013605, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+            { name: 'Tambourine', baseRatio: 0.5946035575013605, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+            { name: 'Clap', baseRatio: 0.5946035575013605, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+            { name: 'Claves', baseRatio: 0.5946035575013605, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+            { name: 'WoodBlock', baseRatio: 0.7491535384383408, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+            { name: 'Cowbell', baseRatio: 0.5946035575013605, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+            { name: 'Triangle', baseRatio: 0.8514452780229479, loop: true, loopStart: 0.7638548752834468, loopEnd: 0.7825396825396825, attackEnd: 0, holdEnd: 0, decayEnd: 2 },
+            { name: 'Bongo', baseRatio: 0.5297315471796477, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+            { name: 'Conga', baseRatio: 0.7954545454545454, loop: true, loopStart: 0.1926077097505669, loopEnd: 0.20403628117913833, attackEnd: 0, holdEnd: 0, decayEnd: 2 },
+            { name: 'Cabasa', baseRatio: 0.5946035575013605, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+            { name: 'GuiroLong', baseRatio: 0.5946035575013605, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+            { name: 'Vibraslap', baseRatio: 0.8408964152537145, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+            { name: 'Cuica', baseRatio: 0.7937005259840998, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
+        ];
+        /*
+          copy(JSON.stringify(instruments.map(function(g) {
+            return g.map(function(r) {
+              var attackTime = r[5] ? r[5][0] * 0.001 : 0;
+              var holdTime = r[5] ? r[5][1] * 0.001 : 0;
+              var decayTime = r[5] ? r[5][2] : 0;
+              var baseRatio = Math.pow(2, (r[2] - 69) / 12);
+              if (r[3] !== -1) {
+                var length = r[4] - r[3];
+                baseRatio = 22050 * Math.round(length * 440 * baseRatio / 22050) / length / 440;
+              }
+              return {
+                top: r[0],
+                name: r[1],
+                baseRatio: baseRatio,
+                loop: r[3] !== -1,
+                loopStart: r[3] / 22050,
+                loopEnd: r[4] / 22050,
+                attackEnd: attackTime,
+                holdEnd: attackTime + holdTime,
+                decayEnd: attackTime + holdTime + decayTime
+              }
+            })
+          }))
+        */
+        audio.instruments = [
+            [
+                { top: 38, name: 'AcousticPiano_As3', baseRatio: 0.5316313272700484, loop: true, loopStart: 0.465578231292517, loopEnd: 0.7733786848072562, attackEnd: 0, holdEnd: 0.1, decayEnd: 22.1 },
+                { top: 44, name: 'AcousticPiano_C4', baseRatio: 0.5905141892259927, loop: true, loopStart: 0.6334693877551021, loopEnd: 0.8605442176870748, attackEnd: 0, holdEnd: 0.1, decayEnd: 20.1 },
+                { top: 51, name: 'AcousticPiano_G4', baseRatio: 0.8843582887700535, loop: true, loopStart: 0.5532879818594104, loopEnd: 0.5609977324263039, attackEnd: 0, holdEnd: 0.08, decayEnd: 18.08 },
+                { top: 62, name: 'AcousticPiano_C6', baseRatio: 2.3557692307692304, loop: true, loopStart: 0.5914739229024943, loopEnd: 0.6020861678004535, attackEnd: 0, holdEnd: 0.08, decayEnd: 16.08 },
+                { top: 70, name: 'AcousticPiano_F5', baseRatio: 1.5776515151515151, loop: true, loopStart: 0.5634920634920635, loopEnd: 0.5879818594104308, attackEnd: 0, holdEnd: 0.04, decayEnd: 14.04 },
+                { top: 77, name: 'AcousticPiano_Ds6', baseRatio: 2.800762112139358, loop: true, loopStart: 0.560907029478458, loopEnd: 0.5836281179138322, attackEnd: 0, holdEnd: 0.02, decayEnd: 10.02 },
+                { top: 85, name: 'AcousticPiano_Ds6', baseRatio: 2.800762112139358, loop: true, loopStart: 0.560907029478458, loopEnd: 0.5836281179138322, attackEnd: 0, holdEnd: 0, decayEnd: 8 },
+                { top: 90, name: 'AcousticPiano_Ds6', baseRatio: 2.800762112139358, loop: true, loopStart: 0.560907029478458, loopEnd: 0.5836281179138322, attackEnd: 0, holdEnd: 0, decayEnd: 6 },
+                { top: 96, name: 'AcousticPiano_D7', baseRatio: 5.275119617224881, loop: true, loopStart: 0.3380498866213152, loopEnd: 0.34494331065759637, attackEnd: 0, holdEnd: 0, decayEnd: 3 },
+                { top: 128, name: 'AcousticPiano_D7', baseRatio: 5.275119617224881, loop: true, loopStart: 0.3380498866213152, loopEnd: 0.34494331065759637, attackEnd: 0, holdEnd: 0, decayEnd: 2 }
+            ], [
+                { top: 48, name: 'ElectricPiano_C2', baseRatio: 0.14870515241435123, loop: true, loopStart: 0.6956009070294784, loopEnd: 0.7873015873015873, attackEnd: 0, holdEnd: 0.08, decayEnd: 10.08 },
+                { top: 74, name: 'ElectricPiano_C4', baseRatio: 0.5945685670261941, loop: true, loopStart: 0.5181859410430839, loopEnd: 0.5449433106575964, attackEnd: 0, holdEnd: 0.04, decayEnd: 8.04 },
+                { top: 128, name: 'ElectricPiano_C4', baseRatio: 0.5945685670261941, loop: true, loopStart: 0.5181859410430839, loopEnd: 0.5449433106575964, attackEnd: 0, holdEnd: 0, decayEnd: 6 }
+            ], [
+                { top: 128, name: 'Organ_G2', baseRatio: 0.22283731584620914, loop: true, loopStart: 0.05922902494331066, loopEnd: 0.1510204081632653, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
+            ], [{ top: 40, name: 'AcousticGuitar_F3', baseRatio: 0.3977272727272727, loop: true, loopStart: 1.6628117913832199, loopEnd: 1.6685260770975057, attackEnd: 0, holdEnd: 0, decayEnd: 15 },
+                { top: 56, name: 'AcousticGuitar_F3', baseRatio: 0.3977272727272727, loop: true, loopStart: 1.6628117913832199, loopEnd: 1.6685260770975057, attackEnd: 0, holdEnd: 0, decayEnd: 13.5 },
+                { top: 60, name: 'AcousticGuitar_F3', baseRatio: 0.3977272727272727, loop: true, loopStart: 1.6628117913832199, loopEnd: 1.6685260770975057, attackEnd: 0, holdEnd: 0, decayEnd: 12 },
+                { top: 67, name: 'AcousticGuitar_F3', baseRatio: 0.3977272727272727, loop: true, loopStart: 1.6628117913832199, loopEnd: 1.6685260770975057, attackEnd: 0, holdEnd: 0, decayEnd: 8.5 },
+                { top: 72, name: 'AcousticGuitar_F3', baseRatio: 0.3977272727272727, loop: true, loopStart: 1.6628117913832199, loopEnd: 1.6685260770975057, attackEnd: 0, holdEnd: 0, decayEnd: 7 },
+                { top: 83, name: 'AcousticGuitar_F3', baseRatio: 0.3977272727272727, loop: true, loopStart: 1.6628117913832199, loopEnd: 1.6685260770975057, attackEnd: 0, holdEnd: 0, decayEnd: 5.5 },
+                { top: 128, name: 'AcousticGuitar_F3', baseRatio: 0.3977272727272727, loop: true, loopStart: 1.6628117913832199, loopEnd: 1.6685260770975057, attackEnd: 0, holdEnd: 0, decayEnd: 4.5 }
+            ], [
+                { top: 40, name: 'ElectricGuitar_F3', baseRatio: 0.39615522817103843, loop: true, loopStart: 1.5733333333333333, loopEnd: 1.5848072562358, attackEnd: 0, holdEnd: 0, decayEnd: 15 },
+                { top: 56, name: 'ElectricGuitar_F3', baseRatio: 0.39615522817103843, loop: true, loopStart: 1.5733333333333333, loopEnd: 1.5848072562358277, attackEnd: 0, holdEnd: 0, decayEnd: 13.5 },
+                { top: 60, name: 'ElectricGuitar_F3', baseRatio: 0.39615522817103843, loop: true, loopStart: 1.5733333333333333, loopEnd: 1.5848072562358277, attackEnd: 0, holdEnd: 0, decayEnd: 12 },
+                { top: 67, name: 'ElectricGuitar_F3', baseRatio: 0.39615522817103843, loop: true, loopStart: 1.5733333333333333, loopEnd: 1.5848072562358277, attackEnd: 0, holdEnd: 0, decayEnd: 8.5 },
+                { top: 72, name: 'ElectricGuitar_F3', baseRatio: 0.39615522817103843, loop: true, loopStart: 1.5733333333333333, loopEnd: 1.5848072562358277, attackEnd: 0, holdEnd: 0, decayEnd: 7 },
+                { top: 83, name: 'ElectricGuitar_F3', baseRatio: 0.39615522817103843, loop: true, loopStart: 1.5733333333333333, loopEnd: 1.5848072562358277, attackEnd: 0, holdEnd: 0, decayEnd: 5.5 },
+                { top: 128, name: 'ElectricGuitar_F3', baseRatio: 0.39615522817103843, loop: true, loopStart: 1.5733333333333333, loopEnd: 1.5848072562358277, attackEnd: 0, holdEnd: 0, decayEnd: 4.5 }
+            ], [
+                { top: 34, name: 'ElectricBass_G1', baseRatio: 0.11111671034065712, loop: true, loopStart: 1.9007709750566892, loopEnd: 1.9212244897959183, attackEnd: 0, holdEnd: 0, decayEnd: 17 },
+                { top: 48, name: 'ElectricBass_G1', baseRatio: 0.11111671034065712, loop: true, loopStart: 1.9007709750566892, loopEnd: 1.9212244897959183, attackEnd: 0, holdEnd: 0, decayEnd: 14 },
+                { top: 64, name: 'ElectricBass_G1', baseRatio: 0.11111671034065712, loop: true, loopStart: 1.9007709750566892, loopEnd: 1.9212244897959183, attackEnd: 0, holdEnd: 0, decayEnd: 12 },
+                { top: 128, name: 'ElectricBass_G1', baseRatio: 0.11111671034065712, loop: true, loopStart: 1.9007709750566892, loopEnd: 1.9212244897959183, attackEnd: 0, holdEnd: 0, decayEnd: 10 }
+            ], [
+                { top: 38, name: 'Pizz_G2', baseRatio: 0.21979665071770335, loop: true, loopStart: 0.3879365079365079, loopEnd: 0.3982766439909297, attackEnd: 0, holdEnd: 0, decayEnd: 5 },
+                { top: 45, name: 'Pizz_G2', baseRatio: 0.21979665071770335, loop: true, loopStart: 0.3879365079365079, loopEnd: 0.3982766439909297, attackEnd: 0, holdEnd: 0.012, decayEnd: 4.012 },
+                { top: 56, name: 'Pizz_A3', baseRatio: 0.503654636820466, loop: true, loopStart: 0.5197278911564626, loopEnd: 0.5287528344671202, attackEnd: 0, holdEnd: 0, decayEnd: 4 },
+                { top: 64, name: 'Pizz_A3', baseRatio: 0.503654636820466, loop: true, loopStart: 0.5197278911564626, loopEnd: 0.5287528344671202, attackEnd: 0, holdEnd: 0, decayEnd: 3.2 },
+                { top: 72, name: 'Pizz_E4', baseRatio: 0.7479647218453188, loop: true, loopStart: 0.7947845804988662, loopEnd: 0.7978231292517007, attackEnd: 0, holdEnd: 0, decayEnd: 2.8 },
+                { top: 80, name: 'Pizz_E4', baseRatio: 0.7479647218453188, loop: true, loopStart: 0.7947845804988662, loopEnd: 0.7978231292517007, attackEnd: 0, holdEnd: 0, decayEnd: 2.2 },
+                { top: 128, name: 'Pizz_E4', baseRatio: 0.7479647218453188, loop: true, loopStart: 0.7947845804988662, loopEnd: 0.7978231292517007, attackEnd: 0, holdEnd: 0, decayEnd: 1.5 }
+            ], [
+                { top: 41, name: 'Cello_C2', baseRatio: 0.14870515241435123, loop: true, loopStart: 0.3876643990929705, loopEnd: 0.40294784580498866, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+                { top: 52, name: 'Cello_As2', baseRatio: 0.263755980861244, loop: true, loopStart: 0.3385487528344671, loopEnd: 0.35578231292517004, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+                { top: 62, name: 'Violin_D4', baseRatio: 0.6664047388781432, loop: true, loopStart: 0.48108843537414964, loopEnd: 0.5151927437641723, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+                { top: 75, name: 'Violin_A4', baseRatio: 0.987460815047022, loop: true, loopStart: 0.14108843537414967, loopEnd: 0.15029478458049886, attackEnd: 0.07, holdEnd: 0.07, decayEnd: 0.07 },
+                { top: 128, name: 'Violin_E5', baseRatio: 1.4885238523852387, loop: true, loopStart: 0.10807256235827664, loopEnd: 0.1126530612244898, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
+            ], [
+                { top: 30, name: 'BassTrombone_A2_3', baseRatio: 0.24981872564125807, loop: true, loopStart: 0.061541950113378686, loopEnd: 0.10702947845804989, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+                { top: 40, name: 'BassTrombone_A2_2', baseRatio: 0.24981872564125807, loop: true, loopStart: 0.08585034013605441, loopEnd: 0.13133786848072562, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+                { top: 55, name: 'Trombone_B3', baseRatio: 0.5608240680183126, loop: true, loopStart: 0.12, loopEnd: 0.17673469387755103, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+                { top: 88, name: 'Trombone_B3', baseRatio: 0.5608240680183126, loop: true, loopStart: 0.12, loopEnd: 0.17673469387755103, attackEnd: 0.05, holdEnd: 0.05, decayEnd: 0.05 },
+                { top: 128, name: 'Trumpet_E5', baseRatio: 1.4959294436906376, loop: true, loopStart: 0.1307936507936508, loopEnd: 0.14294784580498865, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
+            ], [
+                { top: 128, name: 'Clarinet_C4', baseRatio: 0.5940193965517241, loop: true, loopStart: 0.6594104308390023, loopEnd: 0.7014965986394558, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
+            ], [
+                { top: 40, name: 'TenorSax_C3', baseRatio: 0.2971698113207547, loop: true, loopStart: 0.4053968253968254, loopEnd: 0.4895238095238095, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+                { top: 50, name: 'TenorSax_C3', baseRatio: 0.2971698113207547, loop: true, loopStart: 0.4053968253968254, loopEnd: 0.4895238095238095, attackEnd: 0.02, holdEnd: 0.02, decayEnd: 0.02 },
+                { top: 59, name: 'TenorSax_C3', baseRatio: 0.2971698113207547, loop: true, loopStart: 0.4053968253968254, loopEnd: 0.4895238095238095, attackEnd: 0.04, holdEnd: 0.04, decayEnd: 0.04 },
+                { top: 67, name: 'AltoSax_A3', baseRatio: 0.49814747876378096, loop: true, loopStart: 0.3875736961451247, loopEnd: 0.4103854875283447, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+                { top: 75, name: 'AltoSax_A3', baseRatio: 0.49814747876378096, loop: true, loopStart: 0.3875736961451247, loopEnd: 0.4103854875283447, attackEnd: 0.02, holdEnd: 0.02, decayEnd: 0.02 },
+                { top: 80, name: 'AltoSax_A3', baseRatio: 0.49814747876378096, loop: true, loopStart: 0.3875736961451247, loopEnd: 0.4103854875283447, attackEnd: 0.02, holdEnd: 0.02, decayEnd: 0.02 },
+                { top: 128, name: 'AltoSax_C6', baseRatio: 2.3782742681047764, loop: true, loopStart: 0.05705215419501134, loopEnd: 0.0838095238095238, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
+            ], [
+                { top: 61, name: 'Flute_B5_2', baseRatio: 2.255113636363636, loop: true, loopStart: 0.08430839002267573, loopEnd: 0.10244897959183673, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+                { top: 128, name: 'Flute_B5_1', baseRatio: 2.255113636363636, loop: true, loopStart: 0.10965986394557824, loopEnd: 0.12780045351473923, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
+            ], [
+                { top: 128, name: 'WoodenFlute_C5', baseRatio: 1.1892952324548416, loop: true, loopStart: 0.5181859410430839, loopEnd: 0.7131065759637188, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
+            ], [
+                { top: 57, name: 'Bassoon_C3', baseRatio: 0.29700969827586204, loop: true, loopStart: 0.11011337868480725, loopEnd: 0.19428571428571428, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+                { top: 67, name: 'Bassoon_C3', baseRatio: 0.29700969827586204, loop: true, loopStart: 0.11011337868480725, loopEnd: 0.19428571428571428, attackEnd: 0.04, holdEnd: 0.04, decayEnd: 0.04 },
+                { top: 76, name: 'Bassoon_C3', baseRatio: 0.29700969827586204, loop: true, loopStart: 0.11011337868480725, loopEnd: 0.19428571428571428, attackEnd: 0.08, holdEnd: 0.08, decayEnd: 0.08 },
+                { top: 84, name: 'EnglishHorn_F3', baseRatio: 0.39601293103448276, loop: true, loopStart: 0.341859410430839, loopEnd: 0.4049886621315193, attackEnd: 0.04, holdEnd: 0.04, decayEnd: 0.04 },
+                { top: 128, name: 'EnglishHorn_D4', baseRatio: 0.6699684005833739, loop: true, loopStart: 0.22027210884353743, loopEnd: 0.23723356009070296, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
+            ], [
+                { top: 39, name: 'Choir_F3', baseRatio: 0.3968814788643197, loop: true, loopStart: 0.6352380952380953, loopEnd: 1.8721541950113378, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+                { top: 50, name: 'Choir_F3', baseRatio: 0.3968814788643197, loop: true, loopStart: 0.6352380952380953, loopEnd: 1.8721541950113378, attackEnd: 0.04, holdEnd: 0.04, decayEnd: 0.04 },
+                { top: 61, name: 'Choir_F3', baseRatio: 0.3968814788643197, loop: true, loopStart: 0.6352380952380953, loopEnd: 1.8721541950113378, attackEnd: 0.06, holdEnd: 0.06, decayEnd: 0.06 },
+                { top: 72, name: 'Choir_F4', baseRatio: 0.7928898424161845, loop: true, loopStart: 0.7415419501133786, loopEnd: 2.1059410430839, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+                { top: 128, name: 'Choir_F5', baseRatio: 1.5879576065654504, loop: true, loopStart: 0.836281179138322, loopEnd: 2.0585487528344673, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
+            ], [
+                { top: 38, name: 'Vibraphone_C3', baseRatio: 0.29829545454545453, loop: true, loopStart: 0.2812698412698413, loopEnd: 0.28888888888888886, attackEnd: 0, holdEnd: 0.1, decayEnd: 8.1 },
+                { top: 48, name: 'Vibraphone_C3', baseRatio: 0.29829545454545453, loop: true, loopStart: 0.2812698412698413, loopEnd: 0.28888888888888886, attackEnd: 0, holdEnd: 0.1, decayEnd: 7.6 },
+                { top: 59, name: 'Vibraphone_C3', baseRatio: 0.29829545454545453, loop: true, loopStart: 0.2812698412698413, loopEnd: 0.28888888888888886, attackEnd: 0, holdEnd: 0.06, decayEnd: 7.06 },
+                { top: 70, name: 'Vibraphone_C3', baseRatio: 0.29829545454545453, loop: true, loopStart: 0.2812698412698413, loopEnd: 0.28888888888888886, attackEnd: 0, holdEnd: 0.04, decayEnd: 6.04 },
+                { top: 78, name: 'Vibraphone_C3', baseRatio: 0.29829545454545453, loop: true, loopStart: 0.2812698412698413, loopEnd: 0.28888888888888886, attackEnd: 0, holdEnd: 0.02, decayEnd: 5.02 },
+                { top: 86, name: 'Vibraphone_C3', baseRatio: 0.29829545454545453, loop: true, loopStart: 0.2812698412698413, loopEnd: 0.28888888888888886, attackEnd: 0, holdEnd: 0, decayEnd: 4 },
+                { top: 128, name: 'Vibraphone_C3', baseRatio: 0.29829545454545453, loop: true, loopStart: 0.2812698412698413, loopEnd: 0.28888888888888886, attackEnd: 0, holdEnd: 0, decayEnd: 3 }
+            ], [
+                { top: 128, name: 'MusicBox_C4', baseRatio: 0.5937634640241276, loop: true, loopStart: 0.6475283446712018, loopEnd: 0.6666666666666666, attackEnd: 0, holdEnd: 0, decayEnd: 2 }
+            ], [
+                { top: 128, name: 'SteelDrum_D5', baseRatio: 1.3660402567543959, loop: false, loopStart: -0.000045351473922902495, loopEnd: -0.000045351473922902495, attackEnd: 0, holdEnd: 0, decayEnd: 2 }
+            ], [
+                { top: 128, name: 'Marimba_C4', baseRatio: 0.5946035575013605, loop: false, loopStart: -0.000045351473922902495, loopEnd: -0.000045351473922902495, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
+            ], [
+                { top: 80, name: 'SynthLead_C4', baseRatio: 0.5942328422565577, loop: true, loopStart: 0.006122448979591836, loopEnd: 0.06349206349206349, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
+                { top: 128, name: 'SynthLead_C6', baseRatio: 2.3760775862068964, loop: true, loopStart: 0.005623582766439909, loopEnd: 0.01614512471655329, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
+            ], [
+                { top: 38, name: 'SynthPad_A3', baseRatio: 0.4999105065330231, loop: true, loopStart: 0.1910204081632653, loopEnd: 3.9917006802721087, attackEnd: 0.05, holdEnd: 0.05, decayEnd: 0.05 },
+                { top: 50, name: 'SynthPad_A3', baseRatio: 0.4999105065330231, loop: true, loopStart: 0.1910204081632653, loopEnd: 3.9917006802721087, attackEnd: 0.08, holdEnd: 0.08, decayEnd: 0.08 },
+                { top: 62, name: 'SynthPad_A3', baseRatio: 0.4999105065330231, loop: true, loopStart: 0.1910204081632653, loopEnd: 3.9917006802721087, attackEnd: 0.11, holdEnd: 0.11, decayEnd: 0.11 },
+                { top: 74, name: 'SynthPad_A3', baseRatio: 0.4999105065330231, loop: true, loopStart: 0.1910204081632653, loopEnd: 3.9917006802721087, attackEnd: 0.15, holdEnd: 0.15, decayEnd: 0.15 },
+                { top: 86, name: 'SynthPad_A3', baseRatio: 0.4999105065330231, loop: true, loopStart: 0.1910204081632653, loopEnd: 3.9917006802721087, attackEnd: 0.2, holdEnd: 0.2, decayEnd: 0.2 },
+                { top: 128, name: 'SynthPad_C6', baseRatio: 2.3820424708835755, loop: true, loopStart: 0.11678004535147392, loopEnd: 0.41732426303854875, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
+            ]
+        ];
+        const SOUNDBANK_URL = P.config.canUseCORS ? 'soundbank/' : 'https://forkphorus.github.com/soundbank/';
+        const SOUNDBANK_FILES = {
+            'AcousticGuitar_F3': 'instruments/AcousticGuitar_F3_22k.wav',
+            'AcousticPiano_As3': 'instruments/AcousticPiano(5)_A%233_22k.wav',
+            'AcousticPiano_C4': 'instruments/AcousticPiano(5)_C4_22k.wav',
+            'AcousticPiano_G4': 'instruments/AcousticPiano(5)_G4_22k.wav',
+            'AcousticPiano_F5': 'instruments/AcousticPiano(5)_F5_22k.wav',
+            'AcousticPiano_C6': 'instruments/AcousticPiano(5)_C6_22k.wav',
+            'AcousticPiano_Ds6': 'instruments/AcousticPiano(5)_D%236_22k.wav',
+            'AcousticPiano_D7': 'instruments/AcousticPiano(5)_D7_22k.wav',
+            'AltoSax_A3': 'instruments/AltoSax_A3_22K.wav',
+            'AltoSax_C6': 'instruments/AltoSax(3)_C6_22k.wav',
+            'Bassoon_C3': 'instruments/Bassoon_C3_22k.wav',
+            'BassTrombone_A2_2': 'instruments/BassTrombone_A2(2)_22k.wav',
+            'BassTrombone_A2_3': 'instruments/BassTrombone_A2(3)_22k.wav',
+            'Cello_C2': 'instruments/Cello(3b)_C2_22k.wav',
+            'Cello_As2': 'instruments/Cello(3)_A%232_22k.wav',
+            'Choir_F3': 'instruments/Choir(4)_F3_22k.wav',
+            'Choir_F4': 'instruments/Choir(4)_F4_22k.wav',
+            'Choir_F5': 'instruments/Choir(4)_F5_22k.wav',
+            'Clarinet_C4': 'instruments/Clarinet_C4_22k.wav',
+            'ElectricBass_G1': 'instruments/ElectricBass(2)_G1_22k.wav',
+            'ElectricGuitar_F3': 'instruments/ElectricGuitar(2)_F3(1)_22k.wav',
+            'ElectricPiano_C2': 'instruments/ElectricPiano_C2_22k.wav',
+            'ElectricPiano_C4': 'instruments/ElectricPiano_C4_22k.wav',
+            'EnglishHorn_D4': 'instruments/EnglishHorn(1)_D4_22k.wav',
+            'EnglishHorn_F3': 'instruments/EnglishHorn(1)_F3_22k.wav',
+            'Flute_B5_1': 'instruments/Flute(3)_B5(1)_22k.wav',
+            'Flute_B5_2': 'instruments/Flute(3)_B5(2)_22k.wav',
+            'Marimba_C4': 'instruments/Marimba_C4_22k.wav',
+            'MusicBox_C4': 'instruments/MusicBox_C4_22k.wav',
+            'Organ_G2': 'instruments/Organ(2)_G2_22k.wav',
+            'Pizz_A3': 'instruments/Pizz(2)_A3_22k.wav',
+            'Pizz_E4': 'instruments/Pizz(2)_E4_22k.wav',
+            'Pizz_G2': 'instruments/Pizz(2)_G2_22k.wav',
+            'SteelDrum_D5': 'instruments/SteelDrum_D5_22k.wav',
+            'SynthLead_C4': 'instruments/SynthLead(6)_C4_22k.wav',
+            'SynthLead_C6': 'instruments/SynthLead(6)_C6_22k.wav',
+            'SynthPad_A3': 'instruments/SynthPad(2)_A3_22k.wav',
+            'SynthPad_C6': 'instruments/SynthPad(2)_C6_22k.wav',
+            'TenorSax_C3': 'instruments/TenorSax(1)_C3_22k.wav',
+            'Trombone_B3': 'instruments/Trombone_B3_22k.wav',
+            'Trumpet_E5': 'instruments/Trumpet_E5_22k.wav',
+            'Vibraphone_C3': 'instruments/Vibraphone_C3_22k.wav',
+            'Violin_D4': 'instruments/Violin(2)_D4_22K.wav',
+            'Violin_A4': 'instruments/Violin(3)_A4_22k.wav',
+            'Violin_E5': 'instruments/Violin(3b)_E5_22k.wav',
+            'WoodenFlute_C5': 'instruments/WoodenFlute_C5_22k.wav',
+            'BassDrum': 'drums/BassDrum(1b)_22k.wav',
+            'Bongo': 'drums/Bongo_22k.wav',
+            'Cabasa': 'drums/Cabasa(1)_22k.wav',
+            'Clap': 'drums/Clap(1)_22k.wav',
+            'Claves': 'drums/Claves(1)_22k.wav',
+            'Conga': 'drums/Conga(1)_22k.wav',
+            'Cowbell': 'drums/Cowbell(3)_22k.wav',
+            'Crash': 'drums/Crash(2)_22k.wav',
+            'Cuica': 'drums/Cuica(2)_22k.wav',
+            'GuiroLong': 'drums/GuiroLong(1)_22k.wav',
+            'GuiroShort': 'drums/GuiroShort(1)_22k.wav',
+            'HiHatClosed': 'drums/HiHatClosed(1)_22k.wav',
+            'HiHatOpen': 'drums/HiHatOpen(2)_22k.wav',
+            'HiHatPedal': 'drums/HiHatPedal(1)_22k.wav',
+            'Maracas': 'drums/Maracas(1)_22k.wav',
+            'SideStick': 'drums/SideStick(1)_22k.wav',
+            'SnareDrum': 'drums/SnareDrum(1)_22k.wav',
+            'Tambourine': 'drums/Tambourine(3)_22k.wav',
+            'Tom': 'drums/Tom(1)_22k.wav',
+            'Triangle': 'drums/Triangle(1)_22k.wav',
+            'Vibraslap': 'drums/Vibraslap(1)_22k.wav',
+            'WoodBlock': 'drums/WoodBlock(1)_22k.wav'
+        };
+        const soundbank = {};
+        /**
+         * Loads missing soundbank files, if any.
+         */
+        function loadSoundbank() {
+            if (!audio.context)
+                return Promise.resolve();
+            const assets = [];
+            for (const name in SOUNDBANK_FILES) {
+                if (!soundbank[name]) {
+                    assets.push(loadSoundbankBuffer(name));
+                }
+            }
+            return Promise.all(assets);
+        }
+        audio.loadSoundbank = loadSoundbank;
+        /**
+         * Loads a soundbank file
+         */
+        function loadSoundbankBuffer(name) {
+            return P.IO.fetch(SOUNDBANK_URL + SOUNDBANK_FILES[name])
+                .then((request) => request.arrayBuffer())
+                .then((arrayBuffer) => P.audio.decodeAudio(arrayBuffer))
+                .then((buffer) => soundbank[name] = buffer);
+        }
         const ADPCM_STEPS = [
             7, 8, 9, 10, 11, 12, 13, 14, 16, 17,
             19, 21, 23, 25, 28, 31, 34, 37, 41, 45,
@@ -69,7 +430,7 @@ var P;
                 var samplesPerBlock = dv.getUint16(38, true);
                 var blockSize = ((samplesPerBlock - 1) / 2) + 4;
                 var frameCount = dv.getUint32(blocks.fact + 8, true);
-                var buffer = P.audio.context.createBuffer(1, frameCount, sampleRate);
+                var buffer = audio.context.createBuffer(1, frameCount, sampleRate);
                 var channel = buffer.getChannelData(0);
                 var sample, index = 0;
                 var step, code, delta;
@@ -132,8 +493,9 @@ var P;
             if (!audio.context) {
                 return Promise.reject('No audio context');
             }
+            // TODO: does not work for some audio file
             return new Promise((resolve, reject) => {
-                decodeADPCMAudio(ab, function (err, buffer) {
+                decodeADPCMAudio(ab, function (err1, buffer) {
                     if (buffer) {
                         resolve(buffer);
                         return;
@@ -141,50 +503,12 @@ var P;
                     // Hope that the audio context will know what to do
                     audio.context.decodeAudioData(ab)
                         .then((buffer) => resolve(buffer))
-                        .catch((err) => reject(err));
+                        .catch((err2) => reject(`Could not decode audio: ${err1} | ${err2}`));
                 });
             });
         }
         audio.decodeAudio = decodeAudio;
-        /*
-          copy(JSON.stringify(instruments.map(function(g) {
-            return g.map(function(r) {
-              var attackTime = r[5] ? r[5][0] * 0.001 : 0;
-              var holdTime = r[5] ? r[5][1] * 0.001 : 0;
-              var decayTime = r[5] ? r[5][2] : 0;
-              var baseRatio = Math.pow(2, (r[2] - 69) / 12);
-              if (r[3] !== -1) {
-                var length = r[4] - r[3];
-                baseRatio = 22050 * Math.round(length * 440 * baseRatio / 22050) / length / 440;
-              }
-              return {
-                top: r[0],
-                name: r[1],
-                baseRatio: baseRatio,
-                loop: r[3] !== -1,
-                loopStart: r[3] / 22050,
-                loopEnd: r[4] / 22050,
-                attackEnd: attackTime,
-                holdEnd: attackTime + holdTime,
-                decayEnd: attackTime + holdTime + decayTime
-              }
-            })
-          }))
-        */
     })(audio = P.audio || (P.audio = {}));
-})(P || (P = {}));
-/// <reference path="phosphorus.ts" />
-var P;
-(function (P) {
-    var config;
-    (function (config) {
-        config.scale = window.devicePixelRatio || 1;
-        config.hasTouchEvents = 'ontouchstart' in document;
-        config.framerate = 30;
-        config.debug = window.location.search.includes("debug");
-        config.PROJECT_API = 'https://projects.scratch.mit.edu/$id';
-        config.canUseCORS = ['http:', 'https:'].indexOf(location.protocol) > -1;
-    })(config = P.config || (P.config = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
 var P;
@@ -1675,6 +1999,7 @@ var P;
         // A sound
         class Sound {
             constructor(data) {
+                this.node = null;
                 this.name = data.name;
                 this.buffer = data.buffer;
                 this.duration = this.buffer ? this.buffer.duration : 0;
@@ -1856,7 +2181,7 @@ var P;
         }
         utils.stringifyError = stringifyError;
         /**
-         * Parses a Scratch rotation style string to a RoationStyle enum
+         * Parses a Scratch rotation style string to a RotationStyle enum
          */
         function parseRotationStyle(style) {
             switch (style) {
@@ -1932,78 +2257,6 @@ var P;
     var sb2;
     (function (sb2) {
         const ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
-        const SOUNDBANK_URL = P.config.canUseCORS ? 'soundbank/' : 'https://forkphorus.github.com/soundbank/';
-        const WAV_FILES = {
-            'AcousticGuitar_F3': 'instruments/AcousticGuitar_F3_22k.wav',
-            'AcousticPiano_As3': 'instruments/AcousticPiano(5)_A%233_22k.wav',
-            'AcousticPiano_C4': 'instruments/AcousticPiano(5)_C4_22k.wav',
-            'AcousticPiano_G4': 'instruments/AcousticPiano(5)_G4_22k.wav',
-            'AcousticPiano_F5': 'instruments/AcousticPiano(5)_F5_22k.wav',
-            'AcousticPiano_C6': 'instruments/AcousticPiano(5)_C6_22k.wav',
-            'AcousticPiano_Ds6': 'instruments/AcousticPiano(5)_D%236_22k.wav',
-            'AcousticPiano_D7': 'instruments/AcousticPiano(5)_D7_22k.wav',
-            'AltoSax_A3': 'instruments/AltoSax_A3_22K.wav',
-            'AltoSax_C6': 'instruments/AltoSax(3)_C6_22k.wav',
-            'Bassoon_C3': 'instruments/Bassoon_C3_22k.wav',
-            'BassTrombone_A2_2': 'instruments/BassTrombone_A2(2)_22k.wav',
-            'BassTrombone_A2_3': 'instruments/BassTrombone_A2(3)_22k.wav',
-            'Cello_C2': 'instruments/Cello(3b)_C2_22k.wav',
-            'Cello_As2': 'instruments/Cello(3)_A%232_22k.wav',
-            'Choir_F3': 'instruments/Choir(4)_F3_22k.wav',
-            'Choir_F4': 'instruments/Choir(4)_F4_22k.wav',
-            'Choir_F5': 'instruments/Choir(4)_F5_22k.wav',
-            'Clarinet_C4': 'instruments/Clarinet_C4_22k.wav',
-            'ElectricBass_G1': 'instruments/ElectricBass(2)_G1_22k.wav',
-            'ElectricGuitar_F3': 'instruments/ElectricGuitar(2)_F3(1)_22k.wav',
-            'ElectricPiano_C2': 'instruments/ElectricPiano_C2_22k.wav',
-            'ElectricPiano_C4': 'instruments/ElectricPiano_C4_22k.wav',
-            'EnglishHorn_D4': 'instruments/EnglishHorn(1)_D4_22k.wav',
-            'EnglishHorn_F3': 'instruments/EnglishHorn(1)_F3_22k.wav',
-            'Flute_B5_1': 'instruments/Flute(3)_B5(1)_22k.wav',
-            'Flute_B5_2': 'instruments/Flute(3)_B5(2)_22k.wav',
-            'Marimba_C4': 'instruments/Marimba_C4_22k.wav',
-            'MusicBox_C4': 'instruments/MusicBox_C4_22k.wav',
-            'Organ_G2': 'instruments/Organ(2)_G2_22k.wav',
-            'Pizz_A3': 'instruments/Pizz(2)_A3_22k.wav',
-            'Pizz_E4': 'instruments/Pizz(2)_E4_22k.wav',
-            'Pizz_G2': 'instruments/Pizz(2)_G2_22k.wav',
-            'SteelDrum_D5': 'instruments/SteelDrum_D5_22k.wav',
-            'SynthLead_C4': 'instruments/SynthLead(6)_C4_22k.wav',
-            'SynthLead_C6': 'instruments/SynthLead(6)_C6_22k.wav',
-            'SynthPad_A3': 'instruments/SynthPad(2)_A3_22k.wav',
-            'SynthPad_C6': 'instruments/SynthPad(2)_C6_22k.wav',
-            'TenorSax_C3': 'instruments/TenorSax(1)_C3_22k.wav',
-            'Trombone_B3': 'instruments/Trombone_B3_22k.wav',
-            'Trumpet_E5': 'instruments/Trumpet_E5_22k.wav',
-            'Vibraphone_C3': 'instruments/Vibraphone_C3_22k.wav',
-            'Violin_D4': 'instruments/Violin(2)_D4_22K.wav',
-            'Violin_A4': 'instruments/Violin(3)_A4_22k.wav',
-            'Violin_E5': 'instruments/Violin(3b)_E5_22k.wav',
-            'WoodenFlute_C5': 'instruments/WoodenFlute_C5_22k.wav',
-            'BassDrum': 'drums/BassDrum(1b)_22k.wav',
-            'Bongo': 'drums/Bongo_22k.wav',
-            'Cabasa': 'drums/Cabasa(1)_22k.wav',
-            'Clap': 'drums/Clap(1)_22k.wav',
-            'Claves': 'drums/Claves(1)_22k.wav',
-            'Conga': 'drums/Conga(1)_22k.wav',
-            'Cowbell': 'drums/Cowbell(3)_22k.wav',
-            'Crash': 'drums/Crash(2)_22k.wav',
-            'Cuica': 'drums/Cuica(2)_22k.wav',
-            'GuiroLong': 'drums/GuiroLong(1)_22k.wav',
-            'GuiroShort': 'drums/GuiroShort(1)_22k.wav',
-            'HiHatClosed': 'drums/HiHatClosed(1)_22k.wav',
-            'HiHatOpen': 'drums/HiHatOpen(2)_22k.wav',
-            'HiHatPedal': 'drums/HiHatPedal(1)_22k.wav',
-            'Maracas': 'drums/Maracas(1)_22k.wav',
-            'SideStick': 'drums/SideStick(1)_22k.wav',
-            'SnareDrum': 'drums/SnareDrum(1)_22k.wav',
-            'Tambourine': 'drums/Tambourine(3)_22k.wav',
-            'Tom': 'drums/Tom(1)_22k.wav',
-            'Triangle': 'drums/Triangle(1)_22k.wav',
-            'Vibraslap': 'drums/Vibraslap(1)_22k.wav',
-            'WoodBlock': 'drums/WoodBlock(1)_22k.wav'
-        };
-        sb2.wavBuffers = {};
         let zipArchive;
         class Scratch2VariableWatcher extends P.core.Watcher {
             constructor(stage, targetName, data) {
@@ -2357,7 +2610,7 @@ var P;
             var stage;
             return loadFonts()
                 .then(() => Promise.all([
-                loadWavs(),
+                P.audio.loadSoundbank(),
                 loadArray(data.children, loadObject).then((c) => children = c),
                 loadBase(data, true).then((s) => stage = s),
             ]))
@@ -2375,27 +2628,6 @@ var P;
             });
         }
         sb2.loadProject = loadProject;
-        function loadWavs() {
-            // don't bother attempting to load audio if it can't even be played
-            if (!P.audio.context)
-                return Promise.resolve();
-            const assets = []; // TODO: type
-            for (var name in WAV_FILES) {
-                if (!sb2.wavBuffers[name]) {
-                    assets.push(loadWavBuffer(name)
-                        .then((buffer) => sb2.wavBuffers[name] = buffer));
-                }
-            }
-            return Promise.all(assets);
-        }
-        sb2.loadWavs = loadWavs;
-        function loadWavBuffer(name) {
-            return P.IO.fetch(SOUNDBANK_URL + WAV_FILES[name])
-                .then((request) => request.arrayBuffer())
-                .then((arrayBuffer) => P.audio.decodeAudio(arrayBuffer))
-                .then((buffer) => sb2.wavBuffers[name] = buffer);
-        }
-        sb2.loadWavBuffer = loadWavBuffer;
         function loadBase(data, isStage = false) {
             var costumes;
             var sounds;
@@ -3982,68 +4214,33 @@ var P;
         const audioContext = P.audio.context;
         if (audioContext) {
             // TODO: move most stuff to audio
-            var wavBuffers = P.sb2.wavBuffers;
             var volumeNode = audioContext.createGain();
             volumeNode.gain.value = VOLUME;
             volumeNode.connect(audioContext.destination);
-            var playNote = function (id, duration) {
-                var span;
-                var spans = INSTRUMENTS[S.instrument];
-                for (var i = 0, l = spans.length; i < l; i++) {
-                    span = spans[i];
-                    if (span.top >= id || span.top === 128)
-                        break;
-                }
-                playSpan(span, Math.max(0, Math.min(127, id)), duration);
-            };
-            var playSpan = function (span, id, duration) {
+            var playNote = function (key, duration) {
                 if (!S.node) {
                     S.node = audioContext.createGain();
                     S.node.gain.value = S.volume;
                     S.node.connect(volumeNode);
                 }
-                var source = audioContext.createBufferSource();
-                var note = audioContext.createGain();
-                var buffer = wavBuffers[span.name];
-                if (!buffer)
-                    return;
-                source.buffer = buffer;
-                if (source.loop = span.loop) {
-                    source.loopStart = span.loopStart;
-                    source.loopEnd = span.loopEnd;
+                var span;
+                var spans = INSTRUMENTS[S.instrument];
+                for (var i = 0, l = spans.length; i < l; i++) {
+                    span = spans[i];
+                    if (span.top >= key || span.top === 128)
+                        break;
                 }
-                source.connect(note);
-                note.connect(S.node);
-                var time = audioContext.currentTime;
-                source.playbackRate.value = Math.pow(2, (id - 69) / 12) / span.baseRatio;
-                var gain = note.gain;
-                gain.value = 0;
-                gain.setValueAtTime(0, time);
-                if (span.attackEnd < duration) {
-                    gain.linearRampToValueAtTime(1, time + span.attackEnd);
-                    if (span.decayTime > 0 && span.holdEnd < duration) {
-                        gain.linearRampToValueAtTime(1, time + span.holdEnd);
-                        if (span.decayEnd < duration) {
-                            gain.linearRampToValueAtTime(0, time + span.decayEnd);
-                        }
-                        else {
-                            gain.linearRampToValueAtTime(1 - (duration - span.holdEnd) / span.decayTime, time + duration);
-                        }
-                    }
-                    else {
-                        gain.linearRampToValueAtTime(1, time + duration);
-                    }
+                P.audio.playSpan(span, key, duration, S.node);
+            };
+            var playSpan = function (span, key, duration) {
+                if (!S.node) {
+                    S.node = audioContext.createGain();
+                    S.node.gain.value = S.volume;
+                    S.node.connect(volumeNode);
                 }
-                else {
-                    gain.linearRampToValueAtTime(1, time + duration);
-                }
-                gain.linearRampToValueAtTime(0, time + duration + 0.02267573696);
-                source.start(time);
-                source.stop(time + duration + 0.02267573696);
+                P.audio.playSpan(span, key, duration, S.node);
             };
             var playSound = function (sound) {
-                if (!sound.buffer)
-                    return;
                 if (!sound.node) {
                     sound.node = audioContext.createGain();
                     sound.node.gain.value = S.volume;
@@ -4051,13 +4248,7 @@ var P;
                 }
                 sound.target = S;
                 sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);
-                if (sound.source) {
-                    sound.source.disconnect();
-                }
-                sound.source = audioContext.createBufferSource();
-                sound.source.buffer = sound.buffer;
-                sound.source.connect(sound.node);
-                sound.source.start(audioContext.currentTime);
+                P.audio.playSound(sound, S);
             };
         }
         var save = function () {
@@ -4113,9 +4304,9 @@ var P;
         var sceneChange = function () {
             return runtime.trigger('whenSceneStarts', self.getCostumeName());
         };
-        function backdropChange() {
+        var backdropChange = function () {
             return runtime.trigger('whenBackdropChanges', self.getCostumeName());
-        }
+        };
         var broadcast = function (name) {
             return runtime.trigger('whenIReceive', self.lookupBroadcast(name));
         };
@@ -4338,157 +4529,6 @@ var P;
             }
         }
         runtime_1.Runtime = Runtime;
-        /*
-          copy(JSON.stringify(drums.map(function(d) {
-            var decayTime = d[4] || 0;
-            var baseRatio = Math.pow(2, (60 - d[1] - 69) / 12);
-            if (d[2]) {
-              var length = d[3] - d[2];
-              baseRatio = 22050 * Math.round(length * 440 * baseRatio / 22050) / length / 440;
-            }
-            return {
-              name: d[0],
-              baseRatio: baseRatio,
-              loop: !!d[2],
-              loopStart: d[2] / 22050,
-              loopEnd: d[3] / 22050,
-              attackEnd: 0,
-              holdEnd: 0,
-              decayEnd: decayTime
-            }
-          }))
-        */
-        var DRUMS = [
-            { name: 'SnareDrum', baseRatio: 0.5946035575013605, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-            { name: 'Tom', baseRatio: 0.5946035575013605, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-            { name: 'SideStick', baseRatio: 0.5946035575013605, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-            { name: 'Crash', baseRatio: 0.8908987181403393, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-            { name: 'HiHatOpen', baseRatio: 0.9438743126816935, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-            { name: 'HiHatClosed', baseRatio: 0.5946035575013605, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-            { name: 'Tambourine', baseRatio: 0.5946035575013605, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-            { name: 'Clap', baseRatio: 0.5946035575013605, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-            { name: 'Claves', baseRatio: 0.5946035575013605, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-            { name: 'WoodBlock', baseRatio: 0.7491535384383408, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-            { name: 'Cowbell', baseRatio: 0.5946035575013605, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-            { name: 'Triangle', baseRatio: 0.8514452780229479, loop: true, loopStart: 0.7638548752834468, loopEnd: 0.7825396825396825, attackEnd: 0, holdEnd: 0, decayEnd: 2 },
-            { name: 'Bongo', baseRatio: 0.5297315471796477, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-            { name: 'Conga', baseRatio: 0.7954545454545454, loop: true, loopStart: 0.1926077097505669, loopEnd: 0.20403628117913833, attackEnd: 0, holdEnd: 0, decayEnd: 2 },
-            { name: 'Cabasa', baseRatio: 0.5946035575013605, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-            { name: 'GuiroLong', baseRatio: 0.5946035575013605, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-            { name: 'Vibraslap', baseRatio: 0.8408964152537145, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-            { name: 'Cuica', baseRatio: 0.7937005259840998, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
-        ];
-        const INSTRUMENTS = [
-            [
-                { top: 38, name: 'AcousticPiano_As3', baseRatio: 0.5316313272700484, loop: true, loopStart: 0.465578231292517, loopEnd: 0.7733786848072562, attackEnd: 0, holdEnd: 0.1, decayEnd: 22.1 },
-                { top: 44, name: 'AcousticPiano_C4', baseRatio: 0.5905141892259927, loop: true, loopStart: 0.6334693877551021, loopEnd: 0.8605442176870748, attackEnd: 0, holdEnd: 0.1, decayEnd: 20.1 },
-                { top: 51, name: 'AcousticPiano_G4', baseRatio: 0.8843582887700535, loop: true, loopStart: 0.5532879818594104, loopEnd: 0.5609977324263039, attackEnd: 0, holdEnd: 0.08, decayEnd: 18.08 },
-                { top: 62, name: 'AcousticPiano_C6', baseRatio: 2.3557692307692304, loop: true, loopStart: 0.5914739229024943, loopEnd: 0.6020861678004535, attackEnd: 0, holdEnd: 0.08, decayEnd: 16.08 },
-                { top: 70, name: 'AcousticPiano_F5', baseRatio: 1.5776515151515151, loop: true, loopStart: 0.5634920634920635, loopEnd: 0.5879818594104308, attackEnd: 0, holdEnd: 0.04, decayEnd: 14.04 },
-                { top: 77, name: 'AcousticPiano_Ds6', baseRatio: 2.800762112139358, loop: true, loopStart: 0.560907029478458, loopEnd: 0.5836281179138322, attackEnd: 0, holdEnd: 0.02, decayEnd: 10.02 },
-                { top: 85, name: 'AcousticPiano_Ds6', baseRatio: 2.800762112139358, loop: true, loopStart: 0.560907029478458, loopEnd: 0.5836281179138322, attackEnd: 0, holdEnd: 0, decayEnd: 8 },
-                { top: 90, name: 'AcousticPiano_Ds6', baseRatio: 2.800762112139358, loop: true, loopStart: 0.560907029478458, loopEnd: 0.5836281179138322, attackEnd: 0, holdEnd: 0, decayEnd: 6 },
-                { top: 96, name: 'AcousticPiano_D7', baseRatio: 5.275119617224881, loop: true, loopStart: 0.3380498866213152, loopEnd: 0.34494331065759637, attackEnd: 0, holdEnd: 0, decayEnd: 3 },
-                { top: 128, name: 'AcousticPiano_D7', baseRatio: 5.275119617224881, loop: true, loopStart: 0.3380498866213152, loopEnd: 0.34494331065759637, attackEnd: 0, holdEnd: 0, decayEnd: 2 }
-            ], [
-                { top: 48, name: 'ElectricPiano_C2', baseRatio: 0.14870515241435123, loop: true, loopStart: 0.6956009070294784, loopEnd: 0.7873015873015873, attackEnd: 0, holdEnd: 0.08, decayEnd: 10.08 },
-                { top: 74, name: 'ElectricPiano_C4', baseRatio: 0.5945685670261941, loop: true, loopStart: 0.5181859410430839, loopEnd: 0.5449433106575964, attackEnd: 0, holdEnd: 0.04, decayEnd: 8.04 },
-                { top: 128, name: 'ElectricPiano_C4', baseRatio: 0.5945685670261941, loop: true, loopStart: 0.5181859410430839, loopEnd: 0.5449433106575964, attackEnd: 0, holdEnd: 0, decayEnd: 6 }
-            ], [
-                { top: 128, name: 'Organ_G2', baseRatio: 0.22283731584620914, loop: true, loopStart: 0.05922902494331066, loopEnd: 0.1510204081632653, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
-            ], [{ top: 40, name: 'AcousticGuitar_F3', baseRatio: 0.3977272727272727, loop: true, loopStart: 1.6628117913832199, loopEnd: 1.6685260770975057, attackEnd: 0, holdEnd: 0, decayEnd: 15 },
-                { top: 56, name: 'AcousticGuitar_F3', baseRatio: 0.3977272727272727, loop: true, loopStart: 1.6628117913832199, loopEnd: 1.6685260770975057, attackEnd: 0, holdEnd: 0, decayEnd: 13.5 },
-                { top: 60, name: 'AcousticGuitar_F3', baseRatio: 0.3977272727272727, loop: true, loopStart: 1.6628117913832199, loopEnd: 1.6685260770975057, attackEnd: 0, holdEnd: 0, decayEnd: 12 },
-                { top: 67, name: 'AcousticGuitar_F3', baseRatio: 0.3977272727272727, loop: true, loopStart: 1.6628117913832199, loopEnd: 1.6685260770975057, attackEnd: 0, holdEnd: 0, decayEnd: 8.5 },
-                { top: 72, name: 'AcousticGuitar_F3', baseRatio: 0.3977272727272727, loop: true, loopStart: 1.6628117913832199, loopEnd: 1.6685260770975057, attackEnd: 0, holdEnd: 0, decayEnd: 7 },
-                { top: 83, name: 'AcousticGuitar_F3', baseRatio: 0.3977272727272727, loop: true, loopStart: 1.6628117913832199, loopEnd: 1.6685260770975057, attackEnd: 0, holdEnd: 0, decayEnd: 5.5 },
-                { top: 128, name: 'AcousticGuitar_F3', baseRatio: 0.3977272727272727, loop: true, loopStart: 1.6628117913832199, loopEnd: 1.6685260770975057, attackEnd: 0, holdEnd: 0, decayEnd: 4.5 }
-            ], [
-                { top: 40, name: 'ElectricGuitar_F3', baseRatio: 0.39615522817103843, loop: true, loopStart: 1.5733333333333333, loopEnd: 1.5848072562358, attackEnd: 0, holdEnd: 0, decayEnd: 15 },
-                { top: 56, name: 'ElectricGuitar_F3', baseRatio: 0.39615522817103843, loop: true, loopStart: 1.5733333333333333, loopEnd: 1.5848072562358277, attackEnd: 0, holdEnd: 0, decayEnd: 13.5 },
-                { top: 60, name: 'ElectricGuitar_F3', baseRatio: 0.39615522817103843, loop: true, loopStart: 1.5733333333333333, loopEnd: 1.5848072562358277, attackEnd: 0, holdEnd: 0, decayEnd: 12 },
-                { top: 67, name: 'ElectricGuitar_F3', baseRatio: 0.39615522817103843, loop: true, loopStart: 1.5733333333333333, loopEnd: 1.5848072562358277, attackEnd: 0, holdEnd: 0, decayEnd: 8.5 },
-                { top: 72, name: 'ElectricGuitar_F3', baseRatio: 0.39615522817103843, loop: true, loopStart: 1.5733333333333333, loopEnd: 1.5848072562358277, attackEnd: 0, holdEnd: 0, decayEnd: 7 },
-                { top: 83, name: 'ElectricGuitar_F3', baseRatio: 0.39615522817103843, loop: true, loopStart: 1.5733333333333333, loopEnd: 1.5848072562358277, attackEnd: 0, holdEnd: 0, decayEnd: 5.5 },
-                { top: 128, name: 'ElectricGuitar_F3', baseRatio: 0.39615522817103843, loop: true, loopStart: 1.5733333333333333, loopEnd: 1.5848072562358277, attackEnd: 0, holdEnd: 0, decayEnd: 4.5 }
-            ], [
-                { top: 34, name: 'ElectricBass_G1', baseRatio: 0.11111671034065712, loop: true, loopStart: 1.9007709750566892, loopEnd: 1.9212244897959183, attackEnd: 0, holdEnd: 0, decayEnd: 17 },
-                { top: 48, name: 'ElectricBass_G1', baseRatio: 0.11111671034065712, loop: true, loopStart: 1.9007709750566892, loopEnd: 1.9212244897959183, attackEnd: 0, holdEnd: 0, decayEnd: 14 },
-                { top: 64, name: 'ElectricBass_G1', baseRatio: 0.11111671034065712, loop: true, loopStart: 1.9007709750566892, loopEnd: 1.9212244897959183, attackEnd: 0, holdEnd: 0, decayEnd: 12 },
-                { top: 128, name: 'ElectricBass_G1', baseRatio: 0.11111671034065712, loop: true, loopStart: 1.9007709750566892, loopEnd: 1.9212244897959183, attackEnd: 0, holdEnd: 0, decayEnd: 10 }
-            ], [
-                { top: 38, name: 'Pizz_G2', baseRatio: 0.21979665071770335, loop: true, loopStart: 0.3879365079365079, loopEnd: 0.3982766439909297, attackEnd: 0, holdEnd: 0, decayEnd: 5 },
-                { top: 45, name: 'Pizz_G2', baseRatio: 0.21979665071770335, loop: true, loopStart: 0.3879365079365079, loopEnd: 0.3982766439909297, attackEnd: 0, holdEnd: 0.012, decayEnd: 4.012 },
-                { top: 56, name: 'Pizz_A3', baseRatio: 0.503654636820466, loop: true, loopStart: 0.5197278911564626, loopEnd: 0.5287528344671202, attackEnd: 0, holdEnd: 0, decayEnd: 4 },
-                { top: 64, name: 'Pizz_A3', baseRatio: 0.503654636820466, loop: true, loopStart: 0.5197278911564626, loopEnd: 0.5287528344671202, attackEnd: 0, holdEnd: 0, decayEnd: 3.2 },
-                { top: 72, name: 'Pizz_E4', baseRatio: 0.7479647218453188, loop: true, loopStart: 0.7947845804988662, loopEnd: 0.7978231292517007, attackEnd: 0, holdEnd: 0, decayEnd: 2.8 },
-                { top: 80, name: 'Pizz_E4', baseRatio: 0.7479647218453188, loop: true, loopStart: 0.7947845804988662, loopEnd: 0.7978231292517007, attackEnd: 0, holdEnd: 0, decayEnd: 2.2 },
-                { top: 128, name: 'Pizz_E4', baseRatio: 0.7479647218453188, loop: true, loopStart: 0.7947845804988662, loopEnd: 0.7978231292517007, attackEnd: 0, holdEnd: 0, decayEnd: 1.5 }
-            ], [
-                { top: 41, name: 'Cello_C2', baseRatio: 0.14870515241435123, loop: true, loopStart: 0.3876643990929705, loopEnd: 0.40294784580498866, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-                { top: 52, name: 'Cello_As2', baseRatio: 0.263755980861244, loop: true, loopStart: 0.3385487528344671, loopEnd: 0.35578231292517004, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-                { top: 62, name: 'Violin_D4', baseRatio: 0.6664047388781432, loop: true, loopStart: 0.48108843537414964, loopEnd: 0.5151927437641723, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-                { top: 75, name: 'Violin_A4', baseRatio: 0.987460815047022, loop: true, loopStart: 0.14108843537414967, loopEnd: 0.15029478458049886, attackEnd: 0.07, holdEnd: 0.07, decayEnd: 0.07 },
-                { top: 128, name: 'Violin_E5', baseRatio: 1.4885238523852387, loop: true, loopStart: 0.10807256235827664, loopEnd: 0.1126530612244898, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
-            ], [
-                { top: 30, name: 'BassTrombone_A2_3', baseRatio: 0.24981872564125807, loop: true, loopStart: 0.061541950113378686, loopEnd: 0.10702947845804989, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-                { top: 40, name: 'BassTrombone_A2_2', baseRatio: 0.24981872564125807, loop: true, loopStart: 0.08585034013605441, loopEnd: 0.13133786848072562, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-                { top: 55, name: 'Trombone_B3', baseRatio: 0.5608240680183126, loop: true, loopStart: 0.12, loopEnd: 0.17673469387755103, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-                { top: 88, name: 'Trombone_B3', baseRatio: 0.5608240680183126, loop: true, loopStart: 0.12, loopEnd: 0.17673469387755103, attackEnd: 0.05, holdEnd: 0.05, decayEnd: 0.05 },
-                { top: 128, name: 'Trumpet_E5', baseRatio: 1.4959294436906376, loop: true, loopStart: 0.1307936507936508, loopEnd: 0.14294784580498865, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
-            ], [
-                { top: 128, name: 'Clarinet_C4', baseRatio: 0.5940193965517241, loop: true, loopStart: 0.6594104308390023, loopEnd: 0.7014965986394558, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
-            ], [
-                { top: 40, name: 'TenorSax_C3', baseRatio: 0.2971698113207547, loop: true, loopStart: 0.4053968253968254, loopEnd: 0.4895238095238095, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-                { top: 50, name: 'TenorSax_C3', baseRatio: 0.2971698113207547, loop: true, loopStart: 0.4053968253968254, loopEnd: 0.4895238095238095, attackEnd: 0.02, holdEnd: 0.02, decayEnd: 0.02 },
-                { top: 59, name: 'TenorSax_C3', baseRatio: 0.2971698113207547, loop: true, loopStart: 0.4053968253968254, loopEnd: 0.4895238095238095, attackEnd: 0.04, holdEnd: 0.04, decayEnd: 0.04 },
-                { top: 67, name: 'AltoSax_A3', baseRatio: 0.49814747876378096, loop: true, loopStart: 0.3875736961451247, loopEnd: 0.4103854875283447, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-                { top: 75, name: 'AltoSax_A3', baseRatio: 0.49814747876378096, loop: true, loopStart: 0.3875736961451247, loopEnd: 0.4103854875283447, attackEnd: 0.02, holdEnd: 0.02, decayEnd: 0.02 },
-                { top: 80, name: 'AltoSax_A3', baseRatio: 0.49814747876378096, loop: true, loopStart: 0.3875736961451247, loopEnd: 0.4103854875283447, attackEnd: 0.02, holdEnd: 0.02, decayEnd: 0.02 },
-                { top: 128, name: 'AltoSax_C6', baseRatio: 2.3782742681047764, loop: true, loopStart: 0.05705215419501134, loopEnd: 0.0838095238095238, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
-            ], [
-                { top: 61, name: 'Flute_B5_2', baseRatio: 2.255113636363636, loop: true, loopStart: 0.08430839002267573, loopEnd: 0.10244897959183673, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-                { top: 128, name: 'Flute_B5_1', baseRatio: 2.255113636363636, loop: true, loopStart: 0.10965986394557824, loopEnd: 0.12780045351473923, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
-            ], [
-                { top: 128, name: 'WoodenFlute_C5', baseRatio: 1.1892952324548416, loop: true, loopStart: 0.5181859410430839, loopEnd: 0.7131065759637188, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
-            ], [
-                { top: 57, name: 'Bassoon_C3', baseRatio: 0.29700969827586204, loop: true, loopStart: 0.11011337868480725, loopEnd: 0.19428571428571428, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-                { top: 67, name: 'Bassoon_C3', baseRatio: 0.29700969827586204, loop: true, loopStart: 0.11011337868480725, loopEnd: 0.19428571428571428, attackEnd: 0.04, holdEnd: 0.04, decayEnd: 0.04 },
-                { top: 76, name: 'Bassoon_C3', baseRatio: 0.29700969827586204, loop: true, loopStart: 0.11011337868480725, loopEnd: 0.19428571428571428, attackEnd: 0.08, holdEnd: 0.08, decayEnd: 0.08 },
-                { top: 84, name: 'EnglishHorn_F3', baseRatio: 0.39601293103448276, loop: true, loopStart: 0.341859410430839, loopEnd: 0.4049886621315193, attackEnd: 0.04, holdEnd: 0.04, decayEnd: 0.04 },
-                { top: 128, name: 'EnglishHorn_D4', baseRatio: 0.6699684005833739, loop: true, loopStart: 0.22027210884353743, loopEnd: 0.23723356009070296, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
-            ], [
-                { top: 39, name: 'Choir_F3', baseRatio: 0.3968814788643197, loop: true, loopStart: 0.6352380952380953, loopEnd: 1.8721541950113378, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-                { top: 50, name: 'Choir_F3', baseRatio: 0.3968814788643197, loop: true, loopStart: 0.6352380952380953, loopEnd: 1.8721541950113378, attackEnd: 0.04, holdEnd: 0.04, decayEnd: 0.04 },
-                { top: 61, name: 'Choir_F3', baseRatio: 0.3968814788643197, loop: true, loopStart: 0.6352380952380953, loopEnd: 1.8721541950113378, attackEnd: 0.06, holdEnd: 0.06, decayEnd: 0.06 },
-                { top: 72, name: 'Choir_F4', baseRatio: 0.7928898424161845, loop: true, loopStart: 0.7415419501133786, loopEnd: 2.1059410430839, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-                { top: 128, name: 'Choir_F5', baseRatio: 1.5879576065654504, loop: true, loopStart: 0.836281179138322, loopEnd: 2.0585487528344673, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
-            ], [
-                { top: 38, name: 'Vibraphone_C3', baseRatio: 0.29829545454545453, loop: true, loopStart: 0.2812698412698413, loopEnd: 0.28888888888888886, attackEnd: 0, holdEnd: 0.1, decayEnd: 8.1 },
-                { top: 48, name: 'Vibraphone_C3', baseRatio: 0.29829545454545453, loop: true, loopStart: 0.2812698412698413, loopEnd: 0.28888888888888886, attackEnd: 0, holdEnd: 0.1, decayEnd: 7.6 },
-                { top: 59, name: 'Vibraphone_C3', baseRatio: 0.29829545454545453, loop: true, loopStart: 0.2812698412698413, loopEnd: 0.28888888888888886, attackEnd: 0, holdEnd: 0.06, decayEnd: 7.06 },
-                { top: 70, name: 'Vibraphone_C3', baseRatio: 0.29829545454545453, loop: true, loopStart: 0.2812698412698413, loopEnd: 0.28888888888888886, attackEnd: 0, holdEnd: 0.04, decayEnd: 6.04 },
-                { top: 78, name: 'Vibraphone_C3', baseRatio: 0.29829545454545453, loop: true, loopStart: 0.2812698412698413, loopEnd: 0.28888888888888886, attackEnd: 0, holdEnd: 0.02, decayEnd: 5.02 },
-                { top: 86, name: 'Vibraphone_C3', baseRatio: 0.29829545454545453, loop: true, loopStart: 0.2812698412698413, loopEnd: 0.28888888888888886, attackEnd: 0, holdEnd: 0, decayEnd: 4 },
-                { top: 128, name: 'Vibraphone_C3', baseRatio: 0.29829545454545453, loop: true, loopStart: 0.2812698412698413, loopEnd: 0.28888888888888886, attackEnd: 0, holdEnd: 0, decayEnd: 3 }
-            ], [
-                { top: 128, name: 'MusicBox_C4', baseRatio: 0.5937634640241276, loop: true, loopStart: 0.6475283446712018, loopEnd: 0.6666666666666666, attackEnd: 0, holdEnd: 0, decayEnd: 2 }
-            ], [
-                { top: 128, name: 'SteelDrum_D5', baseRatio: 1.3660402567543959, loop: false, loopStart: -0.000045351473922902495, loopEnd: -0.000045351473922902495, attackEnd: 0, holdEnd: 0, decayEnd: 2 }
-            ], [
-                { top: 128, name: 'Marimba_C4', baseRatio: 0.5946035575013605, loop: false, loopStart: -0.000045351473922902495, loopEnd: -0.000045351473922902495, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
-            ], [
-                { top: 80, name: 'SynthLead_C4', baseRatio: 0.5942328422565577, loop: true, loopStart: 0.006122448979591836, loopEnd: 0.06349206349206349, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
-                { top: 128, name: 'SynthLead_C6', baseRatio: 2.3760775862068964, loop: true, loopStart: 0.005623582766439909, loopEnd: 0.01614512471655329, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
-            ], [
-                { top: 38, name: 'SynthPad_A3', baseRatio: 0.4999105065330231, loop: true, loopStart: 0.1910204081632653, loopEnd: 3.9917006802721087, attackEnd: 0.05, holdEnd: 0.05, decayEnd: 0.05 },
-                { top: 50, name: 'SynthPad_A3', baseRatio: 0.4999105065330231, loop: true, loopStart: 0.1910204081632653, loopEnd: 3.9917006802721087, attackEnd: 0.08, holdEnd: 0.08, decayEnd: 0.08 },
-                { top: 62, name: 'SynthPad_A3', baseRatio: 0.4999105065330231, loop: true, loopStart: 0.1910204081632653, loopEnd: 3.9917006802721087, attackEnd: 0.11, holdEnd: 0.11, decayEnd: 0.11 },
-                { top: 74, name: 'SynthPad_A3', baseRatio: 0.4999105065330231, loop: true, loopStart: 0.1910204081632653, loopEnd: 3.9917006802721087, attackEnd: 0.15, holdEnd: 0.15, decayEnd: 0.15 },
-                { top: 86, name: 'SynthPad_A3', baseRatio: 0.4999105065330231, loop: true, loopStart: 0.1910204081632653, loopEnd: 3.9917006802721087, attackEnd: 0.2, holdEnd: 0.2, decayEnd: 0.2 },
-                { top: 128, name: 'SynthPad_C6', baseRatio: 2.3820424708835755, loop: true, loopStart: 0.11678004535147392, loopEnd: 0.41732426303854875, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
-            ]
-        ];
         function createContinuation(source) {
             // TODO: make understandable
             var result = '(function() {\n';
@@ -4567,6 +4607,9 @@ var P;
             return eval(source);
         }
         runtime_1.scopedEval = scopedEval;
+        // temporary hacks
+        var INSTRUMENTS = P.audio.instruments;
+        var DRUMS = P.audio.drums;
     })(runtime = P.runtime || (P.runtime = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
