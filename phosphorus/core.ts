@@ -145,7 +145,7 @@ namespace P.core {
      */
     public saying: boolean = false;
     /**
-     * Should this object's speach bubble be a thinking bubble instead?
+     * Should this object's speech bubble be a thinking bubble instead?
      */
     public thinking: boolean = false;
     /**

@@ -2,7 +2,18 @@
 
 [forkphorus.github.io](https://forkphorus.github.io)
 
-A JavaScript/TypeScript compiler for Scratch 2 and Scratch 3 projects. forkphorus is a *fork* of phos*phorus*.
+A JavaScript/TypeScript compiler for Scratch 2 and Scratch 3 projects. forkphorus is a *fork* of [phos*phorus*](https://phosphorus.github.io/).
+
+## Performance
+
+Projects should, in general, run faster in forkphorus than in Scratch 3 and much faster than Scratch 2. Here's a (rather unscientific) benchmark of running [quicksort](https://scratch.mit.edu/projects/142449228) on 200000 random items:
+
+| Environment | Time (seconds) |
+| ----------- | ---- |
+| Forkphorus (Scratch 3 compiler) | 2.43 |
+| Forkphorus (Scratch 2 compiler) | 2.43 |
+| Scratch 3 | 13.56 |
+| Scratch 2 | 17.55 |
 
 ## Build Steps
 
