@@ -114,19 +114,8 @@ namespace P.sb3 {
   // Implements a Scratch 3 Stage.
   // Adds Scratch 3 specific things such as broadcastReferences
   export class Scratch3Stage extends P.core.Stage {
-    private broadcastReferences: ObjectMap<string> = {};
     public variableNames: ObjectMap<string> = {};
     public sb3data: SB3Target;
-
-    addBroadcast(name: string, id: string) {
-      this.broadcastReferences[name] = id;
-    }
-
-    lookupBroadcast(name: string) {
-      // Use the mapped ID or fall back to the name.
-      // Usually the name is the unique ID, but occasionally it is not.
-      return this.broadcastReferences[name] || name;
-    }
 
     lookupVariable(name: string) {
       return this.vars[this.variableNames[name]];
@@ -700,11 +689,7 @@ namespace P.sb3 {
       target.sb3data = data;
 
       if (target.isStage) {
-        const stage = target as Scratch3Stage;
-        for (const id of Object.keys(data.broadcasts)) {
-          const name = data.broadcasts[id];
-          stage.addBroadcast(name, id);
-        }
+
       } else {
         const sprite = target as Scratch3Sprite;
         sprite.scratchX = data.x;
@@ -1024,11 +1009,11 @@ namespace P.sb3.compiler {
       currentTarget.listeners.whenBackdropChanges[backdrop].push(f);
     },
     event_whenbroadcastreceived(block, f) {
-      const optionId = block.fields.BROADCAST_OPTION[1];
-      if (!currentTarget.listeners.whenIReceive[optionId]) {
-        currentTarget.listeners.whenIReceive[optionId] = [];
+      const name = block.fields.BROADCAST_OPTION[0];
+      if (!currentTarget.listeners.whenIReceive[name]) {
+        currentTarget.listeners.whenIReceive[name] = [];
       }
-      currentTarget.listeners.whenIReceive[optionId].push(f);
+      currentTarget.listeners.whenIReceive[name].push(f);
     },
 
     // Control
@@ -1810,7 +1795,7 @@ namespace P.sb3.compiler {
       const condition = block.inputs.CONDITION;
       const substack = block.inputs.SUBSTACK;
       const id = label();
-      source += 'if (!' + compileExpression(condition) + ') {\n';
+      source += 'if (!' + compileExpression(condition, 'boolean') + ') {\n';
       compileSubstack(substack);
       queue(id);
       source += '}\n';
@@ -2404,8 +2389,8 @@ namespace P.sb3.compiler {
         return listReference(constant[2]);
 
       case PrimitiveTypes.BROADCAST:
-        // Similar to variable references.
-        return compileExpression(constant[2]);
+        // [type, name, id]
+        return compileExpression(constant[1]);
 
       case PrimitiveTypes.COLOR_PICKER:
         // Colors are stored as strings like "#123ABC", so we must do some conversions to use them as numbers.

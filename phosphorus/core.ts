@@ -960,12 +960,6 @@ namespace P.core {
       this.drawChildren(renderer, skip);
     }
 
-    /**
-     * Determines the internal ID for a broadcast.
-     * @param name The name of the broadcast. It's what you see in the Scratch editor.
-     */
-    abstract lookupBroadcast(name: string): string;
-
     // Implement rotatedBounds() to return something.
     rotatedBounds() {
       return {
