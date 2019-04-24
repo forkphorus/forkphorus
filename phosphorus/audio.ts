@@ -2,16 +2,7 @@
 /// <reference path="config.ts" />
 
 namespace P.audio {
-  export const context = getAudioContext();
-
-  if (context) {
-    var volume = 0.3;
-    var volumeNode = context.createGain();
-    volumeNode.gain.value = volume;
-    volumeNode.connect(context.destination);
-  }
-
-  function getAudioContext(): AudioContext | null {
+  export const context = (function getAudioContext(): AudioContext | null {
     if ((window as any).AudioContext) {
       return new AudioContext();
     } else if ((window as any).webkitAudioContext) {
@@ -19,20 +10,13 @@ namespace P.audio {
     } else {
       return null;
     }
-  }
+  })();
 
-  export function playSound(sound: core.Sound, sprite: core.Base) {
-    if (!context) return;
-    if (!sound.buffer) return;
-
-    if (sound.source) {
-      sound.source.disconnect();
-    }
-    sound.source = context.createBufferSource();
-    sound.source.buffer = sound.buffer;
-    sound.source.connect(sound.node!);
-
-    sound.source.start(context.currentTime);
+  if (context) {
+    var volume = 0.3;
+    var volumeNode = context.createGain();
+    volumeNode.gain.value = volume;
+    volumeNode.connect(context.destination);
   }
 
   interface Span {
@@ -48,53 +32,6 @@ namespace P.audio {
     top?: number;
   }
 
-  export function playSpan(span: Span, key: number, duration: number, connection: AudioNode) {
-    if (!context) {
-      return;
-    }
-
-    var source = context.createBufferSource();
-    var note = context.createGain();
-    var buffer = soundbank[span.name];
-    if (!buffer) return;
-
-    source.buffer = buffer;
-    if (source.loop = span.loop) {
-      source.loopStart = span.loopStart as number;
-      source.loopEnd = span.loopEnd as number;
-    }
-
-    source.connect(note);
-    note.connect(connection);
-
-    var time = context.currentTime;
-    source.playbackRate.value = Math.pow(2, (key - 69) / 12) / span.baseRatio;
-
-    var gain = note.gain;
-    gain.value = 0;
-    gain.setValueAtTime(0, time);
-    if (span.attackEnd < duration) {
-      gain.linearRampToValueAtTime(1, time + span.attackEnd);
-      if ((span.decayTime as any) > 0 && span.holdEnd < duration) {
-        gain.linearRampToValueAtTime(1, time + span.holdEnd);
-        if (span.decayEnd < duration) {
-          gain.linearRampToValueAtTime(0, time + span.decayEnd);
-        } else {
-          gain.linearRampToValueAtTime(1 - (duration - span.holdEnd) / span.decayTime!, time + duration);
-        }
-      } else {
-        gain.linearRampToValueAtTime(1, time + duration);
-      }
-    } else {
-      gain.linearRampToValueAtTime(1, time + duration);
-    }
-    gain.linearRampToValueAtTime(0, time + duration + 0.02267573696);
-
-    source.start(time);
-    source.stop(time + duration + 0.02267573696);
-  }
-
-  
   /*
     copy(JSON.stringify(drums.map(function(d) {
       var decayTime = d[4] || 0;
@@ -370,6 +307,72 @@ namespace P.audio {
       .then((request) => request.arrayBuffer())
       .then((arrayBuffer) => P.audio.decodeAudio(arrayBuffer))
       .then((buffer) => soundbank[name] = buffer);
+  }
+
+  export function playSound(sound: core.Sound) {
+    if (!context) return;
+    if (!sound.buffer) return;
+
+    if (sound.source) {
+      sound.source.disconnect();
+    }
+    sound.source = context.createBufferSource();
+    sound.source.buffer = sound.buffer;
+    sound.source.connect(sound.node!);
+
+    sound.source.start(context.currentTime);
+  }
+
+  export function playSpan(span: Span, key: number, duration: number, connection: AudioNode) {
+    if (!context) return;
+
+    const buffer = soundbank[span.name];
+    if (!buffer) return;
+
+    const source = context.createBufferSource();
+    const note = context.createGain();
+
+    source.buffer = buffer;
+    if (source.loop = span.loop) {
+      source.loopStart = span.loopStart as number;
+      source.loopEnd = span.loopEnd as number;
+    }
+
+    source.connect(note);
+    note.connect(connection);
+
+    const time = context.currentTime;
+    source.playbackRate.value = Math.pow(2, (key - 69) / 12) / span.baseRatio;
+
+    const gain = note.gain;
+    gain.value = 0;
+    gain.setValueAtTime(0, time);
+    if (span.attackEnd < duration) {
+      gain.linearRampToValueAtTime(1, time + span.attackEnd);
+      if ((span.decayTime as any) > 0 && span.holdEnd < duration) {
+        gain.linearRampToValueAtTime(1, time + span.holdEnd);
+        if (span.decayEnd < duration) {
+          gain.linearRampToValueAtTime(0, time + span.decayEnd);
+        } else {
+          gain.linearRampToValueAtTime(1 - (duration - span.holdEnd) / span.decayTime!, time + duration);
+        }
+      } else {
+        gain.linearRampToValueAtTime(1, time + duration);
+      }
+    } else {
+      gain.linearRampToValueAtTime(1, time + duration);
+    }
+    gain.linearRampToValueAtTime(0, time + duration + 0.02267573696);
+
+    source.start(time);
+    source.stop(time + duration + 0.02267573696);
+  }
+
+  /**
+   * Connect an audio node
+   */
+  export function connect(node: AudioNode) {
+    node.connect(volumeNode);
   }
 
   const ADPCM_STEPS = [

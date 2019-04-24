@@ -49,14 +49,7 @@ var P;
 (function (P) {
     var audio;
     (function (audio) {
-        audio.context = getAudioContext();
-        if (audio.context) {
-            var volume = 0.3;
-            var volumeNode = audio.context.createGain();
-            volumeNode.gain.value = volume;
-            volumeNode.connect(audio.context.destination);
-        }
-        function getAudioContext() {
+        audio.context = (function getAudioContext() {
             if (window.AudioContext) {
                 return new AudioContext();
             }
@@ -66,65 +59,13 @@ var P;
             else {
                 return null;
             }
+        })();
+        if (audio.context) {
+            var volume = 0.3;
+            var volumeNode = audio.context.createGain();
+            volumeNode.gain.value = volume;
+            volumeNode.connect(audio.context.destination);
         }
-        function playSound(sound, sprite) {
-            if (!audio.context)
-                return;
-            if (!sound.buffer)
-                return;
-            if (sound.source) {
-                sound.source.disconnect();
-            }
-            sound.source = audio.context.createBufferSource();
-            sound.source.buffer = sound.buffer;
-            sound.source.connect(sound.node);
-            sound.source.start(audio.context.currentTime);
-        }
-        audio.playSound = playSound;
-        function playSpan(span, key, duration, connection) {
-            if (!audio.context) {
-                return;
-            }
-            var source = audio.context.createBufferSource();
-            var note = audio.context.createGain();
-            var buffer = soundbank[span.name];
-            if (!buffer)
-                return;
-            source.buffer = buffer;
-            if (source.loop = span.loop) {
-                source.loopStart = span.loopStart;
-                source.loopEnd = span.loopEnd;
-            }
-            source.connect(note);
-            note.connect(connection);
-            var time = audio.context.currentTime;
-            source.playbackRate.value = Math.pow(2, (key - 69) / 12) / span.baseRatio;
-            var gain = note.gain;
-            gain.value = 0;
-            gain.setValueAtTime(0, time);
-            if (span.attackEnd < duration) {
-                gain.linearRampToValueAtTime(1, time + span.attackEnd);
-                if (span.decayTime > 0 && span.holdEnd < duration) {
-                    gain.linearRampToValueAtTime(1, time + span.holdEnd);
-                    if (span.decayEnd < duration) {
-                        gain.linearRampToValueAtTime(0, time + span.decayEnd);
-                    }
-                    else {
-                        gain.linearRampToValueAtTime(1 - (duration - span.holdEnd) / span.decayTime, time + duration);
-                    }
-                }
-                else {
-                    gain.linearRampToValueAtTime(1, time + duration);
-                }
-            }
-            else {
-                gain.linearRampToValueAtTime(1, time + duration);
-            }
-            gain.linearRampToValueAtTime(0, time + duration + 0.02267573696);
-            source.start(time);
-            source.stop(time + duration + 0.02267573696);
-        }
-        audio.playSpan = playSpan;
         /*
           copy(JSON.stringify(drums.map(function(d) {
             var decayTime = d[4] || 0;
@@ -397,6 +338,70 @@ var P;
                 .then((arrayBuffer) => P.audio.decodeAudio(arrayBuffer))
                 .then((buffer) => soundbank[name] = buffer);
         }
+        function playSound(sound) {
+            if (!audio.context)
+                return;
+            if (!sound.buffer)
+                return;
+            if (sound.source) {
+                sound.source.disconnect();
+            }
+            sound.source = audio.context.createBufferSource();
+            sound.source.buffer = sound.buffer;
+            sound.source.connect(sound.node);
+            sound.source.start(audio.context.currentTime);
+        }
+        audio.playSound = playSound;
+        function playSpan(span, key, duration, connection) {
+            if (!audio.context)
+                return;
+            const buffer = soundbank[span.name];
+            if (!buffer)
+                return;
+            const source = audio.context.createBufferSource();
+            const note = audio.context.createGain();
+            source.buffer = buffer;
+            if (source.loop = span.loop) {
+                source.loopStart = span.loopStart;
+                source.loopEnd = span.loopEnd;
+            }
+            source.connect(note);
+            note.connect(connection);
+            const time = audio.context.currentTime;
+            source.playbackRate.value = Math.pow(2, (key - 69) / 12) / span.baseRatio;
+            const gain = note.gain;
+            gain.value = 0;
+            gain.setValueAtTime(0, time);
+            if (span.attackEnd < duration) {
+                gain.linearRampToValueAtTime(1, time + span.attackEnd);
+                if (span.decayTime > 0 && span.holdEnd < duration) {
+                    gain.linearRampToValueAtTime(1, time + span.holdEnd);
+                    if (span.decayEnd < duration) {
+                        gain.linearRampToValueAtTime(0, time + span.decayEnd);
+                    }
+                    else {
+                        gain.linearRampToValueAtTime(1 - (duration - span.holdEnd) / span.decayTime, time + duration);
+                    }
+                }
+                else {
+                    gain.linearRampToValueAtTime(1, time + duration);
+                }
+            }
+            else {
+                gain.linearRampToValueAtTime(1, time + duration);
+            }
+            gain.linearRampToValueAtTime(0, time + duration + 0.02267573696);
+            source.start(time);
+            source.stop(time + duration + 0.02267573696);
+        }
+        audio.playSpan = playSpan;
+        /**
+         * Connect an audio node
+         */
+        function connect(node) {
+            node.connect(volumeNode);
+        }
+        audio.connect = connect;
         const ADPCM_STEPS = [
             7, 8, 9, 10, 11, 12, 13, 14, 16, 17,
             19, 21, 23, 25, 28, 31, 34, 37, 41, 45,
@@ -687,6 +692,10 @@ var P;
                  * The volume of this object, with 1 being 100%
                  */
                 this.volume = 1;
+                /**
+                 * The audio node that this object outputs to.
+                 */
+                this.node = null;
                 /**
                  * Maps names (or ids) of variables or lists to their Watcher, if any.
                  */
@@ -2155,19 +2164,6 @@ var P;
 (function (P) {
     var utils;
     (function (utils) {
-        // Gets the keycode for a key name
-        function getKeyCode(keyName) {
-            switch (keyName.toLowerCase()) {
-                case 'space': return 32;
-                case 'left arrow': return 37;
-                case 'up arrow': return 38;
-                case 'right arrow': return 39;
-                case 'down arrow': return 40;
-                case 'any': return 'any';
-            }
-            return keyName.toUpperCase().charCodeAt(0);
-        }
-        utils.getKeyCode = getKeyCode;
         // Returns the string representation of an error.
         // TODO: does this need to be here?
         function stringifyError(error) {
@@ -3255,7 +3251,7 @@ var P;
                     }
                     else if (e[0] === 'keyPressed:') {
                         var v = typeof e[1] === 'object' ?
-                            'P.utils.getKeyCode(' + val(e[1]) + ')' : val(P.utils.getKeyCode(e[1]));
+                            'getKeyCode(' + val(e[1]) + ')' : val(P.runtime.getKeyCode(e[1]));
                         return '!!self.keys[' + v + ']';
                         // } else if (e[0] === 'isLoud') {
                         // } else if (e[0] === 'sensorPressed:') {
@@ -3851,7 +3847,7 @@ var P;
                         }
                     }
                     else {
-                        object.listeners.whenKeyPressed[P.utils.getKeyCode(script[0][1])].push(f);
+                        object.listeners.whenKeyPressed[P.runtime.getKeyCode(script[0][1])].push(f);
                     }
                 }
                 else if (script[0][0] === 'whenSceneStarts') {
@@ -3923,11 +3919,14 @@ var P;
         var IMMEDIATE;
         // Has a "visual change" been made in this frame?
         var VISUAL;
+        const epoch = Date.UTC(2000, 0, 1);
+        const INSTRUMENTS = P.audio.instruments;
+        const DRUMS = P.audio.drums;
+        const DIGIT = /\d/;
         // Converts a value to its boolean equivalent
         var bool = function (v) {
             return +v !== 0 && v !== '' && v !== 'false' && v !== false;
         };
-        var DIGIT = /\d/;
         // Compares two values. Returns -1 if x < y, 1 if x > y, 0 if x === y
         var compare = function (x, y) {
             if ((typeof x === 'number' || DIGIT.test(x)) && (typeof y === 'number' || DIGIT.test(y))) {
@@ -3984,6 +3983,7 @@ var P;
             }
             return false;
         };
+        // Modulo
         var mod = function (x, y) {
             var r = x % y;
             if (r / y < 0) {
@@ -3991,6 +3991,7 @@ var P;
             }
             return r;
         };
+        // Random number in range
         var random = function (x, y) {
             x = +x || 0;
             y = +y || 0;
@@ -4004,7 +4005,9 @@ var P;
             }
             return Math.random() * (y - x) + x;
         };
+        // Converts an RGB color as a number to HSL
         var rgb2hsl = function (rgb) {
+            // TODO: P.utils.rgb2hsl?
             var r = (rgb >> 16 & 0xff) / 0xff;
             var g = (rgb >> 8 & 0xff) / 0xff;
             var b = (rgb & 0xff) / 0xff;
@@ -4031,6 +4034,7 @@ var P;
             h *= 60;
             return [h, s * 100, l * 100];
         };
+        // Clone a sprite
         var clone = function (name) {
             const parent = name === '_myself_' ? S : self.getObject(name);
             if (!parent) {
@@ -4043,7 +4047,6 @@ var P;
             self.children.splice(self.children.indexOf(parent), 0, c);
             runtime.triggerFor(c, 'whenCloned');
         };
-        const epoch = Date.UTC(2000, 0, 1);
         var getVars = function (name) {
             return self.vars[name] !== undefined ? self.vars : S.vars;
         };
@@ -4209,19 +4212,29 @@ var P;
             }
             return 0;
         };
-        // TODO: configurable volume
-        var VOLUME = 0.3;
+        /**
+         * Converts the name of a key to its code
+         */
+        function getKeyCode(keyName) {
+            switch (keyName.toLowerCase()) {
+                case 'space': return 32;
+                case 'left arrow': return 37;
+                case 'up arrow': return 38;
+                case 'right arrow': return 39;
+                case 'down arrow': return 40;
+                case 'any': return 'any';
+            }
+            return keyName.toUpperCase().charCodeAt(0);
+        }
+        runtime_1.getKeyCode = getKeyCode;
+        // Load audio methods if audio is supported
         const audioContext = P.audio.context;
         if (audioContext) {
-            // TODO: move most stuff to audio
-            var volumeNode = audioContext.createGain();
-            volumeNode.gain.value = VOLUME;
-            volumeNode.connect(audioContext.destination);
             var playNote = function (key, duration) {
                 if (!S.node) {
                     S.node = audioContext.createGain();
                     S.node.gain.value = S.volume;
-                    S.node.connect(volumeNode);
+                    P.audio.connect(S.node);
                 }
                 var span;
                 var spans = INSTRUMENTS[S.instrument];
@@ -4236,7 +4249,7 @@ var P;
                 if (!S.node) {
                     S.node = audioContext.createGain();
                     S.node.gain.value = S.volume;
-                    S.node.connect(volumeNode);
+                    P.audio.connect(S.node);
                 }
                 P.audio.playSpan(span, key, duration, S.node);
             };
@@ -4244,11 +4257,11 @@ var P;
                 if (!sound.node) {
                     sound.node = audioContext.createGain();
                     sound.node.gain.value = S.volume;
-                    sound.node.connect(volumeNode);
+                    P.audio.connect(sound.node);
                 }
                 sound.target = S;
                 sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);
-                P.audio.playSound(sound, S);
+                P.audio.playSound(sound);
             };
         }
         var save = function () {
@@ -4279,7 +4292,6 @@ var P;
                 else {
                     for (var i = CALLS.length, j = 5; i-- && j--;) {
                         if (CALLS[i].base === procedure.fn) {
-                            // recursive
                             runtime.queue[THREAD] = new Thread(S, BASE, procedure.fn, CALLS);
                             break;
                         }
@@ -4607,9 +4619,6 @@ var P;
             return eval(source);
         }
         runtime_1.scopedEval = scopedEval;
-        // temporary hacks
-        var INSTRUMENTS = P.audio.instruments;
-        var DRUMS = P.audio.drums;
     })(runtime = P.runtime || (P.runtime = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
@@ -5353,7 +5362,7 @@ var P;
                         }
                     }
                     else {
-                        currentTarget.listeners.whenKeyPressed[P.utils.getKeyCode(key)].push(f);
+                        currentTarget.listeners.whenKeyPressed[P.runtime.getKeyCode(key)].push(f);
                     }
                 },
                 event_whenthisspriteclicked(block, f) {
@@ -5410,7 +5419,7 @@ var P;
                         '"g"': 'g',
                     };
                     if (keyMap.hasOwnProperty(key)) {
-                        const keyCode = P.utils.getKeyCode(keyMap[key]);
+                        const keyCode = P.runtime.getKeyCode(keyMap[key]);
                         currentTarget.listeners.whenKeyPressed[keyCode].push(f);
                     }
                     else {

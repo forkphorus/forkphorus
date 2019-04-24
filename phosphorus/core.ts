@@ -123,7 +123,7 @@ namespace P.core {
     /**
      * The audio node that this object outputs to.
      */
-    public node: GainNode | null;
+    public node: GainNode | null = null;
     /**
      * Maps names (or ids) of variables or lists to their Watcher, if any.
      */

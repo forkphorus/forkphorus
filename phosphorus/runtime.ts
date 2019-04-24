@@ -41,12 +41,16 @@ namespace P.runtime {
   // Has a "visual change" been made in this frame?
   var VISUAL: boolean;
 
+  const epoch = Date.UTC(2000, 0, 1);
+  const INSTRUMENTS = P.audio.instruments;
+  const DRUMS = P.audio.drums;
+  const DIGIT = /\d/;
+
   // Converts a value to its boolean equivalent
   var bool = function(v) {
     return +v !== 0 && v !== '' && v !== 'false' && v !== false;
   };
 
-  var DIGIT = /\d/;
   // Compares two values. Returns -1 if x < y, 1 if x > y, 0 if x === y
   var compare = function(x, y) {
     if ((typeof x === 'number' || DIGIT.test(x)) && (typeof y === 'number' || DIGIT.test(y))) {
@@ -60,6 +64,7 @@ namespace P.runtime {
     var ys = ('' + y).toLowerCase();
     return xs < ys ? -1 : xs === ys ? 0 : 1;
   };
+
   // Determines if y is less than nx
   var numLess = function(nx, y) {
     if (typeof y === 'number' || DIGIT.test(y)) {
@@ -71,6 +76,7 @@ namespace P.runtime {
     var ys = ('' + y).toLowerCase();
     return '' + nx < ys;
   };
+
   // Determines if y is greater than nx
   var numGreater = function(nx, y) {
     if (typeof y === 'number' || DIGIT.test(y)) {
@@ -82,6 +88,7 @@ namespace P.runtime {
     var ys = ('' + y).toLowerCase();
     return '' + nx > ys;
   };
+
   // Determines if x is equal to y
   var equal = function(x, y) {
     if ((typeof x === 'number' || DIGIT.test(x)) && (typeof y === 'number' || DIGIT.test(y))) {
@@ -95,6 +102,7 @@ namespace P.runtime {
     var ys = ('' + y).toLowerCase();
     return xs === ys;
   };
+
   // Determines if x (number) and y (number) are equal to each other
   var numEqual = function(nx, y) {
     if (typeof y === 'number' || DIGIT.test(y)) {
@@ -104,6 +112,7 @@ namespace P.runtime {
     return false;
   };
 
+  // Modulo
   var mod = function(x, y) {
     var r = x % y;
     if (r / y < 0) {
@@ -112,6 +121,7 @@ namespace P.runtime {
     return r;
   };
 
+  // Random number in range
   var random = function(x, y) {
     x = +x || 0;
     y = +y || 0;
@@ -126,7 +136,9 @@ namespace P.runtime {
     return Math.random() * (y - x) + x;
   };
 
+  // Converts an RGB color as a number to HSL
   var rgb2hsl = function(rgb) {
+    // TODO: P.utils.rgb2hsl?
     var r = (rgb >> 16 & 0xff) / 0xff;
     var g = (rgb >> 8 & 0xff) / 0xff;
     var b = (rgb & 0xff) / 0xff;
@@ -153,6 +165,7 @@ namespace P.runtime {
     return [h, s * 100, l * 100];
   };
 
+  // Clone a sprite
   var clone = function(name) {
     const parent = name === '_myself_' ? S : self.getObject(name);
     if (!parent) {
@@ -165,8 +178,6 @@ namespace P.runtime {
     self.children.splice(self.children.indexOf(parent), 0, c);
     runtime.triggerFor(c, 'whenCloned');
   };
-
-  const epoch = Date.UTC(2000, 0, 1);
 
   var getVars = function(name) {
     return self.vars[name] !== undefined ? self.vars : S.vars;
@@ -354,19 +365,14 @@ namespace P.runtime {
     return keyName.toUpperCase().charCodeAt(0);
   }
 
+  // Load audio methods if audio is supported
   const audioContext = P.audio.context;
   if (audioContext) {
-    // TODO: move most stuff to audio
-
-    var volumeNode = audioContext.createGain();
-    volumeNode.gain.value = VOLUME;
-    volumeNode.connect(audioContext.destination);
-
     var playNote = function(key, duration) {
       if (!S.node) {
         S.node = audioContext.createGain();
         S.node.gain.value = S.volume;
-        S.node.connect(volumeNode);
+        P.audio.connect(S.node);
       }
 
       var span;
@@ -383,7 +389,7 @@ namespace P.runtime {
       if (!S.node) {
         S.node = audioContext.createGain();
         S.node.gain.value = S.volume;
-        S.node.connect(volumeNode);
+        P.audio.connect(S.node);
       }
       P.audio.playSpan(span, key, duration, S.node);
     };
@@ -392,11 +398,11 @@ namespace P.runtime {
       if (!sound.node) {
         sound.node = audioContext.createGain();
         sound.node.gain.value = S.volume;
-        sound.node.connect(volumeNode);
+        P.audio.connect(sound.node);
       }
       sound.target = S;
       sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);
-      P.audio.playSound(sound, S);
+      P.audio.playSound(sound);
     };
   }
 
@@ -429,7 +435,6 @@ namespace P.runtime {
       } else {
         for (var i = CALLS.length, j = 5; i-- && j--;) {
           if (CALLS[i].base === procedure.fn) {
-            // recursive
             runtime.queue[THREAD] = new Thread(S, BASE, procedure.fn, CALLS);
             break;
           }
@@ -765,8 +770,4 @@ namespace P.runtime {
   export function scopedEval(source: string): any {
     return eval(source);
   }
-
-  // temporary hacks
-  var INSTRUMENTS = P.audio.instruments;
-  var DRUMS = P.audio.drums;
 }
