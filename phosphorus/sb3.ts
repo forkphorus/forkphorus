@@ -587,7 +587,8 @@ namespace P.sb3 {
     };
 
     const textElements = svg.querySelectorAll('text');
-    for (const el of textElements) {
+    for (var i = 0; i < textElements.length; i++) {
+      const el = textElements[i];
       const font = el.getAttribute('font-family') || '';
       if (FONTS[font]) {
         el.setAttribute('font-family', FONTS[font]);
