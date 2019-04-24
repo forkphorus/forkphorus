@@ -1124,7 +1124,7 @@ namespace P.sb2.compiler {
       } else if (e[0] === 'keyPressed:') {
 
         var v = typeof e[1] === 'object' ?
-          'P.utils.getKeyCode(' + val(e[1]) + ')' : val(P.utils.getKeyCode(e[1]));
+          'getKeyCode(' + val(e[1]) + ')' : val(P.runtime.getKeyCode(e[1]));
         return '!!self.keys[' + v + ']';
 
       // } else if (e[0] === 'isLoud') {
@@ -1829,7 +1829,7 @@ namespace P.sb2.compiler {
           object.listeners.whenKeyPressed[i].push(f);
         }
       } else {
-        object.listeners.whenKeyPressed[P.utils.getKeyCode(script[0][1])].push(f);
+        object.listeners.whenKeyPressed[P.runtime.getKeyCode(script[0][1])].push(f);
       }
     } else if (script[0][0] === 'whenSceneStarts') {
       var key = script[0][1].toLowerCase();

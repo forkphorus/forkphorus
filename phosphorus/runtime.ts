@@ -338,8 +338,21 @@ namespace P.runtime {
     return 0;
   }
 
-  // TODO: configurable volume
-  var VOLUME = 0.3;
+  /**
+   * Converts the name of a key to its code
+   */
+  export function getKeyCode(keyName: string): number | 'any' {
+    switch (keyName.toLowerCase()) {
+      case 'space': return 32;
+      case 'left arrow': return 37;
+      case 'up arrow': return 38;
+      case 'right arrow': return 39;
+      case 'down arrow': return 40;
+      case 'any': return 'any';
+    }
+
+    return keyName.toUpperCase().charCodeAt(0);
+  }
 
   const audioContext = P.audio.context;
   if (audioContext) {

@@ -1006,7 +1006,7 @@ namespace P.sb3.compiler {
           currentTarget.listeners.whenKeyPressed[i].push(f);
         }
       } else {
-        currentTarget.listeners.whenKeyPressed[P.utils.getKeyCode(key)].push(f);
+        currentTarget.listeners.whenKeyPressed[P.runtime.getKeyCode(key)].push(f);
       }
     },
     event_whenthisspriteclicked(block, f) {
@@ -1070,7 +1070,7 @@ namespace P.sb3.compiler {
         // TODO: support non-compile-time constants
       };
       if (keyMap.hasOwnProperty(key)) {
-        const keyCode = P.utils.getKeyCode(keyMap[key]);
+        const keyCode = P.runtime.getKeyCode(keyMap[key]);
         currentTarget.listeners.whenKeyPressed[keyCode].push(f);
       } else {
         console.warn('unknown makey makey key', key);
