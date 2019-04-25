@@ -1202,7 +1202,7 @@ var P;
                  */
                 this.saying = false;
                 /**
-                 * Should this object's speach bubble be a thinking bubble instead?
+                 * Should this object's speech bubble be a thinking bubble instead?
                  */
                 this.thinking = false;
                 /**
@@ -2074,7 +2074,7 @@ var P;
             }
             getPenCSS() {
                 // This is only temporary
-                return this.penCSS || 'hsla(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
+                return this.penCSS || 'hsla(' + this.penHue + 'deg,' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
             }
             // Faces in a direction.
             setDirection(degrees) {
@@ -2283,8 +2283,7 @@ var P;
                 this.setPenColorHSL();
                 switch (param) {
                     case 'color':
-                        this.penHue = value * 360 / 200;
-                        this.penSaturation = 100;
+                        this.penHue = value * 360 / 100;
                         break;
                     case 'saturation':
                         this.penSaturation = value;
@@ -2294,7 +2293,6 @@ var P;
                         if (this.penLightness < 0) {
                             this.penLightness += 200;
                         }
-                        this.penSaturation = 100;
                         break;
                     case 'transparency':
                         this.penAlpha -= value / 100;
@@ -2310,8 +2308,7 @@ var P;
                 this.setPenColorHSL();
                 switch (param) {
                     case 'color':
-                        this.penHue += value * 360 / 200;
-                        this.penSaturation = 100;
+                        this.penHue += value * 360 / 100;
                         break;
                     case 'saturation':
                         this.penSaturation += value;
@@ -2321,7 +2318,6 @@ var P;
                         if (this.penLightness < 0) {
                             this.penLightness += 200;
                         }
-                        this.penSaturation = 100;
                         break;
                     case 'transparency':
                         this.penAlpha = Math.max(0, Math.min(1, value / 100));
@@ -2937,10 +2933,6 @@ var P;
                 this.dragging = {};
                 this.defaultWatcherX = 10;
                 this.defaultWatcherY = 10;
-            }
-            lookupBroadcast(name) {
-                // Scratch 2 uses names as IDs.
-                return name;
             }
             lookupVariable(name) {
                 return this.vars[name];
@@ -4821,7 +4813,7 @@ var P;
             return runtime.trigger('whenBackdropChanges', self.getCostumeName());
         }
         var broadcast = function (name) {
-            return runtime.trigger('whenIReceive', self.lookupBroadcast(name));
+            return runtime.trigger('whenIReceive', name);
         };
         var running = function (bases) {
             for (var j = 0; j < runtime.queue.length; j++) {
@@ -4903,6 +4895,7 @@ var P;
                         break;
                     case 'whenIReceive':
                         arg = '' + arg;
+                        // TODO: remove toLowerCase() check?
                         threads = sprite.listeners.whenIReceive[arg] || sprite.listeners.whenIReceive[arg.toLowerCase()];
                         break;
                     default: throw new Error('Unknown trigger event: ' + event);
@@ -5295,16 +5288,7 @@ var P;
         class Scratch3Stage extends P.core.Stage {
             constructor() {
                 super(...arguments);
-                this.broadcastReferences = {};
                 this.variableNames = {};
-            }
-            addBroadcast(name, id) {
-                this.broadcastReferences[name] = id;
-            }
-            lookupBroadcast(name) {
-                // Use the mapped ID or fall back to the name.
-                // Usually the name is the unique ID, but occasionally it is not.
-                return this.broadcastReferences[name] || name;
             }
             lookupVariable(name) {
                 return this.vars[this.variableNames[name]];
@@ -5689,7 +5673,8 @@ var P;
                 'Sans Serif': 'Noto Sans',
             };
             const textElements = svg.querySelectorAll('text');
-            for (const el of textElements) {
+            for (var i = 0; i < textElements.length; i++) {
+                const el = textElements[i];
                 const font = el.getAttribute('font-family') || '';
                 if (FONTS[font]) {
                     el.setAttribute('font-family', FONTS[font]);
@@ -5784,11 +5769,6 @@ var P;
                 target.currentCostumeIndex = data.currentCostume;
                 target.sb3data = data;
                 if (target.isStage) {
-                    const stage = target;
-                    for (const id of Object.keys(data.broadcasts)) {
-                        const name = data.broadcasts[id];
-                        stage.addBroadcast(name, id);
-                    }
                 }
                 else {
                     const sprite = target;
@@ -6031,11 +6011,11 @@ var P;
                     currentTarget.listeners.whenBackdropChanges[backdrop].push(f);
                 },
                 event_whenbroadcastreceived(block, f) {
-                    const optionId = block.fields.BROADCAST_OPTION[1];
-                    if (!currentTarget.listeners.whenIReceive[optionId]) {
-                        currentTarget.listeners.whenIReceive[optionId] = [];
+                    const name = block.fields.BROADCAST_OPTION[0];
+                    if (!currentTarget.listeners.whenIReceive[name]) {
+                        currentTarget.listeners.whenIReceive[name] = [];
                     }
-                    currentTarget.listeners.whenIReceive[optionId].push(f);
+                    currentTarget.listeners.whenIReceive[name].push(f);
                 },
                 // Control
                 control_start_as_clone(block, f) {
@@ -6052,6 +6032,31 @@ var P;
                     const argumentNames = JSON.parse(mutation.argumentnames);
                     const procedure = new P.sb3.Scratch3Procedure(f, warp, argumentNames);
                     currentTarget.procedures[name] = procedure;
+                },
+                // Makey Makey (extension)
+                makeymakey_whenMakeyKeyPressed(block, f) {
+                    const key = compileExpression(block.inputs.KEY);
+                    const keyMap = {
+                        // The key will be a full expression, including quotes around strings.
+                        '"SPACE"': 'space',
+                        '"UP"': 'up arrow',
+                        '"DOWN"': 'down arrow',
+                        '"LEFT"': 'left arrow',
+                        '"RIGHT"': 'right arrow',
+                        '"w"': 'w',
+                        '"a"': 'a',
+                        '"s"': 's',
+                        '"d"': 'd',
+                        '"f"': 'f',
+                        '"g"': 'g',
+                    };
+                    if (keyMap.hasOwnProperty(key)) {
+                        const keyCode = P.utils.getKeyCode(keyMap[key]);
+                        currentTarget.listeners.whenKeyPressed[keyCode].push(f);
+                    }
+                    else {
+                        console.warn('unknown makey makey key', key);
+                    }
                 },
             };
             // An untyped undefined works as it does in Scratch 3.
@@ -6382,6 +6387,11 @@ var P;
                 // Music (extension)
                 music_getTempo(block) {
                     return numberExpr('self.tempoBPM');
+                },
+                // Makey Makey (extension)
+                makeymakey_menu_KEY(block) {
+                    const key = block.fields.KEY[0];
+                    return sanitizedExpression(key);
                 },
                 // Legacy no-ops
                 // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_sensing.js#L74
@@ -6760,7 +6770,7 @@ var P;
                     const condition = block.inputs.CONDITION;
                     const substack = block.inputs.SUBSTACK;
                     const id = label();
-                    source += 'if (!' + compileExpression(condition) + ') {\n';
+                    source += 'if (!' + compileExpression(condition, 'boolean') + ') {\n';
                     compileSubstack(substack);
                     queue(id);
                     source += '}\n';
@@ -7325,8 +7335,8 @@ var P;
                         // Similar to variable references
                         return listReference(constant[2]);
                     case 11 /* BROADCAST */:
-                        // Similar to variable references.
-                        return compileExpression(constant[2]);
+                        // [type, name, id]
+                        return compileExpression(constant[1]);
                     case 9 /* COLOR_PICKER */:
                         // Colors are stored as strings like "#123ABC", so we must do some conversions to use them as numbers.
                         return compileColor(constant[1]);

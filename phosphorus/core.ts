@@ -146,7 +146,7 @@ namespace P.core {
      */
     public saying: boolean = false;
     /**
-     * Should this object's speach bubble be a thinking bubble instead?
+     * Should this object's speech bubble be a thinking bubble instead?
      */
     public thinking: boolean = false;
     /**
@@ -907,12 +907,6 @@ namespace P.core {
       this.drawChildren(renderer, skip);
     }
 
-    /**
-     * Determines the internal ID for a broadcast.
-     * @param name The name of the broadcast. It's what you see in the Scratch editor.
-     */
-    abstract lookupBroadcast(name: string): string;
-
     // Implement rotatedBounds() to return something.
     rotatedBounds() {
       return {
@@ -1145,7 +1139,7 @@ namespace P.core {
 
     getPenCSS() {
       // This is only temporary
-      return this.penCSS || 'hsla(' + this.penHue + ',' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
+      return this.penCSS || 'hsla(' + this.penHue + 'deg,' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
     }
 
     // Faces in a direction.
@@ -1358,8 +1352,7 @@ namespace P.core {
       this.setPenColorHSL();
       switch (param) {
         case 'color':
-          this.penHue = value * 360 / 200;
-          this.penSaturation = 100;
+          this.penHue = value * 360 / 100;
           break;
         case 'saturation':
           this.penSaturation = value;
@@ -1369,7 +1362,6 @@ namespace P.core {
           if (this.penLightness < 0) {
             this.penLightness += 200;
           }
-          this.penSaturation = 100;
           break;
         case 'transparency':
           this.penAlpha -= value / 100;
@@ -1384,8 +1376,7 @@ namespace P.core {
       this.setPenColorHSL();
       switch (param) {
         case 'color':
-          this.penHue += value * 360 / 200;
-          this.penSaturation = 100;
+          this.penHue += value * 360 / 100;
           break;
         case 'saturation':
           this.penSaturation += value;
@@ -1395,7 +1386,6 @@ namespace P.core {
           if (this.penLightness < 0) {
             this.penLightness += 200;
           }
-          this.penSaturation = 100;
           break;
         case 'transparency':
           this.penAlpha = Math.max(0, Math.min(1, value / 100));

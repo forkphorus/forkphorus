@@ -344,11 +344,6 @@ namespace P.sb2 {
     private defaultWatcherX = 10;
     private defaultWatcherY = 10;
 
-    lookupBroadcast(name: string) {
-      // Scratch 2 uses names as IDs.
-      return name;
-    }
-
     lookupVariable(name: string) {
       return this.vars[name];
     }
