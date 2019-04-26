@@ -863,12 +863,12 @@ namespace P.sb3 {
     }
 
     getAsText(path: string) {
-      return P.IO.fetch(ASSETS_API.replace('$md5ext', path))
+      return P.IO.fetchRemote(ASSETS_API.replace('$md5ext', path))
         .then((request) => request.text());
     }
 
     getAsArrayBuffer(path: string) {
-      return P.IO.fetch(ASSETS_API.replace('$md5ext', path))
+      return P.IO.fetchRemote(ASSETS_API.replace('$md5ext', path))
         .then((request) => request.arrayBuffer());
     }
 
@@ -891,7 +891,7 @@ namespace P.sb3 {
 
     load() {
       if (this.projectId) {
-        return P.IO.fetch(P.config.PROJECT_API.replace('$id', '' + this.projectId))
+        return P.IO.fetchRemote(P.config.PROJECT_API.replace('$id', '' + this.projectId))
           .then((request) => request.json())
           .then((data) => {
             this.projectData = data;

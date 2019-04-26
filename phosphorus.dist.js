@@ -40,7 +40,6 @@ var P;
         config.framerate = 30;
         config.debug = window.location.search.includes("debug");
         config.PROJECT_API = 'https://projects.scratch.mit.edu/$id';
-        config.canUseCORS = ['http:', 'https:'].indexOf(location.protocol) > -1;
     })(config = P.config || (P.config = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
@@ -49,7 +48,8 @@ var P;
 (function (P) {
     var audio;
     (function (audio) {
-        audio.context = (function getAudioContext() {
+        // Create an audio context involves a little bit of logic, so an IIFE is used.
+        audio.context = (function () {
             if (window.AudioContext) {
                 return new AudioContext();
             }
@@ -61,6 +61,7 @@ var P;
             }
         })();
         if (audio.context) {
+            // TODO: customizable volume
             var volume = 0.3;
             var volumeNode = audio.context.createGain();
             volumeNode.gain.value = volume;
@@ -242,7 +243,7 @@ var P;
                 { top: 128, name: 'SynthPad_C6', baseRatio: 2.3820424708835755, loop: true, loopStart: 0.11678004535147392, loopEnd: 0.41732426303854875, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
             ]
         ];
-        const SOUNDBANK_URL = P.config.canUseCORS ? 'soundbank/' : 'https://forkphorus.github.com/soundbank/';
+        const SOUNDBANK_URL = '/soundbank/';
         const SOUNDBANK_FILES = {
             'AcousticGuitar_F3': 'instruments/AcousticGuitar_F3_22k.wav',
             'AcousticPiano_As3': 'instruments/AcousticPiano(5)_A%233_22k.wav',
@@ -320,23 +321,23 @@ var P;
         function loadSoundbank() {
             if (!audio.context)
                 return Promise.resolve();
-            const assets = [];
+            const promises = [];
             for (const name in SOUNDBANK_FILES) {
                 if (!soundbank[name]) {
-                    assets.push(loadSoundbankBuffer(name));
+                    promises.push(loadSoundbankBuffer(name));
                 }
             }
-            return Promise.all(assets);
+            return Promise.all(promises);
         }
         audio.loadSoundbank = loadSoundbank;
         /**
          * Loads a soundbank file
          */
         function loadSoundbankBuffer(name) {
-            return P.IO.fetch(SOUNDBANK_URL + SOUNDBANK_FILES[name])
+            return P.IO.fetchLocal(SOUNDBANK_URL + SOUNDBANK_FILES[name])
                 .then((request) => request.arrayBuffer())
-                .then((arrayBuffer) => P.audio.decodeAudio(arrayBuffer))
-                .then((buffer) => soundbank[name] = buffer);
+                .then((buffer) => P.audio.decodeAudio(buffer))
+                .then((sound) => soundbank[name] = sound);
         }
         function playSound(sound) {
             if (!audio.context)
@@ -2128,7 +2129,12 @@ var P;
             // Indicates an error has occurred and the project will likely fail to load
             error(error) { },
         };
-        function fetch(url, opts) {
+        const useLocalFetch = ['http:', 'https:'].indexOf(location.protocol) > -1;
+        const localCORSFallback = 'https://forkphorus.github.com';
+        /**
+         * Fetch a remote URL
+         */
+        function fetchRemote(url, opts) {
             IO.progressHooks.new();
             return window.fetch(url, opts)
                 .then((r) => {
@@ -2140,7 +2146,22 @@ var P;
                 throw err;
             });
         }
-        IO.fetch = fetch;
+        IO.fetchRemote = fetchRemote;
+        /**
+         * Fetch a local file path, relative to phosphorus.
+         */
+        function fetchLocal(path, opts) {
+            // If for some reason fetching cannot be done locally, route the requests to forkphorus.github.io
+            // (where is more likely to be allowed)
+            if (!useLocalFetch) {
+                path = localCORSFallback + path;
+            }
+            return fetchRemote(path, opts);
+        }
+        IO.fetchLocal = fetchLocal;
+        /**
+         * Read a file as an ArrayBuffer
+         */
         function fileAsArrayBuffer(file) {
             const fileReader = new FileReader();
             return new Promise((resolve, reject) => {
@@ -2656,7 +2677,7 @@ var P;
                 object.lists = lists;
                 object.costumes = costumes;
                 object.currentCostumeIndex = data.currentCostumeIndex;
-                sounds.forEach((sound) => object.addSound(sound));
+                sounds.forEach((sound) => sound && object.addSound(sound));
                 if (isStage) {
                 }
                 else {
@@ -2689,7 +2710,7 @@ var P;
                 return loadVariableWatcher(data);
             }
             else if (data.listName) {
-                // list watcher TODO
+                // TODO: list watcher
             }
             else {
                 return loadBase(data);
@@ -2738,11 +2759,17 @@ var P;
         }
         sb2.loadCostume = loadCostume;
         function loadSound(data) {
-            return loadMD5(data.md5, data.soundID, true)
-                .then((buffer) => {
-                return new P.core.Sound({
-                    name: data.soundName,
-                    buffer: buffer,
+            return new Promise((resolve, reject) => {
+                loadMD5(data.md5, data.soundID, true)
+                    .then((buffer) => {
+                    resolve(new P.core.Sound({
+                        name: data.soundName,
+                        buffer,
+                    }));
+                })
+                    .catch((err) => {
+                    resolve(null);
+                    console.warn('Could not load sound: ' + err);
                 });
             });
         }
@@ -2858,7 +2885,7 @@ var P;
                         .then((text) => loadSVG(text));
                 }
                 else {
-                    return P.IO.fetch(ASSET_URL + hash + '/get/')
+                    return P.IO.fetchRemote(ASSET_URL + hash + '/get/')
                         .then((request) => request.text())
                         .then((text) => loadSVG(text));
                 }
@@ -2869,7 +2896,7 @@ var P;
                         .then((buffer) => P.audio.decodeAudio(buffer));
                 }
                 else {
-                    return P.IO.fetch(ASSET_URL + hash + '/get/')
+                    return P.IO.fetchRemote(ASSET_URL + hash + '/get/')
                         .then((request) => request.arrayBuffer())
                         .then((buffer) => P.audio.decodeAudio(buffer));
                 }
@@ -5102,11 +5129,19 @@ var P;
                 });
             }
             loadSound(data) {
-                return this.getAudioBuffer(data.md5ext)
-                    .then((buffer) => new P.core.Sound({
-                    name: data.name,
-                    buffer: buffer,
-                }));
+                return new Promise((resolve, reject) => {
+                    this.getAudioBuffer(data.md5ext)
+                        .then((buffer) => {
+                        resolve(new P.core.Sound({
+                            name: data.name,
+                            buffer,
+                        }));
+                    })
+                        .catch((err) => {
+                        console.warn('Could not load sound: ' + err);
+                        resolve(null);
+                    });
+                });
             }
             loadWatcher(data, stage) {
                 if (data.mode === 'list') {
@@ -5155,7 +5190,7 @@ var P;
                     const costumes = result[0];
                     const sounds = result[1];
                     target.costumes = costumes;
-                    sounds.forEach((sound) => target.addSound(sound));
+                    sounds.forEach((sound) => sound && target.addSound(sound));
                     return target;
                 });
             }
@@ -5269,11 +5304,11 @@ var P;
                 }
             }
             getAsText(path) {
-                return P.IO.fetch(sb3.ASSETS_API.replace('$md5ext', path))
+                return P.IO.fetchRemote(sb3.ASSETS_API.replace('$md5ext', path))
                     .then((request) => request.text());
             }
             getAsArrayBuffer(path) {
-                return P.IO.fetch(sb3.ASSETS_API.replace('$md5ext', path))
+                return P.IO.fetchRemote(sb3.ASSETS_API.replace('$md5ext', path))
                     .then((request) => request.arrayBuffer());
             }
             getAsImage(path) {
@@ -5294,7 +5329,7 @@ var P;
             }
             load() {
                 if (this.projectId) {
-                    return P.IO.fetch(P.config.PROJECT_API.replace('$id', '' + this.projectId))
+                    return P.IO.fetchRemote(P.config.PROJECT_API.replace('$id', '' + this.projectId))
                         .then((request) => request.json())
                         .then((data) => {
                         this.projectData = data;

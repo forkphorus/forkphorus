@@ -2,7 +2,8 @@
 /// <reference path="config.ts" />
 
 namespace P.audio {
-  export const context = (function getAudioContext(): AudioContext | null {
+  // Create an audio context involves a little bit of logic, so an IIFE is used.
+  export const context = (function(): AudioContext | null {
     if ((window as any).AudioContext) {
       return new AudioContext();
     } else if ((window as any).webkitAudioContext) {
@@ -13,12 +14,14 @@ namespace P.audio {
   })();
 
   if (context) {
+    // TODO: customizable volume
     var volume = 0.3;
     var volumeNode = context.createGain();
     volumeNode.gain.value = volume;
     volumeNode.connect(context.destination);
   }
 
+  // Most things relating to Span are old things I don't understand and don't want to touch.
   interface Span {
     name: string;
     loop: boolean;
@@ -210,7 +213,7 @@ namespace P.audio {
     ]
   ];
 
-  const SOUNDBANK_URL = P.config.canUseCORS ? 'soundbank/' : 'https://forkphorus.github.com/soundbank/';
+  const SOUNDBANK_URL = '/soundbank/';
   const SOUNDBANK_FILES = {
     'AcousticGuitar_F3': 'instruments/AcousticGuitar_F3_22k.wav',
     'AcousticPiano_As3': 'instruments/AcousticPiano(5)_A%233_22k.wav',
@@ -289,24 +292,24 @@ namespace P.audio {
   export function loadSoundbank(): Promise<any> {
     if (!context) return Promise.resolve();
 
-    const assets: any[] = [];
+    const promises: any[] = [];
     for (const name in SOUNDBANK_FILES) {
       if (!soundbank[name]) {
-        assets.push(loadSoundbankBuffer(name));
+        promises.push(loadSoundbankBuffer(name));
       }
     }
 
-    return Promise.all(assets);
+    return Promise.all(promises);
   }
 
   /**
    * Loads a soundbank file
    */
   function loadSoundbankBuffer(name): Promise<AudioBuffer> {
-    return P.IO.fetch(SOUNDBANK_URL + SOUNDBANK_FILES[name])
+    return P.IO.fetchLocal(SOUNDBANK_URL + SOUNDBANK_FILES[name])
       .then((request) => request.arrayBuffer())
-      .then((arrayBuffer) => P.audio.decodeAudio(arrayBuffer))
-      .then((buffer) => soundbank[name] = buffer);
+      .then((buffer) => P.audio.decodeAudio(buffer))
+      .then((sound) => soundbank[name] = sound);
   }
 
   export function playSound(sound: core.Sound) {
