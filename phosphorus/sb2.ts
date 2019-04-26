@@ -459,7 +459,7 @@ namespace P.sb2 {
       object.lists = lists;
       object.costumes = costumes;
       object.currentCostumeIndex = data.currentCostumeIndex;
-      sounds.forEach((sound) => object.addSound(sound));
+      sounds.forEach((sound) => sound && object.addSound(sound));
 
       if (isStage) {
 
@@ -494,7 +494,7 @@ namespace P.sb2 {
     if (data.cmd) {
       return loadVariableWatcher(data);
     } else if (data.listName) {
-      // list watcher TODO
+      // TODO: list watcher
     } else {
       return loadBase(data);
     }
@@ -541,14 +541,20 @@ namespace P.sb2 {
       });
   }
 
-  export function loadSound(data) {
-    return (loadMD5(data.md5, data.soundID, true) as Promise<any>)
-      .then((buffer) => {
-        return new P.core.Sound({
-          name: data.soundName,
-          buffer: buffer,
+  export function loadSound(data): Promise<P.core.Sound | null> {
+    return new Promise((resolve, reject) => {
+      loadMD5(data.md5, data.soundID, true)
+        .then((buffer) => {
+          resolve(new P.core.Sound({
+            name: data.soundName,
+            buffer,
+          }));
+        })
+        .catch((err) => {
+          resolve(null);
+          console.warn('Could not load sound: ' + err);
         });
-      });
+    });
   }
 
   export function patchSVG(svg, element) {
@@ -650,6 +656,8 @@ namespace P.sb2 {
     });
   }
 
+  export function loadMD5(hash: string, id: string, isAudio?: true): Promise<AudioBuffer>;
+  export function loadMD5(hash: string, id: string, isAudio?: false): Promise<HTMLImageElement | HTMLCanvasElement | null>;
   export function loadMD5(hash: string, id: string, isAudio: boolean = false): Promise<HTMLImageElement | HTMLCanvasElement | AudioBuffer | null> {
     if (zipArchive) {
       var f = isAudio ? zipArchive.file(id + '.wav') : zipArchive.file(id + '.gif') || zipArchive.file(id + '.png') || zipArchive.file(id + '.jpg') || zipArchive.file(id + '.svg');
@@ -663,7 +671,7 @@ namespace P.sb2 {
         return f!.async('text')
           .then((text) => loadSVG(text));
       } else {
-        return P.IO.fetch(ASSET_URL + hash + '/get/')
+        return P.IO.fetchRemote(ASSET_URL + hash + '/get/')
           .then((request) => request.text())
           .then((text) => loadSVG(text));
       }
@@ -672,7 +680,7 @@ namespace P.sb2 {
         return f!.async('arrayBuffer')
           .then((buffer) => P.audio.decodeAudio(buffer));
       } else {
-        return P.IO.fetch(ASSET_URL + hash + '/get/')
+        return P.IO.fetchRemote(ASSET_URL + hash + '/get/')
           .then((request) => request.arrayBuffer())
           .then((buffer) => P.audio.decodeAudio(buffer));
       }
