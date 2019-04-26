@@ -661,12 +661,20 @@ namespace P.sb3 {
         });
     }
 
-    loadSound(data: SB3Sound): Promise<P.core.Sound> {
-      return this.getAudioBuffer(data.md5ext)
-        .then((buffer) => new P.core.Sound({
-          name: data.name,
-          buffer: buffer,
-        }));
+    loadSound(data: SB3Sound): Promise<P.core.Sound | null> {
+      return new Promise((resolve, reject) => {
+        this.getAudioBuffer(data.md5ext)
+          .then((buffer) => {
+            resolve(new P.core.Sound({
+              name: data.name,
+              buffer,
+            }))
+          })
+          .catch((err) => {
+            console.warn('Could not load sound: ' + err);
+            resolve(null);
+          });
+      });
     }
 
     loadWatcher(data: SB3Watcher, stage: Scratch3Stage): P.core.Watcher {
@@ -716,15 +724,15 @@ namespace P.sb3 {
       }
 
       const costumesPromise = Promise.all<P.core.Costume>(data.costumes.map((c: any, i: any) => this.loadCostume(c, i)));
-      const soundsPromise = Promise.all<P.core.Sound>(data.sounds.map((c) => this.loadSound(c)));
+      const soundsPromise = Promise.all<P.core.Sound | null>(data.sounds.map((c) => this.loadSound(c)));
 
-      return Promise.all<P.core.Costume[], P.core.Sound[]>([costumesPromise, soundsPromise])
+      return Promise.all<P.core.Costume[], Array<P.core.Sound | null>>([costumesPromise, soundsPromise])
         .then((result) => {
           const costumes = result[0];
           const sounds = result[1];
 
           target.costumes = costumes;
-          sounds.forEach((sound: P.core.Sound) => target.addSound(sound));
+          sounds.forEach((sound) => sound && target.addSound(sound));
 
           return target;
         });
