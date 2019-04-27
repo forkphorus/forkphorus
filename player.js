@@ -12,6 +12,7 @@ P.player = (function() {
   var turbo = document.querySelector('.turbo');
   var pause = document.querySelector('.pause');
   var stop = document.querySelector('.stop');
+  var muted = document.querySelector('.muted');
   var fullScreen = document.querySelector('.full-screen');
 
   var error = document.querySelector('.internal-error');
@@ -208,6 +209,17 @@ P.player = (function() {
     error.style.display = 'block';
     errorBugLink.href = createBugLink("Describe what you were doing to cause this error:", '```\n' + P.utils.stringifyError(e) + '\n```');
     console.error(e);
+  }
+
+  function setAudioState(state) {
+    muted.style.display = state === 'running' ? 'none' : 'block';
+  }
+
+  if (P.audio.context) {
+    P.audio.context.addEventListener('statechange', function() {
+      setAudioState(P.audio.context.state);
+    });
+    setAudioState(P.audio.context.state);
   }
 
   // Install our progress hooks

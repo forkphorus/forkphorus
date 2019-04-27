@@ -71,13 +71,20 @@
   opacity: 1;
 }
 
-.controls .turbo {
-  float: right;
-  display: none;
-  cursor: default;
+.controls .text {
   color: rgba(0, 0, 0, .4);
   font: 500 12px/32px sans-serif;
   padding: 0 8px;
+  cursor: default;
+}
+
+.controls .turbo {
+  float: right;
+  display: none;
+}
+.controls .muted {
+  float: left;
+  display: none;
 }
 
 .internal-error {
@@ -125,9 +132,9 @@
 .dark .fs .controls .fullscreen {
   background-position-y: -32px;
 }
-.fs .controls .turbo,
-.light-content .controls .turbo,
-.dark .controls .turbo {
+.fs .controls .text,
+.light-content .controls .text,
+.dark .controls .text {
   color: rgba(255, 255, 255, .6);
 }
 .fs .player {
