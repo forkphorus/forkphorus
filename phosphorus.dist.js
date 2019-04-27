@@ -5576,7 +5576,7 @@ var P;
                 },
                 sensing_keypressed(block) {
                     const key = block.inputs.KEY_OPTION;
-                    return booleanExpr('!!self.keys[P.utils.getKeyCode(' + compileExpression(key) + ')]');
+                    return booleanExpr('!!self.keys[P.runtime.getKeyCode(' + compileExpression(key) + ')]');
                 },
                 sensing_keyoptions(block) {
                     const key = block.fields.KEY_OPTION[0];
