@@ -465,7 +465,7 @@ namespace P.runtime {
   };
 
   var broadcast = function(name) {
-    return runtime.trigger('whenIReceive', self.lookupBroadcast(name));
+    return runtime.trigger('whenIReceive', name);
   };
 
   var running = function(bases) {
@@ -521,7 +521,7 @@ namespace P.runtime {
       this.onError = this.onError.bind(this);
     }
 
-    startThread(sprite: core.Base, base) {
+    startThread(sprite: core.Base, base: Fn) {
       const thread = new Thread(sprite, base, base, [{
         args: [],
         stack: [{}],
@@ -542,8 +542,8 @@ namespace P.runtime {
     /**
      * Triggers an event for a single sprite.
      */
-    triggerFor(sprite: P.core.Base, event: string, arg?: any): Thread[] {
-      let threads;
+    triggerFor(sprite: P.core.Base, event: string, arg?: any): Fn[] {
+      let threads: Fn[];
       switch (event) {
         case 'whenClicked': threads = sprite.listeners.whenClicked; break;
         case 'whenCloned': threads = sprite.listeners.whenCloned; break;
@@ -553,6 +553,7 @@ namespace P.runtime {
         case 'whenBackdropChanges': threads = sprite.listeners.whenBackdropChanges['' + arg]; break;
         case 'whenIReceive':
           arg = '' + arg;
+          // TODO: remove toLowerCase() check?
           threads = sprite.listeners.whenIReceive[arg] || sprite.listeners.whenIReceive[arg.toLowerCase()];
           break;
         default: throw new Error('Unknown trigger event: ' + event);
@@ -569,7 +570,7 @@ namespace P.runtime {
      * Triggers an event on all sprites.
      */
     trigger(event: string, arg?: any) {
-      let threads: Thread[] = [];
+      let threads: Fn[] = [];
       for (let i = this.stage.children.length; i--;) {
         threads = threads.concat(this.triggerFor(this.stage.children[i], event, arg));
       }

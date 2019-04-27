@@ -145,7 +145,7 @@ namespace P.core {
      */
     public saying: boolean = false;
     /**
-     * Should this object's speach bubble be a thinking bubble instead?
+     * Should this object's speech bubble be a thinking bubble instead?
      */
     public thinking: boolean = false;
     /**
@@ -959,12 +959,6 @@ namespace P.core {
       renderer.drawImage(this.penCanvas, 0, 0);
       this.drawChildren(renderer, skip);
     }
-
-    /**
-     * Determines the internal ID for a broadcast.
-     * @param name The name of the broadcast. It's what you see in the Scratch editor.
-     */
-    abstract lookupBroadcast(name: string): string;
 
     // Implement rotatedBounds() to return something.
     rotatedBounds() {
