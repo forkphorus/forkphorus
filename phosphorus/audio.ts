@@ -313,8 +313,12 @@ namespace P.audio {
   }
 
   export function playSound(sound: core.Sound) {
-    if (!context) return;
-    if (!sound.buffer) return;
+    if (!context) {
+      return;
+    }
+    if (!sound.buffer) {
+      return;
+    }
 
     if (sound.source) {
       sound.source.disconnect();
@@ -327,10 +331,14 @@ namespace P.audio {
   }
 
   export function playSpan(span: Span, key: number, duration: number, connection: AudioNode) {
-    if (!context) return;
+    if (!context) {
+      return;
+    }
 
     const buffer = soundbank[span.name];
-    if (!buffer) return;
+    if (!buffer) {
+      return;
+    }
 
     const source = context.createBufferSource();
     const note = context.createGain();

@@ -648,9 +648,13 @@ namespace P.runtime {
       runtime = this;
       VISUAL = false;
 
+      if (audioContext && audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+
       const start = Date.now();
+      const queue = this.queue;
       do {
-        var queue = this.queue;
         this.now = this.rightNow();
         for (THREAD = 0; THREAD < queue.length; THREAD++) {
           if (queue[THREAD]) {

@@ -340,10 +340,12 @@ var P;
                 .then((sound) => soundbank[name] = sound);
         }
         function playSound(sound) {
-            if (!audio.context)
+            if (!audio.context) {
                 return;
-            if (!sound.buffer)
+            }
+            if (!sound.buffer) {
                 return;
+            }
             if (sound.source) {
                 sound.source.disconnect();
             }
@@ -354,11 +356,13 @@ var P;
         }
         audio.playSound = playSound;
         function playSpan(span, key, duration, connection) {
-            if (!audio.context)
+            if (!audio.context) {
                 return;
+            }
             const buffer = soundbank[span.name];
-            if (!buffer)
+            if (!buffer) {
                 return;
+            }
             const source = audio.context.createBufferSource();
             const note = audio.context.createGain();
             source.buffer = buffer;
@@ -4521,9 +4525,12 @@ var P;
                 self = this.stage;
                 runtime = this;
                 VISUAL = false;
+                if (audioContext && audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
                 const start = Date.now();
+                const queue = this.queue;
                 do {
-                    var queue = this.queue;
                     this.now = this.rightNow();
                     for (THREAD = 0; THREAD < queue.length; THREAD++) {
                         if (queue[THREAD]) {
