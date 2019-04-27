@@ -5310,7 +5310,7 @@ var P;
                     currentTarget.listeners.whenBackdropChanges[backdrop].push(f);
                 },
                 event_whenbroadcastreceived(block, f) {
-                    const name = block.fields.BROADCAST_OPTION[0];
+                    const name = block.fields.BROADCAST_OPTION[0].toLowerCase();
                     if (!currentTarget.listeners.whenIReceive[name]) {
                         currentTarget.listeners.whenIReceive[name] = [];
                     }
