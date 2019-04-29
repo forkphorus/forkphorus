@@ -372,7 +372,7 @@ namespace P.sb2 {
     }
 
     updateBubble() {
-      // Stage ecannot say things in Scratch 2.
+      // Stage cannot say things in Scratch 2.
     }
 
     watcherStart(id, t, e) {

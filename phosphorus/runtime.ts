@@ -84,9 +84,11 @@ namespace P.runtime {
   };
   // Determines if x is equal to y
   var equal = function(x, y) {
-    if ((typeof x === 'number' || DIGIT.test(x)) && (typeof y === 'number' || DIGIT.test(y))) {
+    // numbers, booleans, and strings that look like numbers will go through the number comparison
+    if ((typeof x === 'number' || typeof x === 'boolean' || DIGIT.test(x)) && (typeof y === 'number' || typeof x === 'boolean' || DIGIT.test(y))) {
       var nx = +x;
       var ny = +y;
+      // if either is NaN, don't do the comparison
       if (nx === nx && ny === ny) {
         return nx === ny;
       }
