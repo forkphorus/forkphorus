@@ -99,6 +99,7 @@ namespace P.sb3 {
     sliderMax?: number;
     width?: number;
     height?: number;
+    isDiscrete: boolean;
   }
 
   /**
@@ -153,6 +154,7 @@ namespace P.sb3 {
     public libraryEntry: P.sb3.compiler.WatchedValue;
     public sliderMin: number;
     public sliderMax: number;
+    public sliderStep: number;
 
     public containerEl: HTMLElement;
     public valueEl: HTMLElement;
@@ -176,6 +178,12 @@ namespace P.sb3 {
 
       this.sliderMin = data.sliderMin || 0;
       this.sliderMax = data.sliderMax || 0;
+      // isDiscrete doesn't always exist
+      if (typeof data.isDiscrete !== 'undefined') {
+        this.sliderStep = data.isDiscrete ? 1 : 0.01;
+      } else {
+        this.sliderStep = 1;
+      }
 
       // Mark ourselves as invalid if the opcode is not recognized.
       if (!this.libraryEntry) {
@@ -298,6 +306,7 @@ namespace P.sb3 {
           input.type = 'range';
           input.min = '' + this.sliderMin;
           input.max = '' + this.sliderMax;
+          input.step = '' + this.sliderStep;
           input.value = this.getValue();
           input.addEventListener('input', this.sliderChanged.bind(this));
 

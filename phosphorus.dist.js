@@ -4631,6 +4631,13 @@ var P;
                 this.visible = typeof data.visible === 'boolean' ? data.visible : true;
                 this.sliderMin = data.sliderMin || 0;
                 this.sliderMax = data.sliderMax || 0;
+                // isDiscrete doesn't always exist
+                if (typeof data.isDiscrete !== 'undefined') {
+                    this.sliderStep = data.isDiscrete ? 1 : 0.01;
+                }
+                else {
+                    this.sliderStep = 1;
+                }
                 // Mark ourselves as invalid if the opcode is not recognized.
                 if (!this.libraryEntry) {
                     console.warn('unknown watcher', this.opcode, this);
@@ -4732,6 +4739,7 @@ var P;
                         input.type = 'range';
                         input.min = '' + this.sliderMin;
                         input.max = '' + this.sliderMax;
+                        input.step = '' + this.sliderStep;
                         input.value = this.getValue();
                         input.addEventListener('input', this.sliderChanged.bind(this));
                         slider.appendChild(input);
