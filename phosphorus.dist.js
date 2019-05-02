@@ -4977,6 +4977,7 @@ var P;
                 'Marker': 'Knewave',
                 'Handwriting': 'Handlee',
                 'Curly': 'Griffy',
+                'Pixel': 'Pixel',
                 'Scratch': 'Scratch',
                 'Serif': 'Source Serif Pro',
                 'Sans Serif': 'Noto Sans',
@@ -4989,6 +4990,7 @@ var P;
                     el.setAttribute('font-family', FONTS[font]);
                 }
                 else {
+                    console.warn('unknown font', font, '(defaulting to sans-serif)');
                     // Scratch 3 replaces unknown fonts with sans serif.
                     el.setAttribute('font-family', FONTS['Sans Serif']);
                 }
