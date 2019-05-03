@@ -4916,7 +4916,7 @@ var P;
                 if (index < 1 || index > this.length) {
                     return -1;
                 }
-                return +index - 1;
+                return Math.floor(+index) - 1;
             }
             // Deletes a line from the list.
             // index is a scratch index.
@@ -5611,7 +5611,7 @@ var P;
                 operator_mod(block) {
                     const num1 = block.inputs.NUM1;
                     const num2 = block.inputs.NUM2;
-                    return numberExpr('mod(' + compileExpression(num1) + ', ' + compileExpression(num2) + ')');
+                    return numberExpr('mod(' + compileExpression(num1, 'number') + ', ' + compileExpression(num2, 'number') + ')');
                 },
                 operator_round(block) {
                     const num = block.inputs.NUM;
