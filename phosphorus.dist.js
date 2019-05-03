@@ -1410,7 +1410,7 @@ var P;
                     const sprites = this.stage.getObjects(thing);
                     for (var i = sprites.length; i--;) {
                         const sprite = sprites[i];
-                        if (!sprite.visible)
+                        if (!sprite.visible || sprite === this)
                             continue;
                         const mb = this.rotatedBounds();
                         const ob = sprite.rotatedBounds();
