@@ -78,7 +78,7 @@
   <div class=error>
     <div>
       <h1>forkphorus</h1>
-      <p>An error has occurred. <a id=error-bug-link href=https://github.com/forkphorus/forkphorus.github.io/issues/new>Click here</a> to file a bug report.</p>
+      <p>An error has occurred. <a id=error-bug-link href=https://github.com/forkphorus/forkphorus/issues/new>Click here</a> to file a bug report.</p>
     </div>
   </div>
 
@@ -146,7 +146,7 @@
       // See player.js
       var url = 'https://scratch.mit.edu/projects/' + projectId + '/';
       var baseBody = '\n\n\n----\nProject URL: ' + url + '\nProject ID: ' + projectId + '\n' + location.href + '\n' + navigator.userAgent + '\n';
-      return 'https://github.com/forkphorus/forkphorus.github.io/issues/new?title=' + encodeURIComponent(url) + '&body=' + encodeURIComponent(before + baseBody + after) + '&labels=bug';
+      return 'https://github.com/forkphorus/forkphorus/issues/new?title=' + encodeURIComponent(url) + '&body=' + encodeURIComponent(before + baseBody + after) + '&labels=bug';
     }
 
     window.addEventListener('resize', layout);
