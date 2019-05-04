@@ -3629,7 +3629,11 @@ var P;
                     warn('Undefined event: ' + script[0][0]);
                 }
                 if (P.config.debug) {
-                    console.log('compiled scratch 2 script', source);
+                    var variant = script[0][0];
+                    if (variant === 'procDef') {
+                        variant += ':' + script[0][1];
+                    }
+                    console.log('compiled sb2 script', variant, source);
                 }
             };
             function compile(stage) {
@@ -4913,10 +4917,11 @@ var P;
                 if (index === 'last') {
                     return this.length - 1;
                 }
+                index = Math.floor(+index);
                 if (index < 1 || index > this.length) {
                     return -1;
                 }
-                return Math.floor(+index) - 1;
+                return index - 1;
             }
             // Deletes a line from the list.
             // index is a scratch index.
@@ -5336,13 +5341,13 @@ var P;
                 procedures_definition(block, f) {
                     const customBlockId = block.inputs.custom_block[1];
                     const mutation = blocks[customBlockId].mutation;
-                    const name = mutation.proccode;
+                    const proccode = mutation.proccode;
                     // Warp is either a boolean or a string representation of that boolean for some reason.
                     const warp = typeof mutation.warp === 'string' ? mutation.warp === 'true' : mutation.warp;
                     // It's a stringified JSON array.
                     const argumentNames = JSON.parse(mutation.argumentnames);
                     const procedure = new P.sb3.Scratch3Procedure(f, warp, argumentNames);
-                    currentTarget.procedures[name] = procedure;
+                    currentTarget.procedures[proccode] = procedure;
                 },
                 // Makey Makey (extension)
                 makeymakey_whenMakeyKeyPressed(block, f) {
@@ -6794,7 +6799,7 @@ var P;
                 // Procedure definitions need special care to properly end calls.
                 // In the future this should be refactored so that things like this are part of the top level library
                 if (topLevelOpCode === 'procedures_definition') {
-                    source += 'endCall(); return\n';
+                    source += 'endCall(); return;\n';
                 }
                 return true;
             }

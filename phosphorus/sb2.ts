@@ -1934,7 +1934,11 @@ namespace P.sb2.compiler {
     }
 
     if (P.config.debug) {
-      console.log('compiled scratch 2 script', source);
+      var variant = script[0][0];
+      if (variant === 'procDef') {
+        variant += ':' + script[0][1];
+      }
+      console.log('compiled sb2 script', variant, source);
     }
   };
 
