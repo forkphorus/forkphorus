@@ -612,6 +612,18 @@ namespace P.core {
         }
       });
 
+      this.root.addEventListener('wheel', (e) => {
+        // Scroll up/down triggers key listeners for up/down arrows, but without affecting "is key pressed?" blocks
+        if (e.deltaY > 0) {
+          // 40 = down arrow
+          this.runtime.trigger('whenKeyPressed', 40);
+        } else if (e.deltaY < 0) {
+          // 38 = up arrow
+          this.runtime.trigger('whenKeyPressed', 38);
+        }
+        // TODO: consider e.preventDefault()
+      });
+
       if (P.config.hasTouchEvents) {
         document.addEventListener('touchstart', (e: TouchEvent) => {
           if (!this.runtime.isRunning) return;
