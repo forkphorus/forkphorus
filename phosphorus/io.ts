@@ -16,7 +16,7 @@ namespace P.IO {
   };
 
   const useLocalFetch: boolean = ['http:', 'https:'].indexOf(location.protocol) > -1;
-  const localCORSFallback: string = 'https://forkphorus.github.com';
+  const localCORSFallback: string = 'https://forkphorus.github.io';
 
   /**
    * Fetch a remote URL

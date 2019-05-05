@@ -71,7 +71,7 @@ P.suite = (function() {
    * @returns {ArrayBuffer} The ArrayBuffer representing the fetched content
    */
   function fetchAsArrayBuffer(path) {
-    return fetch(path)
+    return P.IO.fetchLocal(path)
       .then((r) => r.arrayBuffer());
   }
 
@@ -287,7 +287,7 @@ P.suite = (function() {
       const repeatCount = projectMetadata.repeatCount;
 
       const projectType = getProjectType(path);
-      const buffer = await fetchAsArrayBuffer(path);
+      const buffer = await fetchAsArrayBuffer('/tests/' + path);
 
       for (let i = 0; i < repeatCount; i++) {
         const result = await runProject(projectMetadata, buffer, projectType);

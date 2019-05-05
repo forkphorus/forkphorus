@@ -93,9 +93,6 @@
       if (!P.suite) {
         alert('test suite could not load');
       }
-      if (location.protocol === 'file:') {
-        alert('test suite does not work from file: url');
-      }
 
       if (location.search.indexOf('benchmark') > -1) {
         P.suite.defaults.repeatCount = 50;

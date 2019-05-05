@@ -77,4 +77,15 @@ namespace P.utils {
 
     return [h!, s * 100, l * 100];
   }
+
+  /**
+   * Creates a promise that resolves when the original promise resolves or fails.
+   */
+  export function settled(promise: Promise<any>): Promise<void> {
+    return new Promise((resolve, _reject) => {
+      promise
+        .then(() => resolve())
+        .catch(() => resolve());
+    });
+  }
 }

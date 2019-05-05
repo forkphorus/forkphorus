@@ -2076,129 +2076,6 @@ var P;
 /// <reference path="phosphorus.ts" />
 var P;
 (function (P) {
-    var fonts;
-    (function (fonts) {
-        /**
-         * Dynamically load a remote font
-         * @param name The name of the font (font-family)
-         */
-        function loadFont(name) {
-            P.IO.progressHooks.new();
-            const observer = new FontFaceObserver(name);
-            return observer.load().then(() => {
-                P.IO.progressHooks.end();
-            });
-        }
-        fonts.loadFont = loadFont;
-        var loadedScratch2 = false;
-        var loadedScratch3 = false;
-        /**
-         * Loads all Scratch 2 associated fonts
-         */
-        function loadScratch2() {
-            if (loadedScratch2) {
-                return Promise.resolve();
-            }
-            return Promise.all([
-                loadFont('Donegal One'),
-                loadFont('Gloria Hallelujah'),
-                loadFont('Mystery Quest'),
-                loadFont('Permanent Marker'),
-                loadFont('Scratch'),
-            ]).then(() => void (loadedScratch2 = true));
-        }
-        fonts.loadScratch2 = loadScratch2;
-        /**
-         * Loads all Scratch 3 associated fonts
-         */
-        function loadScratch3() {
-            if (loadedScratch3) {
-                return Promise.resolve();
-            }
-            return Promise.all([
-                loadFont('Knewave'),
-                loadFont('Handlee'),
-                loadFont('Pixel'),
-                loadFont('Griffy'),
-                loadFont('Scratch'),
-                loadFont('Source Serif Pro'),
-                loadFont('Noto Sans'),
-            ]).then(() => void (loadedScratch3 = true));
-        }
-        fonts.loadScratch3 = loadScratch3;
-    })(fonts = P.fonts || (P.fonts = {}));
-})(P || (P = {}));
-/// <reference path="phosphorus.ts" />
-// IO helpers and hooks
-var P;
-(function (P) {
-    var IO;
-    (function (IO) {
-        // Hooks that can be replaced by other scripts to hook into progress reports.
-        IO.progressHooks = {
-            // Indicates that a new task has started
-            new() { },
-            // Indicates that a task has finished successfully
-            end() { },
-            // Sets the current progress, should override new() and end()
-            set(p) { },
-            // Indicates an error has occurred and the project will likely fail to load
-            error(error) { },
-        };
-        const useLocalFetch = ['http:', 'https:'].indexOf(location.protocol) > -1;
-        const localCORSFallback = 'https://forkphorus.github.com';
-        /**
-         * Fetch a remote URL
-         */
-        function fetchRemote(url, opts) {
-            IO.progressHooks.new();
-            return window.fetch(url, opts)
-                .then((r) => {
-                IO.progressHooks.end();
-                return r;
-            })
-                .catch((err) => {
-                IO.progressHooks.error(err);
-                throw err;
-            });
-        }
-        IO.fetchRemote = fetchRemote;
-        /**
-         * Fetch a local file path, relative to phosphorus.
-         */
-        function fetchLocal(path, opts) {
-            // If for some reason fetching cannot be done locally, route the requests to forkphorus.github.io
-            // (where is more likely to be allowed)
-            if (!useLocalFetch) {
-                path = localCORSFallback + path;
-            }
-            return fetchRemote(path, opts);
-        }
-        IO.fetchLocal = fetchLocal;
-        /**
-         * Read a file as an ArrayBuffer
-         */
-        function fileAsArrayBuffer(file) {
-            const fileReader = new FileReader();
-            return new Promise((resolve, reject) => {
-                fileReader.onloadend = function () {
-                    resolve(fileReader.result);
-                };
-                fileReader.onerror = function (err) {
-                    reject('Failed to load file');
-                };
-                fileReader.onprogress = function (progress) {
-                    IO.progressHooks.set(progress);
-                };
-                fileReader.readAsArrayBuffer(file);
-            });
-        }
-        IO.fileAsArrayBuffer = fileAsArrayBuffer;
-    })(IO = P.IO || (P.IO = {}));
-})(P || (P = {}));
-/// <reference path="phosphorus.ts" />
-var P;
-(function (P) {
     var utils;
     (function (utils) {
         // Returns the string representation of an error.
@@ -2278,7 +2155,142 @@ var P;
             return [h, s * 100, l * 100];
         }
         utils.rgbToHSL = rgbToHSL;
+        /**
+         * Creates a promise that resolves when the original promise resolves or fails.
+         */
+        function settled(promise) {
+            return new Promise((resolve, _reject) => {
+                promise
+                    .then(() => resolve())
+                    .catch(() => resolve());
+            });
+        }
+        utils.settled = settled;
     })(utils = P.utils || (P.utils = {}));
+})(P || (P = {}));
+/// <reference path="phosphorus.ts" />
+/// <reference path="utils.ts" />
+var P;
+(function (P) {
+    var fonts;
+    (function (fonts) {
+        /**
+         * Dynamically load a remote font
+         * @param name The name of the font (font-family)
+         */
+        function loadFont(name) {
+            P.IO.progressHooks.new();
+            const observer = new FontFaceObserver(name);
+            return observer.load().then(() => {
+                P.IO.progressHooks.end();
+            });
+        }
+        fonts.loadFont = loadFont;
+        var loadedScratch2 = false;
+        var loadedScratch3 = false;
+        /**
+         * Loads all Scratch 2 associated fonts
+         */
+        function loadScratch2() {
+            if (loadedScratch2) {
+                return Promise.resolve();
+            }
+            return Promise.all([
+                P.utils.settled(loadFont('Donegal One')),
+                P.utils.settled(loadFont('Gloria Hallelujah')),
+                P.utils.settled(loadFont('Mystery Quest')),
+                P.utils.settled(loadFont('Permanent Marker')),
+                P.utils.settled(loadFont('Scratch')),
+            ]).then(() => void (loadedScratch2 = true));
+        }
+        fonts.loadScratch2 = loadScratch2;
+        /**
+         * Loads all Scratch 3 associated fonts
+         */
+        function loadScratch3() {
+            if (loadedScratch3) {
+                return Promise.resolve();
+            }
+            return Promise.all([
+                P.utils.settled(loadFont('Knewave')),
+                P.utils.settled(loadFont('Handlee')),
+                P.utils.settled(loadFont('Pixel')),
+                P.utils.settled(loadFont('Griffy')),
+                P.utils.settled(loadFont('Scratch')),
+                P.utils.settled(loadFont('Source Serif Pro')),
+                P.utils.settled(loadFont('Noto Sans')),
+            ]).then(() => void (loadedScratch3 = true));
+        }
+        fonts.loadScratch3 = loadScratch3;
+    })(fonts = P.fonts || (P.fonts = {}));
+})(P || (P = {}));
+/// <reference path="phosphorus.ts" />
+// IO helpers and hooks
+var P;
+(function (P) {
+    var IO;
+    (function (IO) {
+        // Hooks that can be replaced by other scripts to hook into progress reports.
+        IO.progressHooks = {
+            // Indicates that a new task has started
+            new() { },
+            // Indicates that a task has finished successfully
+            end() { },
+            // Sets the current progress, should override new() and end()
+            set(p) { },
+            // Indicates an error has occurred and the project will likely fail to load
+            error(error) { },
+        };
+        const useLocalFetch = ['http:', 'https:'].indexOf(location.protocol) > -1;
+        const localCORSFallback = 'https://forkphorus.github.io';
+        /**
+         * Fetch a remote URL
+         */
+        function fetchRemote(url, opts) {
+            IO.progressHooks.new();
+            return window.fetch(url, opts)
+                .then((r) => {
+                IO.progressHooks.end();
+                return r;
+            })
+                .catch((err) => {
+                IO.progressHooks.error(err);
+                throw err;
+            });
+        }
+        IO.fetchRemote = fetchRemote;
+        /**
+         * Fetch a local file path, relative to phosphorus.
+         */
+        function fetchLocal(path, opts) {
+            // If for some reason fetching cannot be done locally, route the requests to forkphorus.github.io
+            // (where is more likely to be allowed)
+            if (!useLocalFetch) {
+                path = localCORSFallback + path;
+            }
+            return fetchRemote(path, opts);
+        }
+        IO.fetchLocal = fetchLocal;
+        /**
+         * Read a file as an ArrayBuffer
+         */
+        function fileAsArrayBuffer(file) {
+            const fileReader = new FileReader();
+            return new Promise((resolve, reject) => {
+                fileReader.onloadend = function () {
+                    resolve(fileReader.result);
+                };
+                fileReader.onerror = function (err) {
+                    reject('Failed to load file');
+                };
+                fileReader.onprogress = function (progress) {
+                    IO.progressHooks.set(progress);
+                };
+                fileReader.readAsArrayBuffer(file);
+            });
+        }
+        IO.fileAsArrayBuffer = fileAsArrayBuffer;
+    })(IO = P.IO || (P.IO = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
 /// <reference path="utils.ts" />
