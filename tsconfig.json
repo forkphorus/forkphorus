@@ -2,6 +2,7 @@
   "compilerOptions": {
     "outFile": "./phosphorus.dist.js",
     "sourceMap": true,
+    "inlineSources": true,
     "target": "es6",
     // Make TypeScript more strict than it is by default without
     // making it restrictive.
