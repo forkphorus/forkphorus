@@ -1802,17 +1802,22 @@ var P;
             // Determines if this Sprite is touching a color.
             touchingColor(rgb) {
                 const b = this.rotatedBounds();
-                collisionCanvas.width = b.right - b.left;
-                collisionCanvas.height = b.top - b.bottom;
+                const width = b.right - b.left;
+                const height = b.top - b.bottom;
+                if (width < 1 || height < 1) {
+                    return false;
+                }
+                collisionCanvas.width = width;
+                collisionCanvas.height = height;
                 collisionRenderer.ctx.save();
                 collisionRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
                 this.stage.drawAll(collisionRenderer, this);
                 collisionRenderer.ctx.globalCompositeOperation = 'destination-in';
                 collisionRenderer.drawChild(this);
                 collisionRenderer.ctx.restore();
-                const data = collisionRenderer.ctx.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
+                const data = collisionRenderer.ctx.getImageData(0, 0, width, height).data;
                 rgb = rgb & 0xffffff;
-                const length = (b.right - b.left) * (b.top - b.bottom) * 4;
+                const length = width * height * 4;
                 for (var i = 0; i < length; i += 4) {
                     if ((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) === rgb && data[i + 3]) {
                         return true;
