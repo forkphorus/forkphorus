@@ -15,7 +15,13 @@ namespace P.IO {
     error(error) {},
   };
 
-  export function fetch(url: string, opts?: any) {
+  const useLocalFetch: boolean = ['http:', 'https:'].indexOf(location.protocol) > -1;
+  const localCORSFallback: string = 'https://forkphorus.github.com';
+
+  /**
+   * Fetch a remote URL
+   */
+  export function fetchRemote(url: string, opts?: any) {
     progressHooks.new();
     return window.fetch(url, opts)
       .then((r) => {
@@ -28,7 +34,22 @@ namespace P.IO {
       });
   }
 
-  export function fileAsArrayBuffer(file) {
+  /**
+   * Fetch a local file path, relative to phosphorus.
+   */
+  export function fetchLocal(path: string, opts?: any) {
+    // If for some reason fetching cannot be done locally, route the requests to forkphorus.github.io
+    // (where is more likely to be allowed)
+    if (!useLocalFetch) {
+      path = localCORSFallback + path;
+    }
+    return fetchRemote(path, opts);
+  }
+
+  /**
+   * Read a file as an ArrayBuffer
+   */
+  export function fileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
     const fileReader = new FileReader();
 
     return new Promise((resolve, reject) => {

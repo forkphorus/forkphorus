@@ -167,7 +167,7 @@ P.player = (function() {
     P.player.projectId = id;
     P.player.projectURL = id ? 'https://scratch.mit.edu/projects/' + id + '/' : '';
 
-    return P.IO.fetch(P.config.PROJECT_API.replace('$id', id))
+    return P.IO.fetchRemote(P.config.PROJECT_API.replace('$id', id))
       .then((req) => req.json())
       .then((json) => {
         const type = P.utils.projectType(json);
