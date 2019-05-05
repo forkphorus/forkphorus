@@ -12,6 +12,7 @@ var P = P || {};
 /**
  * The result of a test.
  * @typedef {Object} TestResult
+ * @property {string} path The path to the file tested.
  * @property {boolean} success Was the test a success?
  * @property {string} message An optional message provided by the project.
  * @property {number} projectTime The total time, in milliseconds, that was spent in the project.
@@ -171,7 +172,7 @@ P.suite = (function() {
        */
       const timeout = () => {
         testFail('timeout');
-      }
+      };
 
       stage.runtime.testFail = testFail;
       stage.runtime.testOkay = testOkay;
@@ -200,6 +201,7 @@ P.suite = (function() {
       .then((result) => {
         const endTime = performance.now();
         result.totalTime = endTime - startTime;
+        result.path = metadata.path;
         return result;
       });
   }
@@ -298,10 +300,16 @@ P.suite = (function() {
 
     const endTime = performance.now();
     const totalTestTime = endTime - startTime;
-    displayFinalResults({
+    const finalResults = {
       time: totalTestTime,
       tests: allTestResults,
-    });
+    };
+    displayFinalResults(finalResults);
+
+    // Allow the deploy bot to learn about test results.
+    if (window.testsFinishedHook) {
+      window.testsFinishedHook(finalResults);
+    }
   }
 
   return {
