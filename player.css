@@ -74,6 +74,7 @@
 .controls .turbo {
   float: right;
   display: none;
+  user-select: none;
   cursor: default;
   color: rgba(0, 0, 0, .4);
   font: 500 12px/32px sans-serif;
