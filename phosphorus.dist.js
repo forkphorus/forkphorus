@@ -1121,8 +1121,7 @@ var P;
                         // 38 = up arrow
                         this.runtime.trigger('whenKeyPressed', 38);
                     }
-                    // TODO: consider e.preventDefault()
-                });
+                }, { passive: true });
                 if (P.config.hasTouchEvents) {
                     document.addEventListener('touchstart', (e) => {
                         if (!this.runtime.isRunning)
