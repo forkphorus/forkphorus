@@ -10,9 +10,8 @@ Projects should, in general, run faster in forkphorus than in Scratch 3 and much
 
 | Environment | Time (seconds) |
 | ----------- | ---- |
-| Forkphorus (Scratch 3 compiler) | 2.43 |
-| Forkphorus (Scratch 2 compiler) | 2.43 |
-| Scratch 3 | 13.56 |
+| Forkphorus (Scratch 3 compiler) | 0.29 |
+| Scratch 3 | 11.05 |
 | Scratch 2 | 17.55 |
 
 ## Build Steps

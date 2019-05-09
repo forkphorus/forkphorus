@@ -6179,7 +6179,7 @@ var P;
                     const substack = block.inputs.SUBSTACK;
                     const id = label();
                     compileSubstack(substack);
-                    forceQueue(id);
+                    queue(id);
                 },
                 control_if(block) {
                     const condition = block.inputs.CONDITION;
