@@ -34,6 +34,7 @@ When `FAIL` is called (with an optional message), the project will stop executio
 |---------|-------------|
 | `sb2/sb2-template.sb2` | Tests the test suite itself. Acts as a template for other test projects. |
 | `sb2/operators.sb2` | Tests operator blocks. Currently expected to fail. |
+| `sb2/pen-colors.sb2` | Tests the color of pen blocks. |
 
 ### Writing Scratch 2 Tests
 

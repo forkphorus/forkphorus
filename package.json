@@ -1,0 +1,26 @@
+{
+  "name": "forkphorus",
+  "version": "0.0.1",
+  "description": "JavaScript compiler for Scratch 3 and 2 projects.",
+  "main": "none.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "watch": "node dev.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/forkphorus/forkphorus.git"
+  },
+  "author": "GarboMuffin",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/forkphorus/forkphorus/issues"
+  },
+  "homepage": "https://github.com/forkphorus/forkphorus#readme",
+  "private": true,
+  "dependencies": {
+    "typescript": "^3.4.5"
+  }
+}

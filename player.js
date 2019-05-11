@@ -167,7 +167,7 @@ P.player = (function() {
     P.player.projectId = id;
     P.player.projectURL = id ? 'https://scratch.mit.edu/projects/' + id + '/' : '';
 
-    return P.IO.fetch(P.config.PROJECT_API.replace('$id', id))
+    return P.IO.fetchRemote(P.config.PROJECT_API.replace('$id', id))
       .then((req) => req.json())
       .then((json) => {
         const type = P.utils.projectType(json);
@@ -198,7 +198,7 @@ P.player = (function() {
     var id = P.player.projectId || '(no id)';
     var title = encodeURIComponent(P.player.projectTitle || P.player.projectURL || 'Project Bug');
     var baseBody = '\n\n\n----\nProject URL: ' + url + '\nProject ID: ' + id + '\n' + location.href + '\n' + navigator.userAgent + '\n';
-    return 'https://github.com/forkphorus/forkphorus.github.io/issues/new?title=' + title + '&body=' + encodeURIComponent(before + baseBody + after) + '&labels=bug';
+    return 'https://github.com/forkphorus/forkphorus/issues/new?title=' + title + '&body=' + encodeURIComponent(before + baseBody + after) + '&labels=bug';
   }
 
   function showError(e) {

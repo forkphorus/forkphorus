@@ -124,7 +124,7 @@ namespace P.core {
     /**
      * The audio node that this object outputs to.
      */
-    public node: GainNode | null;
+    public node: GainNode | null = null;
     /**
      * Maps names (or ids) of variables or lists to their Watcher, if any.
      */
@@ -573,6 +573,17 @@ namespace P.core {
           e.preventDefault();
         }
       });
+
+      this.root.addEventListener('wheel', (e) => {
+        // Scroll up/down triggers key listeners for up/down arrows, but without affecting "is key pressed?" blocks
+        if (e.deltaY > 0) {
+          // 40 = down arrow
+          this.runtime.trigger('whenKeyPressed', 40);
+        } else if (e.deltaY < 0) {
+          // 38 = up arrow
+          this.runtime.trigger('whenKeyPressed', 38);
+        }
+      }, { passive: true });
 
       if (P.config.hasTouchEvents) {
         document.addEventListener('touchstart', (e: TouchEvent) => {
@@ -1456,7 +1467,9 @@ namespace P.core {
     public name: string;
     public buffer: AudioBuffer;
     public duration: number;
-    public node: AudioNode | null;
+    public node: GainNode | null = null;
+    public source: AudioBufferSourceNode;
+    public target: Base;
 
     constructor(data: { name: string; buffer: AudioBuffer; }) {
       this.name = data.name;

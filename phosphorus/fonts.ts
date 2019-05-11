@@ -1,4 +1,5 @@
 /// <reference path="phosphorus.ts" />
+/// <reference path="utils.ts" />
 
 interface FontFaceObserver {
   new(font: string): FontFaceObserver;
@@ -30,11 +31,11 @@ namespace P.fonts {
       return Promise.resolve();
     }
     return Promise.all([
-      loadFont('Donegal One'),
-      loadFont('Gloria Hallelujah'),
-      loadFont('Mystery Quest'),
-      loadFont('Permanent Marker'),
-      loadFont('Scratch'),
+      P.utils.settled(loadFont('Donegal One')),
+      P.utils.settled(loadFont('Gloria Hallelujah')),
+      P.utils.settled(loadFont('Mystery Quest')),
+      P.utils.settled(loadFont('Permanent Marker')),
+      P.utils.settled(loadFont('Scratch')),
     ]).then(() => void (loadedScratch2 = true));
   }
 
@@ -46,13 +47,13 @@ namespace P.fonts {
       return Promise.resolve();
     }
     return Promise.all([
-      loadFont('Knewave'),
-      loadFont('Handlee'),
-      loadFont('Pixel'),
-      loadFont('Griffy'),
-      loadFont('Scratch'),
-      loadFont('Source Serif Pro'),
-      loadFont('Noto Sans'),
+      P.utils.settled(loadFont('Knewave')),
+      P.utils.settled(loadFont('Handlee')),
+      P.utils.settled(loadFont('Pixel')),
+      P.utils.settled(loadFont('Griffy')),
+      P.utils.settled(loadFont('Scratch')),
+      P.utils.settled(loadFont('Source Serif Pro')),
+      P.utils.settled(loadFont('Noto Sans')),
     ]).then(() => void (loadedScratch3 = true));
   }
 }

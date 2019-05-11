@@ -60,7 +60,7 @@
 
   <p>
     Test suite for forkphorus. Currently, the <code>operators</code> test is expected to fail.
-    <a href="https://github.com/forkphorus/forkphorus.github.io/tree/master/tests#readme">More information</a>.
+    <a href="https://github.com/forkphorus/forkphorus/tree/master/tests#readme">More information</a>.
   </p>
 
   <button id="ui-run-sb3">Run Scratch 3 tests</button>
@@ -92,9 +92,6 @@
 
       if (!P.suite) {
         alert('test suite could not load');
-      }
-      if (location.protocol === 'file:') {
-        alert('test suite does not work from file: url');
       }
 
       if (location.search.indexOf('benchmark') > -1) {

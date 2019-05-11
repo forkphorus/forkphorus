@@ -99,6 +99,7 @@ namespace P.sb3 {
     sliderMax?: number;
     width?: number;
     height?: number;
+    isDiscrete: boolean;
   }
 
   /**
@@ -153,6 +154,7 @@ namespace P.sb3 {
     public libraryEntry: P.sb3.compiler.WatchedValue;
     public sliderMin: number;
     public sliderMax: number;
+    public sliderStep: number;
 
     public containerEl: HTMLElement;
     public valueEl: HTMLElement;
@@ -176,6 +178,12 @@ namespace P.sb3 {
 
       this.sliderMin = data.sliderMin || 0;
       this.sliderMax = data.sliderMax || 0;
+      // isDiscrete doesn't always exist
+      if (typeof data.isDiscrete !== 'undefined') {
+        this.sliderStep = data.isDiscrete ? 1 : 0.01;
+      } else {
+        this.sliderStep = 1;
+      }
 
       // Mark ourselves as invalid if the opcode is not recognized.
       if (!this.libraryEntry) {
@@ -298,6 +306,7 @@ namespace P.sb3 {
           input.type = 'range';
           input.min = '' + this.sliderMin;
           input.max = '' + this.sliderMax;
+          input.step = '' + this.sliderStep;
           input.value = this.getValue();
           input.addEventListener('input', this.sliderChanged.bind(this));
 
@@ -503,10 +512,11 @@ namespace P.sb3 {
       if (index === 'last') {
         return this.length - 1;
       }
+      index = Math.floor(+index);
       if (index < 1 || index > this.length) {
         return -1;
       }
-      return +index - 1;
+      return index - 1;
     }
 
     // Deletes a line from the list.
@@ -570,6 +580,7 @@ namespace P.sb3 {
       'Marker': 'Knewave',
       'Handwriting': 'Handlee',
       'Curly': 'Griffy',
+      'Pixel': 'Pixel',
       'Scratch': 'Scratch',
       'Serif': 'Source Serif Pro',
       'Sans Serif': 'Noto Sans',
@@ -582,6 +593,7 @@ namespace P.sb3 {
       if (FONTS[font]) {
         el.setAttribute('font-family', FONTS[font]);
       } else {
+        console.warn('unknown font', font, '(defaulting to sans-serif)');
         // Scratch 3 replaces unknown fonts with sans serif.
         el.setAttribute('font-family', FONTS['Sans Serif']);
       }
@@ -651,12 +663,20 @@ namespace P.sb3 {
         });
     }
 
-    loadSound(data: SB3Sound): Promise<P.core.Sound> {
-      return this.getAudioBuffer(data.md5ext)
-        .then((buffer) => new P.core.Sound({
-          name: data.name,
-          buffer: buffer,
-        }));
+    loadSound(data: SB3Sound): Promise<P.core.Sound | null> {
+      return new Promise((resolve, reject) => {
+        this.getAudioBuffer(data.md5ext)
+          .then((buffer) => {
+            resolve(new P.core.Sound({
+              name: data.name,
+              buffer,
+            }))
+          })
+          .catch((err) => {
+            console.warn('Could not load sound: ' + err);
+            resolve(null);
+          });
+      });
     }
 
     loadWatcher(data: SB3Watcher, stage: Scratch3Stage): P.core.Watcher {
@@ -702,15 +722,15 @@ namespace P.sb3 {
       }
 
       const costumesPromise = Promise.all<P.core.Costume>(data.costumes.map((c: any, i: any) => this.loadCostume(c, i)));
-      const soundsPromise = Promise.all<P.core.Sound>(data.sounds.map((c) => this.loadSound(c)));
+      const soundsPromise = Promise.all<P.core.Sound | null>(data.sounds.map((c) => this.loadSound(c)));
 
-      return Promise.all<P.core.Costume[], P.core.Sound[]>([costumesPromise, soundsPromise])
+      return Promise.all<P.core.Costume[], Array<P.core.Sound | null>>([costumesPromise, soundsPromise])
         .then((result) => {
           const costumes = result[0];
           const sounds = result[1];
 
           target.costumes = costumes;
-          sounds.forEach((sound: P.core.Sound) => target.addSound(sound));
+          sounds.forEach((sound) => sound && target.addSound(sound));
 
           return target;
         });
@@ -841,12 +861,12 @@ namespace P.sb3 {
     }
 
     getAsText(path: string) {
-      return P.IO.fetch(ASSETS_API.replace('$md5ext', path))
+      return P.IO.fetchRemote(ASSETS_API.replace('$md5ext', path))
         .then((request) => request.text());
     }
 
     getAsArrayBuffer(path: string) {
-      return P.IO.fetch(ASSETS_API.replace('$md5ext', path))
+      return P.IO.fetchRemote(ASSETS_API.replace('$md5ext', path))
         .then((request) => request.arrayBuffer());
     }
 
@@ -869,7 +889,7 @@ namespace P.sb3 {
 
     load() {
       if (this.projectId) {
-        return P.IO.fetch(P.config.PROJECT_API.replace('$id', '' + this.projectId))
+        return P.IO.fetchRemote(P.config.PROJECT_API.replace('$id', '' + this.projectId))
           .then((request) => request.json())
           .then((data) => {
             this.projectData = data;
@@ -992,7 +1012,7 @@ namespace P.sb3.compiler {
           currentTarget.listeners.whenKeyPressed[i].push(f);
         }
       } else {
-        currentTarget.listeners.whenKeyPressed[P.utils.getKeyCode(key)].push(f);
+        currentTarget.listeners.whenKeyPressed[P.runtime.getKeyCode(key)].push(f);
       }
     },
     event_whenthisspriteclicked(block, f) {
@@ -1009,7 +1029,7 @@ namespace P.sb3.compiler {
       currentTarget.listeners.whenBackdropChanges[backdrop].push(f);
     },
     event_whenbroadcastreceived(block, f) {
-      const name = block.fields.BROADCAST_OPTION[0];
+      const name = block.fields.BROADCAST_OPTION[0].toLowerCase();
       if (!currentTarget.listeners.whenIReceive[name]) {
         currentTarget.listeners.whenIReceive[name] = [];
       }
@@ -1026,14 +1046,14 @@ namespace P.sb3.compiler {
       const customBlockId = block.inputs.custom_block[1];
       const mutation = blocks[customBlockId].mutation;
 
-      const name = mutation.proccode;
+      const proccode = mutation.proccode;
       // Warp is either a boolean or a string representation of that boolean for some reason.
       const warp = typeof mutation.warp === 'string' ? mutation.warp === 'true' : mutation.warp;
       // It's a stringified JSON array.
       const argumentNames = JSON.parse(mutation.argumentnames);
 
       const procedure = new P.sb3.Scratch3Procedure(f, warp, argumentNames);
-      currentTarget.procedures[name] = procedure;
+      currentTarget.procedures[proccode] = procedure;
     },
 
     // Makey Makey (extension)
@@ -1056,7 +1076,7 @@ namespace P.sb3.compiler {
         // TODO: support non-compile-time constants
       };
       if (keyMap.hasOwnProperty(key)) {
-        const keyCode = P.utils.getKeyCode(keyMap[key]);
+        const keyCode = P.runtime.getKeyCode(keyMap[key]);
         currentTarget.listeners.whenKeyPressed[keyCode].push(f);
       } else {
         console.warn('unknown makey makey key', key);
@@ -1174,7 +1194,7 @@ namespace P.sb3.compiler {
     },
     sensing_keypressed(block) {
       const key = block.inputs.KEY_OPTION;
-      return booleanExpr('!!self.keys[P.utils.getKeyCode(' + compileExpression(key) + ')]');
+      return booleanExpr('!!self.keys[P.runtime.getKeyCode(' + compileExpression(key) + ')]');
     },
     sensing_keyoptions(block) {
       const key = block.fields.KEY_OPTION[0];
@@ -1311,7 +1331,7 @@ namespace P.sb3.compiler {
     operator_mod(block) {
       const num1 = block.inputs.NUM1;
       const num2 = block.inputs.NUM2;
-      return numberExpr('mod(' + compileExpression(num1) + ', ' + compileExpression(num2) + ')');
+      return numberExpr('mod(' + compileExpression(num1, 'number') + ', ' + compileExpression(num2, 'number') + ')');
     },
     operator_round(block) {
       const num = block.inputs.NUM;
@@ -1765,7 +1785,7 @@ namespace P.sb3.compiler {
       const substack = block.inputs.SUBSTACK;
       const id = label();
       compileSubstack(substack);
-      forceQueue(id);
+      queue(id);
     },
     control_if(block) {
       const condition = block.inputs.CONDITION;
@@ -2560,7 +2580,7 @@ namespace P.sb3.compiler {
     // Procedure definitions need special care to properly end calls.
     // In the future this should be refactored so that things like this are part of the top level library
     if (topLevelOpCode === 'procedures_definition') {
-      source += 'endCall(); return\n';
+      source += 'endCall(); return;\n';
     }
 
     return true;

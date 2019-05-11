@@ -5,81 +5,7 @@
 /// <reference path="config.ts" />
 
 namespace P.sb2 {
-
   const ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
-  const SOUNDBANK_URL = 'https://raw.githubusercontent.com/LLK/scratch-flash/v429/src/soundbank/';
-  const WAV_FILES = {
-    'AcousticGuitar_F3': 'instruments/AcousticGuitar_F3_22k.wav',
-    'AcousticPiano_As3': 'instruments/AcousticPiano(5)_A%233_22k.wav',
-    'AcousticPiano_C4': 'instruments/AcousticPiano(5)_C4_22k.wav',
-    'AcousticPiano_G4': 'instruments/AcousticPiano(5)_G4_22k.wav',
-    'AcousticPiano_F5': 'instruments/AcousticPiano(5)_F5_22k.wav',
-    'AcousticPiano_C6': 'instruments/AcousticPiano(5)_C6_22k.wav',
-    'AcousticPiano_Ds6': 'instruments/AcousticPiano(5)_D%236_22k.wav',
-    'AcousticPiano_D7': 'instruments/AcousticPiano(5)_D7_22k.wav',
-    'AltoSax_A3': 'instruments/AltoSax_A3_22K.wav',
-    'AltoSax_C6': 'instruments/AltoSax(3)_C6_22k.wav',
-    'Bassoon_C3': 'instruments/Bassoon_C3_22k.wav',
-    'BassTrombone_A2_2': 'instruments/BassTrombone_A2(2)_22k.wav',
-    'BassTrombone_A2_3': 'instruments/BassTrombone_A2(3)_22k.wav',
-    'Cello_C2': 'instruments/Cello(3b)_C2_22k.wav',
-    'Cello_As2': 'instruments/Cello(3)_A%232_22k.wav',
-    'Choir_F3': 'instruments/Choir(4)_F3_22k.wav',
-    'Choir_F4': 'instruments/Choir(4)_F4_22k.wav',
-    'Choir_F5': 'instruments/Choir(4)_F5_22k.wav',
-    'Clarinet_C4': 'instruments/Clarinet_C4_22k.wav',
-    'ElectricBass_G1': 'instruments/ElectricBass(2)_G1_22k.wav',
-    'ElectricGuitar_F3': 'instruments/ElectricGuitar(2)_F3(1)_22k.wav',
-    'ElectricPiano_C2': 'instruments/ElectricPiano_C2_22k.wav',
-    'ElectricPiano_C4': 'instruments/ElectricPiano_C4_22k.wav',
-    'EnglishHorn_D4': 'instruments/EnglishHorn(1)_D4_22k.wav',
-    'EnglishHorn_F3': 'instruments/EnglishHorn(1)_F3_22k.wav',
-    'Flute_B5_1': 'instruments/Flute(3)_B5(1)_22k.wav',
-    'Flute_B5_2': 'instruments/Flute(3)_B5(2)_22k.wav',
-    'Marimba_C4': 'instruments/Marimba_C4_22k.wav',
-    'MusicBox_C4': 'instruments/MusicBox_C4_22k.wav',
-    'Organ_G2': 'instruments/Organ(2)_G2_22k.wav',
-    'Pizz_A3': 'instruments/Pizz(2)_A3_22k.wav',
-    'Pizz_E4': 'instruments/Pizz(2)_E4_22k.wav',
-    'Pizz_G2': 'instruments/Pizz(2)_G2_22k.wav',
-    'SteelDrum_D5': 'instruments/SteelDrum_D5_22k.wav',
-    'SynthLead_C4': 'instruments/SynthLead(6)_C4_22k.wav',
-    'SynthLead_C6': 'instruments/SynthLead(6)_C6_22k.wav',
-    'SynthPad_A3': 'instruments/SynthPad(2)_A3_22k.wav',
-    'SynthPad_C6': 'instruments/SynthPad(2)_C6_22k.wav',
-    'TenorSax_C3': 'instruments/TenorSax(1)_C3_22k.wav',
-    'Trombone_B3': 'instruments/Trombone_B3_22k.wav',
-    'Trumpet_E5': 'instruments/Trumpet_E5_22k.wav',
-    'Vibraphone_C3': 'instruments/Vibraphone_C3_22k.wav',
-    'Violin_D4': 'instruments/Violin(2)_D4_22K.wav',
-    'Violin_A4': 'instruments/Violin(3)_A4_22k.wav',
-    'Violin_E5': 'instruments/Violin(3b)_E5_22k.wav',
-    'WoodenFlute_C5': 'instruments/WoodenFlute_C5_22k.wav',
-    'BassDrum': 'drums/BassDrum(1b)_22k.wav',
-    'Bongo': 'drums/Bongo_22k.wav',
-    'Cabasa': 'drums/Cabasa(1)_22k.wav',
-    'Clap': 'drums/Clap(1)_22k.wav',
-    'Claves': 'drums/Claves(1)_22k.wav',
-    'Conga': 'drums/Conga(1)_22k.wav',
-    'Cowbell': 'drums/Cowbell(3)_22k.wav',
-    'Crash': 'drums/Crash(2)_22k.wav',
-    'Cuica': 'drums/Cuica(2)_22k.wav',
-    'GuiroLong': 'drums/GuiroLong(1)_22k.wav',
-    'GuiroShort': 'drums/GuiroShort(1)_22k.wav',
-    'HiHatClosed': 'drums/HiHatClosed(1)_22k.wav',
-    'HiHatOpen': 'drums/HiHatOpen(2)_22k.wav',
-    'HiHatPedal': 'drums/HiHatPedal(1)_22k.wav',
-    'Maracas': 'drums/Maracas(1)_22k.wav',
-    'SideStick': 'drums/SideStick(1)_22k.wav',
-    'SnareDrum': 'drums/SnareDrum(1)_22k.wav',
-    'Tambourine': 'drums/Tambourine(3)_22k.wav',
-    'Tom': 'drums/Tom(1)_22k.wav',
-    'Triangle': 'drums/Triangle(1)_22k.wav',
-    'Vibraslap': 'drums/Vibraslap(1)_22k.wav',
-    'WoodBlock': 'drums/WoodBlock(1)_22k.wav'
-  };
-  export const wavBuffers = {};
-
   let zipArchive: JSZip.Zip;
 
   export class Scratch2VariableWatcher extends P.core.Watcher {
@@ -372,7 +298,7 @@ namespace P.sb2 {
     }
 
     updateBubble() {
-      // Stage ecannot say things in Scratch 2.
+      // Stage cannot say things in Scratch 2.
     }
 
     watcherStart(id, t, e) {
@@ -472,7 +398,7 @@ namespace P.sb2 {
 
     return loadFonts()
       .then(() => Promise.all<any>([
-        loadWavs(),
+        P.audio.loadSoundbank(),
         loadArray(data.children, loadObject).then((c) => children = c),
         loadBase(data, true).then((s) => stage = s),
       ]))
@@ -490,29 +416,6 @@ namespace P.sb2 {
         P.sb2.compiler.compile(stage);
         return stage;
       });
-  }
-
-  export function loadWavs() {
-    // don't bother attempting to load audio if it can't even be played
-    if (!P.audio.context) return Promise.resolve();
-
-    const assets: any[] = []; // TODO: type
-    for (var name in WAV_FILES) {
-      if (!wavBuffers[name]) {
-        assets.push(
-          loadWavBuffer(name)
-            .then((buffer) => wavBuffers[name] = buffer)
-        );
-      }
-    }
-    return Promise.all(assets);
-  }
-
-  export function loadWavBuffer(name) {
-    return P.IO.fetch(SOUNDBANK_URL + WAV_FILES[name])
-      .then((request) => request.arrayBuffer())
-      .then((arrayBuffer) => P.audio.decodeAudio(arrayBuffer))
-      .then((buffer) => wavBuffers[name] = buffer);
   }
 
   export function loadBase(data, isStage = false) {
@@ -551,7 +454,7 @@ namespace P.sb2 {
       object.lists = lists;
       object.costumes = costumes;
       object.currentCostumeIndex = data.currentCostumeIndex;
-      sounds.forEach((sound) => object.addSound(sound));
+      sounds.forEach((sound) => sound && object.addSound(sound));
 
       if (isStage) {
 
@@ -587,7 +490,7 @@ namespace P.sb2 {
     if (data.cmd) {
       return loadVariableWatcher(data);
     } else if (data.listName) {
-      // list watcher TODO
+      // TODO: list watcher
     } else {
       return loadBase(data);
     }
@@ -634,14 +537,20 @@ namespace P.sb2 {
       });
   }
 
-  export function loadSound(data) {
-    return (loadMD5(data.md5, data.soundID, true) as Promise<any>)
-      .then((buffer) => {
-        return new P.core.Sound({
-          name: data.soundName,
-          buffer: buffer,
+  export function loadSound(data): Promise<P.core.Sound | null> {
+    return new Promise((resolve, reject) => {
+      loadMD5(data.md5, data.soundID, true)
+        .then((buffer) => {
+          resolve(new P.core.Sound({
+            name: data.soundName,
+            buffer,
+          }));
+        })
+        .catch((err) => {
+          resolve(null);
+          console.warn('Could not load sound: ' + err);
         });
-      });
+    });
   }
 
   export function patchSVG(svg, element) {
@@ -743,6 +652,8 @@ namespace P.sb2 {
     });
   }
 
+  export function loadMD5(hash: string, id: string, isAudio?: true): Promise<AudioBuffer>;
+  export function loadMD5(hash: string, id: string, isAudio?: false): Promise<HTMLImageElement | HTMLCanvasElement | null>;
   export function loadMD5(hash: string, id: string, isAudio: boolean = false): Promise<HTMLImageElement | HTMLCanvasElement | AudioBuffer | null> {
     if (zipArchive) {
       var f = isAudio ? zipArchive.file(id + '.wav') : zipArchive.file(id + '.gif') || zipArchive.file(id + '.png') || zipArchive.file(id + '.jpg') || zipArchive.file(id + '.svg');
@@ -756,7 +667,7 @@ namespace P.sb2 {
         return f!.async('text')
           .then((text) => loadSVG(text));
       } else {
-        return P.IO.fetch(ASSET_URL + hash + '/get/')
+        return P.IO.fetchRemote(ASSET_URL + hash + '/get/')
           .then((request) => request.text())
           .then((text) => loadSVG(text));
       }
@@ -765,7 +676,7 @@ namespace P.sb2 {
         return f!.async('arrayBuffer')
           .then((buffer) => P.audio.decodeAudio(buffer));
       } else {
-        return P.IO.fetch(ASSET_URL + hash + '/get/')
+        return P.IO.fetchRemote(ASSET_URL + hash + '/get/')
           .then((request) => request.arrayBuffer())
           .then((buffer) => P.audio.decodeAudio(buffer));
       }
@@ -1217,7 +1128,7 @@ namespace P.sb2.compiler {
       } else if (e[0] === 'keyPressed:') {
 
         var v = typeof e[1] === 'object' ?
-          'P.utils.getKeyCode(' + val(e[1]) + ')' : val(P.utils.getKeyCode(e[1]));
+          'getKeyCode(' + val(e[1]) + ')' : val(P.runtime.getKeyCode(e[1]));
         return '!!self.keys[' + v + ']';
 
       // } else if (e[0] === 'isLoud') {
@@ -1922,7 +1833,7 @@ namespace P.sb2.compiler {
           object.listeners.whenKeyPressed[i].push(f);
         }
       } else {
-        object.listeners.whenKeyPressed[P.utils.getKeyCode(script[0][1])].push(f);
+        object.listeners.whenKeyPressed[P.runtime.getKeyCode(script[0][1])].push(f);
       }
     } else if (script[0][0] === 'whenSceneStarts') {
       var key = script[0][1].toLowerCase();
@@ -1935,7 +1846,11 @@ namespace P.sb2.compiler {
     }
 
     if (P.config.debug) {
-      console.log('compiled scratch 2 script', source);
+      var variant = script[0][0];
+      if (variant === 'procDef') {
+        variant += ':' + script[0][1];
+      }
+      console.log('compiled sb2 script', variant, source);
     }
   };
 

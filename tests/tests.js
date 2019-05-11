@@ -41,6 +41,7 @@
    */
   const sb2 = () => [
     createProjectMeta('sb2/sb2-template.sb2'),
+    createProjectMeta('sb2/pen-colors.sb2'),
     createProjectMeta('sb2/operators.sb2'),
   ];
 

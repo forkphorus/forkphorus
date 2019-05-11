@@ -1,20 +1,6 @@
 /// <reference path="phosphorus.ts" />
 
 namespace P.utils {
-  // Gets the keycode for a key name
-  export function getKeyCode(keyName: string): number | 'any' {
-    switch (keyName.toLowerCase()) {
-      case 'space': return 32;
-      case 'left arrow': return 37;
-      case 'up arrow': return 38;
-      case 'right arrow': return 39;
-      case 'down arrow': return 40;
-      case 'any': return 'any';
-    }
-
-    return keyName.toUpperCase().charCodeAt(0);
-  }
-
   // Returns the string representation of an error.
   // TODO: does this need to be here?
   export function stringifyError(error: any): string {
@@ -29,7 +15,7 @@ namespace P.utils {
 
   import RotationStyle = P.core.RotationStyle;
   /**
-   * Parses a Scratch rotation style string to a RoationStyle enum
+   * Parses a Scratch rotation style string to a RotationStyle enum
    */
   export function parseRotationStyle(style: string): RotationStyle {
     switch (style) {
@@ -100,5 +86,16 @@ namespace P.utils {
    */
   export function clamp(number: number, min: number, max: number) {
     return Math.min(max, Math.max(min, number));
+  }
+
+  /*
+   * Creates a promise that resolves when the original promise resolves or fails.
+   */
+  export function settled(promise: Promise<any>): Promise<void> {
+    return new Promise((resolve, _reject) => {
+      promise
+        .then(() => resolve())
+        .catch(() => resolve());
+    });
   }
 }

@@ -1,6 +1,7 @@
 var P = P || {};
 
 /**
+ * The metadata for a project test.
  * @typedef {Object} ProjectMeta
  * @property {string} path The path to download this project from.
  * @property {number} timeout The time, in milliseconds, to wait for a project to run.
@@ -9,7 +10,9 @@ var P = P || {};
  */
 
 /**
+ * The result of a test.
  * @typedef {Object} TestResult
+ * @property {string} path The path to the file tested.
  * @property {boolean} success Was the test a success?
  * @property {string} message An optional message provided by the project.
  * @property {number} projectTime The total time, in milliseconds, that was spent in the project.
@@ -17,21 +20,24 @@ var P = P || {};
  */
 
 /**
+ * The final accumulated tests of running a set of tests.
  * @typedef {Object} FinalResults
  * @property {TestResult[]} tests All tests run
  * @property {number} time The time, in milliseconds, to complete the test.
  */
 
 /**
+ * Identifies the version of Scratch a project is made for.
  * @typedef {2|3} ProjectType
  */
 
 /**
- * Automated test suite
+ * Automated phosphorus test suite
  */
 P.suite = (function() {
   'use strict';
 
+  // UI Elements
   const containerEl = document.getElementById('suite-container');
   const tableBodyEl = document.getElementById('suite-table');
   const finalResultsEl = document.getElementById('suite-final-results');
@@ -66,7 +72,7 @@ P.suite = (function() {
    * @returns {ArrayBuffer} The ArrayBuffer representing the fetched content
    */
   function fetchAsArrayBuffer(path) {
-    return fetch(path)
+    return P.IO.fetchLocal(path)
       .then((r) => r.arrayBuffer());
   }
 
@@ -109,6 +115,7 @@ P.suite = (function() {
   function testStage(stage, metadata) {
     removeChildren(containerEl);
     containerEl.appendChild(stage.root);
+    P.suite.stage = stage;
 
     return new Promise((_resolve, _reject) => {
       /**
@@ -165,7 +172,7 @@ P.suite = (function() {
        */
       const timeout = () => {
         testFail('timeout');
-      }
+      };
 
       stage.runtime.testFail = testFail;
       stage.runtime.testOkay = testOkay;
@@ -194,6 +201,7 @@ P.suite = (function() {
       .then((result) => {
         const endTime = performance.now();
         result.totalTime = endTime - startTime;
+        result.path = metadata.path;
         return result;
       });
   }
@@ -267,7 +275,7 @@ P.suite = (function() {
   /**
    * Start the test suite
    * @param {ProjectMeta[]} projectList
-   * @returns {Promise} Resolves when the test is done.
+   * @returns {Promise<void>} Resolves when the test is done.
    */
   async function run(projectList) {
     removeChildren(tableBodyEl);
@@ -281,7 +289,7 @@ P.suite = (function() {
       const repeatCount = projectMetadata.repeatCount;
 
       const projectType = getProjectType(path);
-      const buffer = await fetchAsArrayBuffer(path);
+      const buffer = await fetchAsArrayBuffer('/tests/' + path);
 
       for (let i = 0; i < repeatCount; i++) {
         const result = await runProject(projectMetadata, buffer, projectType);
@@ -292,14 +300,21 @@ P.suite = (function() {
 
     const endTime = performance.now();
     const totalTestTime = endTime - startTime;
-    displayFinalResults({
+    const finalResults = {
       time: totalTestTime,
       tests: allTestResults,
-    });
+    };
+    displayFinalResults(finalResults);
+
+    // Allow the deploy bot to learn about test results.
+    if (window.testsFinishedHook) {
+      window.testsFinishedHook(finalResults);
+    }
   }
 
   return {
     run,
+    stage: null,
   };
 }());
 
@@ -307,7 +322,8 @@ P.suite = (function() {
  * SB3 compiler hook
  */
 (function(compiler) {
-  // Works by replacing calls to certain procedures.
+  // The Scratch 3 compiler exposes its internals so it can be modified.
+  // In this, we replace procedures_call opcodes with something else at compile time.
 
   const originalProcedureCall = compiler.statementLibrary['procedures_call'];
 
@@ -353,7 +369,10 @@ P.suite = (function() {
  * SB2 compiler hook
  */
 (function(compiler) {
-  // Works by overriding the compiler for listeners, and replacing the body of certain procedure definitions.
+  // The Scratch 2 compiler has very limited internals exposed, but we can replace the entire listener compiler.
+  // (which is where all top level blocks, such as procedure definitions, are compiled)
+  // We replace the custom block definition instead of the call.
+
   const originalCompileListener = compiler.compileListener;
   compiler.compileListener = function compileListener(object, script) {
     const opcode = script[0][0];

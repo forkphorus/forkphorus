@@ -1,2 +1,10 @@
 # Don't include sourcemap in repo due to bloat
 phosphorus.dist.js.map
+
+# npm
+node_modules
+
+# dotfiles except the ones we care for
+.*
+!.gitignore
+!.gitattributes

@@ -10,19 +10,24 @@ Projects should, in general, run faster in forkphorus than in Scratch 3 and much
 
 | Environment | Time (seconds) |
 | ----------- | ---- |
-| Forkphorus (Scratch 3 compiler) | 2.43 |
-| Forkphorus (Scratch 2 compiler) | 2.43 |
-| Scratch 3 | 13.56 |
+| Forkphorus (Scratch 3 compiler) | 0.29 |
+| Scratch 3 | 11.05 |
 | Scratch 2 | 17.55 |
 
 ## Build Steps
 
 Forkphorus is written in mostly TypeScript, which must be compiled to JavaScript to run in a browser.
 
- * [Install node.js](https://nodejs.org/en/) (and npm, if it's not included)
- * [Install TypeScript](https://www.typescriptlang.org/index.html#download-links)
- * Open a terminal in the root of the repository and run `tsc` (to build once) or `tsc -w` (to automatically rebuild when you make changes)
- * Edit TypeScript source in the phosphorus folder
- * Open index.html in your browser (even a file:// URL should work just fine)
+ * [Install node.js and npm](https://nodejs.org/en/) (npm is usually included with node)
+ * **Automated way:**
+   * Run `npm run watch` in your terminal when in the repository.
+   * Open any of the links output in the console.
+   * **VS Code Users:** You can do this using Tasks: Command Pallet (Ctrl+Shift+P) -> "Run Build Task" -> "npm: watch" -> "TypeScript problems (Watch mode)". Other editors may have something similar.
+ * **Manual way:** (only if the first method didn't work)
+   * Install dependencies by running `npm install` in the repository.
+   * Run `tsc -w` to start the TypeScript compiler in watch mode.
+   * Open index.html in your browser with a local HTTP server or a file:// URL.
+ * Edit TypeScript files in the `phosphorus` folder, and the compiler will automatically rebuild the output.
+ * Refresh to observe changes.
 
 If for some reason you don't want to or can't do that, then you could edit phosphorus.dist.js directly instead.
