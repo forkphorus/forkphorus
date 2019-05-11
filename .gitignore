@@ -3,3 +3,8 @@ phosphorus.dist.js.map
 
 # npm
 node_modules
+
+# dotfiles except the ones we care for
+.*
+!.gitignore
+!.gitattributes

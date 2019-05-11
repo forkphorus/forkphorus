@@ -19,9 +19,14 @@ Projects should, in general, run faster in forkphorus than in Scratch 3 and much
 Forkphorus is written in mostly TypeScript, which must be compiled to JavaScript to run in a browser.
 
  * [Install node.js and npm](https://nodejs.org/en/) (npm is usually included with node)
- * Install dependencies by running `npm install` in the root of the repository
- * Run `tsc` (to build once) or `tsc -w` (to automatically rebuild when you make changes)
- * Edit TypeScript source in the phosphorus folder
- * Open index.html in your browser (even a file:// URL should work just fine)
+ * **Easy way:**
+   * Run `npm run dev` in your terminal when in the repository's root.
+   * Open any of the links output in the console
+ * **Manual way:** (only if the first method didn't work)
+   * Install dependencies by running `npm install` in the root of the repository
+   * Run `tsc -w` to automatically 
+   * Open index.html in your browser with a local HTTP server or a file:// URL.
+ * Edit TypeScript source in the phosphorus folder, and changes to the .ts files will automatically retrigger a build.
+ * Refresh to observe changes.
 
 If for some reason you don't want to or can't do that, then you could edit phosphorus.dist.js directly instead.

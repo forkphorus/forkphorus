@@ -1,14 +1,13 @@
 {
   "name": "forkphorus",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "JavaScript compiler for Scratch 3 and 2 projects.",
   "main": "none.js",
   "directories": {
     "test": "tests"
   },
   "scripts": {
-    "build": "tsc",
-    "watch": "tsc -w"
+    "build": "node dev.js"
   },
   "repository": {
     "type": "git",
