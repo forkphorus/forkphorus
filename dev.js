@@ -103,6 +103,7 @@ function startServer() {
     const extension = pathUtil.extname(path);
     res.setHeader('Content-Length', data.length);
     res.setHeader('Content-Type', contentTypes[extension] || defaultContentType);
+    res.setHeader('Cache-Control', 'no-store');
     res.write(data);
   };
 
