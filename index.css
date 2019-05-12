@@ -189,7 +189,7 @@ code {
 /* Theme changer */
 .theme-select {
   position: absolute;
-  right: 5px;
+  left: 5px;
   top: 5px;
   opacity: 0.5;
   transition: 0.2s opacity;
@@ -215,50 +215,50 @@ code {
   cursor: pointer;
 }
 
-/* Settings */
-#settings hr {
-  border-color: rgb(128, 128, 128);
-}
+/* Settings menu */
 #settings {
-  font-size: 12px;
-  transition: .2s transform;
-  height: 100%;
-  width: 230px;
-  background-color: #333333ee;
-  color: #eee;
-  border-right: 1px solid #555;
-  padding: 5px;
-  position: absolute;
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 10;
-}
-#settings.closed {
-  transform: translateX(-100%);
-}
-#settings-title {
-  font-weight: bold;
-  text-align: center;
-  margin: 0;
-}
-#settings-close {
-  float: right;
-  color: inherit;
-  text-decoration: none;
-}
-.settings-section {
-  padding: 10px 0;
-}
-.settings-body tr td:nth-child(odd) {
-  text-align: right;
+  width: 100%;
 }
 #settings input {
-  transition: background-color .2s;
-}
-#settings input[type="text"], #settings input[type="number"] {
+  font: inherit;
+  padding: 0;
   border: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  color: inherit;
 }
+#settings input::placeholder {
+  color: inherit;
+  opacity: .3;
+}
+#settings, #settings tr, #settings td {
+  border-collapse: collapse;
+  padding: 0;
+  margin: 0;
+  border: 1px solid #555;
+}
+#settings .name {
+  text-align: center;
+  width: 175px;
+}
+#settings .value {
+  background-color: #ddd;
+  padding: 0 1px;
+}
+.dark #settings .value {
+  background-color: #333;
+}
+/* style invalid inputs without making an ugly mess of things */
 #settings input:invalid {
-  background-color: rgb(255, 143, 143);
+  outline: 1px solid rgb(255, 98, 98);
+}
+/* remove spinners on number inputs in pretty much every browser */
+#settings input::-webkit-outer-spin-button,
+#settings input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+#settings input[type="number"] {
+  -moz-appearance: textfield;
 }
