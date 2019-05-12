@@ -186,6 +186,7 @@ code {
   vertical-align: middle;
 }
 
+/* Theme changer */
 .theme-select {
   position: absolute;
   right: 5px;
@@ -200,6 +201,7 @@ code {
   display: none;
 }
 
+/* File selector */
 .upload-button {
   position: relative;
 }
@@ -211,4 +213,52 @@ code {
   width: 100%;
   opacity: 0;
   cursor: pointer;
+}
+
+/* Settings */
+#settings hr {
+  border-color: rgb(128, 128, 128);
+}
+#settings {
+  font-size: 12px;
+  transition: .2s transform;
+  height: 100%;
+  width: 230px;
+  background-color: #333333ee;
+  color: #eee;
+  border-right: 1px solid #555;
+  padding: 5px;
+  position: absolute;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 10;
+}
+#settings.closed {
+  transform: translateX(-100%);
+}
+#settings-title {
+  font-weight: bold;
+  text-align: center;
+  margin: 0;
+}
+#settings-close {
+  float: right;
+  color: inherit;
+  text-decoration: none;
+}
+.settings-section {
+  padding: 10px 0;
+}
+.settings-body tr td:nth-child(odd) {
+  text-align: right;
+}
+#settings input {
+  transition: background-color .2s;
+}
+#settings input[type="text"], #settings input[type="number"] {
+  border: 0;
+}
+#settings input:invalid {
+  background-color: rgb(255, 143, 143);
 }

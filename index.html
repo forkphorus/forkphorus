@@ -33,6 +33,41 @@
     }());
   </script>
 
+  <div id="settings" class="closed">
+    <h3 id="settings-title">Settings <a id="settings-close" title="Close">&times;</a></h3>
+
+    <div class="settings-section">
+      <table class="settings-body">
+        <tr>
+          <td>TODO Theme</td>
+          <td>
+            <select>
+              <option>Light</option>
+              <option>Dark</option>
+            </select>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <h3 id="settings-title">Advanced</h3>
+
+    <div class="settings-section">
+      <table class="settings-body">
+        <tr>
+          <td>Framerate</td>
+          <td><input type="number" id="settings-framerate" value="0" min="0" max="120" step="any" required></td>
+        </tr>
+        <tr>
+          <td>Username</td>
+          <td><input type="text" id="settings-username" value="" placeholder="(empty string)" maxlength="30"></td>
+        </tr>
+      </table>
+    </div>
+
+    <p>Changes are automatically applied as you type.</p>
+  </div>
+
   <div id="app">
 
     <div class=area id=title-area>
@@ -109,6 +144,9 @@
     </div>
 
     <section>
+      <h1>Settings</h1>
+      <p><a id="settings-opener">Click here to open the settings menu.</a></p>
+
       <h1>Credits</h1>
       <p>forkphorus is a fork of <a href="https://phosphorus.github.io/">phosphorus</a> by <a href="https://github.com/nathan">Nathan</a>. Its CPS-style compilation and overall design was inspired by <a href="https://github.com/RHY3756547">Rhys</a>'s <a href="https://code.google.com/p/sb2-js/">sb2.js</a>. It would have more bugs if not for <a href="https://github.com/trumank">Truman</a> and <a href="https://github.com/tjvr">Tim</a>. It uses the <a href="https://stuk.github.io/jszip/">JSZip</a> library, created by <a href="https://github.com/stuk">Stuart Knightley</a>, <a href="https://github.com/dduponchel">David Duponchel</a>, Franz Buchinger, and <a href="https://github.com/aadsm">António Afonso</a>, to read <code>.sb2</code> and <code>.sb3</code> files, and the <a href="https://github.com/canvg/canvg">canvg</a> library to render SVGs in <code>&lt;canvas&gt;</code> elements.</p>
 
@@ -127,6 +165,7 @@
 
   <script>
 
+  // Core UI
   (function() {
     'use strict';
 
@@ -319,7 +358,7 @@
         if (ext === 'sb2') {
           return P.sb2.loadSB2Project(buffer);
         } else if (ext === 'sb3') {
-          const loader = new P.sb3.SB3FileLoader(buffer);
+          var loader = new P.sb3.SB3FileLoader(buffer);
           return loader.load();
         }
       }
@@ -365,6 +404,68 @@
 
     // Load any initial project ID
     loadProject(initialId);
+
+  }());
+
+  // Settings UI
+  (function() {
+    'use strict';
+
+    var optionFramerate = document.getElementById('settings-framerate');
+    var optionUsername = document.getElementById('settings-username');
+
+    var settingsMenu = document.getElementById('settings');
+    var settingsClose = document.getElementById('settings-close');
+    var settingsOpen = document.getElementById('settings-opener');
+
+    var defaultOptions = {
+      username: '',
+      framerate: 30,
+    };
+
+    function getStage() {
+      return P.player.stage;
+    }
+
+    function setSelectedOptions(options) {
+      optionFramerate.value = options.framerate;
+      optionUsername.value = options.username;
+    }
+
+    function getSelectedOptions() {
+      return {
+        framerate: +optionFramerate.value,
+        username: optionUsername.value,
+      };
+    }
+
+    function applyOptions(options) {
+      // Applying framerate involves restarting the event loop, which we shouldn't do if not necessary
+      if (options.framerate !== P.config.framerate) {
+        P.config.framerate = options.framerate;
+        getStage().runtime.pause();
+        getStage().runtime.start();
+      }
+
+      getStage().username = options.username;
+    }
+
+    function onOptionsChange() {
+      var options = getSelectedOptions();
+      applyOptions(options);
+      console.log('changed', options);
+    }
+
+    setSelectedOptions(defaultOptions);
+
+    optionFramerate.addEventListener('input', onOptionsChange);
+    optionUsername.addEventListener('input', onOptionsChange);
+    settingsClose.addEventListener('click', function() {
+      settings.classList.add('closed');
+    });
+    settingsOpen.addEventListener('click', function() {
+      settings.classList.toggle('closed');
+    });
 
   }());
 
