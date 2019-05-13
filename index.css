@@ -186,9 +186,10 @@ code {
   vertical-align: middle;
 }
 
+/* Theme changer */
 .theme-select {
   position: absolute;
-  right: 5px;
+  left: 5px;
   top: 5px;
   opacity: 0.5;
   transition: 0.2s opacity;
@@ -200,6 +201,7 @@ code {
   display: none;
 }
 
+/* File selector */
 .upload-button {
   position: relative;
 }
@@ -211,4 +213,51 @@ code {
   width: 100%;
   opacity: 0;
   cursor: pointer;
+}
+
+/* Settings menu */
+#settings {
+  width: 100%;
+}
+#settings input {
+  font: inherit;
+  padding: 0;
+  border: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  color: inherit;
+}
+#settings input::placeholder {
+  color: inherit;
+  opacity: .4;
+}
+#settings, #settings tr, #settings td {
+  border-collapse: collapse;
+  padding: 0;
+  margin: 0;
+  border: 1px solid #555;
+}
+#settings .name {
+  text-align: center;
+  width: 175px;
+}
+#settings .value {
+  background-color: #ddd;
+  padding: 0 1px;
+}
+.dark #settings .value {
+  background-color: #333;
+}
+#settings input {
+  transition: .2s box-shadow;
+}
+/* style invalid inputs without making an ugly mess of things */
+#settings input:invalid {
+  /* box-shadow is used to modify border and background color because the background/opacity/border styles don't work very well in chrome */
+  box-shadow: inset 0 0 0 24px rgba(255, 0, 0, 0.2), 0 0 0 2px #ff6262;
+}
+/* remove ugly spinners in firefox when unfocused (as chrome does) */
+#settings input[type="number"]:not(:focus) {
+  -moz-appearance: textfield;
 }

@@ -106,8 +106,22 @@
           <label for=package-full-screen>Full screen</label>
         </p>
       </section>
-    </div>
 
+      <h1>Settings</h1>
+      <table id="settings">
+        <tr>
+          <td class="name" title="Forkphorus will **attempt** to run at this framerate."><label for="settings-framerate">Framerate (FPS)</label></td>
+          <td class="value"><input id="settings-framerate" value="30" placeholder="30" type="number" step="any" min="0" max="1000" required></td>
+        </tr>
+        <tr>
+          <td class="name" title="The value of the &quot;username&quot; block. Changing this may cause issues in some projects."><label for="settings-username">Username</label></td>
+          <!-- scratch's real username limit is 30, but we'll just raise it up a bit -->
+          <td class="value"><input id="settings-username" value="" type="text" placeholder="(empty string)" maxlength="300"></td>
+        </tr>
+      </table>
+      <p>Changes are applied automatically.</p>
+    </div>
+    
     <section>
       <h1>Credits</h1>
       <p>forkphorus is a fork of <a href="https://phosphorus.github.io/">phosphorus</a> by <a href="https://github.com/nathan">Nathan</a>. Its CPS-style compilation and overall design was inspired by <a href="https://github.com/RHY3756547">Rhys</a>'s <a href="https://code.google.com/p/sb2-js/">sb2.js</a>. It would have more bugs if not for <a href="https://github.com/trumank">Truman</a> and <a href="https://github.com/tjvr">Tim</a>. It uses the <a href="https://stuk.github.io/jszip/">JSZip</a> library, created by <a href="https://github.com/stuk">Stuart Knightley</a>, <a href="https://github.com/dduponchel">David Duponchel</a>, Franz Buchinger, and <a href="https://github.com/aadsm">António Afonso</a>, to read <code>.sb2</code> and <code>.sb3</code> files, and the <a href="https://github.com/canvg/canvg">canvg</a> library to render SVGs in <code>&lt;canvas&gt;</code> elements.</p>
@@ -127,6 +141,7 @@
 
   <script>
 
+  // Core UI
   (function() {
     'use strict';
 
@@ -234,8 +249,13 @@
       P.player.load(id)
         .then((stage) => {
           P.player.start(stage, true);
+          triggerProjectStarted();
         });
+    }
+
+    function triggerProjectStarted() {
       updateLinks();
+      P.settingsUi.apply();
     }
 
     function updateLinks() {
@@ -319,13 +339,13 @@
         if (ext === 'sb2') {
           return P.sb2.loadSB2Project(buffer);
         } else if (ext === 'sb3') {
-          const loader = new P.sb3.SB3FileLoader(buffer);
+          var loader = new P.sb3.SB3FileLoader(buffer);
           return loader.load();
         }
       }
       startLoad().then((stage) => {
         P.player.start(stage, true);
-        updateLinks();
+        triggerProjectStarted();
       });
     }
 
@@ -366,6 +386,82 @@
     // Load any initial project ID
     loadProject(initialId);
 
+  }());
+
+  // Settings UI
+  P.settingsUi = (function() {
+    'use strict';
+
+    // UI elements
+    var optionFramerate = document.getElementById('settings-framerate');
+    var optionUsername = document.getElementById('settings-username');
+    var settingsMenu = document.getElementById('settings');
+
+    // Options to be applied by default
+    var defaultOptions = {
+      username: '',
+      framerate: 30,
+    };
+
+    // Shallowly clones an object (member values are not cloned)
+    function shallowClone(obj) {
+      var result = {};
+      for (var k in obj) {
+        result[k] = obj[k];
+      }
+      return result;
+    }
+
+    function getStage() {
+      return P.player.stage;
+    }
+
+    function setSelectedOptions(options) {
+      optionFramerate.value = options.framerate;
+      optionUsername.value = options.username;
+    }
+
+    function getSelectedOptions() {
+      var options = shallowClone(defaultOptions);
+
+      // do not apply invalid framerate values because things break
+      if (optionFramerate.checkValidity()) {
+        options.framerate = +optionFramerate.value;
+      }
+
+      // doesn't really matter if username is "invalid"
+      options.username = optionUsername.value;
+      return options;
+    }
+
+    function applyOptions(options) {
+      // Applying framerate involves restarting the event loop, which we shouldn't do if not necessary
+      if (options.framerate !== P.config.framerate) {
+        P.config.framerate = options.framerate;
+        if (getStage().runtime.isRunning) {
+          getStage().runtime.pause();
+          getStage().runtime.start();
+        }
+      }
+
+      getStage().username = options.username;
+    }
+
+    function applySelectedOptions() {
+      var options = getSelectedOptions();
+      applyOptions(options);
+    }
+
+    // Apply defaults
+    setSelectedOptions(defaultOptions);
+
+    optionFramerate.addEventListener('input', applySelectedOptions);
+    optionUsername.addEventListener('input', applySelectedOptions);
+
+    // We need to be notified when a new project is loaded to reapply some settings
+    return {
+      apply: applySelectedOptions,
+    };
   }());
 
   </script>
