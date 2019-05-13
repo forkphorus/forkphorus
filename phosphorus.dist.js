@@ -35,10 +35,12 @@ var P;
 (function (P) {
     var config;
     (function (config) {
+        const features = location.search.replace('?', '').split('&');
+        config.debug = features.indexOf('debug') > -1;
+        config.useWebGL = features.indexOf('webgl') > -1;
         config.scale = window.devicePixelRatio || 1;
         config.hasTouchEvents = 'ontouchstart' in document;
         config.framerate = 30;
-        config.debug = window.location.search.includes("debug");
         config.PROJECT_API = 'https://projects.scratch.mit.edu/$id';
     })(config = P.config || (P.config = {}));
 })(P || (P = {}));
@@ -523,8 +525,685 @@ var P;
 /// <reference path="phosphorus.ts" />
 var P;
 (function (P) {
+    var m3;
+    (function (m3) {
+        // Most of this is heavily based on:
+        // https://webglfundamentals.org/webgl/lessons/webgl-2d-matrices.html
+        // Eventually I want to move this to the shader itself.
+        /**
+         * Multiplies two 3x3 matrices together
+         * @param out The first matrix. The result will be stored here.
+         * @param other The second matrix.
+         */
+        function multiply(out, other) {
+            const a0 = out[0];
+            const a1 = out[1];
+            const a2 = out[2];
+            const a3 = out[3];
+            const a4 = out[4];
+            const a5 = out[5];
+            const a6 = out[6];
+            const a7 = out[7];
+            const a8 = out[8];
+            const b0 = other[0];
+            const b1 = other[1];
+            const b2 = other[2];
+            const b3 = other[3];
+            const b4 = other[4];
+            const b5 = other[5];
+            const b6 = other[6];
+            const b7 = other[7];
+            const b8 = other[8];
+            out[0] = b0 * a0 + b1 * a3 + b2 * a6;
+            out[1] = b0 * a1 + b1 * a4 + b2 * a7;
+            out[2] = b0 * a2 + b1 * a5 + b2 * a8;
+            out[3] = b3 * a0 + b4 * a3 + b5 * a6;
+            out[4] = b3 * a1 + b4 * a4 + b5 * a7;
+            out[5] = b3 * a2 + b4 * a5 + b5 * a8;
+            out[6] = b6 * a0 + b7 * a3 + b8 * a6;
+            out[7] = b6 * a1 + b7 * a4 + b8 * a7;
+            out[8] = b6 * a2 + b7 * a5 + b8 * a8;
+        }
+        m3.multiply = multiply;
+        function translation(x, y) {
+            return [
+                1, 0, 0,
+                0, 1, 0,
+                x, y, 1,
+            ];
+        }
+        m3.translation = translation;
+        function rotation(degrees) {
+            const radians = degrees * Math.PI / 180;
+            const cos = Math.cos(radians);
+            const sin = Math.sin(radians);
+            return [
+                cos, -sin, 0,
+                sin, cos, 0,
+                0, 0, 1,
+            ];
+        }
+        m3.rotation = rotation;
+        function scaling(x, y) {
+            return [
+                x, 0, 0,
+                0, y, 0,
+                0, 0, 1,
+            ];
+        }
+        m3.scaling = scaling;
+        function projection(width, height) {
+            return [
+                2 / width, 0, 0,
+                0, -2 / height, 0,
+                -1, 1, 1,
+            ];
+        }
+        m3.projection = projection;
+    })(m3 = P.m3 || (P.m3 = {}));
+})(P || (P = {}));
+/// <reference path="phosphorus.ts" />
+/// <reference path="matrix.ts" />
+var P;
+(function (P) {
     var renderer;
     (function (renderer) {
+        // HELPERS
+        /**
+         * Create an HTML canvas.
+         */
+        function createCanvas() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 480;
+            canvas.height = 360;
+            return canvas;
+        }
+        /**
+         * Determines if a Sprite's filters will change its shape.
+         * @param filters The Sprite's filters
+         */
+        function filtersAffectShape(filters) {
+            return filters.fisheye !== 0 ||
+                filters.mosaic !== 0 ||
+                filters.pixelate !== 0 ||
+                filters.whirl !== 0;
+        }
+        // WEBGL
+        // Used in the WebGL renderer for inverting sprites.
+        const horizontalInvertMatrix = P.m3.scaling(-1, 1);
+        class ShaderVariant {
+            constructor(gl, program) {
+                // When loaded we'll lookup all of our attributes and uniforms, and store
+                // their locations locally.
+                // WebGL can tell us how many there are, so we can do lookups.
+                this.gl = gl;
+                this.program = program;
+                this.uniformLocations = {};
+                this.attributeLocations = {};
+                const activeUniforms = gl.getProgramParameter(program, this.gl.ACTIVE_UNIFORMS);
+                for (let index = 0; index < activeUniforms; index++) {
+                    const info = gl.getActiveUniform(program, index);
+                    if (!info) {
+                        throw new Error('uniform at index ' + index + ' does not exist');
+                    }
+                    const name = info.name;
+                    const location = gl.getUniformLocation(program, name);
+                    if (!location) {
+                        throw new Error('uniform named ' + name + ' does not exist');
+                    }
+                    this.uniformLocations[name] = location;
+                }
+                const activeAttributes = gl.getProgramParameter(program, this.gl.ACTIVE_ATTRIBUTES);
+                for (let index = 0; index < activeAttributes; index++) {
+                    const info = gl.getActiveAttrib(program, index);
+                    if (!info) {
+                        throw new Error('attribute at index ' + index + ' does not exist');
+                    }
+                    // Attribute index is location, I believe.
+                    this.attributeLocations[info.name] = index;
+                }
+            }
+            /**
+             * Sets a uniform to a float
+             * @param name The name of the uniform
+             * @param value A float
+             */
+            uniform1f(name, value) {
+                const location = this.getUniform(name);
+                this.gl.uniform1f(location, value);
+            }
+            /**
+             * Sets a uniform to a vec2
+             * @param name The name of the uniform
+             * @param a The first value
+             * @param b The second value
+             */
+            uniform2f(name, a, b) {
+                const location = this.getUniform(name);
+                this.gl.uniform2f(location, a, b);
+            }
+            /**
+             * Sets a uniform to a 3x3 matrix
+             * @param name The name of the uniform
+             * @param value The 3x3 matrix
+             */
+            uniformMatrix3(name, value) {
+                const location = this.getUniform(name);
+                this.gl.uniformMatrix3fv(location, false, value);
+            }
+            /**
+             * Determines if this shader variant contains a uniform.
+             * @param name The name of the uniform
+             */
+            hasUniform(name) {
+                return this.uniformLocations.hasOwnProperty(name);
+            }
+            /**
+             * Determines the location of a uniform, or errors if it does not exist.
+             * @param name The name of the uniform
+             */
+            getUniform(name) {
+                if (!this.hasUniform(name)) {
+                    throw new Error('uniform of name ' + name + ' does not exist');
+                }
+                return this.uniformLocations[name];
+            }
+            /**
+             * Binds a buffer to an attribute
+             * @param name The name of the attribute
+             * @param value The WebGL buffer to bind
+             */
+            attributeBuffer(name, value) {
+                if (!this.hasAttribute(name)) {
+                    throw new Error('attribute of name ' + name + ' does not exist');
+                }
+                const location = this.attributeLocations[name];
+                this.gl.enableVertexAttribArray(location);
+                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, value);
+                this.gl.vertexAttribPointer(location, 2, this.gl.FLOAT, false, 0, 0);
+            }
+            /**
+             * Determines if this shader contains an attribute
+             * @param name The name of the attribute
+             */
+            hasAttribute(name) {
+                return this.attributeLocations.hasOwnProperty(name);
+            }
+            /**
+             * Determines the location of an attribute, and errors if it does not exist.
+             * @param name The name of the attribute
+             */
+            getAttribute(name) {
+                if (!this.hasAttribute(name)) {
+                    throw new Error('attribute of name ' + name + ' does not exist');
+                }
+                return this.attributeLocations[name];
+            }
+        }
+        class WebGLSpriteRenderer {
+            constructor() {
+                this.canvas = createCanvas();
+                const gl = this.canvas.getContext('webgl');
+                if (!gl) {
+                    throw new Error('cannot get webgl rendering context');
+                }
+                this.gl = gl;
+                this.renderingShader = this.compileVariant([]);
+                // Enable transparency blending.
+                this.gl.enable(this.gl.BLEND);
+                // TODO: investigate other blending modes
+                this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+                // Create the quad buffer that we'll use for positioning and texture coordinates later.
+                this.quadBuffer = this.gl.createBuffer();
+                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
+                this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
+                    0, 0,
+                    0, 1,
+                    1, 0,
+                    1, 0,
+                    0, 1,
+                    1, 1,
+                ]), this.gl.STATIC_DRAW);
+            }
+            /**
+             * Compile a single shader
+             * @param type The type of the shader. Use this.gl.VERTEX_SHADER or FRAGMENT_SHADER
+             * @param source The string source of the shader.
+             * @param definitions Flags to define in the shader source.
+             */
+            compileShader(type, source, definitions) {
+                const addDefinition = (def) => {
+                    source = '#define ' + def + '\n' + source;
+                };
+                if (definitions) {
+                    for (const def of definitions) {
+                        addDefinition(def);
+                    }
+                }
+                const shader = this.gl.createShader(type);
+                if (!shader) {
+                    throw new Error('Cannot create shader');
+                }
+                this.gl.shaderSource(shader, source);
+                this.gl.compileShader(shader);
+                if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
+                    const error = this.gl.getShaderInfoLog(shader);
+                    this.gl.deleteShader(shader);
+                    throw new Error('Shader compilation error: ' + error);
+                }
+                return shader;
+            }
+            /**
+             * Compiles a vertex shader and fragment shader into a program.
+             * @param vs Vertex shader source.
+             * @param fs Fragment shader source.
+             * @param definitions Things to define in the source of both shaders.
+             */
+            compileProgram(vs, fs, definitions) {
+                const vertexShader = this.compileShader(this.gl.VERTEX_SHADER, vs, definitions);
+                const fragmentShader = this.compileShader(this.gl.FRAGMENT_SHADER, fs, definitions);
+                const program = this.gl.createProgram();
+                if (!program) {
+                    throw new Error('Cannot create program');
+                }
+                this.gl.attachShader(program, vertexShader);
+                this.gl.attachShader(program, fragmentShader);
+                this.gl.linkProgram(program);
+                if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
+                    const error = this.gl.getProgramInfoLog(program);
+                    this.gl.deleteProgram(program);
+                    throw new Error('Program compilation error: ' + error);
+                }
+                return program;
+            }
+            /**
+             * Compiles a variant of the default shader.
+             * @param definitions Things to define in the shader
+             */
+            compileVariant(definitions) {
+                const program = this.compileProgram(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, definitions);
+                return new ShaderVariant(this.gl, program);
+            }
+            /**
+             * Creates a new texture without inserting data.
+             * Texture will be bound to TEXTURE_2D, so you can texImage2D() on it
+             * Mipmapping will be disabled to allow for any size texture.
+             */
+            createTexture() {
+                const texture = this.gl.createTexture();
+                if (!texture) {
+                    throw new Error('Cannot create texture');
+                }
+                this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+                this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+                this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+                this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+                return texture;
+            }
+            /**
+             * Converts a canvas to a WebGL texture
+             * @param canvas The source canvas. Dimensions do not matter.
+             */
+            convertToTexture(canvas) {
+                const texture = this.createTexture();
+                this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
+                return texture;
+            }
+            /**
+             * Creates a new framebuffer
+             */
+            createFramebuffer() {
+                const frameBuffer = this.gl.createFramebuffer();
+                if (!frameBuffer) {
+                    throw new Error('cannot create frame buffer');
+                }
+                return frameBuffer;
+            }
+            reset(scale) {
+                // Scale the actual canvas
+                this.canvas.width = scale * P.config.scale * 480;
+                this.canvas.height = scale * P.config.scale * 360;
+                this.resetFramebuffer(scale);
+            }
+            /**
+             * Resizes and resets the current framebuffer
+             * @param scale Scale
+             */
+            resetFramebuffer(scale) {
+                this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+                this.globalScaleMatrix = P.m3.scaling(scale, scale);
+                // Clear the canvas
+                this.gl.clearColor(0, 0, 0, 0);
+                this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+            }
+            drawChild(child) {
+                this._drawChild(child, this.renderingShader);
+            }
+            /**
+             * Real implementation of drawChild()
+             * Shader must be set before calling (allows for using a different shader)
+             * @param child The child to draw
+             */
+            _drawChild(child, shader) {
+                this.gl.useProgram(shader.program);
+                // Create the texture if it doesn't already exist.
+                // We'll create a texture only once for performance.
+                const costume = child.costumes[child.currentCostumeIndex];
+                if (!costume._glTexture) {
+                    const texture = this.convertToTexture(costume.image);
+                    costume._glTexture = texture;
+                }
+                this.gl.bindTexture(this.gl.TEXTURE_2D, costume._glTexture);
+                shader.attributeBuffer('a_texcoord', this.quadBuffer);
+                shader.attributeBuffer('a_position', this.quadBuffer);
+                // TODO: do this in the shader if its possible/faster
+                const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
+                P.m3.multiply(matrix, this.globalScaleMatrix);
+                P.m3.multiply(matrix, P.m3.translation(240 + child.scratchX | 0, 180 - child.scratchY | 0));
+                if (P.core.isSprite(child)) {
+                    if (child.rotationStyle === 0 /* Normal */ && child.direction !== 90) {
+                        P.m3.multiply(matrix, P.m3.rotation(90 - child.direction));
+                    }
+                    else if (child.rotationStyle === 1 /* LeftRight */ && child.direction < 0) {
+                        P.m3.multiply(matrix, horizontalInvertMatrix);
+                    }
+                    if (child.scale !== 1) {
+                        P.m3.multiply(matrix, P.m3.scaling(child.scale, child.scale));
+                    }
+                }
+                if (costume.scale !== 1) {
+                    P.m3.multiply(matrix, P.m3.scaling(costume.scale, costume.scale));
+                }
+                P.m3.multiply(matrix, P.m3.translation(-costume.rotationCenterX, -costume.rotationCenterY));
+                P.m3.multiply(matrix, P.m3.scaling(costume.image.width, costume.image.height));
+                shader.uniformMatrix3('u_matrix', matrix);
+                // Effects
+                if (shader.hasUniform('u_opacity')) {
+                    shader.uniform1f('u_opacity', 1 - child.filters.ghost / 100);
+                }
+                if (shader.hasUniform('u_brightness')) {
+                    shader.uniform1f('u_brightness', child.filters.brightness / 100);
+                }
+                if (shader.hasUniform('u_color')) {
+                    shader.uniform1f('u_color', child.filters.color / 200);
+                }
+                if (shader.hasUniform('u_mosaic')) {
+                    const mosaic = Math.round((Math.abs(child.filters.mosaic) + 10) / 10);
+                    shader.uniform1f('u_mosaic', P.utils.clamp(mosaic, 1, 512));
+                }
+                if (shader.hasUniform('u_whirl')) {
+                    shader.uniform1f('u_whirl', child.filters.whirl * Math.PI / -180);
+                }
+                if (shader.hasUniform('u_fisheye')) {
+                    shader.uniform1f('u_fisheye', Math.max(0, (child.filters.fisheye + 100) / 100));
+                }
+                if (shader.hasUniform('u_pixelate')) {
+                    shader.uniform1f('u_pixelate', Math.abs(child.filters.pixelate) / 10);
+                }
+                if (shader.hasUniform('u_size')) {
+                    shader.uniform2f('u_size', costume.image.width, costume.image.height);
+                }
+                this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+            }
+            drawLayer(canvas) {
+                const shader = this.renderingShader;
+                this.gl.useProgram(shader.program);
+                const texture = this.convertToTexture(canvas);
+                this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+                shader.attributeBuffer('a_texcoord', this.quadBuffer);
+                shader.attributeBuffer('a_position', this.quadBuffer);
+                const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
+                P.m3.multiply(matrix, this.globalScaleMatrix);
+                shader.uniformMatrix3('u_matrix', matrix);
+                shader.uniform1f('u_opacity', 1);
+                // TODO: is it necessary to delete textures?
+                this.gl.deleteTexture(texture);
+            }
+        }
+        WebGLSpriteRenderer.vertexShader = `
+    attribute vec2 a_position;
+    attribute vec2 a_texcoord;
+
+    uniform mat3 u_matrix;
+
+    varying vec2 v_texcoord;
+
+    void main() {
+      gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
+      v_texcoord = a_texcoord;
+    }
+    `;
+        WebGLSpriteRenderer.fragmentShader = `
+    precision mediump float;
+
+    varying vec2 v_texcoord;
+
+    uniform sampler2D u_texture;
+    #ifndef ONLY_SHAPE_FILTERS
+      uniform float u_brightness;
+      uniform float u_color;
+    #endif
+    uniform float u_opacity;
+    uniform float u_mosaic;
+    uniform float u_whirl;
+    uniform float u_fisheye;
+    uniform float u_pixelate;
+    uniform vec2 u_size;
+
+    const float minimumAlpha = 1.0 / 250.0;
+    const vec2 vecCenter = vec2(0.5, 0.5);
+
+    // http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl
+    vec3 rgb2hsv(vec3 c) {
+      vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+      vec4 p = c.g < c.b ? vec4(c.bg, K.wz) : vec4(c.gb, K.xy);
+      vec4 q = c.r < p.x ? vec4(p.xyw, c.r) : vec4(c.r, p.yzx);
+      float d = q.x - min(q.w, q.y);
+      float e = 1.0e-10;
+      return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+    }
+    vec3 hsv2rgb(vec3 c) {
+      vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+      vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+      return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+    }
+
+    void main() {
+      // varyings cannot be modified
+      vec2 texcoord = v_texcoord;
+
+      // apply mosaic
+      {
+        texcoord = fract(u_mosaic * v_texcoord);
+      }
+
+      // apply pixelate
+      if (u_pixelate != 0.0) {
+        vec2 texelSize = u_size / u_pixelate;
+        texcoord = (floor(texcoord * texelSize) + vecCenter) / texelSize;
+      }
+
+      // apply whirl
+      {
+        const float radius = 0.5;
+        vec2 offset = texcoord - vecCenter;
+        float offsetMagnitude = length(offset);
+        float whirlFactor = max(1.0 - (offsetMagnitude / radius), 0.0);
+        float whirlActual = u_whirl * whirlFactor * whirlFactor;
+        float sinWhirl = sin(whirlActual);
+        float cosWhirl = cos(whirlActual);
+        mat2 rotationMatrix = mat2(
+          cosWhirl, -sinWhirl,
+          sinWhirl, cosWhirl
+        );
+        texcoord = rotationMatrix * offset + vecCenter;
+      }
+
+      // apply fisheye
+      {
+        vec2 vec = (texcoord - vecCenter) / vecCenter;
+        float vecLength = length(vec);
+        float r = pow(min(vecLength, 1.0), u_fisheye) * max(1.0, vecLength);
+        vec2 unit = vec / vecLength;
+        texcoord = vecCenter + r * unit * vecCenter;
+      }
+
+      vec4 color = texture2D(u_texture, texcoord);
+      if (color.a < minimumAlpha) {
+        discard;
+      }
+
+      // apply ghost effect
+      color.a *= u_opacity;
+      // handle premultiplied alpha
+      color.rgb *= u_opacity;
+
+      // apply brightness effect
+      #ifndef ONLY_SHAPE_FILTERS
+        color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
+      #endif
+
+      // The color effect is rather complicated. See:
+      // https://github.com/LLK/scratch-render/blob/008dc5b15b30961301e6b9a08628a063b967a001/src/shaders/sprite.frag#L175-L189
+      #ifndef ONLY_SHAPE_FILTERS
+      if (u_color != 0.0) {
+        vec3 hsv = rgb2hsv(color.rgb);
+        // hsv.x = hue
+        // hsv.y = saturation
+        // hsv.z = value
+
+        // scratch forces all colors to have some minimal amount saturation so there is a visual change
+        const float minValue = 0.11 / 2.0;
+        const float minSaturation = 0.09;
+        if (hsv.z < minValue) hsv = vec3(0.0, 1.0, minValue);
+        else if (hsv.y < minSaturation) hsv = vec3(0.0, minSaturation, hsv.z);
+
+        hsv.x = mod(hsv.x + u_color, 1.0);
+        if (hsv.x < 0.0) hsv.x += 1.0;
+        color = vec4(hsv2rgb(hsv), color.a);  
+      }
+      #endif
+
+      gl_FragColor = color;
+    }
+    `;
+        renderer.WebGLSpriteRenderer = WebGLSpriteRenderer;
+        class WebGLProjectRenderer extends WebGLSpriteRenderer {
+            constructor(stage) {
+                super();
+                this.stage = stage;
+                this.shaderOnlyShapeFilters = this.compileVariant(['ONLY_SHAPE_FILTERS']);
+                this.fallbackRenderer = new ProjectRenderer2D(stage);
+                this.penLayer = this.fallbackRenderer.penLayer;
+                this.stageLayer = this.fallbackRenderer.stageLayer;
+            }
+            /**
+             * Sets this renderer to render to a framebuffer.
+             * Initializes, binds, attaches, and clears the texture and framebuffer.
+             * Framebuffer must be reset later.
+             * @param framebuffer The framebuffer
+             * @param texture The texture
+             */
+            setRenderToFramebuffer(framebuffer, texture) {
+                // setup framebuffer
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, framebuffer);
+                // setup texture
+                this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+                this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 480, 360, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
+                this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, texture, 0);
+                // fix viewport/clear
+                // always use a scale of 1 for now
+                this.resetFramebuffer(1);
+            }
+            /**
+             * Sets this renderer to render to the canvas instead of a framebuffer
+             */
+            resetRenderFramebuffer() {
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+            }
+            penLine(color, size, x, y, x2, y2) {
+                this.fallbackRenderer.penLine(color, size, x, y, x2, y2);
+            }
+            penDot(color, size, x, y) {
+                this.fallbackRenderer.penDot(color, size, x, y);
+            }
+            penStamp(sprite) {
+                this.fallbackRenderer.penStamp(sprite);
+            }
+            penClear() {
+                this.fallbackRenderer.penClear();
+            }
+            penResize(scale) {
+                this.fallbackRenderer.penResize(scale);
+            }
+            updateStage(scale) {
+                this.fallbackRenderer.updateStage(scale);
+            }
+            updateStageFilters() {
+                this.fallbackRenderer.updateStageFilters();
+            }
+            spriteTouchesPoint(sprite, x, y) {
+                // If filters will not change the shape of the sprite, it would be faster
+                // to avoid going to the GPU
+                if (!filtersAffectShape(sprite.filters)) {
+                    return this.fallbackRenderer.spriteTouchesPoint(sprite, x, y);
+                }
+                const texture = this.createTexture();
+                const framebuffer = this.createFramebuffer();
+                this.setRenderToFramebuffer(framebuffer, texture);
+                this._drawChild(sprite, this.shaderOnlyShapeFilters);
+                // Allocate 4 bytes to store 1 RGBA pixel
+                const result = new Uint8Array(4);
+                // Coordinates are in pixels from the lower left corner
+                // We only care about 1 pixel, the pixel at the mouse cursor.
+                this.gl.readPixels(240 + x | 0, 180 + y | 0, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, result);
+                this.resetRenderFramebuffer();
+                // I don't know if it's necessary to delete these
+                this.gl.deleteTexture(texture);
+                this.gl.deleteFramebuffer(framebuffer);
+                // Just look for a non-zero alpha channel
+                return result[3] !== 0;
+            }
+            spritesIntersect(spriteA, otherSprites) {
+                // Render the original Sprite into a buffer just once
+                const baseResult = new Uint8Array(480 * 360 * 4);
+                const baseTexture = this.createTexture();
+                const baseBuffer = this.createFramebuffer();
+                this.setRenderToFramebuffer(baseBuffer, baseTexture);
+                this._drawChild(spriteA, this.shaderOnlyShapeFilters);
+                this.gl.readPixels(0, 0, 480, 360, this.gl.RGBA, this.gl.UNSIGNED_BYTE, baseResult);
+                // Setup the rendering for the other sprite just once for performance
+                const otherResult = new Uint8Array(480 * 360 * 4);
+                const textureB = this.createTexture();
+                const framebufferB = this.createFramebuffer();
+                this.setRenderToFramebuffer(framebufferB, textureB);
+                for (var i = 0; i < otherSprites.length; i++) {
+                    const otherSprite = otherSprites[i];
+                    if (!otherSprite.visible)
+                        continue;
+                    // Does the rendering of the sprite
+                    this._drawChild(otherSprite, this.shaderOnlyShapeFilters);
+                    this.gl.readPixels(0, 0, 480, 360, this.gl.RGBA, this.gl.UNSIGNED_BYTE, otherResult);
+                    const length = 480 * 360 * 4;
+                    for (var i = 0; i < length; i += 4) {
+                        if (baseResult[i + 3] && otherResult[i + 3]) {
+                            this.resetRenderFramebuffer();
+                            return true;
+                        }
+                    }
+                }
+                this.resetRenderFramebuffer();
+                return false;
+            }
+            spriteTouchesColor(sprite, color) {
+                return this.fallbackRenderer.spriteTouchesColor(sprite, color);
+            }
+            spriteColorTouchesColor(sprite, spriteColor, otherColor) {
+                return this.spriteColorTouchesColor(sprite, spriteColor, otherColor);
+            }
+        }
+        renderer.WebGLProjectRenderer = WebGLProjectRenderer;
+        // 2D
         /**
          * Creates the CSS filter for a Filter object.
          * The filter is generally an estimation of the actual effect.
@@ -540,93 +1219,238 @@ var P;
             }
             return filter;
         }
-        class Base2DRenderer {
-            constructor(canvas) {
-                const ctx = canvas.getContext('2d');
-                this.ctx = ctx;
-                this.canvas = canvas;
+        class SpriteRenderer2D {
+            constructor() {
+                this.noEffects = false;
+                this.canvas = createCanvas();
+                this.ctx = this.canvas.getContext('2d');
             }
-            /**
-             * Resizes and clears the renderer
-             */
             reset(scale) {
-                const effectiveScale = scale * P.config.scale;
-                this.canvas.width = 480 * effectiveScale;
-                this.canvas.height = 360 * effectiveScale;
-                this.ctx.scale(effectiveScale, effectiveScale);
+                this._reset(this.ctx, scale);
             }
             drawImage(image, x, y) {
                 this.ctx.drawImage(image, x, y);
             }
-        }
-        renderer.Base2DRenderer = Base2DRenderer;
-        /**
-         * A renderer for drawing sprites (or stages)
-         */
-        class SpriteRenderer2D extends Base2DRenderer {
-            constructor() {
-                super(...arguments);
-                this.noEffects = false;
-            }
             drawChild(c) {
+                this._drawChild(c, this.ctx);
+            }
+            drawLayer(canvas) {
+                this.ctx.drawImage(canvas, 0, 0, 480, 360);
+            }
+            _reset(ctx, scale) {
+                const effectiveScale = scale * P.config.scale;
+                ctx.canvas.width = 480 * effectiveScale;
+                ctx.canvas.height = 360 * effectiveScale;
+                ctx.scale(effectiveScale, effectiveScale);
+            }
+            _drawChild(c, ctx) {
                 const costume = c.costumes[c.currentCostumeIndex];
                 if (!costume) {
                     return;
                 }
-                this.ctx.save();
+                ctx.save();
                 const scale = c.stage.zoom * P.config.scale;
-                this.ctx.translate(((c.scratchX + 240) * scale | 0) / scale, ((180 - c.scratchY) * scale | 0) / scale);
+                ctx.translate(((c.scratchX + 240) * scale | 0) / scale, ((180 - c.scratchY) * scale | 0) / scale);
                 // Direction transforms are only applied to Sprites because Stages cannot be rotated.
                 if (P.core.isSprite(c)) {
                     if (c.rotationStyle === 0 /* Normal */) {
-                        this.ctx.rotate((c.direction - 90) * Math.PI / 180);
+                        ctx.rotate((c.direction - 90) * Math.PI / 180);
                     }
                     else if (c.rotationStyle === 1 /* LeftRight */ && c.direction < 0) {
-                        this.ctx.scale(-1, 1);
+                        ctx.scale(-1, 1);
                     }
-                    this.ctx.scale(c.scale, c.scale);
+                    ctx.scale(c.scale, c.scale);
                 }
-                this.ctx.scale(costume.scale, costume.scale);
-                this.ctx.translate(-costume.rotationCenterX, -costume.rotationCenterY);
+                ctx.scale(costume.scale, costume.scale);
+                ctx.translate(-costume.rotationCenterX, -costume.rotationCenterY);
                 if (!this.noEffects) {
-                    this.ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
+                    ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
                     const filter = cssFilter(c.filters);
-                    // Only apply a filter if necessary, otherwise Firefox performance nosedives.
+                    // Only apply a filter if necessary, otherwise Firefox performance
+                    // nosedives.
                     if (filter !== '') {
-                        this.ctx.filter = filter;
+                        ctx.filter = filter;
                     }
                 }
-                this.ctx.drawImage(costume.image, 0, 0);
-                this.ctx.restore();
+                ctx.drawImage(costume.image, 0, 0);
+                ctx.restore();
             }
         }
         renderer.SpriteRenderer2D = SpriteRenderer2D;
-        /**
-         * A renderer specifically for the backdrop of a Stage.
-         */
-        class StageRenderer extends SpriteRenderer2D {
-            constructor(canvas, stage) {
-                super(canvas);
+        // Renderers used for some features such as collision detection
+        const workingRenderer = new SpriteRenderer2D();
+        const workingRenderer2 = new SpriteRenderer2D();
+        class ProjectRenderer2D extends SpriteRenderer2D {
+            constructor(stage) {
+                super();
                 this.stage = stage;
-                // We handle effects in other ways, so forcibly disable SpriteRenderer's filters
+                this.stageLayer = createCanvas();
+                this.stageContext = this.stageLayer.getContext('2d');
+                this.penLayer = createCanvas();
+                this.penContext = this.penLayer.getContext('2d');
+            }
+            updateStage(scale) {
+                this._reset(this.stageContext, scale);
                 this.noEffects = true;
+                this._drawChild(this.stage, this.stageContext);
+                this.noEffects = false;
+                this.updateStageFilters();
             }
-            drawStage() {
-                this.drawChild(this.stage);
-                this.updateFilters();
-            }
-            updateFilters() {
+            updateStageFilters() {
                 const filter = cssFilter(this.stage.filters);
                 // Only reapply a CSS filter if it has changed for performance.
                 // Might not be necessary here.
-                if (this.canvas.style.filter !== filter) {
-                    this.canvas.style.filter = filter;
+                if (this.stageLayer.style.filter !== filter) {
+                    this.stageLayer.style.filter = filter;
                 }
                 // cssFilter does not include ghost
-                this.canvas.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
+                this.stageLayer.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
+            }
+            penClear() {
+                this.penContext.clearRect(0, 0, this.penLayer.width, this.penLayer.height);
+            }
+            penResize(scale) {
+                const cachedCanvas = document.createElement('canvas');
+                cachedCanvas.width = this.penLayer.width;
+                cachedCanvas.height = this.penLayer.height;
+                cachedCanvas.getContext('2d').drawImage(this.penLayer, 0, 0);
+                this._reset(this.penContext, scale);
+                this.penContext.drawImage(cachedCanvas, 0, 0, 480, 360);
+            }
+            penDot(color, size, x, y) {
+                this.penContext.fillStyle = color;
+                this.penContext.beginPath();
+                this.penContext.arc(240 + x, 180 - y, size / 2, 0, 2 * Math.PI, false);
+                this.penContext.fill();
+            }
+            penLine(color, size, x1, y1, x2, y2) {
+                this.penContext.lineCap = 'round';
+                if (size % 2 > .5 && size % 2 < 1.5) {
+                    x1 -= .5;
+                    y1 -= .5;
+                    x2 -= .5;
+                    y2 -= .5;
+                }
+                this.penContext.strokeStyle = color;
+                this.penContext.lineWidth = size;
+                this.penContext.beginPath();
+                this.penContext.moveTo(240 + x1, 180 - y1);
+                this.penContext.lineTo(240 + x2, 180 - y2);
+                this.penContext.stroke();
+            }
+            penStamp(sprite) {
+                this._drawChild(sprite, this.penContext);
+            }
+            spriteTouchesPoint(sprite, x, y) {
+                const costume = sprite.costumes[sprite.currentCostumeIndex];
+                const bounds = sprite.rotatedBounds();
+                if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top) {
+                    return false;
+                }
+                var cx = (x - sprite.scratchX) / sprite.scale;
+                var cy = (sprite.scratchY - y) / sprite.scale;
+                if (sprite.rotationStyle === 0 /* Normal */ && sprite.direction !== 90) {
+                    const d = (90 - sprite.direction) * Math.PI / 180;
+                    const ox = cx;
+                    const s = Math.sin(d), c = Math.cos(d);
+                    cx = c * ox - s * cy;
+                    cy = s * ox + c * cy;
+                }
+                else if (sprite.rotationStyle === 1 /* LeftRight */ && sprite.direction < 0) {
+                    cx = -cx;
+                }
+                const positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
+                const positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
+                const data = costume.context().getImageData(positionX, positionY, 1, 1).data;
+                return data[3] !== 0;
+            }
+            spritesIntersect(spriteA, otherSprites) {
+                for (var i = 0; i < otherSprites.length; i++) {
+                    const spriteB = otherSprites[i];
+                    if (!spriteB.visible)
+                        continue;
+                    const mb = spriteA.rotatedBounds();
+                    const ob = spriteB.rotatedBounds();
+                    if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
+                        continue;
+                    }
+                    const left = Math.max(mb.left, ob.left);
+                    const top = Math.min(mb.top, ob.top);
+                    const right = Math.min(mb.right, ob.right);
+                    const bottom = Math.max(mb.bottom, ob.bottom);
+                    const width = right - left;
+                    const height = top - bottom;
+                    if (width < 1 || height < 1) {
+                        return false;
+                    }
+                    workingRenderer.canvas.width = width;
+                    workingRenderer.canvas.height = height;
+                    workingRenderer.ctx.save();
+                    workingRenderer.noEffects = true;
+                    workingRenderer.ctx.translate(-(left + 240), -(180 - top));
+                    workingRenderer.drawChild(spriteA);
+                    workingRenderer.ctx.globalCompositeOperation = 'source-in';
+                    workingRenderer.drawChild(spriteB);
+                    workingRenderer.noEffects = false;
+                    workingRenderer.ctx.restore();
+                    const data = workingRenderer.ctx.getImageData(0, 0, width, height).data;
+                    const length = data.length;
+                    for (var j = 0; j < length; j += 4) {
+                        // check for the opacity byte being a non-zero number
+                        if (data[j + 3]) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+            spriteTouchesColor(sprite, color) {
+                const b = sprite.rotatedBounds();
+                workingRenderer.canvas.width = b.right - b.left;
+                workingRenderer.canvas.height = b.top - b.bottom;
+                workingRenderer.ctx.save();
+                workingRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
+                sprite.stage.drawAll(workingRenderer, sprite);
+                workingRenderer.ctx.globalCompositeOperation = 'destination-in';
+                workingRenderer.drawChild(sprite);
+                workingRenderer.ctx.restore();
+                const data = workingRenderer.ctx.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
+                color = color & 0xffffff;
+                const length = (b.right - b.left) * (b.top - b.bottom) * 4;
+                for (var i = 0; i < length; i += 4) {
+                    if ((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) === color && data[i + 3]) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            spriteColorTouchesColor(sprite, spriteColor, otherColor) {
+                var rb = sprite.rotatedBounds();
+                workingRenderer.canvas.width = workingRenderer2.canvas.width = rb.right - rb.left;
+                workingRenderer.canvas.height = workingRenderer2.canvas.height = rb.top - rb.bottom;
+                workingRenderer.ctx.save();
+                workingRenderer2.ctx.save();
+                workingRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
+                workingRenderer2.ctx.translate(-(240 + rb.left), -(180 - rb.top));
+                sprite.stage.drawAll(workingRenderer, sprite);
+                workingRenderer.drawChild(sprite);
+                workingRenderer.ctx.restore();
+                var dataA = workingRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
+                var dataB = workingRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
+                spriteColor = spriteColor & 0xffffff;
+                otherColor = otherColor & 0xffffff;
+                var length = dataA.length;
+                for (var i = 0; i < length; i += 4) {
+                    var touchesSource = (dataB[i] << 16 | dataB[i + 1] << 8 | dataB[i + 2]) === spriteColor && dataB[i + 3];
+                    var touchesOther = (dataA[i] << 16 | dataA[i + 1] << 8 | dataA[i + 2]) === otherColor && dataA[i + 3];
+                    if (touchesSource && touchesOther) {
+                        return true;
+                    }
+                }
+                return false;
             }
         }
-        renderer.StageRenderer = StageRenderer;
+        renderer.ProjectRenderer2D = ProjectRenderer2D;
     })(renderer = P.renderer || (P.renderer = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
@@ -638,11 +1462,6 @@ var P;
 (function (P) {
     var core;
     (function (core) {
-        // Used for collision testing
-        const collisionCanvas = document.createElement('canvas');
-        const collisionRenderer = new P.renderer.SpriteRenderer2D(collisionCanvas);
-        const secondaryCollisionCanvas = document.createElement('canvas');
-        const secondaryCollisionRenderer = new P.renderer.SpriteRenderer2D(secondaryCollisionCanvas);
         class Base {
             constructor() {
                 /**
@@ -1037,7 +1856,6 @@ var P;
                 this.counter = 0;
                 this._currentCostumeIndex = this.currentCostumeIndex;
                 this.runtime = new P.runtime.Runtime(this);
-                // A dirty hack to create the KeyList interface
                 this.keys = [];
                 this.keys.any = 0;
                 this.root = document.createElement('div');
@@ -1046,48 +1864,23 @@ var P;
                 this.root.style.overflow = 'hidden';
                 this.root.style.userSelect = 'none';
                 const scale = P.config.scale;
-                this.backdropCanvas = document.createElement('canvas');
-                this.root.appendChild(this.backdropCanvas);
-                this.backdropRenderer = new P.renderer.StageRenderer(this.backdropCanvas, this);
-                this.penCanvas = document.createElement('canvas');
-                this.root.appendChild(this.penCanvas);
-                this.penCanvas.width = scale * 480;
-                this.penCanvas.height = scale * 360;
-                this.penRenderer = new P.renderer.SpriteRenderer2D(this.penCanvas);
-                this.penRenderer.ctx.lineCap = 'round';
-                this.penRenderer.ctx.scale(scale, scale);
-                this.canvas = document.createElement('canvas');
+                if (P.config.useWebGL) {
+                    this.renderer = new P.renderer.WebGLProjectRenderer(this);
+                }
+                else {
+                    this.renderer = new P.renderer.ProjectRenderer2D(this);
+                }
+                this.renderer.reset(scale);
+                this.renderer.penResize(1);
+                this.canvas = this.renderer.canvas;
+                this.root.appendChild(this.renderer.stageLayer);
+                this.root.appendChild(this.renderer.penLayer);
                 this.root.appendChild(this.canvas);
-                this.renderer = new P.renderer.SpriteRenderer2D(this.canvas);
                 this.ui = document.createElement('div');
                 this.root.appendChild(this.ui);
                 this.ui.style.pointerEvents = 'none';
                 this.canvas.tabIndex = 0;
                 this.canvas.style.outline = 'none';
-                this.backdropCanvas.style.position =
-                    this.penCanvas.style.position =
-                        this.canvas.style.position =
-                            this.ui.style.position = 'absolute';
-                this.backdropCanvas.style.left =
-                    this.penCanvas.style.left =
-                        this.canvas.style.left =
-                            this.ui.style.left =
-                                this.backdropCanvas.style.top =
-                                    this.penCanvas.style.top =
-                                        this.canvas.style.top =
-                                            this.ui.style.top = '0';
-                this.backdropCanvas.style.width =
-                    this.penCanvas.style.width =
-                        this.canvas.style.width =
-                            this.ui.style.width = '480px';
-                this.backdropCanvas.style.height =
-                    this.penCanvas.style.height =
-                        this.canvas.style.height =
-                            this.ui.style.height = '360px';
-                this.backdropCanvas.style.transform =
-                    this.penCanvas.style.transform =
-                        this.canvas.style.transform =
-                            this.ui.style.transform = 'translateZ(0)';
                 this.root.addEventListener('keydown', (e) => {
                     var c = e.keyCode;
                     if (!this.keys[c])
@@ -1287,10 +2080,9 @@ var P;
              * Updates the backdrop canvas to match the current backdrop.
              */
             updateBackdrop() {
-                if (!this.backdropRenderer)
+                if (!this.renderer)
                     return;
-                this.backdropRenderer.reset(this.zoom * P.config.scale);
-                this.backdropRenderer.drawStage();
+                this.renderer.updateStage(this.zoom * P.config.scale);
             }
             /**
              * Changes the zoom level and resizes DOM elements.
@@ -1300,24 +2092,10 @@ var P;
                     return;
                 if (this.maxZoom < zoom * P.config.scale) {
                     this.maxZoom = zoom * P.config.scale;
-                    const canvas = document.createElement('canvas');
-                    canvas.width = this.penCanvas.width;
-                    canvas.height = this.penCanvas.height;
-                    canvas.getContext('2d').drawImage(this.penCanvas, 0, 0);
-                    this.penRenderer.reset(this.maxZoom);
-                    this.penRenderer.ctx.drawImage(canvas, 0, 0, 480 * zoom * P.config.scale, 360 * zoom * P.config.scale);
-                    this.penRenderer.ctx.lineCap = 'round';
+                    this.renderer.penResize(this.maxZoom);
                 }
-                this.root.style.width =
-                    this.canvas.style.width =
-                        this.backdropCanvas.style.width =
-                            this.penCanvas.style.width =
-                                this.ui.style.width = (480 * zoom | 0) + 'px';
-                this.root.style.height =
-                    this.canvas.style.height =
-                        this.backdropCanvas.style.height =
-                            this.penCanvas.style.height =
-                                this.ui.style.height = (360 * zoom | 0) + 'px';
+                this.root.style.width = (480 * zoom | 0) + 'px';
+                this.root.style.height = (360 * zoom | 0) + 'px';
                 this.root.style.fontSize = (zoom * 10) + 'px';
                 this.zoom = zoom;
                 this.updateBackdrop();
@@ -1326,7 +2104,7 @@ var P;
                 this.mouseSprite = undefined;
                 for (var i = this.children.length; i--;) {
                     var c = this.children[i];
-                    if (c.visible && c.filters.ghost < 100 && c.touching('_mouse_')) {
+                    if (c.visible && c.filters.ghost < 100 && c.touching("_mouse_" /* Mouse */)) {
                         if (c.isDraggable) {
                             this.mouseSprite = c;
                             c.mouseDown();
@@ -1349,11 +2127,11 @@ var P;
             setFilter(name, value) {
                 // Override setFilter() to update the filters on the real stage.
                 super.setFilter(name, value);
-                this.backdropRenderer.updateFilters();
+                this.renderer.updateStageFilters();
             }
             /**
              * Gets an object with its name, ignoring clones.
-             * '_stage_' points to the stage.
+             * SpecialObjects.Stage will point to the stage.
              */
             getObject(name) {
                 for (var i = 0; i < this.children.length; i++) {
@@ -1362,14 +2140,14 @@ var P;
                         return c;
                     }
                 }
-                if (name === '_stage_' || name === this.name) {
+                if (name === "_stage_" /* Stage */ || name === this.name) {
                     return this;
                 }
                 return null;
             }
             /**
              * Gets all the objects with a name, including clones.
-             * Special values such as '_stage_' are not supported.
+             * Special values are not supported.
              */
             getObjects(name) {
                 const result = [];
@@ -1385,11 +2163,11 @@ var P;
              */
             getPosition(name) {
                 switch (name) {
-                    case '_mouse_': return {
+                    case "_mouse_" /* Mouse */: return {
                         x: this.mouseX,
                         y: this.mouseY,
                     };
-                    case '_random_': return {
+                    case "_random_" /* Random */: return {
                         x: Math.round(480 * Math.random() - 240),
                         y: Math.round(360 * Math.random() - 180),
                     };
@@ -1442,7 +2220,7 @@ var P;
              */
             drawAll(renderer, skip) {
                 renderer.drawChild(this);
-                renderer.drawImage(this.penCanvas, 0, 0);
+                renderer.drawLayer(this.renderer.penLayer);
                 this.drawChildren(renderer, skip);
             }
             // Implement rotatedBounds() to return something.
@@ -1491,8 +2269,7 @@ var P;
                 }
             }
             clearPen() {
-                this.penRenderer.reset(this.maxZoom);
-                this.penRenderer.ctx.lineCap = 'round';
+                this.renderer.penClear();
             }
         }
         core.Stage = Stage;
@@ -1631,19 +2408,7 @@ var P;
                 this.scratchX = x;
                 this.scratchY = y;
                 if (this.isPenDown && !this.isDragging) {
-                    var context = this.stage.penRenderer.ctx;
-                    if (this.penSize % 2 > .5 && this.penSize % 2 < 1.5) {
-                        ox -= .5;
-                        oy -= .5;
-                        x -= .5;
-                        y -= .5;
-                    }
-                    context.strokeStyle = this.penCSS || 'hsla(' + this.penHue + 'deg,' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
-                    context.lineWidth = this.penSize;
-                    context.beginPath();
-                    context.moveTo(240 + ox, 180 - oy);
-                    context.lineTo(240 + x, 180 - y);
-                    context.stroke();
+                    this.stage.renderer.penLine(this.getPenCSS(), this.penSize, ox, oy, x, y);
                 }
                 if (this.saying) {
                     this.updateBubble();
@@ -1651,17 +2416,15 @@ var P;
             }
             // Makes a pen dot at the current location.
             dotPen() {
-                var context = this.stage.penRenderer.ctx;
-                var x = this.scratchX;
-                var y = this.scratchY;
-                context.fillStyle = this.penCSS || 'hsla(' + this.penHue + 'deg,' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
-                context.beginPath();
-                context.arc(240 + x, 180 - y, this.penSize / 2, 0, 2 * Math.PI, false);
-                context.fill();
+                this.stage.renderer.penDot(this.getPenCSS(), this.penSize, this.scratchX, this.scratchY);
             }
             // Stamps the sprite onto the pen layer.
             stamp() {
-                this.stage.penRenderer.drawChild(this);
+                this.stage.renderer.penStamp(this);
+            }
+            getPenCSS() {
+                // This is only temporary
+                return this.penCSS || 'hsla(' + this.penHue + 'deg,' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
             }
             // Faces in a direction.
             setDirection(degrees) {
@@ -1722,35 +2485,17 @@ var P;
                 clone.isPenDown = this.isPenDown;
                 return clone;
             }
-            // Determines if the sprite is touching an object.
-            // thing is the name of the object, '_mouse_', or '_edge_'
+            /**
+             * Determines if this sprite is touching another object.
+             * @param thing The name of the other object(s)
+             */
             touching(thing) {
-                const costume = this.costumes[this.currentCostumeIndex];
-                if (thing === '_mouse_') {
-                    const bounds = this.rotatedBounds();
+                if (thing === "_mouse_" /* Mouse */) {
                     const x = this.stage.rawMouseX;
                     const y = this.stage.rawMouseY;
-                    if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top) {
-                        return false;
-                    }
-                    var cx = (x - this.scratchX) / this.scale;
-                    var cy = (this.scratchY - y) / this.scale;
-                    if (this.rotationStyle === 0 /* Normal */ && this.direction !== 90) {
-                        const d = (90 - this.direction) * Math.PI / 180;
-                        const ox = cx;
-                        const s = Math.sin(d), c = Math.cos(d);
-                        cx = c * ox - s * cy;
-                        cy = s * ox + c * cy;
-                    }
-                    else if (this.rotationStyle === 1 /* LeftRight */ && this.direction < 0) {
-                        cx = -cx;
-                    }
-                    const positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
-                    const positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
-                    const data = costume.context().getImageData(positionX, positionY, 1, 1).data;
-                    return data[3] !== 0;
+                    return this.stage.renderer.spriteTouchesPoint(this, x, y);
                 }
-                else if (thing === '_edge_') {
+                else if (thing === "_edge_" /* Edge */) {
                     const bounds = this.rotatedBounds();
                     return bounds.left <= -240 || bounds.right >= 240 || bounds.top >= 180 || bounds.bottom <= -180;
                 }
@@ -1758,98 +2503,27 @@ var P;
                     if (!this.visible)
                         return false;
                     const sprites = this.stage.getObjects(thing);
-                    for (var i = sprites.length; i--;) {
-                        const sprite = sprites[i];
-                        if (!sprite.visible || sprite === this)
-                            continue;
-                        const mb = this.rotatedBounds();
-                        const ob = sprite.rotatedBounds();
-                        if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
-                            continue;
-                        }
-                        const left = Math.max(mb.left, ob.left);
-                        const top = Math.min(mb.top, ob.top);
-                        const right = Math.min(mb.right, ob.right);
-                        const bottom = Math.max(mb.bottom, ob.bottom);
-                        const width = right - left;
-                        const height = top - bottom;
-                        if (width < 1 || height < 1) {
-                            continue;
-                        }
-                        collisionRenderer.canvas.width = width;
-                        collisionRenderer.canvas.height = height;
-                        collisionRenderer.ctx.save();
-                        collisionRenderer.noEffects = true;
-                        collisionRenderer.ctx.translate(-(left + 240), -(180 - top));
-                        collisionRenderer.drawChild(this);
-                        collisionRenderer.ctx.globalCompositeOperation = 'source-in';
-                        collisionRenderer.drawChild(sprite);
-                        collisionRenderer.noEffects = false;
-                        collisionRenderer.ctx.restore();
-                        const data = collisionRenderer.ctx.getImageData(0, 0, width, height).data;
-                        const length = data.length;
-                        for (var j = 0; j < length; j += 4) {
-                            // check for the opacity byte being a non-zero number
-                            if (data[j + 3]) {
-                                return true;
-                            }
-                        }
-                    }
-                    return false;
+                    return this.stage.renderer.spritesIntersect(this, sprites);
                 }
             }
-            // Determines if this Sprite is touching a color.
-            touchingColor(rgb) {
-                const b = this.rotatedBounds();
-                const width = b.right - b.left;
-                const height = b.top - b.bottom;
-                if (width < 1 || height < 1) {
-                    return false;
-                }
-                collisionCanvas.width = width;
-                collisionCanvas.height = height;
-                collisionRenderer.ctx.save();
-                collisionRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
-                this.stage.drawAll(collisionRenderer, this);
-                collisionRenderer.ctx.globalCompositeOperation = 'destination-in';
-                collisionRenderer.drawChild(this);
-                collisionRenderer.ctx.restore();
-                const data = collisionRenderer.ctx.getImageData(0, 0, width, height).data;
-                rgb = rgb & 0xffffff;
-                const length = width * height * 4;
-                for (var i = 0; i < length; i += 4) {
-                    if ((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) === rgb && data[i + 3]) {
-                        return true;
-                    }
-                }
-                return false;
+            /**
+             * Determines if this Sprite is touching a color.
+             * @param color RGB color, as a single number.
+             */
+            touchingColor(color) {
+                return this.stage.renderer.spriteTouchesColor(this, color);
             }
+            /**
+             * Determines if one of this Sprite's colors are touching another color.
+             * @param sourceColor This sprite's color, as an RGB color.
+             * @param touchingColor The other color, as an RGB color.
+             */
             colorTouchingColor(sourceColor, touchingColor) {
-                var rb = this.rotatedBounds();
-                collisionCanvas.width = secondaryCollisionCanvas.width = rb.right - rb.left;
-                collisionCanvas.height = secondaryCollisionCanvas.height = rb.top - rb.bottom;
-                collisionRenderer.ctx.save();
-                secondaryCollisionRenderer.ctx.save();
-                collisionRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
-                secondaryCollisionRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
-                this.stage.drawAll(collisionRenderer, this);
-                secondaryCollisionRenderer.drawChild(this);
-                collisionRenderer.ctx.restore();
-                var dataA = collisionRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
-                var dataB = secondaryCollisionRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
-                sourceColor = sourceColor & 0xffffff;
-                touchingColor = touchingColor & 0xffffff;
-                var length = dataA.length;
-                for (var i = 0; i < length; i += 4) {
-                    var touchesSource = (dataB[i] << 16 | dataB[i + 1] << 8 | dataB[i + 2]) === sourceColor && dataB[i + 3];
-                    var touchesOther = (dataA[i] << 16 | dataA[i + 1] << 8 | dataA[i + 2]) === touchingColor && dataA[i + 3];
-                    if (touchesSource && touchesOther) {
-                        return true;
-                    }
-                }
-                return false;
+                return this.stage.renderer.spriteColorTouchesColor(this, sourceColor, touchingColor);
             }
-            // Bounces off an edge of the stage, if it is touching one.
+            /**
+             * Bounces this Sprite off of an edge of the Stage, if this Sprite is touching one.
+             */
             bounceOffEdge() {
                 var b = this.rotatedBounds();
                 var dl = 240 + b.left;
@@ -1891,7 +2565,10 @@ var P;
                 if (b.bottom < -180)
                     y += -180 - b.top;
             }
-            // Determines the distance to point accepted by getPosition()
+            /**
+             * Determines the distance from this Sprite's center to another position.
+             * @param thing The name of any position or Sprite, as accepted by getPosition()
+             */
             distanceTo(thing) {
                 const p = this.stage.getPosition(thing);
                 if (!p) {
@@ -1901,8 +2578,10 @@ var P;
                 const y = p.y;
                 return Math.sqrt((this.scratchX - x) * (this.scratchX - x) + (this.scratchY - y) * (this.scratchY - y));
             }
-            // Goes to another object.
-            // thing is anything that getPosition() accepts
+            /**
+             * Makes this Sprite go to another Sprite
+             * @param thing The name of any position or Sprite, as accepted by getPosition()
+             */
             gotoObject(thing) {
                 const position = this.stage.getPosition(thing);
                 if (!position) {
@@ -1910,8 +2589,10 @@ var P;
                 }
                 this.moveTo(position.x, position.y);
             }
-            // Points towards an object.
-            // thing is anything that getPosition() accepts
+            /**
+             * Makes this Sprite point towards another object.
+             * @param thing The name of any position or Sprite, as accepted by getPosition()
+             */
             pointTowards(thing) {
                 const position = this.stage.getPosition(thing);
                 if (!position) {
@@ -1923,7 +2604,9 @@ var P;
                 if (this.saying)
                     this.updateBubble();
             }
-            // Sets the RGB color of the pen.
+            /**
+             * Set the RGB color of the pen.
+             */
             setPenColor(color) {
                 this.penColor = color;
                 const r = this.penColor >> 16 & 0xff;
@@ -1932,7 +2615,9 @@ var P;
                 const a = this.penColor >> 24 & 0xff / 0xff || 1;
                 this.penCSS = 'rgba(' + r + ', ' + g + ', ' + b + ', ' + a + ')';
             }
-            // Converts the pen's color to HSL
+            /**
+             * Convert the pen's color from RGB to HSL
+             */
             setPenColorHSL() {
                 if (this.penCSS) {
                     const hsl = P.utils.rgbToHSL(this.penColor);
@@ -2160,6 +2845,16 @@ var P;
         }
         utils.rgbToHSL = rgbToHSL;
         /**
+         * Clamps a number within a range
+         * @param number The number
+         * @param min Minimum, inclusive
+         * @param max Maximum, inclusive
+         */
+        function clamp(number, min, max) {
+            return Math.min(max, Math.max(min, number));
+        }
+        utils.clamp = clamp;
+        /*
          * Creates a promise that resolves when the original promise resolves or fails.
          */
         function settled(promise) {
@@ -2718,7 +3413,8 @@ var P;
                     sprite.scale = data.scale;
                     sprite.visible = data.visible;
                 }
-                // Dirty hack expected by the sb2 compiler, TODO: remove
+                // We store the scripts on the Sprite so the compiler can find them easier
+                // TODO: to something different?
                 object.scripts = data.scripts || [];
                 return object;
             });
@@ -3860,7 +4556,7 @@ var P;
                 if (script[0][0] === 'procDef') {
                     let pre = '';
                     for (let i = types.length; i--;) {
-                        // TODO: dirty hack to make used work; really this entire thing needs to be changed a lot
+                        // We know `used` is defined at this point, but typescript doesn't.
                         if (used[i]) {
                             const t = types[i];
                             if (t === '%d' || t === '%n' || t === '%c') {

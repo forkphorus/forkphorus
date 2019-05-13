@@ -7,6 +7,15 @@
   color: black;
 }
 
+.forkphorus-root > * {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translateZ(0);
+  width: 100%;
+  height: 100%;
+}
+
 /* Scratch 3 Fonts */
 @font-face {
   font-family: "Knewave";

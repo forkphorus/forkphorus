@@ -5,12 +5,6 @@
 // Phosphorus base classes
 // Implements most functionality while leaving some specifics to implementations (P.sb2, P.sb3)
 namespace P.core {
-  // Used for collision testing
-  const collisionCanvas = document.createElement('canvas');
-  const collisionRenderer = new P.renderer.SpriteRenderer2D(collisionCanvas);
-  const secondaryCollisionCanvas = document.createElement('canvas');
-  const secondaryCollisionRenderer = new P.renderer.SpriteRenderer2D(secondaryCollisionCanvas);
-
   interface RotatedBounds {
     // A----------+
     // |          |
@@ -61,6 +55,13 @@ namespace P.core {
      * Indicates this sprite cannot rotate.
      */
     None,
+  }
+
+  export const enum SpecialObjects {
+    Mouse = '_mouse_',
+    Stage = '_stage_',
+    Random = '_random_',
+    Edge = '_edge_',
   }
 
   export abstract class Base {
@@ -178,6 +179,7 @@ namespace P.core {
       brightness: 0,
       ghost: 0,
     };
+
     constructor() {
       for (var i = 0; i < 128; i++) {
         this.listeners.whenKeyPressed.push([]);
@@ -504,13 +506,7 @@ namespace P.core {
     public ui: HTMLElement;
 
     public canvas: HTMLCanvasElement;
-    public renderer: P.renderer.Renderer;
-
-    public backdropCanvas: HTMLCanvasElement;
-    public backdropRenderer: P.renderer.StageRenderer;
-
-    public penCanvas: HTMLCanvasElement;
-    public penRenderer: P.renderer.SpriteRenderer2D;
+    public renderer: P.renderer.ProjectRenderer;
 
     public prompt: HTMLInputElement;
     public prompter: HTMLElement;
@@ -525,7 +521,6 @@ namespace P.core {
 
       this.runtime = new P.runtime.Runtime(this);
 
-      // A dirty hack to create the KeyList interface
       this.keys = [] as any;
       this.keys.any = 0;
 
@@ -537,22 +532,18 @@ namespace P.core {
 
       const scale = P.config.scale;
 
-      this.backdropCanvas = document.createElement('canvas');
-      this.root.appendChild(this.backdropCanvas);
+      if (P.config.useWebGL) {
+        this.renderer = new P.renderer.WebGLProjectRenderer(this);
+      } else {
+        this.renderer = new P.renderer.ProjectRenderer2D(this);
+      }
+      this.renderer.reset(scale);
+      this.renderer.penResize(1);
 
-      this.backdropRenderer = new P.renderer.StageRenderer(this.backdropCanvas, this);
-
-      this.penCanvas = document.createElement('canvas');
-      this.root.appendChild(this.penCanvas);
-      this.penCanvas.width = scale * 480;
-      this.penCanvas.height = scale * 360;
-      this.penRenderer = new P.renderer.SpriteRenderer2D(this.penCanvas);
-      this.penRenderer.ctx.lineCap = 'round';
-      this.penRenderer.ctx.scale(scale, scale);
-
-      this.canvas = document.createElement('canvas');
+      this.canvas = this.renderer.canvas;
+      this.root.appendChild(this.renderer.stageLayer);
+      this.root.appendChild(this.renderer.penLayer);
       this.root.appendChild(this.canvas);
-      this.renderer = new P.renderer.SpriteRenderer2D(this.canvas);
 
       this.ui = document.createElement('div');
       this.root.appendChild(this.ui);
@@ -560,35 +551,6 @@ namespace P.core {
 
       this.canvas.tabIndex = 0;
       this.canvas.style.outline = 'none';
-
-      this.backdropCanvas.style.position =
-        this.penCanvas.style.position =
-        this.canvas.style.position =
-        this.ui.style.position = 'absolute';
-
-      this.backdropCanvas.style.left =
-        this.penCanvas.style.left =
-        this.canvas.style.left =
-        this.ui.style.left =
-        this.backdropCanvas.style.top =
-        this.penCanvas.style.top =
-        this.canvas.style.top =
-        this.ui.style.top = '0';
-
-      this.backdropCanvas.style.width =
-        this.penCanvas.style.width =
-        this.canvas.style.width =
-        this.ui.style.width = '480px';
-
-      this.backdropCanvas.style.height =
-        this.penCanvas.style.height =
-        this.canvas.style.height =
-        this.ui.style.height = '360px';
-
-      this.backdropCanvas.style.transform =
-        this.penCanvas.style.transform =
-        this.canvas.style.transform =
-        this.ui.style.transform = 'translateZ(0)';
 
       this.root.addEventListener('keydown', (e) => {
         var c = e.keyCode;
@@ -802,9 +764,8 @@ namespace P.core {
      * Updates the backdrop canvas to match the current backdrop.
      */
     updateBackdrop() {
-      if (!this.backdropRenderer) return;
-      this.backdropRenderer.reset(this.zoom * P.config.scale);
-      this.backdropRenderer.drawStage();
+      if (!this.renderer) return;
+      this.renderer.updateStage(this.zoom * P.config.scale);
     }
 
     /**
@@ -814,24 +775,10 @@ namespace P.core {
       if (this.zoom === zoom) return;
       if (this.maxZoom < zoom * P.config.scale) {
         this.maxZoom = zoom * P.config.scale;
-        const canvas = document.createElement('canvas');
-        canvas.width = this.penCanvas.width;
-        canvas.height = this.penCanvas.height;
-        canvas.getContext('2d')!.drawImage(this.penCanvas, 0, 0);
-        this.penRenderer.reset(this.maxZoom);
-        this.penRenderer.ctx.drawImage(canvas, 0, 0, 480 * zoom * P.config.scale, 360 * zoom * P.config.scale);
-        this.penRenderer.ctx.lineCap = 'round';
+        this.renderer.penResize(this.maxZoom);
       }
-      this.root.style.width =
-      this.canvas.style.width =
-      this.backdropCanvas.style.width =
-      this.penCanvas.style.width =
-      this.ui.style.width = (480 * zoom | 0) + 'px';
-      this.root.style.height =
-      this.canvas.style.height =
-      this.backdropCanvas.style.height =
-      this.penCanvas.style.height =
-      this.ui.style.height = (360 * zoom | 0) + 'px';
+      this.root.style.width = (480 * zoom | 0) + 'px';
+      this.root.style.height = (360 * zoom | 0) + 'px';
       this.root.style.fontSize = (zoom*10) + 'px';
       this.zoom = zoom;
       this.updateBackdrop();
@@ -841,7 +788,7 @@ namespace P.core {
       this.mouseSprite = undefined;
       for (var i = this.children.length; i--;) {
         var c = this.children[i];
-        if (c.visible && c.filters.ghost < 100 && c.touching('_mouse_')) {
+        if (c.visible && c.filters.ghost < 100 && c.touching(SpecialObjects.Mouse)) {
           if (c.isDraggable) {
             this.mouseSprite = c;
             c.mouseDown();
@@ -865,12 +812,12 @@ namespace P.core {
     setFilter(name: string, value: number) {
       // Override setFilter() to update the filters on the real stage.
       super.setFilter(name, value);
-      this.backdropRenderer.updateFilters();
+      this.renderer.updateStageFilters();
     }
 
     /**
      * Gets an object with its name, ignoring clones.
-     * '_stage_' points to the stage.
+     * SpecialObjects.Stage will point to the stage.
      */
     getObject(name: string): Base | null {
       for (var i = 0; i < this.children.length; i++) {
@@ -879,7 +826,7 @@ namespace P.core {
           return c;
         }
       }
-      if (name === '_stage_' || name === this.name) {
+      if (name === SpecialObjects.Stage || name === this.name) {
         return this;
       }
       return null;
@@ -887,7 +834,7 @@ namespace P.core {
 
     /**
      * Gets all the objects with a name, including clones.
-     * Special values such as '_stage_' are not supported.
+     * Special values are not supported.
      */
     getObjects(name: string): P.core.Base[] {
       const result: P.core.Base[] = [];
@@ -904,11 +851,11 @@ namespace P.core {
      */
     getPosition(name: string): {x: number, y: number} | null {
       switch (name) {
-        case '_mouse_': return {
+        case SpecialObjects.Mouse: return {
           x: this.mouseX,
           y: this.mouseY,
         };
-        case '_random_': return {
+        case SpecialObjects.Random: return {
           x: Math.round(480 * Math.random() - 240),
           y: Math.round(360 * Math.random() - 180),
         };
@@ -948,7 +895,7 @@ namespace P.core {
      * Draws all the children (not including the Stage itself or pen layers) of this Stage on a renderer
      * @param skip Optionally skip rendering of a single Sprite.
      */
-    drawChildren(renderer: P.renderer.Renderer, skip?: Sprite) {
+    drawChildren(renderer: P.renderer.SpriteRenderer, skip?: Base) {
       for (var i = 0; i < this.children.length; i++) {
         const c = this.children[i];
         if (c.isDragging) {
@@ -965,9 +912,9 @@ namespace P.core {
      * Draws all parts of the Stage (including the stage itself and pen layers) on a renderer.
      * @param skip Optionally skip rendering of a single Sprite.
      */
-    drawAll(renderer: P.renderer.Renderer, skip?: Sprite) {
+    drawAll(renderer: P.renderer.SpriteRenderer, skip?: Base) {
       renderer.drawChild(this);
-      renderer.drawImage(this.penCanvas, 0, 0);
+      renderer.drawLayer(this.renderer.penLayer);
       this.drawChildren(renderer, skip);
     }
 
@@ -1024,8 +971,7 @@ namespace P.core {
     }
 
     clearPen() {
-      this.penRenderer.reset(this.maxZoom);
-      this.penRenderer.ctx.lineCap = 'round';
+      this.renderer.penClear();
     }
   }
 
@@ -1184,19 +1130,7 @@ namespace P.core {
       this.scratchY = y;
 
       if (this.isPenDown && !this.isDragging) {
-        var context = this.stage.penRenderer.ctx;
-        if (this.penSize % 2 > .5 && this.penSize % 2 < 1.5) {
-          ox -= .5;
-          oy -= .5;
-          x -= .5;
-          y -= .5;
-        }
-        context.strokeStyle = this.penCSS || 'hsla(' + this.penHue + 'deg,' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
-        context.lineWidth = this.penSize;
-        context.beginPath();
-        context.moveTo(240 + ox, 180 - oy);
-        context.lineTo(240 + x, 180 - y);
-        context.stroke();
+        this.stage.renderer.penLine(this.getPenCSS(), this.penSize, ox, oy, x, y);
       }
 
       if (this.saying) {
@@ -1206,18 +1140,17 @@ namespace P.core {
 
     // Makes a pen dot at the current location.
     dotPen() {
-      var context = this.stage.penRenderer.ctx;
-      var x = this.scratchX;
-      var y = this.scratchY;
-      context.fillStyle = this.penCSS || 'hsla(' + this.penHue + 'deg,' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
-      context.beginPath();
-      context.arc(240 + x, 180 - y, this.penSize / 2, 0, 2 * Math.PI, false);
-      context.fill();
+      this.stage.renderer.penDot(this.getPenCSS(), this.penSize, this.scratchX, this.scratchY);
     }
 
     // Stamps the sprite onto the pen layer.
     stamp() {
-      this.stage.penRenderer.drawChild(this);
+      this.stage.renderer.penStamp(this);
+    }
+
+    getPenCSS() {
+      // This is only temporary
+      return this.penCSS || 'hsla(' + this.penHue + 'deg,' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
     }
 
     // Faces in a direction.
@@ -1286,164 +1219,45 @@ namespace P.core {
     // Must return a new instance of this Sprite's constructor. Data copying will be handled in clone()
     protected abstract _clone(): P.core.Sprite;
 
-    // Determines if the sprite is touching an object.
-    // thing is the name of the object, '_mouse_', or '_edge_'
+    /**
+     * Determines if this sprite is touching another object.
+     * @param thing The name of the other object(s)
+     */
     touching(thing: string) {
-      const costume = this.costumes[this.currentCostumeIndex];
-
-      if (thing === '_mouse_') {
-        const bounds = this.rotatedBounds();
+      if (thing === SpecialObjects.Mouse) {
         const x = this.stage.rawMouseX;
         const y = this.stage.rawMouseY;
-        if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top) {
-          return false;
-        }
-
-        var cx = (x - this.scratchX) / this.scale;
-        var cy = (this.scratchY - y) / this.scale;
-        if (this.rotationStyle === RotationStyle.Normal && this.direction !== 90) {
-          const d = (90 - this.direction) * Math.PI / 180;
-          const ox = cx;
-          const s = Math.sin(d), c = Math.cos(d);
-          cx = c * ox - s * cy;
-          cy = s * ox + c * cy;
-        } else if (this.rotationStyle === RotationStyle.LeftRight && this.direction < 0) {
-          cx = -cx;
-        }
-
-        const positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
-        const positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
-        const data = costume.context().getImageData(positionX, positionY, 1, 1).data;
-        return data[3] !== 0;
-      } else if (thing === '_edge_') {
+        return this.stage.renderer.spriteTouchesPoint(this, x, y);
+      } else if (thing === SpecialObjects.Edge) {
         const bounds = this.rotatedBounds();
         return bounds.left <= -240 || bounds.right >= 240 || bounds.top >= 180 || bounds.bottom <= -180;
       } else {
         if (!this.visible) return false;
         const sprites = this.stage.getObjects(thing);
-
-        for (var i = sprites.length; i--;) {
-          const sprite = sprites[i];
-          if (!sprite.visible || sprite === this) continue;
-
-          const mb = this.rotatedBounds();
-          const ob = sprite.rotatedBounds();
-
-          if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
-            continue;
-          }
-
-          const left = Math.max(mb.left, ob.left);
-          const top = Math.min(mb.top, ob.top);
-          const right = Math.min(mb.right, ob.right);
-          const bottom = Math.max(mb.bottom, ob.bottom);
-
-          const width = right - left;
-          const height = top - bottom;
-
-          if (width < 1 || height < 1) {
-            continue;
-          }
-
-          collisionRenderer.canvas.width = width;
-          collisionRenderer.canvas.height = height;
-
-          collisionRenderer.ctx.save();
-          collisionRenderer.noEffects = true;
-
-          collisionRenderer.ctx.translate(-(left + 240), -(180 - top));
-          collisionRenderer.drawChild(this);
-          collisionRenderer.ctx.globalCompositeOperation = 'source-in';
-          collisionRenderer.drawChild(sprite);
-
-          collisionRenderer.noEffects = false;
-          collisionRenderer.ctx.restore();
-
-          const data = collisionRenderer.ctx.getImageData(0, 0, width, height).data;
-          const length = data.length;
-
-          for (var j = 0; j < length; j += 4) {
-            // check for the opacity byte being a non-zero number
-            if (data[j + 3]) {
-              return true;
-            }
-          }
-        }
-
-        return false;
+        return this.stage.renderer.spritesIntersect(this, sprites);
       }
     }
 
-    // Determines if this Sprite is touching a color.
-    touchingColor(rgb: number) {
-      const b = this.rotatedBounds();
-
-      const width = b.right - b.left;
-      const height = b.top - b.bottom;
-      if (width < 1 || height < 1) {
-        return false;
-      }
-
-      collisionCanvas.width = width;
-      collisionCanvas.height = height;
-
-      collisionRenderer.ctx.save();
-      collisionRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
-
-      this.stage.drawAll(collisionRenderer, this);
-      collisionRenderer.ctx.globalCompositeOperation = 'destination-in';
-      collisionRenderer.drawChild(this);
-
-      collisionRenderer.ctx.restore();
-
-      const data = collisionRenderer.ctx.getImageData(0, 0, width, height).data;
-
-      rgb = rgb & 0xffffff;
-      const length = width * height * 4;
-      for (var i = 0; i < length; i += 4) {
-        if ((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) === rgb && data[i + 3]) {
-          return true;
-        }
-      }
-
-      return false;
+    /**
+     * Determines if this Sprite is touching a color.
+     * @param color RGB color, as a single number.
+     */
+    touchingColor(color: number) {
+      return this.stage.renderer.spriteTouchesColor(this, color);
     }
 
+    /**
+     * Determines if one of this Sprite's colors are touching another color.
+     * @param sourceColor This sprite's color, as an RGB color.
+     * @param touchingColor The other color, as an RGB color.
+     */
     colorTouchingColor(sourceColor: number, touchingColor: number) {
-      var rb = this.rotatedBounds();
-
-      collisionCanvas.width = secondaryCollisionCanvas.width = rb.right - rb.left;
-      collisionCanvas.height = secondaryCollisionCanvas.height = rb.top - rb.bottom;
-
-      collisionRenderer.ctx.save();
-      secondaryCollisionRenderer.ctx.save();
-      collisionRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
-      secondaryCollisionRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
-
-      this.stage.drawAll(collisionRenderer, this);
-      secondaryCollisionRenderer.drawChild(this);
-
-      collisionRenderer.ctx.restore();
-
-      var dataA = collisionRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
-      var dataB = secondaryCollisionRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
-
-      sourceColor = sourceColor & 0xffffff;
-      touchingColor = touchingColor & 0xffffff;
-
-      var length = dataA.length;
-      for (var i = 0; i < length; i += 4) {
-        var touchesSource = (dataB[i] << 16 | dataB[i + 1] << 8 | dataB[i + 2]) === sourceColor && dataB[i + 3];
-        var touchesOther = (dataA[i] << 16 | dataA[i + 1] << 8 | dataA[i + 2]) === touchingColor && dataA[i + 3];
-        if (touchesSource && touchesOther) {
-          return true;
-        }
-      }
-
-      return false;
+      return this.stage.renderer.spriteColorTouchesColor(this, sourceColor, touchingColor);
     }
 
-    // Bounces off an edge of the stage, if it is touching one.
+    /**
+     * Bounces this Sprite off of an edge of the Stage, if this Sprite is touching one.
+     */
     bounceOffEdge() {
       var b = this.rotatedBounds();
       var dl = 240 + b.left;
@@ -1477,7 +1291,10 @@ namespace P.core {
       if (b.bottom < -180) y += -180 - b.top;
     }
 
-    // Determines the distance to point accepted by getPosition()
+    /**
+     * Determines the distance from this Sprite's center to another position.
+     * @param thing The name of any position or Sprite, as accepted by getPosition()
+     */
     distanceTo(thing: string) {
       const p = this.stage.getPosition(thing);
       if (!p) {
@@ -1488,8 +1305,10 @@ namespace P.core {
       return Math.sqrt((this.scratchX - x) * (this.scratchX - x) + (this.scratchY - y) * (this.scratchY - y));
     }
 
-    // Goes to another object.
-    // thing is anything that getPosition() accepts
+    /**
+     * Makes this Sprite go to another Sprite
+     * @param thing The name of any position or Sprite, as accepted by getPosition()
+     */
     gotoObject(thing: string) {
       const position = this.stage.getPosition(thing);
       if (!position) {
@@ -1498,8 +1317,10 @@ namespace P.core {
       this.moveTo(position.x, position.y);
     }
 
-    // Points towards an object.
-    // thing is anything that getPosition() accepts
+    /**
+     * Makes this Sprite point towards another object.
+     * @param thing The name of any position or Sprite, as accepted by getPosition()
+     */
     pointTowards(thing: string) {
       const position = this.stage.getPosition(thing);
       if (!position) {
@@ -1511,7 +1332,9 @@ namespace P.core {
       if (this.saying) this.updateBubble();
     }
 
-    // Sets the RGB color of the pen.
+    /**
+     * Set the RGB color of the pen.
+     */
     setPenColor(color: number) {
       this.penColor = color;
       const r = this.penColor >> 16 & 0xff;
@@ -1521,7 +1344,9 @@ namespace P.core {
       this.penCSS = 'rgba(' + r + ', ' + g + ', ' + b + ', ' + a + ')';
     }
 
-    // Converts the pen's color to HSL
+    /**
+     * Convert the pen's color from RGB to HSL
+     */
     setPenColorHSL() {
       if (this.penCSS) {
         const hsl = P.utils.rgbToHSL(this.penColor);
