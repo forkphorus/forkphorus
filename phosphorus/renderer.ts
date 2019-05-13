@@ -34,18 +34,18 @@ namespace P.renderer {
      * Draws a line on the pen canvas
      * @param color Color of the line
      * @param size Width of the line
-     * @param x Starting X coordinate in Sratch
-     * @param y Starting Y coordinate in Sratch
-     * @param x2 Ending X coordinate in Sratch
-     * @param y2 Starting Y coordinate in Sratch
+     * @param x Starting X coordinate in the Scratch coordinate grid
+     * @param y Starting Y coordinate in the Scratch coordinate grid
+     * @param x2 Ending X coordinate in the Scratch coordinate grid
+     * @param y2 Starting Y coordinate in the Scratch coordinate grid
      */
     penLine(color: string, size: number, x: number, y: number, x2: number, y2: number): void;
     /**
      * Draws a circular dot on the pen canvas
      * @param color Color of the dot
      * @param size Diameter of the circle
-     * @param x Central X coordinate in Scratch
-     * @param y Central Y coordinate in Scratch
+     * @param x Central X coordinate in the Scratch coordinate grid
+     * @param y Central Y coordinate in the Scratch coordinate grid
      */
     penDot(color: string, size: number, x: number, y: number): void;
     /**
@@ -71,8 +71,8 @@ namespace P.renderer {
     /**
      * Determines if a Sprite is intersecting a point
      * @param sprite The sprite
-     * @param x X coordinate, in Scratch space
-     * @param y Y coordinate, in Scratch space
+     * @param x X coordinate in the Scratch coordinate grid
+     * @param y Y coordinate in the Scratch coordinate grid
      */
     spriteTouchesPoint(sprite: P.core.Sprite, x: number, y: number): boolean;
     /**
