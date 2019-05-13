@@ -983,7 +983,7 @@ namespace P.renderer {
         const ob = spriteB.rotatedBounds();
   
         if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
-          return false;
+          continue;
         }
   
         const left = Math.max(mb.left, ob.left);
@@ -1021,7 +1021,6 @@ namespace P.renderer {
             return true;
           }
         }
-
       }
       return false;
     }
