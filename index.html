@@ -111,11 +111,12 @@
       <table id="settings">
         <tr>
           <td class="name" title="Forkphorus will **attempt** to run at this framerate."><label for="settings-framerate">Framerate (FPS)</label></td>
-          <td class="value"><input id="settings-framerate" value="30" placeholder="30" valuetype="number" step="any" min="0" max="1000" required></td>
+          <td class="value"><input id="settings-framerate" value="30" placeholder="30" type="number" step="any" min="0" max="1000" required></td>
         </tr>
         <tr>
-          <td class="name" title="The value of the &quot;username&quot; block."><label for="settings-username">Username</label></td>
-          <td class="value"><input id="settings-username" value="" type="text" placeholder="(empty string)" maxlength="30"></td>
+          <td class="name" title="The value of the &quot;username&quot; block. Changing this may cause issues in some projects."><label for="settings-username">Username</label></td>
+          <!-- scratch's real username limit is 30, but we'll just raise it up a bit -->
+          <td class="value"><input id="settings-username" value="" type="text" placeholder="(empty string)" maxlength="300"></td>
         </tr>
       </table>
       <p>Changes are applied automatically.</p>
