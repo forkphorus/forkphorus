@@ -2040,19 +2040,29 @@ namespace P.sb3.compiler {
     },
     pen_setPenHueToNumber(block) {
       const hue = block.inputs.HUE;
-      source += 'S.setPenColorParam("color", ' + compileExpression(hue, 'number') + ');\n';
+      source += 'S.setPenColorHSL();\n';
+      source += 'S.penHue = ' + compileExpression(hue, 'number') + ' * 360 / 200;\n';
+      source += 'S.penSaturation = 100;\n';
     },
     pen_changePenHueBy(block) {
       const hue = block.inputs.HUE;
-      source += 'S.changePenColorParam("color", ' + compileExpression(hue, 'number') + ');\n';
+      source += 'S.setPenColorHSL();\n';
+      source += 'S.penHue += ' + compileExpression(hue, 'number') + ' * 360 / 200;\n';
+      source += 'S.penSaturation = 100;\n';
     },
     pen_setPenShadeToNumber(block) {
       const shade = block.inputs.SHADE;
-      source += 'S.setPenColorParam("brightness", ' + compileExpression(shade, 'number') + ');\n';
+      source += 'S.setPenColorHSL();\n';
+      source += 'S.penLightness = ' + compileExpression(shade, 'number') + ' % 200;\n';
+      source += 'if (S.penLightness < 0) S.penLightness += 200;\n';
+      source += 'S.penSaturation = 100;\n';
     },
     pen_changePenShadeBy(block) {
       const shade = block.inputs.SHADE;
-      source += 'S.changePenColorParam("brightness", ' + compileExpression(shade, 'number') + ');\n';
+      source += 'S.setPenColorHSL();\n';
+      source += 'S.penLightness = (S.penLightness + ' + compileExpression(shade, 'number') + ') % 200;\n';
+      source += 'if (S.penLightness < 0) S.penLightness += 200;\n';
+      source += 'S.penSaturation = 100;\n';
     },
     pen_setPenColorParamTo(block) {
       const colorParam = block.inputs.COLOR_PARAM;
