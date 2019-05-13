@@ -111,14 +111,14 @@
       <table id="settings">
         <tr>
           <td class="name" title="Forkphorus will **attempt** to run at this framerate."><label for="settings-framerate">Framerate (FPS)</label></td>
-          <td class="value"><input id="settings-framerate" value="30" type="number" step="any" required></td>
+          <td class="value"><input id="settings-framerate" value="30" placeholder="30" valuetype="number" step="any" min="0" max="1000" required></td>
         </tr>
         <tr>
           <td class="name" title="The value of the &quot;username&quot; block."><label for="settings-username">Username</label></td>
           <td class="value"><input id="settings-username" value="" type="text" placeholder="(empty string)" maxlength="30"></td>
         </tr>
       </table>
-      <p>Changes are automatically applied.</p>
+      <p>Changes are applied automatically.</p>
     </div>
     
     <section>
@@ -248,8 +248,13 @@
       P.player.load(id)
         .then((stage) => {
           P.player.start(stage, true);
+          triggerProjectStarted();
         });
+    }
+
+    function triggerProjectStarted() {
       updateLinks();
+      P.settingsUi.apply();
     }
 
     function updateLinks() {
@@ -339,7 +344,7 @@
       }
       startLoad().then((stage) => {
         P.player.start(stage, true);
-        updateLinks();
+        triggerProjectStarted();
       });
     }
 
@@ -383,17 +388,28 @@
   }());
 
   // Settings UI
-  (function() {
+  P.settingsUi = (function() {
     'use strict';
 
+    // UI elements
     var optionFramerate = document.getElementById('settings-framerate');
     var optionUsername = document.getElementById('settings-username');
     var settingsMenu = document.getElementById('settings');
 
+    // Options to be applied by default
     var defaultOptions = {
       username: '',
       framerate: 30,
     };
+
+    // Shallowly clones an object (member values are not cloned)
+    function shallowClone(obj) {
+      var result = {};
+      for (var k in obj) {
+        result[k] = obj[k];
+      }
+      return result;
+    }
 
     function getStage() {
       return P.player.stage;
@@ -405,34 +421,46 @@
     }
 
     function getSelectedOptions() {
-      return {
-        framerate: +optionFramerate.value,
-        username: optionUsername.value,
-      };
+      var options = shallowClone(defaultOptions);
+
+      // do not apply invalid framerate values because things break
+      if (optionFramerate.checkValidity()) {
+        options.framerate = +optionFramerate.value;
+      }
+
+      // doesn't really matter if username is "invalid"
+      options.username = optionUsername.value;
+      return options;
     }
 
     function applyOptions(options) {
       // Applying framerate involves restarting the event loop, which we shouldn't do if not necessary
       if (options.framerate !== P.config.framerate) {
         P.config.framerate = options.framerate;
-        getStage().runtime.pause();
-        getStage().runtime.start();
+        if (getStage().runtime.isRunning) {
+          getStage().runtime.pause();
+          getStage().runtime.start();
+        }
       }
 
       getStage().username = options.username;
     }
 
-    function onOptionsChange() {
+    function applySelectedOptions() {
       var options = getSelectedOptions();
       applyOptions(options);
-      console.log('changed', options);
     }
 
+    // Apply defaults
     setSelectedOptions(defaultOptions);
 
-    optionFramerate.addEventListener('input', onOptionsChange);
-    optionUsername.addEventListener('input', onOptionsChange);
+    optionFramerate.addEventListener('input', applySelectedOptions);
+    optionUsername.addEventListener('input', applySelectedOptions);
 
+    // We need to be notified when a new project is loaded to reapply some settings
+    return {
+      apply: applySelectedOptions,
+    };
   }());
 
   </script>

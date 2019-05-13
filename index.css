@@ -230,7 +230,7 @@ code {
 }
 #settings input::placeholder {
   color: inherit;
-  opacity: .3;
+  opacity: .4;
 }
 #settings, #settings tr, #settings td {
   border-collapse: collapse;
@@ -249,16 +249,15 @@ code {
 .dark #settings .value {
   background-color: #333;
 }
+#settings input {
+  transition: .2s box-shadow;
+}
 /* style invalid inputs without making an ugly mess of things */
 #settings input:invalid {
-  outline: 1px solid rgb(255, 98, 98);
+  /* box-shadow is used to modify border and background color because the background/opacity/border styles don't work very well in chrome */
+  box-shadow: inset 0 0 0 24px rgba(255, 0, 0, 0.2), 0 0 0 2px #ff6262;
 }
-/* remove spinners on number inputs in pretty much every browser */
-#settings input::-webkit-outer-spin-button,
-#settings input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-#settings input[type="number"] {
+/* remove ugly spinners in firefox when unfocused (as chrome does) */
+#settings input[type="number"]:not(:focus) {
   -moz-appearance: textfield;
 }
