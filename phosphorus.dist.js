@@ -5260,23 +5260,21 @@ var P;
                 do {
                     this.now = this.rightNow();
                     for (THREAD = 0; THREAD < queue.length; THREAD++) {
-                        if (queue[THREAD]) {
+                        const thread = queue[THREAD];
+                        if (thread) {
                             // Load thread data
-                            S = queue[THREAD].sprite;
-                            IMMEDIATE = queue[THREAD].fn;
-                            BASE = queue[THREAD].base;
-                            CALLS = queue[THREAD].calls;
+                            S = thread.sprite;
+                            IMMEDIATE = thread.fn;
+                            BASE = thread.base;
+                            CALLS = thread.calls;
                             C = CALLS.pop();
                             STACK = C.stack;
                             R = STACK.pop();
-                            delete queue[THREAD];
+                            queue[THREAD] = undefined;
                             WARP = 0;
                             while (IMMEDIATE) {
                                 const fn = IMMEDIATE;
                                 IMMEDIATE = null;
-                                // if (P.config.debug) {
-                                //   console.log('running', S.name, fn);
-                                // }
                                 fn();
                             }
                             STACK.push(R);

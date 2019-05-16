@@ -472,7 +472,7 @@ namespace P.runtime {
 
   var running = function(bases) {
     for (var j = 0; j < runtime.queue.length; j++) {
-      if (runtime.queue[j] && bases.indexOf(runtime.queue[j].base) !== -1) return true;
+      if (runtime.queue[j] && bases.indexOf(runtime.queue[j]!.base) !== -1) return true;
     }
     return false;
   };
@@ -509,7 +509,7 @@ namespace P.runtime {
   }
 
   export class Runtime {
-    public queue: Thread[] = [];
+    public queue: Array<Thread | undefined> = [];
     public isRunning: boolean = false;
     public timerStart: number = 0;
     public baseTime: number = 0;
@@ -660,24 +660,22 @@ namespace P.runtime {
       do {
         this.now = this.rightNow();
         for (THREAD = 0; THREAD < queue.length; THREAD++) {
-          if (queue[THREAD]) {
+          const thread = queue[THREAD];
+          if (thread) {
             // Load thread data
-            S = queue[THREAD].sprite;
-            IMMEDIATE = queue[THREAD].fn;
-            BASE = queue[THREAD].base;
-            CALLS = queue[THREAD].calls;
+            S = thread.sprite;
+            IMMEDIATE = thread.fn;
+            BASE = thread.base;
+            CALLS = thread.calls;
             C = CALLS.pop();
             STACK = C.stack;
             R = STACK.pop();
-            delete queue[THREAD];
+            queue[THREAD] = undefined;
             WARP = 0;
 
             while (IMMEDIATE) {
               const fn = IMMEDIATE;
               IMMEDIATE = null;
-              // if (P.config.debug) {
-              //   console.log('running', S.name, fn);
-              // }
               fn();
             }
 
