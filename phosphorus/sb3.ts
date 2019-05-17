@@ -1218,7 +1218,11 @@ namespace P.sb3.compiler {
       return booleanExpr('false');
     },
     sensing_timer(block) {
-      return numberExpr('((runtime.now - runtime.timerStart) / 1000)');
+      if (P.config.preciseTimers) {
+        return numberExpr('((runtime.rightNow() - runtime.timerStart) / 1000)');
+      } else {
+        return numberExpr('((runtime.now - runtime.timerStart) / 1000)');
+      }
     },
     sensing_of(block) {
       const property = block.fields.PROPERTY[0];

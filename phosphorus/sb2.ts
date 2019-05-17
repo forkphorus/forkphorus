@@ -1033,7 +1033,12 @@ namespace P.sb2.compiler {
 
       } else if (e[0] === 'timer') {
 
-        return '((runtime.now - runtime.timerStart) / 1000)';
+        if (P.config.preciseTimers) {
+          return '((runtime.rightNow() - runtime.timerStart) / 1000)';
+        } else {
+          return '((runtime.now - runtime.timerStart) / 1000)';
+        }
+
 
       } else if (e[0] === 'distanceTo:') {
 
