@@ -8,6 +8,7 @@ See the README for more information.
 
 The MIT License (MIT)
 
+Copyright (c) 2013-2017 Nathan Dinsmore
 Copyright (c) 2019 Thomas Weber
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
