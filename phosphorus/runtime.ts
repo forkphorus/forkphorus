@@ -517,10 +517,12 @@ namespace P.runtime {
     public now: number = 0;
     public interval: number;
     public isTurbo: boolean = false;
+    public framerate: number = 30;
 
     constructor(public stage: P.core.Stage) {
       // Fix scoping
       this.onError = this.onError.bind(this);
+      this.step = this.step.bind(this);
     }
 
     startThread(sprite: core.Base, base: Fn) {
@@ -596,7 +598,7 @@ namespace P.runtime {
       if (this.interval) return;
       window.addEventListener('error', this.onError);
       this.baseTime = Date.now();
-      this.interval = setInterval(this.step.bind(this), 1000 / P.config.framerate);
+      this.interval = setInterval(this.step, 1000 / this.framerate);
       if (audioContext) audioContext.resume();
     }
 
@@ -607,11 +609,24 @@ namespace P.runtime {
       if (this.interval) {
         this.baseNow = this.rightNow();
         clearInterval(this.interval);
-        delete this.interval;
+        this.interval = 0;
         window.removeEventListener('error', this.onError);
         if (audioContext) audioContext.suspend();
       }
       this.isRunning = false;
+    }
+
+    /**
+     * Resets the interval loop without the effects of pausing/starting
+     */
+    resetInterval() {
+      if (!this.isRunning) {
+        throw new Error('cannot restart interval when paused');
+      }
+      if (this.interval) {
+        clearInterval(this.interval);
+      }
+      this.interval = setInterval(this.step, 1000 / this.framerate);
     }
 
     stopAll() {
@@ -690,7 +705,7 @@ namespace P.runtime {
             queue.splice(i, 1);
           }
         }
-      } while ((this.isTurbo || !VISUAL) && Date.now() - start < 1000 / P.config.framerate && queue.length);
+      } while ((this.isTurbo || !VISUAL) && Date.now() - start < 1000 / this.framerate && queue.length);
 
       this.stage.draw();
     }

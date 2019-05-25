@@ -8,6 +8,5 @@ namespace P.config {
 
   export const scale = window.devicePixelRatio || 1;
   export const hasTouchEvents = 'ontouchstart' in document;
-  export const framerate: number = 30;
   export const PROJECT_API: string = 'https://projects.scratch.mit.edu/$id';
 }

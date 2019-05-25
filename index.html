@@ -440,16 +440,17 @@
 
     // Applies some options
     function applyOptions(options) {
+      var stage = getStage();
+
       // Applying framerate involves restarting the event loop, which we shouldn't do if not necessary
-      if (options.framerate !== P.config.framerate) {
-        P.config.framerate = options.framerate;
-        if (getStage().runtime.isRunning) {
-          getStage().runtime.pause();
-          getStage().runtime.start();
+      if (options.framerate !== stage.runtime.framerate) {
+        stage.runtime.framerate = options.framerate;
+        if (stage.runtime.isRunning) {
+          stage.runtime.resetInterval();
         }
       }
 
-      getStage().username = options.username;
+      stage.username = options.username;
 
       previousOptions = options;
     }
