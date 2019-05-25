@@ -402,6 +402,7 @@
       username: '',
       framerate: 30,
     };
+    var previousOptions = shallowClone(defaultOptions);
 
     // Shallowly clones an object (member values are not cloned)
     function shallowClone(obj) {
@@ -416,13 +417,15 @@
       return P.player.stage;
     }
 
+    // Set the DOM to match the options
     function setSelectedOptions(options) {
       optionFramerate.value = options.framerate;
       optionUsername.value = options.username;
     }
 
+    // Get the current options from the DOM
     function getSelectedOptions() {
-      var options = shallowClone(defaultOptions);
+      var options = shallowClone(previousOptions);
 
       // do not apply invalid framerate values because things break
       if (optionFramerate.checkValidity()) {
@@ -431,9 +434,11 @@
 
       // doesn't really matter if username is "invalid"
       options.username = optionUsername.value;
+
       return options;
     }
 
+    // Applies some options
     function applyOptions(options) {
       // Applying framerate involves restarting the event loop, which we shouldn't do if not necessary
       if (options.framerate !== P.config.framerate) {
@@ -445,14 +450,17 @@
       }
 
       getStage().username = options.username;
+
+      previousOptions = options;
     }
 
+    // Gets the currently selected options, and applies them.
     function applySelectedOptions() {
       var options = getSelectedOptions();
       applyOptions(options);
     }
 
-    // Apply defaults
+    // Apply defaults in the DOM
     setSelectedOptions(defaultOptions);
 
     optionFramerate.addEventListener('input', applySelectedOptions);
