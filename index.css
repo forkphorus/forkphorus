@@ -243,11 +243,11 @@ code {
   width: 175px;
 }
 #settings .value {
-  background-color: #ddd;
+  background-color: #e8e8e8;
   padding: 0 1px;
 }
 .dark #settings .value {
-  background-color: #333;
+  background-color: #282828;
 }
 #settings input {
   transition: .2s box-shadow;
@@ -256,8 +256,4 @@ code {
 #settings input:invalid {
   /* box-shadow is used to modify border and background color because the background/opacity/border styles don't work very well in chrome */
   box-shadow: inset 0 0 0 24px rgba(255, 0, 0, 0.2), 0 0 0 2px #ff6262;
-}
-/* remove ugly spinners in firefox when unfocused (as chrome does) */
-#settings input[type="number"]:not(:focus) {
-  -moz-appearance: textfield;
 }

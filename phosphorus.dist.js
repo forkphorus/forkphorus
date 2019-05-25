@@ -2992,15 +2992,6 @@ var P;
         IO.fileAsArrayBuffer = fileAsArrayBuffer;
     })(IO = P.IO || (P.IO = {}));
 })(P || (P = {}));
-var P;
-(function (P) {
-    var player;
-    (function (player) {
-        class Player {
-        }
-        player.Player = Player;
-    })(player = P.player || (P.player = {}));
-})(P || (P = {}));
 /// <reference path="phosphorus.ts" />
 /// <reference path="utils.ts" />
 /// <reference path="core.ts" />
