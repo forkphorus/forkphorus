@@ -181,15 +181,19 @@ P.player = (function() {
   }
 
   function start(s, triggerGreenFlag) {
+    if (!s) {
+      throw new Error('no stage');
+    }
     stage = P.player.stage = s;
     player.appendChild(s.root);
-    s.setZoom(stage.zoom);
+    stage.setZoom(stage.zoom);
+    stage.focus();
     stage.root.addEventListener('keydown', exitFullScreen);
     stage.runtime.handleError = showError;
-    s.runtime.start();
+    stage.runtime.start();
     hideProgress();
     if (triggerGreenFlag) {
-      s.runtime.triggerGreenFlag();
+      stage.runtime.triggerGreenFlag();
     }
   }
 
