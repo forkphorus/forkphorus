@@ -6,7 +6,7 @@ A JavaScript/TypeScript compiler for Scratch 2 and Scratch 3 projects. forkphoru
 
 ## Performance
 
-Projects should, in general, run faster in forkphorus than in Scratch 3 and much faster than Scratch 2. Here's a (rather unscientific) benchmark of running [quicksort](https://scratch.mit.edu/projects/142449228) on 200000 random items:
+Projects should, in general, run faster in forkphorus than in Scratch 3 and much faster than Scratch 2. Here's a (rather unscientific) benchmark of running [quicksort](https://scratch.mit.edu/projects/310372816/) on 200000 random items:
 
 | Environment | Time (seconds) |
 | ----------- | ---- |
