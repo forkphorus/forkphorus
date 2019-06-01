@@ -421,16 +421,15 @@
    * @param {string} text The file content
    * @param {string} fileName The name of the downloaded file
    */
-  function downloadText(text, fileName) {
+  function addDownloadLink(text, fileName) {
     const encoder = new TextEncoder();
     const blob = new Blob([new Uint8Array(encoder.encode(text))]);
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
+    link.textContent = 'Download ' + fileName;
     link.download = fileName;
-    link.style.display = 'none';
-    document.body.appendChild(link);
+    sectionLoading.appendChild(link);
     link.click();
-    document.body.removeChild(link);
   }
 
   packageHtml.onclick = function() {
@@ -439,7 +438,7 @@
       .then(() => getProject(inputProjectId.value))
       .then((result) => {
         const html = getProjectHTML(result);
-        downloadText(html, 'project.html');
+        addDownloadLink(html, 'project.html');
       });
   };
 

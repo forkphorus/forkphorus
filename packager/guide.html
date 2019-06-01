@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Forkphorus to executable</title>
+  <style>
+    body {
+      width: 480px;
+      margin: auto;
+      margin-bottom: 10px;
+      font-family: sans-serif;
+    }
+    li {
+      margin-bottom: 5px;
+    }
+    img {
+      width: 100%;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Forkphorus to executable</h1>
+
+  <h2>Making an executable with NW.js</h2>
+
+  <p>Guide to packaging forkphorus into an executable file for Windows, Mac OS, or linux. If you're not using Windows, just ignore all references to "exe".</p>
+
+  <ol>
+    <li>Use <a href="index.html">the packager</a> to get a .html file for the project.</li>
+    <li>Download <a href="https://nwjs.io/">NW.js</a>'s "Normal" version (not "SDK") for your platform. <img src="https://user-images.githubusercontent.com/17209175/58752962-441c6200-847d-11e9-9387-4fb25f164025.png"></li>
+    <li>Extract the archive</li>
+    <li>Move project.html (from the packager) into the extracted folder (the same folder where "nw.exe" is located)</li>
+    <li>Create a file "package.json" in the same folder with the content:
+      <pre>
+{
+  "name": "<u>Name of the project</u>",
+  "main": "project.html",
+  "window": {
+    "title": "<u>The title of the window</u>",
+    "width": 480,
+    "height": 360
+  }
+}</pre>
+      Sections that are underlined may be changed. At this point, you should have a folder that looks something like this:
+      <img src="https://user-images.githubusercontent.com/17209175/58752997-d91f5b00-847d-11e9-9b3a-8c8dd37c7626.png">
+    </li>
+    <li>Open nw.exe</li>
+    <li>You're done! <img src="https://user-images.githubusercontent.com/17209175/58753014-1b489c80-847e-11e9-9a4d-3e7f8fae972d.png"></li>
+  </ol>
+
+  <hr>
+  <h2>Creating a self-extracting archive</h2>
+
+  <p>NW.js works great, but it has a few problems. Specifically:
+    <ul>
+      <li>There's a lot of files</li>
+      <li>It's very large</li>
+    </ul>
+  </p>
+
+  <p>We can create a self-extracting archive with <a href="http://74.cz/en/make-sfx/index.php">makesfx</a> to help address these problems. This will only work on Windows.</p>
+
+  <ol>
+    <li>Complete the above instructions using NW.js first</li>
+    <li>Download makesfx from <a href="http://74.cz/en/make-sfx/index.php">their website</a></li>
+    <li>The makesfx interface is rather daunting. Pretty much, configure it so that it looks like this:<img src="https://user-images.githubusercontent.com/17209175/58753378-c90a7a00-8483-11e9-87f3-c9e2b864f579.png">
+      <ul>
+        <li>"Source folder" is where you extracted NW.js to</li>
+        <li>"Target SFX file" is where the output of makesfx will be saved</li>
+        <li>If you want to change the icon, now is your chance</li>
+        <li>Set "Extraction mode" to "Extract files into specified folder and launch executable", and set the executable file to nw.exe (the file you ran at the end of the previous section).</li>
+      </ul>
+    </li>
+    <li>Run the output file</li>
+    <li>You're done!</li>
+  </ol>
+
+  <hr>
+
+  <small>Based on <a href="https://scratch.mit.edu/discuss/topic/341617/">SpeedDesign's tutorial for Scratch 3</a></small>
+</body>
+
+</html>
