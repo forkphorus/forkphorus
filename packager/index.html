@@ -1,0 +1,105 @@
+<h1>Packager</h1>
+
+<p>Very unfinished and certainly buggy</p>
+
+<p>The packager allows you to generate a .html file for a project, which <a>can be packaged</a> into a .exe file (somewhat) easily.</p>
+
+<input>
+
+<textarea readonly onclick="this.focus();this.select();"></textarea>
+
+<script src="loader.js"></script>
+<script src="../lib/jszip.min.js"></script>
+<script>
+async function getHTML() {
+  // including the ending script tag itself breaks things
+  const endScriptTag = '</scrip' + 't>';
+  return `
+  <style>
+    ${await getStyleSource()}
+    body, html {
+      margin: 0;
+    }
+  </style>
+  <div id="root"></div>
+
+  <!-- forkphorus source -->
+  <script>
+  ${await getScriptSource()}
+  ${endScriptTag}
+
+  <!-- project player -->
+  <script>
+  (function() {
+    var type = "sb3";
+    var project = "${await getEncodedArchive()}";
+    var root = document.getElementById("root");
+    fetch(project)
+      .then((request) => request.arrayBuffer())
+      .then((buffer) => {
+        var loader = new P.sb3.SB3FileLoader(buffer);
+        return loader.load();
+      })
+      .then((stage) => {
+        root.appendChild(stage.root);
+        stage.runtime.start();
+        stage.runtime.triggerGreenFlag();
+      });
+  }());
+  ${endScriptTag}
+  `;
+}
+
+async function getArchive() {
+  const result = await SBDL.loadProject('282474261', 'sb3');
+  if (result.type !== 'zip') {
+    // that's strange
+    throw new Error('unknown type: ' + result.type);
+  }
+  const zip = await SBDL.createArchive(result.files);
+  return zip;
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = function() {
+      resolve(reader.result);
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function getEncodedArchive() {
+  const blob = await getArchive();
+  const b64 = await blobToBase64(blob);
+  return b64;
+}
+
+async function getFiles(files) {
+  var source = '';
+  for (const i of files) {
+    const req = await fetch(i);
+    const text = await req.text();
+    source += text;
+  }
+  return source;
+}
+
+function getScriptSource() {
+  return getFiles([
+    '../lib/canvg.js',
+    '../lib/fontfaceobserver.standalone.js',
+    '../lib/rgbcolor.js',
+    '../lib/StackBlur.js',
+    '../lib/jszip.min.js',
+    '../phosphorus.dist.js',
+  ]);
+}
+
+function getStyleSource() {
+  return getFiles(['../phosphorus.css']);
+}
+
+getHTML().then((h) => document.querySelector('textarea').textContent = h);
+</script>
