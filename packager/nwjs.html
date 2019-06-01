@@ -2,7 +2,7 @@
 <html>
 
 <head>
-  <title>Forkphorus to exe</title>
+  <title>Forkphorus to executable</title>
   <style>
     body {
       width: 480px;
@@ -16,12 +16,14 @@
 </head>
 
 <body>
-  <h1>Forkphorus to exe with NW.js</h1>
+  <h1>Forkphorus to executable</h1>
+
+  <p>Guide to packaging forkphorus into an executable file for Windows, Mac OS, or linux. If you're not using Windows, just ignore all references to "exe".</p>
 
   <ol>
     <li>Use <a href="index.html">the packager</a> to get a .html file for the project.</li>
 
-    <li>Download <a href="https://nwjs.io/">NW.js</a>'s "Normal" version (not "SDK")</li>
+    <li>Download <a href="https://nwjs.io/">NW.js</a>'s "Normal" version (not "SDK") for your platform </li>
 
     <li>Extract NW.js</li>
 
@@ -30,10 +32,10 @@
     <li>Create a file "package.json" in the same folder with the content:
       <pre>
 {
-  "name": "<u>My project</u>",
+  "name": "<u>Name of the project</u>",
   "main": "project.html",
   "window": {
-    "title": "<u>My Project</u>",
+    "title": "<u>The title of the window</u>",
     "width": 480,
     "height": 360
   }
@@ -45,8 +47,6 @@
 
     <li>You're done!</li>
   </ol>
-
-  <p>The same process can be done for Mac OS and Linux.</p>
 </body>
 
 </html>

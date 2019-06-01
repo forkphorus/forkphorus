@@ -3,9 +3,6 @@
 
 <head>
   <style>
-    #section-loaded {
-      display: none;
-    }
     body {
       width: 480px;
       margin: auto;
@@ -17,28 +14,26 @@
 <body>
   <h1>Packager</h1>
 
-  <p>The packager allows you to generate a .html file for a project, which <a href="nwjs.html">can be packaged</a> into a .exe file (somewhat) easily.</p>
+  <p>The packager allows you to generate a .html file for a project, which <a href="nwjs.html">can be packaged into a .exe file</a> (somewhat) easily.</p>
 
-  <p>Very unfinished.</p>
+  <p>While the packager on the homepage creates a link to a website, this packager generates an HTML file that functions independently of an internet connection.</p>
 
+  <p>Very unfinished. Note blocks will not work, some icons will be missing, etc.</p>
 
-  <section id="section-loaded">
+  <section id="section-content">
     <p>
-      <label>Project ID: <input id="input-project"></label>
+      <label>Project ID: <input id="input-project" value="10128407" type="number"></label>
     </p>
 
     <p>
       <button id="package-html">Package to single .html file</button>
-      <button id="package-zip">Package to .zip archive</button>
+      <button id="package-zip" disabled style="display:none">Package to .zip archive</button>
     </p>
 
     <!-- <p>Packaging to a single .html file is not recommended, as some features such as note blocks, fonts, and some icons will not work.</p> -->
   </section>
 
-  <section id="section-loading">
-    <progress value="0" id="section-loading-progress"></progress>
-    <i>Loading...</i>
-  </section>
+  <section id="section-loading"></section>
 
   <script src="../lib/jszip.min.js"></script>
   <script src="loader.js"></script>
