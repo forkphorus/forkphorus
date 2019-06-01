@@ -6,20 +6,21 @@
     #section-loaded {
       display: none;
     }
+    body {
+      width: 480px;
+      margin: auto;
+      font-family: sans-serif;
+    }
   </style>
 </head>
 
 <body>
   <h1>Packager</h1>
 
-  <p>The packager allows you to generate a .html file for a project, which <a>can be packaged</a> into a .exe file (somewhat) easily.</p>
+  <p>The packager allows you to generate a .html file for a project, which <a href="nwjs.html">can be packaged</a> into a .exe file (somewhat) easily.</p>
 
   <p>Very unfinished.</p>
 
-  <section id="section-loading">
-    <progress value="0" id="section-loading-progress"></progress>
-    <i>Loading...</i>
-  </section>
 
   <section id="section-loaded">
     <p>
@@ -28,8 +29,15 @@
 
     <p>
       <button id="package-html">Package to single .html file</button>
-      <!-- <button id="package-zip">Package to .zip archive</button> -->
+      <button id="package-zip">Package to .zip archive</button>
     </p>
+
+    <!-- <p>Packaging to a single .html file is not recommended, as some features such as note blocks, fonts, and some icons will not work.</p> -->
+  </section>
+
+  <section id="section-loading">
+    <progress value="0" id="section-loading-progress"></progress>
+    <i>Loading...</i>
   </section>
 
   <script src="../lib/jszip.min.js"></script>

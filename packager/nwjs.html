@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Forkphorus to exe</title>
+  <style>
+    body {
+      width: 480px;
+      margin: auto;
+      font-family: sans-serif;
+    }
+    li {
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Forkphorus to exe with NW.js</h1>
+
+  <ol>
+    <li>Use <a href="index.html">the packager</a> to get a .html file for the project.</li>
+
+    <li>Download <a href="https://nwjs.io/">NW.js</a>'s "Normal" version (not "SDK")</li>
+
+    <li>Extract NW.js</li>
+
+    <li>Move project.html (from the packager) into the extracted folder (the same folder where "nw.exe" is located)</li>
+
+    <li>Create a file "package.json" in the same folder with the content:
+      <pre>
+{
+  "name": "<u>My project</u>",
+  "main": "project.html",
+  "window": {
+    "title": "<u>My Project</u>",
+    "width": 480,
+    "height": 360
+  }
+}</pre>
+      Sections that are underlined may be changed.
+    </li>
+
+    <li>Open nw.exe</li>
+
+    <li>You're done!</li>
+  </ol>
+
+  <p>The same process can be done for Mac OS and Linux.</p>
+</body>
+
+</html>

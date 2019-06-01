@@ -153,7 +153,6 @@ function getProjectHTML(id) {
 <html>
 
 <head>
-  <title>forkphorus</title>
   <style>
     ${cachedSourceFiles.css}
   </style>
@@ -163,35 +162,137 @@ function getProjectHTML(id) {
       padding: 0;
       overflow: hidden;
     }
+    #splash, #error {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      display: table;
+      color: #fff;
+      cursor: default;
+    }
+    #error {
+      display: none;
+    }
+    #splash > div,
+    #error > div {
+      display: table-cell;
+      height: 100%;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    #progress {
+      width: 80%;
+      height: 16px;
+      border: 1px solid #fff;
+      margin: 0 auto;
+    }
+    #progress-bar {
+      background: #fff;
+      width: 10%;
+      height: 100%;
+    }
+    h1 {
+      font: 300 52px sans-serif;
+      margin: 0 0 16px;
+    }
+    p {
+      font: 300 24px/1.5 sans-serif;
+      margin: 0;
+      color: rgba(255, 255, 255, .6);
+    }
   </style>
 </head>
 
 <body>
   <div id="root"></div>
+  <div id="splash">
+    <div>
+      <!-- <h1>forkphorus</h1> -->
+      <div id="progress"><div id="progress-bar"></div></div>
+    </div>
+  </div>
+  <div id="error">
+    <div>
+      <h1>Internal Error</h1>
+      <p>An error has occurred. <a id="error-bug-link" href="https://github.com/forkphorus/forkphorus/issues/new" target="_blank">Click here</a> to file a bug report.</p>
+    </div>
+  </div>
 
   <!-- forkphrous, and it's dependencies -->
   <script>
     ${cachedSourceFiles.js}
   </script>
 
+  <!-- special hooks for NW.js -->
+  <script>
+    if (typeof nw !== 'undefined') {
+      nw.Window.get().on('new-win-policy', (frame, url, policy) => {
+        policy.ignore();
+        nw.Shell.openExternal(url);
+      });
+    }
+  </script>
+
   <script>
   (function() {
+
     // ---
     var type = "${result.type}";
     var project = "${result.data}";
     // ---
+
     var root = document.getElementById("root");
+    var progressBar = document.getElementById("progress-bar");
+    var splash = document.getElementById("splash");
+    var error = document.getElementById("error");
+    var bugLink = document.getElementById("error-bug-link");
+
+    var totalTasks = 0;
+    var completedTasks = 0;
+    P.IO.progressHooks.new = function() {
+      totalTasks++;
+      progressBar.style.width = (10 + completedTasks / totalTasks * 90) + '%';
+    };
+    P.IO.progressHooks.end = function() {
+      completedTasks++;
+      progressBar.style.width = (10 + completedTasks / totalTasks * 90) + '%';
+    };
+
+    function showError(e) {
+      error.style.display = 'table';
+      bugLink.href = createBugLink("Describe what you were doing to cause this error:", '\`\`\`\\n' + P.utils.stringifyError(e) + '\\n\`\`\`');
+      console.error(e.stack);
+    }
+
+    function createBugLink(before, after) {
+      var title = 'Error in packaged project ' + document.title;
+      var baseBody = '\\n\\n\\n----\\nPackaged project: ' + document.title + '\\n' + navigator.userAgent + '\\n';
+      return 'https://github.com/forkphorus/forkphorus/issues/new?title=' + encodeURIComponent(title) + '&body=' + encodeURIComponent(before + baseBody + after) + '&labels=bug';
+    }
+
     fetch(project)
       .then((request) => request.arrayBuffer())
       .then((buffer) => {
-        var loader = new P.sb3.SB3FileLoader(buffer);
-        return loader.load();
+        if (type === 'sb3') {
+          var loader = new P.sb3.SB3FileLoader(buffer);
+          return loader.load();
+        } else if (type === 'sb2') {
+          return P.sb2.loadSB2Project(buffer);
+        }
       })
       .then((stage) => {
+        splash.style.display = "none";
         root.appendChild(stage.root);
+        stage.runtime.handleError = showError;
         stage.runtime.start();
         stage.runtime.triggerGreenFlag();
-      });
+        stage.focus();
+      })
+      .catch((err) => showError(err));
   }());
   </script>
 </body>
