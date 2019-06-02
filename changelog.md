@@ -2,7 +2,7 @@
 
 ## June 2
 
-- Fix `wait until` in "Run without screen refresh" blocks in Scratch 2
+- Fix `wait until` in "Run without screen refresh" blocks
 
 ## June 1
 

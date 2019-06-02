@@ -6959,7 +6959,7 @@ var P;
                     const condition = block.inputs.CONDITION;
                     const id = label();
                     source += 'if (!' + compileExpression(condition) + ') {\n';
-                    queue(id);
+                    forceQueue(id);
                     source += '}\n';
                 },
                 control_repeat_until(block) {
