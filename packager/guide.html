@@ -61,24 +61,41 @@
 
   <p>We can create a self-extracting archive with <a href="http://74.cz/en/make-sfx/index.php">makesfx</a> to help address these problems. This will only work on Windows.</p>
 
+  <p><small>You can also do this with other tools such as WinRAR.</small></p>
+
   <ol>
     <li>Complete the above instructions using NW.js first</li>
     <li>Download makesfx from <a href="http://74.cz/en/make-sfx/index.php">their website</a></li>
-    <li>The makesfx interface is rather daunting. Pretty much, configure it so that it looks like this:<img src="https://user-images.githubusercontent.com/17209175/58753378-c90a7a00-8483-11e9-87f3-c9e2b864f579.png">
+    <li>The makesfx interface is rather daunting. Pretty much, configure it so that it looks like this:<img src="https://user-images.githubusercontent.com/17209175/58766023-61b20000-853f-11e9-8712-90336b9ad987.png">
       <ul>
         <li>"Source folder" is where you extracted NW.js to</li>
         <li>"Target SFX file" is where the output of makesfx will be saved</li>
         <li>If you want to change the icon, now is your chance</li>
         <li>Set "Extraction mode" to "Extract files into specified folder and launch executable", and set the executable file to nw.exe (the file you ran at the end of the previous section).</li>
+        <li>Set "Overwrite mode during extraction" to "Automatically overwrite all existing files"</li>
       </ul>
     </li>
     <li>Run the output file</li>
     <li>You're done!</li>
   </ol>
 
+  <script>
+    (function() {
+      // make images clickable
+      var images = document.getElementsByTagName('img');
+      for (var i = 0; i < images.length; i++) {
+        var img = images[i];
+        var el = document.createElement('a');
+        el.href = img.src;
+        img.parentElement.replaceChild(el, img);
+        el.appendChild(img);
+      }
+    })();
+  </script>
+
   <hr>
 
-  <small>Based on <a href="https://scratch.mit.edu/discuss/topic/341617/">SpeedDesign's tutorial for Scratch 3</a></small>
+  <small>Roughly based on <a href="https://scratch.mit.edu/discuss/topic/341617/">SpeedDesign's tutorial for Scratch 3</a></small>
 </body>
 
 </html>

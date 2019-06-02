@@ -8,6 +8,19 @@
       margin: auto;
       font-family: sans-serif;
     }
+    tr td:nth-child(1) {
+      /* title */
+      width: 95px;
+      text-align: center;
+    }
+    tr td:nth-child(2) {
+      /* input */
+      width: 150px;
+    }
+    tr td:nth-child(3) {
+      /* description */
+      font-size: smaller;
+    }
   </style>
 </head>
 
@@ -16,14 +29,29 @@
 
   <p>The packager allows you to generate a .html file for a project, which <a href="guide.html">can be packaged into a .exe file</a> (somewhat) easily.</p>
 
-  <p>While the packager on the homepage creates a link to a website, this packager generates an HTML file that functions independently of an internet connection.</p>
+  <p>While the packager on the homepage creates a link to a website, this packager generates an easily packagable HTML file that functions independently of an internet connection.</p>
 
-  <p>Very unfinished. Note blocks will not work, some icons will be missing, etc.</p>
+  <p>Still in development. Note blocks will not work, some icons will be missing, etc.</p>
 
   <section id="section-content">
-    <p>
-      <label>Project ID: <input id="input-project" value="10128407" type="number"></label>
-    </p>
+    <table>
+      <tr>
+        <td><label for="input-project">Project ID</label></td>
+        <td><input id="input-project" value="10128407" type="number"></td>
+      </tr>
+      <tr>
+        <td><label for="input-loading-text">Loading text</label></td>
+        <td><input id="input-loading-text" value="forkphorus" type="text"></td>
+        <td><a href="https://user-images.githubusercontent.com/17209175/58766078-219f4d00-8540-11e9-93f0-b04088efb0a8.png">Displayed while the project is loading.</a> Set to empty to display only a loading bar. You can use HTML formatting.</td>
+      </tr>
+      <tr>
+        <td><label for="input-post-load-script">Custom JS</label></td>
+        <td><textarea id="input-post-load-script">// Custom javascript to execute after stage loading.
+stage.username = '';
+stage.runtime.framerate = 30;</textarea></td>
+        <td>For very advanced users</td>
+      </tr>
+    </table>
 
     <p>
       <button id="package-html">Package to single .html file</button>

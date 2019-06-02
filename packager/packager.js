@@ -24,11 +24,20 @@
    * @property {string} type
    */
 
+  /**
+   * Options
+   * @typedef {Object} Options
+   * @property {string} loadingText
+   * @property {string} postLoadScript
+   */
+
   const sectionLoading = document.getElementById('section-loading');
-  const sectionContent = document.getElementById('section-content');
   const packageHtml = document.getElementById('package-html');
   const packageZip = document.getElementById('package-zip');
+
   const inputProjectId = /** @type {HTMLInputElement} */ (document.getElementById('input-project'));
+  const inputLoadingText = /** @type {HTMLInputElement} */ (document.getElementById('input-loading-text'));
+  const inputPostLoadScript = /** @type {HTMLTextAreaElement} */ (document.getElementById('input-post-load-script'));
 
   /**
    * API route to fetch a project, replace $1 with project ID.
@@ -170,7 +179,7 @@
   /**
    * Determines the project type of a project from scratch.mit.edu
    * @param {string} id The project ID
-   * @returns {Promise<"sb2"|"sb3">}
+   * @returns {Promise<'sb2'|'sb3'>}
    * @throws if the project type cannot be determined
    */
   function getProjectType(id) {
@@ -255,8 +264,11 @@
    * @returns {string}
    */
   function getProjectHTML(result) {
+    const options = getOptions();
     return `<!DOCTYPE html>
   <html>
+
+  <!-- https://forkphorus.github.io/ -->
 
   <head>
     <style>
@@ -320,7 +332,7 @@
     <div id="root"></div>
     <div id="splash">
       <div>
-        <!-- <h1>forkphorus</h1> -->
+        ${ options.loadingText ? `<h1>${options.loadingText}</h1>` : '' }
         <div id="progress"><div id="progress-bar"></div></div>
       </div>
     </div>
@@ -360,15 +372,15 @@
     (function() {
 
       // ---
-      var type = "${result.type}";
-      var project = "${result.url}";
+      var type = '${result.type}';
+      var project = '${result.url}';
       // ---
 
-      var root = document.getElementById("root");
-      var progressBar = document.getElementById("progress-bar");
-      var splash = document.getElementById("splash");
-      var error = document.getElementById("error");
-      var bugLink = document.getElementById("error-bug-link");
+      var root = document.getElementById('root');
+      var progressBar = document.getElementById('progress-bar');
+      var splash = document.getElementById('splash');
+      var error = document.getElementById('error');
+      var bugLink = document.getElementById('error-bug-link');
 
       var stage;
 
@@ -385,7 +397,7 @@
 
       function showError(e) {
         error.style.display = 'table';
-        bugLink.href = createBugLink("Describe what you were doing to cause this error:", '\`\`\`\\n' + P.utils.stringifyError(e) + '\\n\`\`\`');
+        bugLink.href = createBugLink('Describe what you were doing to cause this error:', '\`\`\`\\n' + P.utils.stringifyError(e) + '\\n\`\`\`');
         console.error(e.stack);
       }
 
@@ -419,7 +431,10 @@
         })
         .then((s) => {
           stage = s;
-          splash.style.display = "none";
+          // post-load script
+          ${options.postLoadScript}
+          // end script
+          splash.style.display = 'none';
           root.appendChild(stage.root);
           updateLayout();
           stage.runtime.handleError = showError;
@@ -441,6 +456,17 @@
    */
   function getProjectZip(id) {
 
+  }
+
+  /**
+   * Gets the active options
+   * @returns {Options}
+   */
+  function getOptions() {
+    return {
+      loadingText: inputLoadingText.value,
+      postLoadScript: inputPostLoadScript.value,
+    };
   }
 
   /**
