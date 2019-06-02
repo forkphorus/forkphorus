@@ -14,6 +14,7 @@
    * @property {number} finished
    * @property {number} total
    * @property {function():void} finish
+   * @property {function(number):void} percent
    */
 
    /**
@@ -89,6 +90,11 @@
       get finished() { return finished; },
       finish() {
         total = finished = 1;
+        updateProgress();
+      },
+      percent(percent) {
+        total = 1;
+        finished = percent;
         updateProgress();
       },
     };
@@ -180,18 +186,23 @@
   }
 
   /**
-   * Converts a Blob to a data: URL
-   * @param {Blob} blob
-   * @returns {Promise<string>}
+   * @param {any} files Files from an SBDL result
+   * @returns {string} The URL of the zip
    */
-  function blobToURL(blob) {
-    return new Promise((resolve, reject) => {
-      const fileReader = new FileReader();
-      fileReader.onload = () => {
-        resolve(/** @type {string} */ (fileReader.result));
-      };
-      fileReader.readAsDataURL(blob);
-    })
+  function createArchive(files) {
+    const progressBar = createProgressBar('Creating archive');
+    const zip = new JSZip();
+    for (const file of files) {
+      const path = file.path;
+      const data = file.data;
+      zip.file(path, data);
+    }
+    return zip.generateAsync({
+      type: 'base64',
+      compression: 'DEFLATE',
+    }, function updateCallback(/** @type {any} */ metadata) {
+      progressBar.percent(metadata.percent);
+    });
   }
 
   /**
@@ -212,9 +223,8 @@
         if (result.type !== 'zip') {
           throw new Error('unknown result type: ' + result.type);
         }
-        return SBDL.createArchive(result.files, new JSZip());
+        return createArchive(result.files);
       })
-      .then((buffer) => blobToURL(buffer))
       .then((url) => {
         return {
           url: url,
@@ -329,6 +339,7 @@
     })();
     </script>
 
+    <!-- project data & player -->
     <script>
     (function() {
 
