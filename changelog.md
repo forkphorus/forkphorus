@@ -1,5 +1,9 @@
 # forkphorus changelog
 
+## June 2
+
+- Fix `wait until` in "Run without screen refresh" blocks in Scratch 2
+
 ## June 1
 
 - Experimental .html packaging support (can be converted to .exe with NW.js): https://forkphorus.github.io/packager/

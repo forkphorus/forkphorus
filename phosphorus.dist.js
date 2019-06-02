@@ -4504,7 +4504,7 @@ var P;
                     else if (block[0] === 'doWaitUntil') {
                         var id = label();
                         source += 'if (!' + bool(block[1]) + ') {\n';
-                        queue(id);
+                        forceQueue(id);
                         source += '}\n';
                     }
                     else if (block[0] === 'glideSecs:toX:y:elapsed:from:') {
