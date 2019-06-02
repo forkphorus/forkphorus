@@ -72,8 +72,7 @@ P.suite = (function() {
    * @returns {ArrayBuffer} The ArrayBuffer representing the fetched content
    */
   function fetchAsArrayBuffer(path) {
-    return P.IO.fetchLocal(path)
-      .then((r) => r.arrayBuffer());
+    return new P.IO.ArrayBufferRequest(path, {local: true}).load();
   }
 
   /**

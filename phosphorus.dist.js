@@ -337,8 +337,7 @@ var P;
          * Loads a soundbank file
          */
         function loadSoundbankBuffer(name) {
-            return P.IO.fetchLocal(SOUNDBANK_URL + SOUNDBANK_FILES[name])
-                .then((request) => request.arrayBuffer())
+            return new P.IO.ArrayBufferRequest(SOUNDBANK_URL + SOUNDBANK_FILES[name], { local: true }).load()
                 .then((buffer) => P.audio.decodeAudio(buffer))
                 .then((sound) => soundbank[name] = sound);
         }
@@ -2941,36 +2940,80 @@ var P;
             // Indicates an error has occurred and the project will likely fail to load
             error(error) { },
         };
-        const useLocalFetch = ['http:', 'https:'].indexOf(location.protocol) > -1;
-        const localCORSFallback = 'https://forkphorus.github.io';
         /**
-         * Fetch a remote URL
+         * Configuration of IO behavior
          */
-        function fetchRemote(url, opts) {
-            IO.progressHooks.new();
-            return window.fetch(url, opts)
-                .then((r) => {
-                IO.progressHooks.end();
-                return r;
-            })
-                .catch((err) => {
-                IO.progressHooks.error(err);
-                throw err;
-            });
+        IO.config = {
+            /**
+             * A relative or absolute path to a full installation of forkphorus, from which "local" files can be fetched.
+             * Do not including a trailing slash.
+             */
+            localPath: '',
+        };
+        // non-http/https protocols cannot xhr request local files, so utilize forkphorus.github.io instead
+        if (['http:', 'https:'].indexOf(location.protocol) === -1) {
+            IO.config.localPath = 'https://forkphorus.github.io';
         }
-        IO.fetchRemote = fetchRemote;
-        /**
-         * Fetch a local file path, relative to phosphorus.
-         */
-        function fetchLocal(path, opts) {
-            // If for some reason fetching cannot be done locally, route the requests to forkphorus.github.io
-            // (where is more likely to be allowed)
-            if (!useLocalFetch) {
-                path = localCORSFallback + path;
+        class Request {
+            constructor(url, options = {}) {
+                if (options.local) {
+                    url = IO.config.localPath + url;
+                }
+                this.url = url;
             }
-            return fetchRemote(path, opts);
+            /**
+             * Attempts to load this request.
+             */
+            load() {
+                // We attempt to load twice, which I hope will fix random loading errors from failed fetches.
+                return new Promise((resolve, reject) => {
+                    const attempt = (callback) => {
+                        this._load()
+                            .then((response) => {
+                            resolve(response);
+                            IO.progressHooks.end();
+                        })
+                            .catch((err) => callback(err));
+                    };
+                    IO.progressHooks.new();
+                    attempt(function () {
+                        // try once more
+                        attempt(function (err) {
+                            reject(err);
+                        });
+                    });
+                });
+            }
         }
-        IO.fetchLocal = fetchLocal;
+        IO.Request = Request;
+        class XHRRequest extends Request {
+            _load() {
+                return new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.addEventListener('load', () => {
+                        resolve(xhr.response);
+                    });
+                    xhr.addEventListener('error', (err) => {
+                        reject(err);
+                    });
+                    xhr.responseType = this.type;
+                    xhr.open('GET', this.url);
+                    xhr.send();
+                });
+            }
+        }
+        class ArrayBufferRequest extends XHRRequest {
+            get type() { return 'arraybuffer'; }
+        }
+        IO.ArrayBufferRequest = ArrayBufferRequest;
+        class TextRequest extends XHRRequest {
+            get type() { return 'text'; }
+        }
+        IO.TextRequest = TextRequest;
+        class JSONRequest extends XHRRequest {
+            get type() { return 'json'; }
+        }
+        IO.JSONRequest = JSONRequest;
         /**
          * Read a file as an ArrayBuffer
          */
@@ -3610,8 +3653,7 @@ var P;
                         .then((text) => loadSVG(text));
                 }
                 else {
-                    return P.IO.fetchRemote(ASSET_URL + hash + '/get/')
-                        .then((request) => request.text())
+                    return new P.IO.TextRequest(ASSET_URL + hash + '/get/').load()
                         .then((text) => loadSVG(text));
                 }
             }
@@ -3621,8 +3663,7 @@ var P;
                         .then((buffer) => P.audio.decodeAudio(buffer));
                 }
                 else {
-                    return P.IO.fetchRemote(ASSET_URL + hash + '/get/')
-                        .then((request) => request.arrayBuffer())
+                    return new P.IO.ArrayBufferRequest(ASSET_URL + hash + '/get/').load()
                         .then((buffer) => P.audio.decodeAudio(buffer));
                 }
             }
@@ -6054,12 +6095,10 @@ var P;
                 }
             }
             getAsText(path) {
-                return P.IO.fetchRemote(sb3.ASSETS_API.replace('$md5ext', path))
-                    .then((request) => request.text());
+                return new P.IO.TextRequest(sb3.ASSETS_API.replace('$md5ext', path)).load();
             }
             getAsArrayBuffer(path) {
-                return P.IO.fetchRemote(sb3.ASSETS_API.replace('$md5ext', path))
-                    .then((request) => request.arrayBuffer());
+                return new P.IO.ArrayBufferRequest(sb3.ASSETS_API.replace('$md5ext', path)).load();
             }
             getAsImage(path) {
                 P.IO.progressHooks.new();
@@ -6079,12 +6118,11 @@ var P;
             }
             load() {
                 if (this.projectId) {
-                    return P.IO.fetchRemote(P.config.PROJECT_API.replace('$id', '' + this.projectId))
-                        .then((request) => request.json())
+                    return new P.IO.JSONRequest(P.config.PROJECT_API.replace('$id', '' + this.projectId)).load()
                         .then((data) => {
                         this.projectData = data;
-                    })
-                        .then(() => super.load());
+                        return super.load();
+                    });
                 }
                 else {
                     return super.load();

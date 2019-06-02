@@ -168,8 +168,7 @@
       progressBar.style.width = (10 + completedTasks / totalTasks * 90) + '%';
     };
 
-    return P.IO.fetchRemote(P.config.PROJECT_API.replace('$id', projectId))
-      .then((req) => req.json())
+    return new P.IO.JSONRequest(P.config.PROJECT_API.replace('$id', projectId)).load()
       .then((json) => {
         const type = P.utils.projectType(json);
         if (type === 3) {

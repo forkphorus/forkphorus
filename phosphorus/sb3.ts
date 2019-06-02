@@ -861,13 +861,11 @@ namespace P.sb3 {
     }
 
     getAsText(path: string) {
-      return P.IO.fetchRemote(ASSETS_API.replace('$md5ext', path))
-        .then((request) => request.text());
+      return new P.IO.TextRequest(ASSETS_API.replace('$md5ext', path)).load();
     }
 
     getAsArrayBuffer(path: string) {
-      return P.IO.fetchRemote(ASSETS_API.replace('$md5ext', path))
-        .then((request) => request.arrayBuffer());
+      return new P.IO.ArrayBufferRequest(ASSETS_API.replace('$md5ext', path)).load();
     }
 
     getAsImage(path: string) {
@@ -889,12 +887,11 @@ namespace P.sb3 {
 
     load() {
       if (this.projectId) {
-        return P.IO.fetchRemote(P.config.PROJECT_API.replace('$id', '' + this.projectId))
-          .then((request) => request.json())
+        return new P.IO.JSONRequest(P.config.PROJECT_API.replace('$id', '' + this.projectId)).load()
           .then((data) => {
             this.projectData = data;
-          })
-          .then(() => super.load());
+            return super.load();
+          });
       } else {
         return super.load();
       }

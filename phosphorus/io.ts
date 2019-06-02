@@ -15,35 +15,90 @@ namespace P.IO {
     error(error) {},
   };
 
-  const useLocalFetch: boolean = ['http:', 'https:'].indexOf(location.protocol) > -1;
-  const localCORSFallback: string = 'https://forkphorus.github.io';
-
   /**
-   * Fetch a remote URL
+   * Configuration of IO behavior
    */
-  export function fetchRemote(url: string, opts?: any) {
-    progressHooks.new();
-    return window.fetch(url, opts)
-      .then((r) => {
-        progressHooks.end();
-        return r;
-      })
-      .catch((err) => {
-        progressHooks.error(err);
-        throw err;
-      });
+  export var config = {
+    /**
+     * A relative or absolute path to a full installation of forkphorus, from which "local" files can be fetched.
+     * Do not including a trailing slash.
+     */
+    localPath: '',
+  };
+
+  // non-http/https protocols cannot xhr request local files, so utilize forkphorus.github.io instead
+  if (['http:', 'https:'].indexOf(location.protocol) === -1) {
+    config.localPath = 'https://forkphorus.github.io';
   }
 
-  /**
-   * Fetch a local file path, relative to phosphorus.
-   */
-  export function fetchLocal(path: string, opts?: any) {
-    // If for some reason fetching cannot be done locally, route the requests to forkphorus.github.io
-    // (where is more likely to be allowed)
-    if (!useLocalFetch) {
-      path = localCORSFallback + path;
+  interface RequestOptions {
+    local?: boolean;
+  }
+
+  export abstract class Request<T> {
+    public url: string;
+
+    constructor(url: string, options: RequestOptions = {}) {
+      if (options.local) {
+        url = config.localPath + url;
+      }
+      this.url = url;
     }
-    return fetchRemote(path, opts);
+
+    /**
+     * Attempts to load this request.
+     */
+    load(): Promise<T> {
+      // We attempt to load twice, which I hope will fix random loading errors from failed fetches.
+      return new Promise((resolve, reject) => {
+        const attempt = (callback: (err: any) => void) => {
+          this._load()
+            .then((response) => {
+              resolve(response);
+              progressHooks.end();
+            })
+            .catch((err) => callback(err));
+        };
+        progressHooks.new();
+        attempt(function() {
+          // try once more
+          attempt(function(err) {
+            reject(err);
+          });
+        });
+      });
+    }
+
+    protected abstract _load(): Promise<T>;
+  }
+
+  abstract class XHRRequest<T> extends Request<T> {
+    protected _load(): Promise<T> {
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.addEventListener('load', () => {
+          resolve(xhr.response);
+        });
+        xhr.addEventListener('error', (err) => {
+          reject(err);
+        });
+        xhr.responseType = this.type as XMLHttpRequestResponseType;
+        xhr.open('GET', this.url);
+        xhr.send();
+      });
+    }
+
+    protected abstract get type(): string;
+  }
+
+  export class ArrayBufferRequest extends XHRRequest<ArrayBuffer> {
+    protected get type() { return 'arraybuffer'; }
+  }
+  export class TextRequest extends XHRRequest<string> {
+    protected get type() { return 'text'; }
+  }
+  export class JSONRequest extends XHRRequest<any> {
+    protected get type() { return 'json'; }
   }
 
   /**
