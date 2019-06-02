@@ -2398,14 +2398,14 @@ namespace P.sb3.compiler {
       case PrimitiveTypes.POSITIVE_NUM:
       case PrimitiveTypes.WHOLE_NUM:
       case PrimitiveTypes.INTEGER_NUM:
-      case PrimitiveTypes.ANGLE_NUM:
-        // The value might not actually be a number.
-        if (!isNaN(parseFloat(constant[1]))) {
-          return numberExpr(constant[1]);
+      case PrimitiveTypes.ANGLE_NUM: {
+        const number = parseFloat(constant[1]);
+        if (!isNaN(number)) {
+          return numberExpr(number.toString());
         } else {
-          // Non-numbers will be sanitized
           return sanitizedExpression(constant[1]);
         }
+      }
 
       case PrimitiveTypes.TEXT:
         return sanitizedExpression(constant[1]);

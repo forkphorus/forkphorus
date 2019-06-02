@@ -7522,15 +7522,15 @@ var P;
                     case 5 /* POSITIVE_NUM */:
                     case 6 /* WHOLE_NUM */:
                     case 7 /* INTEGER_NUM */:
-                    case 8 /* ANGLE_NUM */:
-                        // The value might not actually be a number.
-                        if (!isNaN(parseFloat(constant[1]))) {
-                            return numberExpr(constant[1]);
+                    case 8 /* ANGLE_NUM */: {
+                        const number = parseFloat(constant[1]);
+                        if (!isNaN(number)) {
+                            return numberExpr(number.toString());
                         }
                         else {
-                            // Non-numbers will be sanitized
                             return sanitizedExpression(constant[1]);
                         }
+                    }
                     case 10 /* TEXT */:
                         return sanitizedExpression(constant[1]);
                     case 12 /* VAR */:
