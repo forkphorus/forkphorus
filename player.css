@@ -134,3 +134,6 @@
 .fs .player {
   box-shadow: none;
 }
+.fs .forkphorus-root {
+  z-index: 1000;
+}
