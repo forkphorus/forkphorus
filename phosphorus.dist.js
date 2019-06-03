@@ -5930,8 +5930,8 @@ var P;
             }
             // Special treatment for the viewBox attribute
             if (svg.hasAttribute('viewBox')) {
-                // viewBox is a comma separated list of min x, min y, width, height.
-                const viewBox = svg.getAttribute('viewBox').split(' ').map((i) => +i);
+                // I think viewBox is supposed to be space separated, but Scratch sometimes make comma separated ones.
+                const viewBox = svg.getAttribute('viewBox').split(/ |,/).map((i) => +i);
                 if (viewBox.every((i) => !isNaN(i))) {
                     const [x, y, w, h] = viewBox;
                     // Fix width/height to include the viewBox min x/y
@@ -5939,7 +5939,7 @@ var P;
                     svg.setAttribute('height', (h + y).toString());
                 }
                 else {
-                    console.warn('weird viewbox', viewBox);
+                    console.warn('weird viewBox', svg.getAttribute('viewBox'));
                 }
                 svg.removeAttribute('viewBox');
             }
