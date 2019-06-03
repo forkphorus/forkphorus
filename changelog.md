@@ -1,5 +1,10 @@
 # forkphorus changelog
 
+## June 3
+
+- sb3: fix long-standing SVG issues resulting in parts being cut-off or white borders
+- Various updates to the [new packager](https://forkphorus.github.io/packager/)
+
 ## June 2
 
 - Fix `wait until` in "Run without screen refresh" blocks

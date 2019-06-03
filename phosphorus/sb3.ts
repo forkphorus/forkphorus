@@ -598,6 +598,21 @@ namespace P.sb3 {
         el.setAttribute('font-family', FONTS['Sans Serif']);
       }
     }
+
+    // Special treatment for the viewBox attribute
+    if (svg.hasAttribute('viewBox')) {
+      // viewBox is a comma separated list of min x, min y, width, height.
+      const viewBox = svg.getAttribute('viewBox')!.split(' ').map((i) => +i);
+      if (viewBox.every((i) => !isNaN(i))) {
+        const [ x, y, w, h ] = viewBox;
+        // Fix width/height to include the viewBox min x/y
+        svg.setAttribute('width', (w + x).toString());
+        svg.setAttribute('height', (h + y).toString());
+      } else {
+        console.warn('weird viewbox', viewBox);
+      }
+      svg.removeAttribute('viewBox');
+    }
   }
 
   // Implements base SB3 loading logic.
