@@ -1277,7 +1277,6 @@ var P;
                     }
                     objectScale *= c.scale;
                 }
-                ctx.translate(-costume.rotationCenterX * objectScale, -costume.rotationCenterY * objectScale);
                 if (!this.noEffects) {
                     ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
                     const filter = getCSSFilter(c.filters);
@@ -1286,7 +1285,7 @@ var P;
                         ctx.filter = filter;
                     }
                 }
-                ctx.drawImage(costume.image, 0, 0, costume.image.width * objectScale, costume.image.height * objectScale);
+                ctx.drawImage(costume.image, -costume.rotationCenterX * objectScale, -costume.rotationCenterY * objectScale, costume.image.width * objectScale, costume.image.height * objectScale);
                 ctx.restore();
             }
         }
