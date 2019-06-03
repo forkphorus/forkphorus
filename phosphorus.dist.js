@@ -611,13 +611,26 @@ var P;
     (function (renderer) {
         // HELPERS
         /**
-         * Create an HTML canvas.
+         * Create an HTML canvas with any type of context.
          */
         function createCanvas() {
             const canvas = document.createElement('canvas');
             canvas.width = 480;
             canvas.height = 360;
             return canvas;
+        }
+        /**
+         * Create an HTML canvas with a 2d context.
+         * Throws an error if a context cannot be obtained.
+         */
+        function create2dCanvas() {
+            const canvas = createCanvas();
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                throw new Error('Cannot get 2d rendering context');
+            }
+            ctx.imageSmoothingEnabled = false;
+            return { canvas, ctx };
         }
         /**
          * Determines if a Sprite's filters will change its shape.
@@ -1210,7 +1223,7 @@ var P;
          * The filter is generally an estimation of the actual effect.
          * Includes brightness and color. (does not include ghost)
          */
-        function cssFilter(filters) {
+        function getCSSFilter(filters) {
             let filter = '';
             if (filters.brightness) {
                 filter += 'brightness(' + (100 + filters.brightness) + '%) ';
@@ -1223,8 +1236,9 @@ var P;
         class SpriteRenderer2D {
             constructor() {
                 this.noEffects = false;
-                this.canvas = createCanvas();
-                this.ctx = this.canvas.getContext('2d');
+                const { canvas, ctx } = create2dCanvas();
+                this.canvas = canvas;
+                this.ctx = ctx;
             }
             reset(scale) {
                 this._reset(this.ctx, scale);
@@ -1250,8 +1264,9 @@ var P;
                     return;
                 }
                 ctx.save();
-                const scale = c.stage.zoom * P.config.scale;
-                ctx.translate(((c.scratchX + 240) * scale | 0) / scale, ((180 - c.scratchY) * scale | 0) / scale);
+                const globalScale = c.stage.zoom * P.config.scale;
+                ctx.translate(((c.scratchX + 240) * globalScale | 0) / globalScale, ((180 - c.scratchY) * globalScale | 0) / globalScale);
+                let objectScale = costume.scale;
                 // Direction transforms are only applied to Sprites because Stages cannot be rotated.
                 if (P.core.isSprite(c)) {
                     if (c.rotationStyle === 0 /* Normal */) {
@@ -1260,20 +1275,18 @@ var P;
                     else if (c.rotationStyle === 1 /* LeftRight */ && c.direction < 0) {
                         ctx.scale(-1, 1);
                     }
-                    ctx.scale(c.scale, c.scale);
+                    objectScale *= c.scale;
                 }
-                ctx.scale(costume.scale, costume.scale);
-                ctx.translate(-costume.rotationCenterX, -costume.rotationCenterY);
+                ctx.translate(-costume.rotationCenterX * objectScale, -costume.rotationCenterY * objectScale);
                 if (!this.noEffects) {
                     ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
-                    const filter = cssFilter(c.filters);
-                    // Only apply a filter if necessary, otherwise Firefox performance
-                    // nosedives.
+                    const filter = getCSSFilter(c.filters);
+                    // Only apply a filter when needed because of a Firefox performance bug
                     if (filter !== '') {
                         ctx.filter = filter;
                     }
                 }
-                ctx.drawImage(costume.image, 0, 0);
+                ctx.drawImage(costume.image, 0, 0, costume.image.width * objectScale, costume.image.height * objectScale);
                 ctx.restore();
             }
         }
@@ -1285,10 +1298,12 @@ var P;
             constructor(stage) {
                 super();
                 this.stage = stage;
-                this.stageLayer = createCanvas();
-                this.stageContext = this.stageLayer.getContext('2d');
-                this.penLayer = createCanvas();
-                this.penContext = this.penLayer.getContext('2d');
+                const { ctx: stageContext, canvas: stageLayer } = create2dCanvas();
+                this.stageContext = stageContext;
+                this.stageLayer = stageLayer;
+                const { ctx: penContext, canvas: penLayer } = create2dCanvas();
+                this.penContext = penContext;
+                this.penLayer = penLayer;
             }
             updateStage(scale) {
                 this._reset(this.stageContext, scale);
@@ -1298,7 +1313,7 @@ var P;
                 this.updateStageFilters();
             }
             updateStageFilters() {
-                const filter = cssFilter(this.stage.filters);
+                const filter = getCSSFilter(this.stage.filters);
                 // Only reapply a CSS filter if it has changed for performance.
                 // Might not be necessary here.
                 if (this.stageLayer.style.filter !== filter) {
