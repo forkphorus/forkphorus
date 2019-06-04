@@ -1425,7 +1425,7 @@ namespace P.core {
     public scale: number;
 
     protected _context: CanvasRenderingContext2D | null;
-    
+
     constructor(costumeData: CostumeOptions) {
       this.index = costumeData.index;
       this.bitmapResolution = costumeData.bitmapResolution;

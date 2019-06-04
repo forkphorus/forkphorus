@@ -878,6 +878,7 @@ namespace P.renderer {
         }
       }
 
+      ctx.imageSmoothingEnabled = false;
       ctx.drawImage(costume.image, -costume.rotationCenterX * objectScale, -costume.rotationCenterY * objectScale, costume.image.width * objectScale, costume.image.height * objectScale);
       ctx.restore();
     }
