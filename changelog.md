@@ -4,6 +4,8 @@
 
 - sb3: fix long-standing SVG issues resulting in parts being cut-off or white borders
 - Various updates to the [new packager](https://forkphorus.github.io/packager/)
+- Disable pixel smoothing
+  - Makes a lot of pixel-art projects look **a lot** better
 
 ## June 2
 
