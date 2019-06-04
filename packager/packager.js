@@ -31,10 +31,19 @@
    * @property {string} postLoadScript
    */
 
-  const sectionLoading = document.getElementById('section-loading');
-  const packageHtml = document.getElementById('package-html');
-  const packageZip = document.getElementById('package-zip');
+  // Replace fetch so we can observe progress of things
+  const nativeFetch = window.fetch;
+  window.fetch = function fetch(url, options) {
+    currentProgressBar.total++;
+    return nativeFetch(url, options)
+      .then((res) => {
+        currentProgressBar.finished++
+        return res;
+      });
+  };
 
+  const sectionLoading = document.getElementById('section-loading');
+  const packageHtml = /** @type {HTMLButtonElement} */document.getElementById('package-html');
   const inputProjectId = /** @type {HTMLInputElement} */ (document.getElementById('input-project'));
   const inputLoadingText = /** @type {HTMLInputElement} */ (document.getElementById('input-loading-text'));
   const inputPostLoadScript = /** @type {HTMLTextAreaElement} */ (document.getElementById('input-post-load-script'));
@@ -134,13 +143,7 @@
    * @returns {Promise<string>}
    */
   function getFile(path) {
-    currentProgressBar.total++;
-    return fetch(path)
-      .then((r) => r.text())
-      .then((t) => {
-        currentProgressBar.finished++;
-        return t;
-      });
+    return fetch(path).then((r) => r.text());
   }
 
   /**
@@ -161,19 +164,35 @@
       ]).then((sources) => fileCache.js = sources.join('\n')));
     }
     if (!fileCache.css) {
-      promises.push(Promise.all([
-        getFile('../phosphorus.css'),
-      ]).then((sources) => fileCache.css = sources.join('\n')));
+      promises.push(getFile('../phosphorus.css').then((text) => {
+        const fonts = [
+          'fonts/Knewave/Knewave-Regular.woff2',
+          'fonts/Handlee/Handlee-Regular.woff2',
+          'fonts/Grand9K-Pixel/Grand9K-Pixel.ttf',
+          'fonts/Griffy/Griffy-Regular.woff2',
+          'fonts/Source_Serif_Pro/SourceSerifPro-Regular.woff2',
+          'fonts/Noto_Sans/NotoSans-Regular.woff2',
+          'fonts/Donegal_One/DonegalOne-Regular.woff2',
+          'fonts/Gloria_Hallelujah/GloriaHallelujah.woff2',
+          'fonts/Mystery_Quest/MysteryQuest-Regular.woff2',
+          'fonts/Permanent_Marker/PermanentMarker-Regular.woff2',
+          'fonts/Scratch/Scratch.ttf',
+        ];
+
+        const promises = fonts.map((i) => fetch('../' + i)
+          .then((res) => res.blob())
+          .then((blob) => blobToURL(blob))
+          .then((url) => text = text.replace(i, url))
+        );
+
+        return Promise.all(promises).then(() => fileCache.css = text);
+      }));
     }
     if (promises.length === 0) {
       progressBar.finish();
       return Promise.resolve();
     }
     return Promise.all(promises);
-  }
-
-  function loadAssetCache() {
-    createProgressBar('Loading assets').finish();
   }
 
   /**
@@ -451,14 +470,6 @@
   }
 
   /**
-   * Creates the zip archive for a project
-   * @param {string} id The project ID
-   */
-  function getProjectZip(id) {
-
-  }
-
-  /**
    * Gets the active options
    * @returns {Options}
    */
@@ -493,11 +504,5 @@
         const html = getProjectHTML(result);
         addDownloadLink(html, 'project.html');
       });
-  };
-
-  packageZip.onclick = function() {
-    removeProgressBars();
-    loadSourceCache()
-      .then(() => loadAssetCache())
   };
 }());
