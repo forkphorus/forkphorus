@@ -6,6 +6,7 @@
 - Various updates to the [new packager](https://forkphorus.github.io/packager/)
 - Disable pixel smoothing
   - Makes a lot of pixel-art projects look **a lot** better
+- Fix some issues with the `touching <sprite>` block.
 
 ## June 2
 

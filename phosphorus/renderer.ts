@@ -994,43 +994,43 @@ namespace P.renderer {
       for (var i = 0; i < otherSprites.length; i++) {
         const spriteB = otherSprites[i];
         if (!spriteB.visible) continue;
-  
+
         const mb = spriteA.rotatedBounds();
         const ob = spriteB.rotatedBounds();
-  
+
         if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
           continue;
         }
-  
+
         const left = Math.max(mb.left, ob.left);
         const top = Math.min(mb.top, ob.top);
         const right = Math.min(mb.right, ob.right);
         const bottom = Math.max(mb.bottom, ob.bottom);
-  
+
         const width = right - left;
         const height = top - bottom;
-  
+
         if (width < 1 || height < 1) {
-          return false;
+          continue;
         }
-  
+
         workingRenderer.canvas.width = width;
         workingRenderer.canvas.height = height;
-  
+
         workingRenderer.ctx.save();
         workingRenderer.noEffects = true;
-  
+
         workingRenderer.ctx.translate(-(left + 240), -(180 - top));
         workingRenderer.drawChild(spriteA);
         workingRenderer.ctx.globalCompositeOperation = 'source-in';
         workingRenderer.drawChild(spriteB);
-  
+
         workingRenderer.noEffects = false;
         workingRenderer.ctx.restore();
-  
+
         const data = workingRenderer.ctx.getImageData(0, 0, width, height).data;
         const length = data.length;
-  
+
         for (var j = 0; j < length; j += 4) {
           // check for the opacity byte being a non-zero number
           if (data[j + 3]) {

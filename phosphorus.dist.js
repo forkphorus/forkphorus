@@ -1397,7 +1397,7 @@ var P;
                     const width = right - left;
                     const height = top - bottom;
                     if (width < 1 || height < 1) {
-                        return false;
+                        continue;
                     }
                     workingRenderer.canvas.width = width;
                     workingRenderer.canvas.height = height;
