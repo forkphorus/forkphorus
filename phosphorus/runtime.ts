@@ -1,11 +1,8 @@
 /// <reference path="phosphorus.ts" />
-/// <reference path="sb2.ts" />
 /// <reference path="core.ts" />
 /// <reference path="audio.ts" />
 
-// TODO: remove sb2 dependence
-
-// The phosphorus Scratch runtime
+// The phosphorus runtime for Scratch
 // Provides methods expected at runtime by scripts created by the compiler and an environment for Scratch scripts to run
 namespace P.runtime {
   export type Fn = () => void;

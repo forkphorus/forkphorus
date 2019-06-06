@@ -486,7 +486,6 @@ namespace P.core {
     public tempoBPM: number = 60;
 
     public zoom: number = 1;
-    public maxZoom: number = P.config.scale;
 
     public keys: KeyList;
 
@@ -773,10 +772,7 @@ namespace P.core {
      */
     setZoom(zoom: number) {
       if (this.zoom === zoom) return;
-      if (this.maxZoom < zoom * P.config.scale) {
-        this.maxZoom = zoom * P.config.scale;
-        this.renderer.penResize(this.maxZoom);
-      }
+      this.renderer.penResize(zoom);
       this.root.style.width = (480 * zoom | 0) + 'px';
       this.root.style.height = (360 * zoom | 0) + 'px';
       this.root.style.fontSize = (zoom*10) + 'px';

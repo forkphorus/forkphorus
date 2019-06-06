@@ -57,7 +57,8 @@ namespace P.renderer {
      */
     penClear(): void;
     /**
-     * Resizes the pen canvas without losing the existing drawing.
+     * Notifies the renderer that the pen layer should be resized.
+     * The renderer will do so eventually; not necessarily immediately.
      */
     penResize(scale: number): void;
     /**
@@ -894,6 +895,10 @@ namespace P.renderer {
     public penLayer: HTMLCanvasElement;
     public penContext: CanvasRenderingContext2D;
 
+    private penLayerModified: boolean = false;
+    private penLayerTargetScale: number = 1;
+    private penLayerMaxScale: number = -1;
+
     constructor(public stage: P.core.Stage) {
       super();
       const { ctx: stageContext, canvas: stageLayer } = create2dCanvas();
@@ -926,19 +931,35 @@ namespace P.renderer {
     }
 
     penClear() {
-      this.penContext.clearRect(0, 0, this.penLayer.width, this.penLayer.height);
+      this.penLayerModified = false;
+      if (this.penLayerTargetScale !== -1) {
+        this._reset(this.penContext, this.penLayerTargetScale);
+        this.penLayerTargetScale = -1;
+      }
+      this.penContext.clearRect(0, 0, 480, 360);
     }
 
     penResize(scale: number) {
-      const cachedCanvas = document.createElement('canvas');
-      cachedCanvas.width = this.penLayer.width;
-      cachedCanvas.height = this.penLayer.height;
-      cachedCanvas.getContext('2d')!.drawImage(this.penLayer, 0, 0);
-      this._reset(this.penContext, scale);
-      this.penContext.drawImage(cachedCanvas, 0, 0, 480, 360);
+      if (scale > this.penLayerMaxScale) {
+        // Immediately scale up
+        this.penLayerMaxScale = scale;
+        const cachedCanvas = document.createElement('canvas');
+        cachedCanvas.width = this.penLayer.width;
+        cachedCanvas.height = this.penLayer.height;
+        cachedCanvas.getContext('2d')!.drawImage(this.penLayer, 0, 0);
+        this._reset(this.penContext, scale);
+        this.penContext.drawImage(cachedCanvas, 0, 0, 480, 360);
+      } else if (!this.penLayerModified) {
+        // Immediately scale down if no changes have been made
+        this._reset(this.penContext, scale);
+      } else {
+        // Attempt again later
+        this.penLayerTargetScale = scale;
+      }
     }
 
     penDot(color: string, size: number, x: number, y: number) {
+      this.penLayerModified = true;
       this.penContext.fillStyle = color;
       this.penContext.beginPath();
       this.penContext.arc(240 + x, 180 - y, size / 2, 0, 2 * Math.PI, false);
@@ -946,6 +967,7 @@ namespace P.renderer {
     }
 
     penLine(color: string, size: number, x1: number, y1: number, x2: number, y2: number) {
+      this.penLayerModified = true;
       this.penContext.lineCap = 'round';
       if (size % 2 > .5 && size % 2 < 1.5) {
         x1 -= .5;
@@ -962,6 +984,7 @@ namespace P.renderer {
     }
 
     penStamp(sprite: P.core.Sprite) {
+      this.penLayerModified = true;
       this._drawChild(sprite, this.penContext);
     }
 
