@@ -573,7 +573,7 @@ namespace P.renderer {
       // We'll create a texture only once for performance.
       const costume = child.costumes[child.currentCostumeIndex] as WebGLCostume;
       if (!costume._glTexture) {
-        const texture = this.convertToTexture(costume.image);
+        const texture = this.convertToTexture(costume.get(1));
         costume._glTexture = texture;
       }
       this.gl.bindTexture(this.gl.TEXTURE_2D, costume._glTexture);
@@ -599,7 +599,7 @@ namespace P.renderer {
         P.m3.multiply(matrix, P.m3.scaling(costume.scale, costume.scale));
       }
       P.m3.multiply(matrix, P.m3.translation(-costume.rotationCenterX, -costume.rotationCenterY));
-      P.m3.multiply(matrix, P.m3.scaling(costume.image.width, costume.image.height));
+      P.m3.multiply(matrix, P.m3.scaling(costume.width, costume.height));
 
       shader.uniformMatrix3('u_matrix', matrix);
 
@@ -627,7 +627,7 @@ namespace P.renderer {
         shader.uniform1f('u_pixelate', Math.abs(child.filters.pixelate) / 10);
       }
       if (shader.hasUniform('u_size')) {
-        shader.uniform2f('u_size', costume.image.width, costume.image.height);
+        shader.uniform2f('u_size', costume.width, costume.height);
       }
 
       this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
@@ -880,7 +880,7 @@ namespace P.renderer {
       }
 
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(costume.image, -costume.rotationCenterX * objectScale, -costume.rotationCenterY * objectScale, costume.image.width * objectScale, costume.image.height * objectScale);
+      ctx.drawImage(costume.get(objectScale), -costume.rotationCenterX * objectScale, -costume.rotationCenterY * objectScale, costume.width * objectScale, costume.height * objectScale);
       ctx.restore();
     }
   }
@@ -1009,7 +1009,7 @@ namespace P.renderer {
 
       const positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
       const positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
-      const data = costume.context().getImageData(positionX, positionY, 1, 1).data;
+      const data = costume.getContext().getImageData(positionX, positionY, 1, 1).data;
       return data[3] !== 0;
     }
 

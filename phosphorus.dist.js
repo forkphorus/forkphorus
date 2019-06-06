@@ -904,7 +904,7 @@ var P;
                 // We'll create a texture only once for performance.
                 const costume = child.costumes[child.currentCostumeIndex];
                 if (!costume._glTexture) {
-                    const texture = this.convertToTexture(costume.image);
+                    const texture = this.convertToTexture(costume.get(1));
                     costume._glTexture = texture;
                 }
                 this.gl.bindTexture(this.gl.TEXTURE_2D, costume._glTexture);
@@ -929,7 +929,7 @@ var P;
                     P.m3.multiply(matrix, P.m3.scaling(costume.scale, costume.scale));
                 }
                 P.m3.multiply(matrix, P.m3.translation(-costume.rotationCenterX, -costume.rotationCenterY));
-                P.m3.multiply(matrix, P.m3.scaling(costume.image.width, costume.image.height));
+                P.m3.multiply(matrix, P.m3.scaling(costume.width, costume.height));
                 shader.uniformMatrix3('u_matrix', matrix);
                 // Effects
                 if (shader.hasUniform('u_opacity')) {
@@ -955,7 +955,7 @@ var P;
                     shader.uniform1f('u_pixelate', Math.abs(child.filters.pixelate) / 10);
                 }
                 if (shader.hasUniform('u_size')) {
-                    shader.uniform2f('u_size', costume.image.width, costume.image.height);
+                    shader.uniform2f('u_size', costume.width, costume.height);
                 }
                 this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
             }
@@ -1286,7 +1286,7 @@ var P;
                     }
                 }
                 ctx.imageSmoothingEnabled = false;
-                ctx.drawImage(costume.image, -costume.rotationCenterX * objectScale, -costume.rotationCenterY * objectScale, costume.image.width * objectScale, costume.image.height * objectScale);
+                ctx.drawImage(costume.get(objectScale), -costume.rotationCenterX * objectScale, -costume.rotationCenterY * objectScale, costume.width * objectScale, costume.height * objectScale);
                 ctx.restore();
             }
         }
@@ -1400,7 +1400,7 @@ var P;
                 }
                 const positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
                 const positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
-                const data = costume.context().getImageData(positionX, positionY, 1, 1).data;
+                const data = costume.getContext().getImageData(positionX, positionY, 1, 1).data;
                 return data[3] !== 0;
             }
             spritesIntersect(spriteA, otherSprites) {
@@ -2375,12 +2375,12 @@ var P;
                 const scale = costume.scale * this.scale;
                 var left = -costume.rotationCenterX * scale;
                 var top = costume.rotationCenterY * scale;
-                var right = left + costume.image.width * scale;
-                var bottom = top - costume.image.height * scale;
+                var right = left + costume.width * scale;
+                var bottom = top - costume.height * scale;
                 if (this.rotationStyle !== 0 /* Normal */) {
                     if (this.rotationStyle === 1 /* LeftRight */ && this.direction < 0) {
                         right = -left;
-                        left = right - costume.image.width * costume.scale * this.scale;
+                        left = right - costume.width * costume.scale * this.scale;
                     }
                     return {
                         left: this.scratchX + left,
@@ -2714,38 +2714,93 @@ var P;
         // A costume
         class Costume {
             constructor(costumeData) {
-                this.index = costumeData.index;
                 this.bitmapResolution = costumeData.bitmapResolution;
                 this.scale = 1 / this.bitmapResolution;
                 this.name = costumeData.name;
                 this.rotationCenterX = costumeData.rotationCenterX;
                 this.rotationCenterY = costumeData.rotationCenterY;
-                const source = costumeData.source;
-                this.image = source;
+            }
+        }
+        core.Costume = Costume;
+        class BitmapCostume extends Costume {
+            constructor(source, options) {
+                super(options);
+                this.source = source;
                 if (source.tagName === 'CANVAS') {
-                    this._context = source.getContext('2d');
+                    const ctx = source.getContext('2d');
+                    if (!ctx) {
+                        throw new Error('Cannot get 2d rendering context of costume source');
+                    }
+                    this._context = ctx;
                 }
                 else {
                     this._context = null;
                 }
+                this.width = source.width;
+                this.height = source.height;
             }
-            context() {
-                if (this._context) {
+            get(scale) {
+                // Bitmap costumes do not have different resolutions
+                return this.source;
+            }
+            getContext() {
+                if (this._context)
                     return this._context;
-                }
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
                 if (!ctx) {
                     throw new Error('cannot get 2d rendering context');
                 }
-                canvas.width = this.image.width;
-                canvas.height = this.image.height;
-                ctx.drawImage(this.image, 0, 0);
+                canvas.width = this.width;
+                canvas.height = this.height;
+                ctx.drawImage(this.source, 0, 0);
                 this._context = ctx;
                 return ctx;
             }
         }
-        core.Costume = Costume;
+        core.BitmapCostume = BitmapCostume;
+        class VectorCostume extends Costume {
+            constructor(svg, options) {
+                super(options);
+                this.scales = [];
+                this.width = svg.width;
+                this.height = svg.height;
+                this.source = svg;
+            }
+            getScale(scale) {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    throw new Error('cannot get 2d rendering context');
+                }
+                canvas.width = this.width * scale;
+                canvas.height = this.height * scale;
+                ctx.drawImage(this.source, 0, 0, canvas.width, canvas.height);
+                return canvas;
+            }
+            get(scale) {
+                scale = Math.ceil(scale);
+                if (!this.scales[scale]) {
+                    this.scales[scale] = this.getScale(scale);
+                }
+                return this.scales[scale];
+            }
+            getContext() {
+                if (this._context)
+                    return this._context;
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    throw new Error('cannot get 2d rendering context');
+                }
+                canvas.width = this.width;
+                canvas.height = this.height;
+                ctx.drawImage(this.source, 0, 0);
+                this._context = ctx;
+                return ctx;
+            }
+        }
+        core.VectorCostume = VectorCostume;
         // A sound
         class Sound {
             constructor(data) {
@@ -4342,37 +4397,45 @@ var P;
         }
         sb2.loadVariableWatcher = loadVariableWatcher;
         function loadCostume(data, index) {
-            const promises = [
-                loadMD5(data.baseLayerMD5, data.baseLayerID)
-                    .then((asset) => data.$image = asset)
-            ];
-            if (data.textLayerMD5) {
-                promises.push(loadMD5(data.textLayerMD5, data.textLayerID)
-                    .then((asset) => data.$text = asset));
+            // I have no idea where textLayerMD5 is ever actually used, or if it's needed, but it was in phosphorus and I'm afraid to remove it.
+            const baseMD5 = data.baseLayerMD5 || '';
+            const isBaseVector = baseMD5.substr(-4) === '.svg';
+            const textMD5 = data.textLayerMD5 || '';
+            const promises = [];
+            if (baseMD5) {
+                promises.push(loadMD5(data.baseLayerMD5, data.baseLayerID, false));
             }
+            if (textMD5) {
+                promises.push(loadMD5(data.textLayerMD5, data.textLayerID, false));
+            }
+            const costumeOptions = {
+                name: data.costumeName,
+                bitmapResolution: data.bitmapResolution,
+                rotationCenterX: data.rotationCenterX,
+                rotationCenterY: data.rotationCenterY,
+            };
             return Promise.all(promises)
                 .then((layers) => {
-                var image;
-                if (layers.length > 1) {
-                    image = document.createElement('canvas');
-                    const ctx = image.getContext('2d');
-                    image.width = Math.max(layers[0].width, 1);
-                    image.height = Math.max(layers[0].height, 1);
-                    for (const layer of layers) {
-                        ctx.drawImage(layer, 0, 0);
-                    }
+                if (isBaseVector && !textMD5) {
+                    // If the base is MD5 and there isn't a weird text layer, we'll properly treat this as an SVG
+                    const base = layers[0];
+                    return new P.core.VectorCostume(base, costumeOptions);
                 }
                 else {
-                    image = layers[0];
+                    if (layers.length > 1) {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = Math.max(layers[0].width, 1);
+                        canvas.height = Math.max(layers[0].height, 1);
+                        for (const layer of layers) {
+                            ctx.drawImage(layer, 0, 0);
+                        }
+                        return new P.core.BitmapCostume(canvas, costumeOptions);
+                    }
+                    else {
+                        return new P.core.BitmapCostume(layers[0], costumeOptions);
+                    }
                 }
-                return new P.core.Costume({
-                    index: index,
-                    bitmapResolution: data.bitmapResolution,
-                    name: data.costumeName,
-                    rotationCenterX: data.rotationCenterX,
-                    rotationCenterY: data.rotationCenterY,
-                    source: image,
-                });
             });
         }
         sb2.loadCostume = loadCostume;
@@ -4448,7 +4511,6 @@ var P;
         }
         sb2.patchSVG = patchSVG;
         function loadSVG(source) {
-            // canvg needs and actual SVG element, not the source.
             const parser = new DOMParser();
             var doc = parser.parseFromString(source, 'image/svg+xml');
             var svg = doc.documentElement;
@@ -4471,29 +4533,26 @@ var P;
                 viewBox.height = 0;
             }
             patchSVG(svg, svg);
+            // SVGs exported by Scratch 2 very often have viewboxes that are completely wrong, so just remove them.
+            svg.removeAttribute('viewBox');
             document.body.removeChild(svg);
             svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
             // TODO: use native renderer
             return new Promise((resolve, reject) => {
-                const canvas = document.createElement('canvas');
-                canvg(canvas, new XMLSerializer().serializeToString(svg), {
-                    ignoreMouse: true,
-                    ignoreAnimation: true,
-                    ignoreClear: true,
-                    renderCallback: function () {
-                        if (canvas.width === 0 || canvas.height === 0) {
-                            resolve(new Image());
-                            return;
-                        }
-                        resolve(canvas);
-                    }
-                });
+                const image = new Image();
+                image.onload = (e) => {
+                    resolve(image);
+                };
+                image.onerror = (e) => {
+                    reject(e);
+                };
+                image.src = 'data:image/svg+xml,' + encodeURIComponent(svg.outerHTML);
             });
         }
         sb2.loadSVG = loadSVG;
-        function loadMD5(hash, id, isAudio = false) {
+        function loadMD5(hash, id, isAudio) {
             if (zipArchive) {
-                var f = isAudio ? zipArchive.file(id + '.wav') : zipArchive.file(id + '.gif') || zipArchive.file(id + '.png') || zipArchive.file(id + '.jpg') || zipArchive.file(id + '.svg');
+                var f = isAudio ? (zipArchive.file(id + '.wav') || zipArchive.file(id + '.mp3')) : (zipArchive.file(id + '.gif') || zipArchive.file(id + '.png') || zipArchive.file(id + '.jpg') || zipArchive.file(id + '.svg'));
                 hash = f.name;
             }
             const ext = hash.split('.').pop();
@@ -5980,47 +6039,44 @@ var P;
         // Needs to be extended to add file loading methods.
         // Implementations are expected to set `this.projectData` to something before calling super.load()
         class BaseSB3Loader {
-            // Loads and returns a costume from its sb3 JSON data
-            getImage(path, format) {
-                if (format === 'svg') {
-                    return this.getAsText(path)
-                        .then((source) => {
-                        const parser = new DOMParser();
-                        const doc = parser.parseFromString(source, 'image/svg+xml');
-                        const svg = doc.documentElement;
-                        patchSVG(svg);
-                        const canvas = document.createElement('canvas');
-                        return new Promise((resolve, reject) => {
-                            canvg(canvas, new XMLSerializer().serializeToString(svg), {
-                                ignoreMouse: true,
-                                ignoreAnimation: true,
-                                ignoreClear: true,
-                                renderCallback: function () {
-                                    if (canvas.width === 0 || canvas.height === 0) {
-                                        resolve(new Image());
-                                        return;
-                                    }
-                                    resolve(canvas);
-                                }
-                            });
-                        });
+            getSVG(path) {
+                return this.getAsText(path)
+                    .then((source) => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(source, 'image/svg+xml');
+                    const svg = doc.documentElement;
+                    patchSVG(svg);
+                    return new Promise((resolve, reject) => {
+                        const image = new Image();
+                        image.onload = (e) => {
+                            resolve(image);
+                        };
+                        image.onerror = (e) => {
+                            reject(e);
+                        };
+                        image.src = 'data:image/svg+xml,' + encodeURIComponent(svg.outerHTML);
                     });
-                }
-                else {
-                    return this.getAsImage(path, format);
-                }
+                });
+            }
+            getBitmapImage(path, format) {
+                return this.getAsImage(path, format);
             }
             loadCostume(data, index) {
                 const path = data.assetId + '.' + data.dataFormat;
-                return this.getImage(path, data.dataFormat)
-                    .then((image) => new P.core.Costume({
-                    index: index,
-                    bitmapResolution: data.bitmapResolution,
+                const costumeOptions = {
                     name: data.name,
+                    bitmapResolution: data.bitmapResolution || 1,
                     rotationCenterX: data.rotationCenterX,
                     rotationCenterY: data.rotationCenterY,
-                    source: image,
-                }));
+                };
+                if (data.dataFormat === 'svg') {
+                    return this.getSVG(path)
+                        .then((svg) => new P.core.VectorCostume(svg, costumeOptions));
+                }
+                else {
+                    return this.getBitmapImage(path, data.dataFormat)
+                        .then((image) => new P.core.BitmapCostume(image, costumeOptions));
+                }
             }
             getAudioBuffer(path) {
                 return this.getAsArrayBuffer(path)

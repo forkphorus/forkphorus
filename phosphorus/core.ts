@@ -1045,13 +1045,13 @@ namespace P.core {
       const scale = costume.scale * this.scale;
       var left = -costume.rotationCenterX * scale;
       var top = costume.rotationCenterY * scale;
-      var right = left + costume.image.width * scale;
-      var bottom = top - costume.image.height * scale;
+      var right = left + costume.width * scale;
+      var bottom = top - costume.height * scale;
 
       if (this.rotationStyle !== RotationStyle.Normal) {
         if (this.rotationStyle === RotationStyle.LeftRight && this.direction < 0) {
           right = -left;
-          left = right - costume.image.width * costume.scale * this.scale;
+          left = right - costume.width * costume.scale * this.scale;
         }
         return {
           left: this.scratchX + left,
@@ -1403,56 +1403,125 @@ namespace P.core {
 
   interface CostumeOptions {
     name: string;
-    index: number;
     bitmapResolution: number;
     rotationCenterX: number;
     rotationCenterY: number;
-    source: HTMLImageElement | HTMLCanvasElement;
   }
 
   // A costume
-  export class Costume {
+  export abstract class Costume {
     public name: string;
     public rotationCenterX: number;
     public rotationCenterY: number;
-    public image: HTMLImageElement | HTMLCanvasElement;
-    public index: number;
     public bitmapResolution: number;
     public scale: number;
 
-    protected _context: CanvasRenderingContext2D | null;
+    public width: number;
+    public height: number;
 
     constructor(costumeData: CostumeOptions) {
-      this.index = costumeData.index;
       this.bitmapResolution = costumeData.bitmapResolution;
       this.scale = 1 / this.bitmapResolution;
       this.name = costumeData.name;
-
       this.rotationCenterX = costumeData.rotationCenterX;
       this.rotationCenterY = costumeData.rotationCenterY;
+    }
 
-      const source = costumeData.source;
-      this.image = source;
+    /**
+     * Gets a 2D context representation of the costume's source (1x zoom)
+     */
+    abstract getContext(): CanvasRenderingContext2D;
+
+    /**
+     * Gets a zoom level of the costume. The costume may provide a different zoom level than requested.
+     */
+    abstract get(scale: number): HTMLImageElement | HTMLCanvasElement;
+  }
+
+  export class BitmapCostume extends Costume {
+    private _context: CanvasRenderingContext2D | null;
+    private source: HTMLCanvasElement | HTMLImageElement;
+
+    constructor(source: HTMLCanvasElement | HTMLImageElement, options: CostumeOptions) {
+      super(options);
+      this.source = source;
       if (source.tagName === 'CANVAS') {
-        this._context = (source as HTMLCanvasElement).getContext('2d')!;
+        const ctx = (source as HTMLCanvasElement).getContext('2d');
+        if (!ctx) {
+          throw new Error('Cannot get 2d rendering context of costume source');
+        }
+        this._context = ctx;
       } else {
         this._context = null;
       }
+      this.width = source.width;
+      this.height = source.height;
     }
 
-    context(): CanvasRenderingContext2D {
-      if (this._context) {
-        return this._context;
-      }
+    get(scale: number) {
+      // Bitmap costumes do not have different resolutions
+      return this.source;
+    }
+
+    getContext() {
+      if (this._context) return this._context;
 
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       if (!ctx) {
         throw new Error('cannot get 2d rendering context');
       }
-      canvas.width = this.image.width;
-      canvas.height = this.image.height;
-      ctx.drawImage(this.image, 0, 0);
+      canvas.width = this.width;
+      canvas.height = this.height;
+      ctx.drawImage(this.source, 0, 0);
+      this._context = ctx;
+      return ctx;
+    }
+  }
+
+  export class VectorCostume extends Costume {
+    private source: HTMLImageElement;
+    private _context: CanvasRenderingContext2D;
+    private scales: Array<HTMLCanvasElement> = [];
+
+    constructor(svg: HTMLImageElement, options: CostumeOptions) {
+      super(options);
+      this.width = svg.width;
+      this.height = svg.height;
+      this.source = svg;
+    }
+
+    private getScale(scale: number) {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('cannot get 2d rendering context');
+      }
+      canvas.width = this.width * scale;
+      canvas.height = this.height * scale;
+      ctx.drawImage(this.source, 0, 0, canvas.width, canvas.height);
+      return canvas;
+    }
+
+    get(scale: number) {
+      scale = Math.ceil(scale);
+      if (!this.scales[scale]) {
+        this.scales[scale] = this.getScale(scale);
+      }
+      return this.scales[scale];
+    }
+
+    getContext() {
+      if (this._context) return this._context;
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('cannot get 2d rendering context');
+      }
+      canvas.width = this.width;
+      canvas.height = this.height;
+      ctx.drawImage(this.source, 0, 0);
       this._context = ctx;
       return ctx;
     }

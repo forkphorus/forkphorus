@@ -157,9 +157,6 @@
       promises.push(Promise.all([
         getFile('../lib/fontfaceobserver.standalone.js'),
         getFile('../lib/jszip.min.js'),
-        getFile('../lib/rgbcolor.js'),
-        getFile('../lib/StackBlur.js'),
-        getFile('../lib/canvg.js'),
         getFile('../phosphorus.dist.js'),
       ]).then((sources) => fileCache.js = sources.join('\n')));
     }

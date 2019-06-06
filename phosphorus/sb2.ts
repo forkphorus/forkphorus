@@ -502,38 +502,47 @@ namespace P.sb2 {
     return watcher;
   }
 
-  export function loadCostume(data, index) {
-    const promises = [
-      loadMD5(data.baseLayerMD5, data.baseLayerID)
-        .then((asset) => data.$image = asset)
-    ];
-    if (data.textLayerMD5) {
-      promises.push(loadMD5(data.textLayerMD5, data.textLayerID)
-        .then((asset) => data.$text = asset));
+  export function loadCostume(data, index): Promise<P.core.Costume> {
+    // I have no idea where textLayerMD5 is ever actually used, or if it's needed, but it was in phosphorus and I'm afraid to remove it.
+    const baseMD5 = data.baseLayerMD5 || '';
+    const isBaseVector = baseMD5.substr(-4) === '.svg';
+    const textMD5 = data.textLayerMD5 || '';
+
+    const promises: Promise<any>[] = [];
+    if (baseMD5) {
+      promises.push(loadMD5(data.baseLayerMD5, data.baseLayerID, false));
     }
+    if (textMD5) {
+      promises.push(loadMD5(data.textLayerMD5, data.textLayerID, false))
+    }
+
+    const costumeOptions = {
+      name: data.costumeName,
+      bitmapResolution: data.bitmapResolution,
+      rotationCenterX: data.rotationCenterX,
+      rotationCenterY: data.rotationCenterY,
+    };
+
     return Promise.all(promises)
       .then((layers: any[]) => {
-        var image;
-        if (layers.length > 1) {
-          image = document.createElement('canvas');
-          const ctx = image.getContext('2d')!;
-          image.width = Math.max(layers[0].width, 1);
-          image.height = Math.max(layers[0].height, 1);
-          for (const layer of layers) {
-            ctx.drawImage(layer, 0, 0);
-          }
+        if (isBaseVector && !textMD5) {
+          // If the base is MD5 and there isn't a weird text layer, we'll properly treat this as an SVG
+          const base = layers[0];
+          return new P.core.VectorCostume(base, costumeOptions);
         } else {
-          image = layers[0];
+          if (layers.length > 1) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d')!;
+            canvas.width = Math.max(layers[0].width, 1);
+            canvas.height = Math.max(layers[0].height, 1);
+            for (const layer of layers) {
+              ctx.drawImage(layer, 0, 0);
+            }
+            return new P.core.BitmapCostume(canvas, costumeOptions);
+          } else {
+            return new P.core.BitmapCostume(layers[0], costumeOptions);
+          }
         }
-
-        return new P.core.Costume({
-          index: index,
-          bitmapResolution: data.bitmapResolution,
-          name: data.costumeName,
-          rotationCenterX: data.rotationCenterX,
-          rotationCenterY: data.rotationCenterY,
-          source: image,
-        });
       });
   }
 
@@ -608,7 +617,6 @@ namespace P.sb2 {
   }
 
   export function loadSVG(source): Promise<HTMLCanvasElement | HTMLImageElement> {
-    // canvg needs and actual SVG element, not the source.
     const parser = new DOMParser();
     var doc = parser.parseFromString(source, 'image/svg+xml');
     var svg = doc.documentElement as any;
@@ -631,32 +639,29 @@ namespace P.sb2 {
       viewBox.height = 0;
     }
     patchSVG(svg, svg);
+    // SVGs exported by Scratch 2 very often have viewboxes that are completely wrong, so just remove them.
+    svg.removeAttribute('viewBox');
     document.body.removeChild(svg);
     svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
 
     // TODO: use native renderer
     return new Promise<HTMLCanvasElement | HTMLImageElement>((resolve, reject) => {
-      const canvas = document.createElement('canvas');
-      canvg(canvas, new XMLSerializer().serializeToString(svg), {
-        ignoreMouse: true,
-        ignoreAnimation: true,
-        ignoreClear: true,
-        renderCallback: function() {
-          if (canvas.width === 0 || canvas.height === 0) {
-            resolve(new Image());
-            return;
-          }
-          resolve(canvas);
-        }
-      });
+      const image = new Image();
+      image.onload = (e) => {
+        resolve(image);
+      };
+      image.onerror = (e) => {
+        reject(e);
+      };
+      image.src = 'data:image/svg+xml,' + encodeURIComponent(svg.outerHTML);
     });
   }
 
-  export function loadMD5(hash: string, id: string, isAudio?: true): Promise<AudioBuffer>;
-  export function loadMD5(hash: string, id: string, isAudio?: false): Promise<HTMLImageElement | HTMLCanvasElement | null>;
-  export function loadMD5(hash: string, id: string, isAudio: boolean = false): Promise<HTMLImageElement | HTMLCanvasElement | AudioBuffer | null> {
+  export function loadMD5(hash: string, id: string, isAudio: true): Promise<AudioBuffer>;
+  export function loadMD5(hash: string, id: string, isAudio: false): Promise<HTMLImageElement | HTMLCanvasElement | null>;
+  export function loadMD5(hash: string, id: string, isAudio: boolean): Promise<HTMLImageElement | HTMLCanvasElement | AudioBuffer | null> {
     if (zipArchive) {
-      var f = isAudio ? zipArchive.file(id + '.wav') : zipArchive.file(id + '.gif') || zipArchive.file(id + '.png') || zipArchive.file(id + '.jpg') || zipArchive.file(id + '.svg');
+      var f = isAudio ? (zipArchive.file(id + '.wav') || zipArchive.file(id + '.mp3')) : (zipArchive.file(id + '.gif') || zipArchive.file(id + '.png') || zipArchive.file(id + '.jpg') || zipArchive.file(id + '.svg'));
       hash = f.name;
     }
 
