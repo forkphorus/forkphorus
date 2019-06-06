@@ -1404,11 +1404,11 @@ var P;
                 return data[3] !== 0;
             }
             spritesIntersect(spriteA, otherSprites) {
+                const mb = spriteA.rotatedBounds();
                 for (var i = 0; i < otherSprites.length; i++) {
                     const spriteB = otherSprites[i];
                     if (!spriteB.visible)
                         continue;
-                    const mb = spriteA.rotatedBounds();
                     const ob = spriteB.rotatedBounds();
                     if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
                         continue;
@@ -1419,7 +1419,8 @@ var P;
                     const bottom = Math.max(mb.bottom, ob.bottom);
                     const width = right - left;
                     const height = top - bottom;
-                    if (width < 1 || height < 1) {
+                    // dimensions that are less than 1 or NaN will cause issues
+                    if (width < 1 || height < 1 || width !== width || height !== height) {
                         continue;
                     }
                     workingRenderer.canvas.width = width;
