@@ -1486,6 +1486,9 @@ namespace P.core {
 
     constructor(svg: HTMLImageElement, options: CostumeOptions) {
       super(options);
+      if (svg.height < 1 || svg.width < 1) {
+        svg = new Image(1, 1);
+      }
       this.width = svg.width;
       this.height = svg.height;
       this.source = svg;
@@ -1493,12 +1496,12 @@ namespace P.core {
 
     private getScale(scale: number) {
       const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, this.width * scale);
+      canvas.height = Math.max(1, this.height * scale);
       const ctx = canvas.getContext('2d');
       if (!ctx) {
         throw new Error('cannot get 2d rendering context');
       }
-      canvas.width = this.width * scale;
-      canvas.height = this.height * scale;
       ctx.drawImage(this.source, 0, 0, canvas.width, canvas.height);
       return canvas;
     }
