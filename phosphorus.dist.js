@@ -6116,7 +6116,7 @@ var P;
                         .map((data) => this.loadWatcher(data, stage))
                         .filter((i) => i && i.valid);
                     sprites.forEach((sprite) => sprite.stage = stage);
-                    targets.forEach((base) => P.sb3.compiler.compileTarget(base, base.sb3data));
+                    targets.forEach((base) => new P.sb3.compiler2.Compiler(base).compile());
                     stage.children = sprites;
                     stage.allWatchers = watchers;
                     watchers.forEach((watcher) => watcher.init());
@@ -7849,6 +7849,318 @@ var P;
                 },
             };
         })(compiler = sb3.compiler || (sb3.compiler = {}));
+    })(sb3 = P.sb3 || (P.sb3 = {}));
+})(P || (P = {}));
+(function (P) {
+    var sb3;
+    (function (sb3) {
+        var compiler2;
+        (function (compiler2) {
+            class CompiledStatement {
+                constructor(source) {
+                    this.source = source;
+                }
+            }
+            compiler2.CompiledStatement = CompiledStatement;
+            class CompiledInput {
+                constructor(source, type) {
+                    this.source = source;
+                    this.type = type;
+                }
+            }
+            compiler2.CompiledInput = CompiledInput;
+            const stringInput = (v) => new CompiledInput(v, 'string');
+            const numberInput = (v) => new CompiledInput(v, 'number');
+            const booleanInput = (v) => new CompiledInput(v, 'boolean');
+            const anyInput = (v) => new CompiledInput(v, 'any');
+            ;
+            function assertNever(i) {
+                throw new Error('assertion failed');
+            }
+            class Compiler {
+                constructor(target) {
+                    this.statementLibrary = Object.create(null);
+                    this.inputLibrary = Object.create(null);
+                    this.hatLibrary = Object.create(null);
+                    this.gotoPoints = [];
+                    this.states = [];
+                    this.target = target;
+                    this.data = target.sb3data;
+                    this.blocks = this.data.blocks;
+                    this.statementLibrary['motion_movesteps'] = function (compiler, block) {
+                        const STEPS = compiler.compileInput(block, 'STEPS', 'number');
+                        return new CompiledStatement(`S.forward(${STEPS});\n`);
+                    };
+                    this.statementLibrary['looks_say'] = function (compiler, block) {
+                        const MESSAGE = compiler.compileInput(block, 'MESSAGE', 'string');
+                        return new CompiledStatement(`S.say(${MESSAGE}, false);\n`);
+                    };
+                    this.inputLibrary['operator_add'] = function (compiler, block) {
+                        const NUM1 = compiler.compileInput(block, 'NUM1', 'number');
+                        const NUM2 = compiler.compileInput(block, 'NUM2', 'number');
+                        return new CompiledInput(`(${NUM1} + ${NUM2})`, 'number');
+                    };
+                }
+                /**
+                 * Gets the IDs of all hat blocks.
+                 */
+                getHatBlocks() {
+                    return Object.keys(this.blocks)
+                        .filter((i) => this.blocks[i].topLevel);
+                }
+                /**
+                 * Get the compiler for a statement
+                 */
+                getStatementCompiler(opcode) {
+                    if (this.statementLibrary[opcode]) {
+                        return this.statementLibrary[opcode];
+                    }
+                    return null;
+                }
+                /**
+                 * Get the compiler for an input
+                 */
+                getInputCompiler(opcode) {
+                    if (this.inputLibrary[opcode]) {
+                        return this.inputLibrary[opcode];
+                    }
+                    return null;
+                }
+                /**
+                 * Get the compiler for a hat
+                 */
+                getHatCompiler(opcode) {
+                    if (this.hatLibrary[opcode]) {
+                        return this.hatLibrary[opcode];
+                    }
+                    return null;
+                }
+                /**
+                 * Gets the default value to use for a missing input.
+                 */
+                getInputFallback(type) {
+                    switch (type) {
+                        case 'number': return '0';
+                        case 'boolean': return 'false';
+                        case 'string': return '""';
+                        case 'any': return '""';
+                    }
+                    assertNever(type);
+                }
+                /**
+                 * Converts an input to another type, if necessary
+                 */
+                toType(input, type) {
+                    if (type === 'any') {
+                        return input.source;
+                    }
+                    if (input.type === type) {
+                        return input.source;
+                    }
+                    switch (type) {
+                        case 'string': return '("" + ' + input.source + ')';
+                        case 'number': return '+' + input.source;
+                        case 'boolean': return 'bool(' + input.source + ')';
+                    }
+                }
+                /**
+                 * Sanitize a string into a CompiledInput
+                 */
+                sanitizeInput(string) {
+                    return stringInput(this.sanitizeString(string));
+                }
+                /**
+                 * Sanitize a string for use in the runtime.
+                 */
+                sanitizeString(string) {
+                    string = string
+                        .replace(/\\/g, '\\\\')
+                        .replace(/'/g, '\\\'')
+                        .replace(/"/g, '\\"')
+                        .replace(/\n/g, '\\n')
+                        .replace(/\r/g, '\\r')
+                        .replace(/\{/g, '\\x7b')
+                        .replace(/\}/g, '\\x7d');
+                    return `"${string}"`;
+                }
+                /**
+                 * Determines the runtime object that owns a variable in the runtime.
+                 * The variable may be created if it cannot be found.
+                 */
+                getVariableScope(id) {
+                    if (id in this.target.stage.vars) {
+                        return 'self';
+                    }
+                    else if (id in this.target.vars) {
+                        return 'S';
+                    }
+                    else {
+                        // Create missing variables
+                        this.target.vars[id] = 0;
+                        return 'S';
+                    }
+                }
+                /**
+                 * Determines the runtime object that owns a list in the runtime.
+                 * The list may be created if it cannot be found.
+                 */
+                getListScope(id) {
+                    if (id in this.target.stage.lists) {
+                        return 'self';
+                    }
+                    else if (id in this.target.lists) {
+                        return 'S';
+                    }
+                    else {
+                        // Create missing variables with a value of 0
+                        this.target.lists[id] = [];
+                        return 'S';
+                    }
+                }
+                /**
+                 * Gets the runtime reference to a variable.
+                 */
+                getVariableReference(id) {
+                    return `${this.getVariableScope(id)}.vars[${this.sanitizeString(id)}]`;
+                }
+                /**
+                 * Gets the runtime reference to a list.
+                 */
+                getListReference(id) {
+                    return `${this.getListScope(id)}.lists[${this.sanitizeString(id)}]`;
+                }
+                /**
+                 * Compile a native or primitive value.
+                 */
+                compileNativeInput(native) {
+                    const type = native[0];
+                    switch (type) {
+                        // These all function as numbers. I believe they are only differentiated so the editor can be more helpful.
+                        case 4 /* MATH_NUM */:
+                        case 5 /* POSITIVE_NUM */:
+                        case 6 /* WHOLE_NUM */:
+                        case 7 /* INTEGER_NUM */:
+                        case 8 /* ANGLE_NUM */: {
+                            // [type, value]
+                            const number = parseFloat(native[1]);
+                            if (!isNaN(number)) {
+                                return numberInput(number.toString());
+                            }
+                            else {
+                                return this.sanitizeInput(native[1]);
+                            }
+                        }
+                        case 10 /* TEXT */:
+                            // [type, text]
+                            return this.sanitizeInput(native[1]);
+                        case 12 /* VAR */:
+                            // [type, name, id]
+                            return anyInput(this.getVariableReference(native[2]));
+                        case 13 /* LIST */:
+                            // [type, name, id]
+                            return anyInput(this.getListReference(native[2]));
+                        case 11 /* BROADCAST */:
+                            // [type, name, id]
+                            return this.sanitizeInput(native[1]);
+                        case 9 /* COLOR_PICKER */: {
+                            // [type, color]
+                            // Color is a value like "#abcdef"
+                            const color = native[1];
+                            const hex = color.substr(1);
+                            // Ensure that it is actually a hex number.
+                            if (/^[0-9a-f]{6,8}$/.test(hex)) {
+                                return numberInput('0x' + hex);
+                            }
+                            else {
+                                console.warn('expected hex color code but got', hex);
+                                return numberInput('0x0');
+                            }
+                        }
+                        default:
+                            console.warn('unknown native', type, native);
+                            return stringInput('""');
+                    }
+                }
+                /**
+                 * Compile an input of a block, and do any necessary type coercions.
+                 */
+                compileInput(block, inputName, type) {
+                    // Handling empty inputs
+                    if (!block.inputs[inputName]) {
+                        return this.getInputFallback(type);
+                    }
+                    const input = block.inputs[inputName];
+                    if (Array.isArray(input[1])) {
+                        const native = input[1];
+                        return this.toType(this.compileNativeInput(native), type);
+                    }
+                    const inputId = input[1];
+                    const inputBlock = this.blocks[inputId];
+                    const opcode = inputBlock.opcode;
+                    const compiler = this.getInputCompiler(opcode);
+                    if (!compiler) {
+                        return this.getInputFallback(type);
+                    }
+                    const result = compiler(this, inputBlock);
+                    return this.toType(result, type);
+                }
+                /**
+                 * Compile an entire script from a single block.
+                 */
+                compileScript(startingBlock) {
+                    let script = '';
+                    let block = this.blocks[startingBlock];
+                    while (true) {
+                        const opcode = block.opcode;
+                        const compiler = this.getStatementCompiler(opcode);
+                        if (compiler) {
+                            const result = compiler(this, block);
+                            script += result.source;
+                        }
+                        else {
+                            console.warn('unknown statement', opcode, block);
+                        }
+                        if (!block.next) {
+                            break;
+                        }
+                        block = this.blocks[block.next];
+                    }
+                    return script;
+                }
+                /**
+                 * Compile a hat block and its children.
+                 * The hat handler will be used, and the scripts will be installed.
+                 */
+                compileHat(hat) {
+                    // Reset the goto-points. There is always a goto-point at the script's start.
+                    this.gotoPoints = [0];
+                    const startingBlock = hat.next;
+                    if (!startingBlock) {
+                        return;
+                    }
+                    const script = this.compileScript(startingBlock);
+                    const startFn = this.target.fns.length;
+                    for (var i = 0; i < this.gotoPoints.length; i++) {
+                        this.target.fns.push(P.runtime.createContinuation(script.slice(this.gotoPoints[i])));
+                    }
+                    // const topLevelHandler = topLevelLibrary[block.opcode];
+                    // topLevelHandler(block, this.target.fns[startFn]);
+                    this.target.listeners.whenGreenFlag.push(this.target.fns[startFn]);
+                    console.log('compiled sb3 script', hat.opcode, script, this.target);
+                }
+                /**
+                 * Compiles the scripts of the target with the current data.
+                 */
+                compile() {
+                    const hats = this.getHatBlocks();
+                    for (const hatId of hats) {
+                        const hat = this.blocks[hatId];
+                        this.compileHat(hat);
+                    }
+                }
+            }
+            compiler2.Compiler = Compiler;
+        })(compiler2 = sb3.compiler2 || (sb3.compiler2 = {}));
     })(sb3 = P.sb3 || (P.sb3 = {}));
 })(P || (P = {}));
 //# sourceMappingURL=phosphorus.dist.js.map
