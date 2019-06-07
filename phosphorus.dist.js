@@ -4524,9 +4524,8 @@ var P;
             });
         }
         sb2.loadSound = loadSound;
-        function patchSVG(svg, element) {
-            var els;
-            els = document.querySelectorAll('[transform]');
+        function patchSVG(svg) {
+            const els = document.querySelectorAll('[transform]');
             for (var i = 0; i < els.length; i++) {
                 var el = els[i];
                 if (el.hasAttribute('x') || el.hasAttribute('y')) {
@@ -4534,80 +4533,50 @@ var P;
                     el.setAttribute('y', '0');
                 }
             }
-            var usedFonts = [];
-            els = document.querySelectorAll('text');
-            for (var i = 0; i < els.length; i++) {
-                var text = els[i];
-                var font = text.getAttribute('font-family') || '';
+            const LINE_HEIGHTS = {
+                Helvetica: 1.13,
+                'Donegal One': 1.25,
+                'Gloria Hallelujah': 1.97,
+                'Permanent Marker': 1.43,
+                'Mystery Quest': 1.37
+            };
+            const usedFonts = [];
+            const textElements = document.querySelectorAll('text');
+            for (var i = 0; i < textElements.length; i++) {
+                const text = textElements[i];
+                const font = text.getAttribute('font-family') || '';
                 if (font === 'Helvetica') {
                     text.setAttribute('font-weight', 'bold');
                 }
-                var size = +element.getAttribute('font-size');
+                let size = +(text.getAttribute('font-size') || 0);
                 if (!size) {
                     size = 18;
-                    element.setAttribute('font-size', size);
+                    text.setAttribute('font-size', '' + size);
                 }
-                var bb = text.getBBox();
-                var tr = text.transform.baseVal.consolidate().matrix;
-                text.setAttribute('x', 0);
-                text.setAttribute('y', bb.height);
+                const bb = text.getBBox();
+                const tr = text.transform.baseVal.consolidate().matrix;
+                debugger;
+                const x = 4 - tr.a;
+                const y = Math.ceil(bb.height) + 1;
+                text.setAttribute('x', '' + x);
+                text.setAttribute('y', '' + y);
                 if (usedFonts.indexOf(font) === -1) {
                     usedFonts.push(font);
                 }
+                const lines = text.textContent.split('\n');
+                if (lines.length > 1) {
+                    text.textContent = lines[0];
+                    const lineHeight = LINE_HEIGHTS[font] || 1;
+                    for (var i = 1, l = lines.length; i < l; i++) {
+                        const tspan = document.createElementNS(null, 'tspan');
+                        tspan.textContent = lines[i];
+                        tspan.setAttribute('x', '' + x);
+                        tspan.setAttribute('y', '' + (y + size * i * lineHeight));
+                        text.appendChild(tspan);
+                    }
+                }
             }
             P.fonts.addFontRules(svg, usedFonts);
-            // const FONTS: ObjectMap<string> = {
-            //   '': 'Helvetica',
-            //   Donegal: 'Donegal One',
-            //   Gloria: 'Gloria Hallelujah',
-            //   Marker: 'Permanent Marker',
-            //   Mystery: 'Mystery Quest'
-            // };
-            // const LINE_HEIGHTS: ObjectMap<number> = {
-            //   Helvetica: 1.13,
-            //   'Donegal One': 1.25,
-            //   'Gloria Hallelujah': 1.97,
-            //   'Permanent Marker': 1.43,
-            //   'Mystery Quest': 1.37
-            // };
-            // if (element.nodeType !== 1) return;
-            // if (element.nodeName === 'text') {
-            //   // Fix fonts
-            //   var font = element.getAttribute('font-family') || '';
-            //   font = FONTS[font] || font;
-            //   if (font) {
-            //     element.setAttribute('font-family', font);
-            //     if (font === 'Helvetica') element.style.fontWeight = 'bold';
-            //     if (usedFonts.indexOf(font) === -1) {
-            //       usedFonts.push(font);
-            //     }
-            //   }
-            //   var size = +element.getAttribute('font-size');
-            //   if (!size) {
-            //     element.setAttribute('font-size', size = 18);
-            //   }
-            //   var bb = element.getBBox();
-            //   var x = 4 - .6 * element.transform.baseVal.consolidate().matrix.a;
-            //   var y = (element.getAttribute('y') - bb.y) * 1.1;
-            //   element.setAttribute('x', x);
-            //   element.setAttribute('y', y);
-            //   var lines = element.textContent.split('\n');
-            //   if (lines.length > 1) {
-            //     element.textContent = lines[0];
-            //     var lineHeight = LINE_HEIGHTS[font] || 1;
-            //     for (var i = 1, l = lines.length; i < l; i++) {
-            //       var tspan = document.createElementNS(null, 'tspan');
-            //       tspan.textContent = lines[i];
-            //       tspan.setAttribute('x', '' + x);
-            //       tspan.setAttribute('y', '' + (y + size * i * lineHeight));
-            //       element.appendChild(tspan);
-            //     }
-            //   }
-            // } else if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
-            //   element.setAttribute('x', 0);
-            //   element.setAttribute('y', 0);
-            // }
-            // [].forEach.call(element.childNodes, patchSVG.bind(null, svg));
         }
         sb2.patchSVG = patchSVG;
         function loadSVG(source) {
@@ -4633,7 +4602,7 @@ var P;
                 viewBox.height = 0;
                 svg.removeAttribute('viewBox');
             }
-            patchSVG(svg, svg);
+            patchSVG(svg);
             document.body.removeChild(svg);
             svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
             // TODO: use native renderer
