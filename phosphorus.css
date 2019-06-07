@@ -16,63 +16,6 @@
   height: 100%;
 }
 
-/* Scratch 3 Fonts */
-@font-face {
-  font-family: "Knewave";
-  src: url("fonts/Knewave/Knewave-Regular.woff") format("woff"),
-    url("fonts/Knewave/Knewave-Regular.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Handlee";
-  src: url("fonts/Handlee/Handlee-Regular.woff") format("woff"),
-    url("fonts/Handlee/Handlee-Regular.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Pixel";
-  src: url("fonts/Grand9K-Pixel/Grand9K-Pixel.ttf") format("truetype");
-}
-@font-face {
-  font-family: "Griffy";
-  src: url("fonts/Griffy/Griffy-Regular.woff") format("woff"),
-    url("fonts/Griffy/Griffy-Regular.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Source Serif Pro";
-  src: url("fonts/Source_Serif_Pro/SourceSerifPro-Regular.woff") format("woff"),
-    url("fonts/Source_Serif_Pro/SourceSerifPro-Regular.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Noto Sans";
-  src: url("fonts/Noto_Sans/NotoSans-Regular.woff") format("woff"),
-    url("fonts/Noto_Sans/NotoSans-Regular.woff2") format("woff2");
-}
-/* Scratch 2 Fonts */
-@font-face {
-  font-family: "Donegal One";
-  src: url("fonts/Donegal_One/DonegalOne-Regular.woff") format("woff"),
-    url("fonts/Donegal_One/DonegalOne-Regular.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Gloria Hallelujah";
-  src: url("fonts/Gloria_Hallelujah/GloriaHallelujah.woff") format("woff"),
-    url("fonts/Gloria_Hallelujah/GloriaHallelujah.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Mystery Quest";
-  src: url("fonts/Mystery_Quest/MysteryQuest-Regular.woff") format("woff"),
-    url("fonts/Mystery_Quest/MysteryQuest-Regular.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Permanent Marker";
-  src: url("fonts/Permanent_Marker/PermanentMarker-Regular.woff") format("woff"),
-    url("fonts/Permanent_Marker/PermanentMarker-Regular.woff2") format("woff2");
-}
-/* Scratch 2 & 3*/
-@font-face {
-  font-family: "Scratch";
-  src: url("fonts/Scratch/Scratch.ttf") format("truetype");
-}
-
 /* Scratch 3 Variable Watchers */
 .s3-watcher-container {
   position: absolute;

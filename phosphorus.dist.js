@@ -2856,164 +2856,83 @@ var P;
     })(core = P.core || (P.core = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
-var P;
-(function (P) {
-    var utils;
-    (function (utils) {
-        // Returns the string representation of an error.
-        // TODO: does this need to be here?
-        function stringifyError(error) {
-            if (!error) {
-                return 'unknown error';
-            }
-            if (error.stack) {
-                return 'Message: ' + error.message + '\nStack:\n' + error.stack;
-            }
-            return error.toString();
-        }
-        utils.stringifyError = stringifyError;
-        /**
-         * Parses a Scratch rotation style string to a RotationStyle enum
-         */
-        function parseRotationStyle(style) {
-            switch (style) {
-                case 'leftRight':
-                case 'left-right':
-                    return 1 /* LeftRight */;
-                case 'none':
-                case 'don\'t rotate':
-                    return 2 /* None */;
-                case 'normal':
-                case 'all around':
-                    return 0 /* Normal */;
-            }
-            console.warn('unknown rotation style', style);
-            return 0 /* Normal */;
-        }
-        utils.parseRotationStyle = parseRotationStyle;
-        // Determines the type of a project with its project.json data
-        function projectType(data) {
-            if (typeof data !== 'object' || data === null) {
-                return null;
-            }
-            if ('targets' in data) {
-                return 3;
-            }
-            if ('objName' in data) {
-                return 2;
-            }
-            return null;
-        }
-        utils.projectType = projectType;
-        /**
-         * Converts an RGB color to an HSL color
-         * @param rgb RGB Color
-         */
-        function rgbToHSL(rgb) {
-            var r = (rgb >> 16 & 0xff) / 0xff;
-            var g = (rgb >> 8 & 0xff) / 0xff;
-            var b = (rgb & 0xff) / 0xff;
-            var min = Math.min(r, g, b);
-            var max = Math.max(r, g, b);
-            if (min === max) {
-                return [0, 0, r * 100];
-            }
-            var c = max - min;
-            var l = (min + max) / 2;
-            var s = c / (1 - Math.abs(2 * l - 1));
-            var h;
-            switch (max) {
-                case r:
-                    h = ((g - b) / c + 6) % 6;
-                    break;
-                case g:
-                    h = (b - r) / c + 2;
-                    break;
-                case b:
-                    h = (r - g) / c + 4;
-                    break;
-            }
-            h *= 60;
-            return [h, s * 100, l * 100];
-        }
-        utils.rgbToHSL = rgbToHSL;
-        /**
-         * Clamps a number within a range
-         * @param number The number
-         * @param min Minimum, inclusive
-         * @param max Maximum, inclusive
-         */
-        function clamp(number, min, max) {
-            return Math.min(max, Math.max(min, number));
-        }
-        utils.clamp = clamp;
-        /*
-         * Creates a promise that resolves when the original promise resolves or fails.
-         */
-        function settled(promise) {
-            return new Promise((resolve, _reject) => {
-                promise
-                    .then(() => resolve())
-                    .catch(() => resolve());
-            });
-        }
-        utils.settled = settled;
-    })(utils = P.utils || (P.utils = {}));
-})(P || (P = {}));
-/// <reference path="phosphorus.ts" />
-/// <reference path="utils.ts" />
+/**
+ * Font helpers
+ */
 var P;
 (function (P) {
     var fonts;
-    (function (fonts) {
+    (function (fonts_1) {
+        const fontFamilyCache = {};
+        fonts_1.scratch3 = {
+            'Marker': 'fonts/Knewave-Regular.woff',
+            'Handwriting': 'fonts/Handlee-Regular.woff',
+            'Pixel': 'fonts/Grand9K-Pixel.ttf',
+            'Curly': 'fonts/Griffy-Regular.woff',
+            'Serif': 'fonts/SourceSerifPro-Regular.woff',
+            'Sans Serif': 'fonts/NotoSans-Regular.woff',
+            'Scratch': 'fonts/Scratch.ttf',
+        };
+        fonts_1.scratch2 = {
+            'Donegal': 'fonts/DonegalOne-Regular.woff',
+            'Gloria': 'fonts/GloriaHallelujah.woff',
+            'Mystery': 'fonts/MysteryQuest-Regular.woff',
+            'Marker': 'fonts/PermanentMarker-Regular.woff',
+            'Scratch': 'fonts/Scratch.ttf',
+        };
         /**
-         * Dynamically load a remote font
-         * @param name The name of the font (font-family)
+         * Asynchronously load and cache a font
          */
-        function loadFont(name) {
-            P.IO.progressHooks.new();
-            const observer = new FontFaceObserver(name);
-            return observer.load().then(() => {
-                P.IO.progressHooks.end();
+        function loadFont(fontFamily, src) {
+            if (fontFamilyCache[fontFamily]) {
+                return Promise.resolve(fontFamilyCache[fontFamily]);
+            }
+            return new P.IO.BlobRequest(src, { local: true }).load()
+                .then((blob) => P.IO.readers.toDataURL(blob))
+                .then((url) => {
+                fontFamilyCache[fontFamily] = url;
+                return url;
             });
         }
-        fonts.loadFont = loadFont;
-        var loadedScratch2 = false;
-        var loadedScratch3 = false;
+        fonts_1.loadFont = loadFont;
         /**
-         * Loads all Scratch 2 associated fonts
+         * Gets an already loaded and cached font
          */
-        function loadScratch2() {
-            if (loadedScratch2) {
-                return Promise.resolve();
+        function getFont(fontFamily) {
+            if (!(fontFamily in fontFamilyCache)) {
+                throw new Error('unknown font: ' + fontFamily);
             }
-            return Promise.all([
-                P.utils.settled(loadFont('Donegal One')),
-                P.utils.settled(loadFont('Gloria Hallelujah')),
-                P.utils.settled(loadFont('Mystery Quest')),
-                P.utils.settled(loadFont('Permanent Marker')),
-                P.utils.settled(loadFont('Scratch')),
-            ]).then(() => void (loadedScratch2 = true));
+            return fontFamilyCache[fontFamily];
         }
-        fonts.loadScratch2 = loadScratch2;
-        /**
-         * Loads all Scratch 3 associated fonts
-         */
-        function loadScratch3() {
-            if (loadedScratch3) {
-                return Promise.resolve();
+        fonts_1.getFont = getFont;
+        function loadFontSet(fonts) {
+            const promises = [];
+            for (const family in fonts) {
+                promises.push(loadFont(family, fonts[family]));
             }
-            return Promise.all([
-                P.utils.settled(loadFont('Knewave')),
-                P.utils.settled(loadFont('Handlee')),
-                P.utils.settled(loadFont('Pixel')),
-                P.utils.settled(loadFont('Griffy')),
-                P.utils.settled(loadFont('Scratch')),
-                P.utils.settled(loadFont('Source Serif Pro')),
-                P.utils.settled(loadFont('Noto Sans')),
-            ]).then(() => void (loadedScratch3 = true));
+            return Promise.all(promises);
         }
-        fonts.loadScratch3 = loadScratch3;
+        fonts_1.loadFontSet = loadFontSet;
+        function getCSSFontFace(src, fontFamily) {
+            return `@font-face { font-family: "${fontFamily}"; src: url("${src}"); }`;
+        }
+        fonts_1.getCSSFontFace = getCSSFontFace;
+        function addFontRules(svg, fonts) {
+            const cssRules = [];
+            for (const font of fonts) {
+                // Dirty hack: we'll just assume helvetica is already present on the user's machine
+                if (font === 'Helvetica')
+                    continue;
+                cssRules.push(getCSSFontFace(getFont(font), font));
+            }
+            const doc = svg.ownerDocument;
+            const defs = doc.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            const style = doc.createElementNS('http://www.w3.org/2000/svg', 'style');
+            style.innerHTML = cssRules.join('\n');
+            defs.appendChild(style);
+            svg.appendChild(style);
+        }
+        fonts_1.addFontRules = addFontRules;
     })(fonts = P.fonts || (P.fonts = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
@@ -3099,6 +3018,10 @@ var P;
             get type() { return 'arraybuffer'; }
         }
         IO.ArrayBufferRequest = ArrayBufferRequest;
+        class BlobRequest extends XHRRequest {
+            get type() { return 'blob'; }
+        }
+        IO.BlobRequest = BlobRequest;
         class TextRequest extends XHRRequest {
             get type() { return 'text'; }
         }
@@ -3126,6 +3049,44 @@ var P;
             });
         }
         IO.fileAsArrayBuffer = fileAsArrayBuffer;
+        /**
+         * Utilities for asynchronously reading Blobs or Files
+         */
+        let readers;
+        (function (readers) {
+            function toArrayBuffer(object) {
+                return new Promise((resolve, reject) => {
+                    const fileReader = new FileReader();
+                    fileReader.onloadend = function () {
+                        resolve(fileReader.result);
+                    };
+                    fileReader.onerror = function (err) {
+                        reject('Could not read object');
+                    };
+                    fileReader.onprogress = function (progress) {
+                        IO.progressHooks.set(progress);
+                    };
+                    fileReader.readAsArrayBuffer(object);
+                });
+            }
+            readers.toArrayBuffer = toArrayBuffer;
+            function toDataURL(object) {
+                return new Promise((resolve, reject) => {
+                    const fileReader = new FileReader();
+                    fileReader.onloadend = function () {
+                        resolve(fileReader.result);
+                    };
+                    fileReader.onerror = function (err) {
+                        reject('Could not read object');
+                    };
+                    fileReader.onprogress = function (progress) {
+                        IO.progressHooks.set(progress);
+                    };
+                    fileReader.readAsDataURL(object);
+                });
+            }
+            readers.toDataURL = toDataURL;
+        })(readers = IO.readers || (IO.readers = {}));
     })(IO = P.IO || (P.IO = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
@@ -3944,6 +3905,111 @@ var P;
     })(runtime = P.runtime || (P.runtime = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
+var P;
+(function (P) {
+    var utils;
+    (function (utils) {
+        // Returns the string representation of an error.
+        // TODO: does this need to be here?
+        function stringifyError(error) {
+            if (!error) {
+                return 'unknown error';
+            }
+            if (error.stack) {
+                return 'Message: ' + error.message + '\nStack:\n' + error.stack;
+            }
+            return error.toString();
+        }
+        utils.stringifyError = stringifyError;
+        /**
+         * Parses a Scratch rotation style string to a RotationStyle enum
+         */
+        function parseRotationStyle(style) {
+            switch (style) {
+                case 'leftRight':
+                case 'left-right':
+                    return 1 /* LeftRight */;
+                case 'none':
+                case 'don\'t rotate':
+                    return 2 /* None */;
+                case 'normal':
+                case 'all around':
+                    return 0 /* Normal */;
+            }
+            console.warn('unknown rotation style', style);
+            return 0 /* Normal */;
+        }
+        utils.parseRotationStyle = parseRotationStyle;
+        // Determines the type of a project with its project.json data
+        function projectType(data) {
+            if (typeof data !== 'object' || data === null) {
+                return null;
+            }
+            if ('targets' in data) {
+                return 3;
+            }
+            if ('objName' in data) {
+                return 2;
+            }
+            return null;
+        }
+        utils.projectType = projectType;
+        /**
+         * Converts an RGB color to an HSL color
+         * @param rgb RGB Color
+         */
+        function rgbToHSL(rgb) {
+            var r = (rgb >> 16 & 0xff) / 0xff;
+            var g = (rgb >> 8 & 0xff) / 0xff;
+            var b = (rgb & 0xff) / 0xff;
+            var min = Math.min(r, g, b);
+            var max = Math.max(r, g, b);
+            if (min === max) {
+                return [0, 0, r * 100];
+            }
+            var c = max - min;
+            var l = (min + max) / 2;
+            var s = c / (1 - Math.abs(2 * l - 1));
+            var h;
+            switch (max) {
+                case r:
+                    h = ((g - b) / c + 6) % 6;
+                    break;
+                case g:
+                    h = (b - r) / c + 2;
+                    break;
+                case b:
+                    h = (r - g) / c + 4;
+                    break;
+            }
+            h *= 60;
+            return [h, s * 100, l * 100];
+        }
+        utils.rgbToHSL = rgbToHSL;
+        /**
+         * Clamps a number within a range
+         * @param number The number
+         * @param min Minimum, inclusive
+         * @param max Maximum, inclusive
+         */
+        function clamp(number, min, max) {
+            return Math.min(max, Math.max(min, number));
+        }
+        utils.clamp = clamp;
+        /*
+         * Creates a promise that resolves when the original promise resolves or fails.
+         */
+        function settled(promise) {
+            return new Promise((resolve, _reject) => {
+                promise
+                    .then(() => resolve())
+                    .catch(() => resolve());
+            });
+        }
+        utils.settled = settled;
+    })(utils = P.utils || (P.utils = {}));
+})(P || (P = {}));
+/// <reference path="phosphorus.ts" />
 /// <reference path="utils.ts" />
 /// <reference path="core.ts" />
 /// <reference path="fonts.ts" />
@@ -4378,7 +4444,7 @@ var P;
         }
         sb2.loadArray = loadArray;
         function loadFonts() {
-            return P.fonts.loadScratch2();
+            return P.fonts.loadFontSet(P.fonts.scratch2);
         }
         sb2.loadFonts = loadFonts;
         function loadObject(data) {
@@ -4459,58 +4525,89 @@ var P;
         }
         sb2.loadSound = loadSound;
         function patchSVG(svg, element) {
-            const FONTS = {
-                '': 'Helvetica',
-                Donegal: 'Donegal One',
-                Gloria: 'Gloria Hallelujah',
-                Marker: 'Permanent Marker',
-                Mystery: 'Mystery Quest'
-            };
-            const LINE_HEIGHTS = {
-                Helvetica: 1.13,
-                'Donegal One': 1.25,
-                'Gloria Hallelujah': 1.97,
-                'Permanent Marker': 1.43,
-                'Mystery Quest': 1.37
-            };
-            if (element.nodeType !== 1)
-                return;
-            if (element.nodeName === 'text') {
-                // Correct fonts
-                var font = element.getAttribute('font-family') || '';
-                font = FONTS[font] || font;
-                if (font) {
-                    element.setAttribute('font-family', font);
-                    if (font === 'Helvetica')
-                        element.style.fontWeight = 'bold';
+            var els;
+            els = document.querySelectorAll('[transform]');
+            for (var i = 0; i < els.length; i++) {
+                var el = els[i];
+                if (el.hasAttribute('x') || el.hasAttribute('y')) {
+                    el.setAttribute('x', '0');
+                    el.setAttribute('y', '0');
+                }
+            }
+            var usedFonts = [];
+            els = document.querySelectorAll('text');
+            for (var i = 0; i < els.length; i++) {
+                var text = els[i];
+                var font = text.getAttribute('font-family') || '';
+                if (font === 'Helvetica') {
+                    text.setAttribute('font-weight', 'bold');
                 }
                 var size = +element.getAttribute('font-size');
                 if (!size) {
-                    element.setAttribute('font-size', size = 18);
+                    size = 18;
+                    element.setAttribute('font-size', size);
                 }
-                var bb = element.getBBox();
-                var x = 4 - .6 * element.transform.baseVal.consolidate().matrix.a;
-                var y = (element.getAttribute('y') - bb.y) * 1.1;
-                element.setAttribute('x', x);
-                element.setAttribute('y', y);
-                var lines = element.textContent.split('\n');
-                if (lines.length > 1) {
-                    element.textContent = lines[0];
-                    var lineHeight = LINE_HEIGHTS[font] || 1;
-                    for (var i = 1, l = lines.length; i < l; i++) {
-                        var tspan = document.createElementNS(null, 'tspan');
-                        tspan.textContent = lines[i];
-                        tspan.setAttribute('x', '' + x);
-                        tspan.setAttribute('y', '' + (y + size * i * lineHeight));
-                        element.appendChild(tspan);
-                    }
+                var bb = text.getBBox();
+                var tr = text.transform.baseVal.consolidate().matrix;
+                text.setAttribute('x', 0);
+                text.setAttribute('y', bb.height);
+                if (usedFonts.indexOf(font) === -1) {
+                    usedFonts.push(font);
                 }
             }
-            else if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
-                element.setAttribute('x', 0);
-                element.setAttribute('y', 0);
-            }
-            [].forEach.call(element.childNodes, patchSVG.bind(null, svg));
+            P.fonts.addFontRules(svg, usedFonts);
+            // const FONTS: ObjectMap<string> = {
+            //   '': 'Helvetica',
+            //   Donegal: 'Donegal One',
+            //   Gloria: 'Gloria Hallelujah',
+            //   Marker: 'Permanent Marker',
+            //   Mystery: 'Mystery Quest'
+            // };
+            // const LINE_HEIGHTS: ObjectMap<number> = {
+            //   Helvetica: 1.13,
+            //   'Donegal One': 1.25,
+            //   'Gloria Hallelujah': 1.97,
+            //   'Permanent Marker': 1.43,
+            //   'Mystery Quest': 1.37
+            // };
+            // if (element.nodeType !== 1) return;
+            // if (element.nodeName === 'text') {
+            //   // Fix fonts
+            //   var font = element.getAttribute('font-family') || '';
+            //   font = FONTS[font] || font;
+            //   if (font) {
+            //     element.setAttribute('font-family', font);
+            //     if (font === 'Helvetica') element.style.fontWeight = 'bold';
+            //     if (usedFonts.indexOf(font) === -1) {
+            //       usedFonts.push(font);
+            //     }
+            //   }
+            //   var size = +element.getAttribute('font-size');
+            //   if (!size) {
+            //     element.setAttribute('font-size', size = 18);
+            //   }
+            //   var bb = element.getBBox();
+            //   var x = 4 - .6 * element.transform.baseVal.consolidate().matrix.a;
+            //   var y = (element.getAttribute('y') - bb.y) * 1.1;
+            //   element.setAttribute('x', x);
+            //   element.setAttribute('y', y);
+            //   var lines = element.textContent.split('\n');
+            //   if (lines.length > 1) {
+            //     element.textContent = lines[0];
+            //     var lineHeight = LINE_HEIGHTS[font] || 1;
+            //     for (var i = 1, l = lines.length; i < l; i++) {
+            //       var tspan = document.createElementNS(null, 'tspan');
+            //       tspan.textContent = lines[i];
+            //       tspan.setAttribute('x', '' + x);
+            //       tspan.setAttribute('y', '' + (y + size * i * lineHeight));
+            //       element.appendChild(tspan);
+            //     }
+            //   }
+            // } else if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
+            //   element.setAttribute('x', 0);
+            //   element.setAttribute('y', 0);
+            // }
+            // [].forEach.call(element.childNodes, patchSVG.bind(null, svg));
         }
         sb2.patchSVG = patchSVG;
         function loadSVG(source) {
@@ -4534,10 +4631,9 @@ var P;
                 viewBox.y = 0;
                 viewBox.width = 0;
                 viewBox.height = 0;
+                svg.removeAttribute('viewBox');
             }
             patchSVG(svg, svg);
-            // SVGs exported by Scratch 2 very often have viewboxes that are completely wrong, so just remove them.
-            svg.removeAttribute('viewBox');
             document.body.removeChild(svg);
             svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
             // TODO: use native renderer
@@ -5997,36 +6093,15 @@ var P;
             }
         }
         sb3.Scratch3List = Scratch3List;
-        // Modifies a Scratch 3 SVG to work properly in our environment.
+        /**
+         * Patches and modifies an SVG element in-place to make it function properly in the forkphorus environment.
+         * Fixes fonts and viewBox.
+         */
         function patchSVG(svg) {
-            // SVGs made by Scratch 3 use font names such as 'Sans Serif', which we convert to their real names.
-            const FONTS = {
-                'Marker': 'Knewave',
-                'Handwriting': 'Handlee',
-                'Curly': 'Griffy',
-                'Pixel': 'Pixel',
-                'Scratch': 'Scratch',
-                'Serif': 'Source Serif Pro',
-                'Sans Serif': 'Noto Sans',
-            };
-            const textElements = svg.querySelectorAll('text');
-            for (var i = 0; i < textElements.length; i++) {
-                const el = textElements[i];
-                const font = el.getAttribute('font-family') || '';
-                if (FONTS[font]) {
-                    el.setAttribute('font-family', FONTS[font]);
-                }
-                else {
-                    console.warn('unknown font', font, '(defaulting to sans-serif)');
-                    // Scratch 3 replaces unknown fonts with sans serif.
-                    el.setAttribute('font-family', FONTS['Sans Serif']);
-                }
-            }
             // Special treatment for the viewBox attribute
             if (svg.hasAttribute('viewBox')) {
-                // I think viewBox is supposed to be space separated, but Scratch sometimes make comma separated ones.
                 const viewBox = svg.getAttribute('viewBox').split(/ |,/).map((i) => +i);
-                if (viewBox.every((i) => !isNaN(i))) {
+                if (viewBox.every((i) => !isNaN(i)) && viewBox.length === 4) {
                     const [x, y, w, h] = viewBox;
                     // Fix width/height to include the viewBox min x/y
                     svg.setAttribute('width', (w + x).toString());
@@ -6037,6 +6112,21 @@ var P;
                 }
                 svg.removeAttribute('viewBox');
             }
+            const textElements = svg.querySelectorAll('text');
+            const usedFonts = [];
+            for (var i = 0; i < textElements.length; i++) {
+                const el = textElements[i];
+                let font = el.getAttribute('font-family') || '';
+                if (!P.fonts.scratch3[font]) {
+                    console.warn('unknown font', font);
+                    el.setAttribute('font-family', font);
+                    font = 'Sans Serif';
+                }
+                if (usedFonts.indexOf(font) === -1) {
+                    usedFonts.push(font);
+                }
+            }
+            P.fonts.addFontRules(svg, usedFonts);
         }
         // Implements base SB3 loading logic.
         // Needs to be extended to add file loading methods.
@@ -6150,7 +6240,7 @@ var P;
                 });
             }
             loadFonts() {
-                return P.fonts.loadScratch3();
+                return P.fonts.loadFontSet(P.fonts.scratch3);
             }
             load() {
                 if (!this.projectData) {

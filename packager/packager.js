@@ -155,7 +155,6 @@
     const promises = [];
     if (!fileCache.js) {
       promises.push(Promise.all([
-        getFile('../lib/fontfaceobserver.standalone.js'),
         getFile('../lib/jszip.min.js'),
         getFile('../phosphorus.dist.js'),
       ]).then((sources) => fileCache.js = sources.join('\n')));

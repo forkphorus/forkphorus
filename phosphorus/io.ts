@@ -94,6 +94,9 @@ namespace P.IO {
   export class ArrayBufferRequest extends XHRRequest<ArrayBuffer> {
     protected get type() { return 'arraybuffer'; }
   }
+  export class BlobRequest extends XHRRequest<Blob> {
+    protected get type() { return 'blob'; }
+  }
   export class TextRequest extends XHRRequest<string> {
     protected get type() { return 'text'; }
   }
@@ -122,5 +125,44 @@ namespace P.IO {
 
       fileReader.readAsArrayBuffer(file);
     });
+  }
+
+  /**
+   * Utilities for asynchronously reading Blobs or Files
+   */
+  export namespace readers {
+    type Readable = Blob | File;
+
+    export function toArrayBuffer(object: Readable): Promise<ArrayBuffer> {
+      return new Promise((resolve, reject) => {
+        const fileReader = new FileReader();
+        fileReader.onloadend = function() {
+          resolve(fileReader.result as ArrayBuffer);
+        };
+        fileReader.onerror = function(err) {
+          reject('Could not read object');
+        };
+        fileReader.onprogress = function(progress) {
+          progressHooks.set(progress);
+        };
+        fileReader.readAsArrayBuffer(object);
+      });
+    }
+
+    export function toDataURL(object: Readable): Promise<string> {
+      return new Promise((resolve, reject) => {
+        const fileReader = new FileReader();
+        fileReader.onloadend = function() {
+          resolve(fileReader.result as string);
+        };
+        fileReader.onerror = function(err) {
+          reject('Could not read object');
+        };
+        fileReader.onprogress = function(progress) {
+          progressHooks.set(progress);
+        };
+        fileReader.readAsDataURL(object);
+      });
+    }
   }
 }

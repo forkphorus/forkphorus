@@ -482,8 +482,8 @@ namespace P.sb2 {
     return Promise.all((data || []).map((i, ind) => process(i, ind)));
   }
 
-  export function loadFonts(): Promise<void> {
-    return P.fonts.loadScratch2();
+  export function loadFonts(): Promise<unknown> {
+    return P.fonts.loadFontSet(P.fonts.scratch2);
   }
 
   export function loadObject(data) {
@@ -563,57 +563,102 @@ namespace P.sb2 {
   }
 
   export function patchSVG(svg, element) {
-    const FONTS: ObjectMap<string> = {
-      '': 'Helvetica',
-      Donegal: 'Donegal One',
-      Gloria: 'Gloria Hallelujah',
-      Marker: 'Permanent Marker',
-      Mystery: 'Mystery Quest'
-    };
+    var els;
 
-    const LINE_HEIGHTS: ObjectMap<number> = {
-      Helvetica: 1.13,
-      'Donegal One': 1.25,
-      'Gloria Hallelujah': 1.97,
-      'Permanent Marker': 1.43,
-      'Mystery Quest': 1.37
-    };
-
-    if (element.nodeType !== 1) return;
-    if (element.nodeName === 'text') {
-      // Correct fonts
-      var font = element.getAttribute('font-family') || '';
-      font = FONTS[font] || font;
-      if (font) {
-        element.setAttribute('font-family', font);
-        if (font === 'Helvetica') element.style.fontWeight = 'bold';
+    els = document.querySelectorAll('[transform]');
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (el.hasAttribute('x') || el.hasAttribute('y')) {
+        el.setAttribute('x', '0');
+        el.setAttribute('y', '0');
       }
+    }
+
+    var usedFonts: string[] = [];
+    els = document.querySelectorAll('text');
+    for (var i = 0; i < els.length; i++) {
+      var text = els[i];
+      var font = text.getAttribute('font-family') || '';
+      if (font === 'Helvetica') {
+        text.setAttribute('font-weight', 'bold');
+      }
+
       var size = +element.getAttribute('font-size');
       if (!size) {
-        element.setAttribute('font-size', size = 18);
+        size = 18;
+        element.setAttribute('font-size', size);
       }
-      var bb = element.getBBox();
-      var x = 4 - .6 * element.transform.baseVal.consolidate().matrix.a;
-      var y = (element.getAttribute('y') - bb.y) * 1.1;
-      element.setAttribute('x', x);
-      element.setAttribute('y', y);
-      var lines = element.textContent.split('\n');
-      if (lines.length > 1) {
-        element.textContent = lines[0];
-        var lineHeight = LINE_HEIGHTS[font] || 1;
-        for (var i = 1, l = lines.length; i < l; i++) {
-          var tspan = document.createElementNS(null, 'tspan');
-          tspan.textContent = lines[i];
-          tspan.setAttribute('x', '' + x);
-          tspan.setAttribute('y', '' + (y + size * i * lineHeight));
-          element.appendChild(tspan);
-        }
+
+      var bb = text.getBBox();
+      var tr = text.transform.baseVal.consolidate().matrix;
+
+      text.setAttribute('x', 0);
+      text.setAttribute('y', bb.height);
+
+      if (usedFonts.indexOf(font) === -1) {
+        usedFonts.push(font);
       }
-    } else if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
-      element.setAttribute('x', 0);
-      element.setAttribute('y', 0);
     }
-    [].forEach.call(element.childNodes, patchSVG.bind(null, svg));
+
+    P.fonts.addFontRules(svg, usedFonts);
+
+    // const FONTS: ObjectMap<string> = {
+    //   '': 'Helvetica',
+    //   Donegal: 'Donegal One',
+    //   Gloria: 'Gloria Hallelujah',
+    //   Marker: 'Permanent Marker',
+    //   Mystery: 'Mystery Quest'
+    // };
+
+    // const LINE_HEIGHTS: ObjectMap<number> = {
+    //   Helvetica: 1.13,
+    //   'Donegal One': 1.25,
+    //   'Gloria Hallelujah': 1.97,
+    //   'Permanent Marker': 1.43,
+    //   'Mystery Quest': 1.37
+    // };
+
+    // if (element.nodeType !== 1) return;
+    // if (element.nodeName === 'text') {
+    //   // Fix fonts
+    //   var font = element.getAttribute('font-family') || '';
+    //   font = FONTS[font] || font;
+    //   if (font) {
+    //     element.setAttribute('font-family', font);
+    //     if (font === 'Helvetica') element.style.fontWeight = 'bold';
+    //     if (usedFonts.indexOf(font) === -1) {
+    //       usedFonts.push(font);
+    //     }
+    //   }
+
+    //   var size = +element.getAttribute('font-size');
+    //   if (!size) {
+    //     element.setAttribute('font-size', size = 18);
+    //   }
+
+    //   var bb = element.getBBox();
+    //   var x = 4 - .6 * element.transform.baseVal.consolidate().matrix.a;
+    //   var y = (element.getAttribute('y') - bb.y) * 1.1;
+    //   element.setAttribute('x', x);
+    //   element.setAttribute('y', y);
+
+    //   var lines = element.textContent.split('\n');
+    //   if (lines.length > 1) {
+    //     element.textContent = lines[0];
+    //     var lineHeight = LINE_HEIGHTS[font] || 1;
+    //     for (var i = 1, l = lines.length; i < l; i++) {
+    //       var tspan = document.createElementNS(null, 'tspan');
+    //       tspan.textContent = lines[i];
+    //       tspan.setAttribute('x', '' + x);
+    //       tspan.setAttribute('y', '' + (y + size * i * lineHeight));
+    //       element.appendChild(tspan);
+    //     }
+    //   }
+    // } else if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
+    //   element.setAttribute('x', 0);
+    //   element.setAttribute('y', 0);
+    // }
+    // [].forEach.call(element.childNodes, patchSVG.bind(null, svg));
   }
 
   export function loadSVG(source): Promise<HTMLCanvasElement | HTMLImageElement> {
@@ -637,10 +682,9 @@ namespace P.sb2 {
       viewBox.y = 0;
       viewBox.width = 0;
       viewBox.height = 0;
+      svg.removeAttribute('viewBox');
     }
     patchSVG(svg, svg);
-    // SVGs exported by Scratch 2 very often have viewboxes that are completely wrong, so just remove them.
-    svg.removeAttribute('viewBox');
     document.body.removeChild(svg);
     svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
 

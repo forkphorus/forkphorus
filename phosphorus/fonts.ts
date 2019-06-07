@@ -1,59 +1,79 @@
 /// <reference path="phosphorus.ts" />
-/// <reference path="utils.ts" />
 
-interface FontFaceObserver {
-  new(font: string): FontFaceObserver;
-  load(text?: string, timeout?: number): Promise<void>;
-}
-declare var FontFaceObserver: FontFaceObserver;
-
+/**
+ * Font helpers
+ */
 namespace P.fonts {
+  const fontFamilyCache: ObjectMap<string> = {};
+
+  export const scratch3 = {
+    'Marker': 'fonts/Knewave-Regular.woff',
+    'Handwriting': 'fonts/Handlee-Regular.woff',
+    'Pixel': 'fonts/Grand9K-Pixel.ttf',
+    'Curly': 'fonts/Griffy-Regular.woff',
+    'Serif': 'fonts/SourceSerifPro-Regular.woff',
+    'Sans Serif': 'fonts/NotoSans-Regular.woff',
+    'Scratch': 'fonts/Scratch.ttf',
+  };
+
+  export const scratch2 = {
+    'Donegal': 'fonts/DonegalOne-Regular.woff',
+    'Gloria': 'fonts/GloriaHallelujah.woff',
+    'Mystery': 'fonts/MysteryQuest-Regular.woff',
+    'Marker': 'fonts/PermanentMarker-Regular.woff',
+    'Scratch': 'fonts/Scratch.ttf',
+  };
+
   /**
-   * Dynamically load a remote font
-   * @param name The name of the font (font-family)
+   * Asynchronously load and cache a font
    */
-  export function loadFont(name: string): Promise<void> {
-    P.IO.progressHooks.new();
-    const observer = new FontFaceObserver(name);
-    return observer.load().then(() => {
-      P.IO.progressHooks.end();
-    });
+  export function loadFont(fontFamily: string, src: string): Promise<string> {
+    if (fontFamilyCache[fontFamily]) {
+      return Promise.resolve(fontFamilyCache[fontFamily]);
+    }
+    return new P.IO.BlobRequest(src, {local: true}).load()
+      .then((blob) => P.IO.readers.toDataURL(blob))
+      .then((url) => {
+        fontFamilyCache[fontFamily] = url;
+        return url;
+      });
   }
 
-  var loadedScratch2: boolean = false;
-  var loadedScratch3: boolean = false;
-
   /**
-   * Loads all Scratch 2 associated fonts
+   * Gets an already loaded and cached font
    */
-  export function loadScratch2(): Promise<void> {
-    if (loadedScratch2) {
-      return Promise.resolve();
+  export function getFont(fontFamily: string): string {
+    if (!(fontFamily in fontFamilyCache)) {
+      throw new Error('unknown font: ' + fontFamily);
     }
-    return Promise.all([
-      P.utils.settled(loadFont('Donegal One')),
-      P.utils.settled(loadFont('Gloria Hallelujah')),
-      P.utils.settled(loadFont('Mystery Quest')),
-      P.utils.settled(loadFont('Permanent Marker')),
-      P.utils.settled(loadFont('Scratch')),
-    ]).then(() => void (loadedScratch2 = true));
+    return fontFamilyCache[fontFamily];
   }
 
-  /**
-   * Loads all Scratch 3 associated fonts
-   */
-  export function loadScratch3(): Promise<void> {
-    if (loadedScratch3) {
-      return Promise.resolve();
+  export function loadFontSet(fonts: ObjectMap<string>): Promise<unknown> {
+    const promises: Promise<unknown>[] = [];
+    for (const family in fonts) {
+      promises.push(loadFont(family, fonts[family]));
     }
-    return Promise.all([
-      P.utils.settled(loadFont('Knewave')),
-      P.utils.settled(loadFont('Handlee')),
-      P.utils.settled(loadFont('Pixel')),
-      P.utils.settled(loadFont('Griffy')),
-      P.utils.settled(loadFont('Scratch')),
-      P.utils.settled(loadFont('Source Serif Pro')),
-      P.utils.settled(loadFont('Noto Sans')),
-    ]).then(() => void (loadedScratch3 = true));
+    return Promise.all(promises);
+  }
+
+  export function getCSSFontFace(src: string, fontFamily: string) {
+    return `@font-face { font-family: "${fontFamily}"; src: url("${src}"); }`;
+  }
+
+  export function addFontRules(svg: SVGElement, fonts: string[]) {
+    const cssRules: string[] = [];
+    for (const font of fonts) {
+      // Dirty hack: we'll just assume helvetica is already present on the user's machine
+      if (font === 'Helvetica') continue;
+      cssRules.push(getCSSFontFace(getFont(font), font));
+    }
+
+    const doc = svg.ownerDocument!;
+    const defs = doc.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    const style = doc.createElementNS('http://www.w3.org/2000/svg', 'style');
+    style.innerHTML = cssRules.join('\n');
+    defs.appendChild(style);
+    svg.appendChild(style);
   }
 }
