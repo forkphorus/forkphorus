@@ -321,7 +321,7 @@ namespace P.runtime {
         case 'volume': return o.volume * 100;
       }
     }
-    const value = o.lookupVariable(attr);
+    const value = o.vars[attr];
     if (value !== undefined) {
       return value;
     }

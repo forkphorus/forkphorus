@@ -3379,7 +3379,7 @@ var P;
                     case 'volume': return o.volume * 100;
                 }
             }
-            const value = o.lookupVariable(attr);
+            const value = o.vars[attr];
             if (value !== undefined) {
                 return value;
             }
@@ -5537,6 +5537,7 @@ var P;
 /// <reference path="core.ts" />
 /// <reference path="fonts.ts" />
 /// <reference path="config.ts" />
+/// <reference path="runtime.ts" />
 // Scratch 3 project loader and runtime objects
 var P;
 (function (P) {
@@ -5552,13 +5553,6 @@ var P;
         // Implements a Scratch 3 Stage.
         // Adds Scratch 3 specific things such as broadcastReferences
         class Scratch3Stage extends P.core.Stage {
-            constructor() {
-                super(...arguments);
-                this.variableNames = {};
-            }
-            lookupVariable(name) {
-                return this.vars[this.variableNames[name]];
-            }
             createVariableWatcher(target, variableName) {
                 // TODO: implement
                 return null;
@@ -5567,13 +5561,6 @@ var P;
         sb3.Scratch3Stage = Scratch3Stage;
         // Implements a Scratch 3 Sprite.
         class Scratch3Sprite extends P.core.Sprite {
-            constructor() {
-                super(...arguments);
-                this.variableNames = {};
-            }
-            lookupVariable(name) {
-                return this.vars[this.variableNames[name]];
-            }
             _clone() {
                 return new Scratch3Sprite(this.stage);
             }
@@ -6058,8 +6045,7 @@ var P;
                     const variable = data.variables[id];
                     const name = variable[0];
                     const value = variable[1];
-                    target.vars[id] = value;
-                    target.variableNames[name] = id;
+                    target.vars[name] = value;
                 }
                 for (const id of Object.keys(data.lists)) {
                     const list = data.lists[id];
@@ -7449,13 +7435,16 @@ var P;
                 // Data
                 data_variable: {
                     init(watcher) {
-                        watcher.target.watchers[watcher.id] = watcher;
+                        const name = watcher.params.VARIABLE;
+                        watcher.target.watchers[name] = watcher;
                     },
                     set(watcher, value) {
-                        watcher.target.vars[watcher.id] = value;
+                        const name = watcher.params.VARIABLE;
+                        watcher.target.vars[name] = value;
                     },
                     evaluate(watcher) {
-                        return watcher.target.vars[watcher.id];
+                        const name = watcher.params.VARIABLE;
+                        return watcher.target.vars[name];
                     },
                     getLabel(watcher) {
                         return watcher.params.VARIABLE;
@@ -7896,6 +7885,12 @@ var P;
                     return this.compiler.getField(this.block, name);
                 }
                 /**
+                 * Get and sanitize a field.
+                 */
+                fieldInput(name) {
+                    return this.sanitizedInput(this.getField(name));
+                }
+                /**
                  * Sanitize an unescaped string into an input.
                  */
                 sanitizedInput(string) {
@@ -7907,14 +7902,38 @@ var P;
                 sanitizedString(string) {
                     return this.compiler.sanitizedString(string);
                 }
+                /**
+                 * Gets a field's reference to a variable.
+                 */
+                getVariableReference(field) {
+                    return this.compiler.getVariableReference(this.getField(field));
+                }
+                /**
+                 * Gets a field's reference to a list.
+                 */
+                getListReference(field) {
+                    return this.compiler.getListReference(this.getField(field));
+                }
+                /**
+                 * Gets the scope of a field's reference to a variable.
+                 */
+                getVariableScope(field) {
+                    return this.compiler.getVariableScope(this.getField(field));
+                }
+                /**
+                 * Gets the scope of a field's reference to a list.
+                 */
+                getListScope(field) {
+                    return this.compiler.getListScope(this.getField(field));
+                }
+                /**
+                 * Forcibly converts JS to another type.
+                 */
+                asType(input, type) {
+                    return this.compiler.asType(input, type);
+                }
             }
             compiler2.BlockUtil = BlockUtil;
-            /**
-             * General input generation utilities.
-             */
-            class InputUtil extends BlockUtil {
-            }
-            compiler2.InputUtil = InputUtil;
             /**
              * General statement generation utilities.
              */
@@ -7930,16 +7949,17 @@ var P;
                     return this.compiler.compileSubstackInput(this.block, name);
                 }
                 /**
-                 * Gets the next label available for use.
+                 * Gets the next label available for use without claiming it.
                  */
                 nextLabel() {
-                    return this.compiler.labelCount++;
+                    return this.compiler.labelCount;
                 }
                 /**
                  * Create a new label at this location.
                  */
                 addLabel() {
                     const label = this.nextLabel();
+                    this.compiler.labelCount++;
                     // We'll use special syntax to denote this spot as a label.
                     // It'll be cleaned up later in compilation.
                     // Interestingly, this is actually valid JavaScript, so cleanup isn't strictly necessary.
@@ -7950,14 +7970,17 @@ var P;
                  * Writes the queue() method to call a label.
                  */
                 queue(label) {
-                    this.writeLn(`queue(${label});`);
+                    this.writeLn(`queue(${label}); return;`);
                 }
                 /**
                  * Writes the forceQueue() method to call a label.
                  */
                 forceQueue(label) {
-                    this.writeLn(`forceQueue(${label});`);
+                    this.writeLn(`forceQueue(${label}); return;`);
                 }
+                /**
+                 * Writes an appropriate VISUAL check
+                 */
                 visual(variant) {
                     switch (variant) {
                         case 'drawing':
@@ -7987,80 +8010,39 @@ var P;
             }
             compiler2.StatementUtil = StatementUtil;
             /**
+             * General input generation utilities.
+             */
+            class InputUtil extends BlockUtil {
+                numberInput(v) { return numberInput(v); }
+                stringInput(v) { return stringInput(v); }
+                booleanInput(v) { return booleanInput(v); }
+                anyInput(v) { return anyInput(v); }
+            }
+            compiler2.InputUtil = InputUtil;
+            /**
+             * General hat handling utilities.
+             */
+            class HatUtil extends BlockUtil {
+                constructor(compiler, block, startingFunction) {
+                    super(compiler, block);
+                    this.startingFunction = startingFunction;
+                    this.target = compiler.target;
+                }
+            }
+            compiler2.HatUtil = HatUtil;
+            // Block definitions
+            compiler2.statementLibrary = Object.create(null);
+            compiler2.inputLibrary = Object.create(null);
+            compiler2.hatLibrary = Object.create(null);
+            /**
              * The new compiler for Scratch 3 projects.
              */
             class Compiler {
                 constructor(target) {
-                    this.statementLibrary = Object.create(null);
-                    this.inputLibrary = Object.create(null);
-                    this.hatLibrary = Object.create(null);
                     this.labelCount = 0;
                     this.target = target;
                     this.data = target.sb3data;
                     this.blocks = this.data.blocks;
-                    this.statementLibrary['motion_movesteps'] = function (util) {
-                        const STEPS = util.getInput('STEPS', 'number');
-                        util.writeLn(`S.forward(${STEPS});`);
-                        util.visual('drawing');
-                    };
-                    this.statementLibrary['looks_say'] = function (util) {
-                        const MESSAGE = util.getInput('MESSAGE', 'string');
-                        util.writeLn(`S.say(${MESSAGE}, false);`);
-                        util.visual('visible');
-                    };
-                    this.statementLibrary['control_if_else'] = function (util) {
-                        const SUBSTACK = util.getSubstack('SUBSTACK');
-                        const SUBSTACK2 = util.getSubstack('SUBSTACK2');
-                        const CONDITION = util.getInput('CONDITION', 'boolean');
-                        util.writeLn(`if (${CONDITION}) {`);
-                        util.write(SUBSTACK);
-                        util.writeLn('} else {');
-                        util.write(SUBSTACK2);
-                        util.writeLn('}');
-                    };
-                    this.statementLibrary['control_repeat'] = function (util) {
-                        const SUBSTACK = util.getSubstack('SUBSTACK');
-                        const TIMES = util.getInput('TIMES', 'number');
-                        util.writeLn('save();');
-                        util.writeLn(`R.count = ${TIMES};`);
-                        const label = util.addLabel();
-                        util.writeLn('if (R.count >= 0.5) {');
-                        util.writeLn('  R.count -= 1;');
-                        util.write(SUBSTACK);
-                        util.queue(label);
-                        util.writeLn('} else {');
-                        util.writeLn('  restore();');
-                        util.writeLn('}');
-                    };
-                    this.statementLibrary['motion_goto'] = function (util) {
-                        const TO = util.getInput('TO', 'string');
-                        util.writeLn(`S.gotoObject(${TO});`);
-                        util.visual('drawing');
-                    };
-                    this.inputLibrary['operator_add'] = function (util) {
-                        const NUM1 = util.getInput('NUM1', 'number');
-                        const NUM2 = util.getInput('NUM2', 'number');
-                        return numberInput(`(${NUM1} + ${NUM2})`);
-                    };
-                    this.inputLibrary['operator_equals'] = function (util) {
-                        const OPERAND1 = util.getInput('OPERAND1', 'any');
-                        const OPERAND2 = util.getInput('OPERAND2', 'any');
-                        return numberInput(`equal(${OPERAND1}, ${OPERAND2})`);
-                    };
-                    this.inputLibrary['motion_goto_menu'] = function (util) {
-                        const TO = util.getField('TO');
-                        return util.sanitizedInput(TO);
-                    };
-                    this.inputLibrary['operator_random'] = function (util) {
-                        const FROM = util.getInput('FROM', 'number');
-                        const TO = util.getInput('TO', 'number');
-                        return numberInput(`random(${FROM}, ${TO})`);
-                    };
-                    this.hatLibrary['event_whenflagclicked'] = {
-                        handle(compiler, block, fn) {
-                            compiler.target.listeners.whenGreenFlag.push(fn);
-                        },
-                    };
                 }
                 /**
                  * Gets the IDs of all hat blocks.
@@ -8073,8 +8055,8 @@ var P;
                  * Get the compiler for a statement
                  */
                 getStatementCompiler(opcode) {
-                    if (this.statementLibrary[opcode]) {
-                        return this.statementLibrary[opcode];
+                    if (compiler2.statementLibrary[opcode]) {
+                        return compiler2.statementLibrary[opcode];
                     }
                     return null;
                 }
@@ -8082,8 +8064,8 @@ var P;
                  * Get the compiler for an input
                  */
                 getInputCompiler(opcode) {
-                    if (this.inputLibrary[opcode]) {
-                        return this.inputLibrary[opcode];
+                    if (compiler2.inputLibrary[opcode]) {
+                        return compiler2.inputLibrary[opcode];
                     }
                     return null;
                 }
@@ -8091,8 +8073,8 @@ var P;
                  * Get the compiler for a hat
                  */
                 getHatCompiler(opcode) {
-                    if (this.hatLibrary[opcode]) {
-                        return this.hatLibrary[opcode];
+                    if (compiler2.hatLibrary[opcode]) {
+                        return compiler2.hatLibrary[opcode];
                     }
                     return null;
                 }
@@ -8109,20 +8091,26 @@ var P;
                     assertNever(type);
                 }
                 /**
-                 * Converts an input to another type, if necessary
+                 * Applies type coercions to JS to forcibly change it's type.
                  */
-                toType(input, type) {
-                    if (type === 'any') {
-                        return input.source;
+                asType(input, type) {
+                    switch (type) {
+                        case 'string': return '("" + ' + input + ')';
+                        case 'number': return '+' + input;
+                        case 'boolean': return 'bool(' + input + ')';
+                        case 'any': return input;
                     }
+                    assertNever(type);
+                }
+                /**
+                 * Converts a compiled input to another type, if necessary
+                 */
+                convertInputType(input, type) {
+                    // If the types are already identical, no changes are necessary
                     if (input.type === type) {
                         return input.source;
                     }
-                    switch (type) {
-                        case 'string': return '("" + ' + input.source + ')';
-                        case 'number': return '+' + input.source;
-                        case 'boolean': return 'bool(' + input.source + ')';
-                    }
+                    return this.asType(input.source, type);
                 }
                 /**
                  * Sanitize a string into a CompiledInput
@@ -8148,16 +8136,16 @@ var P;
                  * Determines the runtime object that owns a variable in the runtime.
                  * The variable may be created if it cannot be found.
                  */
-                getVariableScope(id) {
-                    if (id in this.target.stage.vars) {
+                getVariableScope(name) {
+                    if (name in this.target.stage.vars) {
                         return 'self';
                     }
-                    else if (id in this.target.vars) {
+                    else if (name in this.target.vars) {
                         return 'S';
                     }
                     else {
                         // Create missing variables in the sprite scope.
-                        this.target.vars[id] = 0;
+                        this.target.vars[name] = 0;
                         return 'S';
                     }
                 }
@@ -8165,30 +8153,30 @@ var P;
                  * Determines the runtime object that owns a list in the runtime.
                  * The list may be created if it cannot be found.
                  */
-                getListScope(id) {
-                    if (id in this.target.stage.lists) {
+                getListScope(name) {
+                    if (name in this.target.stage.lists) {
                         return 'self';
                     }
-                    else if (id in this.target.lists) {
+                    else if (name in this.target.lists) {
                         return 'S';
                     }
                     else {
                         // Create missing lists in the sprite scope.
-                        this.target.lists[id] = [];
+                        this.target.lists[name] = new sb3.Scratch3List();
                         return 'S';
                     }
                 }
                 /**
                  * Gets the runtime reference to a variable.
                  */
-                getVariableReference(id) {
-                    return `${this.getVariableScope(id)}.vars[${this.sanitizedString(id)}]`;
+                getVariableReference(name) {
+                    return `${this.getVariableScope(name)}.vars[${this.sanitizedString(name)}]`;
                 }
                 /**
                  * Gets the runtime reference to a list.
                  */
-                getListReference(id) {
-                    return `${this.getListScope(id)}.lists[${this.sanitizedString(id)}]`;
+                getListReference(name) {
+                    return `${this.getListScope(name)}.lists[${this.sanitizedString(name)}]`;
                 }
                 /**
                  * Compile a native or primitive value.
@@ -8213,13 +8201,13 @@ var P;
                         }
                         case 10 /* TEXT */:
                             // [type, text]
-                            return this.sanitizedInput(native[1]);
+                            return this.sanitizedInput(native[1] + '');
                         case 12 /* VAR */:
                             // [type, name, id]
-                            return anyInput(this.getVariableReference(native[2]));
+                            return anyInput(this.getVariableReference(native[1]));
                         case 13 /* LIST */:
                             // [type, name, id]
-                            return anyInput(this.getListReference(native[2]));
+                            return anyInput(this.getListReference(native[1]));
                         case 11 /* BROADCAST */:
                             // [type, name, id]
                             return this.sanitizedInput(native[1]);
@@ -8233,12 +8221,12 @@ var P;
                                 return numberInput('0x' + hex);
                             }
                             else {
-                                console.warn('expected hex color code but got', hex);
+                                this.warn('expected hex color code but got', hex);
                                 return numberInput('0x0');
                             }
                         }
                         default:
-                            console.warn('unknown native', type, native);
+                            this.warn('unknown native', type, native);
                             return stringInput('""');
                     }
                 }
@@ -8253,7 +8241,7 @@ var P;
                     const input = block.inputs[inputName];
                     if (Array.isArray(input[1])) {
                         const native = input[1];
-                        return this.toType(this.compileNativeInput(native), type);
+                        return this.convertInputType(this.compileNativeInput(native), type);
                     }
                     const inputId = input[1];
                     const inputBlock = this.blocks[inputId];
@@ -8265,7 +8253,7 @@ var P;
                     }
                     const util = new InputUtil(this, inputBlock);
                     const result = compiler(util);
-                    return this.toType(result, type);
+                    return this.convertInputType(result, type);
                 }
                 /**
                  * Get a field of a block.
@@ -8287,8 +8275,11 @@ var P;
                         return '';
                     }
                     const substack = block.inputs[substackName];
-                    const type = substack[0]; // should be 2
+                    const type = substack[0];
                     const id = substack[1];
+                    if (id === null) {
+                        return '';
+                    }
                     return this.compileStack(id);
                 }
                 /**
@@ -8297,8 +8288,10 @@ var P;
                 compileStack(startingBlock) {
                     let script = '';
                     let block = this.blocks[startingBlock];
+                    if (!block)
+                        debugger;
                     while (true) {
-                        const opcode = block.opcode;
+                        var opcode = block.opcode;
                         const compiler = this.getStatementCompiler(opcode);
                         if (compiler) {
                             const util = new StatementUtil(this, block);
@@ -8306,7 +8299,7 @@ var P;
                             script += util.content;
                         }
                         else {
-                            console.warn('unknown statement', opcode, block);
+                            this.warn('unknown statement', opcode, block);
                         }
                         if (!block.next) {
                             break;
@@ -8344,12 +8337,14 @@ var P;
                     }
                     // Parse the script to search for labels, and remove the label metadata.
                     const parseResult = this.parseScript(script);
-                    script = parseResult.script;
+                    const parsedScript = parseResult.script;
                     const startFn = this.target.fns.length;
                     for (let label of Object.keys(parseResult.labels)) {
-                        this.target.fns[label] = P.runtime.createContinuation(script.slice(parseResult.labels[label]));
+                        this.target.fns[label] = P.runtime.createContinuation(parsedScript.slice(parseResult.labels[label]));
                     }
-                    hatCompiler.handle(this, hat, this.target.fns[startFn]);
+                    const startingFn = this.target.fns[startFn];
+                    const util = new HatUtil(this, hat, startingFn);
+                    hatCompiler.handle(util);
                     console.log('compiled sb3 script', hat.opcode, script, this.target);
                 }
                 /**
@@ -8400,4 +8395,1049 @@ var P;
         })(compiler2 = sb3.compiler2 || (sb3.compiler2 = {}));
     })(sb3 = P.sb3 || (P.sb3 = {}));
 })(P || (P = {}));
+/**
+ * Scratch 3 blocks for the new compiler.
+ */
+(function () {
+    const statementLibrary = P.sb3.compiler2.statementLibrary;
+    const inputLibrary = P.sb3.compiler2.inputLibrary;
+    const hatLibrary = P.sb3.compiler2.hatLibrary;
+    /* Statements */
+    statementLibrary['motion_movesteps'] = function (util) {
+        const STEPS = util.getInput('STEPS', 'number');
+        util.writeLn(`S.forward(${STEPS});`);
+        util.visual('drawing');
+    };
+    statementLibrary['motion_turnright'] = function (util) {
+        const DEGREES = util.getInput('DEGREES', 'number');
+        util.writeLn(`S.setDirection(S.direction + ${DEGREES});`);
+        util.visual('visible');
+    };
+    statementLibrary['motion_turnleft'] = function (util) {
+        const DEGREES = util.getInput('DEGREES', 'number');
+        util.writeLn(`S.setDirection(S.direction - ${DEGREES});`);
+        util.visual('visible');
+    };
+    statementLibrary['motion_goto'] = function (util) {
+        const TO = util.getInput('TO', 'any');
+        util.writeLn(`S.gotoObject(${TO});`);
+        util.visual('drawing');
+    };
+    statementLibrary['motion_gotoxy'] = function (util) {
+        const X = util.getInput('X', 'number');
+        const Y = util.getInput('Y', 'number');
+        util.writeLn(`S.moveTo(${X}, ${Y});`);
+        util.visual('drawing');
+    };
+    // statementLibrary['motion_glideto'] = function(util) {
+    //   const secs = block.inputs.SECS;
+    //   const to = block.inputs.TO;
+    //   visualCheck('drawing');
+    //   source += 'save();\n';
+    //   source += 'R.start = runtime.now;\n';
+    //   source += 'R.duration = ' + compileExpression(secs) + ';\n';
+    //   source += 'R.baseX = S.scratchX;\n';
+    //   source += 'R.baseY = S.scratchY;\n';
+    //   source += 'var to = self.getPosition(' + compileExpression(to) + ');\n';
+    //   source += 'if (to) {';
+    //   source += '  R.deltaX = to.x - S.scratchX;\n';
+    //   source += '  R.deltaY = to.y - S.scratchY;\n';
+    //   const id = label();
+    //   source += '  var f = (runtime.now - R.start) / (R.duration * 1000);\n';
+    //   source += '  if (f > 1 || isNaN(f)) f = 1;\n';
+    //   source += '  S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
+    //   source += '  if (f < 1) {\n';
+    //   forceQueue(id);
+    //   source += '  }\n';
+    //   source += '  restore();\n';
+    //   source += '}\n';
+    // };
+    // statementLibrary['motion_glidesecstoxy'] = function(util) {
+    //   const secs = block.inputs.SECS;
+    //   const x = block.inputs.X;
+    //   const y = block.inputs.Y;
+    //   visualCheck('drawing');
+    //   source += 'save();\n';
+    //   source += 'R.start = runtime.now;\n';
+    //   source += 'R.duration = ' + compileExpression(secs) + ';\n';
+    //   source += 'R.baseX = S.scratchX;\n';
+    //   source += 'R.baseY = S.scratchY;\n';
+    //   source += 'R.deltaX = ' + compileExpression(x) + ' - S.scratchX;\n';
+    //   source += 'R.deltaY = ' + compileExpression(y) + ' - S.scratchY;\n';
+    //   const id = label();
+    //   source += 'var f = (runtime.now - R.start) / (R.duration * 1000);\n';
+    //   source += 'if (f > 1) f = 1;\n';
+    //   source += 'S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
+    //   source += 'if (f < 1) {\n';
+    //   forceQueue(id);
+    //   source += '}\n';
+    //   source += 'restore();\n';
+    // };
+    // statementLibrary['motion_pointindirection'] = function(util) {
+    //   const direction = block.inputs.DIRECTION;
+    //   visualCheck('visible');
+    //   source += 'S.direction = ' + compileExpression(direction) + ';\n';
+    // };
+    // statementLibrary['motion_pointtowards'] = function(util) {
+    //   const towards = block.inputs.TOWARDS;
+    //   source += 'S.pointTowards(' + compileExpression(towards) + ');\n';
+    //   visualCheck('visible');
+    // };
+    // statementLibrary['motion_changexby'] = function(util) {
+    //   const dx = block.inputs.DX;
+    //   source += 'S.moveTo(S.scratchX + ' + compileExpression(dx, 'number') + ', S.scratchY);\n';
+    //   visualCheck('drawing');
+    // };
+    // statementLibrary['motion_setx'] = function(util) {
+    //   const x = block.inputs.X;
+    //   source += 'S.moveTo(' + compileExpression(x, 'number') + ', S.scratchY);\n';
+    //   visualCheck('drawing');
+    // };
+    // statementLibrary['motion_changeyby'] = function(util) {
+    //   const dy = block.inputs.DY;
+    //   source += 'S.moveTo(S.scratchX, S.scratchY + ' + compileExpression(dy, 'number') + ');\n';
+    //   visualCheck('drawing');
+    // };
+    // statementLibrary['motion_sety'] = function(util) {
+    //   const y = block.inputs.Y;
+    //   source += 'S.moveTo(S.scratchX, ' + compileExpression(y, 'number') + ');\n';
+    //   visualCheck('drawing');
+    // };
+    // statementLibrary['motion_ifonedgebounce'] = function(util) {
+    //   // TODO: set visual if bounced
+    //   source += 'S.bounceOffEdge();\n';
+    // };
+    // statementLibrary['motion_setrotationstyle'] = function(util) {
+    //   const style = block.fields.STYLE[0];
+    //   source += 'S.rotationStyle = ' + P.utils.parseRotationStyle(style) + ';\n';
+    //   visualCheck('visible');
+    // };
+    // // Looks
+    // statementLibrary['looks_sayforsecs'] = function(util) {
+    //   const message = block.inputs.MESSAGE;
+    //   const secs = block.inputs.SECS;
+    //   source += 'save();\n';
+    //   source += 'R.id = S.say(' + compileExpression(message) + ', false);\n';
+    //   source += 'R.start = runtime.now;\n';
+    //   source += 'R.duration = ' + compileExpression(secs, 'number') + ';\n';
+    //   const id = label();
+    //   source += 'if (runtime.now - R.start < R.duration * 1000) {\n';
+    //   forceQueue(id);
+    //   source += '}\n';
+    //   source += 'if (S.sayId === R.id) {\n';
+    //   source += '  S.say("");\n';
+    //   source += '}\n';
+    //   source += 'restore();\n';
+    //   visualCheck('visible');
+    // };
+    // statementLibrary['looks_say'] = function(util) {
+    //   const message = block.inputs.MESSAGE;
+    //   source += 'S.say(' + compileExpression(message) + ', false);\n';
+    //   visualCheck('visible');
+    // };
+    // statementLibrary['looks_thinkforsecs'] = function(util) {
+    //   const message = block.inputs.MESSAGE;
+    //   const secs = block.inputs.SECS;
+    //   source += 'save();\n';
+    //   source += 'R.id = S.say(' + compileExpression(message) + ', true);\n';
+    //   source += 'R.start = runtime.now;\n';
+    //   source += 'R.duration = ' + compileExpression(secs, 'number') + ';\n';
+    //   const id = label();
+    //   source += 'if (runtime.now - R.start < R.duration * 1000) {\n';
+    //   forceQueue(id);
+    //   source += '}\n';
+    //   source += 'if (S.sayId === R.id) {\n';
+    //   source += '  S.say("");\n';
+    //   source += '}\n';
+    //   source += 'restore();\n';
+    //   visualCheck('visible');
+    // };
+    // statementLibrary['looks_think'] = function(util) {
+    //   const message = block.inputs.MESSAGE;
+    //   source += 'S.say(' + compileExpression(message) + ', true);\n';
+    //   visualCheck('visible');
+    // };
+    // statementLibrary['looks_switchcostumeto'] = function(util) {
+    //   const costume = block.inputs.COSTUME;
+    //   source += 'S.setCostume(' + compileExpression(costume) + ');\n';
+    //   visualCheck('visible');
+    // };
+    // statementLibrary['looks_nextcostume'] = function(util) {
+    //   source += 'S.showNextCostume();\n';
+    //   visualCheck('visible');
+    // };
+    // statementLibrary['looks_switchbackdropto'] = function(util) {
+    //   const backdrop = block.inputs.BACKDROP;
+    //   source += 'self.setCostume(' + compileExpression(backdrop) + ');\n';
+    //   visualCheck('always');
+    //   source += 'var threads = backdropChange();\n';
+    //   source += 'if (threads.indexOf(BASE) !== -1) {return;}\n';
+    // };
+    // statementLibrary['looks_nextbackdrop'] = function(util) {
+    //   source += 'self.showNextCostume();\n';
+    //   visualCheck('always');
+    //   source += 'var threads = backdropChange();\n';
+    //   source += 'if (threads.indexOf(BASE) !== -1) {return;}\n';
+    // };
+    // statementLibrary['looks_changesizeby'] = function(util) {
+    //   const change = block.inputs.CHANGE;
+    //   source += 'var f = S.scale + ' + compileExpression(change) + ' / 100;\n';
+    //   source += 'S.scale = f < 0 ? 0 : f;\n';
+    //   visualCheck('visible');
+    // };
+    // statementLibrary['looks_setsizeto'] = function(util) {
+    //   const size = block.inputs.SIZE;
+    //   source += 'var f = ' + compileExpression(size) + ' / 100;\n';
+    //   source += 'S.scale = f < 0 ? 0 : f;\n';
+    //   visualCheck('visible');
+    // };
+    // statementLibrary['looks_changeeffectby'] = function(util) {
+    //   const effect = block.fields.EFFECT[0];
+    //   const change = block.inputs.CHANGE;
+    //   source += 'S.changeFilter(' + sanitizedString(effect).toLowerCase() + ', ' + compileExpression(change, 'number') + ');\n';
+    //   visualCheck('visible');
+    // };
+    // statementLibrary['looks_seteffectto'] = function(util) {
+    //   const effect = block.fields.EFFECT[0];
+    //   const value = block.inputs.VALUE;
+    //   // Lowercase conversion is necessary to remove capitals, which we do not want.
+    //   source += 'S.setFilter(' + sanitizedString(effect).toLowerCase() + ', ' + compileExpression(value, 'number') + ');\n';
+    //   visualCheck('visible');
+    // };
+    // statementLibrary['looks_cleargraphiceffects'] = function(util) {
+    //   source += 'S.resetFilters();\n';
+    //   visualCheck('visible');
+    // };
+    // statementLibrary['looks_show'] = function(util) {
+    //   source += 'S.visible = true;\n';
+    //   visualCheck('always');
+    //   updateBubble();
+    // };
+    // statementLibrary['looks_hide'] = function(util) {
+    //   visualCheck('visible');
+    //   source += 'S.visible = false;\n';
+    //   updateBubble();
+    // };
+    // statementLibrary['looks_gotofrontback'] = function(util) {
+    //   const frontBack = block.fields.FRONT_BACK[0];
+    //   source += 'var i = self.children.indexOf(S);\n';
+    //   source += 'if (i !== -1) self.children.splice(i, 1);\n';
+    //   if (frontBack === 'front') {
+    //     source += 'self.children.push(S);\n';
+    //   } else {
+    //     // `frontBack` is probably 'back', but it doesn't matter
+    //     source += 'self.children.unshift(S);\n';
+    //   }
+    // };
+    // statementLibrary['looks_goforwardbackwardlayers'] = function(util) {
+    //   const direction = block.fields.FORWARD_BACKWARD[0];
+    //   const number = block.inputs.NUM;
+    //   source += 'var i = self.children.indexOf(S);\n';
+    //   source += 'if (i !== -1) {\n';
+    //   source += '  self.children.splice(i, 1);\n';
+    //   if (direction === 'forward') {
+    //     source += '  self.children.splice(Math.min(self.children.length - 1, i + ' + compileExpression(number) + '), 0, S);\n';
+    //   } else {
+    //     // `direction` is probably 'backward', but it doesn't matter
+    //     source += '  self.children.splice(Math.max(0, i - ' + compileExpression(number) + '), 0, S);\n';
+    //   }
+    //   source += '}\n';
+    // };
+    // // Sounds
+    // statementLibrary['sound_playuntildone'] = function(util) {
+    //   const sound = block.inputs.SOUND_MENU;
+    //   source += 'var sound = S.getSound(' + compileExpression(sound) + ');\n';
+    //   source += 'if (sound) {\n';
+    //   source += '  playSound(sound);\n';
+    //   wait('sound.duration');
+    //   source += '}\n';
+    // };
+    // statementLibrary['sound_play'] = function(util) {
+    //   const sound = block.inputs.SOUND_MENU;
+    //   source += 'var sound = S.getSound(' + compileExpression(sound) + ');\n';
+    //   source += 'if (sound) {\n';
+    //   source += '  playSound(sound);\n';
+    //   source += '}\n';
+    // };
+    // statementLibrary['sound_stopallsounds'] = function(util) {
+    //   if (P.audio.context) {
+    //     source += 'self.stopAllSounds();\n';
+    //   }
+    // };
+    // statementLibrary['sound_changevolumeby'] = function(util) {
+    //   const volume = block.inputs.VOLUME;
+    //   source += 'S.volume = Math.max(0, Math.min(1, S.volume + ' + compileExpression(volume, 'number') + ' / 100));\n';
+    //   source += 'if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
+    //   source += 'for (var sounds = S.sounds, i = sounds.length; i--;) {\n';
+    //   source += '  var sound = sounds[i];\n';
+    //   source += '  if (sound.node && sound.target === S) {\n';
+    //   source += '    sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
+    //   source += '  }\n';
+    //   source += '}\n';
+    // };
+    // statementLibrary['sound_setvolumeto'] = function(util) {
+    //   const volume = block.inputs.VOLUME;
+    //   source += 'S.volume = Math.max(0, Math.min(1, ' + compileExpression(volume, 'number') + ' / 100));\n';
+    //   source += 'if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
+    //   source += 'for (var sounds = S.sounds, i = sounds.length; i--;) {\n';
+    //   source += '  var sound = sounds[i];\n';
+    //   source += '  if (sound.node && sound.target === S) {\n';
+    //   source += '    sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
+    //   source += '  }\n';
+    //   source += '}\n';
+    // };
+    // // Event
+    // statementLibrary['event_broadcast'] = function(util) {
+    //   const input = block.inputs.BROADCAST_INPUT;
+    //   source += 'var threads = broadcast(' + compileExpression(input) + ');\n';
+    //   source += 'if (threads.indexOf(BASE) !== -1) {return;}\n';
+    // };
+    // statementLibrary['event_broadcastandwait'] = function(util) {
+    //   const input = block.inputs.BROADCAST_INPUT;
+    //   source += 'save();\n';
+    //   source += 'R.threads = broadcast(' + compileExpression(input) + ');\n';
+    //   source += 'if (R.threads.indexOf(BASE) !== -1) {return;}\n';
+    //   const id = label();
+    //   source += 'if (running(R.threads)) {\n';
+    //   forceQueue(id);
+    //   source += '}\n';
+    //   source += 'restore();\n';
+    // };
+    // // Control
+    statementLibrary['control_wait'] = function (util) {
+        const DURATION = util.getInput('DURATION', 'any');
+        util.writeLn('save();');
+        util.writeLn('R.start = runtime.now;');
+        util.writeLn(`R.duration = ${DURATION};`);
+        util.writeLn(`var first = true;`);
+        const label = util.addLabel();
+        util.writeLn('if (runtime.now - R.start < R.duration * 1000 || first) {');
+        util.writeLn('  var first;');
+        util.forceQueue(label);
+        util.writeLn('}');
+        util.writeLn('restore();');
+    };
+    statementLibrary['control_repeat'] = function (util) {
+        const TIMES = util.getInput('TIMES', 'any');
+        const SUBSTACK = util.getSubstack('SUBSTACK');
+        util.writeLn('save();');
+        util.writeLn(`R.count = ${TIMES};`);
+        const label = util.addLabel();
+        util.writeLn('if (R.count >= 0.5) {');
+        util.writeLn('  R.count -= 1;');
+        util.writeLn(SUBSTACK);
+        util.queue(label);
+        util.writeLn('} else {');
+        util.writeLn('  restore();');
+        util.writeLn('}');
+    };
+    // statementLibrary['control_forever'] = function(util) {
+    //   const substack = block.inputs.SUBSTACK;
+    //   const id = label();
+    //   compileSubstack(substack);
+    //   queue(id);
+    // };
+    statementLibrary['control_if'] = function (util) {
+        const CONDITION = util.getInput('CONDITION', 'any');
+        const SUBSTACK = util.getSubstack('SUBSTACK');
+        util.writeLn(`if (${CONDITION}) {`);
+        util.writeLn(SUBSTACK);
+        util.writeLn('}');
+    };
+    statementLibrary['control_if_else'] = function (util) {
+        const CONDITION = util.getInput('CONDITION', 'any');
+        const SUBSTACK = util.getSubstack('SUBSTACK');
+        const SUBSTACK2 = util.getSubstack('SUBSTACK2');
+        util.writeLn(`if (${CONDITION}) {`);
+        util.writeLn(SUBSTACK);
+        util.writeLn('} else {');
+        util.writeLn(SUBSTACK2);
+        util.writeLn('}');
+    };
+    // statementLibrary['control_wait_until'] = function(util) {
+    //   const condition = block.inputs.CONDITION;
+    //   const id = label();
+    //   source += 'if (!' + compileExpression(condition) + ') {\n';
+    //   forceQueue(id);
+    //   source += '}\n';
+    // };
+    statementLibrary['control_repeat_until'] = function (util) {
+        const CONDITION = util.getInput('CONDITION', 'boolean');
+        const SUBSTACK = util.getSubstack('SUBSTACK');
+        const label = util.addLabel();
+        util.writeLn(`if (!${CONDITION}) {`);
+        util.writeLn(SUBSTACK);
+        util.queue(label);
+        util.writeLn('}');
+    };
+    statementLibrary['control_while'] = function (util) {
+        const CONDITION = util.getInput('CONDITION', 'boolean');
+        const SUBSTACK = util.getSubstack('SUBSTACK');
+        const label = util.addLabel();
+        util.writeLn(`if (${CONDITION}) {`);
+        util.writeLn(SUBSTACK);
+        util.queue(label);
+        util.writeLn('}');
+    };
+    // statementLibrary['control_all_at_once'] = function(util) {
+    //   // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_control.js#L194-L199
+    //   const substack = block.inputs.SUBSTACK;
+    //   compileSubstack(substack);
+    // };
+    statementLibrary['control_stop'] = function (util) {
+        const STOP_OPTION = util.getField('STOP_OPTION');
+        switch (STOP_OPTION) {
+            case 'all':
+                util.writeLn('runtime.stopAll(); return;');
+                break;
+            case 'this script':
+                util.writeLn('endCall(); return;');
+                break;
+            case 'other scripts in sprite':
+            case 'other scripts in stage':
+                util.writeLn('for (var i = 0; i < runtime.queue.length; i++) {');
+                util.writeLn('  if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {');
+                util.writeLn('    runtime.queue[i] = undefined;');
+                util.writeLn('  }');
+                util.writeLn('}');
+                break;
+        }
+    };
+    // statementLibrary['control_create_clone_of'] = function(util) {
+    //   const option = block.inputs.CLONE_OPTION;
+    //   source += 'clone(' + compileExpression(option) + ');\n';
+    // };
+    // statementLibrary['control_delete_this_clone'] = function(util) {
+    //   source += 'if (S.isClone) {\n';
+    //   source += '  S.remove();\n';
+    //   source += '  var i = self.children.indexOf(S);\n';
+    //   source += '  if (i !== -1) self.children.splice(i, 1);\n';
+    //   source += '  for (var i = 0; i < runtime.queue.length; i++) {\n';
+    //   source += '    if (runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
+    //   source += '      runtime.queue[i] = undefined;\n';
+    //   source += '    }\n';
+    //   source += '  }\n';
+    //   source += '  return;\n';
+    //   source += '}\n';
+    // };
+    // statementLibrary['control_incr_counter'] = function(util) {
+    //   source += 'self.counter++;\n';
+    // };
+    // statementLibrary['control_clear_counter'] = function(util) {
+    //   source += 'self.counter = 0;\n';
+    // };
+    // // Sensing
+    statementLibrary['sensing_askandwait'] = function (util) {
+        const QUESTION = util.getInput('QUESTION', 'string');
+        util.writeLn('R.id = self.nextPromptId++;');
+        const label1 = util.addLabel();
+        util.writeLn('if (self.promptId < R.id) {');
+        util.forceQueue(label1);
+        util.writeLn('}');
+        util.writeLn(`S.ask(${QUESTION});`);
+        const label2 = util.addLabel();
+        util.writeLn('if (self.promptId === R.id) {');
+        util.forceQueue(label2);
+        util.writeLn('}');
+        util.visual('always');
+        // source += 'R.id = self.nextPromptId++;\n';
+        // // 1 - wait until we are next up for the asking
+        // const id1 = label();
+        // source += 'if (self.promptId < R.id) {\n';
+        // forceQueue(id1);
+        // source += '}\n';
+        // source += 'S.ask(' + compileExpression(QUESTION, 'string') + ');\n';
+        // // 2 - wait until the prompt has been answered
+        // const id2 = label();
+        // source += 'if (self.promptId === R.id) {\n';
+        // forceQueue(id2);
+        // source += '}\n';
+        // visualCheck('always');
+    };
+    // statementLibrary['sensing_setdragmode'] = function(util) {
+    //   const dragMode = block.fields.DRAG_MODE[0];
+    //   if (dragMode === 'draggable') {
+    //     source += 'S.isDraggable = true;\n';
+    //   } else {
+    //     // it doesn't matter what `dragMode` is at this point
+    //     source += 'S.isDraggable = false;\n';
+    //   }
+    // };
+    statementLibrary['sensing_resettimer'] = function (util) {
+        util.writeLn('runtime.timerStart = runtime.now;');
+    };
+    // Data
+    statementLibrary['data_setvariableto'] = function (util) {
+        const VARIABLE = util.getVariableReference('VARIABLE');
+        const VALUE = util.getInput('VALUE', 'any');
+        util.writeLn(`${VARIABLE} = ${VALUE};`);
+    };
+    statementLibrary['data_changevariableby'] = function (util) {
+        const VARIABLE = util.getVariableReference('VARIABLE');
+        const VALUE = util.getInput('VALUE', 'any');
+        util.writeLn(`${VARIABLE} = ${util.asType(VARIABLE, 'number')} + ${VALUE};`);
+    };
+    statementLibrary['data_showvariable'] = function (util) {
+        const VARIABLE = util.sanitizedString(util.getField('VARIABLE'));
+        const scope = util.getVariableScope('VARIABLE');
+        util.writeLn(`${scope}.showVariable(${VARIABLE}, true);`);
+    };
+    statementLibrary['data_hidevariable'] = function (util) {
+        const VARIABLE = util.sanitizedString(util.getField('VARIABLE'));
+        const scope = util.getVariableScope('VARIABLE');
+        util.writeLn(`${scope}.showVariable(${VARIABLE}, false);`);
+    };
+    statementLibrary['data_showlist'] = function (util) {
+        const LIST = util.sanitizedString(util.getField('LIST'));
+        const scope = util.getListScope('LIST');
+        util.writeLn(`${scope}.showVariable(${LIST}, true);`);
+    };
+    statementLibrary['data_hidelist'] = function (util) {
+        const LIST = util.sanitizedString(util.getField('LIST'));
+        const scope = util.getListScope('LIST');
+        util.writeLn(`${scope}.showVariable(${LIST}, false);`);
+    };
+    statementLibrary['data_addtolist'] = function (util) {
+        const LIST = util.getListReference('LIST');
+        const ITEM = util.getInput('ITEM', 'any');
+        util.writeLn(`${LIST}.push(${ITEM});`);
+    };
+    statementLibrary['data_deleteoflist'] = function (util) {
+        const LIST = util.getListReference('LIST');
+        const INDEX = util.getInput('INDEX', 'any');
+        util.writeLn(`${LIST}.deleteLine(${INDEX});`);
+    };
+    statementLibrary['data_deletealloflist'] = function (util) {
+        const LIST = util.getListReference('LIST');
+        util.writeLn(`${LIST}.deleteLine("all");`);
+    };
+    statementLibrary['data_insertatlist'] = function (util) {
+        const LIST = util.getListReference('LIST');
+        const ITEM = util.getInput('ITEM', 'any');
+        const INDEX = util.getInput('INDEX', 'any');
+        util.writeLn(`${LIST}.insert(${INDEX}, ${ITEM});`);
+    };
+    statementLibrary['data_replaceitemoflist'] = function (util) {
+        const LIST = util.getListReference('LIST');
+        const ITEM = util.getInput('ITEM', 'any');
+        const INDEX = util.getInput('INDEX', 'any');
+        util.writeLn(`${LIST}.set(${INDEX}, ${ITEM});`);
+    };
+    statementLibrary['procedures_call'] = function (util) {
+        const mutation = util.block.mutation;
+        const name = mutation.proccode;
+        if (P.config.debug && name === 'forkphorus:debugger;') {
+            util.writeLn('/* forkphorus debugger */ debugger;');
+            return;
+        }
+        const id = util.nextLabel();
+        util.write(`call(S.procedures[${util.sanitizedString(name)}], ${id}, [`);
+        // The mutation has a stringified JSON list of input IDs... it's weird.
+        const inputNames = JSON.parse(mutation.argumentids);
+        for (const inputName of inputNames) {
+            util.write(`${util.getInput(name, 'any')}, `);
+        }
+        util.write(']);\n');
+        util.writeLn('return;');
+        util.addLabel();
+    };
+    // // Pen (extension)
+    // statementLibrary['pen_clear'] = function(util) {
+    //   source += 'self.clearPen();\n';
+    //   visualCheck('always');
+    // };
+    // statementLibrary['pen_stamp'] = function(util) {
+    //   source += 'S.stamp();\n';
+    //   visualCheck('always');
+    // };
+    // statementLibrary['pen_penDown'] = function(util) {
+    //   source += 'S.isPenDown = true;\n';
+    //   source += 'S.dotPen();\n';
+    //   visualCheck('always');
+    // };
+    // statementLibrary['pen_penUp'] = function(util) {
+    //   // TODO: determine visualCheck variant
+    //   // definitely not 'always' or 'visible', might be a 'if (S.isPenDown)'
+    //   source += 'S.isPenDown = false;\n';
+    // };
+    // statementLibrary['pen_setPenColorToColor'] = function(util) {
+    //   const color = block.inputs.COLOR;
+    //   source += 'S.setPenColor(' + compileExpression(color, 'number') + ');\n';
+    // };
+    // statementLibrary['pen_setPenHueToNumber'] = function(util) {
+    //   const hue = block.inputs.HUE;
+    //   source += 'S.setPenColorHSL();\n';
+    //   source += 'S.penHue = ' + compileExpression(hue, 'number') + ' * 360 / 200;\n';
+    //   source += 'S.penSaturation = 100;\n';
+    // };
+    // statementLibrary['pen_changePenHueBy'] = function(util) {
+    //   const hue = block.inputs.HUE;
+    //   source += 'S.setPenColorHSL();\n';
+    //   source += 'S.penHue += ' + compileExpression(hue, 'number') + ' * 360 / 200;\n';
+    //   source += 'S.penSaturation = 100;\n';
+    // };
+    // statementLibrary['pen_setPenShadeToNumber'] = function(util) {
+    //   const shade = block.inputs.SHADE;
+    //   source += 'S.setPenColorHSL();\n';
+    //   source += 'S.penLightness = ' + compileExpression(shade, 'number') + ' % 200;\n';
+    //   source += 'if (S.penLightness < 0) S.penLightness += 200;\n';
+    //   source += 'S.penSaturation = 100;\n';
+    // };
+    // statementLibrary['pen_changePenShadeBy'] = function(util) {
+    //   const shade = block.inputs.SHADE;
+    //   source += 'S.setPenColorHSL();\n';
+    //   source += 'S.penLightness = (S.penLightness + ' + compileExpression(shade, 'number') + ') % 200;\n';
+    //   source += 'if (S.penLightness < 0) S.penLightness += 200;\n';
+    //   source += 'S.penSaturation = 100;\n';
+    // };
+    // statementLibrary['pen_setPenColorParamTo'] = function(util) {
+    //   const colorParam = block.inputs.COLOR_PARAM;
+    //   const value = block.inputs.VALUE;
+    //   source += 'S.setPenColorParam(' + compileExpression(colorParam, 'string') + ', ' + compileExpression(value, 'number') + ');\n';
+    // };
+    // statementLibrary['pen_changePenColorParamBy'] = function(util) {
+    //   const colorParam = block.inputs.COLOR_PARAM;
+    //   const value = block.inputs.VALUE;
+    //   source += 'S.changePenColorParam(' + compileExpression(colorParam, 'string') + ', ' + compileExpression(value, 'number') + ');\n';
+    // };
+    // statementLibrary['pen_changePenSizeBy'] = function(util) {
+    //   const size = block.inputs.SIZE;
+    //   source += 'S.penSize = Math.max(1, S.penSize + ' + compileExpression(size, 'number') + ');\n';
+    // };
+    // statementLibrary['pen_setPenSizeTo'] = function(util) {
+    //   const size = block.inputs.SIZE;
+    //   source += 'S.penSize = Math.max(1, ' + compileExpression(size, 'number') + ');\n';
+    // };
+    // // Music (extension)
+    // statementLibrary['music_setTempo'] = function(util) {
+    //   const tempo = block.inputs.TEMPO;
+    //   source += 'self.tempoBPM = ' + compileExpression(tempo, 'number') + ';\n';
+    // };
+    // statementLibrary['music_changeTempo'] = function(util) {
+    //   const tempo = block.inputs.TEMPO;
+    //   source += 'self.tempoBPM += ' + compileExpression(tempo, 'number') + ';\n';
+    // };
+    // // Legacy no-ops.
+    // // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L19
+    // motion_scroll_right: noopStatement,
+    // motion_scroll_up: noopStatement,
+    // motion_align_scene: noopStatement,
+    // // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_looks.js#L248
+    // looks_changestretchby: noopStatement,
+    // looks_setstretchto: noopStatement,
+    // looks_hideallsprites: noopStatement,
+    /* Inputs */
+    inputLibrary['argument_reporter_boolean'] = function (util) {
+        const NAME = util.sanitizedString(util.getField('NAME'));
+        return util.booleanInput(util.asType(`C.args[${NAME}]`, 'boolean'));
+    };
+    inputLibrary['argument_reporter_string_number'] = function (util) {
+        const VALUE = util.sanitizedString(util.getField('VALUE'));
+        return util.anyInput(`C.args[${VALUE}]`);
+    };
+    inputLibrary['control_create_clone_of_menu'] = function (util) {
+        return util.fieldInput('CLONE_OPTION');
+    };
+    inputLibrary['control_get_counter'] = function (util) {
+        return util.numberInput('self.counter');
+    };
+    inputLibrary['data_itemoflist'] = function (util) {
+        const LIST = util.getListReference('LIST');
+        const INDEX = util.getInput('INDEX', 'any');
+        return util.anyInput(`getLineOfList(${LIST}, ${INDEX})`);
+    };
+    inputLibrary['data_itemnumoflist'] = function (util) {
+        const LIST = util.getListReference('LIST');
+        const ITEM = util.getInput('ITEM', 'any');
+        return util.numberInput(`listIndexOf(${LIST}, ${ITEM})`);
+    };
+    inputLibrary['data_lengthoflist'] = function (util) {
+        const LIST = util.getListReference('LIST');
+        return util.numberInput(`${LIST}.length`);
+    };
+    inputLibrary['data_listcontainsitem'] = function (util) {
+        const LIST = util.getListReference('LIST');
+        const ITEM = util.getInput('ITEM', 'any');
+        return util.booleanInput(`listContains(${LIST}, ${ITEM})`);
+    };
+    inputLibrary['looks_backdropnumbername'] = function (util) {
+        const NUMBER_NAME = util.getField('NUMBER_NAME');
+        if (NUMBER_NAME === 'number') {
+            return util.numberInput('(self.currentCostumeIndex + 1)');
+        }
+        else {
+            return util.stringInput('self.costumes[self.currentCostumeIndex].name');
+        }
+    };
+    inputLibrary['looks_backdrops'] = function (util) {
+        return util.fieldInput('BACKDROP');
+    };
+    inputLibrary['looks_costume'] = function (util) {
+        return util.fieldInput('COSTUME');
+    };
+    inputLibrary['looks_costumenumbername'] = function (util) {
+        const NUMBER_NAME = util.getField('NUMBER_NAME');
+        if (NUMBER_NAME === 'number') {
+            return util.numberInput('(S.currentCostumeIndex + 1)');
+        }
+        else {
+            return util.stringInput('S.costumes[S.currentCostumeIndex].name');
+        }
+    };
+    inputLibrary['looks_size'] = function (util) {
+        return util.numberInput('(S.scale * 100');
+    };
+    inputLibrary['makeymakey_menu_KEY'] = function (util) {
+        return util.fieldInput('KEY');
+    };
+    inputLibrary['matrix'] = function (util) {
+        return util.fieldInput('MATRIX');
+    };
+    inputLibrary['motion_direction'] = function (util) {
+        return util.numberInput('S.direction');
+    };
+    inputLibrary['motion_glideto_menu'] = function (util) {
+        return util.fieldInput('TO');
+    };
+    inputLibrary['motion_goto_menu'] = function (util) {
+        return util.fieldInput('TO');
+    };
+    inputLibrary['motion_pointowards_menu'] = function (util) {
+        return util.fieldInput('TOWARDS');
+    };
+    inputLibrary['motion_xposition'] = function (util) {
+        return util.numberInput('S.scratchX');
+    };
+    inputLibrary['motion_yposition'] = function (util) {
+        return util.numberInput('S.scratchY');
+    };
+    inputLibrary['music_getTempo'] = function (util) {
+        return util.numberInput('self.tempoBPM');
+    };
+    inputLibrary['operator_add'] = function (util) {
+        const NUM1 = util.getInput('NUM1', 'number');
+        const NUM2 = util.getInput('NUM2', 'number');
+        return util.numberInput(`(${NUM1} + ${NUM2} || 0)`);
+    };
+    inputLibrary['operator_and'] = function (util) {
+        const OPERAND1 = util.getInput('OPERAND1', 'any');
+        const OPERAND2 = util.getInput('OPERAND2', 'any');
+        return util.booleanInput(`(${OPERAND1} && ${OPERAND2})`);
+    };
+    inputLibrary['operator_contains'] = function (util) {
+        const STRING1 = util.getInput('STRING1', 'string');
+        const STRING2 = util.getInput('STRING2', 'string');
+        // TODO: case sensitivity?
+        // TODO: use indexOf?
+        return util.booleanInput(`${STRING1}.includes(${STRING2})`);
+    };
+    inputLibrary['operator_divide'] = function (util) {
+        const NUM1 = util.getInput('NUM1', 'number');
+        const NUM2 = util.getInput('NUM2', 'number');
+        return util.numberInput(`(${NUM1} / ${NUM2} || 0)`);
+    };
+    inputLibrary['operator_equals'] = function (util) {
+        const OPERAND1 = util.getInput('OPERAND1', 'any');
+        const OPERAND2 = util.getInput('OPERAND2', 'any');
+        return util.booleanInput(`equal(${OPERAND1}, ${OPERAND2})`);
+    };
+    inputLibrary['operator_gt'] = function (util) {
+        const OPERAND1 = util.getInput('OPERAND1', 'any');
+        const OPERAND2 = util.getInput('OPERAND2', 'any');
+        // TODO: use numGreater?
+        return util.booleanInput(`(compare(${OPERAND1}, ${OPERAND2}) === 1)`);
+    };
+    inputLibrary['operator_join'] = function (util) {
+        const STRING1 = util.getInput('STRING1', 'string');
+        const STRING2 = util.getInput('STRING2', 'string');
+        return util.stringInput(`(${STRING1} + ${STRING2})`);
+    };
+    inputLibrary['operator_length'] = function (util) {
+        const STRING = util.getInput('STRING', 'string');
+        // TODO: parenthesis important?
+        return util.numberInput(`(${STRING}).length`);
+    };
+    inputLibrary['operator_letter_of'] = function (util) {
+        const STRING = util.getInput('STRING', 'string');
+        const LETTER = util.getInput('LETTER', 'number');
+        return util.stringInput(`((${STRING})[(${LETTER} | 0) - 1] || "")`);
+    };
+    inputLibrary['operator_lt'] = function (util) {
+        const OPERAND1 = util.getInput('OPERAND1', 'any');
+        const OPERAND2 = util.getInput('OPERAND2', 'any');
+        // TODO: use numLess?
+        return util.booleanInput(`(compare(${OPERAND1}, ${OPERAND2}) === -1)`);
+    };
+    inputLibrary['operator_mathop'] = function (util) {
+        const OPERATOR = util.getField('OPERATOR');
+        const NUM = util.getInput('NUM', 'number');
+        switch (OPERATOR) {
+            case 'abs':
+                return util.numberInput(`Math.abs(${NUM})`);
+            case 'floor':
+                return util.numberInput(`Math.floor(${NUM})`);
+            case 'sqrt':
+                return util.numberInput(`Math.sqrt(${NUM})`);
+            case 'ceiling':
+                return util.numberInput(`Math.ceil(${NUM})`);
+            case 'cos':
+                return util.numberInput(`Math.cos(${NUM} * Math.PI / 180)`);
+            case 'sin':
+                return util.numberInput(`Math.sin(${NUM} * Math.PI / 180)`);
+            case 'tan':
+                return util.numberInput(`Math.tan(${NUM} * Math.PI / 180)`);
+            case 'asin':
+                return util.numberInput(`(Math.asin(${NUM}) * 180 / Math.PI)`);
+            case 'acos':
+                return util.numberInput(`(Math.acos(${NUM}) * 180 / Math.PI)`);
+            case 'atan':
+                return util.numberInput(`(Math.atan(${NUM}) * 180 / Math.PI)`);
+            case 'ln':
+                return util.numberInput(`Math.log(${NUM})`);
+            case 'log':
+                return util.numberInput(`(Math.log(${NUM}) / Math.LN10)`);
+            case 'e ^':
+                return util.numberInput(`Math.exp(${NUM})`);
+            case '10 ^':
+                return util.numberInput(`Math.exp(${NUM} * Math.LN10)`);
+            default:
+                return util.numberInput('0');
+        }
+    };
+    inputLibrary['operator_mod'] = function (util) {
+        const NUM1 = util.getInput('NUM1', 'number');
+        const NUM2 = util.getInput('NUM2', 'number');
+        return util.numberInput(`mod(${NUM1}, ${NUM2})`);
+    };
+    inputLibrary['operator_multiply'] = function (util) {
+        const NUM1 = util.getInput('NUM1', 'number');
+        const NUM2 = util.getInput('NUM2', 'number');
+        return util.numberInput(`(${NUM1} * ${NUM2} || 0)`);
+    };
+    inputLibrary['operator_not'] = function (util) {
+        const OPERAND = util.getInput('OPERAND', 'any');
+        return util.booleanInput(`!${OPERAND}`);
+    };
+    inputLibrary['operator_or'] = function (util) {
+        const OPERAND1 = util.getInput('OPERAND1', 'any');
+        const OPERAND2 = util.getInput('OPERAND2', 'any');
+        return util.booleanInput(`(${OPERAND1} || ${OPERAND2})`);
+    };
+    inputLibrary['operator_random'] = function (util) {
+        const FROM = util.getInput('FROM', 'number');
+        const TO = util.getInput('TO', 'number');
+        return util.numberInput(`random(${FROM}, ${TO})`);
+    };
+    inputLibrary['operator_round'] = function (util) {
+        const NUM = util.getInput('NUM', 'number');
+        return util.numberInput(`Math.round(${NUM})`);
+    };
+    inputLibrary['operator_subtract'] = function (util) {
+        const NUM1 = util.getInput('NUM1', 'number');
+        const NUM2 = util.getInput('NUM2', 'number');
+        return util.numberInput(`(${NUM1} - ${NUM2} || 0)`);
+    };
+    inputLibrary['pen_menu_colorParam'] = function (util) {
+        return util.fieldInput('colorParam');
+    };
+    inputLibrary['sensing_answer'] = function (util) {
+        return util.stringInput('self.answer');
+    };
+    inputLibrary['sensing_coloristouchingcolor'] = function (util) {
+        const COLOR = util.getInput('COLOR', 'any');
+        const COLOR2 = util.getInput('COLOR2', 'any');
+        return util.booleanInput(`S.colorTouchingColor(${COLOR}, ${COLOR2})`);
+    };
+    inputLibrary['sensing_current'] = function (util) {
+        const CURRENTMENU = util.getField('CURRENTMENU').toLowerCase();
+        switch (CURRENTMENU) {
+            case 'year': return util.numberInput('new Date().getFullYear()');
+            case 'month': return util.numberInput('(new Date().getMonth() + 1)');
+            case 'date': return util.numberInput('new Date().getDate()');
+            case 'dayofweek': return util.numberInput('(new Date().getDay() + 1)');
+            case 'hour': return util.numberInput('new Date().getHours()');
+            case 'minute': return util.numberInput('new Date().getMinutes()');
+            case 'second': return util.numberInput('new Date().getSeconds()');
+        }
+        return util.numberInput('0');
+    };
+    inputLibrary['sensing_dayssince2000'] = function (util) {
+        return util.numberInput('((Date.now() - epoch) / 86400000)');
+    };
+    inputLibrary['sensing_distanceto'] = function (util) {
+        const DISTANCETOMENU = util.getInput('DISTANCETOMENU', 'any');
+        return util.numberInput(`S.distanceTo(${DISTANCETOMENU})`);
+    };
+    inputLibrary['sensing_distancetomenu'] = function (util) {
+        return util.fieldInput('DISTANCETOMENU');
+    };
+    inputLibrary['sensing_keyoptions'] = function (util) {
+        return util.fieldInput('KEY_OPTION');
+    };
+    inputLibrary['sensing_keypressed'] = function (util) {
+        const KEY_OPTION = util.getInput('KEY_OPTION', 'any');
+        return util.booleanInput(`!!self.keys[P.runtime.getKeyCode(${KEY_OPTION})]`);
+    };
+    inputLibrary['sensing_loud'] = function (util) {
+        // see sensing_loudness above
+        return util.booleanInput('false');
+    };
+    inputLibrary['sensing_loudness'] = function (util) {
+        // We don't implement loudness, we always return -1 which indicates that there is no microphone available.
+        return util.numberInput('-1');
+    };
+    inputLibrary['sensing_mousedown'] = function (util) {
+        return util.booleanInput('self.mousePressed');
+    };
+    inputLibrary['sensing_mousex'] = function (util) {
+        return util.numberInput('self.mouseX');
+    };
+    inputLibrary['sensing_mousey'] = function (util) {
+        return util.numberInput('self.mouseY');
+    };
+    inputLibrary['sensing_of'] = function (util) {
+        const PROPERTY = util.sanitizedString(util.getField('PROPERTY'));
+        const OBJECT = util.getInput('OBJECT', 'string');
+        return util.anyInput(`attribute(${PROPERTY}, ${OBJECT})`);
+    };
+    inputLibrary['sensing_of_object_menu'] = function (util) {
+        return util.fieldInput('OBJECT');
+    };
+    inputLibrary['sensing_timer'] = function (util) {
+        if (P.config.preciseTimers) {
+            return util.numberInput('((runtime.rightNow() - runtime.timerStart) / 1000)');
+        }
+        else {
+            return util.numberInput('((runtime.now - runtime.timerStart) / 1000)');
+        }
+    };
+    inputLibrary['sensing_touchingcolor'] = function (util) {
+        const COLOR = util.getInput('COLOR', 'any');
+        return util.booleanInput(`S.touchingColor(${COLOR})`);
+    };
+    inputLibrary['sensing_touchingobject'] = function (util) {
+        const TOUCHINGOBJECTMENU = util.getInput('TOUCHINGOBJECTMENU', 'string');
+        return util.booleanInput(`S.touching(${TOUCHINGOBJECTMENU})`);
+    };
+    inputLibrary['sensing_touchingobjectmenu'] = function (util) {
+        return util.fieldInput('TOUCHINGOBJECTMENU');
+    };
+    inputLibrary['sound_sounds_menu'] = function (util) {
+        return util.fieldInput('SOUND_MENU');
+    };
+    inputLibrary['sensing_username'] = function (util) {
+        return util.stringInput('self.username');
+    };
+    inputLibrary['sound_volume'] = function (util) {
+        return util.numberInput('(S.volume * 100)');
+    };
+    // Legacy no-ops
+    // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_sensing.js#L74
+    // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L42-L43
+    const noopInput = function (util) {
+        return util.anyInput('undefined');
+    };
+    inputLibrary['sensing_userid'] = noopInput;
+    inputLibrary['motion_xscroll'] = noopInput;
+    inputLibrary['motion_yscroll'] = noopInput;
+    /* Hats */
+    hatLibrary['control_start_as_clone'] = {
+        handle(util) {
+            util.target.listeners.whenCloned.push(util.startingFunction);
+        }
+    };
+    hatLibrary['event_whenbackdropswitchesto'] = {
+        handle(util) {
+            const BACKDROP = util.getField('BACKDROP');
+            if (!util.target.listeners.whenBackdropChanges[BACKDROP]) {
+                util.target.listeners.whenBackdropChanges[BACKDROP] = [];
+            }
+            util.target.listeners.whenBackdropChanges[BACKDROP].push(util.startingFunction);
+        }
+    };
+    hatLibrary['event_whenbroadcastreceived'] = {
+        handle(util) {
+            const BROADCAST_OPTION = util.getField('BROADCAST_OPTION').toLowerCase();
+            if (!util.target.listeners.whenIReceive[BROADCAST_OPTION]) {
+                util.target.listeners.whenIReceive[BROADCAST_OPTION] = [];
+            }
+            util.target.listeners.whenIReceive[BROADCAST_OPTION].push(util.startingFunction);
+        }
+    };
+    hatLibrary['event_whenflagclicked'] = {
+        handle(util) {
+            util.target.listeners.whenGreenFlag.push(util.startingFunction);
+        },
+    };
+    hatLibrary['event_whenkeypressed'] = {
+        handle(util) {
+            const KEY_OPTION = util.getField('KEY_OPTION');
+            if (KEY_OPTION === 'any') {
+                for (var i = 128; i--;) {
+                    util.target.listeners.whenKeyPressed[i].push(util.startingFunction);
+                }
+            }
+            else {
+                util.target.listeners.whenKeyPressed[P.runtime.getKeyCode(KEY_OPTION)].push(util.startingFunction);
+            }
+        }
+    };
+    hatLibrary['event_whenstageclicked'] = {
+        handle(util) {
+            util.target.listeners.whenClicked.push(util.startingFunction);
+        },
+    };
+    hatLibrary['event_whenthisspriteclicked'] = {
+        handle(util) {
+            util.target.listeners.whenClicked.push(util.startingFunction);
+        },
+    };
+    hatLibrary['makeymakey_whenMakeyKeyPressed'] = {
+        handle(util) {
+            // TODO: support all other keys
+            // TODO: support patterns
+            // Will probably be implemented as a very *interesting* "when any key pressed" handler
+            // TODO: support all inputs
+            const KEY = util.getInput('KEY', 'any');
+            const keyMap = {
+                // The key will be a full expression, including quotes around strings.
+                '"SPACE"': 'space',
+                '"UP"': 'up arrow',
+                '"DOWN"': 'down arrow',
+                '"LEFT"': 'left arrow',
+                '"RIGHT"': 'right arrow',
+                '"w"': 'w',
+                '"a"': 'a',
+                '"s"': 's',
+                '"d"': 'd',
+                '"f"': 'f',
+                '"g"': 'g',
+            };
+            if (keyMap.hasOwnProperty(KEY)) {
+                const keyCode = P.runtime.getKeyCode(keyMap[KEY]);
+                util.target.listeners.whenKeyPressed[keyCode].push(util.startingFunction);
+            }
+            else {
+                console.warn('unknown makey makey key', KEY);
+            }
+        }
+    };
+    hatLibrary['procedures_definition'] = {
+        handle(util) {
+            // TODO: HatUtil helpers for this
+            const customBlockId = util.block.inputs.custom_block[1];
+            const mutation = util.compiler.blocks[customBlockId].mutation;
+            const proccode = mutation.proccode;
+            // Warp is either a boolean or a string representation of that boolean for some reason.
+            const warp = typeof mutation.warp === 'string' ? mutation.warp === 'true' : mutation.warp;
+            // It's a stringified JSON array.
+            const argumentNames = JSON.parse(mutation.argumentnames);
+            const procedure = new P.sb3.Scratch3Procedure(util.startingFunction, warp, argumentNames);
+            util.target.procedures[proccode] = procedure;
+        },
+        preprocess(compiler, source) {
+            return source + 'endCall(); return;\n';
+        },
+    };
+}());
 //# sourceMappingURL=phosphorus.dist.js.map
