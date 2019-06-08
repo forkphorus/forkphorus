@@ -1,5 +1,13 @@
 # forkphorus changelog
 
+## June 6
+
+- Fix pen canvas to properly resize itself when possible
+
+## June 4
+
+- [New packager](https://forkphorus.github.io/packager/) includes fonts.
+
 ## June 3
 
 - sb3: fix long-standing SVG issues resulting in parts being cut-off or white borders
