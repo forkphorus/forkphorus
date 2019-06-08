@@ -7856,12 +7856,12 @@ var P;
     (function (sb3) {
         var compiler2;
         (function (compiler2) {
-            class CompiledStatement {
-                constructor(source) {
-                    this.source = source;
-                }
+            /**
+             * Asserts at compile-time that a value is of the type `never`
+             */
+            function assertNever(i) {
+                throw new Error('assertion failed');
             }
-            compiler2.CompiledStatement = CompiledStatement;
             class CompiledInput {
                 constructor(source, type) {
                     this.source = source;
@@ -7869,39 +7869,126 @@ var P;
                 }
             }
             compiler2.CompiledInput = CompiledInput;
+            // Simple CompiledInput aliases
             const stringInput = (v) => new CompiledInput(v, 'string');
             const numberInput = (v) => new CompiledInput(v, 'number');
             const booleanInput = (v) => new CompiledInput(v, 'boolean');
             const anyInput = (v) => new CompiledInput(v, 'any');
-            const statement = (v) => new CompiledStatement(v);
             ;
-            function assertNever(i) {
-                throw new Error('assertion failed');
-            }
+            /**
+             * General block generation utilities.
+             */
             class BlockUtil {
                 constructor(compiler, block) {
                     this.compiler = compiler;
                     this.block = block;
-                    this.content = '';
                 }
+                /**
+                 * Compile an input, and give it a type.
+                 */
                 getInput(name, type) {
                     return this.compiler.compileInput(this.block, name, type);
                 }
-                getSubstack(name) {
-                    return this.compiler.compileSubstackInput(this.block, name);
-                }
+                /**
+                 * Compile a field. Results are unescaped strings and unsafe to include in a script.
+                 */
                 getField(name) {
-                    return this.compiler.compileField(this.block, name);
+                    return this.compiler.getField(this.block, name);
                 }
-                nextLabel() {
-                    this.compiler.labelCount++;
-                    return this.compiler.labelCount;
+                /**
+                 * Sanitize an unescaped string into an input.
+                 */
+                sanitizedInput(string) {
+                    return this.compiler.sanitizedInput(string);
                 }
-                write(content) {
-                    this.content += content;
+                /**
+                 * Sanitize an unescaped string for inclusion in a script.
+                 */
+                sanitizedString(string) {
+                    return this.compiler.sanitizedString(string);
                 }
             }
             compiler2.BlockUtil = BlockUtil;
+            /**
+             * General input generation utilities.
+             */
+            class InputUtil extends BlockUtil {
+            }
+            compiler2.InputUtil = InputUtil;
+            /**
+             * General statement generation utilities.
+             */
+            class StatementUtil extends BlockUtil {
+                constructor() {
+                    super(...arguments);
+                    this.content = '';
+                }
+                /**
+                 * Compile a substack.
+                 */
+                getSubstack(name) {
+                    return this.compiler.compileSubstackInput(this.block, name);
+                }
+                /**
+                 * Gets the next label available for use.
+                 */
+                nextLabel() {
+                    return this.compiler.labelCount++;
+                }
+                /**
+                 * Create a new label at this location.
+                 */
+                addLabel() {
+                    const label = this.nextLabel();
+                    // We'll use special syntax to denote this spot as a label.
+                    // It'll be cleaned up later in compilation.
+                    // Interestingly, this is actually valid JavaScript, so cleanup isn't strictly necessary.
+                    this.write(`{{${label}}}`);
+                    return label;
+                }
+                /**
+                 * Writes the queue() method to call a label.
+                 */
+                queue(label) {
+                    this.writeLn(`queue(${label});`);
+                }
+                /**
+                 * Writes the forceQueue() method to call a label.
+                 */
+                forceQueue(label) {
+                    this.writeLn(`forceQueue(${label});`);
+                }
+                visual(variant) {
+                    switch (variant) {
+                        case 'drawing':
+                            this.writeLn('if (S.visible || S.isPenDown) VISUAL = true;');
+                            break;
+                        case 'visible':
+                            this.writeLn('if (S.visible) VISUAL = true;');
+                            break;
+                        case 'always':
+                            this.writeLn('VISUAL = true;');
+                            break;
+                        default: assertNever(variant);
+                    }
+                }
+                /**
+                 * Append to the content
+                 */
+                write(content) {
+                    this.content += content;
+                }
+                /**
+                 * Append to the content, followed by a newline.
+                 */
+                writeLn(content) {
+                    this.content += content + '\n';
+                }
+            }
+            compiler2.StatementUtil = StatementUtil;
+            /**
+             * The new compiler for Scratch 3 projects.
+             */
             class Compiler {
                 constructor(target) {
                     this.statementLibrary = Object.create(null);
@@ -7913,50 +8000,61 @@ var P;
                     this.blocks = this.data.blocks;
                     this.statementLibrary['motion_movesteps'] = function (util) {
                         const STEPS = util.getInput('STEPS', 'number');
-                        return new CompiledStatement(`S.forward(${STEPS});\n`);
+                        util.writeLn(`S.forward(${STEPS});`);
+                        util.visual('drawing');
                     };
                     this.statementLibrary['looks_say'] = function (util) {
                         const MESSAGE = util.getInput('MESSAGE', 'string');
-                        return new CompiledStatement(`S.say(${MESSAGE}, false);\n`);
+                        util.writeLn(`S.say(${MESSAGE}, false);`);
+                        util.visual('visible');
                     };
                     this.statementLibrary['control_if_else'] = function (util) {
                         const SUBSTACK = util.getSubstack('SUBSTACK');
                         const SUBSTACK2 = util.getSubstack('SUBSTACK2');
                         const CONDITION = util.getInput('CONDITION', 'boolean');
-                        let source = '';
-                        source += `if (${CONDITION}) {\n`;
-                        source += SUBSTACK;
-                        source += '} else {\n';
-                        source += SUBSTACK2;
-                        source += '}\n';
-                        return new CompiledStatement(source);
+                        util.writeLn(`if (${CONDITION}) {`);
+                        util.write(SUBSTACK);
+                        util.writeLn('} else {');
+                        util.write(SUBSTACK2);
+                        util.writeLn('}');
                     };
                     this.statementLibrary['control_repeat'] = function (util) {
                         const SUBSTACK = util.getSubstack('SUBSTACK');
                         const TIMES = util.getInput('TIMES', 'number');
-                        let source = '';
-                        source += 'save();\n';
-                        source += `R.count = ${TIMES};\n`;
-                        const id = util.nextLabel();
-                        source += `{{${id}}}`;
-                        source += 'if (R.count >= 0.5) {\n';
-                        source += '  R.count -= 1;\n';
-                        source += SUBSTACK;
-                        source += 'queue(' + id + ');\n';
-                        source += '} else {\n';
-                        source += '  restore();\n';
-                        source += '}\n';
-                        return new CompiledStatement(source);
+                        util.writeLn('save();');
+                        util.writeLn(`R.count = ${TIMES};`);
+                        const label = util.addLabel();
+                        util.writeLn('if (R.count >= 0.5) {');
+                        util.writeLn('  R.count -= 1;');
+                        util.write(SUBSTACK);
+                        util.queue(label);
+                        util.writeLn('} else {');
+                        util.writeLn('  restore();');
+                        util.writeLn('}');
+                    };
+                    this.statementLibrary['motion_goto'] = function (util) {
+                        const TO = util.getInput('TO', 'string');
+                        util.writeLn(`S.gotoObject(${TO});`);
+                        util.visual('drawing');
                     };
                     this.inputLibrary['operator_add'] = function (util) {
                         const NUM1 = util.getInput('NUM1', 'number');
                         const NUM2 = util.getInput('NUM2', 'number');
-                        return new CompiledInput(`(${NUM1} + ${NUM2})`, 'number');
+                        return numberInput(`(${NUM1} + ${NUM2})`);
                     };
                     this.inputLibrary['operator_equals'] = function (util) {
                         const OPERAND1 = util.getInput('OPERAND1', 'any');
                         const OPERAND2 = util.getInput('OPERAND2', 'any');
-                        return new CompiledInput(`equal(${OPERAND1}, ${OPERAND2})`, 'number');
+                        return numberInput(`equal(${OPERAND1}, ${OPERAND2})`);
+                    };
+                    this.inputLibrary['motion_goto_menu'] = function (util) {
+                        const TO = util.getField('TO');
+                        return util.sanitizedInput(TO);
+                    };
+                    this.inputLibrary['operator_random'] = function (util) {
+                        const FROM = util.getInput('FROM', 'number');
+                        const TO = util.getInput('TO', 'number');
+                        return numberInput(`random(${FROM}, ${TO})`);
                     };
                     this.hatLibrary['event_whenflagclicked'] = {
                         handle(compiler, block, fn) {
@@ -8029,13 +8127,13 @@ var P;
                 /**
                  * Sanitize a string into a CompiledInput
                  */
-                sanitizeInput(string) {
-                    return stringInput(this.sanitizeString(string));
+                sanitizedInput(string) {
+                    return stringInput(this.sanitizedString(string));
                 }
                 /**
                  * Sanitize a string for use in the runtime.
                  */
-                sanitizeString(string) {
+                sanitizedString(string) {
                     string = string
                         .replace(/\\/g, '\\\\')
                         .replace(/'/g, '\\\'')
@@ -8058,7 +8156,7 @@ var P;
                         return 'S';
                     }
                     else {
-                        // Create missing variables
+                        // Create missing variables in the sprite scope.
                         this.target.vars[id] = 0;
                         return 'S';
                     }
@@ -8075,7 +8173,7 @@ var P;
                         return 'S';
                     }
                     else {
-                        // Create missing variables with a value of 0
+                        // Create missing lists in the sprite scope.
                         this.target.lists[id] = [];
                         return 'S';
                     }
@@ -8084,13 +8182,13 @@ var P;
                  * Gets the runtime reference to a variable.
                  */
                 getVariableReference(id) {
-                    return `${this.getVariableScope(id)}.vars[${this.sanitizeString(id)}]`;
+                    return `${this.getVariableScope(id)}.vars[${this.sanitizedString(id)}]`;
                 }
                 /**
                  * Gets the runtime reference to a list.
                  */
                 getListReference(id) {
-                    return `${this.getListScope(id)}.lists[${this.sanitizeString(id)}]`;
+                    return `${this.getListScope(id)}.lists[${this.sanitizedString(id)}]`;
                 }
                 /**
                  * Compile a native or primitive value.
@@ -8110,12 +8208,12 @@ var P;
                                 return numberInput(number.toString());
                             }
                             else {
-                                return this.sanitizeInput(native[1]);
+                                return this.sanitizedInput(native[1]);
                             }
                         }
                         case 10 /* TEXT */:
                             // [type, text]
-                            return this.sanitizeInput(native[1]);
+                            return this.sanitizedInput(native[1]);
                         case 12 /* VAR */:
                             // [type, name, id]
                             return anyInput(this.getVariableReference(native[2]));
@@ -8124,7 +8222,7 @@ var P;
                             return anyInput(this.getListReference(native[2]));
                         case 11 /* BROADCAST */:
                             // [type, name, id]
-                            return this.sanitizeInput(native[1]);
+                            return this.sanitizedInput(native[1]);
                         case 9 /* COLOR_PICKER */: {
                             // [type, color]
                             // Color is a value like "#abcdef"
@@ -8165,15 +8263,20 @@ var P;
                         this.warn('unknown input', opcode, inputBlock);
                         return this.getInputFallback(type);
                     }
-                    const blockUtil = new BlockUtil(this, inputBlock);
-                    const result = compiler(blockUtil);
+                    const util = new InputUtil(this, inputBlock);
+                    const result = compiler(util);
                     return this.toType(result, type);
                 }
                 /**
-                 * Compile a field of a block.
+                 * Get a field of a block.
                  */
-                compileField(block, fieldName) {
-                    debugger;
+                getField(block, fieldName) {
+                    // missing fields is very unusual, and probably a sign of another issue.
+                    const value = block.fields[fieldName];
+                    if (!block.fields[fieldName]) {
+                        this.warn('missing field', fieldName);
+                    }
+                    return value[0];
                 }
                 /**
                  * Compile a script within a script.
@@ -8189,7 +8292,7 @@ var P;
                     return this.compileStack(id);
                 }
                 /**
-                 * Compile an entire script from a single block.
+                 * Compile an entire script from a starting block.
                  */
                 compileStack(startingBlock) {
                     let script = '';
@@ -8198,9 +8301,9 @@ var P;
                         const opcode = block.opcode;
                         const compiler = this.getStatementCompiler(opcode);
                         if (compiler) {
-                            const blockUtil = new BlockUtil(this, block);
-                            const result = compiler(blockUtil);
-                            script += result.source;
+                            const util = new StatementUtil(this, block);
+                            compiler(util);
+                            script += util.content;
                         }
                         else {
                             console.warn('unknown statement', opcode, block);
@@ -8219,7 +8322,11 @@ var P;
                 compileHat(hat) {
                     const hatCompiler = this.getHatCompiler(hat.opcode);
                     if (!hatCompiler) {
-                        this.warn('unknown hat block', hat.opcode, hat);
+                        // If a hat block is otherwise recognized as an input or statement, don't warn.
+                        // Most projects have at least one of these "dangling" blocks.
+                        if (!this.getInputCompiler(hat.opcode) && !this.getStatementCompiler(hat.opcode)) {
+                            this.warn('unknown hat block', hat.opcode, hat);
+                        }
                         return;
                     }
                     this.labelCount = this.target.fns.length;
@@ -8228,11 +8335,14 @@ var P;
                     if (!startingBlock) {
                         return;
                     }
-                    let script = `{{${this.labelCount}}}` + this.compileStack(startingBlock);
-                    this.labelCount++;
+                    // There is always a label placed at the beginning of the script.
+                    let script = `{{${this.labelCount++}}}` + this.compileStack(startingBlock);
+                    // If a block wants to preprocess the script, then let it.
+                    // TODO: should this happen after parseResult?
                     if (hatCompiler.preprocess) {
                         script = hatCompiler.preprocess(this, script);
                     }
+                    // Parse the script to search for labels, and remove the label metadata.
                     const parseResult = this.parseScript(script);
                     script = parseResult.script;
                     const startFn = this.target.fns.length;
@@ -8242,6 +8352,9 @@ var P;
                     hatCompiler.handle(this, hat, this.target.fns[startFn]);
                     console.log('compiled sb3 script', hat.opcode, script, this.target);
                 }
+                /**
+                 * Parse a generated script for label locations, and remove redundant data.
+                 */
                 parseScript(script) {
                     const labels = {};
                     let index = 0;
@@ -8258,9 +8371,12 @@ var P;
                         labels[id] = labelEnd + 2 - accumulator;
                         index = labelEnd + 2;
                     }
+                    // We don't **actually* have to remove the {{0}} labels (its technically valid JS),
+                    // but it's probably a good idea.
+                    const fixedScript = script.replace(/{{\d+}}/g, '');
                     return {
                         labels,
-                        script: script,
+                        script: fixedScript,
                     };
                 }
                 /**

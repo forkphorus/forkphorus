@@ -2670,6 +2670,14 @@ namespace P.sb3.compiler {
 }
 
 namespace P.sb3.compiler2 {
+  import Fn = P.runtime.Fn;
+
+  /**
+   * Asserts at compile-time that a value is of the type `never`
+   */
+  function assertNever(i: never): never {
+    throw new Error('assertion failed');
+  }
 
   // IDs of native types
   // https://github.com/LLK/scratch-vm/blob/36fe6378db930deb835e7cd342a39c23bb54dd72/src/serialization/sb3.js#L60-L79
@@ -2686,73 +2694,165 @@ namespace P.sb3.compiler2 {
     LIST = 13,
   }
 
-  export class CompiledStatement {
-    constructor(public source: string) {
-
-    }
-  }
-
   export class CompiledInput {
     constructor(public source: string, public type: InputType) {
 
     }
   }
 
-  type Fn = () => void;
-
+  // Simple CompiledInput aliases
   const stringInput = (v: string) => new CompiledInput(v, 'string');
   const numberInput = (v: string) => new CompiledInput(v, 'number');
   const booleanInput = (v: string) => new CompiledInput(v, 'boolean');
   const anyInput = (v: string) => new CompiledInput(v, 'any');
-  const statement = (v: string) => new CompiledStatement(v);
 
-  export type StatementCompiler = (util: BlockUtil) => CompiledStatement
-  export type InputCompiler = (util: BlockUtil) => CompiledInput;
+  /**
+   * A compiler for a statement.
+   * A statement is something like "move ( ) steps"
+   * @param util Use the methods of the utility class to write the body.
+   */
+  export type StatementCompiler = (util: StatementUtil) => void
 
+  /**
+   * A compiler for an input.
+   * An input is something like the "10" in "move (10) steps"
+   */
+  export type InputCompiler = (util: InputUtil) => CompiledInput;
+
+  /**
+   * A compiler for a hat block.
+   */
   export interface HatCompiler {
+    /**
+     * The handler that is responsible for installing the compiled functions
+     */
     handle(compiler: Compiler, block: SB3Block, fn: Fn): void;
+    /**
+     * Optionally make last minute changes to the script's source.
+     * The result of this will replace the script before compilation.
+     */
     preprocess?(compiler: Compiler, source: string): string;
   };
 
   export type InputType = 'string' | 'boolean' | 'number' | 'any';
 
-  type CompilerState = {
-
-  };
-
-  function assertNever(i: never): never {
-    throw new Error('assertion failed');
-  }
-
+  /**
+   * General block generation utilities.
+   */
   export class BlockUtil {
-    public content: string = '';
-
-    constructor(private compiler: Compiler, private block: SB3Block) {
+    constructor(protected compiler: Compiler, protected block: SB3Block) {
 
     }
 
+    /**
+     * Compile an input, and give it a type.
+     */
     getInput(name: string, type: InputType): string {
       return this.compiler.compileInput(this.block, name, type);
     }
 
+    /**
+     * Compile a field. Results are unescaped strings and unsafe to include in a script.
+     */
+    getField(name: string): string {
+      return this.compiler.getField(this.block, name);
+    }
+
+    /**
+     * Sanitize an unescaped string into an input.
+     */
+    sanitizedInput(string: string): CompiledInput {
+      return this.compiler.sanitizedInput(string);
+    }
+
+    /**
+     * Sanitize an unescaped string for inclusion in a script.
+     */
+    sanitizedString(string: string): string {
+      return this.compiler.sanitizedString(string);
+    }
+  }
+
+  /**
+   * General input generation utilities.
+   */
+  export class InputUtil extends BlockUtil {
+
+  }
+
+  /**
+   * General statement generation utilities.
+   */
+  export class StatementUtil extends BlockUtil {
+    public content: string = '';
+
+    /**
+     * Compile a substack.
+     */
     getSubstack(name: string): string {
       return this.compiler.compileSubstackInput(this.block, name);
     }
 
-    getField(name: string): string {
-      return this.compiler.compileField(this.block, name);
-    }
-
+    /**
+     * Gets the next label available for use.
+     */
     nextLabel(): number {
-      this.compiler.labelCount++;
-      return this.compiler.labelCount;
+      return this.compiler.labelCount++;
     }
 
+    /**
+     * Create a new label at this location.
+     */
+    addLabel(): number {
+      const label = this.nextLabel();
+      // We'll use special syntax to denote this spot as a label.
+      // It'll be cleaned up later in compilation.
+      // Interestingly, this is actually valid JavaScript, so cleanup isn't strictly necessary.
+      this.write(`{{${label}}}`);
+      return label;
+    }
+
+    /**
+     * Writes the queue() method to call a label.
+     */
+    queue(label: number): void {
+      this.writeLn(`queue(${label});`);
+    }
+
+    /**
+     * Writes the forceQueue() method to call a label.
+     */
+    forceQueue(label: number): void {
+      this.writeLn(`forceQueue(${label});`);
+    }
+
+    visual(variant: 'drawing' | 'visible' | 'always'): void {
+      switch (variant) {
+        case 'drawing': this.writeLn('if (S.visible || S.isPenDown) VISUAL = true;'); break;
+        case 'visible': this.writeLn('if (S.visible) VISUAL = true;'); break;
+        case 'always': this.writeLn('VISUAL = true;'); break;
+        default: assertNever(variant);
+      }
+    }
+
+    /**
+     * Append to the content
+     */
     write(content: string): void {
       this.content += content;
     }
+
+    /**
+     * Append to the content, followed by a newline.
+     */
+    writeLn(content: string): void {
+      this.content += content + '\n';
+    }
   }
 
+  /**
+   * The new compiler for Scratch 3 projects.
+   */
   export class Compiler {
     /**
      * The Stage or Sprite to compile.
@@ -2780,51 +2880,62 @@ namespace P.sb3.compiler2 {
 
       this.statementLibrary['motion_movesteps'] = function(util) {
         const STEPS = util.getInput('STEPS', 'number');
-        return new CompiledStatement(`S.forward(${STEPS});\n`);
+        util.writeLn(`S.forward(${STEPS});`);
+        util.visual('drawing');
       };
       this.statementLibrary['looks_say'] = function(util) {
         const MESSAGE = util.getInput('MESSAGE', 'string');
-        return new CompiledStatement(`S.say(${MESSAGE}, false);\n`);
+        util.writeLn(`S.say(${MESSAGE}, false);`);
+        util.visual('visible')
       };
       this.statementLibrary['control_if_else'] = function(util) {
         const SUBSTACK = util.getSubstack('SUBSTACK');
         const SUBSTACK2 = util.getSubstack('SUBSTACK2');
         const CONDITION = util.getInput('CONDITION', 'boolean');
-        let source = '';
-        source += `if (${CONDITION}) {\n`;
-        source += SUBSTACK;
-        source += '} else {\n';
-        source += SUBSTACK2;
-        source += '}\n';
-        return new CompiledStatement(source);
+        util.writeLn(`if (${CONDITION}) {`);
+        util.write(SUBSTACK);
+        util.writeLn('} else {');
+        util.write(SUBSTACK2);
+        util.writeLn('}');
       };
       this.statementLibrary['control_repeat'] = function(util) {
         const SUBSTACK = util.getSubstack('SUBSTACK');
         const TIMES = util.getInput('TIMES', 'number');
-        let source = '';
-        source += 'save();\n';
-        source += `R.count = ${TIMES};\n`;
-        const id = util.nextLabel();
-        source += `{{${id}}}`
-        source += 'if (R.count >= 0.5) {\n';
-        source += '  R.count -= 1;\n';
-        source += SUBSTACK;
-        source += 'queue(' + id + ');\n';
-        source += '} else {\n';
-        source += '  restore();\n';
-        source += '}\n';
-        return new CompiledStatement(source);
+        util.writeLn('save();');
+        util.writeLn(`R.count = ${TIMES};`);
+        const label = util.addLabel();
+        util.writeLn('if (R.count >= 0.5) {');
+        util.writeLn('  R.count -= 1;');
+        util.write(SUBSTACK);
+        util.queue(label);
+        util.writeLn('} else {')
+        util.writeLn('  restore();')
+        util.writeLn('}');
+      };
+      this.statementLibrary['motion_goto'] = function(util) {
+        const TO = util.getInput('TO', 'string');
+        util.writeLn(`S.gotoObject(${TO});`);
+        util.visual('drawing');
       };
 
       this.inputLibrary['operator_add'] = function(util) {
         const NUM1 = util.getInput('NUM1', 'number');
         const NUM2 = util.getInput('NUM2', 'number');
-        return new CompiledInput(`(${NUM1} + ${NUM2})`, 'number');
+        return numberInput(`(${NUM1} + ${NUM2})`);
       };
       this.inputLibrary['operator_equals'] = function(util) {
         const OPERAND1 = util.getInput('OPERAND1', 'any');
         const OPERAND2 = util.getInput('OPERAND2', 'any');
-        return new CompiledInput(`equal(${OPERAND1}, ${OPERAND2})`, 'number');
+        return numberInput(`equal(${OPERAND1}, ${OPERAND2})`);
+      };
+      this.inputLibrary['motion_goto_menu'] = function(util) {
+        const TO = util.getField('TO');
+        return util.sanitizedInput(TO);
+      };
+      this.inputLibrary['operator_random'] = function(util) {
+        const FROM = util.getInput('FROM', 'number');
+        const TO = util.getInput('TO', 'number');
+        return numberInput(`random(${FROM}, ${TO})`);
       };
 
       this.hatLibrary['event_whenflagclicked'] = {
@@ -2905,14 +3016,14 @@ namespace P.sb3.compiler2 {
     /**
      * Sanitize a string into a CompiledInput
      */
-    sanitizeInput(string: string): CompiledInput {
-      return stringInput(this.sanitizeString(string));
+    sanitizedInput(string: string): CompiledInput {
+      return stringInput(this.sanitizedString(string));
     }
 
     /**
      * Sanitize a string for use in the runtime.
      */
-    sanitizeString(string: string): string {
+    sanitizedString(string: string): string {
       string = string
         .replace(/\\/g, '\\\\')
         .replace(/'/g, '\\\'')
@@ -2934,7 +3045,7 @@ namespace P.sb3.compiler2 {
       } else if (id in this.target.vars) {
         return 'S';
       } else {
-        // Create missing variables
+        // Create missing variables in the sprite scope.
         this.target.vars[id] = 0;
         return 'S';
       }
@@ -2950,7 +3061,7 @@ namespace P.sb3.compiler2 {
       } else if (id in this.target.lists) {
         return 'S';
       } else {
-        // Create missing variables with a value of 0
+        // Create missing lists in the sprite scope.
         this.target.lists[id] = [];
         return 'S';
       }
@@ -2960,14 +3071,14 @@ namespace P.sb3.compiler2 {
      * Gets the runtime reference to a variable.
      */
     getVariableReference(id: string): string {
-      return `${this.getVariableScope(id)}.vars[${this.sanitizeString(id)}]`;
+      return `${this.getVariableScope(id)}.vars[${this.sanitizedString(id)}]`;
     }
 
     /**
      * Gets the runtime reference to a list.
      */
     getListReference(id: string): string {
-      return `${this.getListScope(id)}.lists[${this.sanitizeString(id)}]`;
+      return `${this.getListScope(id)}.lists[${this.sanitizedString(id)}]`;
     }
 
     /**
@@ -2987,13 +3098,13 @@ namespace P.sb3.compiler2 {
           if (!isNaN(number)) {
             return numberInput(number.toString());
           } else {
-            return this.sanitizeInput(native[1]);
+            return this.sanitizedInput(native[1]);
           }
         }
 
         case NativeTypes.TEXT:
           // [type, text]
-          return this.sanitizeInput(native[1]);
+          return this.sanitizedInput(native[1]);
 
         case NativeTypes.VAR:
           // [type, name, id]
@@ -3005,7 +3116,7 @@ namespace P.sb3.compiler2 {
 
         case NativeTypes.BROADCAST:
           // [type, name, id]
-          return this.sanitizeInput(native[1]);
+          return this.sanitizedInput(native[1]);
 
         case NativeTypes.COLOR_PICKER: {
           // [type, color]
@@ -3052,17 +3163,22 @@ namespace P.sb3.compiler2 {
         return this.getInputFallback(type);
       }
 
-      const blockUtil = new BlockUtil(this, inputBlock);
-      const result = compiler(blockUtil);
+      const util = new InputUtil(this, inputBlock);
+      const result = compiler(util);
 
       return this.toType(result, type);
     }
 
     /**
-     * Compile a field of a block.
+     * Get a field of a block.
      */
-    compileField(block: SB3Block, fieldName: string): string {
-      debugger;
+    getField(block: SB3Block, fieldName: string): string {
+      // missing fields is very unusual, and probably a sign of another issue.
+      const value = block.fields[fieldName];
+      if (!block.fields[fieldName]) {
+        this.warn('missing field', fieldName);
+      }
+      return value[0];
     }
 
     /**
@@ -3082,7 +3198,7 @@ namespace P.sb3.compiler2 {
     }
 
     /**
-     * Compile an entire script from a single block.
+     * Compile an entire script from a starting block.
      */
     compileStack(startingBlock: string): string {
       let script = '';
@@ -3093,9 +3209,9 @@ namespace P.sb3.compiler2 {
         const compiler = this.getStatementCompiler(opcode);
 
         if (compiler) {
-          const blockUtil = new BlockUtil(this, block);
-          const result = compiler(blockUtil);
-          script += result.source;
+          const util = new StatementUtil(this, block);
+          compiler(util);
+          script += util.content;
         } else {
           console.warn('unknown statement', opcode, block);
         }
@@ -3116,7 +3232,11 @@ namespace P.sb3.compiler2 {
     compileHat(hat: SB3Block): void {
       const hatCompiler = this.getHatCompiler(hat.opcode);
       if (!hatCompiler) {
-        this.warn('unknown hat block', hat.opcode, hat);
+        // If a hat block is otherwise recognized as an input or statement, don't warn.
+        // Most projects have at least one of these "dangling" blocks.
+        if (!this.getInputCompiler(hat.opcode) && !this.getStatementCompiler(hat.opcode)) {
+          this.warn('unknown hat block', hat.opcode, hat);
+        }
         return;
       }
 
@@ -3128,13 +3248,16 @@ namespace P.sb3.compiler2 {
         return;
       }
 
-      let script = `{{${this.labelCount}}}` + this.compileStack(startingBlock);
-      this.labelCount++;
+      // There is always a label placed at the beginning of the script.
+      let script = `{{${this.labelCount++}}}` + this.compileStack(startingBlock);
 
+      // If a block wants to preprocess the script, then let it.
+      // TODO: should this happen after parseResult?
       if (hatCompiler.preprocess) {
         script = hatCompiler.preprocess(this, script);
       }
 
+      // Parse the script to search for labels, and remove the label metadata.
       const parseResult = this.parseScript(script);
       script = parseResult.script;
 
@@ -3148,6 +3271,9 @@ namespace P.sb3.compiler2 {
       console.log('compiled sb3 script', hat.opcode, script, this.target);
     }
 
+    /**
+     * Parse a generated script for label locations, and remove redundant data.
+     */
     parseScript(script: string): { labels: ObjectMap<number>, script: string; } {
       const labels = {};
       let index = 0;
@@ -3168,11 +3294,14 @@ namespace P.sb3.compiler2 {
         index = labelEnd + 2;
       }
 
+      // We don't **actually* have to remove the {{0}} labels (its technically valid JS),
+      // but it's probably a good idea.
+      const fixedScript = script.replace(/{{\d+}}/g, '');
+
       return {
         labels,
-        script: script,
+        script: fixedScript,
       };
-
     }
 
     /**
@@ -3193,7 +3322,5 @@ namespace P.sb3.compiler2 {
         this.compileHat(hat);
       }
     }
-
   }
-
 }
