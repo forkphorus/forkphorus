@@ -772,7 +772,7 @@ namespace P.sb3 {
             .filter((i) => i && i.valid);
 
           sprites.forEach((sprite) => sprite.stage = stage);
-          targets.forEach((base) => new P.sb3.compiler2.Compiler(base).compile());
+          targets.forEach((base) => new P.sb3.compiler.Compiler(base).compile());
           stage.children = sprites;
           stage.allWatchers = watchers;
           watchers.forEach((watcher) => watcher.init());
@@ -906,1765 +906,10 @@ namespace P.sb3 {
   }
 }
 
-// Compiler for .sb3 projects
+/**
+ * The Scratch 3 compiler.
+ */
 namespace P.sb3.compiler {
-  // Source of the current script being compiled.
-  let source: string;
-  // The target being compiled.
-  let currentTarget: P.sb3.Target;
-  // The blocks of the target.
-  let blocks: ObjectMap<Block>;
-  // Points to the position of functions (by string index) within the compiled source.
-  let fns: number[];
-
-  // Alias Block so you don't have you type as much
-  import Block = P.sb3.SB3Block;
-
-  /*
-  In Scratch 3 all blocks have a unique identifier.
-  In the project.json, blocks do not contain other blocks in the way a .sb2 file does, but rather they point to the IDs of other blocks.
-
-  This compiler differentiates between "statements", "expressions", "top levels", and "natives".
-  Statements are things like `move [ ] steps`. They do something. Cannot be placed in other blocks.
-  Expressions are things like `size`, `addition`, `and` etc. They return something. Cannot do anything on their own.
-  Natives are things that are core parts of the runtime. This is stuff like strings, numbers, variable references, list references, colors.
-  Top levels are top level blocks like `when green flag pressed`, they react to events.
-  Each of these are separated and compiled differently and in different spots.
-  */
-
-  // A CompiledExpression is a type of expression made by an expression compiler with extra
-  // data such as types for sake of optimization.
-  class CompiledExpression {
-    /**
-     * The source code of this expression.
-     */
-    public source: string;
-
-    /**
-     * The type of this expression. Guarantees that, when evaluated, this expression will **always**
-     * return a value of a certain type to avoid type coercion overhead.
-     */
-    public type: ExpressionType;
-
-    constructor(src: string, type: ExpressionType) {
-      this.source = src;
-      this.type = type;
-    }
-  }
-
-  // Easier aliases for CompiledExpression
-  const numberExpr = (src: string) => new CompiledExpression(src, 'number');
-  const stringExpr = (src: string) => new CompiledExpression(src, 'string');
-  const booleanExpr = (src: string) => new CompiledExpression(src, 'boolean');
-
-  // All possible types you can compile an expression into.
-  type ExpressionType = 'string' | 'boolean' | 'number';
-
-  // Compiler for a top level block
-  export type TopLevelCompiler = (block: Block, f: P.runtime.Fn) => void;
-  // Compiler for an expression
-  export type ExpressionCompiler = (block: Block) => string | CompiledExpression;
-  // Compiler for a statement
-  export type StatementCompiler = (block: Block) => void;
-  // Compiler/handler for a watcher
-  export interface WatchedValue {
-    /**
-     * Initializes the watcher.
-     */
-    init?(watcher: P.sb3.Scratch3VariableWatcher): void;
-    /**
-     * Sets the value of the watcher to a new number.
-     */
-    set?(watcher: P.sb3.Scratch3VariableWatcher, value: number): void;
-    /**
-     * Evaluates the current value of the watcher. Called every visible frame.
-     */
-    evaluate(watcher: P.sb3.Scratch3VariableWatcher): any;
-    /**
-     * Determines the label to display in the watcher. Called once during initialization (after init)
-     */
-    getLabel(watcher: P.sb3.Scratch3VariableWatcher): string;
-  }
-
-  // IDs of primitive types
-  // https://github.com/LLK/scratch-vm/blob/36fe6378db930deb835e7cd342a39c23bb54dd72/src/serialization/sb3.js#L60-L79
-  const enum PrimitiveTypes {
-    MATH_NUM = 4,
-    POSITIVE_NUM = 5,
-    WHOLE_NUM = 6,
-    INTEGER_NUM = 7,
-    ANGLE_NUM = 8,
-    COLOR_PICKER = 9,
-    TEXT = 10,
-    BROADCAST = 11,
-    VAR = 12,
-    LIST = 13,
-  }
-
-  /**
-   * Maps opcodes of top level blocks to their handler
-   */
-  export const topLevelLibrary: ObjectMap<TopLevelCompiler> = {
-    // Events
-    event_whenflagclicked(block, f) {
-      currentTarget.listeners.whenGreenFlag.push(f);
-    },
-    event_whenkeypressed(block, f) {
-      const key = block.fields.KEY_OPTION[0];
-      if (key === 'any') {
-        for (var i = 128; i--;) {
-          currentTarget.listeners.whenKeyPressed[i].push(f);
-        }
-      } else {
-        currentTarget.listeners.whenKeyPressed[P.runtime.getKeyCode(key)].push(f);
-      }
-    },
-    event_whenthisspriteclicked(block, f) {
-      currentTarget.listeners.whenClicked.push(f);
-    },
-    event_whenstageclicked(block, f) {
-      currentTarget.listeners.whenClicked.push(f);
-    },
-    event_whenbackdropswitchesto(block, f) {
-      const backdrop = block.fields.BACKDROP[0];
-      if (!currentTarget.listeners.whenBackdropChanges[backdrop]) {
-        currentTarget.listeners.whenBackdropChanges[backdrop] = [];
-      }
-      currentTarget.listeners.whenBackdropChanges[backdrop].push(f);
-    },
-    event_whenbroadcastreceived(block, f) {
-      const name = block.fields.BROADCAST_OPTION[0].toLowerCase();
-      if (!currentTarget.listeners.whenIReceive[name]) {
-        currentTarget.listeners.whenIReceive[name] = [];
-      }
-      currentTarget.listeners.whenIReceive[name].push(f);
-    },
-
-    // Control
-    control_start_as_clone(block, f) {
-      currentTarget.listeners.whenCloned.push(f);
-    },
-
-    // Procedures
-    procedures_definition(block, f) {
-      const customBlockId = block.inputs.custom_block[1];
-      const mutation = blocks[customBlockId].mutation;
-
-      const proccode = mutation.proccode;
-      // Warp is either a boolean or a string representation of that boolean for some reason.
-      const warp = typeof mutation.warp === 'string' ? mutation.warp === 'true' : mutation.warp;
-      // It's a stringified JSON array.
-      const argumentNames = JSON.parse(mutation.argumentnames);
-
-      const procedure = new P.sb3.Scratch3Procedure(f, warp, argumentNames);
-      currentTarget.procedures[proccode] = procedure;
-    },
-
-    // Makey Makey (extension)
-    makeymakey_whenMakeyKeyPressed(block, f) {
-      const key = compileExpression(block.inputs.KEY);
-      const keyMap = {
-        // The key will be a full expression, including quotes around strings.
-        '"SPACE"': 'space',
-        '"UP"': 'up arrow',
-        '"DOWN"': 'down arrow',
-        '"LEFT"': 'left arrow',
-        '"RIGHT"': 'right arrow',
-        '"w"': 'w',
-        '"a"': 'a',
-        '"s"': 's',
-        '"d"': 'd',
-        '"f"': 'f',
-        '"g"': 'g',
-        // TODO: are other keys supported?
-        // TODO: support non-compile-time constants
-      };
-      if (keyMap.hasOwnProperty(key)) {
-        const keyCode = P.runtime.getKeyCode(keyMap[key]);
-        currentTarget.listeners.whenKeyPressed[keyCode].push(f);
-      } else {
-        console.warn('unknown makey makey key', key);
-      }
-    },
-  };
-
-  // An untyped undefined works as it does in Scratch 3.
-  // Becomes "undefined" when used as a string, becomes 0 when used as number, false when used as boolean.
-  const noopExpression = () => 'undefined';
-
-  /**
-   * Maps expression opcodes to their handler
-   */
-  export const expressionLibrary: ObjectMap<ExpressionCompiler> = {
-    // Motion
-    motion_goto_menu(block) {
-      const to = block.fields.TO[0];
-      return sanitizedExpression(to);
-    },
-    motion_glideto_menu(block) {
-      const to = block.fields.TO[0];
-      return sanitizedExpression(to);
-    },
-    motion_pointtowards_menu(block) {
-      const towards = block.fields.TOWARDS[0];
-      return sanitizedExpression(towards);
-    },
-    motion_xposition(block) {
-      return numberExpr('S.scratchX');
-    },
-    motion_yposition(block) {
-      return numberExpr('S.scratchY');
-    },
-    motion_direction() {
-      return numberExpr('S.direction');
-    },
-
-    // Looks
-    looks_costume(block) {
-      const costume = block.fields.COSTUME;
-      return sanitizedExpression(costume[0]);
-    },
-    looks_backdrops(block) {
-      const backdrop = block.fields.BACKDROP[0];
-      return sanitizedExpression(backdrop);
-    },
-    looks_costumenumbername(block) {
-      const name = block.fields.NUMBER_NAME[0];
-      if (name === 'number') {
-        return numberExpr('(S.currentCostumeIndex + 1)');
-      } else {
-        // `name` is probably 'name', but it doesn't matter
-        return stringExpr('S.costumes[S.currentCostumeIndex].name');
-      }
-    },
-    looks_backdropnumbername(block) {
-      const name = block.fields.NUMBER_NAME[0];
-      if (name === 'number') {
-        return numberExpr('(self.currentCostumeIndex + 1)');
-      } else {
-        // `name` is probably 'name', but it doesn't matter
-        return stringExpr('self.costumes[self.currentCostumeIndex].name');
-      }
-    },
-    looks_size() {
-      return numberExpr('(S.scale * 100)');
-    },
-
-    // Sounds
-    sound_sounds_menu(block) {
-      const sound = block.fields.SOUND_MENU[0];
-      return sanitizedExpression(sound);
-    },
-    sound_volume() {
-      return numberExpr('(S.volume * 100)');
-    },
-
-    // Control
-    control_create_clone_of_menu(block) {
-      const option = block.fields.CLONE_OPTION;
-      return sanitizedExpression(option[0]);
-    },
-    control_get_counter(block) {
-      return numberExpr('self.counter');
-    },
-
-    // Sensing
-    sensing_touchingobject(block) {
-      const object = block.inputs.TOUCHINGOBJECTMENU;
-      return booleanExpr('S.touching(' + compileExpression(object) + ')');
-    },
-    sensing_touchingobjectmenu(block) {
-      const object = block.fields.TOUCHINGOBJECTMENU;
-      return sanitizedExpression(object[0]);
-    },
-    sensing_touchingcolor(block) {
-      const color = block.inputs.COLOR;
-      return booleanExpr('S.touchingColor(' + compileExpression(color) + ')');
-    },
-    sensing_coloristouchingcolor(block) {
-      const color = block.inputs.COLOR;
-      const color2 = block.inputs.COLOR2;
-      return booleanExpr('S.colorTouchingColor(' + compileExpression(color) + ', ' + compileExpression(color2) + ')');
-    },
-    sensing_distanceto(block) {
-      const menu = block.inputs.DISTANCETOMENU;
-      return numberExpr('S.distanceTo(' + compileExpression(menu) + ')');
-    },
-    sensing_distancetomenu(block) {
-      return sanitizedExpression(block.fields.DISTANCETOMENU[0]);
-    },
-    sensing_answer(block) {
-      return stringExpr('self.answer');
-    },
-    sensing_keypressed(block) {
-      const key = block.inputs.KEY_OPTION;
-      return booleanExpr('!!self.keys[P.runtime.getKeyCode(' + compileExpression(key) + ')]');
-    },
-    sensing_keyoptions(block) {
-      const key = block.fields.KEY_OPTION[0];
-      return sanitizedExpression(key);
-    },
-    sensing_mousedown(block) {
-      return booleanExpr('self.mousePressed');
-    },
-    sensing_mousex(block) {
-      return numberExpr('self.mouseX');
-    },
-    sensing_mousey(block) {
-      return numberExpr('self.mouseY');
-    },
-    sensing_loudness(block) {
-      // We don't implement loudness, we always return -1 which indicates that there is no microphone available.
-      return numberExpr('-1');
-    },
-    sensing_loud(block) {
-      // see sensing_loudness above
-      return booleanExpr('false');
-    },
-    sensing_timer(block) {
-      if (P.config.preciseTimers) {
-        return numberExpr('((runtime.rightNow() - runtime.timerStart) / 1000)');
-      } else {
-        return numberExpr('((runtime.now - runtime.timerStart) / 1000)');
-      }
-    },
-    sensing_of(block) {
-      const property = block.fields.PROPERTY[0];
-      const object = block.inputs.OBJECT;
-      return 'attribute(' + sanitizedString(property) + ', ' + compileExpression(object, 'string') + ')';
-    },
-    sensing_of_object_menu(block) {
-      const object = block.fields.OBJECT[0];
-      return sanitizedExpression(object);
-    },
-    sensing_current(block) {
-      const current = block.fields.CURRENTMENU[0].toLowerCase();
-
-      switch (current) {
-        case 'year': return numberExpr('new Date().getFullYear()');
-        case 'month': return numberExpr('(new Date().getMonth() + 1)');
-        case 'date': return numberExpr('new Date().getDate()');
-        case 'dayofweek': return numberExpr('(new Date().getDay() + 1)');
-        case 'hour': return numberExpr('new Date().getHours()');
-        case 'minute': return numberExpr('new Date().getMinutes()');
-        case 'second': return numberExpr('new Date().getSeconds()');
-      }
-
-      return numberExpr('0');
-    },
-    sensing_dayssince2000(block) {
-      return numberExpr('((Date.now() - epoch) / 86400000)');
-    },
-    sensing_username(block) {
-      return stringExpr('self.username');
-    },
-
-    // Operators
-    operator_add(block) {
-      const num1 = block.inputs.NUM1;
-      const num2 = block.inputs.NUM2;
-      return numberExpr('(' + compileExpression(num1, 'number') + ' + ' + compileExpression(num2, 'number') + ' || 0)');
-    },
-    operator_subtract(block) {
-      const num1 = block.inputs.NUM1;
-      const num2 = block.inputs.NUM2;
-      return numberExpr('(' + compileExpression(num1, 'number') + ' - ' + compileExpression(num2, 'number') + ' || 0)');
-    },
-    operator_multiply(block) {
-      const num1 = block.inputs.NUM1;
-      const num2 = block.inputs.NUM2;
-      return numberExpr('(' + compileExpression(num1, 'number') + ' * ' + compileExpression(num2, 'number') + ' || 0)');
-    },
-    operator_divide(block) {
-      const num1 = block.inputs.NUM1;
-      const num2 = block.inputs.NUM2;
-      return numberExpr('(' + compileExpression(num1, 'number') + ' / ' + compileExpression(num2, 'number') + ' || 0)');
-    },
-    operator_random(block) {
-      const from = block.inputs.FROM;
-      const to = block.inputs.TO;
-      return numberExpr('random(' + compileExpression(from, 'number') + ', ' + compileExpression(to, 'number') + ')');
-    },
-    operator_gt(block) {
-      const operand1 = block.inputs.OPERAND1;
-      const operand2 = block.inputs.OPERAND2;
-      // TODO: use numGreater?
-      return booleanExpr('(compare(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ') === 1)');
-    },
-    operator_lt(block) {
-      const operand1 = block.inputs.OPERAND1;
-      const operand2 = block.inputs.OPERAND2;
-      // TODO: use numLess?
-      return booleanExpr('(compare(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ') === -1)');
-    },
-    operator_equals(block) {
-      const operand1 = block.inputs.OPERAND1;
-      const operand2 = block.inputs.OPERAND2;
-      return booleanExpr('equal(' + compileExpression(operand1) + ', ' + compileExpression(operand2) + ')');
-    },
-    operator_and(block) {
-      const operand1 = block.inputs.OPERAND1;
-      const operand2 = block.inputs.OPERAND2;
-      return booleanExpr('(' + compileExpression(operand1) + ' && ' + compileExpression(operand2) + ')');
-    },
-    operator_or(block) {
-      const operand1 = block.inputs.OPERAND1;
-      const operand2 = block.inputs.OPERAND2;
-      return booleanExpr('(' + compileExpression(operand1) + ' || ' + compileExpression(operand2) + ')');
-    },
-    operator_not(block) {
-      const operand = block.inputs.OPERAND;
-      return booleanExpr('!' + compileExpression(operand));
-    },
-    operator_join(block) {
-      const string1 = block.inputs.STRING1;
-      const string2 = block.inputs.STRING2;
-      return stringExpr('(' + compileExpression(string1, 'string') + ' + ' + compileExpression(string2, 'string') + ')');
-    },
-    operator_letter_of(block) {
-      const string = block.inputs.STRING;
-      const letter = block.inputs.LETTER;
-      return stringExpr('((' + compileExpression(string, 'string') + ')[(' + compileExpression(letter, 'number') + ' | 0) - 1] || "")');
-    },
-    operator_length(block) {
-      const string = block.inputs.STRING;
-      // TODO: parenthesis important?
-      return numberExpr('(' + compileExpression(string, 'string') + ').length');
-    },
-    operator_contains(block) {
-      const string1 = block.inputs.STRING1;
-      const string2 = block.inputs.STRING2;
-      return booleanExpr(compileExpression(string1, 'string') + '.includes(' + compileExpression(string2, 'string') + ')');
-    },
-    operator_mod(block) {
-      const num1 = block.inputs.NUM1;
-      const num2 = block.inputs.NUM2;
-      return numberExpr('mod(' + compileExpression(num1, 'number') + ', ' + compileExpression(num2, 'number') + ')');
-    },
-    operator_round(block) {
-      const num = block.inputs.NUM;
-      return numberExpr('Math.round(' + compileExpression(num, 'number') + ')');
-    },
-    operator_mathop(block) {
-      const operator = block.fields.OPERATOR[0];
-      const num = block.inputs.NUM;
-      const compiledNum = compileExpression(num, 'number');
-
-      switch (operator) {
-        case 'abs':
-          return numberExpr(`Math.abs(${compiledNum})`);
-        case 'floor':
-          return numberExpr(`Math.floor(${compiledNum})`);
-        case 'sqrt':
-          return numberExpr(`Math.sqrt(${compiledNum})`);
-        case 'ceiling':
-          return numberExpr(`Math.ceil(${compiledNum})`);
-        case 'cos':
-          return numberExpr(`Math.cos(${compiledNum} * Math.PI / 180)`);
-        case 'sin':
-          return numberExpr(`Math.sin(${compiledNum} * Math.PI / 180)`);
-        case 'tan':
-          return numberExpr(`Math.tan(${compiledNum} * Math.PI / 180)`);
-        case 'asin':
-          return numberExpr(`(Math.asin(${compiledNum}) * 180 / Math.PI)`)
-        case 'acos':
-          return numberExpr(`(Math.acos(${compiledNum}) * 180 / Math.PI)`)
-        case 'atan':
-          return numberExpr(`(Math.atan(${compiledNum}) * 180 / Math.PI)`)
-        case 'ln':
-          return numberExpr(`Math.log(${compiledNum})`);
-        case 'log':
-          return numberExpr(`(Math.log(${compiledNum}) / Math.LN10)`);
-        case 'e ^':
-          return numberExpr(`Math.exp(${compiledNum})`);
-        case '10 ^':
-          return numberExpr(`Math.exp(${compiledNum} * Math.LN10)`);
-        default:
-          return numberExpr('0');
-      }
-    },
-
-    // Data
-    data_itemoflist(block) {
-      const list = block.fields.LIST[1];
-      const index = block.inputs.INDEX;
-      return 'getLineOfList(' + listReference(list) + ', ' + compileExpression(index) + ')';
-    },
-    data_itemnumoflist(block) {
-      const list = block.fields.LIST[1];
-      const item = block.inputs.ITEM;
-      return numberExpr('listIndexOf(' + listReference(list) + ', ' + compileExpression(item) + ')');
-    },
-    data_lengthoflist(block) {
-      const list = block.fields.LIST[1];
-      return numberExpr(listReference(list) + '.length');
-    },
-    data_listcontainsitem(block) {
-      const list = block.fields.LIST[1];
-      const item = block.inputs.ITEM;
-      return booleanExpr('listContains(' + listReference(list) + ', ' + compileExpression(item) + ')');
-    },
-
-    // Procedures/arguments
-    argument_reporter_string_number(block) {
-      const name = block.fields.VALUE[0];
-      return 'C.args[' + sanitizedString(name) + ']';
-    },
-    argument_reporter_boolean(block) {
-      const name = block.fields.VALUE[0];
-      // Forcibly convert to boolean
-      return booleanExpr(asType('C.args[' + sanitizedString(name) + ']', 'boolean'));
-    },
-
-    // The matrix, a little known expression. Only used in some of the robot extensions.
-    matrix(block) {
-      const matrix = block.fields.MATRIX[0];
-      // This is a string, not a number. It's not to be treated as binary digits to convert to base 10.
-      return sanitizedExpression(matrix);
-    },
-
-    // Pen (extension)
-    pen_menu_colorParam(block) {
-      const colorParam = block.fields.colorParam[0];
-      return sanitizedExpression(colorParam);
-    },
-
-    // Music (extension)
-    music_getTempo(block) {
-      return numberExpr('self.tempoBPM');
-    },
-
-    // Makey Makey (extension)
-    makeymakey_menu_KEY(block) {
-      const key = block.fields.KEY[0];
-      return sanitizedExpression(key);
-    },
-
-    // Legacy no-ops
-    // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_sensing.js#L74
-    sensing_userid: noopExpression,
-    // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L42-L43
-    motion_xscroll: noopExpression,
-    motion_yscroll: noopExpression,
-  };
-
-  const noopStatement = () => { source += '/* noop */\n'};
-
-  /**
-   * Maps statement opcodes to their handler
-   */
-  export const statementLibrary: ObjectMap<StatementCompiler> = {
-    // Motion
-    motion_movesteps(block) {
-      const steps = block.inputs.STEPS;
-      source += 'S.forward(' + compileExpression(steps, 'number') + ');\n';
-      visualCheck('drawing');
-    },
-    motion_turnright(block) {
-      const degrees = block.inputs.DEGREES;
-      source += 'S.setDirection(S.direction + ' + compileExpression(degrees, 'number') + ');\n';
-      visualCheck('visible');
-    },
-    motion_turnleft(block) {
-      const degrees = block.inputs.DEGREES;
-      source += 'S.setDirection(S.direction - ' + compileExpression(degrees, 'number') + ');\n';
-      visualCheck('visible');
-    },
-    motion_goto(block) {
-      const to = block.inputs.TO;
-      source += 'S.gotoObject(' + compileExpression(to) + ');\n';
-      visualCheck('drawing');
-    },
-    motion_gotoxy(block) {
-      const x = block.inputs.X;
-      const y = block.inputs.Y;
-      source += 'S.moveTo(' + compileExpression(x, 'number') + ', ' + compileExpression(y, 'number') + ');\n';
-      visualCheck('drawing');
-    },
-    motion_glideto(block) {
-      const secs = block.inputs.SECS;
-      const to = block.inputs.TO;
-
-      visualCheck('drawing');
-      source += 'save();\n';
-      source += 'R.start = runtime.now;\n';
-      source += 'R.duration = ' + compileExpression(secs) + ';\n';
-      source += 'R.baseX = S.scratchX;\n';
-      source += 'R.baseY = S.scratchY;\n';
-      source += 'var to = self.getPosition(' + compileExpression(to) + ');\n';
-      source += 'if (to) {';
-      source += '  R.deltaX = to.x - S.scratchX;\n';
-      source += '  R.deltaY = to.y - S.scratchY;\n';
-      const id = label();
-      source += '  var f = (runtime.now - R.start) / (R.duration * 1000);\n';
-      source += '  if (f > 1 || isNaN(f)) f = 1;\n';
-      source += '  S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
-      source += '  if (f < 1) {\n';
-      forceQueue(id);
-      source += '  }\n';
-      source += '  restore();\n';
-      source += '}\n';
-    },
-    motion_glidesecstoxy(block) {
-      const secs = block.inputs.SECS;
-      const x = block.inputs.X;
-      const y = block.inputs.Y;
-
-      visualCheck('drawing');
-      source += 'save();\n';
-      source += 'R.start = runtime.now;\n';
-      source += 'R.duration = ' + compileExpression(secs) + ';\n';
-      source += 'R.baseX = S.scratchX;\n';
-      source += 'R.baseY = S.scratchY;\n';
-      source += 'R.deltaX = ' + compileExpression(x) + ' - S.scratchX;\n';
-      source += 'R.deltaY = ' + compileExpression(y) + ' - S.scratchY;\n';
-      const id = label();
-      source += 'var f = (runtime.now - R.start) / (R.duration * 1000);\n';
-      source += 'if (f > 1) f = 1;\n';
-      source += 'S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
-      source += 'if (f < 1) {\n';
-      forceQueue(id);
-      source += '}\n';
-      source += 'restore();\n';
-    },
-    motion_pointindirection(block) {
-      const direction = block.inputs.DIRECTION;
-      visualCheck('visible');
-      source += 'S.direction = ' + compileExpression(direction) + ';\n';
-    },
-    motion_pointtowards(block) {
-      const towards = block.inputs.TOWARDS;
-      source += 'S.pointTowards(' + compileExpression(towards) + ');\n';
-      visualCheck('visible');
-    },
-    motion_changexby(block) {
-      const dx = block.inputs.DX;
-      source += 'S.moveTo(S.scratchX + ' + compileExpression(dx, 'number') + ', S.scratchY);\n';
-      visualCheck('drawing');
-    },
-    motion_setx(block) {
-      const x = block.inputs.X;
-      source += 'S.moveTo(' + compileExpression(x, 'number') + ', S.scratchY);\n';
-      visualCheck('drawing');
-    },
-    motion_changeyby(block) {
-      const dy = block.inputs.DY;
-      source += 'S.moveTo(S.scratchX, S.scratchY + ' + compileExpression(dy, 'number') + ');\n';
-      visualCheck('drawing');
-    },
-    motion_sety(block) {
-      const y = block.inputs.Y;
-      source += 'S.moveTo(S.scratchX, ' + compileExpression(y, 'number') + ');\n';
-      visualCheck('drawing');
-    },
-    motion_ifonedgebounce(block) {
-      // TODO: set visual if bounced
-      source += 'S.bounceOffEdge();\n';
-    },
-    motion_setrotationstyle(block) {
-      const style = block.fields.STYLE[0];
-      source += 'S.rotationStyle = ' + P.utils.parseRotationStyle(style) + ';\n';
-      visualCheck('visible');
-    },
-
-    // Looks
-    looks_sayforsecs(block) {
-      const message = block.inputs.MESSAGE;
-      const secs = block.inputs.SECS;
-      source += 'save();\n';
-      source += 'R.id = S.say(' + compileExpression(message) + ', false);\n';
-      source += 'R.start = runtime.now;\n';
-      source += 'R.duration = ' + compileExpression(secs, 'number') + ';\n';
-      const id = label();
-      source += 'if (runtime.now - R.start < R.duration * 1000) {\n';
-      forceQueue(id);
-      source += '}\n';
-      source += 'if (S.sayId === R.id) {\n';
-      source += '  S.say("");\n';
-      source += '}\n';
-      source += 'restore();\n';
-      visualCheck('visible');
-    },
-    looks_say(block) {
-      const message = block.inputs.MESSAGE;
-      source += 'S.say(' + compileExpression(message) + ', false);\n';
-      visualCheck('visible');
-    },
-    looks_thinkforsecs(block) {
-      const message = block.inputs.MESSAGE;
-      const secs = block.inputs.SECS;
-      source += 'save();\n';
-      source += 'R.id = S.say(' + compileExpression(message) + ', true);\n';
-      source += 'R.start = runtime.now;\n';
-      source += 'R.duration = ' + compileExpression(secs, 'number') + ';\n';
-      const id = label();
-      source += 'if (runtime.now - R.start < R.duration * 1000) {\n';
-      forceQueue(id);
-      source += '}\n';
-      source += 'if (S.sayId === R.id) {\n';
-      source += '  S.say("");\n';
-      source += '}\n';
-      source += 'restore();\n';
-      visualCheck('visible');
-    },
-    looks_think(block) {
-      const message = block.inputs.MESSAGE;
-      source += 'S.say(' + compileExpression(message) + ', true);\n';
-      visualCheck('visible');
-    },
-    looks_switchcostumeto(block) {
-      const costume = block.inputs.COSTUME;
-      source += 'S.setCostume(' + compileExpression(costume) + ');\n';
-      visualCheck('visible');
-    },
-    looks_nextcostume(block) {
-      source += 'S.showNextCostume();\n';
-      visualCheck('visible');
-    },
-    looks_switchbackdropto(block) {
-      const backdrop = block.inputs.BACKDROP;
-      source += 'self.setCostume(' + compileExpression(backdrop) + ');\n';
-      visualCheck('always');
-      source += 'var threads = backdropChange();\n';
-      source += 'if (threads.indexOf(BASE) !== -1) {return;}\n';
-    },
-    looks_nextbackdrop(block) {
-      source += 'self.showNextCostume();\n';
-      visualCheck('always');
-      source += 'var threads = backdropChange();\n';
-      source += 'if (threads.indexOf(BASE) !== -1) {return;}\n';
-    },
-    looks_changesizeby(block) {
-      const change = block.inputs.CHANGE;
-      source += 'var f = S.scale + ' + compileExpression(change) + ' / 100;\n';
-      source += 'S.scale = f < 0 ? 0 : f;\n';
-      visualCheck('visible');
-    },
-    looks_setsizeto(block) {
-      const size = block.inputs.SIZE;
-      source += 'var f = ' + compileExpression(size) + ' / 100;\n';
-      source += 'S.scale = f < 0 ? 0 : f;\n';
-      visualCheck('visible');
-    },
-    looks_changeeffectby(block) {
-      const effect = block.fields.EFFECT[0];
-      const change = block.inputs.CHANGE;
-      source += 'S.changeFilter(' + sanitizedString(effect).toLowerCase() + ', ' + compileExpression(change, 'number') + ');\n';
-      visualCheck('visible');
-    },
-    looks_seteffectto(block) {
-      const effect = block.fields.EFFECT[0];
-      const value = block.inputs.VALUE;
-      // Lowercase conversion is necessary to remove capitals, which we do not want.
-      source += 'S.setFilter(' + sanitizedString(effect).toLowerCase() + ', ' + compileExpression(value, 'number') + ');\n';
-      visualCheck('visible');
-    },
-    looks_cleargraphiceffects(block) {
-      source += 'S.resetFilters();\n';
-      visualCheck('visible');
-    },
-    looks_show(block) {
-      source += 'S.visible = true;\n';
-      visualCheck('always');
-      updateBubble();
-    },
-    looks_hide(block) {
-      visualCheck('visible');
-      source += 'S.visible = false;\n';
-      updateBubble();
-    },
-    looks_gotofrontback(block) {
-      const frontBack = block.fields.FRONT_BACK[0];
-      source += 'var i = self.children.indexOf(S);\n';
-      source += 'if (i !== -1) self.children.splice(i, 1);\n';
-      if (frontBack === 'front') {
-        source += 'self.children.push(S);\n';
-      } else {
-        // `frontBack` is probably 'back', but it doesn't matter
-        source += 'self.children.unshift(S);\n';
-      }
-    },
-    looks_goforwardbackwardlayers(block) {
-      const direction = block.fields.FORWARD_BACKWARD[0];
-      const number = block.inputs.NUM;
-      source += 'var i = self.children.indexOf(S);\n';
-      source += 'if (i !== -1) {\n';
-      source += '  self.children.splice(i, 1);\n';
-      if (direction === 'forward') {
-        source += '  self.children.splice(Math.min(self.children.length - 1, i + ' + compileExpression(number) + '), 0, S);\n';
-      } else {
-        // `direction` is probably 'backward', but it doesn't matter
-        source += '  self.children.splice(Math.max(0, i - ' + compileExpression(number) + '), 0, S);\n';
-      }
-      source += '}\n';
-    },
-
-    // Sounds
-    sound_playuntildone(block) {
-      const sound = block.inputs.SOUND_MENU;
-      source += 'var sound = S.getSound(' + compileExpression(sound) + ');\n';
-      source += 'if (sound) {\n';
-      source += '  playSound(sound);\n';
-      wait('sound.duration');
-      source += '}\n';
-    },
-    sound_play(block) {
-      const sound = block.inputs.SOUND_MENU;
-      source += 'var sound = S.getSound(' + compileExpression(sound) + ');\n';
-      source += 'if (sound) {\n';
-      source += '  playSound(sound);\n';
-      source += '}\n';
-    },
-    sound_stopallsounds(block) {
-      if (P.audio.context) {
-        source += 'self.stopAllSounds();\n';
-      }
-    },
-    sound_changevolumeby(block) {
-      const volume = block.inputs.VOLUME;
-      source += 'S.volume = Math.max(0, Math.min(1, S.volume + ' + compileExpression(volume, 'number') + ' / 100));\n';
-      source += 'if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
-      source += 'for (var sounds = S.sounds, i = sounds.length; i--;) {\n';
-      source += '  var sound = sounds[i];\n';
-      source += '  if (sound.node && sound.target === S) {\n';
-      source += '    sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
-      source += '  }\n';
-      source += '}\n';
-    },
-    sound_setvolumeto(block) {
-      const volume = block.inputs.VOLUME;
-      source += 'S.volume = Math.max(0, Math.min(1, ' + compileExpression(volume, 'number') + ' / 100));\n';
-      source += 'if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
-      source += 'for (var sounds = S.sounds, i = sounds.length; i--;) {\n';
-      source += '  var sound = sounds[i];\n';
-      source += '  if (sound.node && sound.target === S) {\n';
-      source += '    sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
-      source += '  }\n';
-      source += '}\n';
-    },
-
-    // Event
-    event_broadcast(block) {
-      const input = block.inputs.BROADCAST_INPUT;
-      source += 'var threads = broadcast(' + compileExpression(input) + ');\n';
-      source += 'if (threads.indexOf(BASE) !== -1) {return;}\n';
-    },
-    event_broadcastandwait(block) {
-      const input = block.inputs.BROADCAST_INPUT;
-      source += 'save();\n';
-      source += 'R.threads = broadcast(' + compileExpression(input) + ');\n';
-      source += 'if (R.threads.indexOf(BASE) !== -1) {return;}\n';
-      const id = label();
-      source += 'if (running(R.threads)) {\n';
-      forceQueue(id);
-      source += '}\n';
-      source += 'restore();\n';
-    },
-
-    // Control
-    control_wait(block) {
-      const duration = block.inputs.DURATION;
-      source += 'save();\n';
-      source += 'R.start = runtime.now;\n';
-      source += 'R.duration = ' + compileExpression(duration) + ';\n';
-      source += 'var first = true;\n';
-      const id = label();
-      source += 'if (runtime.now - R.start < R.duration * 1000 || first) {\n';
-      source += '  var first;\n';
-      forceQueue(id);
-      source += '}\n';
-      source += 'restore();\n';
-    },
-    control_repeat(block) {
-      const times = block.inputs.TIMES;
-      const substack = block.inputs.SUBSTACK;
-      source += 'save();\n';
-      source += 'R.count = ' + compileExpression(times) + ';\n';
-      const id = label();
-      source += 'if (R.count >= 0.5) {\n';
-      source += '  R.count -= 1;\n';
-      compileSubstack(substack);
-      queue(id);
-      source += '} else {\n';
-      source += '  restore();\n';
-      source += '}\n';
-    },
-    control_forever(block) {
-      const substack = block.inputs.SUBSTACK;
-      const id = label();
-      compileSubstack(substack);
-      queue(id);
-    },
-    control_if(block) {
-      const condition = block.inputs.CONDITION;
-      const substack = block.inputs.SUBSTACK;
-      source += 'if (' + compileExpression(condition) + ') {\n';
-      compileSubstack(substack);
-      source += '}\n';
-    },
-    control_if_else(block) {
-      const condition = block.inputs.CONDITION;
-      const substack1 = block.inputs.SUBSTACK;
-      const substack2 = block.inputs.SUBSTACK2;
-      source += 'if (' + compileExpression(condition) + ') {\n';
-      compileSubstack(substack1);
-      source += '} else {\n';
-      compileSubstack(substack2);
-      source += '}\n';
-    },
-    control_wait_until(block) {
-      const condition = block.inputs.CONDITION;
-      const id = label();
-      source += 'if (!' + compileExpression(condition) + ') {\n';
-      forceQueue(id);
-      source += '}\n';
-    },
-    control_repeat_until(block) {
-      const condition = block.inputs.CONDITION;
-      const substack = block.inputs.SUBSTACK;
-      const id = label();
-      source += 'if (!' + compileExpression(condition, 'boolean') + ') {\n';
-      compileSubstack(substack);
-      queue(id);
-      source += '}\n';
-    },
-    control_while(block) {
-      // Hacked block
-      const condition = block.inputs.CONDITION;
-      const substack = block.inputs.SUBSTACK;
-      const id = label();
-      source += 'if (' + compileExpression(condition, 'boolean') + ') {\n';
-      compileSubstack(substack);
-      queue(id);
-      source += '}\n';
-    },
-    control_all_at_once(block) {
-      // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_control.js#L194-L199
-      const substack = block.inputs.SUBSTACK;
-      compileSubstack(substack);
-    },
-    control_stop(block) {
-      const option = block.fields.STOP_OPTION[0];
-
-      switch (option) {
-        case 'all':
-          source += 'runtime.stopAll();\n';
-          source += 'return;\n';
-          break;
-        case 'this script':
-          source += 'endCall();\n';
-          source += 'return;\n';
-          break;
-        case 'other scripts in sprite':
-        case 'other scripts in stage':
-          source += 'for (var i = 0; i < runtime.queue.length; i++) {\n';
-          source += '  if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
-          source += '    runtime.queue[i] = undefined;\n';
-          source += '  }\n';
-          source += '}\n';
-          break;
-        default:
-          // If the field is not recognized or not a compile-time constant, then fallback to a large switch statement.
-          source += 'switch (' + sanitizedString(option) + ') {\n';
-          source += '  case "all":\n';
-          source += '    runtime.stopAll();\n';
-          source += '    return;\n';
-          source += '  case "this script":\n';
-          source += '    endCall();\n';
-          source += '    return;\n';
-          source += '  case "other scripts in sprite":\n';
-          source += '  case "other scripts in stage":\n';
-          source += '    for (var i = 0; i < runtime.queue.length; i++) {\n';
-          source += '      if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
-          source += '        runtime.queue[i] = undefined;\n';
-          source += '      }\n';
-          source += '    }\n';
-          source += '    break;\n';
-          source += '}\n';
-      }
-    },
-    control_create_clone_of(block) {
-      const option = block.inputs.CLONE_OPTION;
-      source += 'clone(' + compileExpression(option) + ');\n';
-    },
-    control_delete_this_clone(block) {
-      source += 'if (S.isClone) {\n';
-      source += '  S.remove();\n';
-      source += '  var i = self.children.indexOf(S);\n';
-      source += '  if (i !== -1) self.children.splice(i, 1);\n';
-      source += '  for (var i = 0; i < runtime.queue.length; i++) {\n';
-      source += '    if (runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
-      source += '      runtime.queue[i] = undefined;\n';
-      source += '    }\n';
-      source += '  }\n';
-      source += '  return;\n';
-      source += '}\n';
-    },
-    control_incr_counter(block) {
-      source += 'self.counter++;\n';
-    },
-    control_clear_counter(block) {
-      source += 'self.counter = 0;\n';
-    },
-
-    // Sensing
-    sensing_askandwait(block) {
-      const question = block.inputs.QUESTION;
-      source += 'R.id = self.nextPromptId++;\n';
-      // 1 - wait until we are next up for the asking
-      const id1 = label();
-      source += 'if (self.promptId < R.id) {\n';
-      forceQueue(id1);
-      source += '}\n';
-
-      source += 'S.ask(' + compileExpression(question, 'string') + ');\n';
-      // 2 - wait until the prompt has been answered
-      const id2 = label();
-      source += 'if (self.promptId === R.id) {\n';
-      forceQueue(id2);
-      source += '}\n';
-
-      visualCheck('always');
-    },
-    sensing_setdragmode(block) {
-      const dragMode = block.fields.DRAG_MODE[0];
-      if (dragMode === 'draggable') {
-        source += 'S.isDraggable = true;\n';
-      } else {
-        // it doesn't matter what `dragMode` is at this point
-        source += 'S.isDraggable = false;\n';
-      }
-    },
-    sensing_resettimer(blocK) {
-      source += 'runtime.timerStart = runtime.now;\n';
-    },
-
-    // Data
-    data_setvariableto(block) {
-      const variableId = block.fields.VARIABLE[1];
-      const value = block.inputs.VALUE;
-      source += variableReference(variableId) + ' = ' + compileExpression(value) + ';\n';
-    },
-    data_changevariableby(block) {
-      const variableId = block.fields.VARIABLE[1];
-      const value = block.inputs.VALUE;
-      const ref = variableReference(variableId);
-      source += ref + ' = (' + asType(ref, 'number') + ' + ' + compileExpression(value, 'number') + ');\n';
-    },
-    data_showvariable(block) {
-      const variable = block.fields.VARIABLE[1];
-      const scope = variableScope(variable);
-      source += scope + '.showVariable(' + sanitizedString(variable) + ', true);\n';
-    },
-    data_hidevariable(block) {
-      const variable = block.fields.VARIABLE[1];
-      const scope = variableScope(variable);
-      source += scope + '.showVariable(' + sanitizedString(variable) + ', false);\n';
-    },
-    data_showlist(block) {
-      const list = block.fields.LIST[1];
-      const scope = listScope(list);
-      source += scope + '.showVariable(' + sanitizedString(list) + ', true);\n';
-    },
-    data_hidelist(block) {
-      const list = block.fields.LIST[1];
-      const scope = listScope(list);
-      source += scope + '.showVariable(' + sanitizedString(list) + ', false);\n';
-    },
-    data_addtolist(block) {
-      const list = block.fields.LIST[1];
-      const item = block.inputs.ITEM;
-      source += listReference(list) + '.push(' + compileExpression(item)  + ');\n';
-    },
-    data_deleteoflist(block) {
-      const list = block.fields.LIST[1];
-      const index = block.inputs.INDEX;
-      source += listReference(list) + '.deleteLine(' + compileExpression(index) + ');\n';
-    },
-    data_deletealloflist(block) {
-      const list = block.fields.LIST[1];
-      source += listReference(list) + '.deleteLine("all");\n';
-    },
-    data_insertatlist(block) {
-      const list = block.fields.LIST[1];
-      const item = block.inputs.ITEM;
-      const index = block.inputs.INDEX;
-      source += listReference(list) + '.insert(' + compileExpression(index) + ', ' + compileExpression(item) + ');\n';
-    },
-    data_replaceitemoflist(block) {
-      const list = block.fields.LIST[1];
-      const item = block.inputs.ITEM;
-      const index = block.inputs.INDEX;
-      source += listReference(list) + '.set(' + compileExpression(index) + ', ' + compileExpression(item) + ');\n';
-    },
-
-    // Procedures
-    procedures_call(block) {
-      const mutation = block.mutation;
-      const name = mutation.proccode;
-
-      if (P.config.debug && name === 'forkphorus:debugger;') {
-        source += '/* forkphorus debugger */debugger;\n';
-        return;
-      }
-
-      const id = nextLabel();
-      source += 'call(S.procedures[' + sanitizedString(name) + '], ' + id + ', [\n';
-
-      // The mutation has a stringified JSON list of input IDs... it's weird.
-      const inputIds = JSON.parse(mutation.argumentids);
-      for (const id of inputIds) {
-        const input = block.inputs[id];
-        source += '  ' + compileExpression(input) + ',\n';
-      }
-
-      source += ']);\n';
-
-      delay();
-    },
-
-    // Pen (extension)
-    pen_clear(block) {
-      source += 'self.clearPen();\n';
-      visualCheck('always');
-    },
-    pen_stamp(block) {
-      source += 'S.stamp();\n';
-      visualCheck('always');
-    },
-    pen_penDown(block) {
-      source += 'S.isPenDown = true;\n';
-      source += 'S.dotPen();\n';
-      visualCheck('always');
-    },
-    pen_penUp(block) {
-      // TODO: determine visualCheck variant
-      // definitely not 'always' or 'visible', might be a 'if (S.isPenDown)'
-      source += 'S.isPenDown = false;\n';
-    },
-    pen_setPenColorToColor(block) {
-      const color = block.inputs.COLOR;
-      source += 'S.setPenColor(' + compileExpression(color, 'number') + ');\n';
-    },
-    pen_setPenHueToNumber(block) {
-      const hue = block.inputs.HUE;
-      source += 'S.setPenColorHSL();\n';
-      source += 'S.penHue = ' + compileExpression(hue, 'number') + ' * 360 / 200;\n';
-      source += 'S.penSaturation = 100;\n';
-    },
-    pen_changePenHueBy(block) {
-      const hue = block.inputs.HUE;
-      source += 'S.setPenColorHSL();\n';
-      source += 'S.penHue += ' + compileExpression(hue, 'number') + ' * 360 / 200;\n';
-      source += 'S.penSaturation = 100;\n';
-    },
-    pen_setPenShadeToNumber(block) {
-      const shade = block.inputs.SHADE;
-      source += 'S.setPenColorHSL();\n';
-      source += 'S.penLightness = ' + compileExpression(shade, 'number') + ' % 200;\n';
-      source += 'if (S.penLightness < 0) S.penLightness += 200;\n';
-      source += 'S.penSaturation = 100;\n';
-    },
-    pen_changePenShadeBy(block) {
-      const shade = block.inputs.SHADE;
-      source += 'S.setPenColorHSL();\n';
-      source += 'S.penLightness = (S.penLightness + ' + compileExpression(shade, 'number') + ') % 200;\n';
-      source += 'if (S.penLightness < 0) S.penLightness += 200;\n';
-      source += 'S.penSaturation = 100;\n';
-    },
-    pen_setPenColorParamTo(block) {
-      const colorParam = block.inputs.COLOR_PARAM;
-      const value = block.inputs.VALUE;
-      source += 'S.setPenColorParam(' + compileExpression(colorParam, 'string') + ', ' + compileExpression(value, 'number') + ');\n';
-    },
-    pen_changePenColorParamBy(block) {
-      const colorParam = block.inputs.COLOR_PARAM;
-      const value = block.inputs.VALUE;
-      source += 'S.changePenColorParam(' + compileExpression(colorParam, 'string') + ', ' + compileExpression(value, 'number') + ');\n';
-    },
-    pen_changePenSizeBy(block) {
-      const size = block.inputs.SIZE;
-      source += 'S.penSize = Math.max(1, S.penSize + ' + compileExpression(size, 'number') + ');\n';
-    },
-    pen_setPenSizeTo(block) {
-      const size = block.inputs.SIZE;
-      source += 'S.penSize = Math.max(1, ' + compileExpression(size, 'number') + ');\n';
-    },
-
-    // Music (extension)
-    music_setTempo(block) {
-      const tempo = block.inputs.TEMPO;
-      source += 'self.tempoBPM = ' + compileExpression(tempo, 'number') + ';\n';
-    },
-    music_changeTempo(block) {
-      const tempo = block.inputs.TEMPO;
-      source += 'self.tempoBPM += ' + compileExpression(tempo, 'number') + ';\n';
-    },
-
-    // Legacy no-ops.
-    // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L19
-    motion_scroll_right: noopStatement,
-    motion_scroll_up: noopStatement,
-    motion_align_scene: noopStatement,
-    // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_looks.js#L248
-    looks_changestretchby: noopStatement,
-    looks_setstretchto: noopStatement,
-    looks_hideallsprites: noopStatement,
-  };
-
-  // Contains data used for variable watchers.
-  export const watcherLibrary: ObjectMap<WatchedValue> = {
-    // Maps watcher opcode to the methods that define its behavior.
-
-    // Motion
-    motion_xposition: {
-      evaluate(watcher) { return watcher.target.scratchX; },
-      getLabel() { return 'x position'; },
-    },
-    motion_yposition: {
-      evaluate(watcher) { return watcher.target.scratchY; },
-      getLabel() { return 'y position'; },
-    },
-    motion_direction: {
-      evaluate(watcher) { return P.core.isSprite(watcher.target) ? watcher.target.direction : 0; },
-      getLabel() { return 'direction'; },
-    },
-
-    // Looks
-    looks_costumenumbername: {
-      evaluate(watcher) {
-        const target = watcher.target;
-        const param = watcher.params.NUMBER_NAME;
-        if (param === 'number') {
-          return target.currentCostumeIndex + 1;
-        } else {
-          return target.costumes[target.currentCostumeIndex].name;
-        }
-      },
-      getLabel(watcher) {
-        return 'costume ' + watcher.params.NUMBER_NAME;
-      },
-    },
-    looks_backdropnumbername: {
-      evaluate(watcher) {
-        const target = watcher.stage;
-        const param = watcher.params.NUMBER_NAME;
-        if (param === 'number') {
-          return target.currentCostumeIndex + 1;
-        } else {
-          return target.costumes[target.currentCostumeIndex].name;
-        }
-      },
-      getLabel(watcher) {
-        return 'backdrop ' + watcher.params.NUMBER_NAME;
-      },
-    },
-    looks_size: {
-      evaluate(watcher) { return P.core.isSprite(watcher.target) ? watcher.target.scale * 100 : 100; },
-      getLabel() { return 'size'; },
-    },
-
-    // Sound
-    sound_volume: {
-      evaluate(watcher) { return watcher.target.volume * 100; },
-      getLabel() { return 'volume'; },
-    },
-
-    // Sensing
-    sensing_answer: {
-      evaluate(watcher) { return watcher.stage.answer; },
-      getLabel() { return 'answer'; },
-    },
-    sensing_loudness: {
-      // We don't implement loudness.
-      evaluate() { return -1; },
-      getLabel() { return 'loudness'; },
-    },
-    sensing_timer: {
-      evaluate(watcher) {
-        return (watcher.stage.runtime.now - watcher.stage.runtime.timerStart) / 1000;
-      },
-      getLabel() { return 'timer'; },
-    },
-    sensing_current: {
-      evaluate(watcher) {
-        const param = watcher.params.CURRENTMENU.toLowerCase();
-        switch (param) {
-          case 'year': return new Date().getFullYear();
-          case 'month': return new Date().getMonth() + 1;
-          case 'date': return new Date().getDate();
-          case 'dayofweek': return new Date().getDay() + 1;
-          case 'hour': return new Date().getHours();
-          case 'minute': return new Date().getMinutes();
-          case 'second': return new Date().getSeconds();
-        }
-        return 0;
-      },
-      getLabel(watcher) {
-        const param = watcher.params.CURRENTMENU.toLowerCase();
-        // all expected params except DAYOFWEEK can just be lowercased and used directly
-        if (param === 'dayofweek') {
-          return 'day of week';
-        }
-        return param;
-      }
-    },
-    sensing_username: {
-      evaluate(watcher) { return watcher.stage.username; },
-      getLabel() { return 'username'; },
-    },
-
-    // Data
-    data_variable: {
-      init(watcher) {
-        const name = watcher.params.VARIABLE;
-        watcher.target.watchers[name] = watcher;
-      },
-      set(watcher, value) {
-        const name = watcher.params.VARIABLE;
-        watcher.target.vars[name] = value;
-      },
-      evaluate(watcher) {
-        const name = watcher.params.VARIABLE;
-        return watcher.target.vars[name];
-      },
-      getLabel(watcher) {
-        return watcher.params.VARIABLE;
-      },
-    },
-
-    // Music (extension)
-    music_getTempo: {
-      evaluate(watcher) { return watcher.stage.tempoBPM; },
-      getLabel() { return 'Music: tempo'; },
-    },
-  };
-
-  ///
-  /// Helpers
-  ///
-
-  /**
-   * Adds JS to update the speech bubble if necessary
-   */
-  function updateBubble() {
-    source += 'if (S.saying) S.updateBubble();\n';
-  }
-
-  /**
-   * Adds JS to enable the VISUAL runtime flag when necessary
-   * @param variant 'drawing', 'visible', or 'always'
-   */
-  function visualCheck(variant: 'drawing' | 'visible' | 'always') {
-    if (P.config.debug) {
-      source += '/*visual:' + variant + '*/';
-    }
-    switch (variant) {
-      case 'drawing': source += 'if (S.visible || S.isPenDown) VISUAL = true;\n'; break;
-      case 'visible': source += 'if (S.visible) VISUAL = true;\n'; break;
-      case 'always':  source += 'VISUAL = true;\n'; break;
-    }
-  }
-
-  // Queues something to run with the forceQueue runtime method
-  function forceQueue(id: number) {
-    source += 'forceQueue(' + id + '); return;\n';
-  }
-
-  // Queues something to run with the queue runtime method
-  function queue(id: number) {
-    source += 'queue(' + id + '); return;\n';
-  }
-
-  // Adds a delay
-  function delay() {
-    source += 'return;\n';
-    label();
-  }
-
-  // Gets the next label
-  function nextLabel(): number {
-    return fns.length + currentTarget.fns.length;
-  }
-
-  // Creates and returns a new label for the script's current state
-  function label(): number {
-    const id = nextLabel();
-    fns.push(source.length);
-    if (P.config.debug) {
-      source += '/*label:' + id + '*/';
-    }
-    return id;
-  }
-
-  // Sanitizes a string to be used in a javascript string enclosed in double quotes.
-  function sanitizedString(thing: string): string {
-    if (typeof thing !== 'string') {
-      thing = '' + thing;
-    }
-    return '"' + thing
-      .replace(/\\/g, '\\\\')
-      .replace(/'/g, '\\\'')
-      .replace(/"/g, '\\"')
-      .replace(/\n/g, '\\n')
-      .replace(/\r/g, '\\r')
-      .replace(/\{/g, '\\x7b')
-      .replace(/\}/g, '\\x7d') + '"';
-  }
-
-  // Sanitizes a string using sanitizedString() as a compiled string expression.
-  function sanitizedExpression(thing: string): CompiledExpression {
-    return stringExpr(sanitizedString(thing));
-  }
-
-  // Adds JS to wait for a duration.
-  // `duration` is a valid compiled JS expression.
-  function wait(duration: string) {
-    source += 'save();\n';
-    source += 'R.start = runtime.now;\n';
-    source += 'R.duration = ' + duration + ';\n';
-    source += 'var first = true;\n';
-    const id = label();
-    source += 'if (runtime.now - R.start < R.duration * 1000 || first) {\n';
-    source += '  var first;\n';
-    forceQueue(id);
-    source += '}\n';
-    source += 'restore();\n';
-  }
-
-  /**
-   * Determines the runtime object that owns a variable.
-   * If the variable does not exist, it will be created.
-   * @param id The Scratch 3 variable ID
-   */
-  function variableScope(id: string) {
-    if (id in currentTarget.stage.vars) {
-      return 'self';
-    } else if (id in currentTarget.vars) {
-      return 'S';
-    } else {
-      // We make sure all variables exist at compile time.
-      // We'll use 0 as a default value because I **think** this is what Scratch 3 does.
-      currentTarget.vars[id] = 0;
-      return 'S';
-    }
-  }
-
-  /**
-   * Determines the runtime object that owns a list.
-   * If the list does not exist, it will be created.
-   * @param id The Scratch 3 list ID
-   */
-  function listScope(id: string) {
-    if (id in currentTarget.stage.lists) {
-      return 'self';
-    } else if (id in currentTarget.lists) {
-      return 'S';
-    } else {
-      // We make sure all lists exist at compile time.
-      // Unknown lists become empty lists. This is probably what Scratch 3 does.
-      currentTarget.lists[id] = new Scratch3List();
-      return 'S';
-    }
-  }
-
-  // Returns a reference to a variable with an ID
-  function variableReference(id: string) {
-    const scope = variableScope(id);
-    return scope + '.vars[' + compileExpression(id) + ']';
-  }
-
-  // Returns a reference to a list with a ID
-  function listReference(id: string) {
-    const scope = listScope(id);
-    return scope + '.lists[' + compileExpression(id) + ']';
-  }
-
-  ///
-  /// Compilers
-  ///
-
-  // Compiles a '#ABCDEF' color
-  function compileColor(hexCode: string): CompiledExpression {
-    // Remove the leading # and use it to create a hexadecimal number
-    const hex = hexCode.substr(1);
-    // Ensure that it is actually a hex number.
-    if (/^[0-9a-f]{6}$/.test(hex)) {
-      return numberExpr('0x' + hex);
-    } else {
-      console.warn('expected hex color code but got', hex);
-      return numberExpr('0x0');
-    }
-  }
-
-  // Compiles a native expression (number, string, data) to a JavaScript string
-  function compileNative(constant): CompiledExpression | string {
-    // Natives are arrays, where the first value is the type ID. (see PrimitiveTypes)
-    const type = constant[0];
-
-    switch (type) {
-      // These all function as numbers. I believe they are only differentiated so the editor can be more helpful.
-      case PrimitiveTypes.MATH_NUM:
-      case PrimitiveTypes.POSITIVE_NUM:
-      case PrimitiveTypes.WHOLE_NUM:
-      case PrimitiveTypes.INTEGER_NUM:
-      case PrimitiveTypes.ANGLE_NUM: {
-        const number = parseFloat(constant[1]);
-        if (!isNaN(number)) {
-          return numberExpr(number.toString());
-        } else {
-          return sanitizedExpression(constant[1]);
-        }
-      }
-
-      case PrimitiveTypes.TEXT:
-        return sanitizedExpression(constant[1]);
-
-      case PrimitiveTypes.VAR:
-        // For variable natives the second item is the name of the variable
-        // and the third is the ID of the variable. We only care about the ID.
-        return variableReference(constant[2]);
-
-      case PrimitiveTypes.LIST:
-        // Similar to variable references
-        return listReference(constant[2]);
-
-      case PrimitiveTypes.BROADCAST:
-        // [type, name, id]
-        return compileExpression(constant[1]);
-
-      case PrimitiveTypes.COLOR_PICKER:
-        // Colors are stored as strings like "#123ABC", so we must do some conversions to use them as numbers.
-        return compileColor(constant[1]);
-
-      default:
-        console.warn('unknown constant', type, constant);
-        return stringExpr('""');
-    }
-  }
-
-  /**
-   * Compiles a block
-   * The source code is in the source variable (does not return)
-   */
-  function compile(block: Block | string) {
-    if (typeof block === 'string') {
-      block = blocks[block];
-    }
-    if (!block) {
-      return;
-    }
-
-    while (true) {
-      const opcode = block.opcode;
-      const compiler = statementLibrary[opcode];
-      if (!compiler) {
-        console.warn('unknown statement', opcode, block);
-      } else {
-        if (P.config.debug) {
-          source += '/*' + opcode + '*/';
-        }
-        compiler(block);
-      }
-
-      if (!block.next) {
-        break;
-      }
-      block = blocks[block.next];
-    }
-  }
-
-  // Compiles a substack (script inside of another block)
-  function compileSubstack(substack) {
-    // Substacks are statements inside of statements.
-    // Substacks are a type of input. The first item is type ID, the second is the ID of the child.
-
-    // Substacks are not guaranteed to exist, so silently fail.
-    if (!substack) {
-      return;
-    }
-
-    // TODO: check type?
-    // const type = substack[0];
-
-    const id: string = substack[1];
-    compile(id);
-  }
-
-  function asType(script: string | CompiledExpression, type?: ExpressionType): string {
-    if (script instanceof CompiledExpression) {
-      // If a compiled expression is already of the desired type, then simply return it.
-      if (script.type === type) {
-        return script.source;
-      }
-      script = script.source;
-    }
-    switch (type) {
-      case 'string': return '("" + ' + script + ')';
-      case 'number': return '+' + script;
-      case 'boolean': return 'bool(' + script + ')';
-    }
-    return script;
-  }
-
-  function fallbackValue(type?: ExpressionType): string {
-    switch (type) {
-      case 'string': return '""';
-      case 'number': return '0';
-      case 'boolean': return 'false';
-    }
-    return '""';
-  }
-
-  /**
-   * Compiles a Scratch 3 expression or input.
-   *
-   * @param The expression to compile
-   * @param The requested type of the expression
-   * @return The source of the compiled expression with any required type conversions
-   */
-  function compileExpression(expression, type?: ExpressionType): string {
-    if (!expression) {
-      return fallbackValue(type);
-    }
-
-    // TODO: use asType?
-    if (typeof expression === 'string') {
-      return sanitizedString(expression);
-    }
-    if (typeof expression === 'number') {
-      // I have a slight feeling this block never runs.
-      // TODO: remove?
-      return '' + expression;
-    }
-
-    if (Array.isArray(expression[1])) {
-      const native = expression[1];
-      return asType(compileNative(native), type);
-    }
-
-    const id = expression[1];
-    const block = blocks[id];
-    if (!block) {
-      return fallbackValue(type);
-    }
-    const opcode = block.opcode;
-
-    const compiler = expressionLibrary[opcode];
-    if (!compiler) {
-      console.warn('unknown expression', opcode, block);
-      return fallbackValue(type);
-    }
-    let result = compiler(block);
-
-    if (result instanceof CompiledExpression) {
-      if (P.config.debug) {
-        result.source = '/*' + opcode + '*/' + result.source;
-      }
-      return asType(result, type);
-    }
-
-    if (P.config.debug) {
-      result = '/*' + opcode + '*/' + result;
-    }
-
-    return asType(result, type);
-  }
-
-  /**
-   * Compiles a top block listener from the top down.
-   * The resulting source code is in the `source` variable of P.sb3.compiler
-   * @returns {boolean} Successful compiling
-   */
-  function compileListener(topBlock: Block): boolean {
-    // Ignore blocks where we don't recognize the opcode
-    const topLevelOpCode = topBlock.opcode;
-    if (!(topLevelOpCode in topLevelLibrary)) {
-      // Only log warnings if we wouldn't otherwise recognize the block.
-      // Some dangling non-top-level blocks is very common.
-      if (!(topLevelOpCode in expressionLibrary) && !(topLevelOpCode in statementLibrary)) {
-        console.warn('unknown top level block', topLevelOpCode, topBlock);
-      }
-      return false;
-    }
-
-    // We can completely ignore empty listeners (those without any children)
-    if (!topBlock.next) {
-      return false;
-    }
-
-    source = '';
-    const block = blocks[topBlock.next];
-
-    compile(block);
-
-    // Procedure definitions need special care to properly end calls.
-    // In the future this should be refactored so that things like this are part of the top level library
-    if (topLevelOpCode === 'procedures_definition') {
-      source += 'endCall(); return;\n';
-    }
-
-    return true;
-  }
-
-  /**
-   * Compiles a Scratch 3 Target (Sprite/Stage)
-   *
-   * @param target The constructed instance of P.sb3.Target
-   * @param data The raw sb3 data of the target
-   */
-  export function compileTarget(target: P.sb3.Target, data: P.sb3.SB3Target) {
-    currentTarget = target;
-    blocks = data.blocks;
-
-    // We compile blocks from the top level down to their children, so extract top level blocks
-    const topLevelBlocks = Object.keys(data.blocks)
-      .map((id) => data.blocks[id])
-      .filter((block) => block.topLevel);
-
-    for (const block of topLevelBlocks) {
-      // The first function points to the very start at index 0
-      fns = [0];
-
-      const compilingSuccess = compileListener(block);
-      if (!compilingSuccess) {
-        continue;
-      }
-
-      const startFn = target.fns.length;
-      for (var i = 0; i < fns.length; i++) {
-        target.fns.push(P.runtime.createContinuation(source.slice(fns[i])));
-      }
-
-      const topLevelHandler = topLevelLibrary[block.opcode];
-      topLevelHandler(block, target.fns[startFn]);
-
-      if (P.config.debug) {
-        console.log('compiled sb3 script', block.opcode, source, target);
-      }
-    }
-  }
-
-  /**
-   * External hooks
-   */
-  export const hooks = {
-    getSource() {
-      return source;
-    },
-    setSource(src: string) {
-      source = src;
-    },
-    appendSource(src: string) {
-      source += src;
-    },
-    expression(expression) {
-      return compileExpression(expression);
-    },
-  };
-}
-
-namespace P.sb3.compiler2 {
   import Fn = P.runtime.Fn;
 
   /**
@@ -2929,10 +1174,33 @@ namespace P.sb3.compiler2 {
     }
   }
 
+  /**
+   * A value that can be watched by a variable watcher.
+   */
+  export interface WatchedValue {
+    /**
+     * Initializes the watcher.
+     */
+    init?(watcher: P.sb3.Scratch3VariableWatcher): void;
+    /**
+     * Sets the value of the watcher to a new number.
+     */
+    set?(watcher: P.sb3.Scratch3VariableWatcher, value: number): void;
+    /**
+     * Evaluates the current value of the watcher. Called every visible frame.
+     */
+    evaluate(watcher: P.sb3.Scratch3VariableWatcher): any;
+    /**
+     * Determines the label to display in the watcher. Called once during initialization (after init)
+     */
+    getLabel(watcher: P.sb3.Scratch3VariableWatcher): string;
+  }
+
   // Block definitions
   export const statementLibrary: ObjectMap<StatementCompiler> = Object.create(null);
   export const inputLibrary: ObjectMap<InputCompiler> = Object.create(null);
   export const hatLibrary: ObjectMap<HatCompiler> = Object.create(null);
+  export const watcherLibrary: ObjectMap<WatchedValue> = Object.create(null);
 
   /**
    * The new compiler for Scratch 3 projects.
@@ -3357,335 +1625,36 @@ namespace P.sb3.compiler2 {
  * Scratch 3 blocks.
  */
 (function() {
-  const statementLibrary = P.sb3.compiler2.statementLibrary;
-  const inputLibrary = P.sb3.compiler2.inputLibrary;
-  const hatLibrary = P.sb3.compiler2.hatLibrary;
+  const statementLibrary = P.sb3.compiler.statementLibrary;
+  const inputLibrary = P.sb3.compiler.inputLibrary;
+  const hatLibrary = P.sb3.compiler.hatLibrary;
+  const watcherLibrary = P.sb3.compiler.watcherLibrary;
 
   /* Statements */
-  statementLibrary['motion_movesteps'] = function(util) {
-    const STEPS = util.getInput('STEPS', 'number');
-    util.writeLn(`S.forward(${STEPS});`);
-    util.visual('drawing');
-  };
-  statementLibrary['motion_turnright'] = function(util) {
-    const DEGREES = util.getInput('DEGREES', 'number');
-    util.writeLn(`S.setDirection(S.direction + ${DEGREES});`);
-    util.visual('visible');
-  };
-  statementLibrary['motion_turnleft'] = function(util) {
-    const DEGREES = util.getInput('DEGREES', 'number');
-    util.writeLn(`S.setDirection(S.direction - ${DEGREES});`);
-    util.visual('visible');
-  };
-  statementLibrary['motion_goto'] = function(util) {
-    const TO = util.getInput('TO', 'any');
-    util.writeLn(`S.gotoObject(${TO});`);
-    util.visual('drawing');
-  };
-  statementLibrary['motion_gotoxy'] = function(util) {
-    const X = util.getInput('X', 'number');
-    const Y = util.getInput('Y', 'number');
-    util.writeLn(`S.moveTo(${X}, ${Y});`);
-    util.visual('drawing');
-  };
-  statementLibrary['motion_glideto'] = function(util) {
-    const SECS = util.getInput('SECS', 'any');
-    const TO = util.getInput('TO', 'any');
-    util.visual('drawing');
-    util.writeLn('save();');
-    util.writeLn('R.start = runtime.now;');
-    util.writeLn(`R.duration = ${SECS};`);
-    util.writeLn('R.baseX = S.scratchX;');
-    util.writeLn('R.baseY = S.scratchY;');
-    util.writeLn(`var to = self.getPosition(${TO});`);
-    util.writeLn('if (to) {');
-    util.writeLn('  R.deltaX = to.x - S.scratchX;');
-    util.writeLn('  R.deltaY = to.y - S.scratchY;');
-    const label = util.addLabel();
-    util.writeLn('  var f = (runtime.now - R.start) / (R.duration * 1000);');
-    util.writeLn('  if (f > 1 || isNaN(f)) f = 1;');
-    util.writeLn('  S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
-    util.writeLn('  if (f < 1) {');
-    util.forceQueue(label);
-    util.writeLn('  }');
-    util.writeLn('  restore();');
-    util.writeLn('}');
-  };
-  statementLibrary['motion_glidesecstoxy'] = function(util) {
-    const SECS = util.getInput('SECS', 'any');
-    const X = util.getInput('X', 'any');
-    const Y = util.getInput('Y', 'any');
-    util.visual('drawing');
-    util.writeLn('save();');
-    util.writeLn('R.start = runtime.now;');
-    util.writeLn(`R.duration = ${SECS};`);
-    util.writeLn('R.baseX = S.scratchX;');
-    util.writeLn('R.baseY = S.scratchY;');
-    util.writeLn(`R.deltaX = ${X} - S.scratchX;`);
-    util.writeLn(`R.deltaY = ${Y} - S.scratchY;`);
-    const label = util.addLabel();
-    util.writeLn('var f = (runtime.now - R.start) / (R.duration * 1000);');
-    util.writeLn('if (f > 1) f = 1;');
-    util.writeLn('S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
-    util.writeLn('if (f < 1) {');
-    util.forceQueue(label);
-    util.writeLn('}');
-    util.writeLn('restore();');
-  };
-  statementLibrary['motion_pointindirection'] = function(util) {
-    const DIRECTION = util.getInput('DIRECTION', 'number');
-    util.visual('visible');
-    util.writeLn(`S.direction = ${DIRECTION};`);
-  };
-  statementLibrary['motion_pointtowards'] = function(util) {
-    const TOWARDS = util.getInput('TOWARDS', 'any');
-    util.writeLn(`S.pointTowards(${TOWARDS});`);
-    util.visual('visible');
-  };
-  statementLibrary['motion_changexby'] = function(util) {
-    const DX = util.getInput('DX', 'number');
-    util.writeLn(`S.moveTo(S.scratchX + ${DX}, S.scratchY);`);
-    util.visual('drawing');
-  };
-  statementLibrary['motion_setx'] = function(util) {
-    const X = util.getInput('X', 'number');
-    util.writeLn(`S.moveTo(${X}, S.scratchY);`);
-    util.visual('drawing');
-  };
-  statementLibrary['motion_changeyby'] = function(util) {
-    const DY = util.getInput('DY', 'number');
-    util.writeLn(`S.moveTo(S.scratchX, S.scratchY + ${DY});`);
-    util.visual('drawing');
-  };
-  statementLibrary['motion_sety'] = function(util) {
-    const Y = util.getInput('Y', 'number');
-    util.writeLn(`S.moveTo(S.scratchX, ${Y});`);
-    util.visual('drawing');
-  };
-  statementLibrary['motion_ifonedgebounce'] = function(util) {
-    // TODO: set visual if bounced
-    util.writeLn('S.bounceOffEdge();');
-  };
-  statementLibrary['motion_setrotationstyle'] = function(util) {
-    const STYLE = P.utils.parseRotationStyle(util.getField('STYLE'));
-    util.writeLn(`S.rotationStyle = ${STYLE};`);
-    util.visual('visible');
-  };
-
-  // Looks
-  statementLibrary['looks_sayforsecs'] = function(util) {
-    const MESSAGE = util.getInput('MESSAGE', 'any');
-    const SECS = util.getInput('SECS', 'number');
-    util.writeLn('save();');
-    util.writeLn(`R.id = S.say(${MESSAGE}, false);`);
-    util.writeLn('R.start = runtime.now;');
-    util.writeLn(`R.duration = ${SECS};`);
-    const label = util.addLabel();
-    util.writeLn('if (runtime.now - R.start < R.duration * 1000) {');
-    util.forceQueue(label);
-    util.writeLn('}');
-    util.writeLn('if (S.sayId === R.id) {');
-    util.writeLn('  S.say("");');
-    util.writeLn('}');
-    util.writeLn('restore();');
-    util.visual('visible');
-  };
-  statementLibrary['looks_say'] = function(util) {
-    const MESSAGE = util.getInput('MESSAGE', 'any');
-    util.writeLn(`S.say(${MESSAGE}, false);`);
-  };
-  statementLibrary['looks_thinkforsecs'] = function(util) {
-    const MESSAGE = util.getInput('MESSAGE', 'any');
-    const SECS = util.getInput('SECS', 'number');
-    util.writeLn('save();');
-    util.writeLn(`R.id = S.say(${MESSAGE}, true);`);
-    util.writeLn('R.start = runtime.now;');
-    util.writeLn(`R.duration = ${SECS};`);
-    const label = util.addLabel();
-    util.writeLn('if (runtime.now - R.start < R.duration * 1000) {');
-    util.forceQueue(label);
-    util.writeLn('}');
-    util.writeLn('if (S.sayId === R.id) {');
-    util.writeLn('  S.say("");');
-    util.writeLn('}');
-    util.writeLn('restore();');
-    util.visual('visible');
-  };
-  statementLibrary['looks_think'] = function(util) {
-    const MESSAGE = util.getInput('MESSAGE', 'any');
-    util.writeLn(`S.say(${MESSAGE}, true);`);
-    util.visual('visible');
-  };
-  statementLibrary['looks_switchcostumeto'] = function(util) {
-    const COSTUME = util.getInput('COSTUME', 'any');
-    util.writeLn(`S.setCostume(${COSTUME});`);
-    util.visual('visible');
-  };
-  statementLibrary['looks_nextcostume'] = function(util) {
-    util.writeLn('S.showNextCostume();');
-    util.visual('visible');
-  };
-  statementLibrary['looks_switchbackdropto'] = function(util) {
-    const BACKDROP = util.getInput('BACKDROP', 'any');
-    util.writeLn(`self.setCostume(${BACKDROP});`);
-    util.visual('always');
-    util.writeLn('var threads = backdropChange();');
-    util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
-  };
-  statementLibrary['looks_nextbackdrop'] = function(util) {
-    util.writeLn('self.showNextCostume();');
-    util.visual('always');
-    util.writeLn('var threads = backdropChange();');
-    util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
-  };
-  statementLibrary['looks_changesizeby'] = function(util) {
-    const CHANGE = util.getInput('CHANGE', 'any');
-    util.writeLn(`var f = S.scale + ${CHANGE} / 100;`);
-    util.writeLn('S.scale = f < 0 ? 0 : f;');
-    util.visual('visible');
-  };
-  statementLibrary['looks_setsizeto'] = function(util) {
-    const SIZE = util.getInput('SIZE', 'number');
-    util.writeLn(`S.scale = Math.max(0, ${SIZE} / 100);`)
-    util.visual('visible');
-  };
-  statementLibrary['looks_changeeffectby'] = function(util) {
-    const EFFECT = util.sanitizedString(util.getField('EFFECT')).toLowerCase();
-    const CHANGE = util.getInput('CHANGE', 'number');
-    util.writeLn(`S.changeFilter(${EFFECT}, ${CHANGE});`);
-    util.visual('visible');
-  };
-  statementLibrary['looks_seteffectto'] = function(util) {
-    const EFFECT = util.sanitizedString(util.getField('EFFECT')).toLowerCase();
-    const VALUE = util.getInput('VALUE', 'number');
-    util.writeLn(`S.setFilter(${EFFECT}, ${VALUE});`);
-    util.visual('visible');
-  };
-  statementLibrary['looks_cleargraphiceffects'] = function(util) {
-    util.writeLn('S.resetFilters();');
-    util.visual('visible');
-  };
-  statementLibrary['looks_show'] = function(util) {
-    util.writeLn('S.visible = true;');
-    util.visual('always');
-    util.updateBubble();
-  };
-  statementLibrary['looks_hide'] = function(util) {
-    util.visual('visible');
-    util.writeLn('S.visible = false;');
-    util.updateBubble();
-  };
-  statementLibrary['looks_gotofrontback'] = function(util) {
-    const FRONT_BACK = util.getField('FRONT_BACK');
-    util.writeLn('var i = self.children.indexOf(S);');
-    util.writeLn('if (i !== -1) self.children.splice(i, 1);');
-    if (FRONT_BACK === 'front') {
-      util.writeLn('self.children.push(S);');
-    } else {
-      util.writeLn('self.children.unshift(S);');
-    }
-  };
-  statementLibrary['looks_goforwardbackwardlayers'] = function(util) {
-    const FORWARD_BACKWARD = util.getField('FORWARD_BACKWARD');
-    const NUM = util.getInput('NUM', 'number');
-    util.writeLn('var i = self.children.indexOf(S);');
-    util.writeLn('if (i !== -1) {');
-    util.writeLn('  self.children.splice(i, 1);');
-    if (FORWARD_BACKWARD === 'forward') {
-      util.writeLn(`  self.children.splice(Math.min(self.children.length - 1, i + ${NUM}), 0, S);`);
-    } else {
-      util.writeLn(`  self.children.splice(Math.max(0, i - ${NUM}), 0, S);`);
-    }
-    util.writeLn('}');
-  };
-
-  // Sounds
-  statementLibrary['sound_playuntildone'] = function(util) {
-    const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
-    util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
-    util.writeLn('if (sound) {');
-    util.writeLn('  playSound(sound);');
-    util.wait('sound.duration');
-    util.writeLn('}');
-  };
-  statementLibrary['sound_play'] = function(util) {
-    const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
-    util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
-    util.writeLn('if (sound) {');
-    util.writeLn('  playSound(sound);');
-    util.writeLn('}');
-  };
-  statementLibrary['sound_stopallsounds'] = function(util) {
-    if (P.audio.context) {
-      util.writeLn('self.stopAllSounds();');
-    }
-  };
-  statementLibrary['sound_changevolumeby'] = function(util) {
-    const VOLUME = util.getInput('VOLUME', 'number');
-    util.writeLn(`S.volume = Math.max(0, Math.min(1, S.volume + ${VOLUME} / 100));`);
-    util.writeLn('if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);');
-    util.writeLn('for (var sounds = S.sounds, i = sounds.length; i--;) {');
-    util.writeLn('  var sound = sounds[i];');
-    util.writeLn('  if (sound.node && sound.target === S) {');
-    util.writeLn('    sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);');
-    util.writeLn('  }');
-    util.writeLn('}');
-  };
-  statementLibrary['sound_setvolumeto'] = function(util) {
-    const VOLUME = util.getInput('VOLUME', 'number');
-    util.writeLn(`S.volume = Math.max(0, Math.min(1, ${VOLUME} / 100));`);
-    util.writeLn('if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);');
-    util.writeLn('for (var sounds = S.sounds, i = sounds.length; i--;) {');
-    util.writeLn('  var sound = sounds[i];');
-    util.writeLn('  if (sound.node && sound.target === S) {');
-    util.writeLn('    sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);');
-    util.writeLn('  }');
-    util.writeLn('}');
-  };
-
-  statementLibrary['event_broadcast'] = function(util) {
-    const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
-    util.writeLn(`var threads = broadcast(${BROADCAST_INPUT});`);
-    util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
-  };
-  statementLibrary['event_broadcastandwait'] = function(util) {
-    const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
-    util.writeLn('save();');
-    util.writeLn(`R.threads = broadcast(${BROADCAST_INPUT});`);
-    util.writeLn('if (R.threads.indexOf(BASE) !== -1) {return;}');
-    const label = util.addLabel();
-    util.writeLn('if (running(R.threads)) {');
-    util.forceQueue(label);
-    util.writeLn('}');
-    util.writeLn('restore();');
-  };
-
-  statementLibrary['control_wait'] = function(util) {
-    const DURATION = util.getInput('DURATION', 'any');
-    util.writeLn('save();');
-    util.writeLn('R.start = runtime.now;');
-    util.writeLn(`R.duration = ${DURATION};`);
-    util.writeLn(`var first = true;`);
-    const label = util.addLabel();
-    util.writeLn('if (runtime.now - R.start < R.duration * 1000 || first) {');
-    util.writeLn('  var first;');
-    util.forceQueue(label);
-    util.writeLn('}');
-    util.writeLn('restore();');
-  };
-  statementLibrary['control_repeat'] = function(util) {
-    const TIMES = util.getInput('TIMES', 'any');
+  statementLibrary['control_all_at_once'] = function(util) {
+    // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_control.js#L194-L199
     const SUBSTACK = util.getSubstack('SUBSTACK');
-    util.writeLn('save();');
-    util.writeLn(`R.count = ${TIMES};`);
-    const label = util.addLabel();
-    util.writeLn('if (R.count >= 0.5) {');
-    util.writeLn('  R.count -= 1;');
-    util.writeLn(SUBSTACK);
-    util.queue(label);
-    util.writeLn('} else {');
-    util.writeLn('  restore();');
-    util.writeLn('}');
+    util.write(SUBSTACK);
+  };
+  statementLibrary['control_clear_counter'] = function(util) {
+    util.writeLn('self.counter = 0;');
+  };
+  statementLibrary['control_create_clone_of'] = function(util) {
+    const CLONE_OPTION = util.getInput('CLONE_OPTION', 'any');
+    util.writeLn(`clone(${CLONE_OPTION});`);
+  };
+  statementLibrary['control_delete_this_clone'] = function(util) {
+    util.writeLn('if (S.isClone) {\n');
+    util.writeLn('  S.remove();\n');
+    util.writeLn('  var i = self.children.indexOf(S);\n');
+    util.writeLn('  if (i !== -1) self.children.splice(i, 1);\n');
+    util.writeLn('  for (var i = 0; i < runtime.queue.length; i++) {\n');
+    util.writeLn('    if (runtime.queue[i] && runtime.queue[i].sprite === S) {\n');
+    util.writeLn('      runtime.queue[i] = undefined;\n');
+    util.writeLn('    }\n');
+    util.writeLn('  }\n');
+    util.writeLn('  return;\n');
+    util.writeLn('}\n');
   };
   statementLibrary['control_forever'] = function(util) {
     const SUBSTACK = util.getSubstack('SUBSTACK');
@@ -3710,11 +1679,21 @@ namespace P.sb3.compiler2 {
     util.write(SUBSTACK2);
     util.writeLn('}');
   };
-  statementLibrary['control_wait_until'] = function(util) {
-    const CONDITION = util.getInput('CONDITION', 'boolean');
+  statementLibrary['control_incr_counter'] = function(util) {
+    util.writeLn('self.counter++;');
+  };
+  statementLibrary['control_repeat'] = function(util) {
+    const TIMES = util.getInput('TIMES', 'any');
+    const SUBSTACK = util.getSubstack('SUBSTACK');
+    util.writeLn('save();');
+    util.writeLn(`R.count = ${TIMES};`);
     const label = util.addLabel();
-    util.writeLn(`if (!${CONDITION}) {`);
-    util.forceQueue(label);
+    util.writeLn('if (R.count >= 0.5) {');
+    util.writeLn('  R.count -= 1;');
+    util.writeLn(SUBSTACK);
+    util.queue(label);
+    util.writeLn('} else {');
+    util.writeLn('  restore();');
     util.writeLn('}');
   };
   statementLibrary['control_repeat_until'] = function(util) {
@@ -3725,20 +1704,6 @@ namespace P.sb3.compiler2 {
     util.writeLn(SUBSTACK);
     util.queue(label);
     util.writeLn('}');
-  };
-  statementLibrary['control_while'] = function(util) {
-    const CONDITION = util.getInput('CONDITION', 'boolean');
-    const SUBSTACK = util.getSubstack('SUBSTACK');
-    const label = util.addLabel();
-    util.writeLn(`if (${CONDITION}) {`);
-    util.writeLn(SUBSTACK);
-    util.queue(label);
-    util.writeLn('}');
-  };
-  statementLibrary['control_all_at_once'] = function(util) {
-    // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_control.js#L194-L199
-    const SUBSTACK = util.getSubstack('SUBSTACK');
-    util.write(SUBSTACK);
   };
   statementLibrary['control_stop'] = function(util) {
     const STOP_OPTION = util.getField('STOP_OPTION');
@@ -3759,103 +1724,63 @@ namespace P.sb3.compiler2 {
         break;
     }
   };
-  statementLibrary['control_create_clone_of'] = function(util) {
-    const CLONE_OPTION = util.getInput('CLONE_OPTION', 'any');
-    util.writeLn(`clone(${CLONE_OPTION});`);
-  };
-  statementLibrary['control_delete_this_clone'] = function(util) {
-    util.writeLn('if (S.isClone) {\n');
-    util.writeLn('  S.remove();\n');
-    util.writeLn('  var i = self.children.indexOf(S);\n');
-    util.writeLn('  if (i !== -1) self.children.splice(i, 1);\n');
-    util.writeLn('  for (var i = 0; i < runtime.queue.length; i++) {\n');
-    util.writeLn('    if (runtime.queue[i] && runtime.queue[i].sprite === S) {\n');
-    util.writeLn('      runtime.queue[i] = undefined;\n');
-    util.writeLn('    }\n');
-    util.writeLn('  }\n');
-    util.writeLn('  return;\n');
-    util.writeLn('}\n');
-  };
-  statementLibrary['control_incr_counter'] = function(util) {
-    util.writeLn('self.counter++;');
-  };
-  statementLibrary['control_clear_counter'] = function(util) {
-    util.writeLn('self.counter = 0;');
-  };
-
-  statementLibrary['sensing_askandwait'] = function(util) {
-    const QUESTION = util.getInput('QUESTION', 'string');
-
-    util.writeLn('R.id = self.nextPromptId++;');
-    const label1 = util.addLabel();
-    util.writeLn('if (self.promptId < R.id) {');
-    util.forceQueue(label1);
+  statementLibrary['control_wait'] = function(util) {
+    const DURATION = util.getInput('DURATION', 'any');
+    util.writeLn('save();');
+    util.writeLn('R.start = runtime.now;');
+    util.writeLn(`R.duration = ${DURATION};`);
+    util.writeLn(`var first = true;`);
+    const label = util.addLabel();
+    util.writeLn('if (runtime.now - R.start < R.duration * 1000 || first) {');
+    util.writeLn('  var first;');
+    util.forceQueue(label);
     util.writeLn('}');
-
-    util.writeLn(`S.ask(${QUESTION});`);
-    const label2 = util.addLabel();
-    util.writeLn('if (self.promptId === R.id) {')
-    util.forceQueue(label2);
+    util.writeLn('restore();');
+  };
+  statementLibrary['control_wait_until'] = function(util) {
+    const CONDITION = util.getInput('CONDITION', 'boolean');
+    const label = util.addLabel();
+    util.writeLn(`if (!${CONDITION}) {`);
+    util.forceQueue(label);
     util.writeLn('}');
-
-    util.visual('always');
   };
-  statementLibrary['sensing_setdragmode'] = function(util) {
-    const DRAG_MODE = util.getField('DRAG_MODE');
-    if (DRAG_MODE === 'draggable') {
-      util.writeLn('S.isDraggable = true;');
-    } else {
-      util.writeLn('S.isDraggable = false;');
-    }
-  };
-
-  statementLibrary['sensing_resettimer'] = function(util) {
-    util.writeLn('runtime.timerStart = runtime.now;');
-  };
-
-  statementLibrary['data_setvariableto'] = function(util) {
-    const VARIABLE = util.getVariableReference('VARIABLE');
-    const VALUE = util.getInput('VALUE', 'any');
-    util.writeLn(`${VARIABLE} = ${VALUE};`);
-  };
-  statementLibrary['data_changevariableby'] = function(util) {
-    const VARIABLE = util.getVariableReference('VARIABLE');
-    const VALUE = util.getInput('VALUE', 'any');
-    util.writeLn(`${VARIABLE} = (${util.asType(VARIABLE, 'number')} + ${VALUE});`);
-  };
-  statementLibrary['data_showvariable'] = function(util) {
-    const VARIABLE = util.sanitizedString(util.getField('VARIABLE'));
-    const scope = util.getVariableScope('VARIABLE');
-    util.writeLn(`${scope}.showVariable(${VARIABLE}, true);`);
-  };
-  statementLibrary['data_hidevariable'] = function(util) {
-    const VARIABLE = util.sanitizedString(util.getField('VARIABLE'));
-    const scope = util.getVariableScope('VARIABLE');
-    util.writeLn(`${scope}.showVariable(${VARIABLE}, false);`);
-  };
-  statementLibrary['data_showlist'] = function(util) {
-    const LIST = util.sanitizedString(util.getField('LIST'));
-    const scope = util.getListScope('LIST');
-    util.writeLn(`${scope}.showVariable(${LIST}, true);`);
-  };
-  statementLibrary['data_hidelist'] = function(util) {
-    const LIST = util.sanitizedString(util.getField('LIST'));
-    const scope = util.getListScope('LIST');
-    util.writeLn(`${scope}.showVariable(${LIST}, false);`);
+  statementLibrary['control_while'] = function(util) {
+    const CONDITION = util.getInput('CONDITION', 'boolean');
+    const SUBSTACK = util.getSubstack('SUBSTACK');
+    const label = util.addLabel();
+    util.writeLn(`if (${CONDITION}) {`);
+    util.writeLn(SUBSTACK);
+    util.queue(label);
+    util.writeLn('}');
   };
   statementLibrary['data_addtolist'] = function(util) {
     const LIST = util.getListReference('LIST');
     const ITEM = util.getInput('ITEM', 'any');
     util.writeLn(`${LIST}.push(${ITEM});`);
   };
+  statementLibrary['data_changevariableby'] = function(util) {
+    const VARIABLE = util.getVariableReference('VARIABLE');
+    const VALUE = util.getInput('VALUE', 'any');
+    util.writeLn(`${VARIABLE} = (${util.asType(VARIABLE, 'number')} + ${VALUE});`);
+  };
+  statementLibrary['data_deletealloflist'] = function(util) {
+    const LIST = util.getListReference('LIST');
+    util.writeLn(`${LIST}.deleteLine("all");`);
+  };
   statementLibrary['data_deleteoflist'] = function(util) {
     const LIST = util.getListReference('LIST');
     const INDEX = util.getInput('INDEX', 'any');
     util.writeLn(`${LIST}.deleteLine(${INDEX});`);
   };
-  statementLibrary['data_deletealloflist'] = function(util) {
-    const LIST = util.getListReference('LIST');
-    util.writeLn(`${LIST}.deleteLine("all");`);
+  statementLibrary['data_hidelist'] = function(util) {
+    const LIST = util.sanitizedString(util.getField('LIST'));
+    const scope = util.getListScope('LIST');
+    util.writeLn(`${scope}.showVariable(${LIST}, false);`);
+  };
+  statementLibrary['data_hidevariable'] = function(util) {
+    const VARIABLE = util.sanitizedString(util.getField('VARIABLE'));
+    const scope = util.getVariableScope('VARIABLE');
+    util.writeLn(`${scope}.showVariable(${VARIABLE}, false);`);
   };
   statementLibrary['data_insertatlist'] = function(util) {
     const LIST = util.getListReference('LIST');
@@ -3869,7 +1794,389 @@ namespace P.sb3.compiler2 {
     const INDEX = util.getInput('INDEX', 'any');
     util.writeLn(`${LIST}.set(${INDEX}, ${ITEM});`);
   };
-
+  statementLibrary['data_setvariableto'] = function(util) {
+    const VARIABLE = util.getVariableReference('VARIABLE');
+    const VALUE = util.getInput('VALUE', 'any');
+    util.writeLn(`${VARIABLE} = ${VALUE};`);
+  };
+  statementLibrary['data_showlist'] = function(util) {
+    const LIST = util.sanitizedString(util.getField('LIST'));
+    const scope = util.getListScope('LIST');
+    util.writeLn(`${scope}.showVariable(${LIST}, true);`);
+  };
+  statementLibrary['data_showvariable'] = function(util) {
+    const VARIABLE = util.sanitizedString(util.getField('VARIABLE'));
+    const scope = util.getVariableScope('VARIABLE');
+    util.writeLn(`${scope}.showVariable(${VARIABLE}, true);`);
+  };
+  statementLibrary['motion_turnright'] = function(util) {
+    const DEGREES = util.getInput('DEGREES', 'number');
+    util.writeLn(`S.setDirection(S.direction + ${DEGREES});`);
+    util.visual('visible');
+  };
+  statementLibrary['looks_changeeffectby'] = function(util) {
+    const EFFECT = util.sanitizedString(util.getField('EFFECT')).toLowerCase();
+    const CHANGE = util.getInput('CHANGE', 'number');
+    util.writeLn(`S.changeFilter(${EFFECT}, ${CHANGE});`);
+    util.visual('visible');
+  };
+  statementLibrary['looks_changesizeby'] = function(util) {
+    const CHANGE = util.getInput('CHANGE', 'any');
+    util.writeLn(`var f = S.scale + ${CHANGE} / 100;`);
+    util.writeLn('S.scale = f < 0 ? 0 : f;');
+    util.visual('visible');
+  };
+  statementLibrary['looks_cleargraphiceffects'] = function(util) {
+    util.writeLn('S.resetFilters();');
+    util.visual('visible');
+  };
+  statementLibrary['looks_goforwardbackwardlayers'] = function(util) {
+    const FORWARD_BACKWARD = util.getField('FORWARD_BACKWARD');
+    const NUM = util.getInput('NUM', 'number');
+    util.writeLn('var i = self.children.indexOf(S);');
+    util.writeLn('if (i !== -1) {');
+    util.writeLn('  self.children.splice(i, 1);');
+    if (FORWARD_BACKWARD === 'forward') {
+      util.writeLn(`  self.children.splice(Math.min(self.children.length - 1, i + ${NUM}), 0, S);`);
+    } else {
+      util.writeLn(`  self.children.splice(Math.max(0, i - ${NUM}), 0, S);`);
+    }
+    util.writeLn('}');
+  };
+  statementLibrary['looks_gotofrontback'] = function(util) {
+    const FRONT_BACK = util.getField('FRONT_BACK');
+    util.writeLn('var i = self.children.indexOf(S);');
+    util.writeLn('if (i !== -1) self.children.splice(i, 1);');
+    if (FRONT_BACK === 'front') {
+      util.writeLn('self.children.push(S);');
+    } else {
+      util.writeLn('self.children.unshift(S);');
+    }
+  };
+  statementLibrary['looks_hide'] = function(util) {
+    util.visual('visible');
+    util.writeLn('S.visible = false;');
+    util.updateBubble();
+  };
+  statementLibrary['looks_nextbackdrop'] = function(util) {
+    util.writeLn('self.showNextCostume();');
+    util.visual('always');
+    util.writeLn('var threads = backdropChange();');
+    util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
+  };
+  statementLibrary['looks_nextcostume'] = function(util) {
+    util.writeLn('S.showNextCostume();');
+    util.visual('visible');
+  };
+  statementLibrary['looks_say'] = function(util) {
+    const MESSAGE = util.getInput('MESSAGE', 'any');
+    util.writeLn(`S.say(${MESSAGE}, false);`);
+  };
+  statementLibrary['looks_sayforsecs'] = function(util) {
+    const MESSAGE = util.getInput('MESSAGE', 'any');
+    const SECS = util.getInput('SECS', 'number');
+    util.writeLn('save();');
+    util.writeLn(`R.id = S.say(${MESSAGE}, false);`);
+    util.writeLn('R.start = runtime.now;');
+    util.writeLn(`R.duration = ${SECS};`);
+    const label = util.addLabel();
+    util.writeLn('if (runtime.now - R.start < R.duration * 1000) {');
+    util.forceQueue(label);
+    util.writeLn('}');
+    util.writeLn('if (S.sayId === R.id) {');
+    util.writeLn('  S.say("");');
+    util.writeLn('}');
+    util.writeLn('restore();');
+    util.visual('visible');
+  };
+  statementLibrary['looks_seteffectto'] = function(util) {
+    const EFFECT = util.sanitizedString(util.getField('EFFECT')).toLowerCase();
+    const VALUE = util.getInput('VALUE', 'number');
+    util.writeLn(`S.setFilter(${EFFECT}, ${VALUE});`);
+    util.visual('visible');
+  };
+  statementLibrary['looks_setsizeto'] = function(util) {
+    const SIZE = util.getInput('SIZE', 'number');
+    util.writeLn(`S.scale = Math.max(0, ${SIZE} / 100);`)
+    util.visual('visible');
+  };
+  statementLibrary['looks_show'] = function(util) {
+    util.writeLn('S.visible = true;');
+    util.visual('always');
+    util.updateBubble();
+  };
+  statementLibrary['looks_switchbackdropto'] = function(util) {
+    const BACKDROP = util.getInput('BACKDROP', 'any');
+    util.writeLn(`self.setCostume(${BACKDROP});`);
+    util.visual('always');
+    util.writeLn('var threads = backdropChange();');
+    util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
+  };
+  statementLibrary['looks_switchcostumeto'] = function(util) {
+    const COSTUME = util.getInput('COSTUME', 'any');
+    util.writeLn(`S.setCostume(${COSTUME});`);
+    util.visual('visible');
+  };
+  statementLibrary['looks_think'] = function(util) {
+    const MESSAGE = util.getInput('MESSAGE', 'any');
+    util.writeLn(`S.say(${MESSAGE}, true);`);
+    util.visual('visible');
+  };
+  statementLibrary['looks_thinkforsecs'] = function(util) {
+    const MESSAGE = util.getInput('MESSAGE', 'any');
+    const SECS = util.getInput('SECS', 'number');
+    util.writeLn('save();');
+    util.writeLn(`R.id = S.say(${MESSAGE}, true);`);
+    util.writeLn('R.start = runtime.now;');
+    util.writeLn(`R.duration = ${SECS};`);
+    const label = util.addLabel();
+    util.writeLn('if (runtime.now - R.start < R.duration * 1000) {');
+    util.forceQueue(label);
+    util.writeLn('}');
+    util.writeLn('if (S.sayId === R.id) {');
+    util.writeLn('  S.say("");');
+    util.writeLn('}');
+    util.writeLn('restore();');
+    util.visual('visible');
+  };
+  statementLibrary['motion_changexby'] = function(util) {
+    const DX = util.getInput('DX', 'number');
+    util.writeLn(`S.moveTo(S.scratchX + ${DX}, S.scratchY);`);
+    util.visual('drawing');
+  };
+  statementLibrary['motion_changeyby'] = function(util) {
+    const DY = util.getInput('DY', 'number');
+    util.writeLn(`S.moveTo(S.scratchX, S.scratchY + ${DY});`);
+    util.visual('drawing');
+  };
+  statementLibrary['motion_glidesecstoxy'] = function(util) {
+    const SECS = util.getInput('SECS', 'any');
+    const X = util.getInput('X', 'any');
+    const Y = util.getInput('Y', 'any');
+    util.visual('drawing');
+    util.writeLn('save();');
+    util.writeLn('R.start = runtime.now;');
+    util.writeLn(`R.duration = ${SECS};`);
+    util.writeLn('R.baseX = S.scratchX;');
+    util.writeLn('R.baseY = S.scratchY;');
+    util.writeLn(`R.deltaX = ${X} - S.scratchX;`);
+    util.writeLn(`R.deltaY = ${Y} - S.scratchY;`);
+    const label = util.addLabel();
+    util.writeLn('var f = (runtime.now - R.start) / (R.duration * 1000);');
+    util.writeLn('if (f > 1) f = 1;');
+    util.writeLn('S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
+    util.writeLn('if (f < 1) {');
+    util.forceQueue(label);
+    util.writeLn('}');
+    util.writeLn('restore();');
+  };
+  statementLibrary['motion_glideto'] = function(util) {
+    const SECS = util.getInput('SECS', 'any');
+    const TO = util.getInput('TO', 'any');
+    util.visual('drawing');
+    util.writeLn('save();');
+    util.writeLn('R.start = runtime.now;');
+    util.writeLn(`R.duration = ${SECS};`);
+    util.writeLn('R.baseX = S.scratchX;');
+    util.writeLn('R.baseY = S.scratchY;');
+    util.writeLn(`var to = self.getPosition(${TO});`);
+    util.writeLn('if (to) {');
+    util.writeLn('  R.deltaX = to.x - S.scratchX;');
+    util.writeLn('  R.deltaY = to.y - S.scratchY;');
+    const label = util.addLabel();
+    util.writeLn('  var f = (runtime.now - R.start) / (R.duration * 1000);');
+    util.writeLn('  if (f > 1 || isNaN(f)) f = 1;');
+    util.writeLn('  S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
+    util.writeLn('  if (f < 1) {');
+    util.forceQueue(label);
+    util.writeLn('  }');
+    util.writeLn('  restore();');
+    util.writeLn('}');
+  };
+  statementLibrary['motion_goto'] = function(util) {
+    const TO = util.getInput('TO', 'any');
+    util.writeLn(`S.gotoObject(${TO});`);
+    util.visual('drawing');
+  };
+  statementLibrary['motion_gotoxy'] = function(util) {
+    const X = util.getInput('X', 'number');
+    const Y = util.getInput('Y', 'number');
+    util.writeLn(`S.moveTo(${X}, ${Y});`);
+    util.visual('drawing');
+  };
+  statementLibrary['motion_ifonedgebounce'] = function(util) {
+    // TODO: set visual if bounced
+    util.writeLn('S.bounceOffEdge();');
+  };
+  statementLibrary['motion_movesteps'] = function(util) {
+    const STEPS = util.getInput('STEPS', 'number');
+    util.writeLn(`S.forward(${STEPS});`);
+    util.visual('drawing');
+  };
+  statementLibrary['motion_pointindirection'] = function(util) {
+    const DIRECTION = util.getInput('DIRECTION', 'number');
+    util.visual('visible');
+    util.writeLn(`S.direction = ${DIRECTION};`);
+  };
+  statementLibrary['motion_pointtowards'] = function(util) {
+    const TOWARDS = util.getInput('TOWARDS', 'any');
+    util.writeLn(`S.pointTowards(${TOWARDS});`);
+    util.visual('visible');
+  };
+  statementLibrary['motion_setrotationstyle'] = function(util) {
+    const STYLE = P.utils.parseRotationStyle(util.getField('STYLE'));
+    util.writeLn(`S.rotationStyle = ${STYLE};`);
+    util.visual('visible');
+  };
+  statementLibrary['motion_setx'] = function(util) {
+    const X = util.getInput('X', 'number');
+    util.writeLn(`S.moveTo(${X}, S.scratchY);`);
+    util.visual('drawing');
+  };
+  statementLibrary['motion_sety'] = function(util) {
+    const Y = util.getInput('Y', 'number');
+    util.writeLn(`S.moveTo(S.scratchX, ${Y});`);
+    util.visual('drawing');
+  };
+  statementLibrary['motion_turnleft'] = function(util) {
+    const DEGREES = util.getInput('DEGREES', 'number');
+    util.writeLn(`S.setDirection(S.direction - ${DEGREES});`);
+    util.visual('visible');
+  };
+  statementLibrary['music_changeTempo'] = function(util) {
+    const TEMPO = util.getInput('TEMPO', 'number');
+    util.writeLn(`self.tempoBPM += ${TEMPO};`)
+  };
+  statementLibrary['music_setTempo'] = function(util) {
+    const TEMPO = util.getInput('TEMPO', 'number');
+    util.writeLn(`self.tempoBPM = ${TEMPO};`)
+  };
+  statementLibrary['sound_changevolumeby'] = function(util) {
+    const VOLUME = util.getInput('VOLUME', 'number');
+    util.writeLn(`S.volume = Math.max(0, Math.min(1, S.volume + ${VOLUME} / 100));`);
+    util.writeLn('if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);');
+    util.writeLn('for (var sounds = S.sounds, i = sounds.length; i--;) {');
+    util.writeLn('  var sound = sounds[i];');
+    util.writeLn('  if (sound.node && sound.target === S) {');
+    util.writeLn('    sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);');
+    util.writeLn('  }');
+    util.writeLn('}');
+  };
+  statementLibrary['sound_play'] = function(util) {
+    const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
+    util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
+    util.writeLn('if (sound) {');
+    util.writeLn('  playSound(sound);');
+    util.writeLn('}');
+  };
+  statementLibrary['sound_playuntildone'] = function(util) {
+    const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
+    util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
+    util.writeLn('if (sound) {');
+    util.writeLn('  playSound(sound);');
+    util.wait('sound.duration');
+    util.writeLn('}');
+  };
+  statementLibrary['sound_setvolumeto'] = function(util) {
+    const VOLUME = util.getInput('VOLUME', 'number');
+    util.writeLn(`S.volume = Math.max(0, Math.min(1, ${VOLUME} / 100));`);
+    util.writeLn('if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);');
+    util.writeLn('for (var sounds = S.sounds, i = sounds.length; i--;) {');
+    util.writeLn('  var sound = sounds[i];');
+    util.writeLn('  if (sound.node && sound.target === S) {');
+    util.writeLn('    sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);');
+    util.writeLn('  }');
+    util.writeLn('}');
+  };
+  statementLibrary['sound_stopallsounds'] = function(util) {
+    if (P.audio.context) {
+      util.writeLn('self.stopAllSounds();');
+    }
+  };
+  statementLibrary['event_broadcast'] = function(util) {
+    const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
+    util.writeLn(`var threads = broadcast(${BROADCAST_INPUT});`);
+    util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
+  };
+  statementLibrary['event_broadcastandwait'] = function(util) {
+    const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
+    util.writeLn('save();');
+    util.writeLn(`R.threads = broadcast(${BROADCAST_INPUT});`);
+    util.writeLn('if (R.threads.indexOf(BASE) !== -1) {return;}');
+    const label = util.addLabel();
+    util.writeLn('if (running(R.threads)) {');
+    util.forceQueue(label);
+    util.writeLn('}');
+    util.writeLn('restore();');
+  };
+  statementLibrary['pen_changePenColorParamBy'] = function(util) {
+    const COLOR_PARAM = util.getInput('COLOR_PARAM', 'string');
+    const VALUE = util.getInput('VALUE', 'number');
+    util.writeLn(`S.changePenColorParam(${COLOR_PARAM}, ${VALUE});`);
+  };
+  statementLibrary['pen_changePenHueBy'] = function(util) {
+    // This is an old pen hue block, which functions differently from the new one.
+    const HUE = util.getInput('HUE', 'number');
+    util.writeLn('S.setPenColorHSL();');
+    util.writeLn(`S.penHue += ${HUE} * 360 / 200;`);
+    util.writeLn('S.penSaturation = 100;');
+  };
+  statementLibrary['pen_changePenShadeBy'] = function(util) {
+    const SHADE = util.getInput('SHADE', 'number');
+    util.writeLn('S.setPenColorHSL();');
+    util.writeLn(`S.penLightness = (S.penLightness + ${SHADE}) % 200;`);
+    util.writeLn('if (S.penLightness < 0) S.penLightness += 200;');
+    util.writeLn('S.saturation = 100;');
+  };
+  statementLibrary['pen_changePenSizeBy'] = function(util) {
+    const SIZE = util.getInput('SIZE', 'number');
+    util.writeLn(`S.penSize = Math.max(1, S.penSize + ${SIZE});`);
+  };
+  statementLibrary['pen_clear'] = function(util) {
+    util.writeLn('self.clearPen();');
+    util.visual('always');
+  };
+  statementLibrary['pen_penDown'] = function(util) {
+    util.writeLn('S.isPenDown = true;');
+    util.writeLn('S.dotPen();');
+    util.visual('always');
+  };
+  statementLibrary['pen_penUp'] = function(util) {
+    // TODO: determine visual variant
+    // definitely not 'always' or 'visible', might be a 'if (S.isPenDown)'
+    util.writeLn('S.isPenDown = false;');
+  };
+  statementLibrary['pen_setPenColorParamTo'] = function(util) {
+    const COLOR_PARAM = util.getInput('COLOR_PARAM', 'string');
+    const VALUE = util.getInput('VALUE', 'number');
+    util.writeLn(`S.setPenColorParam(${COLOR_PARAM}, ${VALUE});`);
+  };
+  statementLibrary['pen_setPenColorToColor'] = function(util) {
+    const COLOR = util.getInput('COLOR', 'number');
+    util.writeLn(`S.setPenColor(${COLOR});`);
+  };
+  statementLibrary['pen_setPenHueToNumber'] = function(util) {
+    // This is an old pen hue block, which functions differently from the new one.
+    const HUE = util.getInput('HUE', 'number');
+    util.writeLn('S.setPenColorHSL();');
+    util.writeLn(`S.penHue = ${HUE} * 360 / 200;`);
+    util.writeLn('S.penSaturation = 100;');
+  };
+  statementLibrary['pen_setPenShadeToNumber'] = function(util) {
+    const SHADE = util.getInput('SHADE', 'number');
+    util.writeLn('S.setPenColorHSL();');
+    util.writeLn(`S.penLightness = ${SHADE} % 200;`);
+    util.writeLn('if (S.penLightness < 0) S.penLightness += 200;');
+    util.writeLn('S.saturation = 100;');
+  };
+  statementLibrary['pen_setPenSizeTo'] = function(util) {
+    const SIZE = util.getInput('SIZE', 'number');
+    util.writeLn(`S.penSize = Math.max(1, ${SIZE});`);
+  };
+  statementLibrary['pen_stamp'] = function(util) {
+    util.writeLn('S.stamp();');
+    util.visual('always');
+  };
   statementLibrary['procedures_call'] = function(util) {
     const mutation = util.block.mutation;
     const name = mutation.proccode;
@@ -3893,95 +2200,45 @@ namespace P.sb3.compiler2 {
     util.writeLn('return;');
     util.addLabel();
   };
+  statementLibrary['sensing_askandwait'] = function(util) {
+    const QUESTION = util.getInput('QUESTION', 'string');
 
-  statementLibrary['pen_clear'] = function(util) {
-    util.writeLn('self.clearPen();');
-    util.visual('always');
-  };
-  statementLibrary['pen_stamp'] = function(util) {
-    util.writeLn('S.stamp();');
-    util.visual('always');
-  };
-  statementLibrary['pen_penDown'] = function(util) {
-    util.writeLn('S.isPenDown = true;');
-    util.writeLn('S.dotPen();');
-    util.visual('always');
-  };
-  statementLibrary['pen_penUp'] = function(util) {
-    // TODO: determine visual variant
-    // definitely not 'always' or 'visible', might be a 'if (S.isPenDown)'
-    util.writeLn('S.isPenDown = false;');
-  };
-  statementLibrary['pen_setPenColorToColor'] = function(util) {
-    const COLOR = util.getInput('COLOR', 'number');
-    util.writeLn(`S.setPenColor(${COLOR});`);
-  };
-  statementLibrary['pen_setPenHueToNumber'] = function(util) {
-    // This is an old pen hue block, which functions differently from the new one.
-    const HUE = util.getInput('HUE', 'number');
-    util.writeLn('S.setPenColorHSL();');
-    util.writeLn(`S.penHue = ${HUE} * 360 / 200;`);
-    util.writeLn('S.penSaturation = 100;');
-  };
-  statementLibrary['pen_changePenHueBy'] = function(util) {
-    // This is an old pen hue block, which functions differently from the new one.
-    const HUE = util.getInput('HUE', 'number');
-    util.writeLn('S.setPenColorHSL();');
-    util.writeLn(`S.penHue += ${HUE} * 360 / 200;`);
-    util.writeLn('S.penSaturation = 100;');
-  };
-  statementLibrary['pen_setPenShadeToNumber'] = function(util) {
-    const SHADE = util.getInput('SHADE', 'number');
-    util.writeLn('S.setPenColorHSL();');
-    util.writeLn(`S.penLightness = ${SHADE} % 200;`);
-    util.writeLn('if (S.penLightness < 0) S.penLightness += 200;');
-    util.writeLn('S.saturation = 100;');
-  };
-  statementLibrary['pen_changePenShadeBy'] = function(util) {
-    const SHADE = util.getInput('SHADE', 'number');
-    util.writeLn('S.setPenColorHSL();');
-    util.writeLn(`S.penLightness = (S.penLightness + ${SHADE}) % 200;`);
-    util.writeLn('if (S.penLightness < 0) S.penLightness += 200;');
-    util.writeLn('S.saturation = 100;');
-  };
-  statementLibrary['pen_setPenColorParamTo'] = function(util) {
-    const COLOR_PARAM = util.getInput('COLOR_PARAM', 'string');
-    const VALUE = util.getInput('VALUE', 'number');
-    util.writeLn(`S.setPenColorParam(${COLOR_PARAM}, ${VALUE});`);
-  };
-  statementLibrary['pen_changePenColorParamBy'] = function(util) {
-    const COLOR_PARAM = util.getInput('COLOR_PARAM', 'string');
-    const VALUE = util.getInput('VALUE', 'number');
-    util.writeLn(`S.changePenColorParam(${COLOR_PARAM}, ${VALUE});`);
-  };
-  statementLibrary['pen_changePenSizeBy'] = function(util) {
-    const SIZE = util.getInput('SIZE', 'number');
-    util.writeLn(`S.penSize = Math.max(1, S.penSize + ${SIZE});`);
-  };
-  statementLibrary['pen_setPenSizeTo'] = function(util) {
-    const SIZE = util.getInput('SIZE', 'number');
-    util.writeLn(`S.penSize = Math.max(1, ${SIZE});`);
-  };
+    util.writeLn('R.id = self.nextPromptId++;');
+    const label1 = util.addLabel();
+    util.writeLn('if (self.promptId < R.id) {');
+    util.forceQueue(label1);
+    util.writeLn('}');
 
-  statementLibrary['music_setTempo'] = function(util) {
-    const TEMPO = util.getInput('TEMPO', 'number');
-    util.writeLn(`self.tempoBPM = ${TEMPO};`)
+    util.writeLn(`S.ask(${QUESTION});`);
+    const label2 = util.addLabel();
+    util.writeLn('if (self.promptId === R.id) {')
+    util.forceQueue(label2);
+    util.writeLn('}');
+
+    util.visual('always');
   };
-  statementLibrary['music_changeTempo'] = function(util) {
-    const TEMPO = util.getInput('TEMPO', 'number');
-    util.writeLn(`self.tempoBPM += ${TEMPO};`)
+  statementLibrary['sensing_resettimer'] = function(util) {
+    util.writeLn('runtime.timerStart = runtime.now;');
+  };
+  statementLibrary['sensing_setdragmode'] = function(util) {
+    const DRAG_MODE = util.getField('DRAG_MODE');
+    if (DRAG_MODE === 'draggable') {
+      util.writeLn('S.isDraggable = true;');
+    } else {
+      util.writeLn('S.isDraggable = false;');
+    }
   };
 
   // Legacy no-ops.
   // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L19
   // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_looks.js#L248
-  const noopStatement = (util: P.sb3.compiler2.StatementUtil) => util.writeLn('/* noop */');
+  const noopStatement = (util: P.sb3.compiler.StatementUtil) => util.writeLn('/* noop */');
+  statementLibrary['motion_align_scene'] = noopStatement;
   statementLibrary['motion_scroll_right'] = noopStatement;
   statementLibrary['motion_scroll_up'] = noopStatement;
-  statementLibrary['motion_align_scene'] = noopStatement;
   statementLibrary['looks_changestretchby'] = noopStatement;
-  statementLibrary['looks_setstretchto'] = noopStatement;
   statementLibrary['looks_hideallsprites'] = noopStatement;
+  statementLibrary['looks_setstretchto'] = noopStatement;
 
   /* Inputs */
   inputLibrary['argument_reporter_boolean'] = function(util) {
@@ -4290,10 +2547,10 @@ namespace P.sb3.compiler2 {
   // Legacy no-ops
   // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_sensing.js#L74
   // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L42-L43
-  const noopInput = (util: P.sb3.compiler2.InputUtil) => util.anyInput('undefined');
-  inputLibrary['sensing_userid'] = noopInput;
-  inputLibrary['motion_xscroll'] = noopInput;
+  const noopInput = (util: P.sb3.compiler.InputUtil) => util.anyInput('undefined');
   inputLibrary['motion_yscroll'] = noopInput;
+  inputLibrary['motion_xscroll'] = noopInput;
+  inputLibrary['sensing_userid'] = noopInput;
 
   /* Hats */
   hatLibrary['control_start_as_clone'] = {
@@ -4396,4 +2653,116 @@ namespace P.sb3.compiler2 {
     },
   };
 
+  /* Watchers */
+  watcherLibrary['data_variable'] = {
+    init(watcher) {
+      const name = watcher.params.VARIABLE;
+      watcher.target.watchers[name] = watcher;
+    },
+    set(watcher, value) {
+      const name = watcher.params.VARIABLE;
+      watcher.target.vars[name] = value;
+    },
+    evaluate(watcher) {
+      const name = watcher.params.VARIABLE;
+      return watcher.target.vars[name];
+    },
+    getLabel(watcher) {
+      return watcher.params.VARIABLE;
+    },
+  };
+  watcherLibrary['looks_backdropnumbername'] = {
+    evaluate(watcher) {
+      const target = watcher.stage;
+      const param = watcher.params.NUMBER_NAME;
+      if (param === 'number') {
+        return target.currentCostumeIndex + 1;
+      } else {
+        return target.costumes[target.currentCostumeIndex].name;
+      }
+    },
+    getLabel(watcher) {
+      return 'backdrop ' + watcher.params.NUMBER_NAME;
+    },
+  };
+  watcherLibrary['looks_costumenumbername'] = {
+    evaluate(watcher) {
+      const target = watcher.target;
+      const param = watcher.params.NUMBER_NAME;
+      if (param === 'number') {
+        return target.currentCostumeIndex + 1;
+      } else {
+        return target.costumes[target.currentCostumeIndex].name;
+      }
+    },
+    getLabel(watcher) {
+      return 'costume ' + watcher.params.NUMBER_NAME;
+    },
+  };
+  watcherLibrary['looks_size'] = {
+    evaluate(watcher) { return P.core.isSprite(watcher.target) ? watcher.target.scale * 100 : 100; },
+    getLabel() { return 'size'; },
+  };
+  watcherLibrary['motion_direction'] = {
+    evaluate(watcher) { return P.core.isSprite(watcher.target) ? watcher.target.direction : 0; },
+    getLabel() { return 'direction'; },
+  };
+  watcherLibrary['motion_xposition'] = {
+    evaluate(watcher) { return watcher.target.scratchX; },
+    getLabel() { return 'x position'; },
+  };
+  watcherLibrary['motion_yposition'] = {
+    evaluate(watcher) { return watcher.target.scratchY; },
+    getLabel() { return 'y position'; },
+  };
+  watcherLibrary['music_getTempo'] = {
+    evaluate(watcher) { return watcher.stage.tempoBPM; },
+    getLabel() { return 'Music: tempo'; },
+  };
+  watcherLibrary['sensing_answer'] = {
+    evaluate(watcher) { return watcher.stage.answer; },
+    getLabel() { return 'answer'; },
+  };
+  watcherLibrary['sensing_current'] = {
+    evaluate(watcher) {
+      const param = watcher.params.CURRENTMENU.toLowerCase();
+      switch (param) {
+        case 'year': return new Date().getFullYear();
+        case 'month': return new Date().getMonth() + 1;
+        case 'date': return new Date().getDate();
+        case 'dayofweek': return new Date().getDay() + 1;
+        case 'hour': return new Date().getHours();
+        case 'minute': return new Date().getMinutes();
+        case 'second': return new Date().getSeconds();
+      }
+      return 0;
+    },
+    getLabel(watcher) {
+      const param = watcher.params.CURRENTMENU.toLowerCase();
+      // all expected params except DAYOFWEEK can just be lowercased and used directly
+      if (param === 'dayofweek') {
+        return 'day of week';
+      }
+      return param;
+    }
+  };
+  watcherLibrary['sensing_loudness'] = {
+    // We don't implement loudness.
+    evaluate() { return -1; },
+    getLabel() { return 'loudness'; },
+  };
+  watcherLibrary['sensing_timer'] = {
+    evaluate(watcher) {
+      return (watcher.stage.runtime.now - watcher.stage.runtime.timerStart) / 1000;
+    },
+    getLabel() { return 'timer'; },
+  };
+  watcherLibrary['sensing_username'] = {
+    evaluate(watcher) { return watcher.stage.username; },
+    getLabel() { return 'username'; },
+  };
+  watcherLibrary['sound_volume'] = {
+    evaluate(watcher) { return watcher.target.volume * 100; },
+    getLabel() { return 'volume'; },
+  };
 }());
