@@ -706,7 +706,9 @@ namespace P.sb3 {
 
       for (const id of Object.keys(data.lists)) {
         const list = data.lists[id];
-        target.lists[id] = new Scratch3List().concat(list[1]);
+        const name = list[0];
+        const content = list[1];
+        target.lists[name] = new Scratch3List().concat(content);
       }
 
       target.name = data.name;
@@ -2868,6 +2870,29 @@ namespace P.sb3.compiler2 {
     }
 
     /**
+     * Update the speech bubble, if any.
+     */
+    updateBubble() {
+      this.writeLn('if (S.saying) S.updateBubble()');
+    }
+
+    /**
+     * Writes JS to pause the script for a duration
+     */
+    wait(duration: string) {
+      this.writeLn('save();');
+      this.writeLn('R.start = runtime.now;');
+      this.writeLn(`R.duration = ${duration}`);
+      this.writeLn('var first = true;');
+      const label = this.addLabel();
+      this.writeLn('if (runtime.now - R.start < R.duration * 1000 || first) {');
+      this.writeLn('  var first;');
+      this.forceQueue(label);
+      this.writeLn('}');
+      this.writeLn('restore();');
+    }
+
+    /**
      * Append to the content
      */
     write(content: string): void {
@@ -3329,7 +3354,7 @@ namespace P.sb3.compiler2 {
 }
 
 /**
- * Scratch 3 blocks for the new compiler.
+ * Scratch 3 blocks.
  */
 (function() {
   const statementLibrary = P.sb3.compiler2.statementLibrary;
@@ -3363,287 +3388,278 @@ namespace P.sb3.compiler2 {
     util.writeLn(`S.moveTo(${X}, ${Y});`);
     util.visual('drawing');
   };
-  // statementLibrary['motion_glideto'] = function(util) {
-  //   const secs = block.inputs.SECS;
-  //   const to = block.inputs.TO;
+  statementLibrary['motion_glideto'] = function(util) {
+    const SECS = util.getInput('SECS', 'any');
+    const TO = util.getInput('TO', 'any');
+    util.visual('drawing');
+    util.writeLn('save();');
+    util.writeLn('R.start = runtime.now;');
+    util.writeLn(`R.duration = ${SECS};`);
+    util.writeLn('R.baseX = S.scratchX;');
+    util.writeLn('R.baseY = S.scratchY;');
+    util.writeLn(`var to = self.getPosition(${TO});`);
+    util.writeLn('if (to) {');
+    util.writeLn('  R.deltaX = to.x - S.scratchX;');
+    util.writeLn('  R.deltaY = to.y - S.scratchY;');
+    const label = util.addLabel();
+    util.writeLn('  var f = (runtime.now - R.start) / (R.duration * 1000);');
+    util.writeLn('  if (f > 1 || isNaN(f)) f = 1;');
+    util.writeLn('  S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
+    util.writeLn('  if (f < 1) {');
+    util.forceQueue(label);
+    util.writeLn('  }');
+    util.writeLn('  restore();');
+    util.writeLn('}');
+  };
+  statementLibrary['motion_glidesecstoxy'] = function(util) {
+    const SECS = util.getInput('SECS', 'any');
+    const X = util.getInput('X', 'any');
+    const Y = util.getInput('Y', 'any');
+    util.visual('drawing');
+    util.writeLn('save();');
+    util.writeLn('R.start = runtime.now;');
+    util.writeLn(`R.duration = ${SECS};`);
+    util.writeLn('R.baseX = S.scratchX;');
+    util.writeLn('R.baseY = S.scratchY;');
+    util.writeLn(`R.deltaX = ${X} - S.scratchX;`);
+    util.writeLn(`R.deltaY = ${Y} - S.scratchY;`);
+    const label = util.addLabel();
+    util.writeLn('var f = (runtime.now - R.start) / (R.duration * 1000);');
+    util.writeLn('if (f > 1) f = 1;');
+    util.writeLn('S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
+    util.writeLn('if (f < 1) {');
+    util.forceQueue(label);
+    util.writeLn('}');
+    util.writeLn('restore();');
+  };
+  statementLibrary['motion_pointindirection'] = function(util) {
+    const DIRECTION = util.getInput('DIRECTION', 'number');
+    util.visual('visible');
+    util.writeLn(`S.direction = ${DIRECTION};`);
+  };
+  statementLibrary['motion_pointtowards'] = function(util) {
+    const TOWARDS = util.getInput('TOWARDS', 'any');
+    util.writeLn(`S.pointTowards(${TOWARDS});`);
+    util.visual('visible');
+  };
+  statementLibrary['motion_changexby'] = function(util) {
+    const DX = util.getInput('DX', 'number');
+    util.writeLn(`S.moveTo(S.scratchX + ${DX}, S.scratchY);`);
+    util.visual('drawing');
+  };
+  statementLibrary['motion_setx'] = function(util) {
+    const X = util.getInput('X', 'number');
+    util.writeLn(`S.moveTo(${X}, S.scratchY);`);
+    util.visual('drawing');
+  };
+  statementLibrary['motion_changeyby'] = function(util) {
+    const DY = util.getInput('DY', 'number');
+    util.writeLn(`S.moveTo(S.scratchX, S.scratchY + ${DY});`);
+    util.visual('drawing');
+  };
+  statementLibrary['motion_sety'] = function(util) {
+    const Y = util.getInput('Y', 'number');
+    util.writeLn(`S.moveTo(S.scratchX, ${Y});`);
+    util.visual('drawing');
+  };
+  statementLibrary['motion_ifonedgebounce'] = function(util) {
+    // TODO: set visual if bounced
+    util.writeLn('S.bounceOffEdge();');
+  };
+  statementLibrary['motion_setrotationstyle'] = function(util) {
+    const STYLE = P.utils.parseRotationStyle(util.getField('STYLE'));
+    util.writeLn(`S.rotationStyle = ${STYLE};`);
+    util.visual('visible');
+  };
 
-  //   visualCheck('drawing');
-  //   source += 'save();\n';
-  //   source += 'R.start = runtime.now;\n';
-  //   source += 'R.duration = ' + compileExpression(secs) + ';\n';
-  //   source += 'R.baseX = S.scratchX;\n';
-  //   source += 'R.baseY = S.scratchY;\n';
-  //   source += 'var to = self.getPosition(' + compileExpression(to) + ');\n';
-  //   source += 'if (to) {';
-  //   source += '  R.deltaX = to.x - S.scratchX;\n';
-  //   source += '  R.deltaY = to.y - S.scratchY;\n';
-  //   const id = label();
-  //   source += '  var f = (runtime.now - R.start) / (R.duration * 1000);\n';
-  //   source += '  if (f > 1 || isNaN(f)) f = 1;\n';
-  //   source += '  S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
-  //   source += '  if (f < 1) {\n';
-  //   forceQueue(id);
-  //   source += '  }\n';
-  //   source += '  restore();\n';
-  //   source += '}\n';
-  // };
-  // statementLibrary['motion_glidesecstoxy'] = function(util) {
-  //   const secs = block.inputs.SECS;
-  //   const x = block.inputs.X;
-  //   const y = block.inputs.Y;
+  // Looks
+  statementLibrary['looks_sayforsecs'] = function(util) {
+    const MESSAGE = util.getInput('MESSAGE', 'any');
+    const SECS = util.getInput('SECS', 'number');
+    util.writeLn('save();');
+    util.writeLn(`R.id = S.say(${MESSAGE}, false);`);
+    util.writeLn('R.start = runtime.now;');
+    util.writeLn(`R.duration = ${SECS};`);
+    const label = util.addLabel();
+    util.writeLn('if (runtime.now - R.start < R.duration * 1000) {');
+    util.forceQueue(label);
+    util.writeLn('}');
+    util.writeLn('if (S.sayId === R.id) {');
+    util.writeLn('  S.say("");');
+    util.writeLn('}');
+    util.writeLn('restore();');
+    util.visual('visible');
+  };
+  statementLibrary['looks_say'] = function(util) {
+    const MESSAGE = util.getInput('MESSAGE', 'any');
+    util.writeLn(`S.say(${MESSAGE}, false);`);
+  };
+  statementLibrary['looks_thinkforsecs'] = function(util) {
+    const MESSAGE = util.getInput('MESSAGE', 'any');
+    const SECS = util.getInput('SECS', 'number');
+    util.writeLn('save();');
+    util.writeLn(`R.id = S.say(${MESSAGE}, true);`);
+    util.writeLn('R.start = runtime.now;');
+    util.writeLn(`R.duration = ${SECS};`);
+    const label = util.addLabel();
+    util.writeLn('if (runtime.now - R.start < R.duration * 1000) {');
+    util.forceQueue(label);
+    util.writeLn('}');
+    util.writeLn('if (S.sayId === R.id) {');
+    util.writeLn('  S.say("");');
+    util.writeLn('}');
+    util.writeLn('restore();');
+    util.visual('visible');
+  };
+  statementLibrary['looks_think'] = function(util) {
+    const MESSAGE = util.getInput('MESSAGE', 'any');
+    util.writeLn(`S.say(${MESSAGE}, true);`);
+    util.visual('visible');
+  };
+  statementLibrary['looks_switchcostumeto'] = function(util) {
+    const COSTUME = util.getInput('COSTUME', 'any');
+    util.writeLn(`S.setCostume(${COSTUME});`);
+    util.visual('visible');
+  };
+  statementLibrary['looks_nextcostume'] = function(util) {
+    util.writeLn('S.showNextCostume();');
+    util.visual('visible');
+  };
+  statementLibrary['looks_switchbackdropto'] = function(util) {
+    const BACKDROP = util.getInput('BACKDROP', 'any');
+    util.writeLn(`self.setCostume(${BACKDROP});`);
+    util.visual('always');
+    util.writeLn('var threads = backdropChange();');
+    util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
+  };
+  statementLibrary['looks_nextbackdrop'] = function(util) {
+    util.writeLn('self.showNextCostume();');
+    util.visual('always');
+    util.writeLn('var threads = backdropChange();');
+    util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
+  };
+  statementLibrary['looks_changesizeby'] = function(util) {
+    const CHANGE = util.getInput('CHANGE', 'any');
+    util.writeLn(`var f = S.scale + ${CHANGE} / 100;`);
+    util.writeLn('S.scale = f < 0 ? 0 : f;');
+    util.visual('visible');
+  };
+  statementLibrary['looks_setsizeto'] = function(util) {
+    const SIZE = util.getInput('SIZE', 'number');
+    util.writeLn(`S.scale = Math.max(0, ${SIZE} / 100);`)
+    util.visual('visible');
+  };
+  statementLibrary['looks_changeeffectby'] = function(util) {
+    const EFFECT = util.sanitizedString(util.getField('EFFECT')).toLowerCase();
+    const CHANGE = util.getInput('CHANGE', 'number');
+    util.writeLn(`S.changeFilter(${EFFECT}, ${CHANGE});`);
+    util.visual('visible');
+  };
+  statementLibrary['looks_seteffectto'] = function(util) {
+    const EFFECT = util.sanitizedString(util.getField('EFFECT')).toLowerCase();
+    const VALUE = util.getInput('VALUE', 'number');
+    util.writeLn(`S.setFilter(${EFFECT}, ${VALUE});`);
+    util.visual('visible');
+  };
+  statementLibrary['looks_cleargraphiceffects'] = function(util) {
+    util.writeLn('S.resetFilters();');
+    util.visual('visible');
+  };
+  statementLibrary['looks_show'] = function(util) {
+    util.writeLn('S.visible = true;');
+    util.visual('always');
+    util.updateBubble();
+  };
+  statementLibrary['looks_hide'] = function(util) {
+    util.visual('visible');
+    util.writeLn('S.visible = false;');
+    util.updateBubble();
+  };
+  statementLibrary['looks_gotofrontback'] = function(util) {
+    const FRONT_BACK = util.getField('FRONT_BACK');
+    util.writeLn('var i = self.children.indexOf(S);');
+    util.writeLn('if (i !== -1) self.children.splice(i, 1);');
+    if (FRONT_BACK === 'front') {
+      util.writeLn('self.children.push(S);');
+    } else {
+      util.writeLn('self.children.unshift(S);');
+    }
+  };
+  statementLibrary['looks_goforwardbackwardlayers'] = function(util) {
+    const FORWARD_BACKWARD = util.getField('FORWARD_BACKWARD');
+    const NUM = util.getInput('NUM', 'number');
+    util.writeLn('var i = self.children.indexOf(S);');
+    util.writeLn('if (i !== -1) {');
+    util.writeLn('  self.children.splice(i, 1);');
+    if (FORWARD_BACKWARD === 'forward') {
+      util.writeLn(`  self.children.splice(Math.min(self.children.length - 1, i + ${NUM}), 0, S);`);
+    } else {
+      util.writeLn(`  self.children.splice(Math.max(0, i - ${NUM}), 0, S);`);
+    }
+    util.writeLn('}');
+  };
 
-  //   visualCheck('drawing');
-  //   source += 'save();\n';
-  //   source += 'R.start = runtime.now;\n';
-  //   source += 'R.duration = ' + compileExpression(secs) + ';\n';
-  //   source += 'R.baseX = S.scratchX;\n';
-  //   source += 'R.baseY = S.scratchY;\n';
-  //   source += 'R.deltaX = ' + compileExpression(x) + ' - S.scratchX;\n';
-  //   source += 'R.deltaY = ' + compileExpression(y) + ' - S.scratchY;\n';
-  //   const id = label();
-  //   source += 'var f = (runtime.now - R.start) / (R.duration * 1000);\n';
-  //   source += 'if (f > 1) f = 1;\n';
-  //   source += 'S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
-  //   source += 'if (f < 1) {\n';
-  //   forceQueue(id);
-  //   source += '}\n';
-  //   source += 'restore();\n';
-  // };
-  // statementLibrary['motion_pointindirection'] = function(util) {
-  //   const direction = block.inputs.DIRECTION;
-  //   visualCheck('visible');
-  //   source += 'S.direction = ' + compileExpression(direction) + ';\n';
-  // };
-  // statementLibrary['motion_pointtowards'] = function(util) {
-  //   const towards = block.inputs.TOWARDS;
-  //   source += 'S.pointTowards(' + compileExpression(towards) + ');\n';
-  //   visualCheck('visible');
-  // };
-  // statementLibrary['motion_changexby'] = function(util) {
-  //   const dx = block.inputs.DX;
-  //   source += 'S.moveTo(S.scratchX + ' + compileExpression(dx, 'number') + ', S.scratchY);\n';
-  //   visualCheck('drawing');
-  // };
-  // statementLibrary['motion_setx'] = function(util) {
-  //   const x = block.inputs.X;
-  //   source += 'S.moveTo(' + compileExpression(x, 'number') + ', S.scratchY);\n';
-  //   visualCheck('drawing');
-  // };
-  // statementLibrary['motion_changeyby'] = function(util) {
-  //   const dy = block.inputs.DY;
-  //   source += 'S.moveTo(S.scratchX, S.scratchY + ' + compileExpression(dy, 'number') + ');\n';
-  //   visualCheck('drawing');
-  // };
-  // statementLibrary['motion_sety'] = function(util) {
-  //   const y = block.inputs.Y;
-  //   source += 'S.moveTo(S.scratchX, ' + compileExpression(y, 'number') + ');\n';
-  //   visualCheck('drawing');
-  // };
-  // statementLibrary['motion_ifonedgebounce'] = function(util) {
-  //   // TODO: set visual if bounced
-  //   source += 'S.bounceOffEdge();\n';
-  // };
-  // statementLibrary['motion_setrotationstyle'] = function(util) {
-  //   const style = block.fields.STYLE[0];
-  //   source += 'S.rotationStyle = ' + P.utils.parseRotationStyle(style) + ';\n';
-  //   visualCheck('visible');
-  // };
+  // Sounds
+  statementLibrary['sound_playuntildone'] = function(util) {
+    const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
+    util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
+    util.writeLn('if (sound) {');
+    util.writeLn('  playSound(sound);');
+    util.wait('sound.duration');
+    util.writeLn('}');
+  };
+  statementLibrary['sound_play'] = function(util) {
+    const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
+    util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
+    util.writeLn('if (sound) {');
+    util.writeLn('  playSound(sound);');
+    util.writeLn('}');
+  };
+  statementLibrary['sound_stopallsounds'] = function(util) {
+    if (P.audio.context) {
+      util.writeLn('self.stopAllSounds();');
+    }
+  };
+  statementLibrary['sound_changevolumeby'] = function(util) {
+    const VOLUME = util.getInput('VOLUME', 'number');
+    util.writeLn(`S.volume = Math.max(0, Math.min(1, S.volume + ${VOLUME} / 100));`);
+    util.writeLn('if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);');
+    util.writeLn('for (var sounds = S.sounds, i = sounds.length; i--;) {');
+    util.writeLn('  var sound = sounds[i];');
+    util.writeLn('  if (sound.node && sound.target === S) {');
+    util.writeLn('    sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);');
+    util.writeLn('  }');
+    util.writeLn('}');
+  };
+  statementLibrary['sound_setvolumeto'] = function(util) {
+    const VOLUME = util.getInput('VOLUME', 'number');
+    util.writeLn(`S.volume = Math.max(0, Math.min(1, ${VOLUME} / 100));`);
+    util.writeLn('if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);');
+    util.writeLn('for (var sounds = S.sounds, i = sounds.length; i--;) {');
+    util.writeLn('  var sound = sounds[i];');
+    util.writeLn('  if (sound.node && sound.target === S) {');
+    util.writeLn('    sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);');
+    util.writeLn('  }');
+    util.writeLn('}');
+  };
 
-  // // Looks
-  // statementLibrary['looks_sayforsecs'] = function(util) {
-  //   const message = block.inputs.MESSAGE;
-  //   const secs = block.inputs.SECS;
-  //   source += 'save();\n';
-  //   source += 'R.id = S.say(' + compileExpression(message) + ', false);\n';
-  //   source += 'R.start = runtime.now;\n';
-  //   source += 'R.duration = ' + compileExpression(secs, 'number') + ';\n';
-  //   const id = label();
-  //   source += 'if (runtime.now - R.start < R.duration * 1000) {\n';
-  //   forceQueue(id);
-  //   source += '}\n';
-  //   source += 'if (S.sayId === R.id) {\n';
-  //   source += '  S.say("");\n';
-  //   source += '}\n';
-  //   source += 'restore();\n';
-  //   visualCheck('visible');
-  // };
-  // statementLibrary['looks_say'] = function(util) {
-  //   const message = block.inputs.MESSAGE;
-  //   source += 'S.say(' + compileExpression(message) + ', false);\n';
-  //   visualCheck('visible');
-  // };
-  // statementLibrary['looks_thinkforsecs'] = function(util) {
-  //   const message = block.inputs.MESSAGE;
-  //   const secs = block.inputs.SECS;
-  //   source += 'save();\n';
-  //   source += 'R.id = S.say(' + compileExpression(message) + ', true);\n';
-  //   source += 'R.start = runtime.now;\n';
-  //   source += 'R.duration = ' + compileExpression(secs, 'number') + ';\n';
-  //   const id = label();
-  //   source += 'if (runtime.now - R.start < R.duration * 1000) {\n';
-  //   forceQueue(id);
-  //   source += '}\n';
-  //   source += 'if (S.sayId === R.id) {\n';
-  //   source += '  S.say("");\n';
-  //   source += '}\n';
-  //   source += 'restore();\n';
-  //   visualCheck('visible');
-  // };
-  // statementLibrary['looks_think'] = function(util) {
-  //   const message = block.inputs.MESSAGE;
-  //   source += 'S.say(' + compileExpression(message) + ', true);\n';
-  //   visualCheck('visible');
-  // };
-  // statementLibrary['looks_switchcostumeto'] = function(util) {
-  //   const costume = block.inputs.COSTUME;
-  //   source += 'S.setCostume(' + compileExpression(costume) + ');\n';
-  //   visualCheck('visible');
-  // };
-  // statementLibrary['looks_nextcostume'] = function(util) {
-  //   source += 'S.showNextCostume();\n';
-  //   visualCheck('visible');
-  // };
-  // statementLibrary['looks_switchbackdropto'] = function(util) {
-  //   const backdrop = block.inputs.BACKDROP;
-  //   source += 'self.setCostume(' + compileExpression(backdrop) + ');\n';
-  //   visualCheck('always');
-  //   source += 'var threads = backdropChange();\n';
-  //   source += 'if (threads.indexOf(BASE) !== -1) {return;}\n';
-  // };
-  // statementLibrary['looks_nextbackdrop'] = function(util) {
-  //   source += 'self.showNextCostume();\n';
-  //   visualCheck('always');
-  //   source += 'var threads = backdropChange();\n';
-  //   source += 'if (threads.indexOf(BASE) !== -1) {return;}\n';
-  // };
-  // statementLibrary['looks_changesizeby'] = function(util) {
-  //   const change = block.inputs.CHANGE;
-  //   source += 'var f = S.scale + ' + compileExpression(change) + ' / 100;\n';
-  //   source += 'S.scale = f < 0 ? 0 : f;\n';
-  //   visualCheck('visible');
-  // };
-  // statementLibrary['looks_setsizeto'] = function(util) {
-  //   const size = block.inputs.SIZE;
-  //   source += 'var f = ' + compileExpression(size) + ' / 100;\n';
-  //   source += 'S.scale = f < 0 ? 0 : f;\n';
-  //   visualCheck('visible');
-  // };
-  // statementLibrary['looks_changeeffectby'] = function(util) {
-  //   const effect = block.fields.EFFECT[0];
-  //   const change = block.inputs.CHANGE;
-  //   source += 'S.changeFilter(' + sanitizedString(effect).toLowerCase() + ', ' + compileExpression(change, 'number') + ');\n';
-  //   visualCheck('visible');
-  // };
-  // statementLibrary['looks_seteffectto'] = function(util) {
-  //   const effect = block.fields.EFFECT[0];
-  //   const value = block.inputs.VALUE;
-  //   // Lowercase conversion is necessary to remove capitals, which we do not want.
-  //   source += 'S.setFilter(' + sanitizedString(effect).toLowerCase() + ', ' + compileExpression(value, 'number') + ');\n';
-  //   visualCheck('visible');
-  // };
-  // statementLibrary['looks_cleargraphiceffects'] = function(util) {
-  //   source += 'S.resetFilters();\n';
-  //   visualCheck('visible');
-  // };
-  // statementLibrary['looks_show'] = function(util) {
-  //   source += 'S.visible = true;\n';
-  //   visualCheck('always');
-  //   updateBubble();
-  // };
-  // statementLibrary['looks_hide'] = function(util) {
-  //   visualCheck('visible');
-  //   source += 'S.visible = false;\n';
-  //   updateBubble();
-  // };
-  // statementLibrary['looks_gotofrontback'] = function(util) {
-  //   const frontBack = block.fields.FRONT_BACK[0];
-  //   source += 'var i = self.children.indexOf(S);\n';
-  //   source += 'if (i !== -1) self.children.splice(i, 1);\n';
-  //   if (frontBack === 'front') {
-  //     source += 'self.children.push(S);\n';
-  //   } else {
-  //     // `frontBack` is probably 'back', but it doesn't matter
-  //     source += 'self.children.unshift(S);\n';
-  //   }
-  // };
-  // statementLibrary['looks_goforwardbackwardlayers'] = function(util) {
-  //   const direction = block.fields.FORWARD_BACKWARD[0];
-  //   const number = block.inputs.NUM;
-  //   source += 'var i = self.children.indexOf(S);\n';
-  //   source += 'if (i !== -1) {\n';
-  //   source += '  self.children.splice(i, 1);\n';
-  //   if (direction === 'forward') {
-  //     source += '  self.children.splice(Math.min(self.children.length - 1, i + ' + compileExpression(number) + '), 0, S);\n';
-  //   } else {
-  //     // `direction` is probably 'backward', but it doesn't matter
-  //     source += '  self.children.splice(Math.max(0, i - ' + compileExpression(number) + '), 0, S);\n';
-  //   }
-  //   source += '}\n';
-  // };
+  statementLibrary['event_broadcast'] = function(util) {
+    const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
+    util.writeLn(`var threads = broadcast(${BROADCAST_INPUT});`);
+    util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
+  };
+  statementLibrary['event_broadcastandwait'] = function(util) {
+    const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
+    util.writeLn('save();');
+    util.writeLn(`R.threads = broadcast(${BROADCAST_INPUT});`);
+    util.writeLn('if (R.threads.indexOf(BASE) !== -1) {return;}');
+    const label = util.addLabel();
+    util.writeLn('if (running(R.threads)) {');
+    util.forceQueue(label);
+    util.writeLn('}');
+    util.writeLn('restore();');
+  };
 
-  // // Sounds
-  // statementLibrary['sound_playuntildone'] = function(util) {
-  //   const sound = block.inputs.SOUND_MENU;
-  //   source += 'var sound = S.getSound(' + compileExpression(sound) + ');\n';
-  //   source += 'if (sound) {\n';
-  //   source += '  playSound(sound);\n';
-  //   wait('sound.duration');
-  //   source += '}\n';
-  // };
-  // statementLibrary['sound_play'] = function(util) {
-  //   const sound = block.inputs.SOUND_MENU;
-  //   source += 'var sound = S.getSound(' + compileExpression(sound) + ');\n';
-  //   source += 'if (sound) {\n';
-  //   source += '  playSound(sound);\n';
-  //   source += '}\n';
-  // };
-  // statementLibrary['sound_stopallsounds'] = function(util) {
-  //   if (P.audio.context) {
-  //     source += 'self.stopAllSounds();\n';
-  //   }
-  // };
-  // statementLibrary['sound_changevolumeby'] = function(util) {
-  //   const volume = block.inputs.VOLUME;
-  //   source += 'S.volume = Math.max(0, Math.min(1, S.volume + ' + compileExpression(volume, 'number') + ' / 100));\n';
-  //   source += 'if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
-  //   source += 'for (var sounds = S.sounds, i = sounds.length; i--;) {\n';
-  //   source += '  var sound = sounds[i];\n';
-  //   source += '  if (sound.node && sound.target === S) {\n';
-  //   source += '    sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
-  //   source += '  }\n';
-  //   source += '}\n';
-  // };
-  // statementLibrary['sound_setvolumeto'] = function(util) {
-  //   const volume = block.inputs.VOLUME;
-  //   source += 'S.volume = Math.max(0, Math.min(1, ' + compileExpression(volume, 'number') + ' / 100));\n';
-  //   source += 'if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
-  //   source += 'for (var sounds = S.sounds, i = sounds.length; i--;) {\n';
-  //   source += '  var sound = sounds[i];\n';
-  //   source += '  if (sound.node && sound.target === S) {\n';
-  //   source += '    sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
-  //   source += '  }\n';
-  //   source += '}\n';
-  // };
-
-  // // Event
-  // statementLibrary['event_broadcast'] = function(util) {
-  //   const input = block.inputs.BROADCAST_INPUT;
-  //   source += 'var threads = broadcast(' + compileExpression(input) + ');\n';
-  //   source += 'if (threads.indexOf(BASE) !== -1) {return;}\n';
-  // };
-  // statementLibrary['event_broadcastandwait'] = function(util) {
-  //   const input = block.inputs.BROADCAST_INPUT;
-  //   source += 'save();\n';
-  //   source += 'R.threads = broadcast(' + compileExpression(input) + ');\n';
-  //   source += 'if (R.threads.indexOf(BASE) !== -1) {return;}\n';
-  //   const id = label();
-  //   source += 'if (running(R.threads)) {\n';
-  //   forceQueue(id);
-  //   source += '}\n';
-  //   source += 'restore();\n';
-  // };
-
-  // // Control
   statementLibrary['control_wait'] = function(util) {
     const DURATION = util.getInput('DURATION', 'any');
     util.writeLn('save();');
@@ -3671,17 +3687,17 @@ namespace P.sb3.compiler2 {
     util.writeLn('  restore();');
     util.writeLn('}');
   };
-  // statementLibrary['control_forever'] = function(util) {
-  //   const substack = block.inputs.SUBSTACK;
-  //   const id = label();
-  //   compileSubstack(substack);
-  //   queue(id);
-  // };
+  statementLibrary['control_forever'] = function(util) {
+    const SUBSTACK = util.getSubstack('SUBSTACK');
+    const label = util.addLabel();
+    util.write(SUBSTACK);
+    util.queue(label);
+  };
   statementLibrary['control_if'] = function(util) {
     const CONDITION = util.getInput('CONDITION', 'any');
     const SUBSTACK = util.getSubstack('SUBSTACK');
     util.writeLn(`if (${CONDITION}) {`);
-    util.writeLn(SUBSTACK);
+    util.write(SUBSTACK);
     util.writeLn('}');
   };
   statementLibrary['control_if_else'] = function(util) {
@@ -3689,18 +3705,18 @@ namespace P.sb3.compiler2 {
     const SUBSTACK = util.getSubstack('SUBSTACK');
     const SUBSTACK2 = util.getSubstack('SUBSTACK2');
     util.writeLn(`if (${CONDITION}) {`);
-    util.writeLn(SUBSTACK);
+    util.write(SUBSTACK);
     util.writeLn('} else {');
-    util.writeLn(SUBSTACK2);
+    util.write(SUBSTACK2);
     util.writeLn('}');
   };
-  // statementLibrary['control_wait_until'] = function(util) {
-  //   const condition = block.inputs.CONDITION;
-  //   const id = label();
-  //   source += 'if (!' + compileExpression(condition) + ') {\n';
-  //   forceQueue(id);
-  //   source += '}\n';
-  // };
+  statementLibrary['control_wait_until'] = function(util) {
+    const CONDITION = util.getInput('CONDITION', 'boolean');
+    const label = util.addLabel();
+    util.writeLn(`if (!${CONDITION}) {`);
+    util.forceQueue(label);
+    util.writeLn('}');
+  };
   statementLibrary['control_repeat_until'] = function(util) {
     const CONDITION = util.getInput('CONDITION', 'boolean');
     const SUBSTACK = util.getSubstack('SUBSTACK');
@@ -3719,11 +3735,11 @@ namespace P.sb3.compiler2 {
     util.queue(label);
     util.writeLn('}');
   };
-  // statementLibrary['control_all_at_once'] = function(util) {
-  //   // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_control.js#L194-L199
-  //   const substack = block.inputs.SUBSTACK;
-  //   compileSubstack(substack);
-  // };
+  statementLibrary['control_all_at_once'] = function(util) {
+    // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_control.js#L194-L199
+    const SUBSTACK = util.getSubstack('SUBSTACK');
+    util.write(SUBSTACK);
+  };
   statementLibrary['control_stop'] = function(util) {
     const STOP_OPTION = util.getField('STOP_OPTION');
     switch (STOP_OPTION) {
@@ -3743,31 +3759,30 @@ namespace P.sb3.compiler2 {
         break;
     }
   };
-  // statementLibrary['control_create_clone_of'] = function(util) {
-  //   const option = block.inputs.CLONE_OPTION;
-  //   source += 'clone(' + compileExpression(option) + ');\n';
-  // };
-  // statementLibrary['control_delete_this_clone'] = function(util) {
-  //   source += 'if (S.isClone) {\n';
-  //   source += '  S.remove();\n';
-  //   source += '  var i = self.children.indexOf(S);\n';
-  //   source += '  if (i !== -1) self.children.splice(i, 1);\n';
-  //   source += '  for (var i = 0; i < runtime.queue.length; i++) {\n';
-  //   source += '    if (runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
-  //   source += '      runtime.queue[i] = undefined;\n';
-  //   source += '    }\n';
-  //   source += '  }\n';
-  //   source += '  return;\n';
-  //   source += '}\n';
-  // };
-  // statementLibrary['control_incr_counter'] = function(util) {
-  //   source += 'self.counter++;\n';
-  // };
-  // statementLibrary['control_clear_counter'] = function(util) {
-  //   source += 'self.counter = 0;\n';
-  // };
+  statementLibrary['control_create_clone_of'] = function(util) {
+    const CLONE_OPTION = util.getInput('CLONE_OPTION', 'any');
+    util.writeLn(`clone(${CLONE_OPTION});`);
+  };
+  statementLibrary['control_delete_this_clone'] = function(util) {
+    util.writeLn('if (S.isClone) {\n');
+    util.writeLn('  S.remove();\n');
+    util.writeLn('  var i = self.children.indexOf(S);\n');
+    util.writeLn('  if (i !== -1) self.children.splice(i, 1);\n');
+    util.writeLn('  for (var i = 0; i < runtime.queue.length; i++) {\n');
+    util.writeLn('    if (runtime.queue[i] && runtime.queue[i].sprite === S) {\n');
+    util.writeLn('      runtime.queue[i] = undefined;\n');
+    util.writeLn('    }\n');
+    util.writeLn('  }\n');
+    util.writeLn('  return;\n');
+    util.writeLn('}\n');
+  };
+  statementLibrary['control_incr_counter'] = function(util) {
+    util.writeLn('self.counter++;');
+  };
+  statementLibrary['control_clear_counter'] = function(util) {
+    util.writeLn('self.counter = 0;');
+  };
 
-  // // Sensing
   statementLibrary['sensing_askandwait'] = function(util) {
     const QUESTION = util.getInput('QUESTION', 'string');
 
@@ -3784,38 +3799,20 @@ namespace P.sb3.compiler2 {
     util.writeLn('}');
 
     util.visual('always');
-
-    // source += 'R.id = self.nextPromptId++;\n';
-    // // 1 - wait until we are next up for the asking
-    // const id1 = label();
-    // source += 'if (self.promptId < R.id) {\n';
-    // forceQueue(id1);
-    // source += '}\n';
-
-    // source += 'S.ask(' + compileExpression(QUESTION, 'string') + ');\n';
-    // // 2 - wait until the prompt has been answered
-    // const id2 = label();
-    // source += 'if (self.promptId === R.id) {\n';
-    // forceQueue(id2);
-    // source += '}\n';
-
-    // visualCheck('always');
   };
-  // statementLibrary['sensing_setdragmode'] = function(util) {
-  //   const dragMode = block.fields.DRAG_MODE[0];
-  //   if (dragMode === 'draggable') {
-  //     source += 'S.isDraggable = true;\n';
-  //   } else {
-  //     // it doesn't matter what `dragMode` is at this point
-  //     source += 'S.isDraggable = false;\n';
-  //   }
-  // };
+  statementLibrary['sensing_setdragmode'] = function(util) {
+    const DRAG_MODE = util.getField('DRAG_MODE');
+    if (DRAG_MODE === 'draggable') {
+      util.writeLn('S.isDraggable = true;');
+    } else {
+      util.writeLn('S.isDraggable = false;');
+    }
+  };
 
   statementLibrary['sensing_resettimer'] = function(util) {
     util.writeLn('runtime.timerStart = runtime.now;');
   };
 
-  // Data
   statementLibrary['data_setvariableto'] = function(util) {
     const VARIABLE = util.getVariableReference('VARIABLE');
     const VALUE = util.getInput('VALUE', 'any');
@@ -3824,7 +3821,7 @@ namespace P.sb3.compiler2 {
   statementLibrary['data_changevariableby'] = function(util) {
     const VARIABLE = util.getVariableReference('VARIABLE');
     const VALUE = util.getInput('VALUE', 'any');
-    util.writeLn(`${VARIABLE} = ${util.asType(VARIABLE, 'number')} + ${VALUE};`);
+    util.writeLn(`${VARIABLE} = (${util.asType(VARIABLE, 'number')} + ${VALUE});`);
   };
   statementLibrary['data_showvariable'] = function(util) {
     const VARIABLE = util.sanitizedString(util.getField('VARIABLE'));
@@ -3888,7 +3885,7 @@ namespace P.sb3.compiler2 {
     // The mutation has a stringified JSON list of input IDs... it's weird.
     const inputNames = JSON.parse(mutation.argumentids);
     for (const inputName of inputNames) {
-      util.write(`${util.getInput(name, 'any')}, `);
+      util.write(`${util.getInput(inputName, 'any')}, `);
     }
 
     util.write(']);\n');
@@ -3897,93 +3894,94 @@ namespace P.sb3.compiler2 {
     util.addLabel();
   };
 
-  // // Pen (extension)
-  // statementLibrary['pen_clear'] = function(util) {
-  //   source += 'self.clearPen();\n';
-  //   visualCheck('always');
-  // };
-  // statementLibrary['pen_stamp'] = function(util) {
-  //   source += 'S.stamp();\n';
-  //   visualCheck('always');
-  // };
-  // statementLibrary['pen_penDown'] = function(util) {
-  //   source += 'S.isPenDown = true;\n';
-  //   source += 'S.dotPen();\n';
-  //   visualCheck('always');
-  // };
-  // statementLibrary['pen_penUp'] = function(util) {
-  //   // TODO: determine visualCheck variant
-  //   // definitely not 'always' or 'visible', might be a 'if (S.isPenDown)'
-  //   source += 'S.isPenDown = false;\n';
-  // };
-  // statementLibrary['pen_setPenColorToColor'] = function(util) {
-  //   const color = block.inputs.COLOR;
-  //   source += 'S.setPenColor(' + compileExpression(color, 'number') + ');\n';
-  // };
-  // statementLibrary['pen_setPenHueToNumber'] = function(util) {
-  //   const hue = block.inputs.HUE;
-  //   source += 'S.setPenColorHSL();\n';
-  //   source += 'S.penHue = ' + compileExpression(hue, 'number') + ' * 360 / 200;\n';
-  //   source += 'S.penSaturation = 100;\n';
-  // };
-  // statementLibrary['pen_changePenHueBy'] = function(util) {
-  //   const hue = block.inputs.HUE;
-  //   source += 'S.setPenColorHSL();\n';
-  //   source += 'S.penHue += ' + compileExpression(hue, 'number') + ' * 360 / 200;\n';
-  //   source += 'S.penSaturation = 100;\n';
-  // };
-  // statementLibrary['pen_setPenShadeToNumber'] = function(util) {
-  //   const shade = block.inputs.SHADE;
-  //   source += 'S.setPenColorHSL();\n';
-  //   source += 'S.penLightness = ' + compileExpression(shade, 'number') + ' % 200;\n';
-  //   source += 'if (S.penLightness < 0) S.penLightness += 200;\n';
-  //   source += 'S.penSaturation = 100;\n';
-  // };
-  // statementLibrary['pen_changePenShadeBy'] = function(util) {
-  //   const shade = block.inputs.SHADE;
-  //   source += 'S.setPenColorHSL();\n';
-  //   source += 'S.penLightness = (S.penLightness + ' + compileExpression(shade, 'number') + ') % 200;\n';
-  //   source += 'if (S.penLightness < 0) S.penLightness += 200;\n';
-  //   source += 'S.penSaturation = 100;\n';
-  // };
-  // statementLibrary['pen_setPenColorParamTo'] = function(util) {
-  //   const colorParam = block.inputs.COLOR_PARAM;
-  //   const value = block.inputs.VALUE;
-  //   source += 'S.setPenColorParam(' + compileExpression(colorParam, 'string') + ', ' + compileExpression(value, 'number') + ');\n';
-  // };
-  // statementLibrary['pen_changePenColorParamBy'] = function(util) {
-  //   const colorParam = block.inputs.COLOR_PARAM;
-  //   const value = block.inputs.VALUE;
-  //   source += 'S.changePenColorParam(' + compileExpression(colorParam, 'string') + ', ' + compileExpression(value, 'number') + ');\n';
-  // };
-  // statementLibrary['pen_changePenSizeBy'] = function(util) {
-  //   const size = block.inputs.SIZE;
-  //   source += 'S.penSize = Math.max(1, S.penSize + ' + compileExpression(size, 'number') + ');\n';
-  // };
-  // statementLibrary['pen_setPenSizeTo'] = function(util) {
-  //   const size = block.inputs.SIZE;
-  //   source += 'S.penSize = Math.max(1, ' + compileExpression(size, 'number') + ');\n';
-  // };
+  statementLibrary['pen_clear'] = function(util) {
+    util.writeLn('self.clearPen();');
+    util.visual('always');
+  };
+  statementLibrary['pen_stamp'] = function(util) {
+    util.writeLn('S.stamp();');
+    util.visual('always');
+  };
+  statementLibrary['pen_penDown'] = function(util) {
+    util.writeLn('S.isPenDown = true;');
+    util.writeLn('S.dotPen();');
+    util.visual('always');
+  };
+  statementLibrary['pen_penUp'] = function(util) {
+    // TODO: determine visual variant
+    // definitely not 'always' or 'visible', might be a 'if (S.isPenDown)'
+    util.writeLn('S.isPenDown = false;');
+  };
+  statementLibrary['pen_setPenColorToColor'] = function(util) {
+    const COLOR = util.getInput('COLOR', 'number');
+    util.writeLn(`S.setPenColor(${COLOR});`);
+  };
+  statementLibrary['pen_setPenHueToNumber'] = function(util) {
+    // This is an old pen hue block, which functions differently from the new one.
+    const HUE = util.getInput('HUE', 'number');
+    util.writeLn('S.setPenColorHSL();');
+    util.writeLn(`S.penHue = ${HUE} * 360 / 200;`);
+    util.writeLn('S.penSaturation = 100;');
+  };
+  statementLibrary['pen_changePenHueBy'] = function(util) {
+    // This is an old pen hue block, which functions differently from the new one.
+    const HUE = util.getInput('HUE', 'number');
+    util.writeLn('S.setPenColorHSL();');
+    util.writeLn(`S.penHue += ${HUE} * 360 / 200;`);
+    util.writeLn('S.penSaturation = 100;');
+  };
+  statementLibrary['pen_setPenShadeToNumber'] = function(util) {
+    const SHADE = util.getInput('SHADE', 'number');
+    util.writeLn('S.setPenColorHSL();');
+    util.writeLn(`S.penLightness = ${SHADE} % 200;`);
+    util.writeLn('if (S.penLightness < 0) S.penLightness += 200;');
+    util.writeLn('S.saturation = 100;');
+  };
+  statementLibrary['pen_changePenShadeBy'] = function(util) {
+    const SHADE = util.getInput('SHADE', 'number');
+    util.writeLn('S.setPenColorHSL();');
+    util.writeLn(`S.penLightness = (S.penLightness + ${SHADE}) % 200;`);
+    util.writeLn('if (S.penLightness < 0) S.penLightness += 200;');
+    util.writeLn('S.saturation = 100;');
+  };
+  statementLibrary['pen_setPenColorParamTo'] = function(util) {
+    const COLOR_PARAM = util.getInput('COLOR_PARAM', 'string');
+    const VALUE = util.getInput('VALUE', 'number');
+    util.writeLn(`S.setPenColorParam(${COLOR_PARAM}, ${VALUE});`);
+  };
+  statementLibrary['pen_changePenColorParamBy'] = function(util) {
+    const COLOR_PARAM = util.getInput('COLOR_PARAM', 'string');
+    const VALUE = util.getInput('VALUE', 'number');
+    util.writeLn(`S.changePenColorParam(${COLOR_PARAM}, ${VALUE});`);
+  };
+  statementLibrary['pen_changePenSizeBy'] = function(util) {
+    const SIZE = util.getInput('SIZE', 'number');
+    util.writeLn(`S.penSize = Math.max(1, S.penSize + ${SIZE});`);
+  };
+  statementLibrary['pen_setPenSizeTo'] = function(util) {
+    const SIZE = util.getInput('SIZE', 'number');
+    util.writeLn(`S.penSize = Math.max(1, ${SIZE});`);
+  };
 
-  // // Music (extension)
-  // statementLibrary['music_setTempo'] = function(util) {
-  //   const tempo = block.inputs.TEMPO;
-  //   source += 'self.tempoBPM = ' + compileExpression(tempo, 'number') + ';\n';
-  // };
-  // statementLibrary['music_changeTempo'] = function(util) {
-  //   const tempo = block.inputs.TEMPO;
-  //   source += 'self.tempoBPM += ' + compileExpression(tempo, 'number') + ';\n';
-  // };
+  statementLibrary['music_setTempo'] = function(util) {
+    const TEMPO = util.getInput('TEMPO', 'number');
+    util.writeLn(`self.tempoBPM = ${TEMPO};`)
+  };
+  statementLibrary['music_changeTempo'] = function(util) {
+    const TEMPO = util.getInput('TEMPO', 'number');
+    util.writeLn(`self.tempoBPM += ${TEMPO};`)
+  };
 
-  // // Legacy no-ops.
-  // // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L19
-  // motion_scroll_right: noopStatement,
-  // motion_scroll_up: noopStatement,
-  // motion_align_scene: noopStatement,
-  // // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_looks.js#L248
-  // looks_changestretchby: noopStatement,
-  // looks_setstretchto: noopStatement,
-  // looks_hideallsprites: noopStatement,
+  // Legacy no-ops.
+  // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L19
+  // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_looks.js#L248
+  const noopStatement = (util: P.sb3.compiler2.StatementUtil) => util.writeLn('/* noop */');
+  statementLibrary['motion_scroll_right'] = noopStatement;
+  statementLibrary['motion_scroll_up'] = noopStatement;
+  statementLibrary['motion_align_scene'] = noopStatement;
+  statementLibrary['looks_changestretchby'] = noopStatement;
+  statementLibrary['looks_setstretchto'] = noopStatement;
+  statementLibrary['looks_hideallsprites'] = noopStatement;
 
   /* Inputs */
   inputLibrary['argument_reporter_boolean'] = function(util) {
@@ -4042,7 +4040,7 @@ namespace P.sb3.compiler2 {
     }
   };
   inputLibrary['looks_size'] = function(util) {
-    return util.numberInput('(S.scale * 100');
+    return util.numberInput('(S.scale * 100)');
   };
   inputLibrary['makeymakey_menu_KEY'] = function(util) {
     return util.fieldInput('KEY');
@@ -4292,9 +4290,7 @@ namespace P.sb3.compiler2 {
   // Legacy no-ops
   // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_sensing.js#L74
   // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L42-L43
-  const noopInput = function(util: P.sb3.compiler2.InputUtil): P.sb3.compiler2.CompiledInput {
-    return util.anyInput('undefined');
-  };
+  const noopInput = (util: P.sb3.compiler2.InputUtil) => util.anyInput('undefined');
   inputLibrary['sensing_userid'] = noopInput;
   inputLibrary['motion_xscroll'] = noopInput;
   inputLibrary['motion_yscroll'] = noopInput;
@@ -4303,7 +4299,7 @@ namespace P.sb3.compiler2 {
   hatLibrary['control_start_as_clone'] = {
     handle(util) {
       util.target.listeners.whenCloned.push(util.startingFunction);
-    }
+    },
   };
   hatLibrary['event_whenbackdropswitchesto'] = {
     handle(util) {
@@ -4312,7 +4308,7 @@ namespace P.sb3.compiler2 {
         util.target.listeners.whenBackdropChanges[BACKDROP] = [];
       }
       util.target.listeners.whenBackdropChanges[BACKDROP].push(util.startingFunction);
-    }
+    },
   };
   hatLibrary['event_whenbroadcastreceived'] = {
     handle(util) {
@@ -4321,7 +4317,7 @@ namespace P.sb3.compiler2 {
         util.target.listeners.whenIReceive[BROADCAST_OPTION] = [];
       }
       util.target.listeners.whenIReceive[BROADCAST_OPTION].push(util.startingFunction);
-    }
+    },
   };
   hatLibrary['event_whenflagclicked'] = {
     handle(util) {
@@ -4338,7 +4334,7 @@ namespace P.sb3.compiler2 {
       } else {
         util.target.listeners.whenKeyPressed[P.runtime.getKeyCode(KEY_OPTION)].push(util.startingFunction);
       }
-    }
+    },
   };
   hatLibrary['event_whenstageclicked'] = {
     handle(util) {
@@ -4377,7 +4373,7 @@ namespace P.sb3.compiler2 {
       } else {
         console.warn('unknown makey makey key', KEY);
       }
-    }
+    },
   };
   hatLibrary['procedures_definition'] = {
     handle(util) {
