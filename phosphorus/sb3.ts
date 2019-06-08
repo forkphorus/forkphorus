@@ -2698,16 +2698,20 @@ namespace P.sb3.compiler2 {
     }
   }
 
+  type Fn = () => void;
+
   const stringInput = (v: string) => new CompiledInput(v, 'string');
   const numberInput = (v: string) => new CompiledInput(v, 'number');
   const booleanInput = (v: string) => new CompiledInput(v, 'boolean');
   const anyInput = (v: string) => new CompiledInput(v, 'any');
+  const statement = (v: string) => new CompiledStatement(v);
 
-  export type StatementCompiler = (compiler: Compiler, block: SB3Block) => CompiledStatement
-  export type InputCompiler = (compiler: Compiler, block: SB3Block) => CompiledInput;
+  export type StatementCompiler = (util: BlockUtil) => CompiledStatement
+  export type InputCompiler = (util: BlockUtil) => CompiledInput;
 
   export interface HatCompiler {
-
+    handle(compiler: Compiler, block: SB3Block, fn: Fn): void;
+    preprocess?(compiler: Compiler, source: string): string;
   };
 
   export type InputType = 'string' | 'boolean' | 'number' | 'any';
@@ -2718,6 +2722,35 @@ namespace P.sb3.compiler2 {
 
   function assertNever(i: never): never {
     throw new Error('assertion failed');
+  }
+
+  export class BlockUtil {
+    public content: string = '';
+
+    constructor(private compiler: Compiler, private block: SB3Block) {
+
+    }
+
+    getInput(name: string, type: InputType): string {
+      return this.compiler.compileInput(this.block, name, type);
+    }
+
+    getSubstack(name: string): string {
+      return this.compiler.compileSubstackInput(this.block, name);
+    }
+
+    getField(name: string): string {
+      return this.compiler.compileField(this.block, name);
+    }
+
+    nextLabel(): number {
+      this.compiler.labelCount++;
+      return this.compiler.labelCount;
+    }
+
+    write(content: string): void {
+      this.content += content;
+    }
   }
 
   export class Compiler {
@@ -2738,28 +2771,66 @@ namespace P.sb3.compiler2 {
     public inputLibrary: ObjectMap<InputCompiler> = Object.create(null);
     public hatLibrary: ObjectMap<HatCompiler> = Object.create(null);
 
-    private gotoPoints: number[] = [];
-    private state: CompilerState;
-    private states: CompilerState[] = [];
+    public labelCount: number = 0;
 
     constructor(target: Target) {
       this.target = target;
       this.data = target.sb3data;
       this.blocks = this.data.blocks;
 
-      this.statementLibrary['motion_movesteps'] = function(compiler, block) {
-        const STEPS = compiler.compileInput(block, 'STEPS', 'number');
+      this.statementLibrary['motion_movesteps'] = function(util) {
+        const STEPS = util.getInput('STEPS', 'number');
         return new CompiledStatement(`S.forward(${STEPS});\n`);
       };
-      this.statementLibrary['looks_say'] = function(compiler, block) {
-        const MESSAGE = compiler.compileInput(block, 'MESSAGE', 'string');
+      this.statementLibrary['looks_say'] = function(util) {
+        const MESSAGE = util.getInput('MESSAGE', 'string');
         return new CompiledStatement(`S.say(${MESSAGE}, false);\n`);
       };
+      this.statementLibrary['control_if_else'] = function(util) {
+        const SUBSTACK = util.getSubstack('SUBSTACK');
+        const SUBSTACK2 = util.getSubstack('SUBSTACK2');
+        const CONDITION = util.getInput('CONDITION', 'boolean');
+        let source = '';
+        source += `if (${CONDITION}) {\n`;
+        source += SUBSTACK;
+        source += '} else {\n';
+        source += SUBSTACK2;
+        source += '}\n';
+        return new CompiledStatement(source);
+      };
+      this.statementLibrary['control_repeat'] = function(util) {
+        const SUBSTACK = util.getSubstack('SUBSTACK');
+        const TIMES = util.getInput('TIMES', 'number');
+        let source = '';
+        source += 'save();\n';
+        source += `R.count = ${TIMES};\n`;
+        const id = util.nextLabel();
+        source += `{{${id}}}`
+        source += 'if (R.count >= 0.5) {\n';
+        source += '  R.count -= 1;\n';
+        source += SUBSTACK;
+        source += 'queue(' + id + ');\n';
+        source += '} else {\n';
+        source += '  restore();\n';
+        source += '}\n';
+        return new CompiledStatement(source);
+      };
 
-      this.inputLibrary['operator_add'] = function(compiler, block) {
-        const NUM1 = compiler.compileInput(block, 'NUM1', 'number');
-        const NUM2 = compiler.compileInput(block, 'NUM2', 'number');
+      this.inputLibrary['operator_add'] = function(util) {
+        const NUM1 = util.getInput('NUM1', 'number');
+        const NUM2 = util.getInput('NUM2', 'number');
         return new CompiledInput(`(${NUM1} + ${NUM2})`, 'number');
+      };
+      this.inputLibrary['operator_equals'] = function(util) {
+        const OPERAND1 = util.getInput('OPERAND1', 'any');
+        const OPERAND2 = util.getInput('OPERAND2', 'any');
+        return new CompiledInput(`equal(${OPERAND1}, ${OPERAND2})`, 'number');
+      };
+
+      this.hatLibrary['event_whenflagclicked'] = {
+        handle(compiler, block, fn) {
+          compiler.target.listeners.whenGreenFlag.push(fn);
+        },
       };
     }
 
@@ -2977,16 +3048,43 @@ namespace P.sb3.compiler2 {
       const opcode = inputBlock.opcode;
       const compiler = this.getInputCompiler(opcode);
       if (!compiler) {
+        this.warn('unknown input', opcode, inputBlock);
         return this.getInputFallback(type);
       }
-      const result = compiler(this, inputBlock);
+
+      const blockUtil = new BlockUtil(this, inputBlock);
+      const result = compiler(blockUtil);
+
       return this.toType(result, type);
+    }
+
+    /**
+     * Compile a field of a block.
+     */
+    compileField(block: SB3Block, fieldName: string): string {
+      debugger;
+    }
+
+    /**
+     * Compile a script within a script.
+     */
+    compileSubstackInput(block: SB3Block, substackName: string): string {
+      // empty substacks are normal
+      if (!block.inputs[substackName]) {
+        return '';
+      }
+
+      const substack = block.inputs[substackName];
+      const type = substack[0]; // should be 2
+      const id = substack[1];
+
+      return this.compileStack(id);
     }
 
     /**
      * Compile an entire script from a single block.
      */
-    compileScript(startingBlock: string): string {
+    compileStack(startingBlock: string): string {
       let script = '';
       let block = this.blocks[startingBlock];
 
@@ -2995,7 +3093,8 @@ namespace P.sb3.compiler2 {
         const compiler = this.getStatementCompiler(opcode);
 
         if (compiler) {
-          const result = compiler(this, block);
+          const blockUtil = new BlockUtil(this, block);
+          const result = compiler(blockUtil);
           script += result.source;
         } else {
           console.warn('unknown statement', opcode, block);
@@ -3015,26 +3114,72 @@ namespace P.sb3.compiler2 {
      * The hat handler will be used, and the scripts will be installed.
      */
     compileHat(hat: SB3Block): void {
-      // Reset the goto-points. There is always a goto-point at the script's start.
-      this.gotoPoints = [0];
+      const hatCompiler = this.getHatCompiler(hat.opcode);
+      if (!hatCompiler) {
+        this.warn('unknown hat block', hat.opcode, hat);
+        return;
+      }
+
+      this.labelCount = this.target.fns.length;
 
       const startingBlock = hat.next;
+      // Empty hats will be ignored
       if (!startingBlock) {
         return;
       }
 
-      const script = this.compileScript(startingBlock);
+      let script = `{{${this.labelCount}}}` + this.compileStack(startingBlock);
+      this.labelCount++;
 
-      const startFn = this.target.fns.length;
-      for (var i = 0; i < this.gotoPoints.length; i++) {
-        this.target.fns.push(P.runtime.createContinuation(script.slice(this.gotoPoints[i])));
+      if (hatCompiler.preprocess) {
+        script = hatCompiler.preprocess(this, script);
       }
 
-      // const topLevelHandler = topLevelLibrary[block.opcode];
-      // topLevelHandler(block, this.target.fns[startFn]);
-      this.target.listeners.whenGreenFlag.push(this.target.fns[startFn]);
+      const parseResult = this.parseScript(script);
+      script = parseResult.script;
+
+      const startFn = this.target.fns.length;
+      for (let label of Object.keys(parseResult.labels)) {
+        this.target.fns[label] = P.runtime.createContinuation(script.slice(parseResult.labels[label]));
+      }
+
+      hatCompiler.handle(this, hat, this.target.fns[startFn]);
 
       console.log('compiled sb3 script', hat.opcode, script, this.target);
+    }
+
+    parseScript(script: string): { labels: ObjectMap<number>, script: string; } {
+      const labels = {};
+      let index = 0;
+      let accumulator = 0;
+
+      while (true) {
+        const labelStart = script.indexOf('{{', index);
+        if (labelStart === -1) {
+          break;
+        }
+        const labelEnd = script.indexOf('}}', index);
+        const id = script.substring(labelStart + 2, labelEnd);
+        const length = labelEnd + 2 - labelStart;
+        accumulator += length;
+
+        labels[id] = labelEnd + 2 - accumulator;
+
+        index = labelEnd + 2;
+      }
+
+      return {
+        labels,
+        script: script,
+      };
+
+    }
+
+    /**
+     * Log a warning
+     */
+    warn(...args: any[]) {
+      console.warn.apply(console, args);
     }
 
     /**
