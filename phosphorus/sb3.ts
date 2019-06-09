@@ -1794,7 +1794,7 @@ namespace P.sb3.compiler {
     } else {
       const label = util.addLabel();
       util.writeLn(`if (!${CONDITION}) {`);
-      util.writeLn(SUBSTACK);
+      util.write(SUBSTACK);
       util.queue(label);
       util.writeLn('}');
     }
@@ -1848,7 +1848,7 @@ namespace P.sb3.compiler {
     } else {
       const label = util.addLabel();
       util.writeLn(`if (${CONDITION}) {`);
-      util.writeLn(SUBSTACK);
+      util.write(SUBSTACK);
       util.queue(label);
       util.writeLn('}');
     }
