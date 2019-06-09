@@ -1447,8 +1447,10 @@ namespace P.sb3.compiler {
      * Compile an input of a block, and do any necessary type coercions.
      */
     compileInput(block: SB3Block, inputName: string, type: InputType): string {
-      // Handling empty inputs
+      // Handling when the block does not contain an input entry.
       if (!block.inputs[inputName]) {
+        // This could be a sign of another issue, so log a warning.
+        this.warn('missing input', inputName);
         return this.getInputFallback(type);
       }
 
@@ -1459,10 +1461,19 @@ namespace P.sb3.compiler {
         return this.convertInputType(this.compileNativeInput(native), type);
       }
 
-      const inputId = input[1];
-      const inputBlock = this.blocks[inputId];
+      const inputBlockId = input[1];
+
+      // Handling null inputs where the input exists but is just empty.
+      // This is normal and happens very often.
+      if (!inputBlockId) {
+        return this.getInputFallback(type);
+      }
+
+      const inputBlock = this.blocks[inputBlockId];
       const opcode = inputBlock.opcode;
       const compiler = this.getInputCompiler(opcode);
+
+      // If we don't recognize this block, that's a problem.
       if (!compiler) {
         this.warn('unknown input', opcode, inputBlock);
         return this.getInputFallback(type);
@@ -1478,10 +1489,11 @@ namespace P.sb3.compiler {
      * Get a field of a block.
      */
     getField(block: SB3Block, fieldName: string): string {
-      // missing fields is very unusual, and probably a sign of another issue.
       const value = block.fields[fieldName];
-      if (!block.fields[fieldName]) {
+      if (!value) {
+        // This could be a sign of another issue, so log a warning.
         this.warn('missing field', fieldName);
+        return '';
       }
       return value[0];
     }
@@ -1593,7 +1605,9 @@ namespace P.sb3.compiler {
       const util = new HatUtil(this, hat, startingFn);
       hatCompiler.handle(util);
 
-      console.log('compiled sb3 script', hat.opcode, script, this.target);
+      if (P.config.debug) {
+        this.log('compiled sb3 script', hat.opcode, script, this.target);
+      }
     }
 
     /**
@@ -1824,7 +1838,7 @@ namespace P.sb3.compiler {
   };
   statementLibrary['data_changevariableby'] = function(util) {
     const VARIABLE = util.getVariableReference('VARIABLE');
-    const VALUE = util.getInput('VALUE', 'any');
+    const VALUE = util.getInput('VALUE', 'number');
     util.writeLn(`${VARIABLE} = (${util.asType(VARIABLE, 'number')} + ${VALUE});`);
   };
   statementLibrary['data_deletealloflist'] = function(util) {
@@ -2304,8 +2318,8 @@ namespace P.sb3.compiler {
 
   /* Inputs */
   inputLibrary['argument_reporter_boolean'] = function(util) {
-    const NAME = util.sanitizedString(util.getField('NAME'));
-    return util.booleanInput(util.asType(`C.args[${NAME}]`, 'boolean'));
+    const VALUE = util.sanitizedString(util.getField('VALUE'));
+    return util.booleanInput(util.asType(`C.args[${VALUE}]`, 'boolean'));
   };
   inputLibrary['argument_reporter_string_number'] = function(util) {
     const VALUE = util.sanitizedString(util.getField('VALUE'));
@@ -2376,7 +2390,7 @@ namespace P.sb3.compiler {
   inputLibrary['motion_goto_menu'] = function(util) {
     return util.fieldInput('TO');
   };
-  inputLibrary['motion_pointowards_menu'] = function(util) {
+  inputLibrary['motion_pointtowards_menu'] = function(util) {
     return util.fieldInput('TOWARDS');
   };
   inputLibrary['motion_xposition'] = function(util) {
@@ -2690,7 +2704,7 @@ namespace P.sb3.compiler {
         const keyCode = P.runtime.getKeyCode(keyMap[KEY]);
         util.target.listeners.whenKeyPressed[keyCode].push(util.startingFunction);
       } else {
-        console.warn('unknown makey makey key', KEY);
+        util.compiler.warn('unknown makey makey key', KEY);
       }
     },
   };
