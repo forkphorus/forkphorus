@@ -6554,6 +6554,15 @@ var P;
                     return `"${string}"`;
                 }
                 /**
+                 * Creates a sanitized block comment with the given contents.
+                 */
+                sanitizedComment(content) {
+                    // just disallow the content from ending the comment, and everything should be fine.
+                    content = content
+                        .replace(/\*\//g, '');
+                    return `/* ${content} */`;
+                }
+                /**
                  * Determines the runtime object that owns a variable in the runtime.
                  * The variable may be created if it cannot be found.
                  */
@@ -6654,14 +6663,14 @@ var P;
                 /**
                  * Compile an input of a block, and do any necessary type coercions.
                  */
-                compileInput(block, inputName, type) {
+                compileInput(parentBlock, inputName, type) {
                     // Handling when the block does not contain an input entry.
-                    if (!block.inputs[inputName]) {
+                    if (!parentBlock.inputs[inputName]) {
                         // This could be a sign of another issue, so log a warning.
                         this.warn('missing input', inputName);
                         return this.getInputFallback(type);
                     }
-                    const input = block.inputs[inputName];
+                    const input = parentBlock.inputs[inputName];
                     if (Array.isArray(input[1])) {
                         const native = input[1];
                         return this.convertInputType(this.compileNativeInput(native), type);
@@ -6681,7 +6690,10 @@ var P;
                         return this.getInputFallback(type);
                     }
                     const util = new InputUtil(this, inputBlock);
-                    const result = compiler(util);
+                    let result = compiler(util);
+                    if (P.config.debug) {
+                        result.source = this.sanitizedComment(inputBlock.opcode) + result.source;
+                    }
                     return this.convertInputType(result, type);
                 }
                 /**
@@ -6712,6 +6724,9 @@ var P;
                     }
                     return this.compileStack(id);
                 }
+                /**
+                 * Creates a fresh CompilerState
+                 */
                 getNewState() {
                     return {
                         isWarp: false,
@@ -6726,12 +6741,16 @@ var P;
                     while (true) {
                         var opcode = block.opcode;
                         const compiler = this.getStatementCompiler(opcode);
+                        if (P.config.debug) {
+                            script += this.sanitizedComment(block.opcode);
+                        }
                         if (compiler) {
                             const util = new StatementUtil(this, block);
                             compiler(util);
                             script += util.content;
                         }
                         else {
+                            script += '/* unknown statement */';
                             this.warn('unknown statement', opcode, block);
                         }
                         if (!block.next) {
@@ -6769,7 +6788,7 @@ var P;
                     // If you're clever, you may be able to remove this at some point.
                     let script = `{{${this.labelCount++}}}`;
                     script += this.compileStack(startingBlock);
-                    // If a block wants to preprocess the script, then let it.
+                    // If a block wants to do some changes to the script after script generation but before compilation, let it.
                     // TODO: should this happen after parseResult?
                     if (hatCompiler.postcompile) {
                         script = hatCompiler.postcompile(this, script, hat);
