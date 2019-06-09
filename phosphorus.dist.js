@@ -3881,12 +3881,7 @@ var P;
         runtime_1.createContinuation = createContinuation;
         // Evaluate JavaScript within the scope of the runtime.
         function scopedEval(source) {
-            try {
-                return eval(source);
-            }
-            catch (e) {
-                debugger;
-            }
+            return eval(source);
         }
         runtime_1.scopedEval = scopedEval;
     })(runtime = P.runtime || (P.runtime = {}));
@@ -5552,7 +5547,7 @@ var P;
         // "SB3*" interfaces are just types for Scratch 3 projects
         /**
          * The path to fetch remote assets from.
-         * Replace $md5ext with the md5sum and the format of the asset. (just use md5ext)
+         * Replace $md5ext with the md5sum and the format of the asset.
          */
         sb3.ASSETS_API = 'https://assets.scratch.mit.edu/internalapi/asset/$md5ext/get/';
         // Implements a Scratch 3 Stage.
@@ -5717,7 +5712,6 @@ var P;
             constructor(stage, data) {
                 super(stage, data.spriteName || '');
                 this.domRows = [];
-                this.id = data.id;
                 this.params = data.params;
                 this.x = data.x;
                 this.y = data.y;
@@ -5767,13 +5761,14 @@ var P;
             }
             init() {
                 super.init();
-                if (!(this.id in this.target.lists)) {
+                const listName = this.params.LIST;
+                if (!(listName in this.target.lists)) {
                     // Create the list if it doesn't exist.
                     // It might be better to mark ourselves as invalid instead, but this works just fine.
-                    this.target.lists[this.id] = new Scratch3List();
+                    this.target.lists[listName] = new Scratch3List();
                 }
-                this.list = this.target.lists[this.id];
-                this.target.watchers[this.id] = this;
+                this.list = this.target.lists[listName];
+                this.target.watchers[listName] = this;
                 this.updateLayout();
                 if (this.visible) {
                     this.updateContents();
@@ -6252,7 +6247,7 @@ var P;
                 }
             }
             compiler_1.CompiledInput = CompiledInput;
-            // Simple CompiledInput aliases
+            // Shorter CompiledInput aliases
             const stringInput = (v) => new CompiledInput(v, 'string');
             const numberInput = (v) => new CompiledInput(v, 'number');
             const booleanInput = (v) => new CompiledInput(v, 'boolean');
@@ -6335,25 +6330,32 @@ var P;
                 constructor() {
                     super(...arguments);
                     this.content = '';
+                    this.substacksQueue = false;
                 }
                 /**
                  * Compile a substack.
                  */
                 getSubstack(name) {
-                    return this.compiler.compileSubstackInput(this.block, name);
+                    const labelsBefore = this.compiler.labelCount;
+                    const substack = this.compiler.compileSubstackInput(this.block, name);
+                    if (this.compiler.labelCount !== labelsBefore) {
+                        this.substacksQueue = true;
+                    }
+                    return substack;
                 }
                 /**
-                 * Gets the next label available for use without claiming it.
+                 * Gets the next label ID ready for use. The ID is unique and will cannot be reused.
                  */
-                nextLabel() {
-                    return this.compiler.labelCount;
+                claimNextLabel() {
+                    return this.compiler.labelCount++;
                 }
                 /**
-                 * Create a new label at this location.
+                 * Create a new label at this location. A label ID will be created if none is supplied.
                  */
-                addLabel() {
-                    const label = this.nextLabel();
-                    this.compiler.labelCount++;
+                addLabel(label) {
+                    if (!label) {
+                        label = this.claimNextLabel();
+                    }
                     // We'll use special syntax to denote this spot as a label.
                     // It'll be cleaned up later in compilation.
                     // Interestingly, this is actually valid JavaScript, so cleanup isn't strictly necessary.
@@ -6455,6 +6457,9 @@ var P;
              */
             class Compiler {
                 constructor(target) {
+                    /**
+                     * Total number of labels created by this compiler.
+                     */
                     this.labelCount = 0;
                     this.target = target;
                     this.data = target.sb3data;
@@ -6698,14 +6703,17 @@ var P;
                     }
                     return this.compileStack(id);
                 }
+                getNewState() {
+                    return {
+                        isWarp: false,
+                    };
+                }
                 /**
                  * Compile an entire script from a starting block.
                  */
                 compileStack(startingBlock) {
                     let script = '';
                     let block = this.blocks[startingBlock];
-                    if (!block)
-                        debugger;
                     while (true) {
                         var opcode = block.opcode;
                         const compiler = this.getStatementCompiler(opcode);
@@ -6744,12 +6752,18 @@ var P;
                     if (!startingBlock) {
                         return;
                     }
+                    this.state = this.getNewState();
+                    if (hatCompiler.precompile) {
+                        hatCompiler.precompile(this, hat);
+                    }
                     // There is always a label placed at the beginning of the script.
-                    let script = `{{${this.labelCount++}}}` + this.compileStack(startingBlock);
+                    // If you're clever, you may be able to remove this at some point.
+                    let script = `{{${this.labelCount++}}}`;
+                    script += this.compileStack(startingBlock);
                     // If a block wants to preprocess the script, then let it.
                     // TODO: should this happen after parseResult?
-                    if (hatCompiler.preprocess) {
-                        script = hatCompiler.preprocess(this, script);
+                    if (hatCompiler.postcompile) {
+                        script = hatCompiler.postcompile(this, script, hat);
                     }
                     // Parse the script to search for labels, and remove the label metadata.
                     const parseResult = this.parseScript(script);
@@ -6795,6 +6809,12 @@ var P;
                  */
                 warn(...args) {
                     console.warn.apply(console, args);
+                }
+                /**
+                 * Log info
+                 */
+                log(...args) {
+                    console.log.apply(console, args);
                 }
                 /**
                  * Compiles the scripts of the target with the current data.
@@ -6847,9 +6867,16 @@ var P;
     };
     statementLibrary['control_forever'] = function (util) {
         const SUBSTACK = util.getSubstack('SUBSTACK');
-        const label = util.addLabel();
-        util.write(SUBSTACK);
-        util.queue(label);
+        if (util.compiler.state.isWarp && !util.substacksQueue) {
+            util.writeLn('while (true) {');
+            util.write(SUBSTACK);
+            util.writeLn('}');
+        }
+        else {
+            const label = util.addLabel();
+            util.write(SUBSTACK);
+            util.queue(label);
+        }
     };
     statementLibrary['control_if'] = function (util) {
         const CONDITION = util.getInput('CONDITION', 'any');
@@ -6874,25 +6901,43 @@ var P;
     statementLibrary['control_repeat'] = function (util) {
         const TIMES = util.getInput('TIMES', 'any');
         const SUBSTACK = util.getSubstack('SUBSTACK');
-        util.writeLn('save();');
-        util.writeLn(`R.count = ${TIMES};`);
-        const label = util.addLabel();
-        util.writeLn('if (R.count >= 0.5) {');
-        util.writeLn('  R.count -= 1;');
-        util.writeLn(SUBSTACK);
-        util.queue(label);
-        util.writeLn('} else {');
-        util.writeLn('  restore();');
-        util.writeLn('}');
+        if (util.compiler.state.isWarp && !util.substacksQueue) {
+            util.writeLn('save();');
+            util.writeLn(`R.count = ${TIMES};`);
+            util.writeLn('while (R.count >= 0.5) {');
+            util.writeLn('  R.count -= 1;');
+            util.write(SUBSTACK);
+            util.writeLn('}');
+            util.writeLn('restore();');
+        }
+        else {
+            util.writeLn('save();');
+            util.writeLn(`R.count = ${TIMES};`);
+            const label = util.addLabel();
+            util.writeLn('if (R.count >= 0.5) {');
+            util.writeLn('  R.count -= 1;');
+            util.write(SUBSTACK);
+            util.queue(label);
+            util.writeLn('} else {');
+            util.writeLn('  restore();');
+            util.writeLn('}');
+        }
     };
     statementLibrary['control_repeat_until'] = function (util) {
         const CONDITION = util.getInput('CONDITION', 'boolean');
         const SUBSTACK = util.getSubstack('SUBSTACK');
-        const label = util.addLabel();
-        util.writeLn(`if (!${CONDITION}) {`);
-        util.writeLn(SUBSTACK);
-        util.queue(label);
-        util.writeLn('}');
+        if (util.compiler.state.isWarp && !util.substacksQueue) {
+            util.writeLn(`while (!${CONDITION}) {`);
+            util.write(SUBSTACK);
+            util.writeLn('}');
+        }
+        else {
+            const label = util.addLabel();
+            util.writeLn(`if (!${CONDITION}) {`);
+            util.writeLn(SUBSTACK);
+            util.queue(label);
+            util.writeLn('}');
+        }
     };
     statementLibrary['control_stop'] = function (util) {
         const STOP_OPTION = util.getField('STOP_OPTION');
@@ -6936,11 +6981,18 @@ var P;
     statementLibrary['control_while'] = function (util) {
         const CONDITION = util.getInput('CONDITION', 'boolean');
         const SUBSTACK = util.getSubstack('SUBSTACK');
-        const label = util.addLabel();
-        util.writeLn(`if (${CONDITION}) {`);
-        util.writeLn(SUBSTACK);
-        util.queue(label);
-        util.writeLn('}');
+        if (util.compiler.state.isWarp && !util.substacksQueue) {
+            util.writeLn(`while (${CONDITION}) {`);
+            util.write(SUBSTACK);
+            util.writeLn('}');
+        }
+        else {
+            const label = util.addLabel();
+            util.writeLn(`if (${CONDITION}) {`);
+            util.writeLn(SUBSTACK);
+            util.queue(label);
+            util.writeLn('}');
+        }
     };
     statementLibrary['data_addtolist'] = function (util) {
         const LIST = util.getListReference('LIST');
@@ -7375,16 +7427,15 @@ var P;
             util.writeLn('/* forkphorus debugger */ debugger;');
             return;
         }
-        const id = util.nextLabel();
-        util.write(`call(S.procedures[${util.sanitizedString(name)}], ${id}, [`);
+        const label = util.claimNextLabel();
+        util.write(`call(S.procedures[${util.sanitizedString(name)}], ${label}, [`);
         // The mutation has a stringified JSON list of input IDs... it's weird.
         const inputNames = JSON.parse(mutation.argumentids);
         for (const inputName of inputNames) {
             util.write(`${util.getInput(inputName, 'any')}, `);
         }
-        util.write(']);\n');
-        util.writeLn('return;');
-        util.addLabel();
+        util.writeLn(']); return;');
+        util.addLabel(label);
     };
     statementLibrary['sensing_askandwait'] = function (util) {
         const QUESTION = util.getInput('QUESTION', 'string');
@@ -7412,7 +7463,7 @@ var P;
             util.writeLn('S.isDraggable = false;');
         }
     };
-    // Legacy no-ops.
+    // Legacy no-ops
     // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L19
     // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_looks.js#L248
     const noopStatement = (util) => util.writeLn('/* noop */');
@@ -7829,8 +7880,16 @@ var P;
             const procedure = new P.sb3.Scratch3Procedure(util.startingFunction, warp, argumentNames);
             util.target.procedures[proccode] = procedure;
         },
-        preprocess(compiler, source) {
+        postcompile(compiler, source, hat) {
             return source + 'endCall(); return;\n';
+        },
+        precompile(compiler, hat) {
+            const customBlockId = hat.inputs.custom_block[1];
+            const mutation = compiler.blocks[customBlockId].mutation;
+            const warp = typeof mutation.warp === 'string' ? mutation.warp === 'true' : mutation.warp;
+            if (warp) {
+                compiler.state.isWarp = true;
+            }
         },
     };
     /* Watchers */

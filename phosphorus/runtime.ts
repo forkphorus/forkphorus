@@ -849,6 +849,6 @@ namespace P.runtime {
 
   // Evaluate JavaScript within the scope of the runtime.
   export function scopedEval(source: string): any {
-    try{return eval(source);}catch(e){debugger}
+    return eval(source);
   }
 }

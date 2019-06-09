@@ -12,7 +12,7 @@ namespace P.sb3 {
 
   /**
    * The path to fetch remote assets from.
-   * Replace $md5ext with the md5sum and the format of the asset. (just use md5ext)
+   * Replace $md5ext with the md5sum and the format of the asset.
    */
   export const ASSETS_API = 'https://assets.scratch.mit.edu/internalapi/asset/$md5ext/get/';
 
@@ -321,7 +321,6 @@ namespace P.sb3 {
   }
 
   export class Scratch3ListWatcher extends P.core.Watcher {
-    private id: string;
     private params: any;
     private width: number;
     private height: number;
@@ -335,7 +334,6 @@ namespace P.sb3 {
     constructor(stage: Scratch3Stage, data: SB3Watcher) {
       super(stage, data.spriteName || '');
 
-      this.id = data.id;
       this.params = data.params;
       this.x = data.x;
       this.y = data.y;
@@ -391,13 +389,14 @@ namespace P.sb3 {
 
     init() {
       super.init();
-      if (!(this.id in this.target.lists)) {
+      const listName = this.params.LIST;
+      if (!(listName in this.target.lists)) {
         // Create the list if it doesn't exist.
         // It might be better to mark ourselves as invalid instead, but this works just fine.
-        this.target.lists[this.id] = new Scratch3List();
+        this.target.lists[listName] = new Scratch3List();
       }
-      this.list = this.target.lists[this.id] as Scratch3List;
-      this.target.watchers[this.id] = this;
+      this.list = this.target.lists[listName] as Scratch3List;
+      this.target.watchers[listName] = this;
       this.updateLayout();
       if (this.visible) {
         this.updateContents();
@@ -940,7 +939,7 @@ namespace P.sb3.compiler {
     }
   }
 
-  // Simple CompiledInput aliases
+  // Shorter CompiledInput aliases
   const stringInput = (v: string) => new CompiledInput(v, 'string');
   const numberInput = (v: string) => new CompiledInput(v, 'number');
   const booleanInput = (v: string) => new CompiledInput(v, 'boolean');
@@ -968,10 +967,13 @@ namespace P.sb3.compiler {
      */
     handle(util: HatUtil): void;
     /**
-     * Optionally make last minute changes to the script's source.
-     * The result of this will replace the script before compilation.
+     * Optionally make changes to the script's source before it is compiled away into functions.
      */
-    preprocess?(compiler: Compiler, source: string): string;
+    postcompile?(compiler: Compiler, source: string, hat: SB3Block): string;
+    /**
+     * Optionally handle what happens before compilation begins.
+     */
+    precompile?(compiler: Compiler, hat: SB3Block): void;
   };
 
   export type InputType = 'string' | 'boolean' | 'number' | 'any';
@@ -1060,27 +1062,34 @@ namespace P.sb3.compiler {
    */
   export class StatementUtil extends BlockUtil {
     public content: string = '';
+    public substacksQueue: boolean = false;
 
     /**
      * Compile a substack.
      */
     getSubstack(name: string): string {
-      return this.compiler.compileSubstackInput(this.block, name);
+      const labelsBefore = this.compiler.labelCount;
+      const substack = this.compiler.compileSubstackInput(this.block, name);
+      if (this.compiler.labelCount !== labelsBefore) {
+        this.substacksQueue = true;
+      }
+      return substack;
     }
 
     /**
-     * Gets the next label available for use without claiming it.
+     * Gets the next label ID ready for use. The ID is unique and will cannot be reused.
      */
-    nextLabel(): number {
-      return this.compiler.labelCount;
+    claimNextLabel(): number {
+      return this.compiler.labelCount++;
     }
 
     /**
-     * Create a new label at this location.
+     * Create a new label at this location. A label ID will be created if none is supplied.
      */
-    addLabel(): number {
-      const label = this.nextLabel();
-      this.compiler.labelCount++;
+    addLabel(label?: number): number {
+      if (!label) {
+        label = this.claimNextLabel();
+      }
       // We'll use special syntax to denote this spot as a label.
       // It'll be cleaned up later in compilation.
       // Interestingly, this is actually valid JavaScript, so cleanup isn't strictly necessary.
@@ -1196,6 +1205,10 @@ namespace P.sb3.compiler {
     getLabel(watcher: P.sb3.Scratch3VariableWatcher): string;
   }
 
+  interface CompilerState {
+    isWarp: boolean;
+  }
+
   // Block definitions
   export const statementLibrary: ObjectMap<StatementCompiler> = Object.create(null);
   export const inputLibrary: ObjectMap<InputCompiler> = Object.create(null);
@@ -1218,8 +1231,11 @@ namespace P.sb3.compiler {
      * The blocks of this target.
      */
     public blocks: ObjectMap<SB3Block>;
-
+    /**
+     * Total number of labels created by this compiler.
+     */
     public labelCount: number = 0;
+    public state: CompilerState;
 
     constructor(target: Target) {
       this.target = target;
@@ -1490,13 +1506,18 @@ namespace P.sb3.compiler {
       return this.compileStack(id);
     }
 
+    getNewState(): CompilerState {
+      return {
+        isWarp: false,
+      };
+    }
+
     /**
      * Compile an entire script from a starting block.
      */
     compileStack(startingBlock: string): string {
       let script = '';
       let block = this.blocks[startingBlock];
-      if(!block)debugger;
 
       while (true) {
         var opcode = block.opcode;
@@ -1542,13 +1563,21 @@ namespace P.sb3.compiler {
         return;
       }
 
+      this.state = this.getNewState();
+
+      if (hatCompiler.precompile) {
+        hatCompiler.precompile(this, hat);
+      }
+
       // There is always a label placed at the beginning of the script.
-      let script = `{{${this.labelCount++}}}` + this.compileStack(startingBlock);
+      // If you're clever, you may be able to remove this at some point.
+      let script = `{{${this.labelCount++}}}`;
+      script += this.compileStack(startingBlock);
 
       // If a block wants to preprocess the script, then let it.
       // TODO: should this happen after parseResult?
-      if (hatCompiler.preprocess) {
-        script = hatCompiler.preprocess(this, script);
+      if (hatCompiler.postcompile) {
+        script = hatCompiler.postcompile(this, script, hat);
       }
 
       // Parse the script to search for labels, and remove the label metadata.
@@ -1608,6 +1637,13 @@ namespace P.sb3.compiler {
     }
 
     /**
+     * Log info
+     */
+    log(...args: any[]) {
+      console.log.apply(console, args);
+    }
+
+    /**
      * Compiles the scripts of the target with the current data.
      */
     compile(): void {
@@ -1658,9 +1694,15 @@ namespace P.sb3.compiler {
   };
   statementLibrary['control_forever'] = function(util) {
     const SUBSTACK = util.getSubstack('SUBSTACK');
-    const label = util.addLabel();
-    util.write(SUBSTACK);
-    util.queue(label);
+    if (util.compiler.state.isWarp && !util.substacksQueue) {
+      util.writeLn('while (true) {');
+      util.write(SUBSTACK);
+      util.writeLn('}');
+    } else {
+      const label = util.addLabel();
+      util.write(SUBSTACK);
+      util.queue(label);
+    }
   };
   statementLibrary['control_if'] = function(util) {
     const CONDITION = util.getInput('CONDITION', 'any');
@@ -1685,25 +1727,41 @@ namespace P.sb3.compiler {
   statementLibrary['control_repeat'] = function(util) {
     const TIMES = util.getInput('TIMES', 'any');
     const SUBSTACK = util.getSubstack('SUBSTACK');
-    util.writeLn('save();');
-    util.writeLn(`R.count = ${TIMES};`);
-    const label = util.addLabel();
-    util.writeLn('if (R.count >= 0.5) {');
-    util.writeLn('  R.count -= 1;');
-    util.writeLn(SUBSTACK);
-    util.queue(label);
-    util.writeLn('} else {');
-    util.writeLn('  restore();');
-    util.writeLn('}');
+    if (util.compiler.state.isWarp && !util.substacksQueue) {
+      util.writeLn('save();');
+      util.writeLn(`R.count = ${TIMES};`);
+      util.writeLn('while (R.count >= 0.5) {');
+      util.writeLn('  R.count -= 1;');
+      util.write(SUBSTACK);
+      util.writeLn('}');
+      util.writeLn('restore();');
+    } else {
+      util.writeLn('save();');
+      util.writeLn(`R.count = ${TIMES};`);
+      const label = util.addLabel();
+      util.writeLn('if (R.count >= 0.5) {');
+      util.writeLn('  R.count -= 1;');
+      util.write(SUBSTACK);
+      util.queue(label);
+      util.writeLn('} else {');
+      util.writeLn('  restore();');
+      util.writeLn('}');
+    }
   };
   statementLibrary['control_repeat_until'] = function(util) {
     const CONDITION = util.getInput('CONDITION', 'boolean');
     const SUBSTACK = util.getSubstack('SUBSTACK');
-    const label = util.addLabel();
-    util.writeLn(`if (!${CONDITION}) {`);
-    util.writeLn(SUBSTACK);
-    util.queue(label);
-    util.writeLn('}');
+    if (util.compiler.state.isWarp && !util.substacksQueue) {
+      util.writeLn(`while (!${CONDITION}) {`);
+      util.write(SUBSTACK);
+      util.writeLn('}');
+    } else {
+      const label = util.addLabel();
+      util.writeLn(`if (!${CONDITION}) {`);
+      util.writeLn(SUBSTACK);
+      util.queue(label);
+      util.writeLn('}');
+    }
   };
   statementLibrary['control_stop'] = function(util) {
     const STOP_OPTION = util.getField('STOP_OPTION');
@@ -1747,11 +1805,17 @@ namespace P.sb3.compiler {
   statementLibrary['control_while'] = function(util) {
     const CONDITION = util.getInput('CONDITION', 'boolean');
     const SUBSTACK = util.getSubstack('SUBSTACK');
-    const label = util.addLabel();
-    util.writeLn(`if (${CONDITION}) {`);
-    util.writeLn(SUBSTACK);
-    util.queue(label);
-    util.writeLn('}');
+    if (util.compiler.state.isWarp && !util.substacksQueue) {
+      util.writeLn(`while (${CONDITION}) {`);
+      util.write(SUBSTACK);
+      util.writeLn('}');
+    } else {
+      const label = util.addLabel();
+      util.writeLn(`if (${CONDITION}) {`);
+      util.writeLn(SUBSTACK);
+      util.queue(label);
+      util.writeLn('}');
+    }
   };
   statementLibrary['data_addtolist'] = function(util) {
     const LIST = util.getListReference('LIST');
@@ -2186,8 +2250,8 @@ namespace P.sb3.compiler {
       return;
     }
 
-    const id = util.nextLabel();
-    util.write(`call(S.procedures[${util.sanitizedString(name)}], ${id}, [`);
+    const label = util.claimNextLabel();
+    util.write(`call(S.procedures[${util.sanitizedString(name)}], ${label}, [`);
 
     // The mutation has a stringified JSON list of input IDs... it's weird.
     const inputNames = JSON.parse(mutation.argumentids);
@@ -2195,10 +2259,8 @@ namespace P.sb3.compiler {
       util.write(`${util.getInput(inputName, 'any')}, `);
     }
 
-    util.write(']);\n');
-
-    util.writeLn('return;');
-    util.addLabel();
+    util.writeLn(']); return;');
+    util.addLabel(label);
   };
   statementLibrary['sensing_askandwait'] = function(util) {
     const QUESTION = util.getInput('QUESTION', 'string');
@@ -2229,7 +2291,7 @@ namespace P.sb3.compiler {
     }
   };
 
-  // Legacy no-ops.
+  // Legacy no-ops
   // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L19
   // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_looks.js#L248
   const noopStatement = (util: P.sb3.compiler.StatementUtil) => util.writeLn('/* noop */');
@@ -2648,8 +2710,16 @@ namespace P.sb3.compiler {
       const procedure = new P.sb3.Scratch3Procedure(util.startingFunction, warp, argumentNames);
       util.target.procedures[proccode] = procedure;
     },
-    preprocess(compiler, source) {
+    postcompile(compiler, source, hat) {
       return source + 'endCall(); return;\n';
+    },
+    precompile(compiler, hat) {
+      const customBlockId = hat.inputs.custom_block[1];
+      const mutation = compiler.blocks[customBlockId].mutation;
+      const warp = typeof mutation.warp === 'string' ? mutation.warp === 'true' : mutation.warp;
+      if (warp) {
+        compiler.state.isWarp = true;
+      }
     },
   };
 
