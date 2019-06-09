@@ -442,13 +442,6 @@ namespace P.core {
     }
 
     /**
-     * Determines the value of a variable from its name.
-     * Please use .vars instead for most use cases.
-     * @param name The name of the variable, as displayed in the Scratch interface.
-     */
-    abstract lookupVariable(name: string): any;
-
-    /**
      * Gets the rectangular bounds that contain this sprite in its entirety.
      */
     abstract rotatedBounds(): RotatedBounds;
