@@ -1,5 +1,7 @@
 # forkphorus changelog
 
+*Dates reflect when the changes were developed, and recent changes may not yet be deployed to forkphorus.github.io.*
+
 ## June 10
 
 - sb2 and sb3: Fix `play sound until done` not respecting `stop all sounds`
