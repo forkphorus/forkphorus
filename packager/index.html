@@ -8,17 +8,19 @@
       margin: auto;
       font-family: sans-serif;
     }
-    tr td:nth-child(1) {
-      /* title */
-      width: 95px;
-      text-align: center;
+    table {
+      width: 100%;
+      margin-bottom: 10px;
     }
-    tr td:nth-child(2) {
-      /* input */
+    textarea, input:not([type="radio"]) {
+      width: 100%;
+    }
+    .label {
       width: 150px;
+      text-align: center;
+      font-weight: bold;
     }
-    tr td:nth-child(3) {
-      /* description */
+    .desc {
       font-size: smaller;
     }
   </style>
@@ -29,38 +31,79 @@
 
   <p>The packager allows you to generate a .html file for a project, which <a href="guide.html">can be packaged into a .exe file</a> (somewhat) easily.</p>
 
-  <p>While the packager on the homepage creates a link to a website, this packager generates an easily packagable HTML file that functions independently of an internet connection.</p>
+  <p>While the packager on the homepage creates a link to a website, this packager generates an easily embedable HTML file that functions independently of this website.</p>
 
-  <p>Still in development. Some icons and all note blocks will not work.</p>
+  <p>The packager is still in development. Some icons and all note blocks will not work.</p>
 
-  <section id="section-content">
+  <hr>
+
+  <table>
+    <tr>
+      <td class="label">Project Source</td>
+      <td>
+        <label><input type="radio" name="project-type" value="id" checked> Project ID (scratch.mit.edu/projects/...)</label>
+        <label><input type="radio" name="project-type" value="file"> Project File (.sb2, .sb3)</label>
+      </td>
+    </tr>
+    <tr id="project-id-section">
+      <td class="label"><label for="project-id-input">Project ID</label></td>
+      <td><input type="number" id="project-id-input" value="10128407"></td>
+    </tr>
+    <tr id="project-file-section" hidden>
+      <td class="label"><label for="project-file-input">Project File</label></td>
+      <td><input type="file" id="project-file-input" accept=".sb2,.sb3"></td>
+    </tr>
+    <tr>
+      <td colspan="2" class="desc">You can select a project from the scratch.mit.edu website, or choose a project file. Scratch 2 and Scratch 3 projects are supported.</td>
+    </tr>
+  </table>
+
+  <table>
+    <tr>
+      <td class="label"><label for="loading-text-input">Loading Text</label></td>
+      <td><input id="loading-text-input" type="text" value="forkphorus"></td>
+    </tr>
+    <tr>
+      <td colspan="2" class="desc"><a href="https://user-images.githubusercontent.com/17209175/58766078-219f4d00-8540-11e9-93f0-b04088efb0a8.png" target="_blank">Displayed while the project is loading.</a> Set to empty to display only a loading bar. <span title="Using HTML is definitely a feature and not just me being lazy.">You can use HTML if you're careful.</td>
+    </tr>
+  </table>
+
+  <details>
+    <!-- wont work in edge/ie but whatever -->
+    <summary>Advanced options</summary>
     <table>
       <tr>
-        <td><label for="input-project">Project ID</label></td>
-        <td><input id="input-project" value="10128407" type="number"></td>
-      </tr>
-      <tr>
-        <td><label for="input-loading-text">Loading text</label></td>
-        <td><input id="input-loading-text" value="forkphorus" type="text"></td>
-        <td><a href="https://user-images.githubusercontent.com/17209175/58766078-219f4d00-8540-11e9-93f0-b04088efb0a8.png">Displayed while the project is loading.</a> Set to empty to display only a loading bar. You can use HTML formatting.</td>
-      </tr>
-      <tr>
-        <td><label for="input-post-load-script">Custom JS</label></td>
-        <td><textarea id="input-post-load-script">// Custom javascript to execute after stage loading.
-stage.username = '';
+        <td class="label"><label for="post-load-script-input">Custom JS</label></td>
+        <td><textarea id="post-load-script-input">stage.username = '';
 stage.runtime.framerate = 30;</textarea></td>
-        <td>For very advanced users</td>
+      </tr>
+      <tr>
+        <td colspan="2" class="desc">Custom JavaScript to execute after the project has loaded. The sample script shows how you could change the framerate or username.</td>
       </tr>
     </table>
 
-    <p>
-      <button id="package-html">Package to HTML</button>
-    </p>
+    <table>
+      <tr>
+        <td class="label"><label for="custom-style-input">Custom CSS</label></td>
+        <td><textarea id="custom-style-input">#progress-bar {
+  background-color: #fff;
+}
+#progress {
+  border-color: #fff;
+  height: 16px;
+}</textarea></td>
+      </tr>
+      <tr>
+        <td colspan="2" class="desc">Customize the look of the player. The sample style shows how you can change the progress bar.</td>
+      </tr>
+    </table>
+  </details>
 
-    <!-- <p>Packaging to a single .html file is not recommended, as some features such as note blocks, fonts, and some icons will not work.</p> -->
-  </section>
+  <p>
+    <button id="package-html">Package to HTML</button>
+  </p>
 
-  <section id="section-loading"></section>
+  <section id="loading-section"></section>
 
   <script src="../lib/jszip.min.js"></script>
   <script src="loader.js"></script>
