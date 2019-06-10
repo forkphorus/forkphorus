@@ -2154,13 +2154,7 @@ namespace P.sb3.compiler {
   statementLibrary['sound_changevolumeby'] = function(util) {
     const VOLUME = util.getInput('VOLUME', 'number');
     util.writeLn(`S.volume = Math.max(0, Math.min(1, S.volume + ${VOLUME} / 100));`);
-    util.writeLn('if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);');
-    util.writeLn('for (var sounds = S.sounds, i = sounds.length; i--;) {');
-    util.writeLn('  var sound = sounds[i];');
-    util.writeLn('  if (sound.node && sound.target === S) {');
-    util.writeLn('    sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);');
-    util.writeLn('  }');
-    util.writeLn('}');
+    util.writeLn('if (S.node) S.node.gain.value = S.volume;');
   };
   statementLibrary['sound_play'] = function(util) {
     const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
@@ -2180,13 +2174,7 @@ namespace P.sb3.compiler {
   statementLibrary['sound_setvolumeto'] = function(util) {
     const VOLUME = util.getInput('VOLUME', 'number');
     util.writeLn(`S.volume = Math.max(0, Math.min(1, ${VOLUME} / 100));`);
-    util.writeLn('if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);');
-    util.writeLn('for (var sounds = S.sounds, i = sounds.length; i--;) {');
-    util.writeLn('  var sound = sounds[i];');
-    util.writeLn('  if (sound.node && sound.target === S) {');
-    util.writeLn('    sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);');
-    util.writeLn('  }');
-    util.writeLn('}');
+    util.writeLn('if (S.node) S.node.gain.value = S.volume;');
   };
   statementLibrary['sound_stopallsounds'] = function(util) {
     if (P.audio.context) {

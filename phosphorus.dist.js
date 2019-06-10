@@ -67,9 +67,9 @@ var P;
         if (audio.context) {
             // TODO: customizable volume
             var volume = 0.3;
-            var volumeNode = audio.context.createGain();
-            volumeNode.gain.value = volume;
-            volumeNode.connect(audio.context.destination);
+            var globalNode = audio.context.createGain();
+            globalNode.gain.value = volume;
+            globalNode.connect(audio.context.destination);
         }
         /*
           copy(JSON.stringify(drums.map(function(d) {
@@ -342,22 +342,6 @@ var P;
                 .then((buffer) => P.audio.decodeAudio(buffer))
                 .then((sound) => soundbank[name] = sound);
         }
-        function playSound(sound) {
-            if (!audio.context) {
-                return;
-            }
-            if (!sound.buffer) {
-                return;
-            }
-            if (sound.source) {
-                sound.source.disconnect();
-            }
-            sound.source = audio.context.createBufferSource();
-            sound.source.buffer = sound.buffer;
-            sound.source.connect(sound.node);
-            sound.source.start(audio.context.currentTime);
-        }
-        audio.playSound = playSound;
         function playSpan(span, key, duration, connection) {
             if (!audio.context) {
                 return;
@@ -406,10 +390,10 @@ var P;
         /**
          * Connect an audio node
          */
-        function connect(node) {
-            node.connect(volumeNode);
+        function connectNode(node) {
+            node.connect(globalNode);
         }
-        audio.connect = connect;
+        audio.connectNode = connectNode;
         const ADPCM_STEPS = [
             7, 8, 9, 10, 11, 12, 13, 14, 16, 17,
             19, 21, 23, 25, 28, 31, 34, 37, 41, 45,
@@ -1553,7 +1537,7 @@ var P;
                  */
                 this.instrument = 0;
                 /**
-                 * The volume of this object, with 1 being 100%
+                 * The volume of this object, where 1.0 === 100% volume
                  */
                 this.volume = 1;
                 /**
@@ -1731,19 +1715,12 @@ var P;
                 }
             }
             /**
-             * Stops all sounds in this object. Does not include children.
+             * Stops all sounds in this object.
              */
             stopSounds() {
                 if (this.node) {
                     this.node.disconnect();
                     this.node = null;
-                }
-                for (var i = this.sounds.length; i--;) {
-                    var s = this.sounds[i];
-                    if (s.node) {
-                        s.node.disconnect();
-                        s.node = null;
-                    }
                 }
             }
             ask(question) {
@@ -1863,6 +1840,22 @@ var P;
                     this.node.disconnect();
                     this.node = null;
                 }
+            }
+            /**
+             * Gets this object's AudioNode, or creates it if it doesn't exist.
+             * @throws Error if there is no audio context.
+             */
+            getAudioNode() {
+                if (this.node) {
+                    return this.node;
+                }
+                if (!P.audio.context) {
+                    throw new Error('No audio context');
+                }
+                this.node = P.audio.context.createGain();
+                this.node.gain.value = this.volume;
+                P.audio.connectNode(this.node);
+                return this.node;
             }
         }
         core.Base = Base;
@@ -2750,10 +2743,21 @@ var P;
         // A sound
         class Sound {
             constructor(data) {
-                this.node = null;
+                this.source = null;
+                if (!data.buffer)
+                    throw new Error('no AudioBuffer');
                 this.name = data.name;
                 this.buffer = data.buffer;
-                this.duration = this.buffer ? this.buffer.duration : 0;
+                this.duration = this.buffer.duration;
+            }
+            createSourceNode() {
+                if (this.source) {
+                    this.source.disconnect();
+                }
+                this.source = P.audio.context.createBufferSource();
+                this.source.buffer = this.buffer;
+                this.source.start();
+                return this.source;
             }
         }
         core.Sound = Sound;
@@ -3080,8 +3084,6 @@ var P;
 (function (P) {
     var runtime;
     (function (runtime_1) {
-        // The runtime is really weird and hard to understand.
-        // The upside: it's fast as hell.
         // Global variables expected by scripts at runtime:
         // Current runtime
         var runtime;
@@ -3109,6 +3111,9 @@ var P;
         var IMMEDIATE;
         // Has a "visual change" been made in this frame?
         var VISUAL;
+        // Note:
+        // Your editor might warn you about "unused variables" or things like that.
+        // That is a complete lie and you should disregard such warnings.
         const epoch = Date.UTC(2000, 0, 1);
         const INSTRUMENTS = P.audio.instruments;
         const DRUMS = P.audio.drums;
@@ -3423,11 +3428,6 @@ var P;
         const audioContext = P.audio.context;
         if (audioContext) {
             var playNote = function (key, duration) {
-                if (!S.node) {
-                    S.node = audioContext.createGain();
-                    S.node.gain.value = S.volume;
-                    P.audio.connect(S.node);
-                }
                 var span;
                 var spans = INSTRUMENTS[S.instrument];
                 for (var i = 0, l = spans.length; i < l; i++) {
@@ -3435,25 +3435,13 @@ var P;
                     if (span.top >= key || span.top === 128)
                         break;
                 }
-                P.audio.playSpan(span, key, duration, S.node);
+                P.audio.playSpan(span, key, duration, S.getAudioNode());
             };
             var playSpan = function (span, key, duration) {
-                if (!S.node) {
-                    S.node = audioContext.createGain();
-                    S.node.gain.value = S.volume;
-                    P.audio.connect(S.node);
-                }
-                P.audio.playSpan(span, key, duration, S.node);
+                P.audio.playSpan(span, key, duration, S.getAudioNode());
             };
             var playSound = function (sound) {
-                if (!sound.node) {
-                    sound.node = audioContext.createGain();
-                    sound.node.gain.value = S.volume;
-                    P.audio.connect(sound.node);
-                }
-                sound.target = S;
-                sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);
-                P.audio.playSound(sound);
+                sound.createSourceNode().connect(S.getAudioNode());
             };
         }
         var save = function () {
@@ -5175,13 +5163,7 @@ var P;
                     }
                     else if (block[0] === 'changeVolumeBy:' || block[0] === 'setVolumeTo:') {
                         source += 'S.volume = Math.min(1, Math.max(0, ' + (block[0] === 'changeVolumeBy:' ? 'S.volume + ' : '') + num(block[1]) + ' / 100));\n';
-                        source += 'if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
-                        source += 'for (var sounds = S.sounds, i = sounds.length; i--;) {\n';
-                        source += '  var sound = sounds[i];\n';
-                        source += '  if (sound.node && sound.target === S) {\n';
-                        source += '    sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
-                        source += '  }\n';
-                        source += '}\n';
+                        source += 'if (S.node) S.node.gain.value = S.volume;\n';
                     }
                     else if (block[0] === 'changeTempoBy:') {
                         source += 'self.tempoBPM += ' + num(block[1]) + ';\n';
@@ -7327,13 +7309,7 @@ var P;
     statementLibrary['sound_changevolumeby'] = function (util) {
         const VOLUME = util.getInput('VOLUME', 'number');
         util.writeLn(`S.volume = Math.max(0, Math.min(1, S.volume + ${VOLUME} / 100));`);
-        util.writeLn('if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);');
-        util.writeLn('for (var sounds = S.sounds, i = sounds.length; i--;) {');
-        util.writeLn('  var sound = sounds[i];');
-        util.writeLn('  if (sound.node && sound.target === S) {');
-        util.writeLn('    sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);');
-        util.writeLn('  }');
-        util.writeLn('}');
+        util.writeLn('if (S.node) S.node.gain.value = S.volume;');
     };
     statementLibrary['sound_play'] = function (util) {
         const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
@@ -7353,13 +7329,7 @@ var P;
     statementLibrary['sound_setvolumeto'] = function (util) {
         const VOLUME = util.getInput('VOLUME', 'number');
         util.writeLn(`S.volume = Math.max(0, Math.min(1, ${VOLUME} / 100));`);
-        util.writeLn('if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);');
-        util.writeLn('for (var sounds = S.sounds, i = sounds.length; i--;) {');
-        util.writeLn('  var sound = sounds[i];');
-        util.writeLn('  if (sound.node && sound.target === S) {');
-        util.writeLn('    sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);');
-        util.writeLn('  }');
-        util.writeLn('}');
+        util.writeLn('if (S.node) S.node.gain.value = S.volume;');
     };
     statementLibrary['sound_stopallsounds'] = function (util) {
         if (P.audio.context) {

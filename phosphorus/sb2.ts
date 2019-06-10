@@ -1460,13 +1460,7 @@ namespace P.sb2.compiler {
       } else if (block[0] === 'changeVolumeBy:' || block[0] === 'setVolumeTo:') {
 
         source += 'S.volume = Math.min(1, Math.max(0, ' + (block[0] === 'changeVolumeBy:' ? 'S.volume + ' : '') + num(block[1]) + ' / 100));\n';
-        source += 'if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
-        source += 'for (var sounds = S.sounds, i = sounds.length; i--;) {\n';
-        source += '  var sound = sounds[i];\n';
-        source += '  if (sound.node && sound.target === S) {\n';
-        source += '    sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
-        source += '  }\n';
-        source += '}\n';
+        source += 'if (S.node) S.node.gain.value = S.volume;\n';
 
       } else if (block[0] === 'changeTempoBy:') {
 

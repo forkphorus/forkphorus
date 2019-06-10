@@ -118,7 +118,7 @@ namespace P.core {
      */
     public instrument: number = 0;
     /**
-     * The volume of this object, with 1 being 100%
+     * The volume of this object, where 1.0 === 100% volume
      */
     public volume: number = 1;
     /**
@@ -304,19 +304,12 @@ namespace P.core {
     }
 
     /**
-     * Stops all sounds in this object. Does not include children.
+     * Stops all sounds in this object.
      */
     stopSounds() {
       if (this.node) {
         this.node.disconnect();
         this.node = null;
-      }
-      for (var i = this.sounds.length; i--;) {
-        var s = this.sounds[i];
-        if (s.node) {
-          s.node.disconnect();
-          s.node = null;
-        }
       }
     }
 
@@ -439,6 +432,23 @@ namespace P.core {
         this.node.disconnect();
         this.node = null;
       }
+    }
+
+    /**
+     * Gets this object's AudioNode, or creates it if it doesn't exist.
+     * @throws Error if there is no audio context.
+     */
+    getAudioNode(): AudioNode {
+      if (this.node) {
+        return this.node;
+      }
+      if (!P.audio.context) {
+        throw new Error('No audio context');
+      }
+      this.node = P.audio.context.createGain();
+      this.node.gain.value = this.volume;
+      P.audio.connectNode(this.node);
+      return this.node;
     }
 
     /**
@@ -1451,19 +1461,33 @@ namespace P.core {
     }
   }
 
+  interface SoundOptions {
+    buffer: AudioBuffer;
+    name: string;
+  }
   // A sound
   export class Sound {
+    // TODO: Sound doesn't truly need name
     public name: string;
     public buffer: AudioBuffer;
     public duration: number;
-    public node: GainNode | null = null;
-    public source: AudioBufferSourceNode;
-    public target: Base;
+    public source: AudioBufferSourceNode | null = null;
 
-    constructor(data: { name: string; buffer: AudioBuffer; }) {
+    constructor(data: SoundOptions) {
+      if (!data.buffer) throw new Error('no AudioBuffer');
       this.name = data.name;
       this.buffer = data.buffer;
-      this.duration = this.buffer ? this.buffer.duration : 0;
+      this.duration = this.buffer.duration;
+    }
+
+    createSourceNode() {
+      if (this.source) {
+        this.source.disconnect();
+      }
+      this.source = P.audio.context!.createBufferSource();
+      this.source.buffer = this.buffer;
+      this.source.start();
+      return this.source;
     }
   }
 
