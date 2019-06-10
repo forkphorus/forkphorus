@@ -1329,6 +1329,11 @@ namespace P.sb3.compiler {
      * Sanitize a string for use in the runtime.
      */
     sanitizedString(string: string): string {
+      // Sometimes weird things happen and non-strings get passed around to here.
+      if (typeof string !== 'string') {
+        console.warn('sanitizedString got a non-string object', string);
+        string = string + '';
+      }
       string = string
         .replace(/\\/g, '\\\\')
         .replace(/'/g, '\\\'')
