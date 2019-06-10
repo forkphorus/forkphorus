@@ -943,6 +943,7 @@ namespace P.core {
         children[i].stopSounds();
       }
       this.stopSounds();
+      this.runtime.stopSounds = this.runtime.playingSounds;
     }
 
     removeAllClones() {

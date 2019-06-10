@@ -2275,6 +2275,7 @@ var P;
                     children[i].stopSounds();
                 }
                 this.stopSounds();
+                this.runtime.stopSounds = this.runtime.playingSounds;
             }
             removeAllClones() {
                 var i = this.children.length;
@@ -3539,6 +3540,8 @@ var P;
                 this.now = 0;
                 this.isTurbo = false;
                 this.framerate = 30;
+                this.playingSounds = 0;
+                this.stopSounds = 0;
                 // Fix scoping
                 this.onError = this.onError.bind(this);
                 this.step = this.step.bind(this);
@@ -5129,7 +5132,20 @@ var P;
                             source += 'var sound = S.getSound(' + val(block[1]) + ');\n';
                             source += 'if (sound) {\n';
                             source += '  playSound(sound);\n';
-                            wait('sound.duration');
+                            source += '  runtime.playingSounds++;\n';
+                            source += '  save();\n';
+                            source += '  R.sound = sound;\n';
+                            source += '  R.start = runtime.now;\n';
+                            source += '  R.duration = sound.duration;\n';
+                            source += '  var first = true;\n';
+                            var id = label();
+                            source += '  if ((runtime.now - R.start < R.duration * 1000 || first) && runtime.stopSounds === 0) {\n';
+                            source += '    var first;\n';
+                            forceQueue(id);
+                            source += '  }\n';
+                            source += '  if (runtime.stopSounds) runtime.stopSounds--;\n';
+                            source += '  runtime.playingSounds--;\n';
+                            source += '  restore();\n';
                             source += '}\n';
                         }
                     }
@@ -6380,12 +6396,12 @@ var P;
                     this.writeLn('if (S.saying) S.updateBubble()');
                 }
                 /**
-                 * Writes JS to pause the script for a duration
+                 * Writes JS to pause the script for a known duration of time.
                  */
-                wait(duration) {
+                wait(seconds) {
                     this.writeLn('save();');
                     this.writeLn('R.start = runtime.now;');
-                    this.writeLn(`R.duration = ${duration}`);
+                    this.writeLn(`R.duration = ${seconds}`);
                     this.writeLn('var first = true;');
                     const label = this.addLabel();
                     this.writeLn('if (runtime.now - R.start < R.duration * 1000 || first) {');
@@ -7313,18 +7329,35 @@ var P;
     };
     statementLibrary['sound_play'] = function (util) {
         const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
-        util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
-        util.writeLn('if (sound) {');
-        util.writeLn('  playSound(sound);');
-        util.writeLn('}');
+        if (P.audio.context) {
+            util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
+            util.writeLn('if (sound) {');
+            util.writeLn('  playSound(sound);');
+            util.writeLn('}');
+        }
     };
     statementLibrary['sound_playuntildone'] = function (util) {
         const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
-        util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
-        util.writeLn('if (sound) {');
-        util.writeLn('  playSound(sound);');
-        util.wait('sound.duration');
-        util.writeLn('}');
+        if (P.audio.context) {
+            util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
+            util.writeLn('if (sound) {');
+            util.writeLn('  playSound(sound);');
+            util.writeLn('  runtime.playingSounds++;');
+            util.writeLn('  save();');
+            util.writeLn('  R.sound = sound;');
+            util.writeLn('  R.start = runtime.now;');
+            util.writeLn('  R.duration = sound.duration;');
+            util.writeLn('  var first = true;');
+            const label = util.addLabel();
+            util.writeLn('  if ((runtime.now - R.start < R.duration * 1000 || first) && runtime.stopSounds === 0) {');
+            util.writeLn('    var first;');
+            util.forceQueue(label);
+            util.writeLn('  }');
+            util.writeLn('  if (runtime.stopSounds) runtime.stopSounds--;');
+            util.writeLn('  runtime.playingSounds--;');
+            util.writeLn('  restore();');
+            util.writeLn('}');
+        }
     };
     statementLibrary['sound_setvolumeto'] = function (util) {
         const VOLUME = util.getInput('VOLUME', 'number');

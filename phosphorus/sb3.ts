@@ -1131,12 +1131,12 @@ namespace P.sb3.compiler {
     }
 
     /**
-     * Writes JS to pause the script for a duration
+     * Writes JS to pause the script for a known duration of time.
      */
-    wait(duration: string) {
+    wait(seconds: string) {
       this.writeLn('save();');
       this.writeLn('R.start = runtime.now;');
-      this.writeLn(`R.duration = ${duration}`);
+      this.writeLn(`R.duration = ${seconds}`);
       this.writeLn('var first = true;');
       const label = this.addLabel();
       this.writeLn('if (runtime.now - R.start < R.duration * 1000 || first) {');
@@ -2158,18 +2158,35 @@ namespace P.sb3.compiler {
   };
   statementLibrary['sound_play'] = function(util) {
     const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
-    util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
-    util.writeLn('if (sound) {');
-    util.writeLn('  playSound(sound);');
-    util.writeLn('}');
+    if (P.audio.context) {
+      util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
+      util.writeLn('if (sound) {');
+      util.writeLn('  playSound(sound);');
+      util.writeLn('}');
+    }
   };
   statementLibrary['sound_playuntildone'] = function(util) {
     const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
-    util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
-    util.writeLn('if (sound) {');
-    util.writeLn('  playSound(sound);');
-    util.wait('sound.duration');
-    util.writeLn('}');
+    if (P.audio.context) {
+      util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
+      util.writeLn('if (sound) {');
+      util.writeLn('  playSound(sound);');
+      util.writeLn('  runtime.playingSounds++;');
+      util.writeLn('  save();');
+      util.writeLn('  R.sound = sound;');
+      util.writeLn('  R.start = runtime.now;');
+      util.writeLn('  R.duration = sound.duration;');
+      util.writeLn('  var first = true;');
+      const label = util.addLabel();
+      util.writeLn('  if ((runtime.now - R.start < R.duration * 1000 || first) && runtime.stopSounds === 0) {');
+      util.writeLn('    var first;');
+      util.forceQueue(label);
+      util.writeLn('  }');
+      util.writeLn('  if (runtime.stopSounds) runtime.stopSounds--;');
+      util.writeLn('  runtime.playingSounds--;');
+      util.writeLn('  restore();');
+      util.writeLn('}');
+    }
   };
   statementLibrary['sound_setvolumeto'] = function(util) {
     const VOLUME = util.getInput('VOLUME', 'number');

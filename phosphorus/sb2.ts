@@ -1418,7 +1418,20 @@ namespace P.sb2.compiler {
           source += 'var sound = S.getSound(' + val(block[1]) + ');\n';
           source += 'if (sound) {\n';
           source += '  playSound(sound);\n';
-          wait('sound.duration');
+          source += '  runtime.playingSounds++;\n';
+          source += '  save();\n';
+          source += '  R.sound = sound;\n';
+          source += '  R.start = runtime.now;\n';
+          source += '  R.duration = sound.duration;\n';
+          source += '  var first = true;\n';
+          var id = label();
+          source += '  if ((runtime.now - R.start < R.duration * 1000 || first) && runtime.stopSounds === 0) {\n';
+          source += '    var first;\n';
+          forceQueue(id);
+          source += '  }\n';
+          source += '  if (runtime.stopSounds) runtime.stopSounds--;\n';
+          source += '  runtime.playingSounds--;\n';
+          source += '  restore();\n';
           source += '}\n';
         }
 
