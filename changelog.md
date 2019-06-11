@@ -7,6 +7,7 @@
 - sb2 and sb3: Fix `play sound until done` not respecting `stop all sounds`
   - The sound would indeed stop, but the wait for the sound to finish would remain.
   - This probably fixes issues with sounds not playing until after a duration of time.
+- Finishing up things related to the [HTML Packager](https://forkphorus.github.io/packager/)
 
 ## June 9
 
