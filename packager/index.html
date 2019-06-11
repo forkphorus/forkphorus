@@ -2,6 +2,8 @@
 <html>
 
 <head>
+  <meta charset="utf8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       max-width: 480px;
@@ -11,6 +13,7 @@
     table {
       width: 100%;
       margin-bottom: 10px;
+      border-bottom: 1px solid #aaa;
     }
     textarea, input:not([type="radio"]) {
       width: 100%;
@@ -23,19 +26,21 @@
     .desc {
       font-size: smaller;
     }
+    summary {
+      cursor: pointer;
+    }
   </style>
+  <title>HTML Packager - forkphorus</title>
 </head>
 
 <body>
-  <h1>Packager</h1>
+  <h1>HTML Packager</h1>
 
-  <p>The packager allows you to generate a .html file for a project, which <a href="guide.html">can be packaged into a .exe file</a> (somewhat) easily.</p>
+  <p>The HTML packager allows you to generate an HTML file for a project, which <a href="guide.html">can be packaged into an EXE file</a> (somewhat) easily.</p>
 
   <p>While the packager on the homepage creates a link to a website, this packager generates an easily embedable HTML file that functions independently of this website.</p>
 
-  <p>The packager is still in development. Some icons and all note blocks will not work.</p>
-
-  <hr>
+  <p>Some icons and all note blocks will not work.</p>
 
   <table>
     <tr>
@@ -64,7 +69,7 @@
       <td><input id="loading-text-input" type="text" value="forkphorus"></td>
     </tr>
     <tr>
-      <td colspan="2" class="desc"><a href="https://user-images.githubusercontent.com/17209175/58766078-219f4d00-8540-11e9-93f0-b04088efb0a8.png" target="_blank">Displayed while the project is loading.</a> Set to empty to display only a loading bar. <span title="Using HTML is definitely a feature and not just me being lazy.">You can use HTML if you're careful.</td>
+      <td colspan="2" class="desc"><a href="https://user-images.githubusercontent.com/17209175/58766078-219f4d00-8540-11e9-93f0-b04088efb0a8.png" target="_blank">Displayed while the project is loading.</a> Set to empty to display only a loading bar. <span title="Using HTML is definitely a feature and not just me being lazy.">You can use HTML if you're careful.</span></td>
     </tr>
   </table>
 
@@ -105,6 +110,7 @@ stage.runtime.framerate = 30;</textarea></td>
 
   <section id="loading-section"></section>
 
+  <script src="../lib/details-element-polyfill.js"></script>
   <script src="../lib/jszip.min.js"></script>
   <script src="loader.js"></script>
   <script src="packager.js"></script>

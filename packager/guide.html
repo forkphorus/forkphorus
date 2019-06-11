@@ -1,8 +1,10 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-  <title>Forkphorus to executable</title>
+  <meta charset="utf8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forkphorus to executable (.exe)</title>
   <style>
     body {
       max-width: 720px;
@@ -17,23 +19,28 @@
       max-width: 100%;
       display: block;
     }
+    footer {
+      font-size: smaller;
+    }
   </style>
 </head>
 
 <body>
-  <h1>Forkphorus to executable</h1>
+  <main>
+    <h1>Forkphorus to executable (.exe)</h1>
 
-  <h2>Making an executable with NW.js</h2>
+    <section>
+      <h2>Making an executable with NW.js</h2>
 
-  <p>Guide to packaging forkphorus into an executable file for Windows, Mac OS, or linux. If you're not using Windows, just ignore all references to "exe".</p>
+      <p>Guide to packaging forkphorus into an executable file for Windows, Mac OS, or Linux. If you're not using Windows, ignore all references to "exe" but everything should work correctly.</p>
 
-  <ol>
-    <li>Use <a href="index.html">the packager</a> to get a .html file for the project.</li>
-    <li>Download <a href="https://nwjs.io/">NW.js</a>'s "Normal" version (not "SDK") for your platform. <img src="https://user-images.githubusercontent.com/17209175/58752962-441c6200-847d-11e9-9387-4fb25f164025.png"></li>
-    <li>Extract the archive</li>
-    <li>Move project.html (file by the packager) into the extracted folder (the same folder where "nw.exe" is located)</li>
-    <li>Create the file "package.json" in the same folder with the content:
-      <pre>
+      <ol>
+        <li>Use <a href="index.html">the packager</a> to get a .html file for the project.</li>
+        <li>Download <a href="https://nwjs.io/">NW.js</a>'s "Normal" version (not "SDK") for your platform.<img src="https://user-images.githubusercontent.com/17209175/58752962-441c6200-847d-11e9-9387-4fb25f164025.png"></li>
+        <li>Extract the archive</li>
+        <li>Move project.html (file by the packager) into the extracted folder (the same folder where "nw.exe" is located)</li>
+        <li>Create the file "package.json" in the same folder with the content:
+          <pre>
 {
   "name": "<u>Name of the project</u>",
   "main": "project.html",
@@ -45,53 +52,63 @@
     "height": <u>360</u>
   }
 }</pre>
-      <ul>
-        <li>Underlined sections may be changed.</li>
-        <li><code>name</code>: The name of the project. It doesn't really matter what you set this to.</li>
-        <li><code>title</code>: This will be the Window's title.</li>
-        <li><code>icon</code>: This is the path to the image that will be the Window's icon. If you remove this line or do not create an icon, an icon will be generated automatically.</li>
-        <li><code>resizable</code>: Allows the window to be resized. Set this to <code>false</code> to disallow resizing.</li>
-        <li><code>width</code> and <code>height</code>: The initial width and height (in pixels) of the window. Scratch's project player is 480x360 by default.</li>
-        <li>For a full list of fields you can use, see <a href="http://docs.nwjs.io/en/latest/References/Manifest%20Format/#window-subfields">the NW.js documentation</a>.</li>
-      </ul>
-      <br>
-      At this point, your NW.js folder should look something like this:
-      <img src="https://user-images.githubusercontent.com/17209175/59154860-a0652000-8a41-11e9-85d0-109e59c0316c.png">
-      <small>Highlighted files are ones you should have created.</small>
-    </li>
-    <li>Open nw.exe</li>
-    <li>You're done! <img src="https://user-images.githubusercontent.com/17209175/59154894-67797b00-8a42-11e9-9678-e24bca31f285.png"><small><a href="https://scratch.mit.edu/projects/10128407/">griffpatch's Paper Minecraft project</a> running in an exe on Windows with a solid blue icon.</small></li>
-  </ol>
+          <ul>
+            <li>Underlined sections may be changed.</li>
+            <li><code>name</code>: The name of the project. It doesn't really matter what you set this to.</li>
+            <li><code>title</code>: This will be the Window's title.</li>
+            <li><code>icon</code>: This is the path to the image that will be the Window's icon. If you remove this line or do not create an icon, an icon will be generated automatically.</li>
+            <li><code>resizable</code>: Allows the window to be resized. Set this to <code>false</code> to disallow resizing.</li>
+            <li><code>width</code> and <code>height</code>: The initial width and height (in pixels) of the window. Scratch's project player is 480x360 by default.</li>
+            <li>For a full list of fields you can use, see <a href="http://docs.nwjs.io/en/latest/References/Manifest%20Format/#window-subfields">the NW.js documentation</a>.</li>
+          </ul>
+          <br>
+          At this point, your NW.js folder should look something like this:
+          <img src="https://user-images.githubusercontent.com/17209175/59154860-a0652000-8a41-11e9-85d0-109e59c0316c.png">
+          <small>Highlighted files are ones you should have created.</small>
+        </li>
+        <li>Open nw.exe</li>
+        <li>You're done! <img src="https://user-images.githubusercontent.com/17209175/59154894-67797b00-8a42-11e9-9678-e24bca31f285.png"><small><a href="https://scratch.mit.edu/projects/10128407/">griffpatch's Paper Minecraft project</a> running in an exe on Windows with a solid blue icon.</small></li>
+      </ol>
+    </section>
+
+    <hr>
+
+    <section>
+      <h2>Creating a self-extracting archive</h2>
+
+      <p>NW.js works great, but it has a few problems. Specifically:
+        <ul>
+          <li>There's a lot of files</li>
+          <li>It's very large</li>
+        </ul>
+      </p>
+
+      <p>We can create a self-extracting archive with <a href="http://74.cz/en/make-sfx/index.php">makesfx</a> to help address these problems. This will only work on Windows.</p>
+
+      <p><small>You can also do this with other tools such as <a href="https://rarlab.com/">WinRAR</a>.</small></p>
+
+      <ol>
+        <li>Complete the above instructions using NW.js first</li>
+        <li>Download makesfx from <a href="http://74.cz/en/make-sfx/index.php">their website</a></li>
+        <li>The makesfx interface is rather daunting. Pretty much, configure it so that it looks like this:<img src="https://user-images.githubusercontent.com/17209175/58766023-61b20000-853f-11e9-8712-90336b9ad987.png">
+          <ul>
+            <li>"Source folder" is where you extracted NW.js to</li>
+            <li>"Target SFX file" is where the output of makesfx will be saved</li>
+            <li>You may want to change the icon of the file. This does not affect the icon of the Window.</li>
+            <li>Set "Extraction mode" to "Extract files into specified folder and launch executable", and set the executable file to nw.exe (the file you ran at the end of the previous section).</li>
+            <li>Set "Overwrite mode during extraction" to "Automatically overwrite all existing files"</li>
+          </ul>
+        </li>
+        <li>Run the output file</li>
+        <li>You're done!</li>
+      </ol>
+    </section>
+
+  </main>
 
   <hr>
-  <h2>Creating a self-extracting archive</h2>
 
-  <p>NW.js works great, but it has a few problems. Specifically:
-    <ul>
-      <li>There's a lot of files</li>
-      <li>It's very large</li>
-    </ul>
-  </p>
-
-  <p>We can create a self-extracting archive with <a href="http://74.cz/en/make-sfx/index.php">makesfx</a> to help address these problems. This will only work on Windows.</p>
-
-  <p><small>You can also do this with other tools such as <a href="https://rarlab.com/">WinRAR</a>.</small></p>
-
-  <ol>
-    <li>Complete the above instructions using NW.js first</li>
-    <li>Download makesfx from <a href="http://74.cz/en/make-sfx/index.php">their website</a></li>
-    <li>The makesfx interface is rather daunting. Pretty much, configure it so that it looks like this:<img src="https://user-images.githubusercontent.com/17209175/58766023-61b20000-853f-11e9-8712-90336b9ad987.png">
-      <ul>
-        <li>"Source folder" is where you extracted NW.js to</li>
-        <li>"Target SFX file" is where the output of makesfx will be saved</li>
-        <li>You may want to change the icon of the file. This does not affect the icon of the Window.</li>
-        <li>Set "Extraction mode" to "Extract files into specified folder and launch executable", and set the executable file to nw.exe (the file you ran at the end of the previous section).</li>
-        <li>Set "Overwrite mode during extraction" to "Automatically overwrite all existing files"</li>
-      </ul>
-    </li>
-    <li>Run the output file</li>
-    <li>You're done!</li>
-  </ol>
+  <footer><p>Roughly based on <a href="https://scratch.mit.edu/discuss/topic/341617/">SpeedDesign's tutorial for Scratch 3</a>. If you want to package Scratch 3 instead of forkphorus, use that!</p></footer>
 
   <script>
     (function() {
@@ -107,9 +124,6 @@
     })();
   </script>
 
-  <hr>
-
-  <p><small>Roughly based on <a href="https://scratch.mit.edu/discuss/topic/341617/">SpeedDesign's tutorial for Scratch 3</a>. If you want to package Scratch 3 instead of forkphorus, use that!</small></p>
 </body>
 
 </html>

@@ -542,10 +542,23 @@
    * @param {string} fileName The name of the downloaded file
    */
   function addDownloadLink(text, fileName) {
-    const encoder = new TextEncoder();
-    const blob = new Blob([encoder.encode(text)]);
-    const size = blob.size / 1024 / 1024;
+    function getBlob() {
+      if ('TextEncoder' in window) {
+        // firefox, chrome
+        const encoder = new TextEncoder();
+        return new Blob([encoder.encode(text)]);
+      } else {
+        // Using TextEncoder is the best method, but Edge doesn't support it.
+        const bytes = new Array(text.length);
+        for (let i = 0; i < text.length; i++) {
+          bytes[i] = text.charCodeAt(i);
+        }
+        return new Blob([new Uint8Array(bytes)]);
+      }
+    }
     const link = document.createElement('a');
+    const blob = getBlob();
+    const size = blob.size / 1024 / 1024;
     link.href = URL.createObjectURL(blob);
     link.textContent = `Download ${fileName} (${size.toFixed(2)} MiB)`;
     link.download = fileName;
