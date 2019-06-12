@@ -182,6 +182,10 @@ P.player = (function() {
   }
 
   function start(s, triggerGreenFlag) {
+    // delete an existing stage
+    if (stage) {
+      stage.destroy();
+    }
     if (!s) {
       throw new Error('no stage');
     }
