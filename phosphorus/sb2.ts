@@ -1422,7 +1422,20 @@ namespace P.sb2.compiler {
           source += 'var sound = S.getSound(' + val(block[1]) + ');\n';
           source += 'if (sound) {\n';
           source += '  playSound(sound);\n';
-          wait('sound.duration');
+          source += '  runtime.playingSounds++;\n';
+          source += '  save();\n';
+          source += '  R.sound = sound;\n';
+          source += '  R.start = runtime.now;\n';
+          source += '  R.duration = sound.duration;\n';
+          source += '  var first = true;\n';
+          var id = label();
+          source += '  if ((runtime.now - R.start < R.duration * 1000 || first) && runtime.stopSounds === 0) {\n';
+          source += '    var first;\n';
+          forceQueue(id);
+          source += '  }\n';
+          source += '  if (runtime.stopSounds) runtime.stopSounds--;\n';
+          source += '  runtime.playingSounds--;\n';
+          source += '  restore();\n';
           source += '}\n';
         }
 
@@ -1464,13 +1477,7 @@ namespace P.sb2.compiler {
       } else if (block[0] === 'changeVolumeBy:' || block[0] === 'setVolumeTo:') {
 
         source += 'S.volume = Math.min(1, Math.max(0, ' + (block[0] === 'changeVolumeBy:' ? 'S.volume + ' : '') + num(block[1]) + ' / 100));\n';
-        source += 'if (S.node) S.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
-        source += 'for (var sounds = S.sounds, i = sounds.length; i--;) {\n';
-        source += '  var sound = sounds[i];\n';
-        source += '  if (sound.node && sound.target === S) {\n';
-        source += '    sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);\n';
-        source += '  }\n';
-        source += '}\n';
+        source += 'if (S.node) S.node.gain.value = S.volume;\n';
 
       } else if (block[0] === 'changeTempoBy:') {
 

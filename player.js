@@ -174,6 +174,8 @@ P.player = (function() {
           return (new P.sb3.Scratch3Loader(json)).load();
         } else if (type === 2) {
           return P.sb2.loadProject(json);
+        } else {
+          throw new Error('Unknown project type (only Scratch 2 and 3 projects are supported)');
         }
       })
       .catch((e) => showError(e));

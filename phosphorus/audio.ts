@@ -16,9 +16,9 @@ namespace P.audio {
   if (context) {
     // TODO: customizable volume
     var volume = 0.3;
-    var volumeNode = context.createGain();
-    volumeNode.gain.value = volume;
-    volumeNode.connect(context.destination);
+    var globalNode = context.createGain();
+    globalNode.gain.value = volume;
+    globalNode.connect(context.destination);
   }
 
   // Most things relating to Span are old things I don't understand and don't want to touch.
@@ -311,24 +311,6 @@ namespace P.audio {
       .then((sound) => soundbank[name] = sound);
   }
 
-  export function playSound(sound: core.Sound) {
-    if (!context) {
-      return;
-    }
-    if (!sound.buffer) {
-      return;
-    }
-
-    if (sound.source) {
-      sound.source.disconnect();
-    }
-    sound.source = context.createBufferSource();
-    sound.source.buffer = sound.buffer;
-    sound.source.connect(sound.node!);
-
-    sound.source.start(context.currentTime);
-  }
-
   export function playSpan(span: Span, key: number, duration: number, connection: AudioNode) {
     if (!context) {
       return;
@@ -381,8 +363,8 @@ namespace P.audio {
   /**
    * Connect an audio node
    */
-  export function connect(node: AudioNode) {
-    node.connect(volumeNode);
+  export function connectNode(node: AudioNode) {
+    node.connect(globalNode);
   }
 
   const ADPCM_STEPS = [

@@ -7,9 +7,6 @@
 namespace P.runtime {
   export type Fn = () => void;
 
-  // The runtime is really weird and hard to understand.
-  // The upside: it's fast as hell.
-
   // Global variables expected by scripts at runtime:
   // Current runtime
   var runtime: Runtime;
@@ -37,6 +34,10 @@ namespace P.runtime {
   var IMMEDIATE: Fn | null | undefined;
   // Has a "visual change" been made in this frame?
   var VISUAL: boolean;
+
+  // Note:
+  // Your editor might warn you about "unused variables" or things like that.
+  // That is a complete lie and you should disregard such warnings.
 
   const epoch = Date.UTC(2000, 0, 1);
   const INSTRUMENTS = P.audio.instruments;
@@ -321,7 +322,7 @@ namespace P.runtime {
         case 'volume': return o.volume * 100;
       }
     }
-    const value = o.lookupVariable(attr);
+    const value = o.vars[attr];
     if (value !== undefined) {
       return value;
     }
@@ -368,40 +369,21 @@ namespace P.runtime {
   const audioContext = P.audio.context;
   if (audioContext) {
     var playNote = function(key, duration) {
-      if (!S.node) {
-        S.node = audioContext.createGain();
-        S.node.gain.value = S.volume;
-        P.audio.connect(S.node);
-      }
-
       var span;
       var spans = INSTRUMENTS[S.instrument];
       for (var i = 0, l = spans.length; i < l; i++) {
         span = spans[i];
         if (span.top >= key || span.top === 128) break;
       }
-
-      P.audio.playSpan(span, key, duration, S.node);
+      P.audio.playSpan(span, key, duration, S.getAudioNode());
     };
 
     var playSpan = function(span, key, duration) {
-      if (!S.node) {
-        S.node = audioContext.createGain();
-        S.node.gain.value = S.volume;
-        P.audio.connect(S.node);
-      }
-      P.audio.playSpan(span, key, duration, S.node);
+      P.audio.playSpan(span, key, duration, S.getAudioNode());
     };
 
-    var playSound = function(sound) {
-      if (!sound.node) {
-        sound.node = audioContext.createGain();
-        sound.node.gain.value = S.volume;
-        P.audio.connect(sound.node);
-      }
-      sound.target = S;
-      sound.node.gain.setValueAtTime(S.volume, audioContext.currentTime);
-      P.audio.playSound(sound);
+    var playSound = function(sound: P.core.Sound) {
+      sound.createSourceNode().connect(S.getAudioNode());
     };
   }
 
@@ -515,6 +497,8 @@ namespace P.runtime {
     public interval: number;
     public isTurbo: boolean = false;
     public framerate: number = 30;
+    public playingSounds: number = 0;
+    public stopSounds: number = 0;
 
     constructor(public stage: P.core.Stage) {
       // Fix scoping

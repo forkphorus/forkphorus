@@ -326,40 +326,39 @@ P.suite = (function() {
 
   const originalProcedureCall = compiler.statementLibrary['procedures_call'];
 
-  function getArguments(block) {
+  function getArguments(util) {
     var source = '';
-    const mutation = block.mutation;
+    const mutation = util.block.mutation;
     const inputIds = JSON.parse(mutation.argumentids);
     for (let i = 0; i < inputIds.length; i++) {
       const id = inputIds[i];
-      const input = block.inputs[id];
-      source += compiler.hooks.expression(input) + ', ';
+      source += util.getInput(id, 'any') + ', ';
     }
     return source.substr(0, source.length - 2);
   }
 
-  compiler.statementLibrary['procedures_call'] = function procedureCall(block) {
-    switch (block.mutation.proccode) {
+  compiler.statementLibrary['procedures_call'] = function procedureCall(util) {
+    switch (util.block.mutation.proccode) {
       case 'FAIL':
-        compiler.hooks.appendSource('if (runtime.testFail("no message")) { return; }\n');
+        util.writeLn('if (runtime.testFail("no message")) { return; }');
         break;
 
       case 'FAIL %s':
-        compiler.hooks.appendSource('if (runtime.testFail(' + getArguments(block) + ' || "no message")) { return; }\n');
+        util.writeLn('if (runtime.testFail(' + getArguments(util) + ' || "no message")) { return; }');
         break;
 
       case 'OKAY':
       case 'OK':
-        compiler.hooks.appendSource('runtime.testOkay(""); return;\n');
+        util.writeLn('runtime.testOkay(""); return;');
         break;
 
       case 'OKAY %s':
       case 'OK %s':
-        compiler.hooks.appendSource('runtime.testOkay(' + getArguments(block) + ' || ""); return;\n');
+        util.writeLn('runtime.testOkay(' + getArguments(util) + ' || ""); return;');
         break;
 
       default:
-        originalProcedureCall(block);
+        originalProcedureCall(util);
     }
   };
 }(P.sb3.compiler));
