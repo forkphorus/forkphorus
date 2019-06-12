@@ -55,7 +55,7 @@ namespace P.fonts {
     return Promise.all(promises);
   }
 
-  function getCSSFontFace(src: string, fontFamily: string) {
+  function getCSSFontFace(fontFamily: string, src: string) {
     return `@font-face { font-family: "${fontFamily}"; src: url("${src}"); }`;
   }
 
@@ -67,9 +67,10 @@ namespace P.fonts {
     for (const fontName of fonts) {
       const font = getFont(fontName);
       if (!font) {
+        console.warn('unknown font from cache', fontName);
         continue;
       }
-      cssRules.push(getCSSFontFace(font, font));
+      cssRules.push(getCSSFontFace(fontName, font));
     }
 
     const doc = svg.ownerDocument!;

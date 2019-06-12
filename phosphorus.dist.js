@@ -2914,7 +2914,7 @@ var P;
             return Promise.all(promises);
         }
         fonts_1.loadFontSet = loadFontSet;
-        function getCSSFontFace(src, fontFamily) {
+        function getCSSFontFace(fontFamily, src) {
             return `@font-face { font-family: "${fontFamily}"; src: url("${src}"); }`;
         }
         /**
@@ -2925,9 +2925,10 @@ var P;
             for (const fontName of fonts) {
                 const font = getFont(fontName);
                 if (!font) {
+                    console.warn('unknown font from cache', fontName);
                     continue;
                 }
-                cssRules.push(getCSSFontFace(font, font));
+                cssRules.push(getCSSFontFace(fontName, font));
             }
             const doc = svg.ownerDocument;
             const defs = doc.createElementNS('http://www.w3.org/2000/svg', 'defs');
@@ -6085,8 +6086,8 @@ var P;
                 let font = el.getAttribute('font-family') || '';
                 if (!P.fonts.scratch3[font]) {
                     console.warn('unknown font', font);
-                    el.setAttribute('font-family', font);
                     font = 'Sans Serif';
+                    el.setAttribute('font-family', font);
                 }
                 if (usedFonts.indexOf(font) === -1) {
                     usedFonts.push(font);

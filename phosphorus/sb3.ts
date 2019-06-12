@@ -590,8 +590,8 @@ namespace P.sb3 {
       let font = el.getAttribute('font-family') || '';
       if (!P.fonts.scratch3[font]) {
         console.warn('unknown font', font);
-        el.setAttribute('font-family', font);
         font = 'Sans Serif';
+        el.setAttribute('font-family', font);
       }
       if (usedFonts.indexOf(font) === -1) {
         usedFonts.push(font);
