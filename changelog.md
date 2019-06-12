@@ -7,6 +7,8 @@
 - SVG graphics actually scale
 - Fix stages not being destroyed after you start a new one
 - Add message to try to get people to use forkphorus.github.io instead of forkphorus.github.io/forkphorus/
+- sb3: Fix support for that one trick people use to change the pen's transparency:
+  - ![set pen color block](https://user-images.githubusercontent.com/17209175/59324756-e3bfc880-8ca5-11e9-9ec4-cf0871255709.png)
 
 ## June 10
 
