@@ -1,5 +1,11 @@
 /// <reference path="phosphorus.ts" />
 
+interface FontFaceObserver {
+  new(font: string): FontFaceObserver;
+  load(text?: string, timeout?: number): Promise<void>;
+}
+declare var FontFaceObserver: FontFaceObserver;
+
 /**
  * Font helpers
  */
@@ -16,18 +22,10 @@ namespace P.fonts {
     'Scratch': 'fonts/Scratch.ttf',
   };
 
-  export const scratch2 = {
-    'Donegal': 'fonts/DonegalOne-Regular.woff',
-    'Gloria': 'fonts/GloriaHallelujah.woff',
-    'Mystery': 'fonts/MysteryQuest-Regular.woff',
-    'Marker': 'fonts/PermanentMarker-Regular.woff',
-    'Scratch': 'fonts/Scratch.ttf',
-  };
-
   /**
    * Asynchronously load and cache a font
    */
-  export function loadFont(fontFamily: string, src: string): Promise<string> {
+  function loadLocalFont(fontFamily: string, src: string): Promise<string> {
     if (fontFamilyCache[fontFamily]) {
       return Promise.resolve(fontFamilyCache[fontFamily]);
     }
@@ -42,7 +40,7 @@ namespace P.fonts {
   /**
    * Gets an already loaded and cached font
    */
-  export function getFont(fontFamily: string): string {
+  function getFont(fontFamily: string): string {
     if (!(fontFamily in fontFamilyCache)) {
       throw new Error('unknown font: ' + fontFamily);
     }
@@ -52,12 +50,12 @@ namespace P.fonts {
   export function loadFontSet(fonts: ObjectMap<string>): Promise<unknown> {
     const promises: Promise<unknown>[] = [];
     for (const family in fonts) {
-      promises.push(loadFont(family, fonts[family]));
+      promises.push(loadLocalFont(family, fonts[family]));
     }
     return Promise.all(promises);
   }
 
-  export function getCSSFontFace(src: string, fontFamily: string) {
+  function getCSSFontFace(src: string, fontFamily: string) {
     return `@font-face { font-family: "${fontFamily}"; src: url("${src}"); }`;
   }
 
@@ -75,5 +73,10 @@ namespace P.fonts {
     style.innerHTML = cssRules.join('\n');
     defs.appendChild(style);
     svg.appendChild(style);
+  }
+
+  export function loadWebFont(name: string): Promise<void> {
+    const observer = new FontFaceObserver(name);
+    return observer.load();
   }
 }

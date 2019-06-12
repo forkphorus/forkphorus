@@ -482,8 +482,14 @@ namespace P.sb2 {
     return Promise.all((data || []).map((i, ind) => process(i, ind)));
   }
 
-  export function loadFonts(): Promise<unknown> {
-    return P.fonts.loadFontSet(P.fonts.scratch2);
+  export function loadFonts(): Promise<void> {
+    return Promise.all([
+      P.utils.settled(P.fonts.loadWebFont('Donegal One')),
+      P.utils.settled(P.fonts.loadWebFont('Gloria Hallelujah')),
+      P.utils.settled(P.fonts.loadWebFont('Mystery Quest')),
+      P.utils.settled(P.fonts.loadWebFont('Permanent Marker')),
+      P.utils.settled(P.fonts.loadWebFont('Scratch')),
+    ]).then(() => undefined);
   }
 
   export function loadObject(data) {
@@ -502,47 +508,36 @@ namespace P.sb2 {
     return watcher;
   }
 
-  export function loadCostume(data, index): Promise<P.core.Costume> {
-    // I have no idea where textLayerMD5 is ever actually used, or if it's needed, but it was in phosphorus and I'm afraid to remove it.
-    const baseMD5 = data.baseLayerMD5 || '';
-    const isBaseVector = baseMD5.substr(-4) === '.svg';
-    const textMD5 = data.textLayerMD5 || '';
-
-    const promises: Promise<any>[] = [];
-    if (baseMD5) {
-      promises.push(loadMD5(data.baseLayerMD5, data.baseLayerID, false));
+  export function loadCostume(data, index) {
+    const promises = [
+      loadMD5(data.baseLayerMD5, data.baseLayerID)
+        .then((asset) => data.$image = asset)
+    ];
+    if (data.textLayerMD5) {
+      promises.push(loadMD5(data.textLayerMD5, data.textLayerID)
+        .then((asset) => data.$text = asset));
     }
-    if (textMD5) {
-      promises.push(loadMD5(data.textLayerMD5, data.textLayerID, false))
-    }
-
-    const costumeOptions = {
-      name: data.costumeName,
-      bitmapResolution: data.bitmapResolution,
-      rotationCenterX: data.rotationCenterX,
-      rotationCenterY: data.rotationCenterY,
-    };
-
     return Promise.all(promises)
       .then((layers: any[]) => {
-        if (isBaseVector && !textMD5) {
-          // If the base is MD5 and there isn't a weird text layer, we'll properly treat this as an SVG
-          const base = layers[0];
-          return new P.core.VectorCostume(base, costumeOptions);
-        } else {
-          if (layers.length > 1) {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d')!;
-            canvas.width = Math.max(layers[0].width, 1);
-            canvas.height = Math.max(layers[0].height, 1);
-            for (const layer of layers) {
-              ctx.drawImage(layer, 0, 0);
-            }
-            return new P.core.BitmapCostume(canvas, costumeOptions);
-          } else {
-            return new P.core.BitmapCostume(layers[0], costumeOptions);
+        var image;
+        if (layers.length > 1) {
+          image = document.createElement('canvas');
+          const ctx = image.getContext('2d')!;
+          image.width = Math.max(layers[0].width, 1);
+          image.height = Math.max(layers[0].height, 1);
+          for (const layer of layers) {
+            ctx.drawImage(layer, 0, 0);
           }
+        } else {
+          image = layers[0];
         }
+
+        return new P.core.BitmapCostume(image, {
+          name: data.costumeName,
+          bitmapResolution: data.bitmapResolution,
+          rotationCenterX: data.rotationCenterX,
+          rotationCenterY: data.rotationCenterY,
+        });
       });
   }
 
@@ -562,15 +557,14 @@ namespace P.sb2 {
     });
   }
 
-  export function patchSVG(svg) {
-    const els = document.querySelectorAll('[transform]');
-    for (var i = 0; i < els.length; i++) {
-      var el = els[i];
-      if (el.hasAttribute('x') || el.hasAttribute('y')) {
-        el.setAttribute('x', '0');
-        el.setAttribute('y', '0');
-      }
-    }
+  export function patchSVG(svg, element) {
+    const FONTS: ObjectMap<string> = {
+      '': 'Helvetica',
+      Donegal: 'Donegal One',
+      Gloria: 'Gloria Hallelujah',
+      Marker: 'Permanent Marker',
+      Mystery: 'Mystery Quest'
+    };
 
     const LINE_HEIGHTS: ObjectMap<number> = {
       Helvetica: 1.13,
@@ -580,51 +574,45 @@ namespace P.sb2 {
       'Mystery Quest': 1.37
     };
 
-    const usedFonts: string[] = [];
-    const textElements = document.querySelectorAll('text');
-    for (var i = 0; i < textElements.length; i++) {
-      const text = textElements[i];
-      const font = text.getAttribute('font-family') || '';
-      if (font === 'Helvetica') {
-        text.setAttribute('font-weight', 'bold');
+    if (element.nodeType !== 1) return;
+    if (element.nodeName === 'text') {
+      // Correct fonts
+      var font = element.getAttribute('font-family') || '';
+      font = FONTS[font] || font;
+      if (font) {
+        element.setAttribute('font-family', font);
+        if (font === 'Helvetica') element.style.fontWeight = 'bold';
       }
-
-      let size = +(text.getAttribute('font-size') || 0);
+      var size = +element.getAttribute('font-size');
       if (!size) {
-        size = 18;
-        text.setAttribute('font-size', '' + size);
+        element.setAttribute('font-size', size = 18);
       }
-
-      const bb = text.getBBox();
-      const tr = text.transform.baseVal.consolidate().matrix;
-      debugger;
-      const x = 4 - tr.a;
-      const y = Math.ceil(bb.height) + 1;
-      text.setAttribute('x', '' + x);
-      text.setAttribute('y', '' + y);
-
-      if (usedFonts.indexOf(font) === -1) {
-        usedFonts.push(font);
-      }
-
-      const lines = text.textContent!.split('\n');
+      var bb = element.getBBox();
+      var x = 4 - .6 * element.transform.baseVal.consolidate().matrix.a;
+      var y = (element.getAttribute('y') - bb.y) * 1.1;
+      element.setAttribute('x', x);
+      element.setAttribute('y', y);
+      var lines = element.textContent.split('\n');
       if (lines.length > 1) {
-        text.textContent = lines[0];
-        const lineHeight = LINE_HEIGHTS[font] || 1;
+        element.textContent = lines[0];
+        var lineHeight = LINE_HEIGHTS[font] || 1;
         for (var i = 1, l = lines.length; i < l; i++) {
-          const tspan = document.createElementNS(null, 'tspan');
+          var tspan = document.createElementNS(null, 'tspan');
           tspan.textContent = lines[i];
           tspan.setAttribute('x', '' + x);
           tspan.setAttribute('y', '' + (y + size * i * lineHeight));
-          text.appendChild(tspan);
+          element.appendChild(tspan);
         }
       }
+    } else if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
+      element.setAttribute('x', 0);
+      element.setAttribute('y', 0);
     }
-
-    P.fonts.addFontRules(svg, usedFonts);
+    [].forEach.call(element.childNodes, patchSVG.bind(null, svg));
   }
 
   export function loadSVG(source): Promise<HTMLCanvasElement | HTMLImageElement> {
+    // canvg needs and actual SVG element, not the source.
     const parser = new DOMParser();
     var doc = parser.parseFromString(source, 'image/svg+xml');
     var svg = doc.documentElement as any;
@@ -645,30 +633,34 @@ namespace P.sb2 {
       viewBox.y = 0;
       viewBox.width = 0;
       viewBox.height = 0;
-      svg.removeAttribute('viewBox');
     }
-    patchSVG(svg);
+    patchSVG(svg, svg);
     document.body.removeChild(svg);
     svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
 
     // TODO: use native renderer
     return new Promise<HTMLCanvasElement | HTMLImageElement>((resolve, reject) => {
-      const image = new Image();
-      image.onload = (e) => {
-        resolve(image);
-      };
-      image.onerror = (e) => {
-        reject(e);
-      };
-      image.src = 'data:image/svg+xml,' + encodeURIComponent(svg.outerHTML);
+      const canvas = document.createElement('canvas');
+      canvg(canvas, new XMLSerializer().serializeToString(svg), {
+        ignoreMouse: true,
+        ignoreAnimation: true,
+        ignoreClear: true,
+        renderCallback: function() {
+          if (canvas.width === 0 || canvas.height === 0) {
+            resolve(new Image());
+            return;
+          }
+          resolve(canvas);
+        }
+      });
     });
   }
 
-  export function loadMD5(hash: string, id: string, isAudio: true): Promise<AudioBuffer>;
-  export function loadMD5(hash: string, id: string, isAudio: false): Promise<HTMLImageElement | HTMLCanvasElement | null>;
-  export function loadMD5(hash: string, id: string, isAudio: boolean): Promise<HTMLImageElement | HTMLCanvasElement | AudioBuffer | null> {
+  export function loadMD5(hash: string, id: string, isAudio?: true): Promise<AudioBuffer>;
+  export function loadMD5(hash: string, id: string, isAudio?: false): Promise<HTMLImageElement | HTMLCanvasElement | null>;
+  export function loadMD5(hash: string, id: string, isAudio: boolean = false): Promise<HTMLImageElement | HTMLCanvasElement | AudioBuffer | null> {
     if (zipArchive) {
-      var f = isAudio ? (zipArchive.file(id + '.wav') || zipArchive.file(id + '.mp3')) : (zipArchive.file(id + '.gif') || zipArchive.file(id + '.png') || zipArchive.file(id + '.jpg') || zipArchive.file(id + '.svg'));
+      var f = isAudio ? zipArchive.file(id + '.wav') : zipArchive.file(id + '.gif') || zipArchive.file(id + '.png') || zipArchive.file(id + '.jpg') || zipArchive.file(id + '.svg');
       hash = f.name;
     }
 

@@ -16,6 +16,28 @@
   height: 100%;
 }
 
+/* Scratch 2 fonts fonts */
+@font-face {
+  font-family: "Donegal One";
+  src: url("fonts/DonegalOne-Regular.woff") format("woff");
+}
+@font-face {
+  font-family: "Gloria Hallelujah";
+  src: url("fonts/GloriaHallelujah.woff") format("woff");
+}
+@font-face {
+  font-family: "Mystery Quest";
+  src: url("fonts/MysteryQuest-Regular.woff") format("woff");
+}
+@font-face {
+  font-family: "Permanent Marker";
+  src: url("fonts/PermanentMarker-Regular.woff") format("woff");
+}
+@font-face {
+  font-family: "Scratch";
+  src: url("fonts/Scratch.ttf") format("truetype");
+}
+
 /* Scratch 3 Variable Watchers */
 .s3-watcher-container {
   position: absolute;
