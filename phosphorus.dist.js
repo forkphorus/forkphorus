@@ -2875,13 +2875,13 @@ var P;
     (function (fonts_1) {
         const fontFamilyCache = {};
         fonts_1.scratch3 = {
-            'Marker': 'fonts/Knewave-Regular.woff',
-            'Handwriting': 'fonts/Handlee-Regular.woff',
-            'Pixel': 'fonts/Grand9K-Pixel.ttf',
-            'Curly': 'fonts/Griffy-Regular.woff',
-            'Serif': 'fonts/SourceSerifPro-Regular.woff',
-            'Sans Serif': 'fonts/NotoSans-Regular.woff',
-            'Scratch': 'fonts/Scratch.ttf',
+            'Marker': '/fonts/Knewave-Regular.woff',
+            'Handwriting': '/fonts/Handlee-Regular.woff',
+            'Pixel': '/fonts/Grand9K-Pixel.ttf',
+            'Curly': '/fonts/Griffy-Regular.woff',
+            'Serif': '/fonts/SourceSerifPro-Regular.woff',
+            'Sans Serif': '/fonts/NotoSans-Regular.woff',
+            'Scratch': '/fonts/Scratch.ttf',
         };
         /**
          * Asynchronously load and cache a font
@@ -2902,7 +2902,7 @@ var P;
          */
         function getFont(fontFamily) {
             if (!(fontFamily in fontFamilyCache)) {
-                throw new Error('unknown font: ' + fontFamily);
+                return null;
             }
             return fontFamilyCache[fontFamily];
         }
@@ -2922,11 +2922,12 @@ var P;
          */
         function addFontRules(svg, fonts) {
             const cssRules = [];
-            for (const font of fonts) {
-                // Dirty hack: we'll just assume helvetica is already present on the user's machine
-                if (font === 'Helvetica')
+            for (const fontName of fonts) {
+                const font = getFont(fontName);
+                if (!font) {
                     continue;
-                cssRules.push(getCSSFontFace(getFont(font), font));
+                }
+                cssRules.push(getCSSFontFace(font, font));
             }
             const doc = svg.ownerDocument;
             const defs = doc.createElementNS('http://www.w3.org/2000/svg', 'defs');

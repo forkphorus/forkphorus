@@ -13,13 +13,13 @@ namespace P.fonts {
   const fontFamilyCache: ObjectMap<string> = {};
 
   export const scratch3 = {
-    'Marker': 'fonts/Knewave-Regular.woff',
-    'Handwriting': 'fonts/Handlee-Regular.woff',
-    'Pixel': 'fonts/Grand9K-Pixel.ttf',
-    'Curly': 'fonts/Griffy-Regular.woff',
-    'Serif': 'fonts/SourceSerifPro-Regular.woff',
-    'Sans Serif': 'fonts/NotoSans-Regular.woff',
-    'Scratch': 'fonts/Scratch.ttf',
+    'Marker': '/fonts/Knewave-Regular.woff',
+    'Handwriting': '/fonts/Handlee-Regular.woff',
+    'Pixel': '/fonts/Grand9K-Pixel.ttf',
+    'Curly': '/fonts/Griffy-Regular.woff',
+    'Serif': '/fonts/SourceSerifPro-Regular.woff',
+    'Sans Serif': '/fonts/NotoSans-Regular.woff',
+    'Scratch': '/fonts/Scratch.ttf',
   };
 
   /**
@@ -40,9 +40,9 @@ namespace P.fonts {
   /**
    * Gets an already loaded and cached font
    */
-  function getFont(fontFamily: string): string {
+  function getFont(fontFamily: string): string | null {
     if (!(fontFamily in fontFamilyCache)) {
-      throw new Error('unknown font: ' + fontFamily);
+      return null;
     }
     return fontFamilyCache[fontFamily];
   }
@@ -64,10 +64,12 @@ namespace P.fonts {
    */
   export function addFontRules(svg: SVGElement, fonts: string[]) {
     const cssRules: string[] = [];
-    for (const font of fonts) {
-      // Dirty hack: we'll just assume helvetica is already present on the user's machine
-      if (font === 'Helvetica') continue;
-      cssRules.push(getCSSFontFace(getFont(font), font));
+    for (const fontName of fonts) {
+      const font = getFont(fontName);
+      if (!font) {
+        continue;
+      }
+      cssRules.push(getCSSFontFace(font, font));
     }
 
     const doc = svg.ownerDocument!;
