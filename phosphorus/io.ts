@@ -40,7 +40,9 @@ namespace P.IO {
 
     constructor(url: string, options: RequestOptions = {}) {
       if (options.local) {
-        url = config.localPath + url;
+        if (url.indexOf('data:') !== 0) {
+          url = config.localPath + url;
+        }
       }
       this.url = url;
     }
@@ -51,18 +53,20 @@ namespace P.IO {
     load(): Promise<T> {
       // We attempt to load twice, which I hope will fix random loading errors from failed fetches.
       return new Promise((resolve, reject) => {
-        const attempt = (callback: (err: any) => void) => {
+        const attempt = (errorCallback: (err: any) => void) => {
           this._load()
             .then((response) => {
               resolve(response);
               progressHooks.end();
             })
-            .catch((err) => callback(err));
+            .catch((err) => {
+              errorCallback(err);
+            });
         };
         progressHooks.new();
-        attempt(function() {
+        attempt(() => {
           // try once more
-          attempt(function(err) {
+          attempt((err) => {
             reject(err);
           });
         });

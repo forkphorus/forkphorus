@@ -2905,7 +2905,7 @@ var P;
         function loadFontSet(fonts) {
             const promises = [];
             for (const family in fonts) {
-                promises.push(loadLocalFont(family, fonts[family]));
+                promises.push(P.utils.settled(loadLocalFont(family, fonts[family])));
             }
             return Promise.all(promises);
         }
@@ -2913,6 +2913,9 @@ var P;
         function getCSSFontFace(src, fontFamily) {
             return `@font-face { font-family: "${fontFamily}"; src: url("${src}"); }`;
         }
+        /**
+         * Add an inline <style> element to an SVG containing fonts loaded through loadFontSet
+         */
         function addFontRules(svg, fonts) {
             const cssRules = [];
             for (const font of fonts) {
@@ -2929,6 +2932,9 @@ var P;
             svg.appendChild(style);
         }
         fonts_1.addFontRules = addFontRules;
+        /**
+         * Load a CSS @font-face font.
+         */
         function loadWebFont(name) {
             const observer = new FontFaceObserver(name);
             return observer.load();
@@ -2970,7 +2976,9 @@ var P;
         class Request {
             constructor(url, options = {}) {
                 if (options.local) {
-                    url = IO.config.localPath + url;
+                    if (url.indexOf('data:') !== 0) {
+                        url = IO.config.localPath + url;
+                    }
                 }
                 this.url = url;
             }
@@ -2980,18 +2988,20 @@ var P;
             load() {
                 // We attempt to load twice, which I hope will fix random loading errors from failed fetches.
                 return new Promise((resolve, reject) => {
-                    const attempt = (callback) => {
+                    const attempt = (errorCallback) => {
                         this._load()
                             .then((response) => {
                             resolve(response);
                             IO.progressHooks.end();
                         })
-                            .catch((err) => callback(err));
+                            .catch((err) => {
+                            errorCallback(err);
+                        });
                     };
                     IO.progressHooks.new();
-                    attempt(function () {
+                    attempt(() => {
                         // try once more
-                        attempt(function (err) {
+                        attempt((err) => {
                             reject(err);
                         });
                     });

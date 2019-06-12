@@ -50,7 +50,7 @@ namespace P.fonts {
   export function loadFontSet(fonts: ObjectMap<string>): Promise<unknown> {
     const promises: Promise<unknown>[] = [];
     for (const family in fonts) {
-      promises.push(loadLocalFont(family, fonts[family]));
+      promises.push(P.utils.settled(loadLocalFont(family, fonts[family])));
     }
     return Promise.all(promises);
   }
@@ -59,6 +59,9 @@ namespace P.fonts {
     return `@font-face { font-family: "${fontFamily}"; src: url("${src}"); }`;
   }
 
+  /**
+   * Add an inline <style> element to an SVG containing fonts loaded through loadFontSet
+   */
   export function addFontRules(svg: SVGElement, fonts: string[]) {
     const cssRules: string[] = [];
     for (const font of fonts) {
@@ -75,6 +78,9 @@ namespace P.fonts {
     svg.appendChild(style);
   }
 
+  /**
+   * Load a CSS @font-face font.
+   */
   export function loadWebFont(name: string): Promise<void> {
     const observer = new FontFaceObserver(name);
     return observer.load();
