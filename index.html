@@ -125,7 +125,7 @@
 
     <section>
       <h1>Credits</h1>
-      <p>forkphorus is a fork of <a href="https://phosphorus.github.io/">phosphorus</a> by <a href="https://github.com/nathan">Nathan</a>. Its CPS-style compilation and overall design was inspired by <a href="https://github.com/RHY3756547">Rhys</a>'s <a href="https://code.google.com/p/sb2-js/">sb2.js</a>. It would have more bugs if not for <a href="https://github.com/trumank">Truman</a> and <a href="https://github.com/tjvr">Tim</a>. The <a href="https://stuk.github.io/jszip/">JSZip</a> library is used to read <code>.sb2</code> and <code>.sb3</code> files, and the <a href="https://github.com/canvg/canvg">canvg</a> library to render SVGs in <code>&lt;canvas&gt;</code> elements.</p>
+      <p>forkphorus is a fork of <a href="https://phosphorus.github.io/">phosphorus</a> by <a href="https://github.com/nathan">Nathan</a>. Its CPS-style compilation and overall design was inspired by <a href="https://github.com/RHY3756547">Rhys</a>'s <a href="https://code.google.com/p/sb2-js/">sb2.js</a>. It would have more bugs if not for <a href="https://github.com/trumank">Truman</a> and <a href="https://github.com/tjvr">Tim</a>. The <a href="https://stuk.github.io/jszip/">JSZip</a> library is used to read <code>.sb2</code> and <code>.sb3</code> files.</p>
 
       <h1>Code</h1>
       <p>The source code for forkphorus is available <a href=https://github.com/forkphorus/forkphorus>on GitHub</a> along with a <a href="https://github.com/forkphorus/forkphorus/blob/master/changelog.md">changelog</a>.</p>
@@ -135,11 +135,11 @@
     </section>
   </div>
 
-  <script src=lib/fontfaceobserver.standalone.js></script>
-  <script src=lib/jszip.min.js></script>
-  <script src=lib/rgbcolor.js></script>
-  <script src=lib/StackBlur.js></script>
-  <script src=lib/canvg.js></script>
+  <script src="lib/jszip.min.js"></script>
+  <script src="lib/fontfaceobserver.standalone.js"></script>
+  <script src="lib/stackblur.min.js"></script>
+  <script src="lib/rgbcolor.js"></script>
+  <script src="lib/canvg.min.js"></script>
   <script src="phosphorus.dist.js"></script>
   <script src="player.js"></script>
 
@@ -370,7 +370,7 @@
       show('.' + ext);
       P.player.projectId = 'local ' + ext;
       location.hash = '.' + ext;
-      P.IO.fileAsArrayBuffer(f)
+      P.IO.readers.toArrayBuffer(f)
         .then((buffer) => loadProjectBuffer(buffer, ext));
     });
     uploadFileInput.addEventListener('change', function(e) {
@@ -383,7 +383,7 @@
         return;
       }
       show('.' + ext);
-      P.IO.fileAsArrayBuffer(files[0])
+      P.IO.readers.toArrayBuffer(files[0])
         .then((buffer) => loadProjectBuffer(buffer, ext));
     });
 

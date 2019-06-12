@@ -49,5 +49,5 @@ https://fonts.google.com/specimen/Permanent+Marker
 
 Source Serif Pro
 Copyright 2014 Adobe Systems Incorporated. All Rights Reserved.
-SIL Open FOnt License, 1.1
+SIL Open Font License, 1.1
 https://fonts.google.com/specimen/Source+Serif+Pro

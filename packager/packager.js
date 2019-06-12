@@ -145,52 +145,67 @@
   }
 
   /**
+   * Inlines URLs in a source string with a data: URI
+   * @param {string} source
+   * @param {string[]} urls
+   * @returns {Promise<string>}
+   */
+  function inlineURLs(source, urls) {
+    const promises = urls.map((i) => fetch('../' + i)
+      .then((res) => res.blob())
+      .then((blob) => readBlob(blob))
+      .then((url) => void (source = source.replace(i, url)))
+    );
+    return Promise.all(promises).then(_ => source);
+  }
+
+  /**
    * Loads forkphorus and its dependencies.
-   * @return {Promise}
+   * @return {Promise<void>}
    */
   function loadSources() {
     const progressBar = createProgressBar('Loading forkphorus');
     const promises = [];
     if (!fileCache.js) {
       promises.push(Promise.all([
-        getFile('../lib/fontfaceobserver.standalone.js'),
         getFile('../lib/jszip.min.js'),
+        getFile('../lib/fontfaceobserver.standalone.js'),
+        getFile('../lib/stackblur.min.js'),
         getFile('../lib/rgbcolor.js'),
-        getFile('../lib/StackBlur.js'),
-        getFile('../lib/canvg.js'),
+        getFile('../lib/canvg.min.js'),
         getFile('../phosphorus.dist.js'),
-      ]).then((sources) => fileCache.js = sources.join('\n')));
+      ]).then((sources) => {
+        return inlineURLs(sources.join('\n'), [
+          'fonts/Knewave-Regular.woff',
+          'fonts/Handlee-Regular.woff',
+          'fonts/Grand9K-Pixel.ttf',
+          'fonts/Griffy-Regular.woff',
+          'fonts/SourceSerifPro-Regular.woff',
+          'fonts/NotoSans-Regular.woff',
+          'fonts/Scratch.ttf',
+        ]).then((source) => {
+          fileCache.js = source;
+        });
+      }));
     }
     if (!fileCache.css) {
       promises.push(getFile('../phosphorus.css').then((text) => {
-        const fonts = [
-          'fonts/Knewave/Knewave-Regular.woff2',
-          'fonts/Handlee/Handlee-Regular.woff2',
-          'fonts/Grand9K-Pixel/Grand9K-Pixel.ttf',
-          'fonts/Griffy/Griffy-Regular.woff2',
-          'fonts/Source_Serif_Pro/SourceSerifPro-Regular.woff2',
-          'fonts/Noto_Sans/NotoSans-Regular.woff2',
-          'fonts/Donegal_One/DonegalOne-Regular.woff2',
-          'fonts/Gloria_Hallelujah/GloriaHallelujah.woff2',
-          'fonts/Mystery_Quest/MysteryQuest-Regular.woff2',
-          'fonts/Permanent_Marker/PermanentMarker-Regular.woff2',
-          'fonts/Scratch/Scratch.ttf',
-        ];
-
-        const promises = fonts.map((i) => fetch('../' + i)
-          .then((res) => res.blob())
-          .then((blob) => readBlob(blob))
-          .then((url) => text = text.replace(i, url))
-        );
-
-        return Promise.all(promises).then(() => fileCache.css = text);
+        return inlineURLs(text, [
+          'fonts/DonegalOne-Regular.woff',
+          'fonts/GloriaHallelujah.woff',
+          'fonts/MysteryQuest-Regular.woff',
+          'fonts/PermanentMarker-Regular.woff',
+          'fonts/Scratch.ttf',
+        ]).then((source) => {
+          fileCache.css = source;
+        });
       }));
     }
     if (promises.length === 0) {
       progressBar.finish();
       return Promise.resolve();
     }
-    return Promise.all(promises);
+    return Promise.all(promises).then(_ => undefined);
   }
 
   /**

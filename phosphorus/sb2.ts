@@ -483,7 +483,13 @@ namespace P.sb2 {
   }
 
   export function loadFonts(): Promise<void> {
-    return P.fonts.loadScratch2();
+    return Promise.all([
+      P.utils.settled(P.fonts.loadWebFont('Donegal One')),
+      P.utils.settled(P.fonts.loadWebFont('Gloria Hallelujah')),
+      P.utils.settled(P.fonts.loadWebFont('Mystery Quest')),
+      P.utils.settled(P.fonts.loadWebFont('Permanent Marker')),
+      P.utils.settled(P.fonts.loadWebFont('Scratch')),
+    ]).then(() => undefined);
   }
 
   export function loadObject(data) {
@@ -526,13 +532,11 @@ namespace P.sb2 {
           image = layers[0];
         }
 
-        return new P.core.Costume({
-          index: index,
-          bitmapResolution: data.bitmapResolution,
+        return new P.core.BitmapCostume(image, {
           name: data.costumeName,
+          bitmapResolution: data.bitmapResolution,
           rotationCenterX: data.rotationCenterX,
           rotationCenterY: data.rotationCenterY,
-          source: image,
         });
       });
   }

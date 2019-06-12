@@ -563,37 +563,15 @@ namespace P.sb3 {
     }
   }
 
-  // Modifies a Scratch 3 SVG to work properly in our environment.
-  function patchSVG(svg: SVGElement) {
-    // SVGs made by Scratch 3 use font names such as 'Sans Serif', which we convert to their real names.
-    const FONTS = {
-      'Marker': 'Knewave',
-      'Handwriting': 'Handlee',
-      'Curly': 'Griffy',
-      'Pixel': 'Pixel',
-      'Scratch': 'Scratch',
-      'Serif': 'Source Serif Pro',
-      'Sans Serif': 'Noto Sans',
-    };
-
-    const textElements = svg.querySelectorAll('text');
-    for (var i = 0; i < textElements.length; i++) {
-      const el = textElements[i];
-      const font = el.getAttribute('font-family') || '';
-      if (FONTS[font]) {
-        el.setAttribute('font-family', FONTS[font]);
-      } else {
-        console.warn('unknown font', font, '(defaulting to sans-serif)');
-        // Scratch 3 replaces unknown fonts with sans serif.
-        el.setAttribute('font-family', FONTS['Sans Serif']);
-      }
-    }
-
+  /**
+   * Patches and modifies an SVG element in-place to make it function properly in the forkphorus environment.
+   * Fixes fonts and viewBox.
+   */
+  function patchSVG(svg: SVGElement): void {
     // Special treatment for the viewBox attribute
     if (svg.hasAttribute('viewBox')) {
-      // I think viewBox is supposed to be space separated, but Scratch sometimes make comma separated ones.
       const viewBox = svg.getAttribute('viewBox')!.split(/ |,/).map((i) => +i);
-      if (viewBox.every((i) => !isNaN(i))) {
+      if (viewBox.every((i) => !isNaN(i)) && viewBox.length === 4) {
         const [ x, y, w, h ] = viewBox;
         // Fix width/height to include the viewBox min x/y
         svg.setAttribute('width', (w + x).toString());
@@ -603,6 +581,24 @@ namespace P.sb3 {
       }
       svg.removeAttribute('viewBox');
     }
+
+    const textElements = svg.querySelectorAll('text');
+    const usedFonts: string[] = [];
+
+    for (var i = 0; i < textElements.length; i++) {
+      const el = textElements[i];
+      let font = el.getAttribute('font-family') || '';
+      if (!P.fonts.scratch3[font]) {
+        console.warn('unknown font', font);
+        el.setAttribute('font-family', font);
+        font = 'Sans Serif';
+      }
+      if (usedFonts.indexOf(font) === -1) {
+        usedFonts.push(font);
+      }
+    }
+
+    P.fonts.addFontRules(svg, usedFonts);
   }
 
   // Implements base SB3 loading logic.
@@ -615,49 +611,46 @@ namespace P.sb3 {
     protected abstract getAsArrayBuffer(path: string): Promise<ArrayBuffer>;
     protected abstract getAsImage(path: string, format: string): Promise<HTMLImageElement>;
 
-    // Loads and returns a costume from its sb3 JSON data
-    getImage(path: string, format: string): Promise<HTMLImageElement | HTMLCanvasElement> {
-      if (format === 'svg') {
-        return this.getAsText(path)
-          .then((source) => {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(source, 'image/svg+xml');
-            const svg = doc.documentElement as any;
-            patchSVG(svg);
+    getSVG(path: string): Promise<HTMLImageElement> {
+      return this.getAsText(path)
+        .then((source) => {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(source, 'image/svg+xml');
+          const svg = doc.documentElement as any;
+          patchSVG(svg);
 
-            const canvas = document.createElement('canvas');
-
-            return new Promise<HTMLCanvasElement | HTMLImageElement>((resolve, reject) => {
-              canvg(canvas, new XMLSerializer().serializeToString(svg), {
-                ignoreMouse: true,
-                ignoreAnimation: true,
-                ignoreClear: true,
-                renderCallback: function() {
-                  if (canvas.width === 0 || canvas.height === 0) {
-                    resolve(new Image());
-                    return;
-                  }
-                  resolve(canvas);
-                }
-              });
-            });
+          return new Promise((resolve, reject) => {
+            const image = new Image();
+            image.onload = (e) => {
+              resolve(image);
+            };
+            image.onerror = (e) => {
+              reject(e);
+            };
+            image.src = 'data:image/svg+xml,' + encodeURIComponent(svg.outerHTML);
           });
-      } else {
-        return this.getAsImage(path, format);
-      }
+        });
+    }
+
+    getBitmapImage(path: string, format: string): Promise<HTMLImageElement> {
+      return this.getAsImage(path, format);
     }
 
     loadCostume(data: SB3Costume, index: number): Promise<P.core.Costume> {
       const path = data.assetId + '.' + data.dataFormat;
-      return this.getImage(path, data.dataFormat)
-        .then((image) => new P.core.Costume({
-          index: index,
-          bitmapResolution: data.bitmapResolution,
-          name: data.name,
-          rotationCenterX: data.rotationCenterX,
-          rotationCenterY: data.rotationCenterY,
-          source: image,
-        }));
+      const costumeOptions = {
+        name: data.name,
+        bitmapResolution: data.bitmapResolution || 1,
+        rotationCenterX: data.rotationCenterX,
+        rotationCenterY: data.rotationCenterY,
+      };
+      if (data.dataFormat === 'svg') {
+        return this.getSVG(path)
+          .then((svg) => new P.core.VectorCostume(svg, costumeOptions));
+      } else {
+        return this.getBitmapImage(path, data.dataFormat)
+          .then((image) => new P.core.BitmapCostume(image, costumeOptions));
+      }
     }
 
     getAudioBuffer(path: string) {
@@ -742,8 +735,8 @@ namespace P.sb3 {
         });
     }
 
-    loadFonts(): Promise<void> {
-      return P.fonts.loadScratch3();
+    loadFonts() {
+      return P.fonts.loadFontSet(P.fonts.scratch3);
     }
 
     load() {

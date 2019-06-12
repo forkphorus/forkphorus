@@ -888,7 +888,7 @@ var P;
                 // We'll create a texture only once for performance.
                 const costume = child.costumes[child.currentCostumeIndex];
                 if (!costume._glTexture) {
-                    const texture = this.convertToTexture(costume.image);
+                    const texture = this.convertToTexture(costume.get(1));
                     costume._glTexture = texture;
                 }
                 this.gl.bindTexture(this.gl.TEXTURE_2D, costume._glTexture);
@@ -913,7 +913,7 @@ var P;
                     P.m3.multiply(matrix, P.m3.scaling(costume.scale, costume.scale));
                 }
                 P.m3.multiply(matrix, P.m3.translation(-costume.rotationCenterX, -costume.rotationCenterY));
-                P.m3.multiply(matrix, P.m3.scaling(costume.image.width, costume.image.height));
+                P.m3.multiply(matrix, P.m3.scaling(costume.width, costume.height));
                 shader.uniformMatrix3('u_matrix', matrix);
                 // Effects
                 if (shader.hasUniform('u_opacity')) {
@@ -939,7 +939,7 @@ var P;
                     shader.uniform1f('u_pixelate', Math.abs(child.filters.pixelate) / 10);
                 }
                 if (shader.hasUniform('u_size')) {
-                    shader.uniform2f('u_size', costume.image.width, costume.image.height);
+                    shader.uniform2f('u_size', costume.width, costume.height);
                 }
                 this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
             }
@@ -1270,7 +1270,7 @@ var P;
                     }
                 }
                 ctx.imageSmoothingEnabled = false;
-                ctx.drawImage(costume.image, -costume.rotationCenterX * objectScale, -costume.rotationCenterY * objectScale, costume.image.width * objectScale, costume.image.height * objectScale);
+                ctx.drawImage(costume.get(objectScale), -costume.rotationCenterX * objectScale, -costume.rotationCenterY * objectScale, costume.width * objectScale, costume.height * objectScale);
                 ctx.restore();
             }
         }
@@ -1384,7 +1384,7 @@ var P;
                 }
                 const positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
                 const positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
-                const data = costume.context().getImageData(positionX, positionY, 1, 1).data;
+                const data = costume.getContext().getImageData(positionX, positionY, 1, 1).data;
                 return data[3] !== 0;
             }
             spritesIntersect(spriteA, otherSprites) {
@@ -2370,12 +2370,12 @@ var P;
                 const scale = costume.scale * this.scale;
                 var left = -costume.rotationCenterX * scale;
                 var top = costume.rotationCenterY * scale;
-                var right = left + costume.image.width * scale;
-                var bottom = top - costume.image.height * scale;
+                var right = left + costume.width * scale;
+                var bottom = top - costume.height * scale;
                 if (this.rotationStyle !== 0 /* Normal */) {
                     if (this.rotationStyle === 1 /* LeftRight */ && this.direction < 0) {
                         right = -left;
-                        left = right - costume.image.width * costume.scale * this.scale;
+                        left = right - costume.width * costume.scale * this.scale;
                     }
                     return {
                         left: this.scratchX + left,
@@ -2709,38 +2709,100 @@ var P;
         // A costume
         class Costume {
             constructor(costumeData) {
-                this.index = costumeData.index;
                 this.bitmapResolution = costumeData.bitmapResolution;
                 this.scale = 1 / this.bitmapResolution;
                 this.name = costumeData.name;
                 this.rotationCenterX = costumeData.rotationCenterX;
                 this.rotationCenterY = costumeData.rotationCenterY;
-                const source = costumeData.source;
-                this.image = source;
+            }
+        }
+        core.Costume = Costume;
+        class BitmapCostume extends Costume {
+            constructor(source, options) {
+                super(options);
+                this.source = source;
                 if (source.tagName === 'CANVAS') {
-                    this._context = source.getContext('2d');
+                    const ctx = source.getContext('2d');
+                    if (!ctx) {
+                        throw new Error('Cannot get 2d rendering context of costume source');
+                    }
+                    this._context = ctx;
                 }
                 else {
                     this._context = null;
                 }
+                this.width = source.width;
+                this.height = source.height;
             }
-            context() {
-                if (this._context) {
+            get(scale) {
+                // Bitmap costumes do not have different resolutions
+                return this.source;
+            }
+            getContext() {
+                if (this._context)
                     return this._context;
-                }
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
                 if (!ctx) {
                     throw new Error('cannot get 2d rendering context');
                 }
-                canvas.width = this.image.width;
-                canvas.height = this.image.height;
-                ctx.drawImage(this.image, 0, 0);
+                canvas.width = this.width;
+                canvas.height = this.height;
+                ctx.drawImage(this.source, 0, 0);
                 this._context = ctx;
                 return ctx;
             }
         }
-        core.Costume = Costume;
+        core.BitmapCostume = BitmapCostume;
+        class VectorCostume extends Costume {
+            constructor(svg, options) {
+                super(options);
+                this.scales = [];
+                if (svg.height < 1 || svg.width < 1) {
+                    svg = new Image(1, 1);
+                }
+                this.width = svg.width;
+                this.height = svg.height;
+                this.source = svg;
+                // calculate the 1x zoom before load because it'll most likely be used.
+                // TODO: maybe don't do this?
+                this.scales[0] = this.getScale(1);
+            }
+            getScale(scale) {
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.max(1, this.width * scale);
+                canvas.height = Math.max(1, this.height * scale);
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    throw new Error('cannot get 2d rendering context');
+                }
+                ctx.drawImage(this.source, 0, 0, canvas.width, canvas.height);
+                return canvas;
+            }
+            get(scale) {
+                scale = Math.min(8, Math.ceil(scale));
+                const index = scale - 1;
+                if (!this.scales[index]) {
+                    this.scales[index] = this.getScale(scale);
+                }
+                return this.scales[index];
+            }
+            getContext() {
+                if (this._context)
+                    return this._context;
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    throw new Error('cannot get 2d rendering context');
+                }
+                canvas.width = this.width;
+                canvas.height = this.height;
+                ctx.drawImage(this.source, 0, 0);
+                this._context = ctx;
+                return ctx;
+            }
+        }
+        core.VectorCostume = VectorCostume;
         // A sound
         class Sound {
             constructor(data) {
@@ -2804,164 +2866,84 @@ var P;
     })(core = P.core || (P.core = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
-var P;
-(function (P) {
-    var utils;
-    (function (utils) {
-        // Returns the string representation of an error.
-        // TODO: does this need to be here?
-        function stringifyError(error) {
-            if (!error) {
-                return 'unknown error';
-            }
-            if (error.stack) {
-                return 'Message: ' + error.message + '\nStack:\n' + error.stack;
-            }
-            return error.toString();
-        }
-        utils.stringifyError = stringifyError;
-        /**
-         * Parses a Scratch rotation style string to a RotationStyle enum
-         */
-        function parseRotationStyle(style) {
-            switch (style) {
-                case 'leftRight':
-                case 'left-right':
-                    return 1 /* LeftRight */;
-                case 'none':
-                case 'don\'t rotate':
-                    return 2 /* None */;
-                case 'normal':
-                case 'all around':
-                    return 0 /* Normal */;
-            }
-            console.warn('unknown rotation style', style);
-            return 0 /* Normal */;
-        }
-        utils.parseRotationStyle = parseRotationStyle;
-        // Determines the type of a project with its project.json data
-        function projectType(data) {
-            if (typeof data !== 'object' || data === null) {
-                return null;
-            }
-            if ('targets' in data) {
-                return 3;
-            }
-            if ('objName' in data) {
-                return 2;
-            }
-            return null;
-        }
-        utils.projectType = projectType;
-        /**
-         * Converts an RGB color to an HSL color
-         * @param rgb RGB Color
-         */
-        function rgbToHSL(rgb) {
-            var r = (rgb >> 16 & 0xff) / 0xff;
-            var g = (rgb >> 8 & 0xff) / 0xff;
-            var b = (rgb & 0xff) / 0xff;
-            var min = Math.min(r, g, b);
-            var max = Math.max(r, g, b);
-            if (min === max) {
-                return [0, 0, r * 100];
-            }
-            var c = max - min;
-            var l = (min + max) / 2;
-            var s = c / (1 - Math.abs(2 * l - 1));
-            var h;
-            switch (max) {
-                case r:
-                    h = ((g - b) / c + 6) % 6;
-                    break;
-                case g:
-                    h = (b - r) / c + 2;
-                    break;
-                case b:
-                    h = (r - g) / c + 4;
-                    break;
-            }
-            h *= 60;
-            return [h, s * 100, l * 100];
-        }
-        utils.rgbToHSL = rgbToHSL;
-        /**
-         * Clamps a number within a range
-         * @param number The number
-         * @param min Minimum, inclusive
-         * @param max Maximum, inclusive
-         */
-        function clamp(number, min, max) {
-            return Math.min(max, Math.max(min, number));
-        }
-        utils.clamp = clamp;
-        /*
-         * Creates a promise that resolves when the original promise resolves or fails.
-         */
-        function settled(promise) {
-            return new Promise((resolve, _reject) => {
-                promise
-                    .then(() => resolve())
-                    .catch(() => resolve());
-            });
-        }
-        utils.settled = settled;
-    })(utils = P.utils || (P.utils = {}));
-})(P || (P = {}));
-/// <reference path="phosphorus.ts" />
-/// <reference path="utils.ts" />
+/**
+ * Font helpers
+ */
 var P;
 (function (P) {
     var fonts;
-    (function (fonts) {
+    (function (fonts_1) {
+        const fontFamilyCache = {};
+        fonts_1.scratch3 = {
+            'Marker': 'fonts/Knewave-Regular.woff',
+            'Handwriting': 'fonts/Handlee-Regular.woff',
+            'Pixel': 'fonts/Grand9K-Pixel.ttf',
+            'Curly': 'fonts/Griffy-Regular.woff',
+            'Serif': 'fonts/SourceSerifPro-Regular.woff',
+            'Sans Serif': 'fonts/NotoSans-Regular.woff',
+            'Scratch': 'fonts/Scratch.ttf',
+        };
         /**
-         * Dynamically load a remote font
-         * @param name The name of the font (font-family)
+         * Asynchronously load and cache a font
          */
-        function loadFont(name) {
-            P.IO.progressHooks.new();
-            const observer = new FontFaceObserver(name);
-            return observer.load().then(() => {
-                P.IO.progressHooks.end();
+        function loadLocalFont(fontFamily, src) {
+            if (fontFamilyCache[fontFamily]) {
+                return Promise.resolve(fontFamilyCache[fontFamily]);
+            }
+            return new P.IO.BlobRequest(src, { local: true }).load()
+                .then((blob) => P.IO.readers.toDataURL(blob))
+                .then((url) => {
+                fontFamilyCache[fontFamily] = url;
+                return url;
             });
         }
-        fonts.loadFont = loadFont;
-        var loadedScratch2 = false;
-        var loadedScratch3 = false;
         /**
-         * Loads all Scratch 2 associated fonts
+         * Gets an already loaded and cached font
          */
-        function loadScratch2() {
-            if (loadedScratch2) {
-                return Promise.resolve();
+        function getFont(fontFamily) {
+            if (!(fontFamily in fontFamilyCache)) {
+                throw new Error('unknown font: ' + fontFamily);
             }
-            return Promise.all([
-                P.utils.settled(loadFont('Donegal One')),
-                P.utils.settled(loadFont('Gloria Hallelujah')),
-                P.utils.settled(loadFont('Mystery Quest')),
-                P.utils.settled(loadFont('Permanent Marker')),
-                P.utils.settled(loadFont('Scratch')),
-            ]).then(() => void (loadedScratch2 = true));
+            return fontFamilyCache[fontFamily];
         }
-        fonts.loadScratch2 = loadScratch2;
+        function loadFontSet(fonts) {
+            const promises = [];
+            for (const family in fonts) {
+                promises.push(P.utils.settled(loadLocalFont(family, fonts[family])));
+            }
+            return Promise.all(promises);
+        }
+        fonts_1.loadFontSet = loadFontSet;
+        function getCSSFontFace(src, fontFamily) {
+            return `@font-face { font-family: "${fontFamily}"; src: url("${src}"); }`;
+        }
         /**
-         * Loads all Scratch 3 associated fonts
+         * Add an inline <style> element to an SVG containing fonts loaded through loadFontSet
          */
-        function loadScratch3() {
-            if (loadedScratch3) {
-                return Promise.resolve();
+        function addFontRules(svg, fonts) {
+            const cssRules = [];
+            for (const font of fonts) {
+                // Dirty hack: we'll just assume helvetica is already present on the user's machine
+                if (font === 'Helvetica')
+                    continue;
+                cssRules.push(getCSSFontFace(getFont(font), font));
             }
-            return Promise.all([
-                P.utils.settled(loadFont('Knewave')),
-                P.utils.settled(loadFont('Handlee')),
-                P.utils.settled(loadFont('Pixel')),
-                P.utils.settled(loadFont('Griffy')),
-                P.utils.settled(loadFont('Scratch')),
-                P.utils.settled(loadFont('Source Serif Pro')),
-                P.utils.settled(loadFont('Noto Sans')),
-            ]).then(() => void (loadedScratch3 = true));
+            const doc = svg.ownerDocument;
+            const defs = doc.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            const style = doc.createElementNS('http://www.w3.org/2000/svg', 'style');
+            style.innerHTML = cssRules.join('\n');
+            defs.appendChild(style);
+            svg.appendChild(style);
         }
-        fonts.loadScratch3 = loadScratch3;
+        fonts_1.addFontRules = addFontRules;
+        /**
+         * Load a CSS @font-face font.
+         */
+        function loadWebFont(name) {
+            const observer = new FontFaceObserver(name);
+            return observer.load();
+        }
+        fonts_1.loadWebFont = loadWebFont;
     })(fonts = P.fonts || (P.fonts = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
@@ -2998,7 +2980,9 @@ var P;
         class Request {
             constructor(url, options = {}) {
                 if (options.local) {
-                    url = IO.config.localPath + url;
+                    if (url.indexOf('data:') !== 0) {
+                        url = IO.config.localPath + url;
+                    }
                 }
                 this.url = url;
             }
@@ -3008,18 +2992,20 @@ var P;
             load() {
                 // We attempt to load twice, which I hope will fix random loading errors from failed fetches.
                 return new Promise((resolve, reject) => {
-                    const attempt = (callback) => {
+                    const attempt = (errorCallback) => {
                         this._load()
                             .then((response) => {
                             resolve(response);
                             IO.progressHooks.end();
                         })
-                            .catch((err) => callback(err));
+                            .catch((err) => {
+                            errorCallback(err);
+                        });
                     };
                     IO.progressHooks.new();
-                    attempt(function () {
+                    attempt(() => {
                         // try once more
-                        attempt(function (err) {
+                        attempt((err) => {
                             reject(err);
                         });
                     });
@@ -3047,6 +3033,10 @@ var P;
             get type() { return 'arraybuffer'; }
         }
         IO.ArrayBufferRequest = ArrayBufferRequest;
+        class BlobRequest extends XHRRequest {
+            get type() { return 'blob'; }
+        }
+        IO.BlobRequest = BlobRequest;
         class TextRequest extends XHRRequest {
             get type() { return 'text'; }
         }
@@ -3074,6 +3064,44 @@ var P;
             });
         }
         IO.fileAsArrayBuffer = fileAsArrayBuffer;
+        /**
+         * Utilities for asynchronously reading Blobs or Files
+         */
+        let readers;
+        (function (readers) {
+            function toArrayBuffer(object) {
+                return new Promise((resolve, reject) => {
+                    const fileReader = new FileReader();
+                    fileReader.onloadend = function () {
+                        resolve(fileReader.result);
+                    };
+                    fileReader.onerror = function (err) {
+                        reject('Could not read object');
+                    };
+                    fileReader.onprogress = function (progress) {
+                        IO.progressHooks.set(progress);
+                    };
+                    fileReader.readAsArrayBuffer(object);
+                });
+            }
+            readers.toArrayBuffer = toArrayBuffer;
+            function toDataURL(object) {
+                return new Promise((resolve, reject) => {
+                    const fileReader = new FileReader();
+                    fileReader.onloadend = function () {
+                        resolve(fileReader.result);
+                    };
+                    fileReader.onerror = function (err) {
+                        reject('Could not read object');
+                    };
+                    fileReader.onprogress = function (progress) {
+                        IO.progressHooks.set(progress);
+                    };
+                    fileReader.readAsDataURL(object);
+                });
+            }
+            readers.toDataURL = toDataURL;
+        })(readers = IO.readers || (IO.readers = {}));
     })(IO = P.IO || (P.IO = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
@@ -3878,6 +3906,111 @@ var P;
     })(runtime = P.runtime || (P.runtime = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
+var P;
+(function (P) {
+    var utils;
+    (function (utils) {
+        // Returns the string representation of an error.
+        // TODO: does this need to be here?
+        function stringifyError(error) {
+            if (!error) {
+                return 'unknown error';
+            }
+            if (error.stack) {
+                return 'Message: ' + error.message + '\nStack:\n' + error.stack;
+            }
+            return error.toString();
+        }
+        utils.stringifyError = stringifyError;
+        /**
+         * Parses a Scratch rotation style string to a RotationStyle enum
+         */
+        function parseRotationStyle(style) {
+            switch (style) {
+                case 'leftRight':
+                case 'left-right':
+                    return 1 /* LeftRight */;
+                case 'none':
+                case 'don\'t rotate':
+                    return 2 /* None */;
+                case 'normal':
+                case 'all around':
+                    return 0 /* Normal */;
+            }
+            console.warn('unknown rotation style', style);
+            return 0 /* Normal */;
+        }
+        utils.parseRotationStyle = parseRotationStyle;
+        // Determines the type of a project with its project.json data
+        function projectType(data) {
+            if (typeof data !== 'object' || data === null) {
+                return null;
+            }
+            if ('targets' in data) {
+                return 3;
+            }
+            if ('objName' in data) {
+                return 2;
+            }
+            return null;
+        }
+        utils.projectType = projectType;
+        /**
+         * Converts an RGB color to an HSL color
+         * @param rgb RGB Color
+         */
+        function rgbToHSL(rgb) {
+            var r = (rgb >> 16 & 0xff) / 0xff;
+            var g = (rgb >> 8 & 0xff) / 0xff;
+            var b = (rgb & 0xff) / 0xff;
+            var min = Math.min(r, g, b);
+            var max = Math.max(r, g, b);
+            if (min === max) {
+                return [0, 0, r * 100];
+            }
+            var c = max - min;
+            var l = (min + max) / 2;
+            var s = c / (1 - Math.abs(2 * l - 1));
+            var h;
+            switch (max) {
+                case r:
+                    h = ((g - b) / c + 6) % 6;
+                    break;
+                case g:
+                    h = (b - r) / c + 2;
+                    break;
+                case b:
+                    h = (r - g) / c + 4;
+                    break;
+            }
+            h *= 60;
+            return [h, s * 100, l * 100];
+        }
+        utils.rgbToHSL = rgbToHSL;
+        /**
+         * Clamps a number within a range
+         * @param number The number
+         * @param min Minimum, inclusive
+         * @param max Maximum, inclusive
+         */
+        function clamp(number, min, max) {
+            return Math.min(max, Math.max(min, number));
+        }
+        utils.clamp = clamp;
+        /*
+         * Creates a promise that resolves when the original promise resolves or fails.
+         */
+        function settled(promise) {
+            return new Promise((resolve, _reject) => {
+                promise
+                    .then(() => resolve())
+                    .catch(() => resolve());
+            });
+        }
+        utils.settled = settled;
+    })(utils = P.utils || (P.utils = {}));
+})(P || (P = {}));
+/// <reference path="phosphorus.ts" />
 /// <reference path="utils.ts" />
 /// <reference path="core.ts" />
 /// <reference path="fonts.ts" />
@@ -4312,7 +4445,13 @@ var P;
         }
         sb2.loadArray = loadArray;
         function loadFonts() {
-            return P.fonts.loadScratch2();
+            return Promise.all([
+                P.utils.settled(P.fonts.loadWebFont('Donegal One')),
+                P.utils.settled(P.fonts.loadWebFont('Gloria Hallelujah')),
+                P.utils.settled(P.fonts.loadWebFont('Mystery Quest')),
+                P.utils.settled(P.fonts.loadWebFont('Permanent Marker')),
+                P.utils.settled(P.fonts.loadWebFont('Scratch')),
+            ]).then(() => undefined);
         }
         sb2.loadFonts = loadFonts;
         function loadObject(data) {
@@ -4357,13 +4496,11 @@ var P;
                 else {
                     image = layers[0];
                 }
-                return new P.core.Costume({
-                    index: index,
-                    bitmapResolution: data.bitmapResolution,
+                return new P.core.BitmapCostume(image, {
                     name: data.costumeName,
+                    bitmapResolution: data.bitmapResolution,
                     rotationCenterX: data.rotationCenterX,
                     rotationCenterY: data.rotationCenterY,
-                    source: image,
                 });
             });
         }
@@ -5921,36 +6058,15 @@ var P;
             }
         }
         sb3.Scratch3List = Scratch3List;
-        // Modifies a Scratch 3 SVG to work properly in our environment.
+        /**
+         * Patches and modifies an SVG element in-place to make it function properly in the forkphorus environment.
+         * Fixes fonts and viewBox.
+         */
         function patchSVG(svg) {
-            // SVGs made by Scratch 3 use font names such as 'Sans Serif', which we convert to their real names.
-            const FONTS = {
-                'Marker': 'Knewave',
-                'Handwriting': 'Handlee',
-                'Curly': 'Griffy',
-                'Pixel': 'Pixel',
-                'Scratch': 'Scratch',
-                'Serif': 'Source Serif Pro',
-                'Sans Serif': 'Noto Sans',
-            };
-            const textElements = svg.querySelectorAll('text');
-            for (var i = 0; i < textElements.length; i++) {
-                const el = textElements[i];
-                const font = el.getAttribute('font-family') || '';
-                if (FONTS[font]) {
-                    el.setAttribute('font-family', FONTS[font]);
-                }
-                else {
-                    console.warn('unknown font', font, '(defaulting to sans-serif)');
-                    // Scratch 3 replaces unknown fonts with sans serif.
-                    el.setAttribute('font-family', FONTS['Sans Serif']);
-                }
-            }
             // Special treatment for the viewBox attribute
             if (svg.hasAttribute('viewBox')) {
-                // I think viewBox is supposed to be space separated, but Scratch sometimes make comma separated ones.
                 const viewBox = svg.getAttribute('viewBox').split(/ |,/).map((i) => +i);
-                if (viewBox.every((i) => !isNaN(i))) {
+                if (viewBox.every((i) => !isNaN(i)) && viewBox.length === 4) {
                     const [x, y, w, h] = viewBox;
                     // Fix width/height to include the viewBox min x/y
                     svg.setAttribute('width', (w + x).toString());
@@ -5961,52 +6077,64 @@ var P;
                 }
                 svg.removeAttribute('viewBox');
             }
+            const textElements = svg.querySelectorAll('text');
+            const usedFonts = [];
+            for (var i = 0; i < textElements.length; i++) {
+                const el = textElements[i];
+                let font = el.getAttribute('font-family') || '';
+                if (!P.fonts.scratch3[font]) {
+                    console.warn('unknown font', font);
+                    el.setAttribute('font-family', font);
+                    font = 'Sans Serif';
+                }
+                if (usedFonts.indexOf(font) === -1) {
+                    usedFonts.push(font);
+                }
+            }
+            P.fonts.addFontRules(svg, usedFonts);
         }
         // Implements base SB3 loading logic.
         // Needs to be extended to add file loading methods.
         // Implementations are expected to set `this.projectData` to something before calling super.load()
         class BaseSB3Loader {
-            // Loads and returns a costume from its sb3 JSON data
-            getImage(path, format) {
-                if (format === 'svg') {
-                    return this.getAsText(path)
-                        .then((source) => {
-                        const parser = new DOMParser();
-                        const doc = parser.parseFromString(source, 'image/svg+xml');
-                        const svg = doc.documentElement;
-                        patchSVG(svg);
-                        const canvas = document.createElement('canvas');
-                        return new Promise((resolve, reject) => {
-                            canvg(canvas, new XMLSerializer().serializeToString(svg), {
-                                ignoreMouse: true,
-                                ignoreAnimation: true,
-                                ignoreClear: true,
-                                renderCallback: function () {
-                                    if (canvas.width === 0 || canvas.height === 0) {
-                                        resolve(new Image());
-                                        return;
-                                    }
-                                    resolve(canvas);
-                                }
-                            });
-                        });
+            getSVG(path) {
+                return this.getAsText(path)
+                    .then((source) => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(source, 'image/svg+xml');
+                    const svg = doc.documentElement;
+                    patchSVG(svg);
+                    return new Promise((resolve, reject) => {
+                        const image = new Image();
+                        image.onload = (e) => {
+                            resolve(image);
+                        };
+                        image.onerror = (e) => {
+                            reject(e);
+                        };
+                        image.src = 'data:image/svg+xml,' + encodeURIComponent(svg.outerHTML);
                     });
-                }
-                else {
-                    return this.getAsImage(path, format);
-                }
+                });
+            }
+            getBitmapImage(path, format) {
+                return this.getAsImage(path, format);
             }
             loadCostume(data, index) {
                 const path = data.assetId + '.' + data.dataFormat;
-                return this.getImage(path, data.dataFormat)
-                    .then((image) => new P.core.Costume({
-                    index: index,
-                    bitmapResolution: data.bitmapResolution,
+                const costumeOptions = {
                     name: data.name,
+                    bitmapResolution: data.bitmapResolution || 1,
                     rotationCenterX: data.rotationCenterX,
                     rotationCenterY: data.rotationCenterY,
-                    source: image,
-                }));
+                };
+                if (data.dataFormat === 'svg') {
+                    return this.getSVG(path)
+                        .then((svg) => new P.core.VectorCostume(svg, costumeOptions));
+                }
+                else {
+                    return this.getBitmapImage(path, data.dataFormat)
+                        .then((image) => new P.core.BitmapCostume(image, costumeOptions));
+                }
             }
             getAudioBuffer(path) {
                 return this.getAsArrayBuffer(path)
@@ -6078,7 +6206,7 @@ var P;
                 });
             }
             loadFonts() {
-                return P.fonts.loadScratch3();
+                return P.fonts.loadFontSet(P.fonts.scratch3);
             }
             load() {
                 if (!this.projectData) {
