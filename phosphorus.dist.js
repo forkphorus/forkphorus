@@ -2764,6 +2764,9 @@ var P;
                 this.width = svg.width;
                 this.height = svg.height;
                 this.source = svg;
+                // calculate the 1x zoom before load because it'll most likely be used.
+                // TODO: maybe don't do this?
+                this.scales[0] = this.getScale(1);
             }
             getScale(scale) {
                 const canvas = document.createElement('canvas');
@@ -2777,11 +2780,12 @@ var P;
                 return canvas;
             }
             get(scale) {
-                scale = Math.ceil(scale);
-                if (!this.scales[scale]) {
-                    this.scales[scale] = this.getScale(scale);
+                scale = Math.min(8, Math.ceil(scale));
+                const index = scale - 1;
+                if (!this.scales[index]) {
+                    this.scales[index] = this.getScale(scale);
                 }
-                return this.scales[scale];
+                return this.scales[index];
             }
             getContext() {
                 if (this._context)
