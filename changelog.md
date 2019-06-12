@@ -2,6 +2,12 @@
 
 *Dates reflect when the changes were developed, and recent changes may not yet be deployed to forkphorus.github.io.*
 
+## June 11
+
+- SVG graphics actually scale
+- Fix stages not being destroyed after you start a new one
+- Add message to try to get people to use forkphorus.github.io instead of forkphorus.github.io/forkphorus/
+
 ## June 10
 
 - sb2 and sb3: Fix `play sound until done` not respecting `stop all sounds`
