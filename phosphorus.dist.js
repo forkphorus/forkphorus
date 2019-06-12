@@ -2642,7 +2642,7 @@ var P;
                 const r = this.penColor >> 16 & 0xff;
                 const g = this.penColor >> 8 & 0xff;
                 const b = this.penColor & 0xff;
-                const a = (this.penColor >> 24 & 0xff / 0xff) || 1;
+                const a = (this.penColor >> 24 & 0xff) / 0xff || 1;
                 this.penCSS = 'rgba(' + r + ', ' + g + ', ' + b + ', ' + a + ')';
             }
             /**
