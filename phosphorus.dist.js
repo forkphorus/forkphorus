@@ -1583,7 +1583,7 @@ var P;
                     whenIReceive: {},
                     whenKeyPressed: [],
                     whenBackdropChanges: {},
-                    whenSceneStarts: [],
+                    whenSceneStarts: {},
                 };
                 this.fns = [];
                 this.filters = {

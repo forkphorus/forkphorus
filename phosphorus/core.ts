@@ -28,7 +28,7 @@ namespace P.core {
     whenIReceive: ObjectMap<P.runtime.Fn[]>;
     whenKeyPressed: P.runtime.Fn[][];
     whenBackdropChanges: ObjectMap<P.runtime.Fn[]>;
-    whenSceneStarts: P.runtime.Fn[];
+    whenSceneStarts: ObjectMap<P.runtime.Fn[]>;
     // whenSensorGreaterThan: P.runtime.Fn[]
   }
 
@@ -167,7 +167,7 @@ namespace P.core {
       whenIReceive: {},
       whenKeyPressed: [],
       whenBackdropChanges: {},
-      whenSceneStarts: [],
+      whenSceneStarts: {},
     };
     public fns: P.runtime.Fn[] = [];
     public filters: Filters = {
