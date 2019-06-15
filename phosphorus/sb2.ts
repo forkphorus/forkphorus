@@ -270,10 +270,6 @@ namespace P.sb2 {
     private defaultWatcherX = 10;
     private defaultWatcherY = 10;
 
-    lookupVariable(name: string) {
-      return this.vars[name];
-    }
-
     createVariableWatcher(target: P.core.Base, variableName: string) {
       const x = this.defaultWatcherX;
       const y = this.defaultWatcherY;
@@ -349,10 +345,6 @@ namespace P.sb2 {
 
   export class Scratch2Sprite extends P.core.Sprite {
     public scripts: any;
-
-    lookupVariable(name: string): string {
-      return this.vars[name];
-    }
 
     _clone() {
       return new Scratch2Sprite(this.stage);

@@ -4253,9 +4253,6 @@ var P;
                 this.defaultWatcherX = 10;
                 this.defaultWatcherY = 10;
             }
-            lookupVariable(name) {
-                return this.vars[name];
-            }
             createVariableWatcher(target, variableName) {
                 const x = this.defaultWatcherX;
                 const y = this.defaultWatcherY;
@@ -4327,9 +4324,6 @@ var P;
         }
         sb2.Scratch2Stage = Scratch2Stage;
         class Scratch2Sprite extends P.core.Sprite {
-            lookupVariable(name) {
-                return this.vars[name];
-            }
             _clone() {
                 return new Scratch2Sprite(this.stage);
             }
