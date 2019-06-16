@@ -3022,8 +3022,11 @@ var P;
                     xhr.addEventListener('load', () => {
                         resolve(xhr.response);
                     });
-                    xhr.addEventListener('error', (err) => {
-                        reject('Failed to download ' + this.url);
+                    xhr.addEventListener('error', () => {
+                        reject(`Error while downloading ${this.url} (onerror) (${xhr.status} ${xhr.statusText})`);
+                    });
+                    xhr.addEventListener('abort', () => {
+                        reject(`Error while downloading ${this.url} (onabort) (${xhr.status} ${xhr.statusText})`);
                     });
                     xhr.responseType = this.type;
                     xhr.open('GET', this.url);
