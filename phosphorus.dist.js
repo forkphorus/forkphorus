@@ -3023,7 +3023,7 @@ var P;
                         resolve(xhr.response);
                     });
                     xhr.addEventListener('error', (err) => {
-                        reject(err);
+                        reject('Failed to download ' + this.url);
                     });
                     xhr.responseType = this.type;
                     xhr.open('GET', this.url);
