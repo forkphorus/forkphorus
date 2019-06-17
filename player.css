@@ -1,19 +1,95 @@
-.player {
+.player-root {
   color: #000;
+  height: auto;
+}
+.player-stage {
   width: 480px;
   height: 360px;
-  position: relative;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, .4);
-  -webkit-transform-origin: 0 0;
-  -moz-transform-origin: 0 0;
-  -ms-transform-origin: 0 0;
-  -o-transform-origin: 0 0;
-  transform-origin: 0 0;
-}
-.light-content.player, .dark .player {
-  border-color: rgba(255, 255, 255, .4);
 }
 
+.player-controls {
+  height: 32px;
+}
+.player-controls .player-button {
+  width: 32px;
+  height: 32px;
+  float: right;
+  cursor: pointer;
+  text-align: center;
+  opacity: 0.4;
+  background-image: url(icons.svg);
+  text-decoration: none;
+}
+.player-root[theme=dark] .player-button {
+  background-position-y: -32px;
+  opacity: 0.6;
+}
+.player-controls .player-button:active {
+  opacity: 1;
+}
+
+.player-controls .player-fullscreen-btn {
+  float: left;
+  background-position: -128px -0px;
+}
+.player-root[fullscreen] .player-controls .player-fullscreen-btn {
+  background-position-x: -160px;
+}
+.player-controls .player-flag {
+  background-position: 0px -0px;
+}
+.player-controls .player-stop {
+  background-position: -96px -0px;
+}
+.player-controls .player-pause {
+  background-position: -32px -0px;
+}
+.player-root[running=false] .player-controls .player-pause {
+  background-position-x: -64px;
+}
+.player-controls .player-label {
+  user-select: none;
+  cursor: default;
+  color: rgba(0, 0, 0, 0.4);
+  font: 500 12px/32px sans-serif;
+  padding: 0 8px;
+}
+.player-root[theme=dark] .player-label {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.player-controls .player-turbo {
+  display: none;
+  float: right;
+}
+.player-root[turbo=true] .player-turbo {
+  display: block;
+}
+
+.player-controls .player-muted {
+  float: left;
+  cursor: pointer;
+  display: none;
+}
+.player-controls .player-muted:hover {
+  text-decoration: underline;
+}
+.player-root[running="true"][audio-state="suspended"] .player-controls .player-muted {
+  display: block;
+}
+
+.player-root[fullscreen] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: #000;
+}
+.player-body-fullscreen {
+  background: #000;
+  overflow: hidden;
+}
+
+/*
 .progress-bar {
   position: absolute;
   top: 0;
@@ -34,53 +110,6 @@
   background: #411;
 }
 
-.controls {
-  position: relative;
-  height: 32px;
-}
-
-.controls .button, .project-link {
-  width: 32px;
-  height: 32px;
-  float: right;
-  cursor: pointer;
-  text-align: center;
-  opacity: .4;
-  background-image: url(icons.svg);
-  text-decoration: none;
-}
-.controls .full-screen {
-  float: left;
-  background-position: -128px -0px;
-}
-.controls .flag {
-  background-position: 0px -0px;
-}
-.controls .stop {
-  background-position: -96px -0px;
-}
-.controls .play {
-  background-position: -64px -0px;
-}
-.controls .pause {
-  background-position: -32px -0px;
-}
-
-.controls .button:active,
-.project-link:active {
-  opacity: 1;
-}
-
-.controls .turbo {
-  float: right;
-  display: none;
-  user-select: none;
-  cursor: default;
-  color: rgba(0, 0, 0, .4);
-  font: 500 12px/32px sans-serif;
-  padding: 0 8px;
-}
-
 .internal-error {
   color: rgb(128, 0, 0);
   font: 500 12px sans-serif;
@@ -99,41 +128,4 @@
   color: rgb(210, 24, 24);
 }
 
-.fs {
-  background: #000;
-}
-.fs #app {
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  width: 100%;
-  height: 100%;
-}
-.fs .title,
-.fs section {
-  display: none;
-}
-.fs .controls span,
-.light-content .controls span,
-.dark .controls span {
-  background-position-y: -32px;
-  opacity: .6;
-}
-.fs .controls .full-screen {
-  background-position-x: -160px;
-}
-.fs .light-content .controls .full-screen
-.dark .fs .controls .fullscreen {
-  background-position-y: -32px;
-}
-.fs .controls .turbo,
-.light-content .controls .turbo,
-.dark .controls .turbo {
-  color: rgba(255, 255, 255, .6);
-}
-.fs .player {
-  box-shadow: none;
-}
-.fs .forkphorus-root {
-  z-index: 1000;
-}
+ */

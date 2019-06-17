@@ -97,20 +97,20 @@ a:active {
 }
 
 .area {
-  overflow: hidden;
+  /* overflow: hidden; */
   margin: 0 -24px;
   padding: 0 24px;
 }
-#player-area, #project-area {
+/* #player-area, #project-area {
   height: 0;
 }
 #player-area {
   border-bottom: 1px solid transparent;
   margin-bottom: -1px;
-}
-.fs #player-area {
+} */
+/* .fs #player-area {
   overflow: visible;
-}
+} */
 
 section {
   margin: 24px 0;

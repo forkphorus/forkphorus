@@ -43,7 +43,7 @@
 
   <div id="app">
 
-    <div class=area id=title-area>
+    <div class="area" id="title-area">
       <h1 class=title>forkphorus</h1>
       <p>forkphorus runs Scratch 3 and 2 projects really fast by compiling them to JavaScript. Try it out by pasting a project ID or URL into the field below, by <a class="upload-button">selecting<input id="upload-file-input" type="file" autocomplete="off" accept=".sb2,.sb3"></a> or dropping a project file on the page, or by <a class=dropdown>choosing an example<select id=examples>
         <option value></option>
@@ -61,7 +61,11 @@
       </select></a>.</p>
     </div>
 
-    <div class=area id=player-area>
+    <div class="area" id="player-area">
+
+    </div>
+
+    <!-- <div class=area id=player-area>
       <div class=controls>
         <span class="button stop"></span>
         <span class="button pause"></span>
@@ -70,11 +74,11 @@
         <span class="button full-screen"></span>
       </div>
       <div class=player></div>
-    </div>
+    </div> -->
 
-    <div class=internal-error>
+    <!-- <div class=internal-error>
       An internal error occurred. <a id="error-bug-link" target="_blank" href="https://github.com/forkphorus/forkphorus/issues/new" rel="noopener">Click here</a> to file a bug report.
-    </div>
+    </div> -->
 
     <div class="title">
       <div class="progress-bar"></div>
@@ -151,6 +155,15 @@
   <script src="player.js"></script>
 
   <script>
+    const player = new P.Player({
+      controls: true,
+      theme: 'dark',
+    });
+    player.loadProjectId('317262662');
+    document.getElementById('player-area').appendChild(player.root);
+  </script>
+
+  <script>
 
   // Core UI
   (function() {
@@ -165,11 +178,11 @@
     var playerArea = document.querySelector('#player-area');
     var projectArea = document.querySelector('#project-area');
 
-    playerArea.style.height = projectArea.style.height = 'auto';
-    var titleAreaHeight = titleArea.offsetHeight;
-    var playerAreaHeight = playerArea.offsetHeight;
-    var projectAreaHeight = projectArea.offsetHeight;
-    playerArea.style.height = projectArea.style.height = 0;
+    // playerArea.style.height = projectArea.style.height = 'auto';
+    // var titleAreaHeight = titleArea.offsetHeight;
+    // var playerAreaHeight = playerArea.offsetHeight;
+    // var projectAreaHeight = projectArea.offsetHeight;
+    // playerArea.style.height = projectArea.style.height = 0;
 
     var examples = document.querySelector('#examples');
     var urlInput = document.querySelector('.url');

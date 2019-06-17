@@ -1892,9 +1892,6 @@ var P;
                 this.keys.any = 0;
                 this.root = document.createElement('div');
                 this.root.classList.add('forkphorus-root');
-                this.root.style.position = 'absolute';
-                this.root.style.overflow = 'hidden';
-                this.root.style.userSelect = 'none';
                 const scale = P.config.scale;
                 if (P.config.useWebGL) {
                     this.renderer = new P.renderer.WebGLProjectRenderer(this);
@@ -3946,20 +3943,6 @@ var P;
             return 0 /* Normal */;
         }
         utils.parseRotationStyle = parseRotationStyle;
-        // Determines the type of a project with its project.json data
-        function projectType(data) {
-            if (typeof data !== 'object' || data === null) {
-                return null;
-            }
-            if ('targets' in data) {
-                return 3;
-            }
-            if ('objName' in data) {
-                return 2;
-            }
-            return null;
-        }
-        utils.projectType = projectType;
         /**
          * Converts an RGB color to an HSL color
          * @param rgb RGB Color

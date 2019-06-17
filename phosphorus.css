@@ -1,10 +1,13 @@
 .forkphorus-root {
+  position: relative;
   font-family: sans-serif;
   width: 480px;
   height: 360px;
   font-size: 10px;
   background-color: #fff;
   color: black;
+  overflow: hidden;
+  user-select: none;
 }
 
 .forkphorus-root > * {
@@ -16,7 +19,7 @@
   height: 100%;
 }
 
-/* Scratch 2 fonts fonts */
+/* Scratch 2 fonts */
 @font-face {
   font-family: "Donegal One";
   src: url("fonts/DonegalOne-Regular.woff") format("woff");
