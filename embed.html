@@ -1,43 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset=utf-8>
-  <meta name=viewport content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>forkphorus</title>
-  <link rel=stylesheet href=phosphorus.css>
-  <link rel=stylesheet href=player.css>
-  <link rel=stylesheet href=index.css>
+  <link rel="stylesheet" href="phosphorus.css">
+  <link rel="stylesheet" href="player.css">
 
   <style>
     body {
       margin: 0 auto;
-    }
-    .player {
-      margin-left: 1px;
-    }
-    .progress-bar {
-      padding: 0;
-      pointer-events: none;
-    }
-    .internal-error {
-      position: absolute;
-      left: 1px;
-      bottom: 1px;
-      right: 1px;
-      background: #fff;
-    }
-    .controls {
-      display: none;
-    }
-    .has-ui .controls {
-      display: block;
-    }
-    .hide-ui .controls {
-      position: absolute;
-      width: 100%;
-    }
-    .hide-ui .controls span {
-      display: none;
     }
     .hide-ui .player {
       box-shadow: none;
@@ -46,19 +18,7 @@
 </head>
 
 <body>
-  <div class="controls">
-    <div class="progress-bar"></div>
-    <span class="button stop"></span>
-    <span class="button pause"></span>
-    <span class="button flag" title="Shift+click to enable turbo mode."></span>
-    <div class="turbo">Turbo Mode</div>
-    <span class="button full-screen"></span>
-  </div>
-
-  <div class=player></div>
-  <div class=internal-error>
-    An internal error occurred. <a id="error-bug-link" target="_blank" href="https://github.com/forkphorus/forkphorus/issues/new" rel="noopener">Click here</a> to file a bug report.
-  </div>
+  <div class="player"></div>
 
   <script src="lib/jszip.min.js"></script>
   <script src="lib/fontfaceobserver.standalone.js"></script>
@@ -72,15 +32,15 @@
   (function() {
     'use strict';
 
-    let stage;
+    var stage;
 
-    let projectId = 17088932;
-    let autoStart = true;
-    let lightContent = false;
-    let hasUI = true;
+    var projectId = 17088932;
+    var autoStart = true;
+    var lightContent = false;
+    var hasUI = true;
 
     // Reads URL parameters.
-    const params = location.search.substr(1).split('&');
+    var params = location.search.substr(1).split('&');
     params.forEach(function(p) {
       const parts = p.split('=');
       if (parts.length > 1) {
@@ -102,28 +62,30 @@
     });
 
     // Combination of project ID, auto start, light content, ui, current time, and some randomness.
-    const id = projectId + '-' + +autoStart + +lightContent + +hasUI + '-' + Date.now() + '-' + Math.random().toString().substr(2, 5);
+    var id = projectId + '-' + +autoStart + +lightContent + +hasUI + '-' + Date.now() + '-' + Math.random().toString().substr(2, 5);
 
     function postMessage(type, payload) {
-      window.parent.postMessage({
-        id: id,
-        type: type,
-        payload: payload,
-      }, '*');
+      if (window.parent && window.parent.postMessage) {
+        window.parent.postMessage({
+          id: id,
+          type: type,
+          payload: payload,
+        }, '*');
+      }
     }
 
-    if (lightContent) document.body.classList.add('light-content');
-    document.body.classList.add(hasUI ? 'has-ui' : 'hide-ui');
-
+    var player = new P.Player({theme: lightContent ? 'dark' : 'light'});
+    if (hasUI) {
+      player.addControls();
+      player.addProgressBar({ position: 'controls' });
+    }
+    document.querySelector('.player').appendChild(player.root);
     postMessage('stateChange', 'loading');
 
-    P.player.load(projectId)
-      .then((s) => {
-        stage = s;
-        P.player.start(stage, autoStart);
+    player.loadProjectId(projectId, { start: autoStart })
+      .then(function() {
         postMessage('stateChange', 'ready');
       });
-
   }());
   </script>
 </body>

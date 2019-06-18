@@ -2,12 +2,13 @@
 <html>
 
 <head>
-  <meta charset=utf-8>
-  <meta name=viewport content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name=apple-mobile-web-app-capable content=yes>
-  <meta name=apple-mobile-web-app-status-bar-style content=black>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <title>forkphorus</title>
-  <link rel=stylesheet href=phosphorus.css>
+  <link rel="stylesheet" href="phosphorus.css">
+  <link rel="stylesheet" href="player.css">
 
   <style>
     body {
@@ -88,10 +89,16 @@
   <script src="lib/rgbcolor.js"></script>
   <script src="lib/canvg.min.js"></script>
   <script src="phosphorus.dist.js"></script>
+  <script src="player.js"></script>
 
   <script>
   (function () {
     'use strict';
+
+    function projectType(data) {
+      if ('targets' in data) return 3;
+      if ('objName' in data) return 2;
+    }
 
     var stage;
     var projectId = 17088932;
@@ -170,7 +177,7 @@
 
     return new P.IO.JSONRequest(P.config.PROJECT_API.replace('$id', projectId)).load()
       .then((json) => {
-        const type = P.utils.projectType(json);
+        const type = projectType(json);
         if (type === 3) {
           return (new P.sb3.Scratch3Loader(json)).load();
         } else if (type === 2) {

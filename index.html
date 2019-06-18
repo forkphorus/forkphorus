@@ -25,18 +25,15 @@
   </div>
 
   <script>
+    // Apply dark mode right away to avoid a flash of white
     (function() {
-      // Implement theme selector early to remove any white loading flash there would otherwise be.
-      // localStorage is used to remember dark mode between reloads
-      function toggleDark(dark) {
-        document.documentElement.classList.toggle('dark', dark);
-        localStorage.setItem('userPrefersDark', document.documentElement.classList.contains('dark'));
-      }
-      document.querySelector('.theme-select a').addEventListener('click', function() {
-        toggleDark();
-      });
-      if (localStorage.getItem('userPrefersDark') === 'true') {
-        toggleDark(true);
+      try {
+        var isDark = localStorage.getItem('userPrefersDark') === 'true';
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {
+        console.error(e);
       }
     }());
   </script>
@@ -138,11 +135,11 @@
 
   <script>
 
-  // Core UI
   (function() {
     'use strict';
 
     /** Utilities **/
+    // document.querySelector but it throws if your selector failed
     function querySelector(selector) {
       var el = document.querySelector(selector);
       if (!el) {
@@ -170,7 +167,9 @@
 
     var player = new P.Player();
     player.addControls({});
-    player.addProgressBar({});
+    player.addProgressBar({
+      position: querySelector('.url').parentNode,
+    });
     playerArea.appendChild(player.root);
 
     var initialId = location.hash.substr(1);
@@ -354,6 +353,33 @@
         location.hash = file.name;
       }
     });
+
+    /** Dark Mode **/
+    function getLocalDarkMode() {
+      try {
+        return localStorage.getItem('userPrefersDark') === 'true';
+      } catch (e) {
+        return false;
+      }
+    }
+    function setDarkMode(dark) {
+      if (dark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      player.setTheme(dark ? 'dark' : 'light');
+      try {
+        return localStorage.setItem('userPrefersDark', dark);
+      } catch (e) {}
+    }
+    function toggleDarkMode(dark) {
+      setDarkMode(!document.documentElement.classList.contains('dark'));
+    }
+    querySelector('.theme-select a').addEventListener('click', function() {
+      toggleDarkMode();
+    });
+    setDarkMode(getLocalDarkMode());
 
     /** Settings Menu **/
     var optionFramerate = querySelector('#settings-framerate');

@@ -47,6 +47,19 @@ P.Player = (function() {
     this.totalTasks = 0;
     this.finishedTasks = 0;
 
+    P.IO.progressHooks.new = function() {
+      this.totalTasks++;
+      this.updateProgressBar();
+    }.bind(this);
+    P.IO.progressHooks.end = function() {
+      this.finishedTasks++;
+      this.updateProgressBar();
+    }.bind(this);
+    P.IO.progressHooks.set = function() {
+      // we'll ignore this for now
+    }.bind(this);
+    P.IO.progressHooks.error = this.handleError.bind(this);
+
     window.addEventListener('resize', this.updateFullscreen.bind(this));
     document.addEventListener('fullscreenchange', function() {
       if (this.fullscreen !== document.fullscreen) {
@@ -293,7 +306,6 @@ P.Player = (function() {
    * Add a progress bar to the player.
    * @typedef ProgressBarOptions
    * @property {'controls'|HTMLElement} [position]
-   * @property {boolean} [transition]
    * @param {ProgressBarOptions} [options]
    */
   Player.prototype.addProgressBar = function(options) {
@@ -301,6 +313,7 @@ P.Player = (function() {
 
     this.progressContainer = document.createElement('div');
     this.progressContainer.className = 'player-progress';
+    this.progressContainer.setAttribute('theme', this.theme);
     this.progressBar = document.createElement('div');
     this.progressBar.className = 'player-progress-bar';
     this.progressContainer.appendChild(this.progressBar);
@@ -312,27 +325,9 @@ P.Player = (function() {
         throw new Error('No controls to put progess bar in.');
       }
       this.controlsEl.appendChild(this.progressContainer);
+    } else {
+      options.position.appendChild(this.progressContainer);
     }
-
-    function newTask() {
-      this.totalTasks++;
-      this.updateProgressBar();
-    }
-    function endTask() {
-      this.finishedTasks++;
-      this.updateProgressBar();
-    }
-    function set(progress) {
-      // We'll ignore this for now.
-      // this.totalTasks = 1;
-      // this.finishedTasks = progress;
-      // this.updateProgressBar();
-    }
-
-    P.IO.progressHooks.new = newTask.bind(this);
-    P.IO.progressHooks.end = endTask.bind(this);
-    P.IO.progressHooks.set = set.bind(this);
-    P.IO.progressHooks.error = this.handleError.bind(this);
   };
 
   Player.prototype.updateProgressBar = function() {
@@ -340,7 +335,9 @@ P.Player = (function() {
     if (isNaN(progress)) {
       progress = 0;
     }
-    this.progressBar.style.width = (10 + progress * 90) + '%';
+    if (this.progressBar) {
+      this.progressBar.style.width = (10 + progress * 90) + '%';
+    }
   };
 
   Player.prototype.resetLoading = function() {
@@ -420,6 +417,9 @@ P.Player = (function() {
   Player.prototype.setTheme = function(theme) {
     this.theme = theme;
     this.root.setAttribute('theme', theme);
+    if (this.progressContainer) {
+      this.progressContainer.setAttribute('theme', theme);
+    }
   };
 
   /**
@@ -565,14 +565,20 @@ P.Player = (function() {
     while (this.player.firstChild) {
       this.player.removeChild(this.player.firstChild);
     }
+    if (this.fullscreen) {
+      this.exitFullscreen();
+    }
   };
 
   /**
    * Start a new Stage in this player.
+   * @typedef StageLoadOptions
+   * @property {boolean} [start]
+   * @param {StageLoadOptions} [stageOptions]
    */
-  Player.prototype.startStage = function(stage) {
+  Player.prototype.loadStage = function(stage, stageOptions) {
     if (!stage) {
-      throw new Error('Stage is not valid');
+      throw new Error('Invalid stage.');
     }
     if (this.progressContainer) {
       this.progressContainer.setAttribute('loaded', '');
@@ -583,7 +589,10 @@ P.Player = (function() {
     stage.focus();
     this.onload(stage);
     this.start();
-    stage.runtime.triggerGreenFlag();
+    stageOptions = stageOptions || {};
+    if (stageOptions.start !== false) {
+      stage.runtime.triggerGreenFlag();
+    }
   };
 
   /**
@@ -596,9 +605,10 @@ P.Player = (function() {
   /**
    * Load a remote project from its ID
    * @param {string} id
+   * @param {StageLoadOptions} options
    * @returns {Promise<void>}
    */
-  Player.prototype.loadProjectId = function(id) {
+  Player.prototype.loadProjectId = function(id, options) {
     if (this.stage) {
       this.destroyStage();
     }
@@ -617,16 +627,17 @@ P.Player = (function() {
         }
       }.bind(this))
       .then(function(stage){
-        this.startStage(stage);
+        this.loadStage(stage, options);
       }.bind(this));
   };
 
   /**
    * Load a project from a File object
    * @param {File} file
+   * @param {StageLoadOptions} options
    * @returns {Promise<void>}
    */
-  Player.prototype.loadProjectFile = function(file) {
+  Player.prototype.loadProjectFile = function(file, options) {
     var ext = file.name.split('.').pop();
     if (!['sb2', 'sb3'].includes(ext)) {
       throw new Error('Unrecognized file extension: ' + ext);
@@ -644,7 +655,7 @@ P.Player = (function() {
         }
       })
       .then(function(stage) {
-        this.startStage(stage);
+        this.loadStage(stage, options);
       }.bind(this));
   };
 
