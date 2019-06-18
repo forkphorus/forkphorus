@@ -137,6 +137,7 @@ P.Player = (function() {
       'audio.muted.title': 'Your browser isn\'t allowing us to play audio. You may need to interact with the page before audio can be played.',
       'bug.html': 'An internal error occurred. <a $attrs>Click here</a> to file a bug report.',
       'bug.instructions': 'Describe what you were doing to cause this error:',
+      'bug.manual.instructions': 'Describe the issue:',
     },
     es: {
       'controls.turbo': 'Modo Turbo',
@@ -349,7 +350,7 @@ P.Player = (function() {
       this.progressContainer.removeAttribute('loaded');
       this.updateProgressBar();
     }
-  }
+  };
 
   /**
    * Changes the turbo state of the stage.
@@ -516,7 +517,10 @@ P.Player = (function() {
     return error.toString();
   };
 
-  Player.prototype.createBugReportLink = function(title, body) {
+  Player.prototype.createBugReportLink = function(bodyBefore, bodyAfter) {
+    var title = this.getBugReportTitle();
+    bodyAfter = bodyAfter || '';
+    var body = bodyBefore + '\n\n\n-----\n' + this.getBugReportMeta() + '\n' + bodyAfter;
     return Player.BUG_REPORT_LINK
       .replace('$title', encodeURIComponent(title))
       .replace('$body', encodeURIComponent(body));
@@ -536,9 +540,7 @@ P.Player = (function() {
 
   Player.prototype.createErrorLink = function(error) {
     var body = this.getString('bug.instructions');
-    body += '\n\n\n-----\n' + this.getBugReportMeta();
-    body += '```\n' + this.stringifyError(error) + '\n```';
-    return this.createBugReportLink(this.getBugReportTitle(), body);
+    return this.createBugReportLink(body, this.stringifyError(error));
   };
 
   /**
@@ -579,6 +581,7 @@ P.Player = (function() {
     stage.runtime.handleError = this.handleError.bind(this);
     this.player.appendChild(stage.root);
     stage.focus();
+    this.onload(stage);
     this.start();
     stage.runtime.triggerGreenFlag();
   };
@@ -617,6 +620,35 @@ P.Player = (function() {
         this.startStage(stage);
       }.bind(this));
   };
+
+  /**
+   * Load a project from a File object
+   * @param {File} file
+   * @returns {Promise<void>}
+   */
+  Player.prototype.loadProjectFile = function(file) {
+    var ext = file.name.split('.').pop();
+    if (!['sb2', 'sb3'].includes(ext)) {
+      throw new Error('Unrecognized file extension: ' + ext);
+    }
+    this.projectId = 'local.' + ext;
+    this.projectLink = file.name;
+    location.hash = '.' + ext;
+    return P.IO.readers.toArrayBuffer(file)
+      .then(function(buffer) {
+        if (ext === 'sb2') {
+          return P.sb2.loadSB2Project(buffer);
+        } else if (ext === 'sb3') {
+          var loader = new P.sb3.SB3FileLoader(buffer);
+          return loader.load();
+        }
+      })
+      .then(function(stage) {
+        this.startStage(stage);
+      }.bind(this));
+  };
+
+  Player.prototype.onload = function(stage) {};
 
   return Player;
 

@@ -120,6 +120,7 @@
   opacity: 0;
 }
 .player-progress-bar {
+  width: 0%; /* initial width */
   height: 100%;
   background-color: #cde;
   transition: .2s;
