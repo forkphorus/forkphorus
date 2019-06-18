@@ -98,8 +98,8 @@ a:active {
 
 .area {
   /* overflow: hidden; */
-  margin: 0 -24px;
-  padding: 0 24px;
+  /* margin: 0 -24px;
+  padding: 0 24px; */
 }
 /* #player-area, #project-area {
   height: 0;
@@ -111,6 +111,17 @@ a:active {
 /* .fs #player-area {
   overflow: visible;
 } */
+
+.project-link {
+  width: 32px;
+  height: 32px;
+  float: right;
+  cursor: pointer;
+  text-align: center;
+  opacity: .4;
+  background-image: url(icons.svg);
+  text-decoration: none;
+}
 
 section {
   margin: 24px 0;

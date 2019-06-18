@@ -83,7 +83,7 @@
     <div class="title">
       <div class="progress-bar"></div>
       <input class="url" value="https://scratch.mit.edu/projects/" spellcheck="false">
-      <a target="_blank" class=project-link title="View project on Scratch" rel="noopener"></a>
+      <a target="_blank" class="project-link" title="View project on Scratch" rel="noopener"></a>
     </div>
 
     <div class=area id=project-area>
@@ -156,9 +156,10 @@
 
   <script>
     const player = new P.Player({
-      controls: true,
-      theme: 'dark',
+      theme: 'light',
     });
+    player.addControls({});
+    player.addProgressBar({});
     player.loadProjectId('317262662');
     document.getElementById('player-area').appendChild(player.root);
   </script>
