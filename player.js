@@ -167,6 +167,27 @@ P.player = (function() {
     P.player.projectId = id;
     P.player.projectURL = id ? 'https://scratch.mit.edu/projects/' + id + '/' : '';
 
+    return new P.IO.TextRequest(P.config.PROJECT_API.replace('$id', id)).load()
+      .then((data) => {
+        try {
+          const json = JSON.parse(data);
+          const type = P.utils.projectType(json);
+          if (type === 3) {
+            return (new P.sb3.Scratch3Loader(json)).load();
+          } else if (type === 2) {
+            return P.sb2.loadProject(json);
+          } else {
+            throw new Error('Unknown project type (only Scratch 2 and 3 projects are supported)');
+          }
+        } catch (e) {
+          return new P.IO.ArrayBufferRequest(P.config.PROJECT_API.replace('$id', id)).load()
+            .then((buffer) => {
+              return P.sb2.loadSB2Project(buffer)
+            });
+        }
+      })
+      .catch((e) => showError(e));
+
     return new P.IO.JSONRequest(P.config.PROJECT_API.replace('$id', id)).load()
       .then((json) => {
         const type = P.utils.projectType(json);
