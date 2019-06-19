@@ -14,6 +14,14 @@
     .hide-ui .player {
       box-shadow: none;
     }
+    .has-ui .player-stage .forkphorus-root {
+      outline: 1px solid rgba(0, 0, 0, 0.4);
+      margin-left: 1px;
+    }
+    .has-ui .player-root[theme=dark] .player-stage .forkphorus-root {
+      outline: 1px solid rgba(255, 255, 255, 0.2);
+      margin-left: 1px;
+    }
   </style>
 </head>
 
@@ -72,6 +80,10 @@
           payload: payload,
         }, '*');
       }
+    }
+
+    if (hasUI) {
+      document.body.classList.add('has-ui');
     }
 
     var player = new P.Player({theme: lightContent ? 'dark' : 'light'});

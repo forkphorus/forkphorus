@@ -6,12 +6,6 @@
   width: 480px;
   height: 360px;
 }
-.player-stage .forkphorus-root {
-  outline: 1px solid rgba(0, 0, 0, 0.4);
-}
-.player-root[theme=dark] .player-stage .forkphorus-root {
-  outline-color: rgba(255, 255, 255, 0.2);
-}
 
 .player-controls {
   position: relative;
@@ -116,17 +110,23 @@
   height: 100%;
   transition: opacity .2s;
 }
-.player-progress[loaded] {
+.player-progress[state=loaded] {
   opacity: 0;
 }
-.player-progress-bar {
+.player-progress-fill {
   width: 0%; /* initial width */
   height: 100%;
   background-color: #cde;
-  transition: width .2s;
+  transition: .2s;
 }
-.player-progress[theme=dark] .player-progress-bar {
+.player-progress[state=error] .player-progress-fill {
+  background: #eaa;
+}
+.player-progress[theme=dark] .player-progress-fill {
   background-color: #234;
+}
+.player-progress[theme=dark][state=error] .player-progress-fill {
+  background: #411;
 }
 .player-controls .player-progress {
   position: absolute;
@@ -139,13 +139,22 @@
   color: rgb(128, 0, 0);
   font: 500 12px sans-serif;
   padding: 8px;
+  transform: translateY(-100%);
+  background-color: rgba(255, 200, 200, 0.85);
 }
-.player-root .player-error a {
+.player-error a {
   color: rgb(100, 0, 0);
+}
+.player-error a:active {
+  color: rgb(24, 67, 210);
 }
 .player-root[theme=dark] .player-error {
   color: rgb(255, 91, 91);
+  background-color: rgba(40, 8, 8, 0.85);
 }
 .player-root[theme=dark] .player-error a {
   color: rgb(210, 24, 24);
+}
+.player-root[theme=dark] .player-error a:active {
+  color: rgb(24, 120, 210);
 }

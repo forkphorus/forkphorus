@@ -15,32 +15,19 @@ P.Player = (function() {
   function Player(options) {
     options = options || {};
 
-    this._messages = Player.getLocalization();
-
-    /**
-     * The root HTML element.
-     */
     this.root = document.createElement('div');
     this.root.className = 'player-root';
     this.setTheme(options.theme || 'light');
 
-    /**
-     * The HTML element that the stage will be contained in.
-     */
     this.player = document.createElement('div');
     this.player.className = 'player-stage';
     this.root.appendChild(this.player);
 
-    /**
-     * Is this player in some form of fullscreen?
-     */
     this.fullscreen = false;
+    this.fullscreenPadding = 8;
+    this.fullscreenMaxWidth = Infinity;
 
-    /**
-     * The stage this player is running, if any.
-     */
     this.stage = null;
-
     this.projectId = Player.UNKNOWN_ID;
     this.projectLink = Player.UNKNOWN_LINK;
 
@@ -55,8 +42,8 @@ P.Player = (function() {
       this.finishedTasks++;
       this.updateProgressBar();
     }.bind(this);
-    P.IO.progressHooks.set = function() {
-      // we'll ignore this for now
+    P.IO.progressHooks.set = function(progress) {
+      this.setProgress(progress);
     }.bind(this);
     P.IO.progressHooks.error = this.handleError.bind(this);
 
@@ -78,62 +65,12 @@ P.Player = (function() {
     }.bind(this));
   };
 
-  Player.PROJECT_API = 'https://projects.scratch.mit.edu/$id';
+  Player.PROJECT_DATA_API = 'https://projects.scratch.mit.edu/$id';
   Player.PROJECT_LINK = 'https://scratch.mit.edu/projects/$id';
   Player.BUG_REPORT_LINK = 'https://github.com/forkphorus/forkphorus/issues/new?title=$title&body=$body';
   Player.LARGE_Z_INDEX = '9999999999';
   Player.UNKNOWN_ID = '(no id)';
   Player.UNKNOWN_LINK = '(no link)';
-
-  /**
-   * Determines the type of a project.
-   * @param {any} data
-   * @returns {2|3|null} 2 for sb2, 3 for sb3, null for uknown
-   */
-  Player.getProjectType = function(data) {
-    if ('targets' in data) return 3;
-    if ('objName' in data) return 2;
-    return null;
-  };
-
-  /**
-   * The user's languages.
-   */
-  Player.languages = (function() {
-    var languages = /** @type {string[]} */ (navigator.languages) || [navigator.language];
-    languages = languages.reduce(function(accumulator, value) {
-      value = value.toLowerCase();
-      accumulator.push(value);
-      // if it has a country code, also push a non-country code version after
-      if (value.indexOf('-') !== -1) accumulator.push(value.substring(0, value.indexOf('-')));
-      return accumulator;
-    }, []);
-    // remove duplicates
-    languages = languages.filter(function(value, index) {
-      return languages.indexOf(value) === index;
-    });
-    return languages;
-  }());
-
-  /**
-   * Gets the localization strings for the user's language
-   */
-  Player.getLocalization = function() {
-    var languages = Player.languages;
-    for (var i = 0; i < languages.length; i++) {
-      var language = languages[i].substring(0, 2).toLowerCase();
-      var messages = Player.i18n[language];
-      if (messages) {
-        // By setting the prototype to the en translations, missing strings won't appear as 'undefined'
-        // but rather by their english translation
-        if (language !== 'en') {
-          Object.setPrototypeOf(messages, Player.i18n['en']);
-        }
-        return messages;
-      }
-    }
-    return Player.i18n['en'];
-  };
 
   /**
    * Internationalization.
@@ -159,6 +96,43 @@ P.Player = (function() {
   };
 
   /**
+   * Determines the type of a project.
+   * @param {any} data
+   * @returns {2|3|null} 2 for sb2, 3 for sb3, null for uknown
+   */
+  Player.getProjectType = function(data) {
+    if (!data) return null;
+    if ('targets' in data) return 3;
+    if ('objName' in data) return 2;
+    return null;
+  };
+
+  /**
+   * The user's languages, in order of preference.
+   */
+  Player.languages = (function() {
+    var languages = navigator.languages || [navigator.language];
+    var langs = [];
+    for (var i = 0; i < languages.length; i++) {
+      var value = languages[i].toLowerCase();
+      // We don't care about country codes.
+      if (value.indexOf('-') !== -1) {
+        value = value.substring(0, value.indexOf('-'));
+      }
+      langs.push(value);
+    }
+    langs.push('en');
+    langs = langs.filter(function(value, index) {
+      // removing duplicates
+      if (langs.indexOf(value) !== index) return false;
+      // removing unrecognized languages
+      if (!Player.i18n[value]) return false;
+      return true;
+    });
+    return langs;
+  }());
+
+  /**
    * Asserts that a stage is loaded, and throws otherwise.
    */
   Player.prototype.assertStage = function() {
@@ -168,11 +142,15 @@ P.Player = (function() {
   };
 
   /**
-   * Get a translation string.
+   * Get a translated string.
    */
   Player.prototype.getString = function(str) {
-    if (this._messages[str]) {
-      return this._messages[str];
+    for (var i = 0; i < Player.languages.length; i++) {
+      var lang = Player.languages[i];
+      var messages = Player.i18n[lang];
+      if (str in messages) {
+        return messages[str];
+      }
     }
     throw new Error('Unknown translation string: ' + str);
   };
@@ -187,8 +165,9 @@ P.Player = (function() {
     /** @param {MouseEvent} e */
     function clickStop(e) {
       this.assertStage();
-      this.start();
+      this.pause();
       this.stage.runtime.stopAll();
+      this.stage.draw();
       e.preventDefault();
     };
 
@@ -239,7 +218,7 @@ P.Player = (function() {
     options = options || {};
 
     this.controlsEl = document.createElement('div');
-    this.controlsEl.className = 'player-button player-controls';
+    this.controlsEl.className = 'player-controls';
 
     this.stopButton = document.createElement('span');
     this.stopButton.className = 'player-button player-stop';
@@ -263,7 +242,7 @@ P.Player = (function() {
     this.fullscreenButton.className = 'player-button player-fullscreen-btn';
     this.controlsEl.appendChild(this.fullscreenButton);
 
-    if (options.showMutedIndicator !== false && P.audio.context) {
+    if (options.showMutedIndicator && P.audio.context) {
       this.mutedText = document.createElement('div');
       this.mutedText.innerText = this.getString('audio.muted');
       this.mutedText.title = this.getString('audio.muted.title');
@@ -311,12 +290,13 @@ P.Player = (function() {
   Player.prototype.addProgressBar = function(options) {
     options = options || {};
 
-    this.progressContainer = document.createElement('div');
-    this.progressContainer.className = 'player-progress';
-    this.progressContainer.setAttribute('theme', this.theme);
     this.progressBar = document.createElement('div');
-    this.progressBar.className = 'player-progress-bar';
-    this.progressContainer.appendChild(this.progressBar);
+    this.progressBar.className = 'player-progress';
+    this.progressBar.setAttribute('theme', this.theme);
+
+    this.progressBarFill = document.createElement('div');
+    this.progressBarFill.className = 'player-progress-fill';
+    this.progressBar.appendChild(this.progressBarFill);
 
     options.position = options.position || 'controls';
 
@@ -324,28 +304,24 @@ P.Player = (function() {
       if (!this.controlsEl) {
         throw new Error('No controls to put progess bar in.');
       }
-      this.controlsEl.appendChild(this.progressContainer);
+      this.controlsEl.appendChild(this.progressBar);
     } else {
-      options.position.appendChild(this.progressContainer);
+      options.position.appendChild(this.progressBar);
     }
   };
 
   Player.prototype.updateProgressBar = function() {
-    var progress = this.finishedTasks / this.totalTasks;
-    if (isNaN(progress)) {
-      progress = 0;
-    }
-    if (this.progressBar) {
-      this.progressBar.style.width = (10 + progress * 90) + '%';
-    }
+    var progress = (this.finishedTasks / this.totalTasks) || 0;
+    this.setProgress(progress);
   };
 
-  Player.prototype.resetLoading = function() {
-    this.totalTasks = 0;
-    this.finishedTasks = 0;
-    if (this.progressContainer) {
-      this.progressContainer.removeAttribute('loaded');
-      this.updateProgressBar();
+  /**
+   * Set the size of the progress bar, if any.
+   * @param {number} progress The progress from 0-1
+   */
+  Player.prototype.setProgress = function(progress) {
+    if (this.progressBarFill) {
+      this.progressBarFill.style.width = (10 + progress * 90) + '%';
     }
   };
 
@@ -371,32 +347,21 @@ P.Player = (function() {
   };
 
   /**
-   * Changes the running state of the stage
-   * @param {boolean} running
-   */
-  Player.prototype.setRunning = function(running) {
-    this.assertStage();
-    if (running) {
-      this.stage.runtime.start();
-      this.root.setAttribute('running', '');
-    } else {
-      this.stage.runtime.pause();
-      this.root.removeAttribute('running');
-    }
-  };
-
-  /**
-   * Pause the project.
+   * Pause the runtime's event loop.
    */
   Player.prototype.pause = function() {
-    this.setRunning(false);
+    this.assertStage();
+    this.stage.runtime.pause();
+    this.root.removeAttribute('running');
   };
 
   /**
-   * Start the project.
+   * Start the runtime's event loop.
    */
   Player.prototype.start = function() {
-    this.setRunning(true);
+    this.assertStage();
+    this.stage.runtime.start();
+    this.root.setAttribute('running', '');
   };
 
   /**
@@ -417,8 +382,8 @@ P.Player = (function() {
   Player.prototype.setTheme = function(theme) {
     this.theme = theme;
     this.root.setAttribute('theme', theme);
-    if (this.progressContainer) {
-      this.progressContainer.setAttribute('theme', theme);
+    if (this.progressBar) {
+      this.progressBar.setAttribute('theme', theme);
     }
   };
 
@@ -478,7 +443,9 @@ P.Player = (function() {
     this.root.style.paddingLeft = '';
     this.root.style.paddingTop = '';
     this.root.style.zIndex = '';
-    this.controlsEl.style.width = '';
+    if (this.controlsEl) {
+      this.controlsEl.style.width = '';
+    }
     document.body.classList.remove('player-body-fullscreen');
     if (this.stage) {
       this.stage.setZoom(1);
@@ -491,15 +458,18 @@ P.Player = (function() {
   Player.prototype.updateFullscreen = function() {
     if (!this.stage) return;
     if (this.fullscreen) {
+      var controlsHeight = this.controlsEl ? this.controlsEl.offsetHeight : 0;
       window.scrollTo(0, 0);
-      var padding = 8;
-      var w = window.innerWidth - padding * 2;
-      var h = window.innerHeight - padding - this.controlsEl.offsetHeight;
+      var w = window.innerWidth - this.fullscreenPadding * 2;
+      var h = window.innerHeight - this.fullscreenPadding - controlsHeight;
       w = Math.min(w, h / .75);
-      h = w * .75 + this.controlsEl.offsetHeight;
-      this.controlsEl.style.width = w + 'px';
+      w = Math.min(w, this.fullscreenMaxWidth);
+      h = w * .75 + controlsHeight;
+      if (this.controlsEl) {
+        this.controlsEl.style.width = w + 'px';
+      }
       this.root.style.paddingLeft = (window.innerWidth - w) / 2 + 'px';
-      this.root.style.paddingTop = (window.innerHeight - h - padding) / 2 + 'px';
+      this.root.style.paddingTop = (window.innerHeight - h - this.fullscreenPadding) / 2 + 'px';
       this.stage.setZoom(w / 480);
     }
   };
@@ -526,25 +496,34 @@ P.Player = (function() {
       .replace('$body', encodeURIComponent(body));
   };
 
+  /**
+   * Get the title for bug reports.
+   */
   Player.prototype.getBugReportTitle = function() {
     return this.projectLink;
   };
 
+  /**
+   * Get the metadata to include in bug reports.
+   */
   Player.prototype.getBugReportMeta = function() {
     var meta = 'Project URL: ' + this.projectLink + '\n';
     meta += 'Project ID: ' + this.projectId + '\n';
     meta += location.href + '\n';
-    meta += navigator.userAgent + '\n';
+    meta += navigator.userAgent;
     return meta;
-  }
-
-  Player.prototype.createErrorLink = function(error) {
-    var body = this.getString('bug.instructions');
-    return this.createBugReportLink(body, this.stringifyError(error));
   };
 
   /**
-   * Handles errors from the runtime.
+   * Get the URL to report an error to.
+   */
+  Player.prototype.createErrorLink = function(error) {
+    var body = this.getString('bug.instructions');
+    return this.createBugReportLink(body, '```\n' + this.stringifyError(error) + '\n```');
+  };
+
+  /**
+   * Handle errors and allow creating a bug report.
    */
   Player.prototype.handleError = function(error) {
     console.error(error);
@@ -553,20 +532,43 @@ P.Player = (function() {
     var attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
     errorEl.className = 'player-error';
     errorEl.innerHTML = this.getString('bug.html').replace('$attrs', attributes);
-    this.root.appendChild(errorEl);
+    this.addErrorMessage(errorEl);
+    if (this.progressBar) {
+      this.progressBar.setAttribute('state', 'error');
+    }
   };
 
   /**
-   * Completely remove the existing stage.
+   * Add an error report link to the player
    */
-  Player.prototype.destroyStage = function() {
-    this.assertStage();
-    this.stage.destroy();
-    while (this.player.firstChild) {
-      this.player.removeChild(this.player.firstChild);
+  Player.prototype.addErrorMessage = function(element) {
+    this.root.appendChild(element);
+  };
+
+  /**
+   * Completely remove the stage, and restore this player to an (almost) fresh state.
+   */
+  Player.prototype.cleanup = function() {
+    this.totalTasks = 0;
+    this.finishedTasks = 0;
+
+    if (this.stage) {
+      this.stage.destroy();
+      while (this.player.firstChild) {
+        this.player.removeChild(this.player.firstChild);
+      }
     }
+
     if (this.fullscreen) {
       this.exitFullscreen();
+    }
+
+    this.oncleanup();
+  };
+
+  Player.prototype.startLoad = function() {
+    if (this.progressBar) {
+      this.progressBar.removeAttribute('state');
     }
   };
 
@@ -574,15 +576,17 @@ P.Player = (function() {
    * Start a new Stage in this player.
    * @typedef StageLoadOptions
    * @property {boolean} [start]
+   * @property {boolean} [turbo]
    * @param {StageLoadOptions} [stageOptions]
    */
   Player.prototype.loadStage = function(stage, stageOptions) {
     if (!stage) {
       throw new Error('Invalid stage.');
     }
-    if (this.progressContainer) {
-      this.progressContainer.setAttribute('loaded', '');
+    if (this.progressBar) {
+      this.progressBar.setAttribute('state', 'loaded');
     }
+    this.root.classList.add('player-has-stage');
     this.stage = stage;
     stage.runtime.handleError = this.handleError.bind(this);
     this.player.appendChild(stage.root);
@@ -593,28 +597,29 @@ P.Player = (function() {
     if (stageOptions.start !== false) {
       stage.runtime.triggerGreenFlag();
     }
+    if (stageOptions.turbo) {
+      stage.runtime.isTurbo = true;
+    }
   };
 
   /**
    * Gets the project.json for a project
    */
   Player.prototype.getProjectData = function(id) {
-    return new P.IO.JSONRequest(Player.PROJECT_API.replace('$id', id)).load();
+    return new P.IO.JSONRequest(Player.PROJECT_DATA_API.replace('$id', id)).load();
   };
 
   /**
    * Load a remote project from its ID
    * @param {string} id
    * @param {StageLoadOptions} options
-   * @returns {Promise<void>}
+   * @returns {Promise}
    */
   Player.prototype.loadProjectId = function(id, options) {
-    if (this.stage) {
-      this.destroyStage();
-    }
+    this.cleanup();
+    this.startLoad();
     this.projectId = id;
     this.projectLink = Player.PROJECT_LINK.replace('$id', id);
-    this.resetLoading();
     return this.getProjectData(id)
       .then(function(json) {
         const type = Player.getProjectType(json);
@@ -628,38 +633,44 @@ P.Player = (function() {
       }.bind(this))
       .then(function(stage){
         this.loadStage(stage, options);
-      }.bind(this));
+        return stage;
+      }.bind(this))
+      .catch(this.handleError.bind(this))
   };
 
   /**
    * Load a project from a File object
    * @param {File} file
    * @param {StageLoadOptions} options
-   * @returns {Promise<void>}
+   * @returns {Promise}
    */
   Player.prototype.loadProjectFile = function(file, options) {
-    var ext = file.name.split('.').pop();
-    if (!['sb2', 'sb3'].includes(ext)) {
-      throw new Error('Unrecognized file extension: ' + ext);
+    var extension = file.name.split('.').pop();
+    if (!['sb2', 'sb3'].includes(extension)) {
+      throw new Error('Unrecognized file extension: ' + extension);
     }
-    this.projectId = 'local.' + ext;
-    this.projectLink = file.name;
-    location.hash = '.' + ext;
+    this.cleanup();
+    this.startLoad();
+    this.projectId = file.name;
+    this.projectLink = file.name + '#local';
     return P.IO.readers.toArrayBuffer(file)
       .then(function(buffer) {
-        if (ext === 'sb2') {
+        if (extension === 'sb2') {
           return P.sb2.loadSB2Project(buffer);
-        } else if (ext === 'sb3') {
+        } else if (extension === 'sb3') {
           var loader = new P.sb3.SB3FileLoader(buffer);
           return loader.load();
         }
       })
       .then(function(stage) {
         this.loadStage(stage, options);
-      }.bind(this));
+        return stage;
+      }.bind(this))
+      .catch(this.handleError.bind(this));
   };
 
   Player.prototype.onload = function(stage) {};
+  Player.prototype.oncleanup = function() {};
 
   return Player;
 

@@ -42,7 +42,7 @@
 
     <div class="area" id="title-area">
       <h1 class="title">forkphorus</h1>
-      <p>forkphorus runs Scratch 3 and 2 projects really fast by compiling them to JavaScript. Try it out by pasting a project ID or URL into the field below, by <a class="upload-button">selecting<input id="upload-file-input" type="file" autocomplete="off" accept=".sb2,.sb3"></a> or dropping a project file on the page, or by <a class="dropdown">choosing an example<select id="examples">
+      <p>forkphorus runs Scratch 2 and Scratch 3 projects really fast by compiling them to JavaScript. Try it out by pasting a project ID or URL into the field below, by <a class="upload-button"><input id="upload-file-input" type="file" autocomplete="off" accept=".sb2,.sb3">selecting a project file</a>, dropping a file on the page, or <a class="dropdown">choosing an example<select id="examples">
         <option value></option>
         <option value=276660763>Scratch 3.0 is here! by ScratchCat</option>
         <option value=280227362>Spring Physics by HowToLogic</option>
@@ -62,7 +62,7 @@
 
     <div class="title">
       <input class="url" value="https://scratch.mit.edu/projects/" spellcheck="false">
-      <a target="_blank" class="project-link" title="View project on Scratch" rel="noopener"></a>
+      <a target="_blank" class="project-link" title="View project on Scratch" rel="noopener" href="https://scratch.mit.edu/"></a>
     </div>
 
     <div class="area" id="project-area">
@@ -173,9 +173,8 @@
     playerArea.appendChild(player.root);
 
     var initialId = location.hash.substr(1);
-    if (initialId.indexOf('.') > -1) {
+    if (!/^\d+$/.test(initialId)) {
       initialId = '';
-      location.hash = '';
     }
 
     playerArea.style.height = projectArea.style.height = 'auto';
@@ -225,17 +224,14 @@
     });
     window.addEventListener('hashchange', function() {
       var id = location.hash.substr(1);
-      if (id === '') {
-        hidePlayerArea();
-        if (player.stage) {
-          player.destroyStage();
-        }
-        return;
-      }
-
-      if (id.indexOf('.') === -1) {
+      if (/^\d+$/.test(id)) {
         urlInput.value = PROJECT_PREFIX + id;
         loadProjectId(id);
+      } else {
+        if (player.stage) {
+          player.cleanup();
+          hidePlayerArea();
+        }
       }
     });
 
@@ -244,9 +240,7 @@
       playerArea.style.height = '0px';
       projectArea.style.height = '0px';
       urlInput.focus();
-      if (player.stage) {
-        player.destroyStage();
-      }
+      player.cleanup();
     }
     function showPlayerArea() {
       titleArea.style.height = '0px';
@@ -256,6 +250,12 @@
     function loadProjectId(id) {
       showPlayerArea();
       player.loadProjectId(id);
+      updateLinks();
+    }
+    function loadProjectFile(file) {
+      location.hash = file.name;
+      showPlayerArea();
+      player.loadProjectFile(file);
       updateLinks();
     }
     function updateLinks() {
@@ -340,17 +340,13 @@
       e.preventDefault();
       var file = e.dataTransfer.files[0];
       if (file) {
-        player.loadProjectFile(file);
-        showPlayerArea();
-        location.hash = file.name;
+        loadProjectFile(file);
       }
     });
     uploadFileInput.addEventListener('change', function(e) {
       var file = e.target.files[0];
       if (file) {
-        showPlayerArea();
-        player.loadProjectFile(file);
-        location.hash = file.name;
+        loadProjectFile(file);
       }
     });
 
@@ -430,6 +426,13 @@
     function applySelectedOptions() {
       var options = getSelectedOptions();
       applyOptions(options);
+    }
+    var applyOptionsTimeout;
+    function debouncedApplySelectedOptions() {
+      if (applyOptionsTimeout) clearTimeout(applyOptionsTimeout);
+      applyOptionsTimeout = setTimeout(function() {
+        applySelectedOptions()
+      }, 50);
     }
 
     setSelectedOptions(defaultOptions);
