@@ -8,6 +8,7 @@ P.Player = (function() {
   'use strict';
 
   /**
+   * @class
    * @typedef {Object} PlayerOptions
    * @property {'dark'|'light'} [theme]
    * @param {PlayerOptions} [options]
@@ -49,21 +50,18 @@ P.Player = (function() {
     P.IO.progressHooks.error = this.handleError.bind(this);
 
     window.addEventListener('resize', this.updateFullscreen.bind(this));
-    document.addEventListener('fullscreenchange', function() {
-      if (this.fullscreen !== document.fullscreen) {
+    var fullscreenChange = function(e) {
+      if (typeof document.fullscreen === 'boolean' && document.fullscreen !== this.fullscreen) {
         this.exitFullscreen();
       }
-    }.bind(this));
-    document.addEventListener('mozfullscreenchange', function() {
-      if (this.fullscreen !== document.fullscreen) {
+      // @ts-ignore
+      if (typeof document.webkitIsFullScreen === 'boolean' && document.webkitIsFullScreen !== this.fullscreen) {
         this.exitFullscreen();
       }
-    }.bind(this));
-    document.addEventListener('webkitfullscreenchange', function() {
-      if (this.fullscreen !== document.fullscreen) {
-        this.exitFullscreen();
-      }
-    }.bind(this));
+    }.bind(this);
+    document.addEventListener('fullscreenchange', fullscreenChange);
+    document.addEventListener('mozfullscreenchange', fullscreenChange);
+    document.addEventListener('webkitfullscreenchange', fullscreenChange);
   };
 
   Player.PROJECT_DATA_API = 'https://projects.scratch.mit.edu/$id';
@@ -430,7 +428,8 @@ P.Player = (function() {
     this.setTheme(this.previousTheme);
     this.root.removeAttribute('fullscreen');
     this.fullscreen = false;
-    if (document.fullscreenElement === this.root) {
+    // @ts-ignore
+    if (document.fullscreenElement === this.root || document.webkitFullscreenElement === this.root) {
       // fixing typescript errors
       var d = /** @type {any} */ (document);
       if (document.exitFullscreen) {
@@ -439,6 +438,8 @@ P.Player = (function() {
         d.mozCancelFullScreen();
       } else if (d.webkitCancelFullScreen) {
         d.webkitCancelFullScreen();
+      } else if (d.webkitExitFullscreen) {
+        d.webkitExitFullscreen();
       }
     }
     this.root.style.paddingLeft = '';

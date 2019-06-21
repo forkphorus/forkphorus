@@ -5,6 +5,10 @@ body {
   font-weight: 300;
 }
 
+b {
+  font-weight: bold;
+}
+
 .dark {
   background-color: #111;
   color: #ddd;
@@ -259,4 +263,8 @@ code {
 #studioview-area {
   overflow: hidden;
   transition: height .2s;
+}
+
+#browser-not-supported {
+  display: none;
 }

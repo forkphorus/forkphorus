@@ -22,12 +22,14 @@
     return true
   }
 
+  /**
+   * @class
+   */
   var StudioView = function(studioId) {
     this.studioId = studioId;
     this.page = 1;
     this.ended = false;
     this.loadingPage = false;
-    this.projects = 0;
 
     this.root = document.createElement('div');
     this.root.className = 'studioview-root';
@@ -40,6 +42,8 @@
     if ('IntersectionObserver' in window) {
       this.intersectionObserver = new IntersectionObserver(this.handleIntersection.bind(this), {
         root: this.projectList,
+        // load images roughly 100px before they become visible to make them load quicker
+        rootMargin: '0px 0px 100px 0px',
       });
     } else {
       this.intersectionObserver = null;
@@ -51,7 +55,6 @@
    */
   StudioView.prototype.addProject = function(id, title, author, thumbnail) {
     var el = this.createProjectElement(id, title, author, thumbnail);
-    this.projects++;
     this.projectList.appendChild(el);
   };
 
@@ -113,8 +116,11 @@
   };
 
   StudioView.prototype.handleClick = function(e) {
-    var project = e.target.closest('.studioview-project');
-    var id = project.dataset.id;
+    var el = e.target;
+    while (!el.classList.contains('studioview-project')) {
+      el = el.parentNode;
+    }
+    var id = el.dataset.id;
     this.onselect(id);
   };
 
@@ -198,8 +204,8 @@
       this.ended = true;
     }.bind(this);
 
-    xhr.responseType = 'document';
     xhr.open('GET', url);
+    xhr.responseType = 'document';
     xhr.send();
   };
 

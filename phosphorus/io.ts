@@ -89,8 +89,8 @@ namespace P.IO {
         xhr.addEventListener('abort', () => {
           reject(`Error while downloading ${this.url} (onabort) (${xhr.status} ${xhr.statusText})`);
         });
-        xhr.responseType = this.type as XMLHttpRequestResponseType;
         xhr.open('GET', this.url);
+        xhr.responseType = this.type as XMLHttpRequestResponseType;
         xhr.send();
       });
     }

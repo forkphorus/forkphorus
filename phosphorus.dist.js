@@ -3025,8 +3025,8 @@ var P;
                     xhr.addEventListener('abort', () => {
                         reject(`Error while downloading ${this.url} (onabort) (${xhr.status} ${xhr.statusText})`);
                     });
-                    xhr.responseType = this.type;
                     xhr.open('GET', this.url);
+                    xhr.responseType = this.type;
                     xhr.send();
                 });
             }

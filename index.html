@@ -46,6 +46,7 @@
       <p>forkphorus runs Scratch 2 and Scratch 3 projects really fast by compiling them to JavaScript. Try it out by pasting a project ID or URL into the field below, by <a class="upload-button"><input id="upload-file-input" type="file" autocomplete="off" accept=".sb2,.sb3">selecting a project file</a>, dropping a file on the page, or <a id="examples">choosing an example</a>.</p>
     </div>
 
+    <div id="browser-not-supported"></div>
     <div id="studioview-area"></div>
 
     <div class="area" id="player-area"></div>
@@ -126,6 +127,12 @@
 
   <script>
 
+  if (!window.P || !window.P.IO) {
+    document.getElementById('browser-not-supported').innerHTML = '<b>This browser is not supported.</b> Please use Mozilla Firefox, Google Chrome, or Microsoft Edge.';
+    document.getElementById('browser-not-supported').style.display = 'block';
+    throw new Error('Browser not supported.');
+  }
+
   (function() {
     'use strict';
 
@@ -158,6 +165,7 @@
     var projectArea = querySelector('#project-area');
 
     var player = new P.Player();
+    window.player = player;
     player.addControls({});
     player.addProgressBar({
       position: querySelector('.url').parentNode,
