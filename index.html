@@ -150,6 +150,7 @@
 
     /** Constants **/
     var PROJECT_PREFIX = 'https://scratch.mit.edu/projects/';
+    var STUDIO = '9323539';
 
     /** Core Player Logic **/
     var titleArea = querySelector('#title-area');
@@ -172,6 +173,7 @@
     var titleAreaHeight = titleArea.offsetHeight;
     var playerAreaHeight = playerArea.offsetHeight;
     var projectAreaHeight = projectArea.offsetHeight;
+    var studioViewAreaHeight = 320;
     playerArea.style.height = projectArea.style.height = 0;
 
     // var examples = querySelector('#examples');
@@ -214,7 +216,6 @@
         loadProjectId(id);
       } else {
         if (player.stage) {
-          player.cleanup();
           hidePlayerArea();
         }
       }
@@ -226,6 +227,9 @@
       projectArea.style.height = '0px';
       urlInput.focus();
       player.cleanup();
+      if (studioView.visible) {
+        studioViewArea.style.height = studioViewAreaHeight + 'px';
+      }
     }
     function showPlayerArea() {
       titleArea.style.height = '0px';
@@ -336,16 +340,29 @@
       }
     });
 
-    /** Example selector **/
+    /** Studio selector **/
     var examples = querySelector('#examples');
     var studioViewArea = querySelector('#studioview-area');
-    var studioView = new StudioView('6599218');
+    studioViewArea.style.height = '0px';
+    var studioView = new StudioView(STUDIO);
+    var loadedStudioView = false;
+    studioView.visible = false;
     studioView.onselect = function(id) {
       location.hash = '#' + id;
     };
     examples.addEventListener('click', function(e) {
-      studioViewArea.appendChild(studioView.root);
-      studioView.loadNextPage();
+      if (studioView.visible) {
+        studioViewArea.style.height = '0px';
+        studioViewArea.removeChild(studioView.root);
+      } else {
+        studioViewArea.appendChild(studioView.root);
+        studioViewArea.style.height = studioViewAreaHeight + 'px';
+        if (!loadedStudioView) {
+          studioView.loadNextPage();
+          loadedStudioView = true;
+        }
+      }
+      studioView.visible = !studioView.visible;
     });
 
     /** Dark Mode **/
@@ -363,6 +380,7 @@
         document.documentElement.classList.remove('dark');
       }
       player.setTheme(dark ? 'dark' : 'light');
+      studioView.setTheme(dark ? 'dark' : 'light');
       try {
         return localStorage.setItem('userPrefersDark', dark);
       } catch (e) {}

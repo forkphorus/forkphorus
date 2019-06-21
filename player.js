@@ -28,6 +28,7 @@ P.Player = (function() {
     this.fullscreenMaxWidth = Infinity;
 
     this.stage = null;
+    this.stageId = 0;
     this.projectId = Player.UNKNOWN_ID;
     this.projectLink = Player.UNKNOWN_LINK;
 
@@ -551,6 +552,7 @@ P.Player = (function() {
   Player.prototype.cleanup = function() {
     this.totalTasks = 0;
     this.finishedTasks = 0;
+    this.stageId++;
 
     if (this.stage) {
       this.stage.destroy();
@@ -618,6 +620,7 @@ P.Player = (function() {
   Player.prototype.loadProjectId = function(id, options) {
     this.cleanup();
     this.startLoad();
+    var stageId = this.stageId;
     this.projectId = id;
     this.projectLink = Player.PROJECT_LINK.replace('$id', id);
     return this.getProjectData(id)
@@ -632,6 +635,9 @@ P.Player = (function() {
         }
       }.bind(this))
       .then(function(stage){
+        if (this.stageId !== stageId) {
+          return null;
+        }
         this.loadStage(stage, options);
         return stage;
       }.bind(this))
@@ -651,6 +657,7 @@ P.Player = (function() {
     }
     this.cleanup();
     this.startLoad();
+    var stageId = this.stageId;
     this.projectId = file.name;
     this.projectLink = file.name + '#local';
     return P.IO.readers.toArrayBuffer(file)
@@ -663,6 +670,9 @@ P.Player = (function() {
         }
       })
       .then(function(stage) {
+        if (this.stageId !== stageId) {
+          return null;
+        }
         this.loadStage(stage, options);
         return stage;
       }.bind(this))

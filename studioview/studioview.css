@@ -1,23 +1,26 @@
 .studioview-root {
-
+  height: 100%;
+}
+.studioview-root[loading] .studioview-list {
+  opacity: 0.6;
 }
 .studioview-list {
-  position: relative;
-  height: 175px;
-  overflow-x: scroll;
-  /* display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
   width: 100%;
   height: 100%;
-  overflow-x: scroll; */
+  overflow-y: scroll;
 }
 .studioview-project {
-  position: absolute;
+  display: inline-block;
   cursor: pointer;
   width: 144px;
+  padding: 3px;
+  margin-bottom: 1px;
+  margin-right: 1px;
 }
-.studioview-project:hover {
+.studioview-root[theme=light] .studioview-project:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+.studioview-root[theme=dark] .studioview-project:hover {
   background: rgba(255, 255, 255, 0.1);
 }
 .studioview-title, .studioview-author {
@@ -30,5 +33,8 @@
   font-weight: bold;
 }
 .studioview-author {
-  font-size: 0.7em;
+  font-size: 0.75em;
+}
+.studioview-error {
+  width: 100%;
 }
