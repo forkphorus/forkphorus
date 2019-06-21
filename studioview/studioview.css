@@ -1,0 +1,34 @@
+.studioview-root {
+
+}
+.studioview-list {
+  position: relative;
+  height: 175px;
+  overflow-x: scroll;
+  /* display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  width: 100%;
+  height: 100%;
+  overflow-x: scroll; */
+}
+.studioview-project {
+  position: absolute;
+  cursor: pointer;
+  width: 144px;
+}
+.studioview-project:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.studioview-title, .studioview-author {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.studioview-title {
+  font-size: 0.8em;
+  font-weight: bold;
+}
+.studioview-author {
+  font-size: 0.7em;
+}

@@ -8,6 +8,7 @@
   <title>forkphorus</title>
   <link rel="stylesheet" href="phosphorus.css">
   <link rel="stylesheet" href="player.css">
+  <link rel="stylesheet" href="studioview/studioview.css">
   <link rel="stylesheet" href="index.css">
 
   <!-- I've seen a non-zero amount of people use forkphorus.github.io/forkphorus/ when they should be using forkphorus.github.io/, so we'll just redirect them to the correct location and hope they take note. -->
@@ -42,21 +43,10 @@
 
     <div class="area" id="title-area">
       <h1 class="title">forkphorus</h1>
-      <p>forkphorus runs Scratch 2 and Scratch 3 projects really fast by compiling them to JavaScript. Try it out by pasting a project ID or URL into the field below, by <a class="upload-button"><input id="upload-file-input" type="file" autocomplete="off" accept=".sb2,.sb3">selecting a project file</a>, dropping a file on the page, or <a class="dropdown">choosing an example<select id="examples">
-        <option value></option>
-        <option value=276660763>Scratch 3.0 is here! by ScratchCat</option>
-        <option value=280227362>Spring Physics by HowToLogic</option>
-        <option value=11397100>3D Remix by DadOfMrLog</option>
-        <option value=15945630>O by DCPU-16</option>
-        <option value=10128407>Paper Minecraft by griffpatch</option>
-        <option value=16207935>Alone in the depths by sticku</option>
-        <option value=16205373>3D Framework by DadOfMrLog</option>
-        <!-- <option value=31903442>gb.sb2 [Dr. Mario] by DCPU-16</option>
-        <option value=34791164>gb.sb2 [Mario Land 2] by DCPU-16</option> -->
-        <option value=21554369>Epic Ninja by griffpatch</option>
-        <option value=15832807>Pretty by blob8108</option>
-      </select></a>.</p>
+      <p>forkphorus runs Scratch 2 and Scratch 3 projects really fast by compiling them to JavaScript. Try it out by pasting a project ID or URL into the field below, by <a class="upload-button"><input id="upload-file-input" type="file" autocomplete="off" accept=".sb2,.sb3">selecting a project file</a>, dropping a file on the page, or <a id="examples">choosing an example</a>.</p>
     </div>
+
+    <div id="studioview-area"></div>
 
     <div class="area" id="player-area"></div>
 
@@ -132,6 +122,7 @@
   <script src="lib/canvg.min.js"></script>
   <script src="phosphorus.dist.js"></script>
   <script src="player.js"></script>
+  <script src="studioview/studioview.js"></script>
 
   <script>
 
@@ -183,7 +174,7 @@
     var projectAreaHeight = projectArea.offsetHeight;
     playerArea.style.height = projectArea.style.height = 0;
 
-    var examples = querySelector('#examples');
+    // var examples = querySelector('#examples');
     var urlInput = querySelector('.url');
     urlInput.value = PROJECT_PREFIX + initialId;
 
@@ -216,12 +207,6 @@
         }
       });
     });
-    examples.addEventListener('change', function() {
-      if (examples.value) {
-        location.hash = '#' + examples.value;
-        examples.selectedIndex = 0;
-      }
-    });
     window.addEventListener('hashchange', function() {
       var id = location.hash.substr(1);
       if (/^\d+$/.test(id)) {
@@ -246,6 +231,7 @@
       titleArea.style.height = '0px';
       playerArea.style.height = playerAreaHeight + 'px';
       projectArea.style.height = projectAreaHeight + 'px';
+      studioViewArea.style.height = '0px';
     }
     function loadProjectId(id) {
       showPlayerArea();
@@ -348,6 +334,18 @@
       if (file) {
         loadProjectFile(file);
       }
+    });
+
+    /** Example selector **/
+    var examples = querySelector('#examples');
+    var studioViewArea = querySelector('#studioview-area');
+    var studioView = new StudioView('6599218');
+    studioView.onselect = function(id) {
+      location.hash = '#' + id;
+    };
+    examples.addEventListener('click', function(e) {
+      studioViewArea.appendChild(studioView.root);
+      studioView.loadNextPage();
     });
 
     /** Dark Mode **/

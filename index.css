@@ -92,22 +92,6 @@ a:active {
   color: #58f;
 }
 
-.dropdown {
-  display: inline-block;
-  position: relative;
-}
-.dropdown > select {
-  -webkit-appearance: none;
-  font: inherit;
-  position: absolute;
-  opacity: 0;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-}
-
 .area {
   overflow: hidden;
   margin: 0 -24px;
@@ -270,4 +254,8 @@ code {
 #settings input:invalid {
   /* box-shadow is used to modify border and background color because the background/opacity/border styles don't work very well in chrome */
   box-shadow: inset 0 0 0 24px rgba(255, 0, 0, 0.2), 0 0 0 2px #ff6262;
+}
+
+#studioview-area {
+
 }
