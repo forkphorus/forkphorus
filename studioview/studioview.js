@@ -31,6 +31,11 @@
     this.ended = false;
     this.loadingPage = false;
 
+    this.tombstones = [];
+    for (var i = 0; i < StudioView.TOMBSTONE_COUNT; i++) {
+      this.tombstones.push(this.createTombstoneElement());
+    }
+
     this.root = document.createElement('div');
     this.root.className = 'studioview-root';
     this.projectList = document.createElement('div');
@@ -53,23 +58,26 @@
   /**
    * Add a project to the view.
    */
-  StudioView.prototype.addProject = function(id, title, author, thumbnail) {
-    var el = this.createProjectElement(id, title, author, thumbnail);
+  StudioView.prototype.addProject = function(id, title, author) {
+    var el = this.createProjectElement(id, title, author);
     this.projectList.appendChild(el);
   };
 
   /**
    * Create the HTML element for a project.
    */
-  StudioView.prototype.createProjectElement = function(id, title, author, thumbnail) {
-    var el = document.createElement('div');
+  StudioView.prototype.createProjectElement = function(id, title, author) {
+    var el = document.createElement('a');
     el.className = 'studioview-project';
     el.dataset.id = id;
+    el.title = title + ' by ' + author;
+    el.href = StudioView.PROJECT_PAGE.replace('$id', id);
 
     var thumbnailEl = document.createElement('div');
-    var thumbnailImg = this.createLazyImage(thumbnail, 144, 108);
+    var thumbnailSrc = StudioView.THUMBNAIL_SRC.replace('$id', id);
+    var thumbnailImg = this.createLazyImage(thumbnailSrc);
     thumbnailEl.appendChild(thumbnailImg);
-    thumbnailEl.className = 'studioview-thumb';
+    thumbnailEl.className = 'studioview-thumbnail';
     el.appendChild(thumbnailEl);
 
     var titleEl = document.createElement('div');
@@ -83,11 +91,12 @@
     el.appendChild(authorEl);
 
     el.addEventListener('click', this.handleClick.bind(this), true);
+    el.addEventListener('keydown', this.handleKeyDown.bind(this), true);
 
     return el;
   };
 
-  StudioView.prototype.createLazyImage = function(src, width, height) {
+  StudioView.prototype.createLazyImage = function(src) {
     var el = document.createElement('img');
     if (this.intersectionObserver) {
       this.intersectionObserver.observe(el);
@@ -97,8 +106,6 @@
       // then we just won't lazy load it
       el.src = src;
     }
-    el.width = width;
-    el.height = height;
     return el;
   }
 
@@ -115,13 +122,24 @@
     }
   };
 
-  StudioView.prototype.handleClick = function(e) {
-    var el = e.target;
+  StudioView.prototype.clickProject = function(el) {
     while (!el.classList.contains('studioview-project')) {
       el = el.parentNode;
     }
     var id = el.dataset.id;
     this.onselect(id);
+  }
+
+  StudioView.prototype.handleClick = function(e) {
+    e.preventDefault();
+    this.clickProject(e.target);
+  };
+
+  StudioView.prototype.handleKeyDown = function(e) {
+    e.preventDefault();
+    if (e.keyCode === 13) {
+      this.clickProject(e.target);
+    }
   };
 
   StudioView.prototype.handleIntersection = function(entries, observer) {
@@ -143,6 +161,38 @@
     return !this.loadingPage && !this.ended;
   };
 
+  StudioView.prototype.createTombstoneElement = function() {
+    var el = document.createElement('div');
+    el.className = 'studioview-tombstone';
+
+    var thumb = document.createElement('div');
+    thumb.className = 'studioview-tombstone-thumbnail';
+
+    var title = document.createElement('div');
+    title.className = 'studioview-tombstone-title';
+
+    var author = document.createElement('div');
+    author.className = 'studioview-tombstone-author';
+
+    el.appendChild(thumb);
+    el.appendChild(title);
+    el.appendChild(author);
+
+    return el;
+  };
+
+  StudioView.prototype.showTombstones = function() {
+    for (var i = 0; i < this.tombstones.length; i++) {
+      this.projectList.appendChild(this.tombstones[i]);
+    }
+  };
+
+  StudioView.prototype.hideTombstones = function() {
+    for (var i = 0; i < this.tombstones.length; i++) {
+      this.projectList.removeChild(this.tombstones[i]);
+    }
+  };
+
   /**
    * Begins loading the next page.
    */
@@ -153,6 +203,8 @@
     if (this.ended) {
       throw new Error('There are no more pages to load');
     }
+
+    this.showTombstones();
 
     this.root.setAttribute('loading', '');
     this.loadingPage = true;
@@ -184,8 +236,7 @@
         var id = project.getAttribute('data-id');
         var title = project.querySelector('.title').innerText.trim();
         var author = project.querySelector('.owner a').innerText.trim();
-        var thumbnail = project.querySelector('img').getAttribute('data-original');
-        this.addProject(id, title, author, thumbnail);
+        this.addProject(id, title, author);
       }
       this.onpageload();
       // All pages except the last have a next page button.
@@ -196,10 +247,12 @@
       this.page++;
       this.loadingPage = false;
       this.root.removeAttribute('loading');
+      this.hideTombstones();
     }.bind(this);
 
     xhr.onerror = function() {
       this.root.setAttribute('error', '');
+      this.hideTombstones();
       this.addErrorElement();
       this.ended = true;
     }.bind(this);
@@ -213,6 +266,18 @@
     this.root.setAttribute('theme', theme);
   };
 
+  StudioView.prototype.getStudioData = function(cb) {
+    var xhr = new XMLHttpRequest();
+
+    xhr.onload = function() {
+      cb(xhr.response);
+    };
+
+    xhr.open('GET', StudioView.STUDIO_DATA_API.replace('$id', this.studioId));
+    xhr.responseType = 'json';
+    xhr.send();
+  };
+
   StudioView.prototype.onselect = function(id) {};
   StudioView.prototype.onpageload = function() {};
   StudioView.prototype.onend = function() {};
@@ -220,8 +285,25 @@
   // This can be any URL that is a proxy for https://scratch.mit.edu/site-api/projects/in/5235006/1/
   // Understandably scratch does not set CORS headers on this URL, but a proxy can set it manually.
   // I setup a proxy @ scratch.garbomuffin.com that does this.
-  // $id will be replaced with the studio id, and $page with the page.
+  // $id will be replaced with the studio ID, and $page with the page.
   StudioView.STUDIO_API = 'https://scratch.garbomuffin.com/api/site-api/projects/in/$id/$page/';
+
+  // The URL to download thumbnails from.
+  // $id is replaced with the project's ID
+  StudioView.THUMBNAIL_SRC = 'https://cdn2.scratch.mit.edu/get_image/project/$id_144x108.png';
+
+  // This can be any URL that is a proxy for https://api.scratch.mit.edu/studios/5235006
+  // Scratch for some reason does not set CORS headers for the public API, but a proxy can set it.
+  // Similar to STUDIO_API, I have a proxy that does this.
+  // $id is replaced with the studio ID.
+  StudioView.STUDIO_DATA_API = 'https://scratch.garbomuffin.com/api/studios/$id';
+
+  // The URL for a project's page.
+  // $id is replaced with the project ID.
+  StudioView.PROJECT_PAGE = 'https://scratch.mit.edu/projects/$id/';
+
+  // The amount of "placeholders" or "tombstones" to insert before the next page loads.
+  StudioView.TOMBSTONE_COUNT = 30;
 
   scope.StudioView = StudioView;
 }(window));

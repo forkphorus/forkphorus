@@ -16,16 +16,7 @@
     if (location.origin === 'https://forkphorus.github.io' && location.pathname === '/forkphorus/') {
       location.pathname = '/';
     }
-  </script>
-</head>
 
-<body>
-
-  <div class="theme-select">
-    <a class="switch-theme">switch theme</a>
-  </div>
-
-  <script>
     // Apply dark mode right away to avoid a flash of white
     (function() {
       try {
@@ -39,6 +30,14 @@
     }());
   </script>
 
+</head>
+
+<body>
+
+  <div class="theme-select">
+    <a class="switch-theme">switch theme</a>
+  </div>
+
   <div id="app">
 
     <div class="area" id="title-area">
@@ -46,8 +45,10 @@
       <p>forkphorus runs Scratch 2 and Scratch 3 projects really fast by compiling them to JavaScript. Try it out by pasting a project ID or URL into the field below, by <a class="upload-button"><input id="upload-file-input" type="file" autocomplete="off" accept=".sb2,.sb3">selecting a project file</a>, dropping a file on the page, or <a id="examples">choosing an example</a>.</p>
     </div>
 
-    <div id="browser-not-supported"></div>
-    <div id="studioview-area"></div>
+    <div id="examples-container">
+      <div id="examples-view"></div>
+      <div id="examples-footer"></div>
+    </div>
 
     <div class="area" id="player-area"></div>
 
@@ -128,9 +129,7 @@
   <script>
 
   if (!window.P || !window.P.IO) {
-    document.getElementById('browser-not-supported').innerHTML = '<b>This browser is not supported.</b> Please use Mozilla Firefox, Google Chrome, or Microsoft Edge.';
-    document.getElementById('browser-not-supported').style.display = 'block';
-    throw new Error('Browser not supported.');
+    document.getElementById('title-area').innerHTML += '<p><b>This browser is not supported.</b> Please upgrade to Mozilla Firefox, Google Chrome, or Microsoft Edge.</p>'
   }
 
   (function() {
@@ -157,7 +156,8 @@
 
     /** Constants **/
     var PROJECT_PREFIX = 'https://scratch.mit.edu/projects/';
-    var STUDIO = '9323539';
+    var STUDIO_PREFIX = 'https://scratch.mit.edu/studios/';
+    var STUDIO = '5010630';
 
     /** Core Player Logic **/
     var titleArea = querySelector('#title-area');
@@ -235,15 +235,15 @@
       projectArea.style.height = '0px';
       urlInput.focus();
       player.cleanup();
-      if (studioView.visible) {
-        studioViewArea.style.height = studioViewAreaHeight + 'px';
+      if (studioView && studioView.visible) {
+        examplesContainer.style.height = studioViewAreaHeight + 'px';
       }
     }
     function showPlayerArea() {
       titleArea.style.height = '0px';
       playerArea.style.height = playerAreaHeight + 'px';
       projectArea.style.height = projectAreaHeight + 'px';
-      studioViewArea.style.height = '0px';
+      examplesContainer.style.height = '0px';
     }
     function loadProjectId(id) {
       showPlayerArea();
@@ -350,25 +350,40 @@
 
     /** Studio selector **/
     var examples = querySelector('#examples');
-    var studioViewArea = querySelector('#studioview-area');
-    studioViewArea.style.height = '0px';
-    var studioView = new StudioView(STUDIO);
-    var loadedStudioView = false;
-    studioView.visible = false;
-    studioView.onselect = function(id) {
-      location.hash = '#' + id;
-    };
+    var examplesContainer = querySelector('#examples-container');
+    var examplesViewContainer = querySelector('#examples-view');
+    var examplesFooter = querySelector('#examples-footer');
+    examplesContainer.style.height = '0px';
+    var studioView = null;
+    function initStudioView() {
+      studioView = new StudioView(STUDIO);
+      studioView.visible = false;
+      studioView.onselect = function(id) {
+        location.hash = '#' + id;
+      };
+      studioView.loadNextPage();
+      studioView.setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+
+      studioView.getStudioData(function(data) {
+        examplesFooter.appendChild(document.createTextNode('Scratch Studio - '));
+        var link = document.createElement('a');
+        link.innerText = data.title;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.href = STUDIO_PREFIX + data.id;
+        examplesFooter.appendChild(link);
+      });
+    }
     examples.addEventListener('click', function(e) {
+      if (!studioView) {
+        initStudioView();
+      }
       if (studioView.visible) {
-        studioViewArea.style.height = '0px';
-        studioViewArea.removeChild(studioView.root);
+        examplesContainer.style.height = '0px';
+        examplesViewContainer.removeChild(studioView.root);
       } else {
-        studioViewArea.appendChild(studioView.root);
-        studioViewArea.style.height = studioViewAreaHeight + 'px';
-        if (!loadedStudioView) {
-          studioView.loadNextPage();
-          loadedStudioView = true;
-        }
+        examplesViewContainer.appendChild(studioView.root);
+        examplesContainer.style.height = studioViewAreaHeight + 'px';
       }
       studioView.visible = !studioView.visible;
     });
@@ -388,7 +403,9 @@
         document.documentElement.classList.remove('dark');
       }
       player.setTheme(dark ? 'dark' : 'light');
-      studioView.setTheme(dark ? 'dark' : 'light');
+      if (studioView) {
+        studioView.setTheme(dark ? 'dark' : 'light');
+      }
       try {
         return localStorage.setItem('userPrefersDark', dark);
       } catch (e) {}

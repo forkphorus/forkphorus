@@ -260,11 +260,15 @@ code {
   box-shadow: inset 0 0 0 24px rgba(255, 0, 0, 0.2), 0 0 0 2px #ff6262;
 }
 
-#studioview-area {
+#examples-container {
+  height: 0;
   overflow: hidden;
   transition: height .2s;
 }
-
-#browser-not-supported {
-  display: none;
+#examples-view {
+  height: 300px;
+}
+#examples-footer {
+  font-size: 0.8em;
+  color: rgb(127, 127, 127);
 }

@@ -1,21 +1,20 @@
 .studioview-root {
   height: 100%;
 }
-.studioview-root[loading] .studioview-list {
-  opacity: 0.6;
-}
 .studioview-list {
   width: 100%;
   height: 100%;
   overflow-y: scroll;
 }
-.studioview-project {
+.studioview-project, .studioview-tombstone {
   display: inline-block;
-  cursor: pointer;
   width: 144px;
   padding: 3px;
   margin-bottom: 1px;
   margin-right: 1px;
+}
+.studioview-project {
+  text-decoration: none;
 }
 .studioview-root[theme=light] .studioview-project:hover {
   background: rgba(0, 0, 0, 0.1);
@@ -23,10 +22,23 @@
 .studioview-root[theme=dark] .studioview-project:hover {
   background: rgba(255, 255, 255, 0.1);
 }
-.studioview-title, .studioview-author {
+.studioview-root[theme=light] .studioview-project:active {
+  background: rgba(0, 0, 0, 0.2);
+}
+.studioview-root[theme=dark] .studioview-project:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+.studioview-root .studioview-title,
+.studioview-root .studioview-author {
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow: hidden;
+  color: black;
+  text-decoration: none;
+}
+.studioview-root[theme=dark] .studioview-title,
+.studioview-root[theme=dark] .studioview-author {
+  color: #ddd;
 }
 .studioview-title {
   font-size: 0.8em;
@@ -37,4 +49,42 @@
 }
 .studioview-error {
   width: 100%;
+}
+
+.studioview-thumbnail, .studioview-tombstone-thumbnail {
+  width: 144px;
+  height: 108px;
+}
+.studioview-thumbnail img {
+  width: 100%;
+  height: 100%;
+}
+
+.studioview-thumbnail {
+  background: rgba(0, 0, 0, 0.1);
+}
+.studioview-root[theme=dark] .studioview-thumbnail {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.studioview-tombstone-title,
+.studioview-tombstone-author,
+.studioview-tombstone-thumbnail {
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.1);
+}
+.studioview-root[theme=dark] .studioview-tombstone-title,
+.studioview-root[theme=dark] .studioview-tombstone-author,
+.studioview-root[theme=dark] .studioview-tombstone-thumbnail {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.studioview-tombstone-title {
+  width: 100%;
+  height: 20px;
+  margin-top: 2px;
+}
+.studioview-tombstone-author {
+  width: 50%;
+  height: 18px;
 }
