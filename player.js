@@ -16,6 +16,15 @@ P.Player = (function() {
   function Player(options) {
     options = options || {};
 
+    // The many listeners
+    this.onprogress = new P.utils.Slot();
+    this.onload = new P.utils.Slot();
+    this.onstartload = new P.utils.Slot();
+    this.oncleanup = new P.utils.Slot();
+    this.onidchange = new P.utils.Slot();
+    this.onthemechange = new P.utils.Slot();
+    this.onerror = new P.utils.Slot();
+
     this.root = document.createElement('div');
     this.root.className = 'player-root';
     this.setTheme(options.theme || 'light');
@@ -32,22 +41,6 @@ P.Player = (function() {
     this.stageId = 0;
     this.projectId = Player.UNKNOWN_ID;
     this.projectLink = Player.UNKNOWN_LINK;
-
-    this.totalTasks = 0;
-    this.finishedTasks = 0;
-
-    P.IO.progressHooks.new = function() {
-      this.totalTasks++;
-      this.updateProgressBar();
-    }.bind(this);
-    P.IO.progressHooks.end = function() {
-      this.finishedTasks++;
-      this.updateProgressBar();
-    }.bind(this);
-    P.IO.progressHooks.set = function(progress) {
-      this.setProgress(progress);
-    }.bind(this);
-    P.IO.progressHooks.error = this.handleError.bind(this);
 
     window.addEventListener('resize', this.updateFullscreen.bind(this));
     var fullscreenChange = function(e) {
@@ -280,49 +273,6 @@ P.Player = (function() {
     this.root.insertBefore(this.controlsEl, this.root.firstChild);
   };
 
-  /**
-   * Add a progress bar to the player.
-   * @typedef ProgressBarOptions
-   * @property {'controls'|HTMLElement} [position]
-   * @param {ProgressBarOptions} [options]
-   */
-  Player.prototype.addProgressBar = function(options) {
-    options = options || {};
-
-    this.progressBar = document.createElement('div');
-    this.progressBar.className = 'player-progress';
-    this.progressBar.setAttribute('theme', this.theme);
-
-    this.progressBarFill = document.createElement('div');
-    this.progressBarFill.className = 'player-progress-fill';
-    this.progressBar.appendChild(this.progressBarFill);
-
-    options.position = options.position || 'controls';
-
-    if (options.position === 'controls') {
-      if (!this.controlsEl) {
-        throw new Error('No controls to put progess bar in.');
-      }
-      this.controlsEl.appendChild(this.progressBar);
-    } else {
-      options.position.appendChild(this.progressBar);
-    }
-  };
-
-  Player.prototype.updateProgressBar = function() {
-    var progress = (this.finishedTasks / this.totalTasks) || 0;
-    this.setProgress(progress);
-  };
-
-  /**
-   * Set the size of the progress bar, if any.
-   * @param {number} progress The progress from 0-1
-   */
-  Player.prototype.setProgress = function(progress) {
-    if (this.progressBarFill) {
-      this.progressBarFill.style.width = (10 + progress * 90) + '%';
-    }
-  };
 
   /**
    * Changes the turbo state of the stage.
@@ -381,9 +331,7 @@ P.Player = (function() {
   Player.prototype.setTheme = function(theme) {
     this.theme = theme;
     this.root.setAttribute('theme', theme);
-    if (this.progressBar) {
-      this.progressBar.setAttribute('theme', theme);
-    }
+    this.onthemechange.emit(theme);
   };
 
   /**
@@ -535,9 +483,7 @@ P.Player = (function() {
     errorEl.className = 'player-error';
     errorEl.innerHTML = this.getString('bug.html').replace('$attrs', attributes);
     this.addErrorMessage(errorEl);
-    if (this.progressBar) {
-      this.progressBar.setAttribute('state', 'error');
-    }
+    this.onerror.emit(error);
   };
 
   /**
@@ -551,28 +497,33 @@ P.Player = (function() {
    * Completely remove the stage, and restore this player to an (almost) fresh state.
    */
   Player.prototype.cleanup = function() {
-    this.totalTasks = 0;
-    this.finishedTasks = 0;
     this.stageId++;
 
     if (this.stage) {
       this.stage.destroy();
-      while (this.player.firstChild) {
-        this.player.removeChild(this.player.firstChild);
-      }
     }
-
+    while (this.player.firstChild) {
+      this.player.removeChild(this.player.firstChild);
+    }
     if (this.fullscreen) {
       this.exitFullscreen();
     }
 
-    this.oncleanup();
+    this.oncleanup.emit();
   };
 
-  Player.prototype.startLoad = function() {
-    if (this.progressBar) {
-      this.progressBar.removeAttribute('state');
-    }
+  Player.prototype.startLoadingNewProject = function() {
+    this.cleanup();
+    this.onstartload.emit();
+  };
+
+  Player.prototype.getNewStageId = function() {
+    this.stageId++;
+    return this.stageId;
+  };
+
+  Player.prototype.isStageActive = function(id) {
+    return id === this.stageId;
   };
 
   /**
@@ -582,19 +533,15 @@ P.Player = (function() {
    * @property {boolean} [turbo]
    * @param {StageLoadOptions} [stageOptions]
    */
-  Player.prototype.loadStage = function(stage, stageOptions) {
+  Player.prototype.installStage = function(stage, stageOptions) {
     if (!stage) {
       throw new Error('Invalid stage.');
     }
-    if (this.progressBar) {
-      this.progressBar.setAttribute('state', 'loaded');
-    }
-    this.root.classList.add('player-has-stage');
     this.stage = stage;
     stage.runtime.handleError = this.handleError.bind(this);
     this.player.appendChild(stage.root);
     stage.focus();
-    this.onload(stage);
+    this.onload.emit(stage);
     this.start();
     stageOptions = stageOptions || {};
     if (stageOptions.start !== false) {
@@ -605,11 +552,65 @@ P.Player = (function() {
     }
   };
 
-  /**
-   * Gets the project.json for a project
-   */
-  Player.prototype.getProjectData = function(id) {
-    return new P.IO.JSONRequest(Player.PROJECT_DATA_API.replace('$id', id)).load();
+  Player.prototype._handleScratch3Loader = function(loader, stageId) {
+    loader.onprogress.subscribe(function(progress) {
+      if (this.isStageActive(stageId)) {
+        this.onprogress.emit(progress);
+      } else {
+        loader.abort();
+      }
+    }.bind(this));
+    return loader.load()
+      .then(function(stage) {
+        if (this.isStageActive(stageId)) return stage;
+        return null;
+      }.bind(this));
+  };
+
+  Player.prototype._handleScratch2Loader = function(stageId, load) {
+    var totalTasks = 0;
+    var finishedTasks = 0;
+    var update = function() {
+      if (this.isStageActive(stageId)) {
+        var progress = finishedTasks / totalTasks || 0;
+        this.onprogress.emit(progress);
+      }
+    }.bind(this);
+    P.sb2.hooks.newTask = function() {
+      totalTasks++;
+      update();
+    }.bind(this);
+    P.sb2.hooks.endTask = function() {
+      finishedTasks++;
+      update();
+    }.bind(this);
+    return load()
+      .then(function(stage) {
+        if (this.isStageActive(stageId)) return stage;
+        return null;
+      }.bind(this));
+  };
+
+  Player.prototype._loadScratch3 = function(stageId, data) {
+    var loader = new P.sb3.Scratch3Loader(data);
+    return this._handleScratch3Loader(loader, stageId);
+  };
+
+  Player.prototype._loadScratch3File = function(stageId, buffer) {
+    var loader = new P.sb3.SB3FileLoader(buffer);
+    return this._handleScratch3Loader(loader, stageId);
+  };
+
+  Player.prototype._loadScratch2 = function(stageId, data) {
+    return this._handleScratch2Loader(stageId, function() {
+      return P.sb2.loadProject(data);
+    });
+  };
+
+  Player.prototype._loadScratch2File = function(stageId, data) {
+    return this._handleScratch2Loader(stageId, function() {
+      return P.sb2.loadSB2Project(data);
+    });
   };
 
   /**
@@ -619,34 +620,81 @@ P.Player = (function() {
    * @returns {Promise}
    */
   Player.prototype.loadProjectId = function(id, options) {
-    this.cleanup();
-    this.startLoad();
-    var stageId = this.stageId;
+    this.startLoadingNewProject();
+    var stageId = this.getNewStageId();
+
     this.projectId = id;
     this.projectLink = Player.PROJECT_LINK.replace('$id', id);
-    return this.getProjectData(id)
-      .then(function(json) {
-        const type = Player.getProjectType(json);
-        if (type === 3) {
-          return (new P.sb3.Scratch3Loader(json)).load();
-        } else if (type === 2) {
-          return P.sb2.loadProject(json);
-        } else {
-          throw new Error('Unknown project type');
-        }
+
+    var blob;
+    return new P.IO.BlobRequest(Player.PROJECT_DATA_API.replace('$id', id)).load()
+      .then(function(data) {
+        blob = data;
+        return P.IO.readers.toText(blob);
       }.bind(this))
-      .then(function(stage){
-        if (this.stageId !== stageId) {
+      .then(function(text) {
+        if (!this.isStageActive(stageId)) {
           return null;
         }
-        this.loadStage(stage, options);
-        return stage;
+        try {
+          var json = JSON.parse(text);
+          var type = Player.getProjectType(json);
+          if (type === 3) {
+            return this._loadScratch3(stageId, json);
+          } else if (type === 2) {
+            return this._loadScratch2(stageId, json);
+          } else {
+            throw new Error('Project is valid JSON but of unknown type');
+          }
+        } catch (e) {
+          // not json, but could be a zipped sb2
+          return P.IO.readers.toArrayBuffer(blob)
+            .then(function(buffer) {
+              return P.sb2.loadSB2Project(buffer);
+            }.bind(this));
+        }
       }.bind(this))
-      .catch(this.handleError.bind(this))
+      .then(function(stage) {
+        if (stage) {
+          this.installStage(stage);
+        }
+      }.bind(this))
+      .catch(function(error) {
+        if (this.isStageActive(stageId)) {
+          this.handleError(error);
+        }
+      }.bind(this));
   };
 
+  Player.prototype.loadProjectBuffer = function(buffer, type, options) {
+    this.startLoadingNewProject();
+    var stageId = this.getNewStageId();
+
+    var startLoad = function() {
+      if (type === 'sb3') {
+        return this._loadScratch3File(stageId, buffer);
+      } else if (type === 'sb2') {
+        return this._loadScratch2File(stageId, buffer);
+      } else {
+        throw new Error('Unknown type: ' + type);
+      }
+    }.bind(this);
+
+    return startLoad()
+      .then(function(stage) {
+        if (stage) {
+          this.installStage(stage, options);
+        }
+      }.bind(this))
+      .catch(function(error) {
+        if (this.isStageActive(stageId)) {
+          this.handleError(error);
+        }
+      }.bind(this));
+  }
+
   /**
-   * Load a project from a File object
+   * Load a project from a File or Blob object
    * @param {File} file
    * @param {StageLoadOptions} options
    * @returns {Promise}
@@ -656,33 +704,84 @@ P.Player = (function() {
     if (!['sb2', 'sb3'].includes(extension)) {
       throw new Error('Unrecognized file extension: ' + extension);
     }
-    this.cleanup();
-    this.startLoad();
-    var stageId = this.stageId;
+
+    this.startLoadingNewProject();
+    // we won't use this one, we just want to invalidate anything else
+    this.getNewStageId();
+
     this.projectId = file.name;
     this.projectLink = file.name + '#local';
+
     return P.IO.readers.toArrayBuffer(file)
       .then(function(buffer) {
-        if (extension === 'sb2') {
-          return P.sb2.loadSB2Project(buffer);
-        } else if (extension === 'sb3') {
-          var loader = new P.sb3.SB3FileLoader(buffer);
-          return loader.load();
-        }
-      })
-      .then(function(stage) {
-        if (this.stageId !== stageId) {
-          return null;
-        }
-        this.loadStage(stage, options);
-        return stage;
-      }.bind(this))
-      .catch(this.handleError.bind(this));
+        return this.loadProjectBuffer(buffer, extension, options);
+      }.bind(this));
   };
-
-  Player.prototype.onload = function(stage) {};
-  Player.prototype.oncleanup = function() {};
 
   return Player;
 
+}());
+
+P.Player.ProgressBar = (function() {
+  /**
+   * @class
+   */
+  var ProgressBar = function() {
+    this.el = document.createElement('div');
+    this.el.className = 'player-progress';
+    this.bar = document.createElement('div');
+    this.bar.className = 'player-progress-fill';
+    this.el.appendChild(this.bar);
+  };
+
+  ProgressBar.prototype.setTheme = function(theme) {
+    this.el.setAttribute('theme', theme);
+  };
+
+  ProgressBar.prototype.setProgress = function(progress) {
+    this.bar.style.width = (10 + progress * 90) + '%';
+  };
+
+  /**
+   * Add this progress bar to a Player.
+   * @typedef ProgressBarOptions
+   * @property {'controls'|HTMLElement} [position]
+   * @param {P.Player} player
+   * @param {ProgressBarOptions} [options]
+   */
+  ProgressBar.prototype.addToPlayer = function(player, options) {
+    options = options || {};
+    options.position = options.position || 'controls';
+
+    this.setTheme(player.theme);
+
+    player.onthemechange.subscribe(this.setTheme.bind(this));
+
+    player.onstartload.subscribe(function() {
+      this.el.setAttribute('state', 'loading');
+      this.setProgress(0);
+    }.bind(this));
+
+    player.onprogress.subscribe(this.setProgress.bind(this));
+
+    player.oncleanup.subscribe(function() {
+      this.el.setAttribute('state', '');
+      this.bar.style.width = '0%';
+    }.bind(this));
+
+    player.onload.subscribe(function() {
+      this.el.setAttribute('state', 'loaded');
+    }.bind(this));
+
+    if (options.position === 'controls') {
+      if (!player.controlsEl) {
+        throw new Error('No controls to put progess bar in.');
+      }
+      player.controlsEl.appendChild(this.el);
+    } else {
+      options.position.appendChild(this.el);
+    }
+  };
+
+  return ProgressBar;
 }());

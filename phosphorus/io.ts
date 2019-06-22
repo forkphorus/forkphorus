@@ -3,18 +3,6 @@
 // IO helpers and hooks
 
 namespace P.IO {
-  // Hooks that can be replaced by other scripts to hook into progress reports.
-  export const progressHooks = {
-    // Indicates that a new task has started
-    new() {},
-    // Indicates that a task has finished successfully
-    end() {},
-    // Sets the current progress, should override new() and end()
-    set(p) {},
-    // Indicates an error has occurred and the project will likely fail to load
-    error(error) {},
-  };
-
   /**
    * Configuration of IO behavior
    */
@@ -57,13 +45,11 @@ namespace P.IO {
           this._load()
             .then((response) => {
               resolve(response);
-              progressHooks.end();
             })
             .catch((err) => {
               errorCallback(err);
             });
         };
-        progressHooks.new();
         attempt(() => {
           // try once more
           attempt((err) => {
@@ -76,10 +62,12 @@ namespace P.IO {
     protected abstract _load(): Promise<T>;
   }
 
-  abstract class XHRRequest<T> extends Request<T> {
+  export abstract class XHRRequest<T> extends Request<T> {
+    public xhr: XMLHttpRequest = new XMLHttpRequest();
+
     protected _load(): Promise<T> {
       return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
+        const xhr = this.xhr;
         xhr.addEventListener('load', () => {
           resolve(xhr.response);
         });
@@ -127,7 +115,7 @@ namespace P.IO {
       };
 
       fileReader.onprogress = function(progress) {
-        progressHooks.set(progress);
+
       };
 
       fileReader.readAsArrayBuffer(file);
@@ -150,7 +138,7 @@ namespace P.IO {
           reject('Could not read object');
         };
         fileReader.onprogress = function(progress) {
-          progressHooks.set(progress);
+
         };
         fileReader.readAsArrayBuffer(object);
       });
@@ -166,9 +154,25 @@ namespace P.IO {
           reject('Could not read object');
         };
         fileReader.onprogress = function(progress) {
-          progressHooks.set(progress);
+
         };
         fileReader.readAsDataURL(object);
+      });
+    }
+
+    export function toText(object: Readable): Promise<string> {
+      return new Promise((resolve, reject) => {
+        const fileReader = new FileReader();
+        fileReader.onloadend = function() {
+          resolve(fileReader.result as string);
+        };
+        fileReader.onerror = function(err) {
+          reject('Could not read object');
+        };
+        fileReader.onprogress = function(progress) {
+
+        };
+        fileReader.readAsText(object);
       });
     }
   }

@@ -1,3 +1,4 @@
+/* Core */
 .player-root {
   color: #000;
   height: auto;
@@ -6,7 +7,45 @@
   width: 480px;
   height: 360px;
 }
+/* Fullscreen */
+.player-root[fullscreen] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: #000;
+  height: 100%;
+  width: 100%;
+}
+.player-body-fullscreen {
+  background: #000;
+  overflow: hidden;
+}
+/* Errors */
+.player-root .player-error {
+  color: rgb(128, 0, 0);
+  font: 500 12px sans-serif;
+  padding: 8px;
+  transform: translateY(-100%);
+  background-color: rgba(255, 200, 200, 0.85);
+}
+.player-error a {
+  color: rgb(100, 0, 0);
+}
+.player-error a:active {
+  color: rgb(24, 67, 210);
+}
+.player-root[theme=dark] .player-error {
+  color: rgb(255, 91, 91);
+  background-color: rgba(40, 8, 8, 0.85);
+}
+.player-root[theme=dark] .player-error a {
+  color: rgb(210, 24, 24);
+}
+.player-root[theme=dark] .player-error a:active {
+  color: rgb(24, 120, 210);
+}
 
+/* Controls */
 .player-controls {
   position: relative;
   height: 32px;
@@ -42,7 +81,6 @@
 .player-root[theme=dark] .player-label {
   color: rgba(255, 255, 255, 0.6);
 }
-
 .player-controls .player-fullscreen-btn {
   float: left;
   background-position: -128px -0px;
@@ -92,19 +130,7 @@
   animation-duration: 0.5s;
 }
 
-.player-root[fullscreen] {
-  position: absolute;
-  top: 0;
-  left: 0;
-  background: #000;
-  height: 100%;
-  width: 100%;
-}
-.player-body-fullscreen {
-  background: #000;
-  overflow: hidden;
-}
-
+/* Progress Bar */
 .player-progress {
   width: 100%;
   height: 100%;
@@ -133,28 +159,4 @@
   top: 0;
   left: 0;
   z-index: -1;
-}
-
-.player-root .player-error {
-  color: rgb(128, 0, 0);
-  font: 500 12px sans-serif;
-  padding: 8px;
-  transform: translateY(-100%);
-  background-color: rgba(255, 200, 200, 0.85);
-}
-.player-error a {
-  color: rgb(100, 0, 0);
-}
-.player-error a:active {
-  color: rgb(24, 67, 210);
-}
-.player-root[theme=dark] .player-error {
-  color: rgb(255, 91, 91);
-  background-color: rgba(40, 8, 8, 0.85);
-}
-.player-root[theme=dark] .player-error a {
-  color: rgb(210, 24, 24);
-}
-.player-root[theme=dark] .player-error a:active {
-  color: rgb(24, 120, 210);
 }

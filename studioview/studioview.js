@@ -136,8 +136,8 @@
   };
 
   StudioView.prototype.handleKeyDown = function(e) {
-    e.preventDefault();
     if (e.keyCode === 13) {
+      e.preventDefault();
       this.clickProject(e.target);
     }
   };

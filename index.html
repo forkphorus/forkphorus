@@ -42,7 +42,7 @@
 
     <div class="area" id="title-area">
       <h1 class="title">forkphorus</h1>
-      <p>forkphorus runs Scratch 2 and Scratch 3 projects really fast by compiling them to JavaScript. Try it out by pasting a project ID or URL into the field below, by <a class="upload-button"><input id="upload-file-input" type="file" autocomplete="off" accept=".sb2,.sb3">selecting a project file</a>, dropping a file on the page, or <a id="examples">choosing an example</a>.</p>
+      <p>forkphorus runs Scratch 2 and Scratch 3 projects really fast by compiling them to JavaScript. Try it out by pasting a project ID or URL into the field below, <a class="upload-button"><input id="upload-file-input" type="file" autocomplete="off" accept=".sb2,.sb3">selecting a project file</a>, dropping a file on the page, or <a id="examples">choosing an example</a>.</p>
     </div>
 
     <div id="examples-container">
@@ -167,7 +167,7 @@
     var player = new P.Player();
     window.player = player;
     player.addControls({});
-    player.addProgressBar({
+    new P.Player.ProgressBar().addToPlayer(player, {
       position: querySelector('.url').parentNode,
     });
     playerArea.appendChild(player.root);
@@ -217,17 +217,27 @@
         }
       });
     });
+    var ignoreNextHashChange = false;
     window.addEventListener('hashchange', function() {
+      if (ignoreNextHashChange) {
+        ignoreNextHashChange = false;
+        return;
+      }
       var id = location.hash.substr(1);
       if (/^\d+$/.test(id)) {
         urlInput.value = PROJECT_PREFIX + id;
         loadProjectId(id);
       } else {
-        if (player.stage) {
-          hidePlayerArea();
-        }
+        hidePlayerArea();
       }
     });
+    // Change location.hash w/o firing the hashchange event (or at least make it cancel)
+    // Include the leading # in the provided hash
+    function silentChangeHash(hash) {
+      if (location.hash === hash) return;
+      ignoreNextHashChange = true;
+      location.hash = hash;
+    }
 
     function hidePlayerArea() {
       titleArea.style.height = titleAreaHeight + 'px';
@@ -251,7 +261,7 @@
       updateLinks();
     }
     function loadProjectFile(file) {
-      location.hash = file.name;
+      silentChangeHash('#' + file.name);
       showPlayerArea();
       player.loadProjectFile(file);
       updateLinks();
@@ -479,7 +489,7 @@
     setSelectedOptions(defaultOptions);
     optionFramerate.addEventListener('input', applySelectedOptions);
     optionUsername.addEventListener('input', applySelectedOptions);
-    player.onload = applySelectedOptions;
+    player.onload.subscribe(applySelectedOptions);
 
     if (initialId) {
       loadProjectId(initialId);

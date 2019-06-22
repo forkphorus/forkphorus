@@ -289,13 +289,17 @@ namespace P.audio {
   /**
    * Loads missing soundbank files, if any.
    */
-  export function loadSoundbank(): Promise<any> {
+  export function loadSB2Soundbank(hooks: P.sb2.Hooks): Promise<any> {
     if (!context) return Promise.resolve();
 
     const promises: any[] = [];
     for (const name in SOUNDBANK_FILES) {
       if (!soundbank[name]) {
-        promises.push(loadSoundbankBuffer(name));
+        hooks.newTask();
+        promises.push(loadSoundbankBuffer(name).then((v) => {
+          hooks.endTask();
+          return v;
+        }));
       }
     }
 

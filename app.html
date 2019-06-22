@@ -123,15 +123,17 @@
     var progressBarFill = document.querySelector('.progress-bar');
 
     var player = new P.Player();
-    player.progressBar = progressBar;
-    player.setProgress = function(progress) {
+
+    player.onprogress.subscribe(function(progress) {
       progressBarFill.style.width = (10 + progress * 90) + '%';
-    };
+    });
+
     player.addErrorMessage = function(e) {
       player.exitFullscreen();
       error.style.display = 'table';
       document.querySelector('.error-report').appendChild(e);
     };
+
     document.querySelector('.player').appendChild(player.root);
 
     if (P.config.hasTouchEvents) {
@@ -141,7 +143,7 @@
     }
 
     player.loadProjectId(projectId, { turbo: turbo })
-      .then(function(stage) {
+      .then(function() {
         player.fullscreenPadding = 0;
         if (!fullscreen) {
           player.fullscreenMaxWidth = 480;

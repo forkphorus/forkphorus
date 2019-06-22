@@ -606,6 +606,11 @@ namespace P.sb3 {
   // Implementations are expected to set `this.projectData` to something before calling super.load()
   export abstract class BaseSB3Loader {
     protected projectData: SB3Project;
+    private totalTasks: number = 0;
+    private finishedTasks: number = 0;
+    private requests: XMLHttpRequest[] = [];
+    public aborted: boolean = false;
+    public onprogress = new P.utils.Slot<number>();
 
     protected abstract getAsText(path: string): Promise<string>;
     protected abstract getAsArrayBuffer(path: string): Promise<ArrayBuffer>;
@@ -736,7 +741,20 @@ namespace P.sb3 {
     }
 
     loadFonts() {
-      return P.fonts.loadFontSet(P.fonts.scratch3);
+      const fonts = {
+        'Marker': '/fonts/Knewave-Regular.woff',
+        'Handwriting': '/fonts/Handlee-Regular.woff',
+        'Pixel': '/fonts/Grand9K-Pixel.ttf',
+        'Curly': '/fonts/Griffy-Regular.woff',
+        'Serif': '/fonts/SourceSerifPro-Regular.woff',
+        'Sans Serif': '/fonts/NotoSans-Regular.woff',
+        'Scratch': '/fonts/Scratch.ttf',
+      };
+      const promises: Promise<unknown>[] = [];
+      for (const family in fonts) {
+        promises.push(this.promiseTask(P.utils.settled(P.fonts.loadLocalFont(family, fonts[family]))));
+      }
+      return Promise.all(promises);
     }
 
     load() {
@@ -754,6 +772,9 @@ namespace P.sb3 {
       return this.loadFonts()
         .then(() => Promise.all(targets.map((data) => this.loadTarget(data))))
         .then((targets: any) => {
+          if (this.aborted) {
+            throw new Error('Loading aborting.');
+          }
           const stage = targets.filter((i) => i.isStage)[0] as Scratch3Stage;
           if (!stage) {
             throw new Error('no stage object');
@@ -773,6 +794,47 @@ namespace P.sb3 {
           return stage;
         });
     }
+
+    abort() {
+      this.aborted = true;
+      for (const request of this.requests) {
+        request.abort();
+      }
+    }
+
+    newTask() {
+      if (this.aborted) {
+        throw new Error('Loading aborted.');
+      }
+      this.totalTasks++;
+      this.onprogress.emit(this.progress);
+    }
+
+    endTask() {
+      if (this.aborted) {
+        throw new Error('Loading aborted.');
+      }
+      this.finishedTasks++;
+      this.onprogress.emit(this.progress);
+    }
+
+    requestTask<T>(request: P.IO.XHRRequest<T>): Promise<T> {
+      this.requests.push(request.xhr);
+      return this.promiseTask(request.load());
+    }
+
+    promiseTask<T>(promise: Promise<T>): Promise<T> {
+      this.newTask();
+      return promise
+        .then((value) => {
+          this.endTask();
+          return value;
+        });
+    }
+
+    get progress() {
+      return this.finishedTasks / this.totalTasks || 0;
+    }
   }
 
   // Loads a .sb3 file
@@ -786,44 +848,43 @@ namespace P.sb3 {
     }
 
     getAsText(path: string) {
-      P.IO.progressHooks.new();
+      this.newTask();
       return this.zip.file(path).async('text')
         .then((response) => {
-          P.IO.progressHooks.end();
+          this.endTask();
           return response;
         });
     }
 
     getAsArrayBuffer(path: string) {
-      P.IO.progressHooks.new();
+      this.newTask();
       return this.zip.file(path).async('arrayBuffer')
         .then((response) => {
-          P.IO.progressHooks.end();
+          this.endTask();
           return response;
         });
     }
 
     getAsBase64(path: string) {
-      P.IO.progressHooks.new();
+      this.newTask();
       return this.zip.file(path).async('base64')
         .then((response) => {
-          P.IO.progressHooks.end();
+          this.endTask();
           return response;
         });
     }
 
     getAsImage(path: string, format: string) {
-      P.IO.progressHooks.new();
+      this.newTask();
       return this.getAsBase64(path)
         .then((imageData) => {
           return new Promise<HTMLImageElement>((resolve, reject) => {
             const image = new Image();
-            image.onload = function() {
-              P.IO.progressHooks.end();
+            image.onload = () => {
+              this.endTask();
               resolve(image);
             };
-            image.onerror = function(error) {
-              P.IO.progressHooks.error(error);
+            image.onerror = (error) => {
               reject('Failed to load image: ' + path + '.' + format);
             };
             image.src = 'data:image/' + format + ';base64,' + imageData;
@@ -860,23 +921,22 @@ namespace P.sb3 {
     }
 
     getAsText(path: string) {
-      return new P.IO.TextRequest(ASSETS_API.replace('$md5ext', path)).load();
+      return this.requestTask(new P.IO.TextRequest(ASSETS_API.replace('$md5ext', path)));
     }
 
     getAsArrayBuffer(path: string) {
-      return new P.IO.ArrayBufferRequest(ASSETS_API.replace('$md5ext', path)).load();
+      return this.requestTask(new P.IO.ArrayBufferRequest(ASSETS_API.replace('$md5ext', path)));
     }
 
     getAsImage(path: string) {
-      P.IO.progressHooks.new();
+      this.newTask();
       return new Promise<HTMLImageElement>((resolve, reject) => {
         const image = new Image();
-        image.onload = function() {
-          P.IO.progressHooks.end();
+        image.onload = () => {
+          this.endTask();
           resolve(image);
         };
-        image.onerror = function(err) {
-          P.IO.progressHooks.error(err);
+        image.onerror = (err) => {
           reject('Failed to load image: ' + image.src);
         };
         image.crossOrigin = 'anonymous';
@@ -886,7 +946,7 @@ namespace P.sb3 {
 
     load() {
       if (this.projectId) {
-        return new P.IO.JSONRequest(P.config.PROJECT_API.replace('$id', '' + this.projectId)).load()
+        return this.requestTask(new P.IO.JSONRequest(P.config.PROJECT_API.replace('$id', '' + this.projectId)))
           .then((data) => {
             this.projectData = data;
             return super.load();
