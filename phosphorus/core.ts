@@ -1212,6 +1212,7 @@ namespace P.core {
       clone.penLightness = this.penLightness;
       clone.penSize = this.penSize;
       clone.isPenDown = this.isPenDown;
+      clone.watchers = this.watchers;
 
       return clone;
     }
