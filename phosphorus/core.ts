@@ -528,9 +528,6 @@ namespace P.core {
 
       this.root = document.createElement('div');
       this.root.classList.add('forkphorus-root');
-      this.root.style.position = 'absolute';
-      this.root.style.overflow = 'hidden';
-      this.root.style.userSelect = 'none';
 
       const scale = P.config.scale;
 

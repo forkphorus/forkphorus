@@ -8,6 +8,24 @@ namespace P.sb2 {
   const ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
   let zipArchive: JSZip.Zip;
 
+  export interface Hooks {
+    newTask(): void;
+    endTask(): void;
+  }
+
+  export const hooks: Hooks = {
+    newTask() {},
+    endTask() {},
+  };
+
+  function promiseTask<T>(pr: Promise<T>): Promise<T> {
+    hooks.newTask();
+    return pr.then((v) => {
+      hooks.endTask();
+      return v;
+    });
+  }
+
   export class Scratch2VariableWatcher extends P.core.Watcher {
     private cmd: string;
     private type: string;
@@ -353,14 +371,14 @@ namespace P.sb2 {
 
   // loads an image from a URL
   export function loadImage(url): Promise<HTMLImageElement> {
-    P.IO.progressHooks.new();
+    hooks.newTask();
 
     var image = new Image();
     image.crossOrigin = 'anonymous';
 
     return new Promise((resolve, reject) => {
       image.onload = function() {
-        P.IO.progressHooks.end();
+        hooks.endTask();
         resolve(image);
       };
       image.onerror = function(err) {
@@ -390,7 +408,7 @@ namespace P.sb2 {
 
     return loadFonts()
       .then(() => Promise.all<any>([
-        P.audio.loadSoundbank(),
+        P.audio.loadSB2Soundbank(hooks),
         loadArray(data.children, loadObject).then((c) => children = c),
         loadBase(data, true).then((s) => stage = s),
       ]))
@@ -476,11 +494,11 @@ namespace P.sb2 {
 
   export function loadFonts(): Promise<void> {
     return Promise.all([
-      P.utils.settled(P.fonts.loadWebFont('Donegal One')),
-      P.utils.settled(P.fonts.loadWebFont('Gloria Hallelujah')),
-      P.utils.settled(P.fonts.loadWebFont('Mystery Quest')),
-      P.utils.settled(P.fonts.loadWebFont('Permanent Marker')),
-      P.utils.settled(P.fonts.loadWebFont('Scratch')),
+      promiseTask(P.utils.settled(P.fonts.loadWebFont('Donegal One'))),
+      promiseTask(P.utils.settled(P.fonts.loadWebFont('Gloria Hallelujah'))),
+      promiseTask(P.utils.settled(P.fonts.loadWebFont('Mystery Quest'))),
+      promiseTask(P.utils.settled(P.fonts.loadWebFont('Permanent Marker'))),
+      promiseTask(P.utils.settled(P.fonts.loadWebFont('Scratch'))),
     ]).then(() => undefined);
   }
 
@@ -663,7 +681,7 @@ namespace P.sb2 {
         return f!.async('text')
           .then((text) => loadSVG(text));
       } else {
-        return new P.IO.TextRequest(ASSET_URL + hash + '/get/').load()
+        return promiseTask(new P.IO.TextRequest(ASSET_URL + hash + '/get/').load())
           .then((text) => loadSVG(text));
       }
     } else if (ext === 'wav') {
@@ -671,7 +689,7 @@ namespace P.sb2 {
         return f!.async('arrayBuffer')
           .then((buffer) => P.audio.decodeAudio(buffer));
       } else {
-        return new P.IO.ArrayBufferRequest(ASSET_URL + hash + '/get/').load()
+        return promiseTask(new P.IO.ArrayBufferRequest(ASSET_URL + hash + '/get/').load())
           .then((buffer) => P.audio.decodeAudio(buffer));
       }
     } else {

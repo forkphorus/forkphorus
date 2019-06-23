@@ -322,18 +322,22 @@ var P;
         /**
          * Loads missing soundbank files, if any.
          */
-        function loadSoundbank() {
+        function loadSB2Soundbank(hooks) {
             if (!audio.context)
                 return Promise.resolve();
             const promises = [];
             for (const name in SOUNDBANK_FILES) {
                 if (!soundbank[name]) {
-                    promises.push(loadSoundbankBuffer(name));
+                    hooks.newTask();
+                    promises.push(loadSoundbankBuffer(name).then((v) => {
+                        hooks.endTask();
+                        return v;
+                    }));
                 }
             }
             return Promise.all(promises);
         }
-        audio.loadSoundbank = loadSoundbank;
+        audio.loadSB2Soundbank = loadSB2Soundbank;
         /**
          * Loads a soundbank file
          */
@@ -1892,9 +1896,6 @@ var P;
                 this.keys.any = 0;
                 this.root = document.createElement('div');
                 this.root.classList.add('forkphorus-root');
-                this.root.style.position = 'absolute';
-                this.root.style.overflow = 'hidden';
-                this.root.style.userSelect = 'none';
                 const scale = P.config.scale;
                 if (P.config.useWebGL) {
                     this.renderer = new P.renderer.WebGLProjectRenderer(this);
@@ -2898,6 +2899,7 @@ var P;
                 return url;
             });
         }
+        fonts_1.loadLocalFont = loadLocalFont;
         /**
          * Gets an already loaded and cached font
          */
@@ -2907,14 +2909,6 @@ var P;
             }
             return fontFamilyCache[fontFamily];
         }
-        function loadFontSet(fonts) {
-            const promises = [];
-            for (const family in fonts) {
-                promises.push(P.utils.settled(loadLocalFont(family, fonts[family])));
-            }
-            return Promise.all(promises);
-        }
-        fonts_1.loadFontSet = loadFontSet;
         function getCSSFontFace(fontFamily, src) {
             return `@font-face { font-family: "${fontFamily}"; src: url("${src}"); }`;
         }
@@ -2955,17 +2949,6 @@ var P;
 (function (P) {
     var IO;
     (function (IO) {
-        // Hooks that can be replaced by other scripts to hook into progress reports.
-        IO.progressHooks = {
-            // Indicates that a new task has started
-            new() { },
-            // Indicates that a task has finished successfully
-            end() { },
-            // Sets the current progress, should override new() and end()
-            set(p) { },
-            // Indicates an error has occurred and the project will likely fail to load
-            error(error) { },
-        };
         /**
          * Configuration of IO behavior
          */
@@ -2999,13 +2982,11 @@ var P;
                         this._load()
                             .then((response) => {
                             resolve(response);
-                            IO.progressHooks.end();
                         })
                             .catch((err) => {
                             errorCallback(err);
                         });
                     };
-                    IO.progressHooks.new();
                     attempt(() => {
                         // try once more
                         attempt((err) => {
@@ -3017,9 +2998,13 @@ var P;
         }
         IO.Request = Request;
         class XHRRequest extends Request {
+            constructor() {
+                super(...arguments);
+                this.xhr = new XMLHttpRequest();
+            }
             _load() {
                 return new Promise((resolve, reject) => {
-                    const xhr = new XMLHttpRequest();
+                    const xhr = this.xhr;
                     xhr.addEventListener('load', () => {
                         resolve(xhr.response);
                     });
@@ -3029,12 +3014,13 @@ var P;
                     xhr.addEventListener('abort', () => {
                         reject(`Error while downloading ${this.url} (onabort) (${xhr.status} ${xhr.statusText})`);
                     });
-                    xhr.responseType = this.type;
                     xhr.open('GET', this.url);
+                    xhr.responseType = this.type;
                     xhr.send();
                 });
             }
         }
+        IO.XHRRequest = XHRRequest;
         class ArrayBufferRequest extends XHRRequest {
             get type() { return 'arraybuffer'; }
         }
@@ -3064,7 +3050,6 @@ var P;
                     reject('Failed to load file');
                 };
                 fileReader.onprogress = function (progress) {
-                    IO.progressHooks.set(progress);
                 };
                 fileReader.readAsArrayBuffer(file);
             });
@@ -3085,7 +3070,6 @@ var P;
                         reject('Could not read object');
                     };
                     fileReader.onprogress = function (progress) {
-                        IO.progressHooks.set(progress);
                     };
                     fileReader.readAsArrayBuffer(object);
                 });
@@ -3101,12 +3085,26 @@ var P;
                         reject('Could not read object');
                     };
                     fileReader.onprogress = function (progress) {
-                        IO.progressHooks.set(progress);
                     };
                     fileReader.readAsDataURL(object);
                 });
             }
             readers.toDataURL = toDataURL;
+            function toText(object) {
+                return new Promise((resolve, reject) => {
+                    const fileReader = new FileReader();
+                    fileReader.onloadend = function () {
+                        resolve(fileReader.result);
+                    };
+                    fileReader.onerror = function (err) {
+                        reject('Could not read object');
+                    };
+                    fileReader.onprogress = function (progress) {
+                    };
+                    fileReader.readAsText(object);
+                });
+            }
+            readers.toText = toText;
         })(readers = IO.readers || (IO.readers = {}));
     })(IO = P.IO || (P.IO = {}));
 })(P || (P = {}));
@@ -3947,20 +3945,6 @@ var P;
             return 0 /* Normal */;
         }
         utils.parseRotationStyle = parseRotationStyle;
-        // Determines the type of a project with its project.json data
-        function projectType(data) {
-            if (typeof data !== 'object' || data === null) {
-                return null;
-            }
-            if ('targets' in data) {
-                return 3;
-            }
-            if ('objName' in data) {
-                return 2;
-            }
-            return null;
-        }
-        utils.projectType = projectType;
         /**
          * Converts an RGB color to an HSL color
          * @param rgb RGB Color
@@ -4014,6 +3998,20 @@ var P;
             });
         }
         utils.settled = settled;
+        class Slot {
+            constructor() {
+                this._listeners = [];
+            }
+            subscribe(fn) {
+                this._listeners.push(fn);
+            }
+            emit(value) {
+                for (const listener of this._listeners) {
+                    listener(value);
+                }
+            }
+        }
+        utils.Slot = Slot;
     })(utils = P.utils || (P.utils = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
@@ -4027,6 +4025,17 @@ var P;
     (function (sb2) {
         const ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
         let zipArchive;
+        sb2.hooks = {
+            newTask() { },
+            endTask() { },
+        };
+        function promiseTask(pr) {
+            sb2.hooks.newTask();
+            return pr.then((v) => {
+                sb2.hooks.endTask();
+                return v;
+            });
+        }
         class Scratch2VariableWatcher extends P.core.Watcher {
             constructor(stage, targetName, data) {
                 super(stage, targetName);
@@ -4335,12 +4344,12 @@ var P;
         sb2.Scratch2Sprite = Scratch2Sprite;
         // loads an image from a URL
         function loadImage(url) {
-            P.IO.progressHooks.new();
+            sb2.hooks.newTask();
             var image = new Image();
             image.crossOrigin = 'anonymous';
             return new Promise((resolve, reject) => {
                 image.onload = function () {
-                    P.IO.progressHooks.end();
+                    sb2.hooks.endTask();
                     resolve(image);
                 };
                 image.onerror = function (err) {
@@ -4369,7 +4378,7 @@ var P;
             var stage;
             return loadFonts()
                 .then(() => Promise.all([
-                P.audio.loadSoundbank(),
+                P.audio.loadSB2Soundbank(sb2.hooks),
                 loadArray(data.children, loadObject).then((c) => children = c),
                 loadBase(data, true).then((s) => stage = s),
             ]))
@@ -4446,11 +4455,11 @@ var P;
         sb2.loadArray = loadArray;
         function loadFonts() {
             return Promise.all([
-                P.utils.settled(P.fonts.loadWebFont('Donegal One')),
-                P.utils.settled(P.fonts.loadWebFont('Gloria Hallelujah')),
-                P.utils.settled(P.fonts.loadWebFont('Mystery Quest')),
-                P.utils.settled(P.fonts.loadWebFont('Permanent Marker')),
-                P.utils.settled(P.fonts.loadWebFont('Scratch')),
+                promiseTask(P.utils.settled(P.fonts.loadWebFont('Donegal One'))),
+                promiseTask(P.utils.settled(P.fonts.loadWebFont('Gloria Hallelujah'))),
+                promiseTask(P.utils.settled(P.fonts.loadWebFont('Mystery Quest'))),
+                promiseTask(P.utils.settled(P.fonts.loadWebFont('Permanent Marker'))),
+                promiseTask(P.utils.settled(P.fonts.loadWebFont('Scratch'))),
             ]).then(() => undefined);
         }
         sb2.loadFonts = loadFonts;
@@ -4632,7 +4641,7 @@ var P;
                         .then((text) => loadSVG(text));
                 }
                 else {
-                    return new P.IO.TextRequest(ASSET_URL + hash + '/get/').load()
+                    return promiseTask(new P.IO.TextRequest(ASSET_URL + hash + '/get/').load())
                         .then((text) => loadSVG(text));
                 }
             }
@@ -4642,7 +4651,7 @@ var P;
                         .then((buffer) => P.audio.decodeAudio(buffer));
                 }
                 else {
-                    return new P.IO.ArrayBufferRequest(ASSET_URL + hash + '/get/').load()
+                    return promiseTask(new P.IO.ArrayBufferRequest(ASSET_URL + hash + '/get/').load())
                         .then((buffer) => P.audio.decodeAudio(buffer));
                 }
             }
@@ -6097,6 +6106,13 @@ var P;
         // Needs to be extended to add file loading methods.
         // Implementations are expected to set `this.projectData` to something before calling super.load()
         class BaseSB3Loader {
+            constructor() {
+                this.totalTasks = 0;
+                this.finishedTasks = 0;
+                this.requests = [];
+                this.aborted = false;
+                this.onprogress = new P.utils.Slot();
+            }
             getSVG(path) {
                 return this.getAsText(path)
                     .then((source) => {
@@ -6206,7 +6222,20 @@ var P;
                 });
             }
             loadFonts() {
-                return P.fonts.loadFontSet(P.fonts.scratch3);
+                const fonts = {
+                    'Marker': '/fonts/Knewave-Regular.woff',
+                    'Handwriting': '/fonts/Handlee-Regular.woff',
+                    'Pixel': '/fonts/Grand9K-Pixel.ttf',
+                    'Curly': '/fonts/Griffy-Regular.woff',
+                    'Serif': '/fonts/SourceSerifPro-Regular.woff',
+                    'Sans Serif': '/fonts/NotoSans-Regular.woff',
+                    'Scratch': '/fonts/Scratch.ttf',
+                };
+                const promises = [];
+                for (const family in fonts) {
+                    promises.push(this.promiseTask(P.utils.settled(P.fonts.loadLocalFont(family, fonts[family]))));
+                }
+                return Promise.all(promises);
             }
             load() {
                 if (!this.projectData) {
@@ -6221,6 +6250,9 @@ var P;
                 return this.loadFonts()
                     .then(() => Promise.all(targets.map((data) => this.loadTarget(data))))
                     .then((targets) => {
+                    if (this.aborted) {
+                        throw new Error('Loading aborting.');
+                    }
                     const stage = targets.filter((i) => i.isStage)[0];
                     if (!stage) {
                         throw new Error('no stage object');
@@ -6238,6 +6270,41 @@ var P;
                     return stage;
                 });
             }
+            abort() {
+                this.aborted = true;
+                for (const request of this.requests) {
+                    request.abort();
+                }
+            }
+            newTask() {
+                if (this.aborted) {
+                    throw new Error('Loading aborted.');
+                }
+                this.totalTasks++;
+                this.onprogress.emit(this.progress);
+            }
+            endTask() {
+                if (this.aborted) {
+                    throw new Error('Loading aborted.');
+                }
+                this.finishedTasks++;
+                this.onprogress.emit(this.progress);
+            }
+            requestTask(request) {
+                this.requests.push(request.xhr);
+                return this.promiseTask(request.load());
+            }
+            promiseTask(promise) {
+                this.newTask();
+                return promise
+                    .then((value) => {
+                    this.endTask();
+                    return value;
+                });
+            }
+            get progress() {
+                return this.finishedTasks / this.totalTasks || 0;
+            }
         }
         sb3.BaseSB3Loader = BaseSB3Loader;
         // Loads a .sb3 file
@@ -6247,41 +6314,40 @@ var P;
                 this.buffer = buffer;
             }
             getAsText(path) {
-                P.IO.progressHooks.new();
+                this.newTask();
                 return this.zip.file(path).async('text')
                     .then((response) => {
-                    P.IO.progressHooks.end();
+                    this.endTask();
                     return response;
                 });
             }
             getAsArrayBuffer(path) {
-                P.IO.progressHooks.new();
+                this.newTask();
                 return this.zip.file(path).async('arrayBuffer')
                     .then((response) => {
-                    P.IO.progressHooks.end();
+                    this.endTask();
                     return response;
                 });
             }
             getAsBase64(path) {
-                P.IO.progressHooks.new();
+                this.newTask();
                 return this.zip.file(path).async('base64')
                     .then((response) => {
-                    P.IO.progressHooks.end();
+                    this.endTask();
                     return response;
                 });
             }
             getAsImage(path, format) {
-                P.IO.progressHooks.new();
+                this.newTask();
                 return this.getAsBase64(path)
                     .then((imageData) => {
                     return new Promise((resolve, reject) => {
                         const image = new Image();
-                        image.onload = function () {
-                            P.IO.progressHooks.end();
+                        image.onload = () => {
+                            this.endTask();
                             resolve(image);
                         };
-                        image.onerror = function (error) {
-                            P.IO.progressHooks.error(error);
+                        image.onerror = (error) => {
                             reject('Failed to load image: ' + path + '.' + format);
                         };
                         image.src = 'data:image/' + format + ';base64,' + imageData;
@@ -6315,21 +6381,20 @@ var P;
                 }
             }
             getAsText(path) {
-                return new P.IO.TextRequest(sb3.ASSETS_API.replace('$md5ext', path)).load();
+                return this.requestTask(new P.IO.TextRequest(sb3.ASSETS_API.replace('$md5ext', path)));
             }
             getAsArrayBuffer(path) {
-                return new P.IO.ArrayBufferRequest(sb3.ASSETS_API.replace('$md5ext', path)).load();
+                return this.requestTask(new P.IO.ArrayBufferRequest(sb3.ASSETS_API.replace('$md5ext', path)));
             }
             getAsImage(path) {
-                P.IO.progressHooks.new();
+                this.newTask();
                 return new Promise((resolve, reject) => {
                     const image = new Image();
-                    image.onload = function () {
-                        P.IO.progressHooks.end();
+                    image.onload = () => {
+                        this.endTask();
                         resolve(image);
                     };
-                    image.onerror = function (err) {
-                        P.IO.progressHooks.error(err);
+                    image.onerror = (err) => {
                         reject('Failed to load image: ' + image.src);
                     };
                     image.crossOrigin = 'anonymous';
@@ -6338,7 +6403,7 @@ var P;
             }
             load() {
                 if (this.projectId) {
-                    return new P.IO.JSONRequest(P.config.PROJECT_API.replace('$id', '' + this.projectId)).load()
+                    return this.requestTask(new P.IO.JSONRequest(P.config.PROJECT_API.replace('$id', '' + this.projectId)))
                         .then((data) => {
                         this.projectData = data;
                         return super.load();

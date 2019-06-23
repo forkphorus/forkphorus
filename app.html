@@ -2,12 +2,13 @@
 <html>
 
 <head>
-  <meta charset=utf-8>
-  <meta name=viewport content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name=apple-mobile-web-app-capable content=yes>
-  <meta name=apple-mobile-web-app-status-bar-style content=black>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <title>forkphorus</title>
-  <link rel=stylesheet href=phosphorus.css>
+  <link rel="stylesheet" href="phosphorus.css">
+  <link rel="stylesheet" href="player.css">
 
   <style>
     body {
@@ -66,19 +67,19 @@
 </head>
 
 <body>
-  <div class=player></div>
-  <div class=splash>
+  <div class="player"></div>
+  <div class="splash">
     <div>
       <h1>forkphorus</h1>
-      <div class=progress>
-        <div class=progress-bar></div>
+      <div class="progress">
+        <div class="progress-bar"></div>
       </div>
     </div>
   </div>
-  <div class=error>
+  <div class="error">
     <div>
       <h1>forkphorus</h1>
-      <p>An error has occurred. <a id=error-bug-link href=https://github.com/forkphorus/forkphorus/issues/new>Click here</a> to file a bug report.</p>
+      <p class="error-report"></p>
     </div>
   </div>
 
@@ -88,15 +89,15 @@
   <script src="lib/rgbcolor.js"></script>
   <script src="lib/canvg.min.js"></script>
   <script src="phosphorus.dist.js"></script>
+  <script src="player.js"></script>
 
   <script>
   (function () {
     'use strict';
 
-    var stage;
     var projectId = 17088932;
     var turbo = false;
-    var fullScreen = true;
+    var fullscreen = true;
 
     var params = location.search.substr(1).split('&');
     params.forEach(function(p) {
@@ -110,87 +111,44 @@
             turbo = parts[1] !== 'false';
             break;
           case 'full-screen':
-            fullScreen = parts[1] !== 'false';
+            fullscreen = parts[1] !== 'false';
             break;
         }
       }
     });
 
     var splash = document.querySelector('.splash');
-    var progressBar = document.querySelector('.progress-bar');
     var error = document.querySelector('.error');
-    var bugLink = document.querySelector('#error-bug-link');
-    var player = document.querySelector('.player');
+    var progressBar = document.querySelector('.progress');
+    var progressBarFill = document.querySelector('.progress-bar');
 
-    var stage;
-
-    function layout() {
-      if (!stage) return;
-      var w = Math.min(window.innerWidth, window.innerHeight / .75);
-      if (!fullScreen) w = Math.min(w, 480);
-      var h = w * .75;
-      player.style.left = (window.innerWidth - w) / 2 + 'px';
-      player.style.top = (window.innerHeight - h) / 2 + 'px';
-      stage.setZoom(w / 480);
-      stage.draw();
-    }
-
-    function showError(e) {
-      // See player.js
+    var player = new P.Player();
+    var errorHandler = new P.Player.ErrorHandler(player, {
+      container: document.querySelector('.error-report'),
+    });
+    player.onprogress.subscribe(function(progress) {
+      progressBarFill.style.width = (10 + progress * 90) + '%';
+    });
+    player.onerror.subscribe(function(e) {
+      player.exitFullscreen();
       error.style.display = 'table';
-      bugLink.href = createBugLink("Describe what you were doing to cause this error:", '```\n' + P.utils.stringifyError(e) + '\n```');
-      console.error(e.stack);
-    }
-
-    function createBugLink(before, after) {
-      // See player.js
-      var url = 'https://scratch.mit.edu/projects/' + projectId + '/';
-      var baseBody = '\n\n\n----\nProject URL: ' + url + '\nProject ID: ' + projectId + '\n' + location.href + '\n' + navigator.userAgent + '\n';
-      return 'https://github.com/forkphorus/forkphorus/issues/new?title=' + encodeURIComponent(url) + '&body=' + encodeURIComponent(before + baseBody + after) + '&labels=bug';
-    }
-
-    window.addEventListener('resize', layout);
-
-    if (P.hasTouchEvents) {
+    });
+    document.querySelector('.player').appendChild(player.root);
+    if (P.config.hasTouchEvents) {
       document.addEventListener('touchmove', function(e) {
         e.preventDefault();
       });
     }
 
-    var totalTasks = 0;
-    var completedTasks = 0;
-    P.IO.progressHooks.new = function() {
-      totalTasks++;
-      progressBar.style.width = (10 + completedTasks / totalTasks * 90) + '%';
-    };
-    P.IO.progressHooks.end = function() {
-      completedTasks++;
-      progressBar.style.width = (10 + completedTasks / totalTasks * 90) + '%';
-    };
-
-    return new P.IO.JSONRequest(P.config.PROJECT_API.replace('$id', projectId)).load()
-      .then((json) => {
-        const type = P.utils.projectType(json);
-        if (type === 3) {
-          return (new P.sb3.Scratch3Loader(json)).load();
-        } else if (type === 2) {
-          return P.sb2.loadProject(json);
+    player.loadProjectId(projectId, { turbo: turbo })
+      .then(function() {
+        player.fullscreenPadding = 0;
+        if (!fullscreen) {
+          player.fullscreenMaxWidth = 480;
         }
-      })
-      .then((s) => {
-        stage = s;
-
+        player.enterFullscreen(false);
         splash.style.display = 'none';
-        layout();
-        s.runtime.isTurbo = turbo;
-        s.runtime.start();
-        s.runtime.triggerGreenFlag();
-        player.appendChild(s.root);
-        s.focus();
-        s.runtime.handleError = showError;
-      })
-      .catch((e) => showError(e));
-
+      });
   }());
 
   </script>

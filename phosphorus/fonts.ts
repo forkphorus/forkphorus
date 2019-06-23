@@ -25,7 +25,7 @@ namespace P.fonts {
   /**
    * Asynchronously load and cache a font
    */
-  function loadLocalFont(fontFamily: string, src: string): Promise<string> {
+  export function loadLocalFont(fontFamily: string, src: string): Promise<string> {
     if (fontFamilyCache[fontFamily]) {
       return Promise.resolve(fontFamilyCache[fontFamily]);
     }
@@ -45,14 +45,6 @@ namespace P.fonts {
       return null;
     }
     return fontFamilyCache[fontFamily];
-  }
-
-  export function loadFontSet(fonts: ObjectMap<string>): Promise<unknown> {
-    const promises: Promise<unknown>[] = [];
-    for (const family in fonts) {
-      promises.push(P.utils.settled(loadLocalFont(family, fonts[family])));
-    }
-    return Promise.all(promises);
   }
 
   function getCSSFontFace(fontFamily: string, src: string) {

@@ -8,6 +8,7 @@
   <title>forkphorus</title>
   <link rel="stylesheet" href="phosphorus.css">
   <link rel="stylesheet" href="player.css">
+  <link rel="stylesheet" href="studioview/studioview.css">
   <link rel="stylesheet" href="index.css">
 
   <!-- I've seen a non-zero amount of people use forkphorus.github.io/forkphorus/ when they should be using forkphorus.github.io/, so we'll just redirect them to the correct location and hope they take note. -->
@@ -15,7 +16,20 @@
     if (location.origin === 'https://forkphorus.github.io' && location.pathname === '/forkphorus/') {
       location.pathname = '/';
     }
+
+    // Apply dark mode right away to avoid a flash of white
+    (function() {
+      try {
+        var isDark = localStorage.getItem('userPrefersDark') === 'true';
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }());
   </script>
+
 </head>
 
 <body>
@@ -24,65 +38,26 @@
     <a class="switch-theme">switch theme</a>
   </div>
 
-  <script>
-    (function() {
-      // Implement theme selector early to remove any white loading flash there would otherwise be.
-      // localStorage is used to remember dark mode between reloads
-      function toggleDark(dark) {
-        document.documentElement.classList.toggle('dark', dark);
-        localStorage.setItem('userPrefersDark', document.documentElement.classList.contains('dark'));
-      }
-      document.querySelector('.theme-select a').addEventListener('click', function() {
-        toggleDark();
-      });
-      if (localStorage.getItem('userPrefersDark') === 'true') {
-        toggleDark(true);
-      }
-    }());
-  </script>
-
   <div id="app">
 
-    <div class=area id=title-area>
-      <h1 class=title>forkphorus</h1>
-      <p>forkphorus runs Scratch 3 and 2 projects really fast by compiling them to JavaScript. Try it out by pasting a project ID or URL into the field below, by <a class="upload-button">selecting<input id="upload-file-input" type="file" autocomplete="off" accept=".sb2,.sb3"></a> or dropping a project file on the page, or by <a class=dropdown>choosing an example<select id=examples>
-        <option value></option>
-        <option value=276660763>Scratch 3.0 is here! by ScratchCat</option>
-        <option value=280227362>Spring Physics by HowToLogic</option>
-        <option value=11397100>3D Remix by DadOfMrLog</option>
-        <option value=15945630>O by DCPU-16</option>
-        <option value=10128407>Paper Minecraft by griffpatch</option>
-        <option value=16207935>Alone in the depths by sticku</option>
-        <option value=16205373>3D Framework by DadOfMrLog</option>
-        <!-- <option value=31903442>gb.sb2 [Dr. Mario] by DCPU-16</option>
-        <option value=34791164>gb.sb2 [Mario Land 2] by DCPU-16</option> -->
-        <option value=21554369>Epic Ninja by griffpatch</option>
-        <option value=15832807>Pretty by blob8108</option>
-      </select></a>.</p>
+    <div class="area" id="title-area">
+      <h1 class="title">forkphorus</h1>
+      <p>forkphorus runs Scratch 2 and Scratch 3 projects really fast by compiling them to JavaScript. Try it out by pasting a project ID or URL into the field below, <a class="upload-button"><input id="upload-file-input" type="file" autocomplete="off" accept=".sb2,.sb3">selecting a project file</a>, dropping a file on the page, or <a id="examples">exploring the examples studio</a>.</p>
     </div>
 
-    <div class=area id=player-area>
-      <div class=controls>
-        <span class="button stop"></span>
-        <span class="button pause"></span>
-        <span class="button flag" title="Shift+click to enable turbo mode."></span>
-        <div class="turbo">Turbo Mode</div>
-        <span class="button full-screen"></span>
-      </div>
-      <div class=player></div>
+    <div id="examples-container" class="area">
+      <div id="examples-view"></div>
+      <div id="examples-footer"></div>
     </div>
 
-    <div class=internal-error>
-      An internal error occurred. <a id="error-bug-link" target="_blank" href="https://github.com/forkphorus/forkphorus/issues/new" rel="noopener">Click here</a> to file a bug report.
-    </div>
+    <div class="area" id="player-area"></div>
 
     <div class="title">
-      <div class="progress-bar"></div>
       <input class="url" value="https://scratch.mit.edu/projects/" spellcheck="false">
-      <a target="_blank" class=project-link title="View project on Scratch" rel="noopener"></a>
+      <a target="_blank" class="project-link" title="View project on Scratch" rel="noopener" href="https://scratch.mit.edu/"></a>
     </div>
 
-    <div class=area id=project-area>
+    <div class="area" id="project-area">
 
       <section>
         <h1>Report a problem</h1>
@@ -135,7 +110,7 @@
       <p>forkphorus is a fork of <a href="https://phosphorus.github.io/">phosphorus</a> by <a href="https://github.com/nathan">Nathan</a>. Its CPS-style compilation and overall design was inspired by <a href="https://github.com/RHY3756547">Rhys</a>'s <a href="https://code.google.com/p/sb2-js/">sb2.js</a>. It would have more bugs if not for <a href="https://github.com/trumank">Truman</a> and <a href="https://github.com/tjvr">Tim</a>. The <a href="https://stuk.github.io/jszip/">JSZip</a> library is used to read <code>.sb2</code> and <code>.sb3</code> files.</p>
 
       <h1>Code</h1>
-      <p>The source code for forkphorus is available <a href=https://github.com/forkphorus/forkphorus>on GitHub</a> along with a <a href="https://github.com/forkphorus/forkphorus/blob/master/changelog.md">changelog</a>.</p>
+      <p>The source code for forkphorus is available <a href=https://github.com/forkphorus/forkphorus>on GitHub</a>.</p>
 
       <!-- the deploy bot for forkphorus.github.io will replace this next line with the version info -->
       <!-- __deploybotinfosection__ -->
@@ -149,47 +124,72 @@
   <script src="lib/canvg.min.js"></script>
   <script src="phosphorus.dist.js"></script>
   <script src="player.js"></script>
+  <script src="studioview/studioview.js"></script>
 
   <script>
 
-  // Core UI
+  if (!window.P || !window.P.IO) {
+    document.getElementById('title-area').innerHTML += '<p><b>This browser is not supported.</b> Please upgrade to Mozilla Firefox, Google Chrome, or Microsoft Edge.</p>'
+  }
+
   (function() {
     'use strict';
 
+    /** Utilities **/
+    // document.querySelector but it throws if your selector failed
+    function querySelector(selector) {
+      var el = document.querySelector(selector);
+      if (!el) {
+        throw new Error('Selector returned nothing: ' + selector);
+      }
+      return el;
+    }
+
+    // Shallowly clones an object (member values are not cloned)
+    function shallowClone(obj) {
+      var result = {};
+      for (var k in obj) {
+        result[k] = obj[k];
+      }
+      return result;
+    }
+
+    /** Constants **/
     var PROJECT_PREFIX = 'https://scratch.mit.edu/projects/';
+    var STUDIO_PREFIX = 'https://scratch.mit.edu/studios/';
+    var STUDIO = '15926401';
+
+    /** Core Player Logic **/
+    var titleArea = querySelector('#title-area');
+    var playerArea = querySelector('#player-area');
+    var projectArea = querySelector('#project-area');
+
+    var player = new P.Player();
+    window.player = player;
+    player.addControls({});
+    new P.Player.ProgressBar(player, {
+      position: querySelector('.url').parentNode,
+    });
+    var errorHandler = new P.Player.ErrorHandler(player);
+    playerArea.appendChild(player.root);
 
     var initialId = location.hash.substr(1);
-    if (initialId[0] === '.') initialId = '';
-
-    var titleArea = document.querySelector('#title-area');
-    var playerArea = document.querySelector('#player-area');
-    var projectArea = document.querySelector('#project-area');
+    if (!/^\d+$/.test(initialId)) {
+      initialId = '';
+    }
 
     playerArea.style.height = projectArea.style.height = 'auto';
     var titleAreaHeight = titleArea.offsetHeight;
     var playerAreaHeight = playerArea.offsetHeight;
     var projectAreaHeight = projectArea.offsetHeight;
+    var studioViewAreaHeight = 330;
     playerArea.style.height = projectArea.style.height = 0;
 
-    var examples = document.querySelector('#examples');
-    var urlInput = document.querySelector('.url');
+    var urlInput = querySelector('.url');
     urlInput.value = PROJECT_PREFIX + initialId;
 
-    var progressBar = document.querySelector('.progress-bar');
-    var player = document.querySelector('.player');
-    var projectLink = document.querySelector('.project-link');
-    var bugLink = document.querySelector('#bug-link');
-
-    var uploadFileInput = document.querySelector('#upload-file-input');
-
-    var packageLink = document.querySelector('#package-link');
-    var packageTurbo = document.querySelector('#package-turbo');
-    var packageFullScreen = document.querySelector('#package-full-screen');
-
-    var embedCode = document.querySelector('#embed-code');
-    var embedAutoStart = document.querySelector('#embed-auto-start');
-    var embedLightContent = document.querySelector('#embed-light-content');
-    var embedHideControls = document.querySelector('#embed-hide-controls');
+    var projectLink = querySelector('.project-link');
+    var bugLink = querySelector('#bug-link');
 
     var timeout;
     urlInput.addEventListener('input', function() {
@@ -197,14 +197,14 @@
       var se = urlInput.selectionEnd;
       var url = urlInput.value;
       var id = url.match(/\d+/g) || [''];
-      while (id.length > 1 && id.indexOf(P.player.projectId) > -1) {
-        id.splice(id.indexOf(P.player.projectId), 1);
+      while (id.length > 1 && id.indexOf(player.projectId) > -1) {
+        id.splice(id.indexOf(player.projectId), 1);
       }
       id = id[0];
       urlInput.value = url = PROJECT_PREFIX + id;
       urlInput.selectionStart = urlInput.selectionEnd = Math.max(PROJECT_PREFIX.length, ss);
       clearTimeout(timeout);
-      if (P.player.projectId !== id) {
+      if (player.projectId !== id) {
         timeout = setTimeout(function() {
           location.hash = '#' + id;
         }, 300);
@@ -217,69 +217,77 @@
         }
       });
     });
-
-    examples.addEventListener('change', function() {
-      if (examples.value) {
-        location.hash = '#' + examples.value;
-        examples.selectedIndex = 0;
-      }
-    });
-
+    var ignoreNextHashChange = false;
     window.addEventListener('hashchange', function() {
+      if (ignoreNextHashChange) {
+        ignoreNextHashChange = false;
+        return;
+      }
       var id = location.hash.substr(1);
-      if (id === '') {
-        show('');
-        if (P.player.stage) {
-          P.player.stage.destroy();
-        }
-        return;
-      }
-
-      if (id[0] !== '.') {
-        if (+id !== +id) id = '';
+      if (/^\d+$/.test(id)) {
         urlInput.value = PROJECT_PREFIX + id;
+        loadProjectId(id);
+      } else {
+        hidePlayerArea();
       }
-
-      loadProject(id);
     });
-
-    function show(id) {
-      titleArea.style.height = id ? 0 : titleAreaHeight + 'px';
-      playerArea.style.height = id ? playerAreaHeight + 'px' : 0
-      projectArea.style.height = id ? projectAreaHeight + 'px' : 0;
-      if (!id) {
-        urlInput.focus();
-      }
+    // Change location.hash w/o firing the hashchange event (or at least make it cancel)
+    // Include the leading # in the provided hash
+    function silentChangeHash(hash) {
+      if (location.hash === hash) return;
+      ignoreNextHashChange = true;
+      location.hash = hash;
     }
 
-    function loadProject(id) {
-      if (id === '' || id[0] === '.') {
+    function hidePlayerArea() {
+      titleArea.style.height = titleAreaHeight + 'px';
+      playerArea.style.height = '0px';
+      projectArea.style.height = '0px';
+      urlInput.focus();
+      player.cleanup();
+      if (studioView && studioView.visible) {
+        examplesContainer.style.height = studioViewAreaHeight + 'px';
+        examplesViewContainer.appendChild(studioView.root);
+      }
+    }
+    function showPlayerArea() {
+      titleArea.style.height = '0px';
+      playerArea.style.height = playerAreaHeight + 'px';
+      projectArea.style.height = projectAreaHeight + 'px';
+      hideStudioView();
+      examplesContainer.style.height = '0px';
+    }
+    function loadProjectId(id) {
+      showPlayerArea();
+      player.loadProjectId(id);
+      updateLinks();
+    }
+    function loadProjectFile(file) {
+      var extension = file.name.split('.').pop();
+      if (!['sb2', 'sb3'].includes(extension)) {
         return;
       }
-      show(id);
-      P.player.load(id)
-        .then((stage) => {
-          P.player.start(stage, true);
-          triggerProjectStarted();
-        });
-    }
-
-    function triggerProjectStarted() {
+      silentChangeHash('#' + file.name);
+      showPlayerArea();
+      player.loadProjectFile(file);
       updateLinks();
-      P.settingsUi.apply();
+    }
+    function updateLinks() {
+      projectLink.href = player.projectLink;
+      bugLink.href = errorHandler.createBugReportLink(player.getString('bug.manual.instructions'));
+      updatePackageLink();
+      updateEmbedCode();
     }
 
-    function updateLinks() {
-      projectLink.href = P.player.projectURL;
-      bugLink.href = P.player.createBugLink('Describe the issue below:', '');
-      updateEmbedCode();
-      updatePackageLink();
-    }
+    /** Packaging **/
+    var packageLink = querySelector('#package-link');
+    var packageTurbo = querySelector('#package-turbo');
+    var packageFullScreen = querySelector('#package-full-screen');
 
     function updatePackageLink() {
-      if (P.player.projectId) {
+      if (player.projectId) {
         var url = location.origin + '/app.html';
-        url += '?id=' + P.player.projectId;
+        url += '?id=' + player.projectId;
         url += '&turbo=' + packageTurbo.checked;
         url += '&full-screen=' + packageFullScreen.checked;
         packageLink.href = url;
@@ -290,6 +298,12 @@
     packageTurbo.addEventListener('change', updatePackageLink);
     packageFullScreen.addEventListener('change', updatePackageLink);
 
+    /** Embedding **/
+    var embedCode = querySelector('#embed-code');
+    var embedAutoStart = querySelector('#embed-auto-start');
+    var embedLightContent = querySelector('#embed-light-content');
+    var embedHideControls = querySelector('#embed-hide-controls');
+
     function updateEmbedCode(e) {
       // Hide UI replaces other options.
       embedAutoStart.disabled = embedHideControls.checked;
@@ -299,8 +313,8 @@
         embedLightContent.checked = false;
       }
 
-      if (P.player.projectId) {
-        var source = location.protocol + '//' + location.host + '/embed.js?id=' + P.player.projectId;
+      if (player.projectId) {
+        var source = location.protocol + '//' + location.host + '/embed.js?id=' + player.projectId;
         if (embedHideControls.checked) {
           source += '&ui=false';
         } else {
@@ -321,119 +335,123 @@
     function selectEmbedCode() {
       embedCode.select();
     }
-
     embedCode.addEventListener('focus', selectEmbedCode);
     embedCode.addEventListener('click', selectEmbedCode);
     embedHideControls.addEventListener('change', updateEmbedCode);
     embedAutoStart.addEventListener('change', updateEmbedCode);
     embedLightContent.addEventListener('change', updateEmbedCode);
 
-    // Add transitions to certain elements
-    // TODO: move to CSS?
-    function addTransition(el) {
-      el.style.WebkitTransition =
-        el.style.MozTransition =
-        el.style.OTransition =
-        el.style.transition = 'height 0.2s';
-    }
-    addTransition(titleArea);
-    addTransition(playerArea);
-    addTransition(projectArea);
+    /** Local File Loading **/
+    var uploadFileInput = querySelector('#upload-file-input');
 
-    // File loading
     function cancelDragEvent(e) {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'copy';
     }
-    function loadProjectBuffer(buffer, ext) {
-      function startLoad() {
-        if (ext === 'sb2') {
-          return P.sb2.loadSB2Project(buffer);
-        } else if (ext === 'sb3') {
-          var loader = new P.sb3.SB3FileLoader(buffer);
-          return loader.load();
-        }
-      }
-      startLoad().then((stage) => {
-        P.player.start(stage, true);
-        triggerProjectStarted();
-      });
-    }
-
     document.body.addEventListener('dragover', cancelDragEvent);
     document.body.addEventListener('dragenter', cancelDragEvent);
     document.body.addEventListener('drop', function(e) {
       e.preventDefault();
-
-      var f = e.dataTransfer.files[0];
-      if (!f) {
-        return;
+      var file = e.dataTransfer.files[0];
+      if (file) {
+        loadProjectFile(file);
       }
-
-      var ext = f.name.split('.').pop();
-      if (!['sb2', 'sb3'].includes(ext)) {
-        return;
-      }
-      show('.' + ext);
-      P.player.projectId = 'local ' + ext;
-      location.hash = '.' + ext;
-      P.IO.readers.toArrayBuffer(f)
-        .then((buffer) => loadProjectBuffer(buffer, ext));
     });
     uploadFileInput.addEventListener('change', function(e) {
-      var files = e.target.files;
-      if (!files[0]) {
-        return;
+      var file = e.target.files[0];
+      if (file) {
+        loadProjectFile(file);
       }
-      var ext = files[0].name.split('.').pop();
-      if (!['sb2', 'sb3'].includes(ext)) {
-        return;
-      }
-      show('.' + ext);
-      P.IO.readers.toArrayBuffer(files[0])
-        .then((buffer) => loadProjectBuffer(buffer, ext));
     });
 
-    // Load any initial project ID
-    loadProject(initialId);
+    /** Studio selector **/
+    var examples = querySelector('#examples');
+    var examplesContainer = querySelector('#examples-container');
+    var examplesViewContainer = querySelector('#examples-view');
+    var examplesFooter = querySelector('#examples-footer');
+    examplesContainer.style.height = '0px';
+    var studioView = null;
+    function hideStudioView() {
+      examplesContainer.style.height = '0px';
+      if (studioView && studioView.visible && studioView.root.parentNode) {
+        examplesViewContainer.removeChild(studioView.root);
+      }
+    }
+    function initStudioView() {
+      studioView = new StudioView(STUDIO);
+      studioView.visible = false;
+      studioView.onselect = function(id) {
+        location.hash = '#' + id;
+      };
+      studioView.shuffleProjects = true;
+      studioView.loadNextPage();
+      studioView.setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
 
-  }());
+      var link = document.createElement('a');
+      link.innerText = player.getString('studio.view');
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.href = STUDIO_PREFIX + STUDIO;
+      examplesFooter.appendChild(link);
+    }
+    examples.addEventListener('click', function(e) {
+      if (!studioView) {
+        initStudioView();
+      }
+      if (studioView.visible) {
+        hideStudioView();
+      } else {
+        examplesViewContainer.appendChild(studioView.root);
+        examplesContainer.style.height = studioViewAreaHeight + 'px';
+      }
+      studioView.visible = !studioView.visible;
+    });
 
-  // Settings UI
-  P.settingsUi = (function() {
-    'use strict';
+    /** Dark Mode **/
+    function getLocalDarkMode() {
+      try {
+        return localStorage.getItem('userPrefersDark') === 'true';
+      } catch (e) {
+        return false;
+      }
+    }
+    function setDarkMode(dark) {
+      if (dark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      player.setTheme(dark ? 'dark' : 'light');
+      if (studioView) {
+        studioView.setTheme(dark ? 'dark' : 'light');
+      }
+      try {
+        return localStorage.setItem('userPrefersDark', dark);
+      } catch (e) {}
+    }
+    function toggleDarkMode(dark) {
+      setDarkMode(!document.documentElement.classList.contains('dark'));
+    }
+    querySelector('.theme-select a').addEventListener('click', function() {
+      toggleDarkMode();
+    });
+    setDarkMode(getLocalDarkMode());
 
-    // UI elements
-    var optionFramerate = document.getElementById('settings-framerate');
-    var optionUsername = document.getElementById('settings-username');
-    var settingsMenu = document.getElementById('settings');
-
-    // Options to be applied by default
+    /** Settings Menu **/
+    var optionFramerate = querySelector('#settings-framerate');
+    var optionUsername = querySelector('#settings-username');
+    var settingsMenu = querySelector('#settings');
     var defaultOptions = {
       username: '',
       framerate: 30,
     };
     var previousOptions = shallowClone(defaultOptions);
 
-    // Shallowly clones an object (member values are not cloned)
-    function shallowClone(obj) {
-      var result = {};
-      for (var k in obj) {
-        result[k] = obj[k];
-      }
-      return result;
-    }
-
-    function getStage() {
-      return P.player.stage;
-    }
-
     // Set the DOM to match the options
     function setSelectedOptions(options) {
       optionFramerate.value = options.framerate;
       optionUsername.value = options.username;
     }
-
     // Get the current options from the DOM
     function getSelectedOptions() {
       var options = shallowClone(previousOptions);
@@ -448,10 +466,9 @@
 
       return options;
     }
-
-    // Applies some options
+    // Apply options to the stage.
     function applyOptions(options) {
-      var stage = getStage();
+      var stage = player.stage;
 
       // Applying framerate involves restarting the event loop, which we shouldn't do if not necessary
       if (options.framerate !== stage.runtime.framerate) {
@@ -465,25 +482,22 @@
 
       previousOptions = options;
     }
-
     // Gets the currently selected options, and applies them.
     function applySelectedOptions() {
       var options = getSelectedOptions();
       applyOptions(options);
     }
 
-    // Apply defaults in the DOM
     setSelectedOptions(defaultOptions);
-
     optionFramerate.addEventListener('input', applySelectedOptions);
     optionUsername.addEventListener('input', applySelectedOptions);
+    player.onload.subscribe(applySelectedOptions);
 
-    // We need to be notified when a new project is loaded to reapply some settings
-    return {
-      apply: applySelectedOptions,
-    };
+    if (initialId) {
+      loadProjectId(initialId);
+    }
+
   }());
-
   </script>
 
 </body>

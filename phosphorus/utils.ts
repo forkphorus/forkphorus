@@ -33,20 +33,6 @@ namespace P.utils {
     return RotationStyle.Normal;
   }
 
-  // Determines the type of a project with its project.json data
-  export function projectType(data: unknown): 2 | 3 | null {
-    if (typeof data !== 'object' || data === null) {
-      return null;
-    }
-    if ('targets' in data) {
-      return 3;
-    }
-    if ('objName' in data) {
-      return 2;
-    }
-    return null;
-  }
-
   /**
    * Converts an RGB color to an HSL color
    * @param rgb RGB Color
@@ -97,5 +83,21 @@ namespace P.utils {
         .then(() => resolve())
         .catch(() => resolve());
     });
+  }
+
+  type SlotFn<T> = (t: T) => void;
+
+  export class Slot<T> {
+    private _listeners: SlotFn<T>[] = [];
+
+    subscribe(fn: SlotFn<T>) {
+      this._listeners.push(fn);
+    }
+
+    emit(value: T) {
+      for (const listener of this._listeners) {
+        listener(value);
+      }
+    }
   }
 }
