@@ -22,6 +22,16 @@
     return true
   }
 
+  function shuffleList(list) {
+    // https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle#The_modern_algorithm
+    for (var i = list.length - 1; i > 0; i--) {
+      var random = Math.floor(Math.random() * (i + 1));
+      var tmp = list[i];
+      list[i] = list[random];
+      list[random] = tmp;
+    }
+  }
+
   /**
    * @class
    */
@@ -30,6 +40,7 @@
     this.page = 1;
     this.ended = false;
     this.loadingPage = false;
+    this.shuffleProjects = false;
     this.unusedTombstones = [];
 
     this.root = document.createElement('div');
@@ -55,7 +66,7 @@
    * Add a project to the view.
    * An unused tombstone element may be used, or it may be created.
    */
-  StudioView.prototype.addProject = function(id, title, author) {
+  StudioView.prototype.addProject = function(details) {
     var el;
     if (this.unusedTombstones.length) {
       el = this.unusedTombstones.shift();
@@ -63,7 +74,7 @@
       el = this.createTombstone();
       this.projectList.appendChild(el);
     }
-    this.tombstoneToProject(el, id, title, author);
+    this.tombstoneToProject(el, details.id, details.title, details.author);
   };
 
   /**
@@ -231,9 +242,11 @@
     var xhr = new XMLHttpRequest();
     xhr.onload = function() {
       var doc = xhr.response;
-      var projects = doc.querySelectorAll('.project');
+
+      var projects = [];
+      var projectElements = doc.querySelectorAll('.project');
       /*
-      Each project should be:
+      Each project element should be:
       <li class="project thumb item" data-id="12345">
         <a href="/projects/12345/">
           <img class="lazy image" data-original="//cdn2.scratch.mit.edu/get_image/project/12345_144x108.png" width="144" height="108" />
@@ -246,12 +259,22 @@
         </span>
       </li>
       */
-      for (var i = 0; i < projects.length; i++) {
-        var project = projects[i];
+      for (var i = 0; i < projectElements.length; i++) {
+        var project = projectElements[i];
         var id = project.getAttribute('data-id');
         var title = project.querySelector('.title').innerText.trim();
         var author = project.querySelector('.owner a').innerText.trim();
-        this.addProject(id, title, author);
+        projects.push({
+          id: id,
+          title: title,
+          author: author,
+        });
+      }
+      if (this.shuffleProjects) {
+        shuffleList(projects);
+      }
+      for (var i = 0; i < projects.length; i++) {
+        this.addProject(projects[i]);
       }
       this.cleanupTombstones();
 
@@ -324,7 +347,7 @@
   StudioView.PROJECT_PAGE = 'https://scratch.mit.edu/projects/$id/';
 
   // The amount of "placeholders" or "tombstones" to insert before the next page loads.
-  StudioView.TOMBSTONE_COUNT = 30;
+  StudioView.TOMBSTONE_COUNT = 9;
 
   scope.StudioView = StudioView;
 }(window));

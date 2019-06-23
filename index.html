@@ -182,7 +182,7 @@
     var titleAreaHeight = titleArea.offsetHeight;
     var playerAreaHeight = playerArea.offsetHeight;
     var projectAreaHeight = projectArea.offsetHeight;
-    var studioViewAreaHeight = 320;
+    var studioViewAreaHeight = 330;
     playerArea.style.height = projectArea.style.height = 0;
 
     var urlInput = querySelector('.url');
@@ -369,7 +369,7 @@
     var studioView = null;
     function hideStudioView() {
       examplesContainer.style.height = '0px';
-      if (studioView && studioView.visible) {
+      if (studioView && studioView.visible && studioView.root.parentNode) {
         examplesViewContainer.removeChild(studioView.root);
       }
     }
@@ -379,6 +379,7 @@
       studioView.onselect = function(id) {
         location.hash = '#' + id;
       };
+      studioView.shuffleProjects = true;
       studioView.loadNextPage();
       studioView.setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
 

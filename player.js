@@ -20,7 +20,6 @@ P.Player = (function() {
     this.onload = new P.utils.Slot();
     this.onstartload = new P.utils.Slot();
     this.oncleanup = new P.utils.Slot();
-    this.onidchange = new P.utils.Slot();
     this.onthemechange = new P.utils.Slot();
     this.onerror = new P.utils.Slot();
 
@@ -153,30 +152,31 @@ P.Player = (function() {
    */
   Player.prototype.addControls = function(options) {
     /** @param {MouseEvent} e */
-    function clickStop(e) {
+    var clickStop = function(e) {
       this.assertStage();
       this.pause();
       this.stage.runtime.stopAll();
       this.stage.draw();
       e.preventDefault();
-    };
+    }.bind(this);
 
     /** @param {MouseEvent} e */
-    function clickPause(e) {
+    var clickPause = function(e) {
       this.toggleRunning();
-    };
+    }.bind(this);
 
     /** @param {MouseEvent} e */
-    function clickFullscreen(e) {
+    var clickFullscreen = function(e) {
+      this.assertStage();
       if (this.fullscreen) {
         this.exitFullscreen();
       } else {
         this.enterFullscreen(!e.shiftKey);
       }
-    };
+    }.bind(this);
 
     /** @param {MouseEvent} e */
-    function clickFlag(e) {
+    var clickFlag = function(e) {
       // @ts-ignore
       if (this.flagTouchTimeout === true) return;
       if (this.flagTouchTimeout) {
@@ -192,15 +192,15 @@ P.Player = (function() {
       }
       this.stage.focus();
       e.preventDefault();
-    };
+    }.bind(this);
 
     /** @param {MouseEvent} e */
-    function startTouchFlag(e) {
+    var startTouchFlag = function(e) {
       this.flagTouchTimeout = setTimeout(function() {
         this.flagTouchTimeout = true;
         this.setTurbo(!this.stage.runtime.isTurbo);
       }.bind(this), 500);
-    }
+    }.bind(this);
 
     if (this.controlsEl) {
       throw new Error('This player already has controls.');
@@ -247,11 +247,11 @@ P.Player = (function() {
 
     if (P.config.hasTouchEvents) {
       function preventDefault(e) { e.preventDefault(); }
-      this.flagButton.addEventListener('touchstart', startTouchFlag.bind(this));
-      this.flagButton.addEventListener('touchend', clickFlag.bind(this));
-      this.pauseButton.addEventListener('touchend', clickPause.bind(this));
-      this.stopButton.addEventListener('touchend', clickStop.bind(this));
-      this.fullscreenButton.addEventListener('touchend', clickFullscreen.bind(this));
+      this.flagButton.addEventListener('touchstart', startTouchFlag);
+      this.flagButton.addEventListener('touchend', clickFlag);
+      this.pauseButton.addEventListener('touchend', clickPause);
+      this.stopButton.addEventListener('touchend', clickStop);
+      this.fullscreenButton.addEventListener('touchend', clickFullscreen);
 
       this.flagButton.addEventListener('touchstart', preventDefault);
       this.pauseButton.addEventListener('touchstart', preventDefault);
@@ -262,10 +262,10 @@ P.Player = (function() {
         if (this.fullscreen) e.preventDefault();
       }.bind(this));
     } else {
-      this.stopButton.addEventListener('click', clickStop.bind(this));
-      this.pauseButton.addEventListener('click', clickPause.bind(this));
-      this.flagButton.addEventListener('click', clickFlag.bind(this));
-      this.fullscreenButton.addEventListener('click', clickFullscreen.bind(this));
+      this.stopButton.addEventListener('click', clickStop);
+      this.pauseButton.addEventListener('click', clickPause);
+      this.flagButton.addEventListener('click', clickFlag);
+      this.fullscreenButton.addEventListener('click', clickFullscreen);
     }
 
     this.root.insertBefore(this.controlsEl, this.root.firstChild);
@@ -320,6 +320,7 @@ P.Player = (function() {
       this.pause();
     } else {
       this.start();
+      this.stage.focus();
     }
   };
 
@@ -363,6 +364,7 @@ P.Player = (function() {
         this.stage.draw();
       }
     }
+    this.stage.focus();
 
     this.updateFullscreen();
   };
@@ -398,6 +400,7 @@ P.Player = (function() {
     if (this.stage) {
       this.stage.setZoom(1);
     }
+    this.stage.focus();
   };
 
   /**
@@ -509,7 +512,7 @@ P.Player = (function() {
     loader.onprogress.subscribe(function(progress) {
       if (this.isStageActive(stageId)) {
         this.onprogress.emit(progress);
-      } else {
+      } else if (!loader.aborted) {
         loader.abort();
       }
     }.bind(this));

@@ -2,6 +2,25 @@
 
 *Dates reflect when the changes were developed, and recent changes may not yet be deployed to forkphorus.github.io.*
 
+## June 22
+
+- **New project player**: less broken than before
+  - Translations are now possible.
+    - A couple spanish translations have been added, hopefully more can be added soon.
+  - When you close a project at any time (by pressing the back button in your browser), it will be properly unloaded, even while it is loading.
+    - (The project may still be downloaded and compiled, but it will not run, and the progress bar will reflect this)
+  - Other minor changes and bug fixes
+  - It should be easier to maintain.
+- **New project examples**: it's now powered by a (studio)[https://scratch.mit.edu/studios/15926401/] instead of a boring dropdown
+
+## June 19
+
+- fix #49: fix loading of some Scratch 2 projects (I believe it is projects uploaded from the offline editor)
+
+## June 13
+
+- fix #44: fix "when backdrop changes to" block
+
 ## June 11
 
 - SVG graphics actually scale
