@@ -40,6 +40,7 @@ b {
   -moz-box-sizing: border-box;
   box-sizing: border-box;
   color: rgba(0, 0, 0, .4);
+  font-family: inherit;
 }
 .url:focus {
   color: #000;
