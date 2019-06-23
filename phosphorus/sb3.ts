@@ -2315,6 +2315,7 @@ namespace P.sb3.compiler {
     util.writeLn('if (self.promptId === R.id) {')
     util.forceQueue(label2);
     util.writeLn('}');
+    util.writeLn('S.say("");');
 
     util.visual('always');
   };
