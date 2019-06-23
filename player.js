@@ -77,6 +77,7 @@ P.Player = (function() {
       'bug.html': 'An internal error occurred. <a $attrs>Click here</a> to file a bug report.',
       'bug.instructions': 'Describe what you were doing to cause this error:',
       'bug.manual.instructions': 'Describe the issue:',
+      'studio.view': 'View studio on Scratch.',
     },
     es: {
       'controls.turbo': 'Modo Turbo',
@@ -658,7 +659,7 @@ P.Player = (function() {
           this.handleError(error);
         }
       }.bind(this));
-  }
+  };
 
   /**
    * Load a project from a File or Blob of the compressed project.

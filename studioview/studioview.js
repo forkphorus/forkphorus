@@ -55,7 +55,7 @@
       this.intersectionObserver = new IntersectionObserver(this.handleIntersection.bind(this), {
         root: this.projectList,
         // load images roughly 100px before they become visible to make them load quicker
-        rootMargin: '0px 0px 100px 0px',
+        rootMargin: '100px 0px 100px 0px',
       });
     } else {
       this.intersectionObserver = null;
@@ -310,18 +310,6 @@
     this.root.setAttribute('theme', theme);
   };
 
-  StudioView.prototype.getStudioData = function(cb) {
-    var xhr = new XMLHttpRequest();
-
-    xhr.onload = function() {
-      cb(xhr.response);
-    };
-
-    xhr.open('GET', StudioView.STUDIO_DATA_API.replace('$id', this.studioId));
-    xhr.responseType = 'json';
-    xhr.send();
-  };
-
   StudioView.prototype.onselect = function(id) {};
   StudioView.prototype.onpageload = function() {};
   StudioView.prototype.onend = function() {};
@@ -335,12 +323,6 @@
   // The URL to download thumbnails from.
   // $id is replaced with the project's ID
   StudioView.THUMBNAIL_SRC = 'https://cdn2.scratch.mit.edu/get_image/project/$id_144x108.png';
-
-  // This can be any URL that is a proxy for https://api.scratch.mit.edu/studios/5235006
-  // Scratch for some reason does not set CORS headers for the public API, but a proxy can set it.
-  // Similar to STUDIO_API, I have a proxy that does this.
-  // $id is replaced with the studio ID.
-  StudioView.STUDIO_DATA_API = 'https://scratch.garbomuffin.com/api/studios/$id';
 
   // The URL for a project's page.
   // $id is replaced with the project ID.

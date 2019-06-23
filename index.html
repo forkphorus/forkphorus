@@ -42,7 +42,7 @@
 
     <div class="area" id="title-area">
       <h1 class="title">forkphorus</h1>
-      <p>forkphorus runs Scratch 2 and Scratch 3 projects really fast by compiling them to JavaScript. Try it out by pasting a project ID or URL into the field below, <a class="upload-button"><input id="upload-file-input" type="file" autocomplete="off" accept=".sb2,.sb3">selecting a project file</a>, dropping a file on the page, or <a id="examples">choosing an example</a>.</p>
+      <p>forkphorus runs Scratch 2 and Scratch 3 projects really fast by compiling them to JavaScript. Try it out by pasting a project ID or URL into the field below, <a class="upload-button"><input id="upload-file-input" type="file" autocomplete="off" accept=".sb2,.sb3">selecting a project file</a>, dropping a file on the page, or <a id="examples">exploring the examples studio</a>.</p>
     </div>
 
     <div id="examples-container" class="area">
@@ -263,6 +263,10 @@
       updateLinks();
     }
     function loadProjectFile(file) {
+      var extension = file.name.split('.').pop();
+      if (!['sb2', 'sb3'].includes(extension)) {
+        return;
+      }
       silentChangeHash('#' + file.name);
       showPlayerArea();
       player.loadProjectFile(file);
@@ -383,15 +387,12 @@
       studioView.loadNextPage();
       studioView.setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
 
-      studioView.getStudioData(function(data) {
-        examplesFooter.appendChild(document.createTextNode('Scratch Studio - '));
-        var link = document.createElement('a');
-        link.innerText = data.title;
-        link.target = '_blank';
-        link.rel = 'noopener';
-        link.href = STUDIO_PREFIX + data.id;
-        examplesFooter.appendChild(link);
-      });
+      var link = document.createElement('a');
+      link.innerText = player.getString('studio.view');
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.href = STUDIO_PREFIX + STUDIO;
+      examplesFooter.appendChild(link);
     }
     examples.addEventListener('click', function(e) {
       if (!studioView) {
