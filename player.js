@@ -13,10 +13,9 @@ P.Player = (function() {
    * @property {'dark'|'light'} [theme]
    * @param {PlayerOptions} [options]
    */
-  function Player(options) {
+  var Player = function(options) {
     options = options || {};
 
-    // The many listeners
     this.onprogress = new P.utils.Slot();
     this.onload = new P.utils.Slot();
     this.onstartload = new P.utils.Slot();
@@ -59,7 +58,6 @@ P.Player = (function() {
 
   Player.PROJECT_DATA_API = 'https://projects.scratch.mit.edu/$id';
   Player.PROJECT_LINK = 'https://scratch.mit.edu/projects/$id';
-  Player.BUG_REPORT_LINK = 'https://github.com/forkphorus/forkphorus/issues/new?title=$title&body=$body';
   Player.LARGE_Z_INDEX = '9999999999';
   Player.UNKNOWN_ID = '(no id)';
   Player.UNKNOWN_LINK = '(no link)';
@@ -425,72 +423,11 @@ P.Player = (function() {
   };
 
   /**
-   * Create a string representation of an error.
-   */
-  Player.prototype.stringifyError = function(error) {
-    if (!error) {
-      return 'unknown error';
-    }
-    if (error.stack) {
-      return 'Message: ' + error.message + '\nStack:\n' + error.stack;
-    }
-    return error.toString();
-  };
-
-  Player.prototype.createBugReportLink = function(bodyBefore, bodyAfter) {
-    var title = this.getBugReportTitle();
-    bodyAfter = bodyAfter || '';
-    var body = bodyBefore + '\n\n\n-----\n' + this.getBugReportMeta() + '\n' + bodyAfter;
-    return Player.BUG_REPORT_LINK
-      .replace('$title', encodeURIComponent(title))
-      .replace('$body', encodeURIComponent(body));
-  };
-
-  /**
-   * Get the title for bug reports.
-   */
-  Player.prototype.getBugReportTitle = function() {
-    return this.projectLink;
-  };
-
-  /**
-   * Get the metadata to include in bug reports.
-   */
-  Player.prototype.getBugReportMeta = function() {
-    var meta = 'Project URL: ' + this.projectLink + '\n';
-    meta += 'Project ID: ' + this.projectId + '\n';
-    meta += location.href + '\n';
-    meta += navigator.userAgent;
-    return meta;
-  };
-
-  /**
-   * Get the URL to report an error to.
-   */
-  Player.prototype.createErrorLink = function(error) {
-    var body = this.getString('bug.instructions');
-    return this.createBugReportLink(body, '```\n' + this.stringifyError(error) + '\n```');
-  };
-
-  /**
    * Handle errors and allow creating a bug report.
    */
   Player.prototype.handleError = function(error) {
     console.error(error);
-    var errorLink = this.createErrorLink(error);
-    var errorEl = document.createElement('div');
-    var attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
-    errorEl.className = 'player-error';
-    errorEl.innerHTML = this.getString('bug.html').replace('$attrs', attributes);
-    this.addErrorMessage(errorEl);
     this.onerror.emit(error);
-  };
-
-  /**
-   * Add an error report link to the player
-   */
-  Player.prototype.addErrorMessage = function(element) {
-    this.root.appendChild(element);
   };
 
   /**
@@ -551,6 +488,22 @@ P.Player = (function() {
       stage.runtime.isTurbo = true;
     }
   };
+
+  /**
+   * @param {ArrayBuffer} buffer
+   */
+  Player.prototype.isScratch1Project = function(buffer) {
+    var MAGIC = 'ScratchV0';
+    var array = new Uint8Array(buffer);
+    for (var i = 0; i < MAGIC.length; i++) {
+      if (String.fromCharCode(array[i]) !== MAGIC[i]) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  // wrappers around P.sb2 and P.sb3 for loading...
 
   Player.prototype._handleScratch3Loader = function(loader, stageId) {
     loader.onprogress.subscribe(function(progress) {
@@ -613,6 +566,8 @@ P.Player = (function() {
     });
   };
 
+  // The main methods you should use for loading things...
+
   /**
    * Load a remote project from its ID
    * @param {string} id
@@ -650,13 +605,16 @@ P.Player = (function() {
           // not json, but could be a zipped sb2
           return P.IO.readers.toArrayBuffer(blob)
             .then(function(buffer) {
+              if (this.isScratch1Project(buffer)) {
+                throw new Error('Project appears to be a .sb (Scratch 1), which is not supported.');
+              }
               return P.sb2.loadSB2Project(buffer);
             }.bind(this));
         }
       }.bind(this))
       .then(function(stage) {
         if (stage) {
-          this.installStage(stage);
+          this.installStage(stage, options);
         }
       }.bind(this))
       .catch(function(error) {
@@ -666,6 +624,12 @@ P.Player = (function() {
       }.bind(this));
   };
 
+  /**
+   * Load a project from an ArrayBuffer of the compressed project.
+   * @param {ArrayBuffer} buffer
+   * @param {'sb2'|'sb3'} type
+   * @param {StageLoadOptions} options
+   */
   Player.prototype.loadProjectBuffer = function(buffer, type, options) {
     this.startLoadingNewProject();
     var stageId = this.getNewStageId();
@@ -694,7 +658,7 @@ P.Player = (function() {
   }
 
   /**
-   * Load a project from a File or Blob object
+   * Load a project from a File or Blob of the compressed project.
    * @param {File} file
    * @param {StageLoadOptions} options
    * @returns {Promise}
@@ -722,44 +686,136 @@ P.Player = (function() {
 
 }());
 
-P.Player.ProgressBar = (function() {
+P.Player.ErrorHandler = (function() {
+  /**
+   * @typedef ErrorHandlerOptions
+   * @property {HTMLElement} [container]
+   */
+
   /**
    * @class
+   * @param {ErrorHandlerOptions} options
    */
-  var ProgressBar = function() {
+  var ErrorHandler = function(player, options) {
+    options = options || {};
+
+    this.player = player;
+    player.onerror.subscribe(this.onerror.bind(this));
+    player.oncleanup.subscribe(this.oncleanup.bind(this));
+    this.errorEl = null;
+
+    if (options.container) {
+      this.errorContainer = options.container;
+    } else {
+      this.errorContainer = player.root;
+    }
+  };
+
+  ErrorHandler.BUG_REPORT_LINK = 'https://github.com/forkphorus/forkphorus/issues/new?title=$title&body=$body';
+
+  /**
+   * Create a string representation of an error.
+   */
+  ErrorHandler.prototype.stringifyError = function(error) {
+    if (!error) {
+      return 'unknown error';
+    }
+    if (error.stack) {
+      return 'Message: ' + error.message + '\nStack:\n' + error.stack;
+    }
+    return error.toString();
+  };
+
+  /**
+   * Generate the link to report a bug to, including title and metadata.
+   * @param {string} bodyBefore Text to appear before metadata
+   * @param {string} bodyAfter Text to appear after metadata
+   */
+  ErrorHandler.prototype.createBugReportLink = function(bodyBefore, bodyAfter) {
+    var title = this.getBugReportTitle();
+    bodyAfter = bodyAfter || '';
+    var body = bodyBefore + '\n\n\n-----\n' + this.getBugReportMeta() + '\n' + bodyAfter;
+    return ErrorHandler.BUG_REPORT_LINK
+      .replace('$title', encodeURIComponent(title))
+      .replace('$body', encodeURIComponent(body));
+  };
+
+  /**
+   * Get the title for bug reports.
+   */
+  ErrorHandler.prototype.getBugReportTitle = function() {
+    return this.player.projectLink;
+  };
+
+  /**
+   * Get the metadata to include in bug reports.
+   */
+  ErrorHandler.prototype.getBugReportMeta = function() {
+    var meta = 'Project URL: ' + this.player.projectLink + '\n';
+    meta += 'Project ID: ' + this.player.projectId + '\n';
+    meta += location.href + '\n';
+    meta += navigator.userAgent;
+    return meta;
+  };
+
+  /**
+   * Get the URL to report an error to.
+   */
+  ErrorHandler.prototype.createErrorLink = function(error) {
+    var body = this.player.getString('bug.instructions');
+    return this.createBugReportLink(body, '```\n' + this.stringifyError(error) + '\n```');
+  };
+
+  ErrorHandler.prototype.oncleanup = function() {
+    if (this.errorEl) {
+      this.errorEl.parentNode.removeChild(this.errorEl);
+      this.errorEl = null;
+    }
+  };
+
+  ErrorHandler.prototype.onerror = function(error) {
+    var errorLink = this.createErrorLink(error);
+    var errorEl = document.createElement('div');
+    var attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
+    errorEl.className = 'player-error';
+    errorEl.innerHTML = this.player.getString('bug.html').replace('$attrs', attributes);
+    this.errorContainer.appendChild(errorEl);
+    this.errorEl = errorEl;
+  };
+
+  return ErrorHandler;
+}());
+
+P.Player.ProgressBar = (function() {
+  /**
+   * @typedef ProgressBarOptions
+   * @property {'controls'|HTMLElement} [position]
+   */
+
+  /**
+   * @class
+   * @param {ProgressBarOptions} options
+   */
+  var ProgressBar = function(player, options) {
+    options = options || {};
+    options.position = options.position || 'controls';
+
     this.el = document.createElement('div');
     this.el.className = 'player-progress';
     this.bar = document.createElement('div');
     this.bar.className = 'player-progress-fill';
     this.el.appendChild(this.bar);
-  };
-
-  ProgressBar.prototype.setTheme = function(theme) {
-    this.el.setAttribute('theme', theme);
-  };
-
-  ProgressBar.prototype.setProgress = function(progress) {
-    this.bar.style.width = (10 + progress * 90) + '%';
-  };
-
-  /**
-   * Add this progress bar to a Player.
-   * @typedef ProgressBarOptions
-   * @property {'controls'|HTMLElement} [position]
-   * @param {P.Player} player
-   * @param {ProgressBarOptions} [options]
-   */
-  ProgressBar.prototype.addToPlayer = function(player, options) {
-    options = options || {};
-    options.position = options.position || 'controls';
 
     this.setTheme(player.theme);
-
     player.onthemechange.subscribe(this.setTheme.bind(this));
 
     player.onstartload.subscribe(function() {
       this.el.setAttribute('state', 'loading');
       this.setProgress(0);
+    }.bind(this));
+
+    player.onload.subscribe(function() {
+      this.el.setAttribute('state', 'loaded');
     }.bind(this));
 
     player.onprogress.subscribe(this.setProgress.bind(this));
@@ -769,8 +825,9 @@ P.Player.ProgressBar = (function() {
       this.bar.style.width = '0%';
     }.bind(this));
 
-    player.onload.subscribe(function() {
-      this.el.setAttribute('state', 'loaded');
+    player.onerror.subscribe(function() {
+      this.el.setAttribute('state', 'error');
+      this.bar.style.width = '100%';
     }.bind(this));
 
     if (options.position === 'controls') {
@@ -781,6 +838,14 @@ P.Player.ProgressBar = (function() {
     } else {
       options.position.appendChild(this.el);
     }
+  };
+
+  ProgressBar.prototype.setTheme = function(theme) {
+    this.el.setAttribute('theme', theme);
+  };
+
+  ProgressBar.prototype.setProgress = function(progress) {
+    this.bar.style.width = (10 + progress * 90) + '%';
   };
 
   return ProgressBar;

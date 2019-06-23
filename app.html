@@ -123,19 +123,17 @@
     var progressBarFill = document.querySelector('.progress-bar');
 
     var player = new P.Player();
-
+    var errorHandler = new P.Player.ErrorHandler(player, {
+      container: document.querySelector('.error-report'),
+    });
     player.onprogress.subscribe(function(progress) {
       progressBarFill.style.width = (10 + progress * 90) + '%';
     });
-
-    player.addErrorMessage = function(e) {
+    player.onerror.subscribe(function(e) {
       player.exitFullscreen();
       error.style.display = 'table';
-      document.querySelector('.error-report').appendChild(e);
-    };
-
+    });
     document.querySelector('.player').appendChild(player.root);
-
     if (P.config.hasTouchEvents) {
       document.addEventListener('touchmove', function(e) {
         e.preventDefault();

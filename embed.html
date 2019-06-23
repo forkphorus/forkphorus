@@ -89,7 +89,7 @@
     var player = new P.Player({theme: lightContent ? 'dark' : 'light'});
     if (hasUI) {
       player.addControls();
-      new P.Player.ProgressBar().addToPlayer(player, {position: 'controls'});
+      new P.Player.ProgressBar(player, {position: 'controls'});
     }
     document.querySelector('.player').appendChild(player.root);
     postMessage('stateChange', 'loading');

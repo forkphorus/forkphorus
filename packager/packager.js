@@ -426,7 +426,7 @@
   <div class="player"></div>
   <div class="splash">
     <div>
-      <h1>forkphorus</h1>
+      ${ options.loadingText ? `<h1>${options.loadingText}</h1>` : '' }
       <div class="progress">
         <div class="progress-bar"></div>
       </div>
@@ -434,7 +434,7 @@
   </div>
   <div class="error">
     <div>
-      ${ options.loadingText ? `<h1>${options.loadingText}</h1>` : '' }
+      <h1>Internal Error</h1>
       <p class="error-report"></p>
     </div>
   </div>
@@ -471,17 +471,28 @@
     var progressBar = document.querySelector('.progress');
     var progressBarFill = document.querySelector('.progress-bar');
 
-    var player = new P.Player();
+    var splash = document.querySelector('.splash');
+    var error = document.querySelector('.error');
+    var progressBar = document.querySelector('.progress');
+    var progressBarFill = document.querySelector('.progress-bar');
 
+    var player = new P.Player();
+    var errorHandler = new P.Player.ErrorHandler(player, {
+      container: document.querySelector('.error-report'),
+    });
     player.onprogress.subscribe(function(progress) {
       progressBarFill.style.width = (10 + progress * 90) + '%';
     });
-
-    player.addErrorMessage = function(e) {
+    player.onerror.subscribe(function(e) {
       player.exitFullscreen();
       error.style.display = 'table';
-      document.querySelector('.error-report').appendChild(e);
-    };
+    });
+    document.querySelector('.player').appendChild(player.root);
+    if (P.config.hasTouchEvents) {
+      document.addEventListener('touchmove', function(e) {
+        e.preventDefault();
+      });
+    }
 
     document.querySelector('.player').appendChild(player.root);
 

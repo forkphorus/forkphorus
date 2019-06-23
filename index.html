@@ -45,7 +45,7 @@
       <p>forkphorus runs Scratch 2 and Scratch 3 projects really fast by compiling them to JavaScript. Try it out by pasting a project ID or URL into the field below, <a class="upload-button"><input id="upload-file-input" type="file" autocomplete="off" accept=".sb2,.sb3">selecting a project file</a>, dropping a file on the page, or <a id="examples">choosing an example</a>.</p>
     </div>
 
-    <div id="examples-container">
+    <div id="examples-container" class="area">
       <div id="examples-view"></div>
       <div id="examples-footer"></div>
     </div>
@@ -157,7 +157,7 @@
     /** Constants **/
     var PROJECT_PREFIX = 'https://scratch.mit.edu/projects/';
     var STUDIO_PREFIX = 'https://scratch.mit.edu/studios/';
-    var STUDIO = '5010630';
+    var STUDIO = '15926401';
 
     /** Core Player Logic **/
     var titleArea = querySelector('#title-area');
@@ -167,9 +167,10 @@
     var player = new P.Player();
     window.player = player;
     player.addControls({});
-    new P.Player.ProgressBar().addToPlayer(player, {
+    new P.Player.ProgressBar(player, {
       position: querySelector('.url').parentNode,
     });
+    var errorHandler = new P.Player.ErrorHandler(player);
     playerArea.appendChild(player.root);
 
     var initialId = location.hash.substr(1);
@@ -184,7 +185,6 @@
     var studioViewAreaHeight = 320;
     playerArea.style.height = projectArea.style.height = 0;
 
-    // var examples = querySelector('#examples');
     var urlInput = querySelector('.url');
     urlInput.value = PROJECT_PREFIX + initialId;
 
@@ -247,12 +247,14 @@
       player.cleanup();
       if (studioView && studioView.visible) {
         examplesContainer.style.height = studioViewAreaHeight + 'px';
+        examplesViewContainer.appendChild(studioView.root);
       }
     }
     function showPlayerArea() {
       titleArea.style.height = '0px';
       playerArea.style.height = playerAreaHeight + 'px';
       projectArea.style.height = projectAreaHeight + 'px';
+      hideStudioView();
       examplesContainer.style.height = '0px';
     }
     function loadProjectId(id) {
@@ -268,7 +270,7 @@
     }
     function updateLinks() {
       projectLink.href = player.projectLink;
-      bugLink.href = player.createBugReportLink(player.getString('bug.manual.instructions'));
+      bugLink.href = errorHandler.createBugReportLink(player.getString('bug.manual.instructions'));
       updatePackageLink();
       updateEmbedCode();
     }
@@ -365,6 +367,12 @@
     var examplesFooter = querySelector('#examples-footer');
     examplesContainer.style.height = '0px';
     var studioView = null;
+    function hideStudioView() {
+      examplesContainer.style.height = '0px';
+      if (studioView && studioView.visible) {
+        examplesViewContainer.removeChild(studioView.root);
+      }
+    }
     function initStudioView() {
       studioView = new StudioView(STUDIO);
       studioView.visible = false;
@@ -389,8 +397,7 @@
         initStudioView();
       }
       if (studioView.visible) {
-        examplesContainer.style.height = '0px';
-        examplesViewContainer.removeChild(studioView.root);
+        hideStudioView();
       } else {
         examplesViewContainer.appendChild(studioView.root);
         examplesContainer.style.height = studioViewAreaHeight + 'px';
@@ -477,13 +484,6 @@
     function applySelectedOptions() {
       var options = getSelectedOptions();
       applyOptions(options);
-    }
-    var applyOptionsTimeout;
-    function debouncedApplySelectedOptions() {
-      if (applyOptionsTimeout) clearTimeout(applyOptionsTimeout);
-      applyOptionsTimeout = setTimeout(function() {
-        applySelectedOptions()
-      }, 50);
     }
 
     setSelectedOptions(defaultOptions);

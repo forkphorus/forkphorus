@@ -100,6 +100,9 @@ a:active {
   overflow: hidden;
   margin: 0 -24px;
   padding: 0 24px;
+  -webkit-transition: height .2s;
+  -o-transition: height .2s;
+  -moz-transition: height .2s;
   transition: height .2s;
 }
 #player-area, #project-area {
@@ -197,6 +200,9 @@ code {
   left: 5px;
   top: 5px;
   opacity: 0.5;
+  -webkit-transition: opacity .2s;
+  -o-transition: opacity .2s;
+  -moz-transition: opacity .2s;
   transition: opacity 0.2s;
 }
 .theme-select:hover {
@@ -252,6 +258,9 @@ code {
   background-color: #282828;
 }
 #settings input {
+  -webkit-transition: box-shadow .2s;
+  -o-transition: box-shadow .2s;
+  -moz-transition: box-shadow .2s;
   transition: box-shadow .2s;
 }
 /* style invalid inputs without making an ugly mess of things */
@@ -263,7 +272,6 @@ code {
 #examples-container {
   height: 0;
   overflow: hidden;
-  transition: height .2s;
 }
 #examples-view {
   height: 300px;

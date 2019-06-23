@@ -30,11 +30,7 @@
     this.page = 1;
     this.ended = false;
     this.loadingPage = false;
-
-    this.tombstones = [];
-    for (var i = 0; i < StudioView.TOMBSTONE_COUNT; i++) {
-      this.tombstones.push(this.createTombstoneElement());
-    }
+    this.unusedTombstones = [];
 
     this.root = document.createElement('div');
     this.root.className = 'studioview-root';
@@ -57,45 +53,22 @@
 
   /**
    * Add a project to the view.
+   * An unused tombstone element may be used, or it may be created.
    */
   StudioView.prototype.addProject = function(id, title, author) {
-    var el = this.createProjectElement(id, title, author);
-    this.projectList.appendChild(el);
+    var el;
+    if (this.unusedTombstones.length) {
+      el = this.unusedTombstones.shift();
+    } else {
+      el = this.createTombstone();
+      this.projectList.appendChild(el);
+    }
+    this.tombstoneToProject(el, id, title, author);
   };
 
   /**
-   * Create the HTML element for a project.
+   * Create an <img> element that will load only when it becomes visible.
    */
-  StudioView.prototype.createProjectElement = function(id, title, author) {
-    var el = document.createElement('a');
-    el.className = 'studioview-project';
-    el.dataset.id = id;
-    el.title = title + ' by ' + author;
-    el.href = StudioView.PROJECT_PAGE.replace('$id', id);
-
-    var thumbnailEl = document.createElement('div');
-    var thumbnailSrc = StudioView.THUMBNAIL_SRC.replace('$id', id);
-    var thumbnailImg = this.createLazyImage(thumbnailSrc);
-    thumbnailEl.appendChild(thumbnailImg);
-    thumbnailEl.className = 'studioview-thumbnail';
-    el.appendChild(thumbnailEl);
-
-    var titleEl = document.createElement('div');
-    titleEl.innerText = title;
-    titleEl.className = 'studioview-title';
-    el.appendChild(titleEl);
-
-    var authorEl = document.createElement('div');
-    authorEl.innerText = 'by ' + author;
-    authorEl.className = 'studioview-author';
-    el.appendChild(authorEl);
-
-    el.addEventListener('click', this.handleClick.bind(this), true);
-    el.addEventListener('keydown', this.handleKeyDown.bind(this), true);
-
-    return el;
-  };
-
   StudioView.prototype.createLazyImage = function(src) {
     var el = document.createElement('img');
     if (this.intersectionObserver) {
@@ -107,8 +80,60 @@
       el.src = src;
     }
     return el;
-  }
+  };
 
+  /**
+   * Create a tombstone or placeholder element.
+   */
+  StudioView.prototype.createTombstone = function() {
+    var el = document.createElement('a');
+    el.className = 'studioview-project studioview-tombstone';
+
+    var thumbnail = document.createElement('div');
+    thumbnail.className = 'studioview-thumbnail';
+
+    var title = document.createElement('div');
+    title.className = 'studioview-title';
+
+    var author = document.createElement('div');
+    author.className = 'studioview-author';
+
+    el.thumbnailEl = thumbnail;
+    el.titleEl = title;
+    el.authorEl = author;
+
+    el.appendChild(thumbnail);
+    el.appendChild(title);
+    el.appendChild(author);
+
+    return el;
+  };
+
+  /**
+   * Convert a tombstone element made by createTombstone to a project element.
+   */
+  StudioView.prototype.tombstoneToProject = function(el, id, title, author) {
+    el.className = 'studioview-project studioview-loaded';
+    el.dataset.id = id;
+    el.title = title + ' by ' + author;
+    el.href = StudioView.PROJECT_PAGE.replace('$id', id);
+
+    var thumbnailSrc = StudioView.THUMBNAIL_SRC.replace('$id', id);
+    var thumbnailImg = this.createLazyImage(thumbnailSrc);
+    el.thumbnailEl.appendChild(thumbnailImg);
+
+    el.titleEl.innerText = title;
+    el.authorEl.innerText = 'by ' + author;
+
+    el.addEventListener('click', this.handleClick.bind(this), true);
+    el.addEventListener('keydown', this.handleKeyDown.bind(this), true);
+
+    return el;
+  };
+
+  /**
+   * Adds an error message to the list.
+   */
   StudioView.prototype.addErrorElement = function() {
     var el = document.createElement('div');
     el.innerText = 'There was an error loading the next page of projects.';
@@ -116,12 +141,14 @@
     this.projectList.appendChild(el);
   };
 
+  // Called when the project list is scrolled
   StudioView.prototype.handleScroll = function(e) {
     if (this.canLoadNext() && isElementVisible(this.projectList.lastChild)) {
       this.loadNextPage();
     }
   };
 
+  // Click a project element or a child of a project element
   StudioView.prototype.clickProject = function(el) {
     while (!el.classList.contains('studioview-project')) {
       el = el.parentNode;
@@ -130,18 +157,22 @@
     this.onselect(id);
   }
 
+  // Called when click is fired on a project element
   StudioView.prototype.handleClick = function(e) {
     e.preventDefault();
     this.clickProject(e.target);
   };
 
+  // Called when keydown is fired on a project element
   StudioView.prototype.handleKeyDown = function(e) {
     if (e.keyCode === 13) {
+      // treat enter (13) as click
       e.preventDefault();
       this.clickProject(e.target);
     }
   };
 
+  // Called by the IntersectionObserver when it sees an intersection
   StudioView.prototype.handleIntersection = function(entries, observer) {
     entries.forEach(function(entry) {
       if (entry.isIntersecting) {
@@ -161,35 +192,24 @@
     return !this.loadingPage && !this.ended;
   };
 
-  StudioView.prototype.createTombstoneElement = function() {
-    var el = document.createElement('div');
-    el.className = 'studioview-tombstone';
-
-    var thumb = document.createElement('div');
-    thumb.className = 'studioview-tombstone-thumbnail';
-
-    var title = document.createElement('div');
-    title.className = 'studioview-tombstone-title';
-
-    var author = document.createElement('div');
-    author.className = 'studioview-tombstone-author';
-
-    el.appendChild(thumb);
-    el.appendChild(title);
-    el.appendChild(author);
-
-    return el;
-  };
-
-  StudioView.prototype.showTombstones = function() {
-    for (var i = 0; i < this.tombstones.length; i++) {
-      this.projectList.appendChild(this.tombstones[i]);
+  /**
+   * Remove all unused tombstone elements.
+   */
+  StudioView.prototype.cleanupTombstones = function() {
+    while (this.unusedTombstones.length) {
+      var el = this.unusedTombstones.pop();
+      this.projectList.removeChild(el);
     }
   };
 
-  StudioView.prototype.hideTombstones = function() {
-    for (var i = 0; i < this.tombstones.length; i++) {
-      this.projectList.removeChild(this.tombstones[i]);
+  /**
+   * Add tombstone placeholder elements.
+   */
+  StudioView.prototype.addTombstones = function() {
+    for (var i = 0; i < StudioView.TOMBSTONE_COUNT; i++) {
+      var el = this.createTombstone();
+      this.unusedTombstones.push(el);
+      this.projectList.appendChild(el);
     }
   };
 
@@ -204,16 +224,11 @@
       throw new Error('There are no more pages to load');
     }
 
-    this.showTombstones();
-
+    this.addTombstones();
     this.root.setAttribute('loading', '');
     this.loadingPage = true;
-    var url = StudioView.STUDIO_API
-      .replace('$id', this.studioId)
-      .replace('$page', this.page);
 
     var xhr = new XMLHttpRequest();
-
     xhr.onload = function() {
       var doc = xhr.response;
       var projects = doc.querySelectorAll('.project');
@@ -238,25 +253,31 @@
         var author = project.querySelector('.owner a').innerText.trim();
         this.addProject(id, title, author);
       }
-      this.onpageload();
+      this.cleanupTombstones();
+
       // All pages except the last have a next page button.
       if (!doc.querySelector('.next-page')) {
         this.ended = true;
         this.onend();
       }
+
       this.page++;
       this.loadingPage = false;
       this.root.removeAttribute('loading');
-      this.hideTombstones();
+
+      this.onpageload();
     }.bind(this);
 
     xhr.onerror = function() {
       this.root.setAttribute('error', '');
-      this.hideTombstones();
+      this.cleanupTombstones();
       this.addErrorElement();
       this.ended = true;
     }.bind(this);
 
+    var url = StudioView.STUDIO_API
+      .replace('$id', this.studioId)
+      .replace('$page', this.page);
     xhr.open('GET', url);
     xhr.responseType = 'document';
     xhr.send();

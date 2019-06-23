@@ -46,8 +46,8 @@
     <tr>
       <td class="label">Project Source</td>
       <td>
-        <label><input type="radio" name="project-type" value="id" checked> Project ID (scratch.mit.edu/projects/...)</label>
-        <label><input type="radio" name="project-type" value="file"> Project File (.sb2, .sb3)</label>
+        <label><input type="radio" name="project-type" value="id" checked> Project ID</label>
+        <label><input type="radio" name="project-type" value="file"> Project File</label>
       </td>
     </tr>
     <tr id="project-id-section">
@@ -59,7 +59,7 @@
       <td><input type="file" id="project-file-input" accept=".sb2,.sb3"></td>
     </tr>
     <tr>
-      <td colspan="2" class="desc">You can select a project from the scratch.mit.edu website, or choose a project file. Scratch 2 and Scratch 3 projects are supported.</td>
+      <td colspan="2" class="desc">You can select a project from the scratch.mit.edu website, or choose a project file. Scratch 2 (sb2) and Scratch 3 (sb3) projects are supported.</td>
     </tr>
   </table>
 
@@ -100,10 +100,11 @@ player.stage.runtime.framerate = 30;</textarea></td>
     <table>
       <tr>
         <td class="label"><label for="custom-style-input">Custom CSS</label></td>
-        <td><textarea id="custom-style-input"></textarea></td>
+        <td><textarea id="custom-style-input">.progress { border-color: white; }
+.progress-bar { background: white; }</textarea></td>
       </tr>
       <tr>
-        <td colspan="2" class="desc">Customize the look of the player.</td>
+        <td colspan="2" class="desc">Customize the look of the player. The example shows how you can change the color of the progress bar.</td>
       </tr>
     </table>
   </details>

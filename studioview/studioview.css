@@ -16,16 +16,16 @@
 .studioview-project {
   text-decoration: none;
 }
-.studioview-root[theme=light] .studioview-project:hover {
+.studioview-root[theme=light] .studioview-loaded:hover {
   background: rgba(0, 0, 0, 0.1);
 }
-.studioview-root[theme=dark] .studioview-project:hover {
+.studioview-root[theme=dark] .studioview-loaded:hover {
   background: rgba(255, 255, 255, 0.1);
 }
-.studioview-root[theme=light] .studioview-project:active {
+.studioview-root[theme=light] .studioview-loaded:active {
   background: rgba(0, 0, 0, 0.2);
 }
-.studioview-root[theme=dark] .studioview-project:active {
+.studioview-root[theme=dark] .studioview-loaded:active {
   background: rgba(255, 255, 255, 0.2);
 }
 .studioview-root .studioview-title,
@@ -60,39 +60,25 @@
   height: 100%;
 }
 
-.studioview-thumbnail {
+.studioview-thumbnail,
+.studioview-tombstone .studioview-title,
+.studioview-tombstone .studioview-author {
   background: rgba(0, 0, 0, 0.1);
 }
-.studioview-root[theme=dark] .studioview-thumbnail {
+.studioview-root[theme=dark] .studioview-thumbnail,
+.studioview-root[theme=dark] .studioview-tombstone .studioview-title,
+.studioview-root[theme=dark] .studioview-tombstone .studioview-author {
   background: rgba(255, 255, 255, 0.1);
 }
 
-.studioview-tombstone-thumbnail {
-  border-radius: 2px;
-}
-.studioview-tombstone-title {
+.studioview-tombstone .studioview-title {
   border-radius: 2px 2px 2px 0;
-}
-.studioview-tombstone-author {
-  border-radius: 0 0 2px 2px;
-}
-.studioview-tombstone-title,
-.studioview-tombstone-author,
-.studioview-tombstone-thumbnail {
-  background: rgba(0, 0, 0, 0.1);
-}
-.studioview-root[theme=dark] .studioview-tombstone-title,
-.studioview-root[theme=dark] .studioview-tombstone-author,
-.studioview-root[theme=dark] .studioview-tombstone-thumbnail {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.studioview-tombstone-title {
   width: 100%;
   height: 20px;
   margin-top: 2px;
 }
-.studioview-tombstone-author {
+.studioview-tombstone .studioview-author {
+  border-radius: 0 0 2px 2px;
   width: 50%;
   height: 18px;
 }
