@@ -880,7 +880,7 @@ namespace P.renderer {
       }
 
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(costume.get(objectScale), -costume.rotationCenterX * objectScale, -costume.rotationCenterY * objectScale, costume.width * objectScale, costume.height * objectScale);
+      ctx.drawImage(costume.get(objectScale * c.stage.zoom), -costume.rotationCenterX * objectScale, -costume.rotationCenterY * objectScale, costume.width * objectScale, costume.height * objectScale);
       ctx.restore();
     }
   }

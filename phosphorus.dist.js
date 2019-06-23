@@ -1274,7 +1274,7 @@ var P;
                     }
                 }
                 ctx.imageSmoothingEnabled = false;
-                ctx.drawImage(costume.get(objectScale), -costume.rotationCenterX * objectScale, -costume.rotationCenterY * objectScale, costume.width * objectScale, costume.height * objectScale);
+                ctx.drawImage(costume.get(objectScale * c.stage.zoom), -costume.rotationCenterX * objectScale, -costume.rotationCenterY * objectScale, costume.width * objectScale, costume.height * objectScale);
                 ctx.restore();
             }
         }
@@ -2514,6 +2514,7 @@ var P;
                 clone.penLightness = this.penLightness;
                 clone.penSize = this.penSize;
                 clone.isPenDown = this.isPenDown;
+                clone.watchers = this.watchers;
                 return clone;
             }
             /**
@@ -7679,6 +7680,7 @@ var P;
         util.writeLn('if (self.promptId === R.id) {');
         util.forceQueue(label2);
         util.writeLn('}');
+        util.writeLn('S.say("");');
         util.visual('always');
     };
     statementLibrary['sensing_resettimer'] = function (util) {
