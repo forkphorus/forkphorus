@@ -3117,7 +3117,6 @@ var P;
 (function (P) {
     var runtime;
     (function (runtime_1) {
-        // Global variables expected by scripts at runtime:
         // Current runtime
         var runtime;
         // Current stage
@@ -3136,7 +3135,6 @@ var P;
         // Each level (usually procedures) of depth will increment and decrement as they start and stop.
         // As long as this is greater than 0, functions will run without waiting for the screen.
         var WARP;
-        // ??
         var BASE;
         // The ID of the active thread in the Runtime's queue
         var THREAD;
@@ -3151,6 +3149,10 @@ var P;
         const INSTRUMENTS = P.audio.instruments;
         const DRUMS = P.audio.drums;
         const DIGIT = /\d/;
+        const tts = {
+            voice: 'alto',
+            language: 'en',
+        };
         // Converts a value to its boolean equivalent
         var bool = function (v) {
             return +v !== 0 && v !== '' && v !== 'false' && v !== false;
@@ -3477,6 +3479,9 @@ var P;
                 sound.createSourceNode().connect(S.getAudioNode());
             };
         }
+        var ttsSpeak = function (text) {
+            return P.tts.speak(text, tts.voice, tts.language);
+        };
         var save = function () {
             STACK.push(R);
             R = {};
@@ -6604,6 +6609,22 @@ var P;
                     this.writeLn('restore();');
                 }
                 /**
+                 * Write JS to pause script execution until a Promise is settled (regardless of resolve/reject)
+                 */
+                sleepUntilSettles(source) {
+                    this.writeLn('save();');
+                    this.writeLn('R.resume = false;');
+                    this.writeLn('var localR = R;');
+                    this.writeLn(`${source}`);
+                    this.writeLn('  .then(function() { localR.resume = true; })');
+                    this.writeLn('  .catch(function() { localR.resume = true; });');
+                    const label = this.addLabel();
+                    this.writeLn('if (!R.resume) {');
+                    this.forceQueue(label);
+                    this.writeLn('}');
+                    this.writeLn('restore();');
+                }
+                /**
                  * Append to the content
                  */
                 write(content) {
@@ -7695,6 +7716,18 @@ var P;
             util.writeLn('S.isDraggable = false;');
         }
     };
+    statementLibrary['text2speech_setVoice'] = function (util) {
+        const VOICE = util.getInput('VOICE', 'string');
+        util.writeLn(`tts.voice = ${VOICE};`);
+    };
+    statementLibrary['text2speech_setLanguage'] = function (util) {
+        const LANGUAGE = util.getInput('LANGUAGE', 'string');
+        util.writeLn(`tts.language = ${LANGUAGE};`);
+    };
+    statementLibrary['text2speech_speakAndWait'] = function (util) {
+        const WORDS = util.getInput('WORDS', 'string');
+        util.sleepUntilSettles(`ttsSpeak(${WORDS})`);
+    };
     // Legacy no-ops
     // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L19
     // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_looks.js#L248
@@ -8010,6 +8043,12 @@ var P;
     inputLibrary['sound_volume'] = function (util) {
         return util.numberInput('(S.volume * 100)');
     };
+    inputLibrary['text2speech_menu_voices'] = function (util) {
+        return util.fieldInput('voices');
+    };
+    inputLibrary['text2speech_menu_languages'] = function (util) {
+        return util.fieldInput('languages');
+    };
     // Legacy no-ops
     // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_sensing.js#L74
     // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L42-L43
@@ -8239,4 +8278,37 @@ var P;
         getLabel() { return 'volume'; },
     };
 }());
+/// <reference path="phosphorus.ts" />
+/**
+ * Text-to-speech
+ */
+var P;
+(function (P) {
+    var tts;
+    (function (tts) {
+        tts.mode = 1 /* WebAudio */;
+        function speak(message, voice, language) {
+            if (tts.mode === 0 /* Disabled */) {
+                return Promise.resolve();
+            }
+            return new Promise((resolve, reject) => {
+                if (tts.mode === 1 /* WebAudio */) {
+                    const utterance = new SpeechSynthesisUtterance(message);
+                    utterance.lang = language;
+                    utterance.onerror = function () {
+                        resolve();
+                    };
+                    utterance.onend = function () {
+                        resolve();
+                    };
+                    speechSynthesis.speak(utterance);
+                }
+                else {
+                    // TODO: use the scratch API
+                }
+            });
+        }
+        tts.speak = speak;
+    })(tts = P.tts || (P.tts = {}));
+})(P || (P = {}));
 //# sourceMappingURL=phosphorus.dist.js.map

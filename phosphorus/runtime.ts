@@ -7,7 +7,6 @@
 namespace P.runtime {
   export type Fn = () => void;
 
-  // Global variables expected by scripts at runtime:
   // Current runtime
   var runtime: Runtime;
   // Current stage
@@ -26,7 +25,6 @@ namespace P.runtime {
   // Each level (usually procedures) of depth will increment and decrement as they start and stop.
   // As long as this is greater than 0, functions will run without waiting for the screen.
   var WARP: number;
-  // ??
   var BASE;
   // The ID of the active thread in the Runtime's queue
   var THREAD: number;
@@ -43,6 +41,10 @@ namespace P.runtime {
   const INSTRUMENTS = P.audio.instruments;
   const DRUMS = P.audio.drums;
   const DIGIT = /\d/;
+  const tts = {
+    voice: 'alto',
+    language: 'en',
+  };
 
   // Converts a value to its boolean equivalent
   var bool = function(v) {
@@ -386,6 +388,10 @@ namespace P.runtime {
       sound.createSourceNode().connect(S.getAudioNode());
     };
   }
+
+  var ttsSpeak = function(text: string) {
+    return P.tts.speak(text, tts.voice, tts.language);
+  };
 
   var save = function() {
     STACK.push(R);
