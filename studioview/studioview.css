@@ -6,7 +6,7 @@
   height: 100%;
   overflow-y: scroll;
 }
-.studioview-project, .studioview-tombstone {
+.studioview-project, .studioview-placeholder {
   display: inline-block;
   width: 144px;
   padding: 3px;
@@ -51,7 +51,7 @@
   width: 100%;
 }
 
-.studioview-thumbnail, .studioview-tombstone-thumbnail {
+.studioview-thumbnail, .studioview-placeholder-thumbnail {
   width: 144px;
   height: 108px;
 }
@@ -61,13 +61,13 @@
 }
 
 .studioview-thumbnail,
-.studioview-tombstone .studioview-title,
-.studioview-tombstone .studioview-author {
+.studioview-placeholder .studioview-title,
+.studioview-placeholder .studioview-author {
   background: rgba(0, 0, 0, 0.1);
 }
 .studioview-root[theme=dark] .studioview-thumbnail,
-.studioview-root[theme=dark] .studioview-tombstone .studioview-title,
-.studioview-root[theme=dark] .studioview-tombstone .studioview-author {
+.studioview-root[theme=dark] .studioview-placeholder .studioview-title,
+.studioview-root[theme=dark] .studioview-placeholder .studioview-author {
   background: rgba(255, 255, 255, 0.1);
 }
 
@@ -79,11 +79,11 @@
   height: 18px;
 }
 
-.studioview-tombstone .studioview-title {
+.studioview-placeholder .studioview-title {
   border-radius: 2px 2px 2px 0;
   width: 100%;
 }
-.studioview-tombstone .studioview-author {
+.studioview-placeholder .studioview-author {
   border-radius: 0 0 2px 2px;
   width: 50%;
 }

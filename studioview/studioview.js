@@ -11,15 +11,15 @@
     var height = rect.height;
     var el = el.parentNode;
 
-    if (rect.bottom < 0) return false
-    if (top > document.documentElement.clientHeight) return false
+    if (rect.bottom < 0) return false;
+    if (top > document.documentElement.clientHeight) return false;
     do {
-      rect = el.getBoundingClientRect()
-      if (top <= rect.bottom === false) return false
-      if ((top + height) <= rect.top) return false
-      el = el.parentNode
+      rect = el.getBoundingClientRect();
+      if (top <= rect.bottom === false) return false;
+      if ((top + height) <= rect.top) return false;
+      el = el.parentNode;
     } while (el != document.body)
-    return true
+    return true;
   }
 
   function shuffleList(list) {
@@ -41,7 +41,7 @@
     this.ended = false;
     this.loadingPage = false;
     this.shuffleProjects = false;
-    this.unusedTombstones = [];
+    this.unusedPlaceholders = [];
 
     this.root = document.createElement('div');
     this.root.className = 'studioview-root';
@@ -64,17 +64,17 @@
 
   /**
    * Add a project to the view.
-   * An unused tombstone element may be used, or it may be created.
+   * An unused placeholder element may be used, or it may be created.
    */
   StudioView.prototype.addProject = function(details) {
     var el;
-    if (this.unusedTombstones.length) {
-      el = this.unusedTombstones.shift();
+    if (this.unusedPlaceholders.length) {
+      el = this.unusedPlaceholders.shift();
     } else {
-      el = this.createTombstone();
+      el = this.createPlaceholder();
       this.projectList.appendChild(el);
     }
-    this.tombstoneToProject(el, details.id, details.title, details.author);
+    this.placeholderToProject(el, details.id, details.title, details.author);
   };
 
   /**
@@ -94,11 +94,11 @@
   };
 
   /**
-   * Create a tombstone or placeholder element.
+   * Create a placeholder or placeholder element.
    */
-  StudioView.prototype.createTombstone = function() {
+  StudioView.prototype.createPlaceholder = function() {
     var el = document.createElement('a');
-    el.className = 'studioview-project studioview-tombstone';
+    el.className = 'studioview-project studioview-placeholder';
 
     var thumbnail = document.createElement('div');
     thumbnail.className = 'studioview-thumbnail';
@@ -121,9 +121,9 @@
   };
 
   /**
-   * Convert a tombstone element made by createTombstone to a project element.
+   * Convert a placeholder element made by createPlaceholder to a project element.
    */
-  StudioView.prototype.tombstoneToProject = function(el, id, title, author) {
+  StudioView.prototype.placeholderToProject = function(el, id, title, author) {
     el.className = 'studioview-project studioview-loaded';
     el.dataset.id = id;
     el.title = title + ' by ' + author;
@@ -204,22 +204,22 @@
   };
 
   /**
-   * Remove all unused tombstone elements.
+   * Remove all unused placeholder elements.
    */
-  StudioView.prototype.cleanupTombstones = function() {
-    while (this.unusedTombstones.length) {
-      var el = this.unusedTombstones.pop();
+  StudioView.prototype.cleanupPlaceholders = function() {
+    while (this.unusedPlaceholders.length) {
+      var el = this.unusedPlaceholders.pop();
       this.projectList.removeChild(el);
     }
   };
 
   /**
-   * Add tombstone placeholder elements.
+   * Add placeholder placeholder elements.
    */
-  StudioView.prototype.addTombstones = function() {
-    for (var i = 0; i < StudioView.TOMBSTONE_COUNT; i++) {
-      var el = this.createTombstone();
-      this.unusedTombstones.push(el);
+  StudioView.prototype.addPlaceholders = function() {
+    for (var i = 0; i < StudioView.PLACEHOLDER_COUNT; i++) {
+      var el = this.createPlaceholder();
+      this.unusedPlaceholders.push(el);
       this.projectList.appendChild(el);
     }
   };
@@ -235,7 +235,7 @@
       throw new Error('There are no more pages to load');
     }
 
-    this.addTombstones();
+    this.addPlaceholders();
     this.root.setAttribute('loading', '');
     this.loadingPage = true;
 
@@ -276,7 +276,7 @@
       for (var i = 0; i < projects.length; i++) {
         this.addProject(projects[i]);
       }
-      this.cleanupTombstones();
+      this.cleanupPlaceholders();
 
       // All pages except the last have a next page button.
       if (!doc.querySelector('.next-page')) {
@@ -293,7 +293,7 @@
 
     xhr.onerror = function() {
       this.root.setAttribute('error', '');
-      this.cleanupTombstones();
+      this.cleanupPlaceholders();
       this.addErrorElement();
       this.ended = true;
     }.bind(this);
@@ -328,8 +328,8 @@
   // $id is replaced with the project ID.
   StudioView.PROJECT_PAGE = 'https://scratch.mit.edu/projects/$id/';
 
-  // The amount of "placeholders" or "tombstones" to insert before the next page loads.
-  StudioView.TOMBSTONE_COUNT = 9;
+  // The amount of "placeholders" to insert before the next page loads.
+  StudioView.PLACEHOLDER_COUNT = 9;
 
   scope.StudioView = StudioView;
 }(window));
