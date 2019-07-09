@@ -1287,7 +1287,7 @@ var P;
                 super();
                 this.stage = stage;
                 this.penLayerModified = false;
-                this.penLayerTargetScale = 1;
+                this.penLayerTargetScale = -1;
                 this.penLayerMaxScale = -1;
                 const { ctx: stageContext, canvas: stageLayer } = create2dCanvas();
                 this.stageContext = stageContext;

@@ -896,7 +896,7 @@ namespace P.renderer {
     public penContext: CanvasRenderingContext2D;
 
     private penLayerModified: boolean = false;
-    private penLayerTargetScale: number = 1;
+    private penLayerTargetScale: number = -1;
     private penLayerMaxScale: number = -1;
 
     constructor(public stage: P.core.Stage) {
