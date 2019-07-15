@@ -31,6 +31,7 @@
    * @property {string} postLoadScript
    * @property {string} customStyle
    * @property {boolean} turbo
+   * @property {boolean} includeCSP
    */
 
   const sectionLoading = document.getElementById('loading-section');
@@ -43,6 +44,7 @@
   const inputPostLoadScript = /** @type {HTMLInputElement} */ (document.getElementById('post-load-script-input'));
   const inputCustomStyle = /** @type {HTMLInputElement} */ (document.getElementById('custom-style-input'));
   const inputTurbo = /** @type {HTMLInputElement} */ (document.getElementById('turbo-input'));
+  const includeCSP = /** @type {HTMLInputElement} */ (document.getElementById('include-csp'));
 
   /**
    * API route to fetch a project, replace $id with project ID.
@@ -362,6 +364,7 @@
 
 <head>
   <meta charset="utf-8">
+  ${options.includeCSP ? `<meta http-equiv="Content-Security-Policy" content="default-src 'unsafe-inline' 'unsafe-eval' data: blob:">` : ''}
   <style>
     ${fileCache.css}
   </style>
@@ -533,6 +536,7 @@
       postLoadScript: inputPostLoadScript.value,
       customStyle: inputCustomStyle.value,
       turbo: inputTurbo.checked,
+      includeCSP: includeCSP.checked,
     };
   }
 

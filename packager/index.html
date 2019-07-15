@@ -84,8 +84,18 @@
   </table>
 
   <details>
-    <!-- wont work in edge/ie but whatever -->
     <summary>Advanced options</summary>
+
+    <table>
+      <tr>
+        <td class="label"><label for="include-csp">Include CSP</label></td>
+        <td><input type="checkbox" id="include-csp"></td>
+      </tr>
+      <tr>
+        <td colspan="2" class="desc">Include a &lt;meta http-equiv="Content-Security-Policy" content="..."&gt; in the output. This is required in some environments where the default Content-Security-Policy is too strict for forkphorus to run.</td>
+      </tr>
+    </table>
+
     <table>
       <tr>
         <td class="label"><label for="post-load-script-input">Custom JS</label></td>
