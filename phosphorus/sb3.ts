@@ -1188,11 +1188,11 @@ namespace P.sb3.compiler {
      */
     wait(seconds: string) {
       this.writeLn('save();');
-      this.writeLn('R.start = runtime.now;');
+      this.writeLn('R.start = runtime.now();');
       this.writeLn(`R.duration = ${seconds}`);
       this.writeLn('var first = true;');
       const label = this.addLabel();
-      this.writeLn('if (runtime.now - R.start < R.duration * 1000 || first) {');
+      this.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
       this.writeLn('  var first;');
       this.forceQueue(label);
       this.writeLn('}');
@@ -1880,11 +1880,11 @@ namespace P.sb3.compiler {
   statementLibrary['control_wait'] = function(util) {
     const DURATION = util.getInput('DURATION', 'any');
     util.writeLn('save();');
-    util.writeLn('R.start = runtime.now;');
+    util.writeLn('R.start = runtime.now();');
     util.writeLn(`R.duration = ${DURATION};`);
     util.writeLn(`var first = true;`);
     const label = util.addLabel();
-    util.writeLn('if (runtime.now - R.start < R.duration * 1000 || first) {');
+    util.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
     util.writeLn('  var first;');
     util.forceQueue(label);
     util.writeLn('}');
@@ -2036,10 +2036,10 @@ namespace P.sb3.compiler {
     const SECS = util.getInput('SECS', 'number');
     util.writeLn('save();');
     util.writeLn(`R.id = S.say(${MESSAGE}, false);`);
-    util.writeLn('R.start = runtime.now;');
+    util.writeLn('R.start = runtime.now();');
     util.writeLn(`R.duration = ${SECS};`);
     const label = util.addLabel();
-    util.writeLn('if (runtime.now - R.start < R.duration * 1000) {');
+    util.writeLn('if (runtime.now() - R.start < R.duration * 1000) {');
     util.forceQueue(label);
     util.writeLn('}');
     util.writeLn('if (S.sayId === R.id) {');
@@ -2086,10 +2086,10 @@ namespace P.sb3.compiler {
     const SECS = util.getInput('SECS', 'number');
     util.writeLn('save();');
     util.writeLn(`R.id = S.say(${MESSAGE}, true);`);
-    util.writeLn('R.start = runtime.now;');
+    util.writeLn('R.start = runtime.now();');
     util.writeLn(`R.duration = ${SECS};`);
     const label = util.addLabel();
-    util.writeLn('if (runtime.now - R.start < R.duration * 1000) {');
+    util.writeLn('if (runtime.now() - R.start < R.duration * 1000) {');
     util.forceQueue(label);
     util.writeLn('}');
     util.writeLn('if (S.sayId === R.id) {');
@@ -2114,14 +2114,14 @@ namespace P.sb3.compiler {
     const Y = util.getInput('Y', 'any');
     util.visual('drawing');
     util.writeLn('save();');
-    util.writeLn('R.start = runtime.now;');
+    util.writeLn('R.start = runtime.now();');
     util.writeLn(`R.duration = ${SECS};`);
     util.writeLn('R.baseX = S.scratchX;');
     util.writeLn('R.baseY = S.scratchY;');
     util.writeLn(`R.deltaX = ${X} - S.scratchX;`);
     util.writeLn(`R.deltaY = ${Y} - S.scratchY;`);
     const label = util.addLabel();
-    util.writeLn('var f = (runtime.now - R.start) / (R.duration * 1000);');
+    util.writeLn('var f = (runtime.now() - R.start) / (R.duration * 1000);');
     util.writeLn('if (f > 1) f = 1;');
     util.writeLn('S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
     util.writeLn('if (f < 1) {');
@@ -2134,7 +2134,7 @@ namespace P.sb3.compiler {
     const TO = util.getInput('TO', 'any');
     util.visual('drawing');
     util.writeLn('save();');
-    util.writeLn('R.start = runtime.now;');
+    util.writeLn('R.start = runtime.now();');
     util.writeLn(`R.duration = ${SECS};`);
     util.writeLn('R.baseX = S.scratchX;');
     util.writeLn('R.baseY = S.scratchY;');
@@ -2143,7 +2143,7 @@ namespace P.sb3.compiler {
     util.writeLn('  R.deltaX = to.x - S.scratchX;');
     util.writeLn('  R.deltaY = to.y - S.scratchY;');
     const label = util.addLabel();
-    util.writeLn('  var f = (runtime.now - R.start) / (R.duration * 1000);');
+    util.writeLn('  var f = (runtime.now() - R.start) / (R.duration * 1000);');
     util.writeLn('  if (f > 1 || isNaN(f)) f = 1;');
     util.writeLn('  S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
     util.writeLn('  if (f < 1) {');
@@ -2233,11 +2233,11 @@ namespace P.sb3.compiler {
       util.writeLn('  playSound(sound);');
       util.writeLn('  save();');
       util.writeLn('  R.sound = sound;');
-      util.writeLn('  R.start = runtime.now;');
+      util.writeLn('  R.start = runtime.now();');
       util.writeLn('  R.duration = sound.duration;');
       util.writeLn('  var first = true;');
       const label = util.addLabel();
-      util.writeLn('  if ((runtime.now - R.start < R.duration * 1000 || first) && S.stoppingSounds === 0) {');
+      util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && S.stoppingSounds === 0) {');
       util.writeLn('    var first;');
       util.forceQueue(label);
       util.writeLn('  }');
@@ -2381,7 +2381,7 @@ namespace P.sb3.compiler {
     util.visual('always');
   };
   statementLibrary['sensing_resettimer'] = function(util) {
-    util.writeLn('runtime.timerStart = runtime.now;');
+    util.writeLn('runtime.timerStart = runtime.now();');
   };
   statementLibrary['sensing_setdragmode'] = function(util) {
     const DRAG_MODE = util.getField('DRAG_MODE');
@@ -2683,11 +2683,7 @@ namespace P.sb3.compiler {
     return util.fieldInput('OBJECT');
   };
   inputLibrary['sensing_timer'] = function(util) {
-    if (P.config.preciseTimers) {
-      return util.numberInput('((runtime.rightNow() - runtime.timerStart) / 1000)');
-    } else {
-      return util.numberInput('((runtime.now - runtime.timerStart) / 1000)');
-    }
+    return util.numberInput('((runtime.now() - runtime.timerStart) / 1000)');
   };
   inputLibrary['sensing_touchingcolor'] = function(util) {
     const COLOR = util.getInput('COLOR', 'any');
@@ -2953,7 +2949,7 @@ namespace P.sb3.compiler {
   };
   watcherLibrary['sensing_timer'] = {
     evaluate(watcher) {
-      return (watcher.stage.runtime.now - watcher.stage.runtime.timerStart) / 1000;
+      return (watcher.stage.runtime.now() - watcher.stage.runtime.timerStart) / 1000;
     },
     getLabel() { return 'timer'; },
   };

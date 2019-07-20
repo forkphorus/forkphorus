@@ -39,7 +39,6 @@ var P;
         const features = location.search.replace('?', '').split('&');
         config.debug = features.indexOf('debug') > -1;
         config.useWebGL = features.indexOf('webgl') > -1;
-        config.preciseTimers = features.indexOf('preciseTimers') > -1;
         config.useCrashMonitor = features.indexOf('crashmonitor') > -1;
         config.scale = window.devicePixelRatio || 1;
         config.hasTouchEvents = 'ontouchstart' in document;
@@ -3571,7 +3570,6 @@ var P;
                 this.timerStart = 0;
                 this.baseTime = 0;
                 this.baseNow = 0;
-                this.now = 0;
                 this.isTurbo = false;
                 this.framerate = 30;
                 // Fix scoping
@@ -3645,7 +3643,7 @@ var P;
              * Trigger's the project's green flag.
              */
             triggerGreenFlag() {
-                this.timerStart = this.rightNow();
+                this.timerStart = this.now();
                 this.trigger('whenGreenFlag');
             }
             /**
@@ -3667,7 +3665,7 @@ var P;
              */
             pause() {
                 if (this.interval) {
-                    this.baseNow = this.rightNow();
+                    this.baseNow = this.now();
                     clearInterval(this.interval);
                     this.interval = 0;
                     window.removeEventListener('error', this.onError);
@@ -3713,7 +3711,7 @@ var P;
             /**
              * The current time in the project
              */
-            rightNow() {
+            now() {
                 return this.baseNow + Date.now() - this.baseTime;
             }
             /**
@@ -3730,7 +3728,6 @@ var P;
                 const start = Date.now();
                 const queue = this.queue;
                 do {
-                    this.now = this.rightNow();
                     for (THREAD = 0; THREAD < queue.length; THREAD++) {
                         const thread = queue[THREAD];
                         if (thread) {
@@ -3785,7 +3782,6 @@ var P;
                 const start = Date.now();
                 const queue = this.queue;
                 do {
-                    this.now = this.rightNow();
                     for (THREAD = 0; THREAD < queue.length; THREAD++) {
                         const thread = queue[THREAD];
                         if (thread) {
@@ -4143,7 +4139,7 @@ var P;
                         value = this.timeAndDate(this.param);
                         break;
                     case 'timer':
-                        value = Math.round((this.stage.runtime.rightNow() - this.stage.runtime.timerStart) / 100) / 10;
+                        value = Math.round((this.stage.runtime.now() - this.stage.runtime.timerStart) / 100) / 10;
                         break;
                     case 'volume':
                         value = this.target.volume * 100;
@@ -4955,12 +4951,7 @@ var P;
                         return 'self.mouseY';
                     }
                     else if (e[0] === 'timer') {
-                        if (P.config.preciseTimers) {
-                            return '((runtime.rightNow() - runtime.timerStart) / 1000)';
-                        }
-                        else {
-                            return '((runtime.now - runtime.timerStart) / 1000)';
-                        }
+                        return '((runtime.now() - runtime.timerStart) / 1000)';
                     }
                     else if (e[0] === 'distanceTo:') {
                         return 'S.distanceTo(' + val(e[1]) + ')';
@@ -5065,13 +5056,13 @@ var P;
                 };
                 var beatHead = function (dur) {
                     source += 'save();\n';
-                    source += 'R.start = runtime.now;\n';
+                    source += 'R.start = runtime.now();\n';
                     source += 'R.duration = ' + num(dur) + ' * 60 / self.tempoBPM;\n';
                     source += 'var first = true;\n';
                 };
                 var beatTail = function () {
                     var id = label();
-                    source += 'if (runtime.now - R.start < R.duration * 1000 || first) {\n';
+                    source += 'if (runtime.now() - R.start < R.duration * 1000 || first) {\n';
                     source += '  var first;\n';
                     forceQueue(id);
                     source += '}\n';
@@ -5079,11 +5070,11 @@ var P;
                 };
                 var wait = function (dur) {
                     source += 'save();\n';
-                    source += 'R.start = runtime.now;\n';
+                    source += 'R.start = runtime.now();\n';
                     source += 'R.duration = ' + dur + ';\n';
                     source += 'var first = true;\n';
                     var id = label();
-                    source += 'if (runtime.now - R.start < R.duration * 1000 || first) {\n';
+                    source += 'if (runtime.now() - R.start < R.duration * 1000 || first) {\n';
                     source += '  var first;\n';
                     forceQueue(id);
                     source += '}\n';
@@ -5197,10 +5188,10 @@ var P;
                     else if (block[0] === 'say:duration:elapsed:from:') {
                         source += 'save();\n';
                         source += 'R.id = S.say(' + val(block[1]) + ', false);\n';
-                        source += 'R.start = runtime.now;\n';
+                        source += 'R.start = runtime.now();\n';
                         source += 'R.duration = ' + num(block[2]) + ';\n';
                         var id = label();
-                        source += 'if (runtime.now - R.start < R.duration * 1000) {\n';
+                        source += 'if (runtime.now() - R.start < R.duration * 1000) {\n';
                         forceQueue(id);
                         source += '}\n';
                         source += 'if (S.sayId === R.id) {\n';
@@ -5214,10 +5205,10 @@ var P;
                     else if (block[0] === 'think:duration:elapsed:from:') {
                         source += 'save();\n';
                         source += 'R.id = S.say(' + val(block[1]) + ', true);\n';
-                        source += 'R.start = runtime.now;\n';
+                        source += 'R.start = runtime.now();\n';
                         source += 'R.duration = ' + num(block[2]) + ';\n';
                         var id = label();
-                        source += 'if (runtime.now - R.start < R.duration * 1000) {\n';
+                        source += 'if (runtime.now() - R.start < R.duration * 1000) {\n';
                         forceQueue(id);
                         source += '}\n';
                         source += 'if (S.sayId === R.id) {\n';
@@ -5281,11 +5272,11 @@ var P;
                             source += '  runtime.playingSounds++;\n';
                             source += '  save();\n';
                             source += '  R.sound = sound;\n';
-                            source += '  R.start = runtime.now;\n';
+                            source += '  R.start = runtime.now();\n';
                             source += '  R.duration = sound.duration;\n';
                             source += '  var first = true;\n';
                             var id = label();
-                            source += '  if ((runtime.now - R.start < R.duration * 1000 || first) && runtime.stopSounds === 0) {\n';
+                            source += '  if ((runtime.now() - R.start < R.duration * 1000 || first) && runtime.stopSounds === 0) {\n';
                             source += '    var first;\n';
                             forceQueue(id);
                             source += '  }\n';
@@ -5504,14 +5495,14 @@ var P;
                     }
                     else if (block[0] === 'glideSecs:toX:y:elapsed:from:') {
                         source += 'save();\n';
-                        source += 'R.start = runtime.now;\n';
+                        source += 'R.start = runtime.now();\n';
                         source += 'R.duration = ' + num(block[1]) + ';\n';
                         source += 'R.baseX = S.scratchX;\n';
                         source += 'R.baseY = S.scratchY;\n';
                         source += 'R.deltaX = ' + num(block[2]) + ' - S.scratchX;\n';
                         source += 'R.deltaY = ' + num(block[3]) + ' - S.scratchY;\n';
                         var id = label();
-                        source += 'var f = (runtime.now - R.start) / (R.duration * 1000);\n';
+                        source += 'var f = (runtime.now() - R.start) / (R.duration * 1000);\n';
                         source += 'if (f > 1 || isNaN(f)) f = 1;\n';
                         source += 'S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
                         source += 'if (f < 1) {\n';
@@ -5578,7 +5569,7 @@ var P;
                         source += '}\n';
                     }
                     else if (block[0] === 'timerReset') {
-                        source += 'runtime.timerStart = runtime.now;\n';
+                        source += 'runtime.timerStart = runtime.now();\n';
                     }
                     else {
                         warn('Undefined command: ' + block[0]);
@@ -6593,11 +6584,11 @@ var P;
                  */
                 wait(seconds) {
                     this.writeLn('save();');
-                    this.writeLn('R.start = runtime.now;');
+                    this.writeLn('R.start = runtime.now();');
                     this.writeLn(`R.duration = ${seconds}`);
                     this.writeLn('var first = true;');
                     const label = this.addLabel();
-                    this.writeLn('if (runtime.now - R.start < R.duration * 1000 || first) {');
+                    this.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
                     this.writeLn('  var first;');
                     this.forceQueue(label);
                     this.writeLn('}');
@@ -7188,11 +7179,11 @@ var P;
     statementLibrary['control_wait'] = function (util) {
         const DURATION = util.getInput('DURATION', 'any');
         util.writeLn('save();');
-        util.writeLn('R.start = runtime.now;');
+        util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${DURATION};`);
         util.writeLn(`var first = true;`);
         const label = util.addLabel();
-        util.writeLn('if (runtime.now - R.start < R.duration * 1000 || first) {');
+        util.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
         util.writeLn('  var first;');
         util.forceQueue(label);
         util.writeLn('}');
@@ -7347,10 +7338,10 @@ var P;
         const SECS = util.getInput('SECS', 'number');
         util.writeLn('save();');
         util.writeLn(`R.id = S.say(${MESSAGE}, false);`);
-        util.writeLn('R.start = runtime.now;');
+        util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${SECS};`);
         const label = util.addLabel();
-        util.writeLn('if (runtime.now - R.start < R.duration * 1000) {');
+        util.writeLn('if (runtime.now() - R.start < R.duration * 1000) {');
         util.forceQueue(label);
         util.writeLn('}');
         util.writeLn('if (S.sayId === R.id) {');
@@ -7397,10 +7388,10 @@ var P;
         const SECS = util.getInput('SECS', 'number');
         util.writeLn('save();');
         util.writeLn(`R.id = S.say(${MESSAGE}, true);`);
-        util.writeLn('R.start = runtime.now;');
+        util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${SECS};`);
         const label = util.addLabel();
-        util.writeLn('if (runtime.now - R.start < R.duration * 1000) {');
+        util.writeLn('if (runtime.now() - R.start < R.duration * 1000) {');
         util.forceQueue(label);
         util.writeLn('}');
         util.writeLn('if (S.sayId === R.id) {');
@@ -7425,14 +7416,14 @@ var P;
         const Y = util.getInput('Y', 'any');
         util.visual('drawing');
         util.writeLn('save();');
-        util.writeLn('R.start = runtime.now;');
+        util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${SECS};`);
         util.writeLn('R.baseX = S.scratchX;');
         util.writeLn('R.baseY = S.scratchY;');
         util.writeLn(`R.deltaX = ${X} - S.scratchX;`);
         util.writeLn(`R.deltaY = ${Y} - S.scratchY;`);
         const label = util.addLabel();
-        util.writeLn('var f = (runtime.now - R.start) / (R.duration * 1000);');
+        util.writeLn('var f = (runtime.now() - R.start) / (R.duration * 1000);');
         util.writeLn('if (f > 1) f = 1;');
         util.writeLn('S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
         util.writeLn('if (f < 1) {');
@@ -7445,7 +7436,7 @@ var P;
         const TO = util.getInput('TO', 'any');
         util.visual('drawing');
         util.writeLn('save();');
-        util.writeLn('R.start = runtime.now;');
+        util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${SECS};`);
         util.writeLn('R.baseX = S.scratchX;');
         util.writeLn('R.baseY = S.scratchY;');
@@ -7454,7 +7445,7 @@ var P;
         util.writeLn('  R.deltaX = to.x - S.scratchX;');
         util.writeLn('  R.deltaY = to.y - S.scratchY;');
         const label = util.addLabel();
-        util.writeLn('  var f = (runtime.now - R.start) / (R.duration * 1000);');
+        util.writeLn('  var f = (runtime.now() - R.start) / (R.duration * 1000);');
         util.writeLn('  if (f > 1 || isNaN(f)) f = 1;');
         util.writeLn('  S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
         util.writeLn('  if (f < 1) {');
@@ -7544,11 +7535,11 @@ var P;
             util.writeLn('  playSound(sound);');
             util.writeLn('  save();');
             util.writeLn('  R.sound = sound;');
-            util.writeLn('  R.start = runtime.now;');
+            util.writeLn('  R.start = runtime.now();');
             util.writeLn('  R.duration = sound.duration;');
             util.writeLn('  var first = true;');
             const label = util.addLabel();
-            util.writeLn('  if ((runtime.now - R.start < R.duration * 1000 || first) && S.stoppingSounds === 0) {');
+            util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && S.stoppingSounds === 0) {');
             util.writeLn('    var first;');
             util.forceQueue(label);
             util.writeLn('  }');
@@ -7685,7 +7676,7 @@ var P;
         util.visual('always');
     };
     statementLibrary['sensing_resettimer'] = function (util) {
-        util.writeLn('runtime.timerStart = runtime.now;');
+        util.writeLn('runtime.timerStart = runtime.now();');
     };
     statementLibrary['sensing_setdragmode'] = function (util) {
         const DRAG_MODE = util.getField('DRAG_MODE');
@@ -7987,12 +7978,7 @@ var P;
         return util.fieldInput('OBJECT');
     };
     inputLibrary['sensing_timer'] = function (util) {
-        if (P.config.preciseTimers) {
-            return util.numberInput('((runtime.rightNow() - runtime.timerStart) / 1000)');
-        }
-        else {
-            return util.numberInput('((runtime.now - runtime.timerStart) / 1000)');
-        }
+        return util.numberInput('((runtime.now() - runtime.timerStart) / 1000)');
     };
     inputLibrary['sensing_touchingcolor'] = function (util) {
         const COLOR = util.getInput('COLOR', 'any');
@@ -8260,7 +8246,7 @@ var P;
     };
     watcherLibrary['sensing_timer'] = {
         evaluate(watcher) {
-            return (watcher.stage.runtime.now - watcher.stage.runtime.timerStart) / 1000;
+            return (watcher.stage.runtime.now() - watcher.stage.runtime.timerStart) / 1000;
         },
         getLabel() { return 'timer'; },
     };

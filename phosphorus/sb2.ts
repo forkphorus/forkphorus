@@ -153,7 +153,7 @@ namespace P.sb2 {
           value = this.timeAndDate(this.param);
           break;
         case 'timer':
-          value = Math.round((this.stage.runtime.rightNow() - this.stage.runtime.timerStart) / 100) / 10;
+          value = Math.round((this.stage.runtime.now() - this.stage.runtime.timerStart) / 100) / 10;
           break;
         case 'volume':
           value = this.target.volume * 100;
@@ -1045,12 +1045,7 @@ namespace P.sb2.compiler {
 
       } else if (e[0] === 'timer') {
 
-        if (P.config.preciseTimers) {
-          return '((runtime.rightNow() - runtime.timerStart) / 1000)';
-        } else {
-          return '((runtime.now - runtime.timerStart) / 1000)';
-        }
-
+        return '((runtime.now() - runtime.timerStart) / 1000)';
 
       } else if (e[0] === 'distanceTo:') {
 
@@ -1179,14 +1174,14 @@ namespace P.sb2.compiler {
 
     var beatHead = function(dur) {
       source += 'save();\n';
-      source += 'R.start = runtime.now;\n';
+      source += 'R.start = runtime.now();\n';
       source += 'R.duration = ' + num(dur) + ' * 60 / self.tempoBPM;\n';
       source += 'var first = true;\n';
     };
 
     var beatTail = function() {
       var id = label();
-      source += 'if (runtime.now - R.start < R.duration * 1000 || first) {\n';
+      source += 'if (runtime.now() - R.start < R.duration * 1000 || first) {\n';
       source += '  var first;\n';
       forceQueue(id);
       source += '}\n';
@@ -1196,12 +1191,12 @@ namespace P.sb2.compiler {
 
     var wait = function(dur) {
       source += 'save();\n';
-      source += 'R.start = runtime.now;\n';
+      source += 'R.start = runtime.now();\n';
       source += 'R.duration = ' + dur + ';\n';
       source += 'var first = true;\n';
 
       var id = label();
-      source += 'if (runtime.now - R.start < R.duration * 1000 || first) {\n';
+      source += 'if (runtime.now() - R.start < R.duration * 1000 || first) {\n';
       source += '  var first;\n';
       forceQueue(id);
       source += '}\n';
@@ -1331,11 +1326,11 @@ namespace P.sb2.compiler {
 
         source += 'save();\n';
         source += 'R.id = S.say(' + val(block[1]) + ', false);\n';
-        source += 'R.start = runtime.now;\n';
+        source += 'R.start = runtime.now();\n';
         source += 'R.duration = ' + num(block[2]) + ';\n';
 
         var id = label();
-        source += 'if (runtime.now - R.start < R.duration * 1000) {\n';
+        source += 'if (runtime.now() - R.start < R.duration * 1000) {\n';
         forceQueue(id);
         source += '}\n';
 
@@ -1352,11 +1347,11 @@ namespace P.sb2.compiler {
 
         source += 'save();\n';
         source += 'R.id = S.say(' + val(block[1]) + ', true);\n';
-        source += 'R.start = runtime.now;\n';
+        source += 'R.start = runtime.now();\n';
         source += 'R.duration = ' + num(block[2]) + ';\n';
 
         var id = label();
-        source += 'if (runtime.now - R.start < R.duration * 1000) {\n';
+        source += 'if (runtime.now() - R.start < R.duration * 1000) {\n';
         forceQueue(id);
         source += '}\n';
 
@@ -1435,11 +1430,11 @@ namespace P.sb2.compiler {
           source += '  runtime.playingSounds++;\n';
           source += '  save();\n';
           source += '  R.sound = sound;\n';
-          source += '  R.start = runtime.now;\n';
+          source += '  R.start = runtime.now();\n';
           source += '  R.duration = sound.duration;\n';
           source += '  var first = true;\n';
           var id = label();
-          source += '  if ((runtime.now - R.start < R.duration * 1000 || first) && runtime.stopSounds === 0) {\n';
+          source += '  if ((runtime.now() - R.start < R.duration * 1000 || first) && runtime.stopSounds === 0) {\n';
           source += '    var first;\n';
           forceQueue(id);
           source += '  }\n';
@@ -1705,7 +1700,7 @@ namespace P.sb2.compiler {
       } else if (block[0] === 'glideSecs:toX:y:elapsed:from:') {
 
         source += 'save();\n';
-        source += 'R.start = runtime.now;\n';
+        source += 'R.start = runtime.now();\n';
         source += 'R.duration = ' + num(block[1]) + ';\n';
         source += 'R.baseX = S.scratchX;\n';
         source += 'R.baseY = S.scratchY;\n';
@@ -1713,7 +1708,7 @@ namespace P.sb2.compiler {
         source += 'R.deltaY = ' + num(block[3]) + ' - S.scratchY;\n';
 
         var id = label();
-        source += 'var f = (runtime.now - R.start) / (R.duration * 1000);\n';
+        source += 'var f = (runtime.now() - R.start) / (R.duration * 1000);\n';
         source += 'if (f > 1 || isNaN(f)) f = 1;\n';
         source += 'S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);\n';
 
@@ -1792,7 +1787,7 @@ namespace P.sb2.compiler {
 
       } else if (block[0] === 'timerReset') {
 
-        source += 'runtime.timerStart = runtime.now;\n';
+        source += 'runtime.timerStart = runtime.now();\n';
 
       } else {
 

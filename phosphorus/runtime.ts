@@ -493,7 +493,6 @@ namespace P.runtime {
     public timerStart: number = 0;
     public baseTime: number = 0;
     public baseNow: number = 0;
-    public now: number = 0;
     public interval: number;
     public isTurbo: boolean = false;
     public framerate: number = 30;
@@ -564,7 +563,7 @@ namespace P.runtime {
      * Trigger's the project's green flag.
      */
     triggerGreenFlag() {
-      this.timerStart = this.rightNow();
+      this.timerStart = this.now();
       this.trigger('whenGreenFlag');
     }
 
@@ -586,7 +585,7 @@ namespace P.runtime {
      */
     pause() {
       if (this.interval) {
-        this.baseNow = this.rightNow();
+        this.baseNow = this.now();
         clearInterval(this.interval);
         this.interval = 0;
         window.removeEventListener('error', this.onError);
@@ -632,7 +631,7 @@ namespace P.runtime {
     /**
      * The current time in the project
      */
-    rightNow(): number {
+    now(): number {
       return this.baseNow + Date.now() - this.baseTime;
     }
 
@@ -652,7 +651,6 @@ namespace P.runtime {
       const start = Date.now();
       const queue = this.queue;
       do {
-        this.now = this.rightNow();
         for (THREAD = 0; THREAD < queue.length; THREAD++) {
           const thread = queue[THREAD];
           if (thread) {
@@ -715,7 +713,6 @@ namespace P.runtime {
       const start = Date.now();
       const queue = this.queue;
       do {
-        this.now = this.rightNow();
         for (THREAD = 0; THREAD < queue.length; THREAD++) {
           const thread = queue[THREAD];
           if (thread) {
