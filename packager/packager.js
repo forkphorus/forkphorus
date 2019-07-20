@@ -37,7 +37,7 @@
   const sectionLoading = document.getElementById('loading-section');
   const sectionProjectFile = document.getElementById('project-file-section');
   const sectionProjectId = document.getElementById('project-id-section');
-  const packageHtmlButton = document.getElementById('package-html');
+  const packageHtmlButton = /** @type {HTMLButtonElement} */ (document.getElementById('package-html'));
   const inputProjectId = /** @type {HTMLInputElement} */ (document.getElementById('project-id-input'));
   const inputProjectFile = /** @type {HTMLInputElement} */ (document.getElementById('project-file-input'));
   const inputLoadingText = /** @type {HTMLInputElement} */ (document.getElementById('loading-text-input'));
@@ -574,6 +574,7 @@
    * Runs the packager.
    */
   function run() {
+    packageHtmlButton.disabled = true;
     removeProgressBars();
     return loadSources()
       .then(() => {
@@ -586,10 +587,12 @@
       }).then((result) => {
         const html = getProjectHTML(result);
         addDownloadLink(html, 'project.html');
+        packageHtmlButton.disabled = false;
       })
       .catch((err) => {
         alert('Error: ' + err);
         console.error(err);
+        packageHtmlButton.disabled = false;
       });
   }
 
