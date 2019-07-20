@@ -2465,6 +2465,9 @@ namespace P.sb3.compiler {
   inputLibrary['makeymakey_menu_KEY'] = function(util) {
     return util.fieldInput('KEY');
   };
+  inputLibrary['makeymakey_menu_SEQUENCE'] = function(util) {
+    return util.fieldInput('SEQUENCE');
+  };
   inputLibrary['matrix'] = function(util) {
     return util.fieldInput('MATRIX');
   };
@@ -2768,12 +2771,12 @@ namespace P.sb3.compiler {
   };
   hatLibrary['makeymakey_whenMakeyKeyPressed'] = {
     handle(util) {
-      const KEY = util.getInput('KEY', 'any');
+      const KEY = util.getInput('KEY', 'string');
       try {
         const value = P.runtime.scopedEval(KEY);
         var keycode = P.runtime.getKeyCode(value);
       } catch (e) {
-        console.warn('makeymakey generation error', e);
+        console.warn('makeymakey key generation error', e);
         return;
       }
       if (keycode === 'any') {
@@ -2782,6 +2785,42 @@ namespace P.sb3.compiler {
         }
       } else {
         util.target.listeners.whenKeyPressed[keycode].push(util.startingFunction);
+      }
+    },
+  };
+  hatLibrary['makeymakey_whenCodePressed'] = {
+    handle(util) {
+      const SEQUENCE = util.getInput('SEQUENCE', 'string');
+      try {
+        var sequence = P.runtime.scopedEval(SEQUENCE);
+      } catch (e) {
+        console.warn('makeymakey sequence generation error', e);
+        return;
+      }
+      const ARROWS = ['up', 'down', 'left', 'right'];
+      const keys = sequence.toLowerCase().split(' ')
+        .map((key) => {
+          if (ARROWS.indexOf(key) > -1) {
+            return P.runtime.getKeyCode(key + ' arrow');
+          } else {
+            return P.runtime.getKeyCode(key);
+          }
+        });
+      const targetFunction = util.startingFunction;
+      let sequenceIndex = 0;
+      for (let key = 128; key--;) {
+        util.target.listeners.whenKeyPressed[key].push(function() {
+          const expectedKey = keys[sequenceIndex];
+          if (key !== expectedKey) {
+            sequenceIndex = 0;
+          } else {
+            sequenceIndex++;
+            if (sequenceIndex === keys.length) {
+              sequenceIndex = 0;
+              targetFunction();
+            }
+          }
+        });
       }
     },
   };
