@@ -140,6 +140,10 @@
   /* reset any scrollbar color changes */
   scrollbar-color: auto;
 }
+.s3-list-content:empty::after {
+  content: "(empty)";
+  text-align: center;
+}
 .s3-list-row {
   display: flex;
   flex-direction: row;
