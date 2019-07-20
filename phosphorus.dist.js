@@ -3361,6 +3361,27 @@ var P;
                 list[i] = value;
             }
         };
+        // "Watched" variants of the above that set modified=true
+        var watchedAppendToList = function (list, value) {
+            appendToList(list, value);
+            if (!list.modified)
+                list.modified = true;
+        };
+        var watchedDeleteLineOfList = function (list, index) {
+            deleteLineOfList(list, index);
+            if (!list.modified)
+                list.modified = true;
+        };
+        var watchedInsertInList = function (list, index, value) {
+            insertInList(list, index, value);
+            if (!list.modified)
+                list.modified = true;
+        };
+        var watchedSetLineOfList = function (list, index, value) {
+            setLineOfList(list, index, value);
+            if (!list.modified)
+                list.modified = true;
+        };
         var mathFunc = function (f, x) {
             switch (f) {
                 case 'abs':
@@ -5973,9 +5994,15 @@ var P;
         sb3.Scratch3Procedure = Scratch3Procedure;
         function createList() {
             const list = [];
-            // list.modified = false;
+            list.modified = false;
             list.toString = function () {
-                debugger;
+                var i = this.length;
+                while (i--) {
+                    if (('' + this[i]).length !== 1) {
+                        return this.join(' ');
+                    }
+                }
+                return this.join('');
             };
             return list;
         }
@@ -7222,7 +7249,8 @@ var P;
     statementLibrary['data_addtolist'] = function (util) {
         const LIST = util.getListReference('LIST');
         const ITEM = util.getInput('ITEM', 'any');
-        util.writeLn(`${LIST}.push(${ITEM});`);
+        // util.writeLn(`${LIST}.push(${ITEM});`);
+        util.writeLn(`watchedAppendToList(${LIST}, ${ITEM});`);
     };
     statementLibrary['data_changevariableby'] = function (util) {
         const VARIABLE = util.getVariableReference('VARIABLE');
@@ -7236,7 +7264,7 @@ var P;
     statementLibrary['data_deleteoflist'] = function (util) {
         const LIST = util.getListReference('LIST');
         const INDEX = util.getInput('INDEX', 'any');
-        util.writeLn(`deleteLineOfList(${LIST}, ${INDEX});`);
+        util.writeLn(`watchedDeleteLineOfList(${LIST}, ${INDEX});`);
     };
     statementLibrary['data_hidelist'] = function (util) {
         const LIST = util.sanitizedString(util.getField('LIST'));
@@ -7252,13 +7280,13 @@ var P;
         const LIST = util.getListReference('LIST');
         const INDEX = util.getInput('INDEX', 'any');
         const ITEM = util.getInput('ITEM', 'any');
-        util.writeLn(`insertInList(${LIST}, ${INDEX}, ${ITEM});`);
+        util.writeLn(`watchedInsertInList(${LIST}, ${INDEX}, ${ITEM});`);
     };
     statementLibrary['data_replaceitemoflist'] = function (util) {
         const LIST = util.getListReference('LIST');
         const ITEM = util.getInput('ITEM', 'any');
         const INDEX = util.getInput('INDEX', 'any');
-        util.writeLn(`setLineOfList(${LIST}, ${INDEX}, ${ITEM});`);
+        util.writeLn(`watchedSetLineOfList(${LIST}, ${INDEX}, ${ITEM});`);
     };
     statementLibrary['data_setvariableto'] = function (util) {
         const VARIABLE = util.getVariableReference('VARIABLE');

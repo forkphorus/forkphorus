@@ -213,30 +213,25 @@ namespace P.runtime {
     }
     return list.join(isSingle ? '' : ' ');
   };
-
   var getLineOfList = function(list, index) {
     var i = listIndex(list, index, list.length);
     return i !== -1 ? list[i] : '';
   };
-
   var listContains = function(list, value) {
     for (var i = list.length; i--;) {
       if (equal(list[i], value)) return true;
     }
     return false;
   };
-
   var listIndexOf = function(list, value) {
     for (var i = list.length; i--;) {
       if (equal(list[i], value)) return i + 1;
     }
     return 0;
   };
-
   var appendToList = function(list, value) {
     list.push(value);
   };
-
   var deleteLineOfList = function(list, index) {
     if (index === 'all') {
       list.length = 0;
@@ -249,7 +244,6 @@ namespace P.runtime {
       }
     }
   };
-
   var insertInList = function(list, index, value) {
     var i = listIndex(list, index, list.length + 1);
     if (i === list.length) {
@@ -258,12 +252,29 @@ namespace P.runtime {
       list.splice(i, 0, value);
     }
   };
-
   var setLineOfList = function(list, index, value) {
     var i = listIndex(list, index, list.length);
     if (i !== -1) {
       list[i] = value;
     }
+  };
+
+  // "Watched" variants of the above that set modified=true
+  var watchedAppendToList = function(list, value) {
+    appendToList(list, value);
+    if (!list.modified) list.modified = true;
+  };
+  var watchedDeleteLineOfList = function(list, index) {
+    deleteLineOfList(list, index);
+    if (!list.modified) list.modified = true;
+  };
+  var watchedInsertInList = function(list, index, value) {
+    insertInList(list, index, value);
+    if (!list.modified) list.modified = true;
+  };
+  var watchedSetLineOfList = function(list, index, value) {
+    setLineOfList(list, index, value);
+    if (!list.modified) list.modified = true;
   };
 
   var mathFunc = function(f, x) {
