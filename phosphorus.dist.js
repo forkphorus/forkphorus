@@ -8072,31 +8072,22 @@ var P;
     };
     hatLibrary['makeymakey_whenMakeyKeyPressed'] = {
         handle(util) {
-            // TODO: support all other keys
-            // TODO: support patterns
-            // Will probably be implemented as a very *interesting* "when any key pressed" handler
-            // TODO: support all inputs
             const KEY = util.getInput('KEY', 'any');
-            const keyMap = {
-                // The key will be a full expression, including quotes around strings.
-                '"SPACE"': 'space',
-                '"UP"': 'up arrow',
-                '"DOWN"': 'down arrow',
-                '"LEFT"': 'left arrow',
-                '"RIGHT"': 'right arrow',
-                '"w"': 'w',
-                '"a"': 'a',
-                '"s"': 's',
-                '"d"': 'd',
-                '"f"': 'f',
-                '"g"': 'g',
-            };
-            if (keyMap.hasOwnProperty(KEY)) {
-                const keyCode = P.runtime.getKeyCode(keyMap[KEY]);
-                util.target.listeners.whenKeyPressed[keyCode].push(util.startingFunction);
+            try {
+                const value = P.runtime.scopedEval(KEY);
+                var keycode = P.runtime.getKeyCode(value);
+            }
+            catch (e) {
+                console.warn('makeymakey generation error', e);
+                return;
+            }
+            if (keycode === 'any') {
+                for (var i = 128; i--;) {
+                    util.target.listeners.whenKeyPressed[i].push(util.startingFunction);
+                }
             }
             else {
-                util.compiler.warn('unknown makey makey key', KEY);
+                util.target.listeners.whenKeyPressed[keycode].push(util.startingFunction);
             }
         },
     };
