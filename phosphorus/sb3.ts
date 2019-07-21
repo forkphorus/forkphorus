@@ -1868,6 +1868,7 @@ namespace P.sb3.compiler {
         break;
       case 'other scripts in sprite':
       case 'other scripts in stage':
+        util.writeLn('S.stopSounds();');
         util.writeLn('for (var i = 0; i < runtime.queue.length; i++) {');
         util.writeLn('  if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {');
         util.writeLn('    runtime.queue[i] = undefined;');
