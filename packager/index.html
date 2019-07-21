@@ -9,13 +9,14 @@
       max-width: 480px;
       margin: auto;
       font-family: sans-serif;
+      line-height: 1.3;
     }
     table {
       width: 100%;
       margin-bottom: 10px;
       border-bottom: 1px solid #aaa;
     }
-    textarea, input:not([type="radio"]) {
+    textarea, input[type=text], input[type=number], input[type=checkbox] {
       width: 100%;
     }
     .label {
@@ -29,6 +30,34 @@
     summary {
       cursor: pointer;
     }
+    #options:hover .option {
+      opacity: 0.6;
+    }
+    #options:hover .option:hover,
+    #advanced-summary:hover ~ .option {
+      opacity: 1;
+    }
+    .clarification {
+      text-decoration: underline dotted;
+    }
+    @media (prefers-color-scheme: dark) {
+      body {
+        background-color: #111;
+        color: #ddd;
+      }
+      a {
+        color: #4af;
+      }
+      a:visited {
+        color: #b381ef;
+      }
+      a:active {
+        color: #58f;
+      }
+      .option {
+        border-color: #444;
+      }
+    }
   </style>
   <title>HTML Packager - forkphorus</title>
 </head>
@@ -36,88 +65,92 @@
 <body>
   <h1>HTML Packager</h1>
 
-  <p>The HTML packager allows you to generate an HTML file for a project, which <a href="guide.html">can be packaged into an EXE file</a> (somewhat) easily.</p>
+  <p>The HTML packager allows you to generate an HTML file for a Scratch project. Some icons and <span class="clarification" title="Note blocks only includes 'play note' and 'play drum' blocks. Sound blocks will still work.">note blocks</span> will not work.</p>
 
-  <p>While the packager on the homepage creates a link to a website, this packager generates an easily embedable HTML file that functions independently of this website.</p>
+  <ul>
+    <li>Guide: <a href="guide.html">Packaging to .EXE</a> (Windows/Mac OS/Linux)</li>
+    <li>Guide: <a href="android.html">Packaging to .APK</a> (Android) (WIP)</li>
+    <li>Get Help: Create an issue on <a href="https://github.com/forkphorus/forkphorus/issues">GitHub</a></li>
+  </ul>
 
-  <p>Some icons and all note blocks will not work.</p>
-
-  <table>
-    <tr>
-      <td class="label">Project Source</td>
-      <td>
-        <label><input type="radio" name="project-type" value="id" checked> Project ID</label>
-        <label><input type="radio" name="project-type" value="file"> Project File</label>
-      </td>
-    </tr>
-    <tr id="project-id-section">
-      <td class="label"><label for="project-id-input">Project ID</label></td>
-      <td><input type="number" id="project-id-input" value="10128407"></td>
-    </tr>
-    <tr id="project-file-section" hidden>
-      <td class="label"><label for="project-file-input">Project File</label></td>
-      <td><input type="file" id="project-file-input" accept=".sb2,.sb3"></td>
-    </tr>
-    <tr>
-      <td colspan="2" class="desc">You can select a project from the scratch.mit.edu website, or choose a project file. Scratch 2 (sb2) and Scratch 3 (sb3) projects are supported.</td>
-    </tr>
-  </table>
-
-  <table>
-    <tr>
-      <td class="label"><label for="loading-text-input">Loading Text</label></td>
-      <td><input id="loading-text-input" type="text" value="forkphorus"></td>
-    </tr>
-    <tr>
-      <td colspan="2" class="desc"><a href="https://user-images.githubusercontent.com/17209175/58766078-219f4d00-8540-11e9-93f0-b04088efb0a8.png" target="_blank">Displayed while the project is loading.</a> Set to empty to display only a loading bar. <span title="Using HTML is definitely a feature and not just me being lazy.">You can use HTML if you're careful.</span></td>
-    </tr>
-  </table>
-
-  <table>
-    <tr>
-      <td class="label"><label for="turbo-input">Turbo Mode?</label></td>
-      <td><input id="turbo-input" type="checkbox"></td>
-    </tr>
-    <tr>
-      <td colspan="2" class="desc">Enable Turbo Mode? This option will be in effect for the entire project, and cannot be changed while it is running.</td>
-    </tr>
-  </table>
-
-  <details>
-    <summary>Advanced options</summary>
-
-    <table>
+  <div id="options">
+    <table class="option">
       <tr>
-        <td class="label"><label for="include-csp">Include CSP</label></td>
-        <td><input type="checkbox" id="include-csp"></td>
+        <td class="label">Project Source</td>
+        <td>
+          <label><input type="radio" name="project-type" value="id" checked> Project ID</label>
+          <label><input type="radio" name="project-type" value="file"> Project File</label>
+        </td>
+      </tr>
+      <tr id="project-id-section">
+        <td class="label"><label for="project-id-input">Project ID</label></td>
+        <td><input type="number" id="project-id-input" value="10128407"></td>
+      </tr>
+      <tr id="project-file-section" hidden>
+        <td class="label"><label for="project-file-input">Project File</label></td>
+        <td><input type="file" id="project-file-input" accept=".sb2,.sb3"></td>
       </tr>
       <tr>
-        <td colspan="2" class="desc">Include a &lt;meta http-equiv="Content-Security-Policy" content="..."&gt; in the output. This is required in some environments where the default Content-Security-Policy is too strict for forkphorus to run.</td>
+        <td colspan="2" class="desc">You can select a project from the scratch.mit.edu website, or choose a project file. Scratch 2 (sb2) and Scratch 3 (sb3) projects are supported.</td>
       </tr>
     </table>
 
-    <table>
+    <table class="option">
       <tr>
-        <td class="label"><label for="post-load-script-input">Custom JS</label></td>
-        <td><textarea id="post-load-script-input">player.stage.username = '';
+        <td class="label"><label for="loading-text-input">Loading Text</label></td>
+        <td><input id="loading-text-input" type="text" value="forkphorus"></td>
+      </tr>
+      <tr>
+        <td colspan="2" class="desc"><a href="https://user-images.githubusercontent.com/17209175/58766078-219f4d00-8540-11e9-93f0-b04088efb0a8.png" target="_blank">Displayed while the project is loading.</a> Set to empty to display only a loading bar. <span title="Using HTML is definitely a feature and not just me being lazy.">You can use HTML if you're careful.</span></td>
+      </tr>
+    </table>
+
+    <table class="option">
+      <tr>
+        <td class="label"><label for="turbo-input">Turbo Mode?</label></td>
+        <td><input id="turbo-input" type="checkbox"></td>
+      </tr>
+      <tr>
+        <td colspan="2" class="desc">Enable Turbo Mode? This option will be in effect for the entire project, and cannot be changed while it is running.</td>
+      </tr>
+    </table>
+
+    <details>
+      <summary id="advanced-summary">Show Advanced options</summary>
+
+      <table class="option">
+        <tr>
+          <td class="label"><label for="include-csp">Include CSP</label></td>
+          <td><input type="checkbox" id="include-csp"></td>
+        </tr>
+        <tr>
+          <td colspan="2" class="desc">Includes a &lt;meta http-equiv="Content-Security-Policy" content="..."&gt; in the output. This is required in some environments where the default Content-Security-Policy is too strict for forkphorus to run.</td>
+        </tr>
+      </table>
+
+      <table class="option">
+        <tr>
+          <td class="label"><label for="post-load-script-input">Custom JS</label></td>
+          <td><textarea id="post-load-script-input">player.stage.username = '';
 player.stage.runtime.framerate = 30;</textarea></td>
-      </tr>
-      <tr>
-        <td colspan="2" class="desc">Custom JavaScript to execute after the project has loaded. The sample script shows how you could change the framerate or username.</td>
-      </tr>
-    </table>
+        </tr>
+        <tr>
+          <td colspan="2" class="desc">Custom JavaScript to execute after the project has loaded. The sample script shows how you could change the framerate or username.</td>
+        </tr>
+      </table>
 
-    <table>
-      <tr>
-        <td class="label"><label for="custom-style-input">Custom CSS</label></td>
-        <td><textarea id="custom-style-input">.progress { border-color: white; }
+      <table class="option">
+        <tr>
+          <td class="label"><label for="custom-style-input">Custom CSS</label></td>
+          <td><textarea id="custom-style-input">.progress { border-color: white; }
 .progress-bar { background: white; }</textarea></td>
-      </tr>
-      <tr>
-        <td colspan="2" class="desc">Customize the look of the player. The example shows how you can change the color of the progress bar.</td>
-      </tr>
-    </table>
-  </details>
+        </tr>
+        <tr>
+          <td colspan="2" class="desc">Customize the look of the player. The example shows how you can change the color of the progress bar.</td>
+        </tr>
+      </table>
+    </details>
+  </div>
 
   <p>
     <button id="package-html">Package to HTML</button>

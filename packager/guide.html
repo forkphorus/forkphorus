@@ -11,6 +11,7 @@
       margin: auto;
       margin-bottom: 10px;
       font-family: sans-serif;
+      line-height: 1.3;
     }
     li {
       margin-bottom: 5px;
@@ -27,15 +28,17 @@
 
 <body>
   <main>
-    <h1>Forkphorus to executable (.exe)</h1>
+    <header><h1>Forkphorus to executable (.exe)</h1></header>
+
+    <p>This guide will explain how to use the <a href="/packager/">Forkphorus Packager</a> to create executable files for Scratch projects that will work on Windows, Mac OS, Linux, etc.</p>
 
     <section>
       <h2>Making an executable with NW.js</h2>
 
-      <p>Guide to packaging forkphorus into an executable file for Windows, Mac OS, or Linux. If you're not using Windows, ignore all references to "exe" but everything should work correctly.</p>
+      <p>If you're not using Windows, ignore all references to "exe" but everything should work correctly.</p>
 
       <ol>
-        <li>Use <a href="index.html">the packager</a> to get a .html file for the project.</li>
+        <li>Use <a href="index.html">the packager</a> to generate a .html file for the project.</li>
         <li>Download <a href="https://nwjs.io/">NW.js</a>'s "Normal" version (not "SDK") for your platform.<img src="https://user-images.githubusercontent.com/17209175/58752962-441c6200-847d-11e9-9387-4fb25f164025.png"></li>
         <li>Extract the archive</li>
         <li>Move project.html (file by the packager) into the extracted folder (the same folder where "nw.exe" is located)</li>
