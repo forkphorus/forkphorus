@@ -1868,7 +1868,6 @@ namespace P.sb3.compiler {
         break;
       case 'other scripts in sprite':
       case 'other scripts in stage':
-        util.writeLn('S.stopSounds();');
         util.writeLn('for (var i = 0; i < runtime.queue.length; i++) {');
         util.writeLn('  if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {');
         util.writeLn('    runtime.queue[i] = undefined;');
@@ -2229,20 +2228,20 @@ namespace P.sb3.compiler {
     if (P.audio.context) {
       util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
       util.writeLn('if (sound) {');
-      util.writeLn('  S.playingSounds++;');
       util.writeLn('  playSound(sound);');
+      util.writeLn('  runtime.playingSounds++;');
       util.writeLn('  save();');
       util.writeLn('  R.sound = sound;');
       util.writeLn('  R.start = runtime.now();');
       util.writeLn('  R.duration = sound.duration;');
       util.writeLn('  var first = true;');
       const label = util.addLabel();
-      util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && S.stoppingSounds === 0) {');
+      util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && runtime.stoppingSounds === 0) {');
       util.writeLn('    var first;');
       util.forceQueue(label);
       util.writeLn('  }');
-      util.writeLn('  if (S.stoppingSounds) S.stoppingSounds--;');
-      util.writeLn('  S.playingSounds--;');
+      util.writeLn('  if (runtime.stopSounds) runtime.stopSounds--;');
+      util.writeLn('  runtime.playingSounds--;');
       util.writeLn('  restore();');
       util.writeLn('}');
     }

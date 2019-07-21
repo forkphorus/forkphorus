@@ -496,6 +496,8 @@ namespace P.runtime {
     public interval: number;
     public isTurbo: boolean = false;
     public framerate: number = 30;
+    public playingSounds: number = 0;
+    public stopSounds: number = 0;
 
     constructor(public stage: P.core.Stage) {
       // Fix scoping

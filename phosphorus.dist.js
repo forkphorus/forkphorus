@@ -1598,8 +1598,6 @@ var P;
                     brightness: 0,
                     ghost: 0,
                 };
-                this.playingSounds = 0;
-                this.stoppingSounds = 0;
                 for (var i = 0; i < 128; i++) {
                     this.listeners.whenKeyPressed.push([]);
                 }
@@ -1727,7 +1725,6 @@ var P;
                     this.node.disconnect();
                     this.node = null;
                 }
-                this.stoppingSounds = this.playingSounds;
             }
             ask(question) {
                 var stage = this.stage;
@@ -2278,6 +2275,7 @@ var P;
                     children[i].stopSounds();
                 }
                 this.stopSounds();
+                this.runtime.stopSounds = this.runtime.playingSounds;
             }
             removeAllClones() {
                 var i = this.children.length;
@@ -3572,6 +3570,8 @@ var P;
                 this.baseNow = 0;
                 this.isTurbo = false;
                 this.framerate = 30;
+                this.playingSounds = 0;
+                this.stopSounds = 0;
                 // Fix scoping
                 this.onError = this.onError.bind(this);
                 this.step = this.step.bind(this);
@@ -7167,7 +7167,6 @@ var P;
                 break;
             case 'other scripts in sprite':
             case 'other scripts in stage':
-                util.writeLn('S.stopSounds();');
                 util.writeLn('for (var i = 0; i < runtime.queue.length; i++) {');
                 util.writeLn('  if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {');
                 util.writeLn('    runtime.queue[i] = undefined;');
@@ -7531,20 +7530,20 @@ var P;
         if (P.audio.context) {
             util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
             util.writeLn('if (sound) {');
-            util.writeLn('  S.playingSounds++;');
             util.writeLn('  playSound(sound);');
+            util.writeLn('  runtime.playingSounds++;');
             util.writeLn('  save();');
             util.writeLn('  R.sound = sound;');
             util.writeLn('  R.start = runtime.now();');
             util.writeLn('  R.duration = sound.duration;');
             util.writeLn('  var first = true;');
             const label = util.addLabel();
-            util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && S.stoppingSounds === 0) {');
+            util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && runtime.stoppingSounds === 0) {');
             util.writeLn('    var first;');
             util.forceQueue(label);
             util.writeLn('  }');
-            util.writeLn('  if (S.stoppingSounds) S.stoppingSounds--;');
-            util.writeLn('  S.playingSounds--;');
+            util.writeLn('  if (runtime.stopSounds) runtime.stopSounds--;');
+            util.writeLn('  runtime.playingSounds--;');
             util.writeLn('  restore();');
             util.writeLn('}');
         }

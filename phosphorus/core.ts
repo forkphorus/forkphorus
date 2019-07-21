@@ -179,8 +179,6 @@ namespace P.core {
       brightness: 0,
       ghost: 0,
     };
-    public playingSounds: number = 0;
-    public stoppingSounds: number = 0;
 
     constructor() {
       for (var i = 0; i < 128; i++) {
@@ -313,7 +311,6 @@ namespace P.core {
         this.node.disconnect();
         this.node = null;
       }
-      this.stoppingSounds = this.playingSounds;
     }
 
     ask(question: string) {
@@ -943,6 +940,7 @@ namespace P.core {
         children[i].stopSounds();
       }
       this.stopSounds();
+      this.runtime.stopSounds = this.runtime.playingSounds;
     }
 
     removeAllClones() {
