@@ -30,18 +30,18 @@
   <main>
     <header><h1>Forkphorus to executable (.exe)</h1></header>
 
-    <p>This guide will explain how to use the <a href="/packager/">Forkphorus Packager</a> to create executable files for Scratch projects that will work on Windows, Mac OS, Linux, etc.</p>
+    <p>This guide will explain how to use the <a href="/packager/">Forkphorus Packager</a> to create executable files for Scratch projects. While this guide is mainly targetting Windows, the same steps can be applied to Mac OS and Linux operating systems.</p>
 
     <section>
       <h2>Making an executable with NW.js</h2>
 
-      <p>If you're not using Windows, ignore all references to "exe" but everything should work correctly.</p>
+      <p>If you're not using Windows, just ignore all references to "exe" and everything should work correctly.</p>
 
       <ol>
         <li>Use <a href="index.html">the packager</a> to generate a .html file for the project.</li>
-        <li>Download <a href="https://nwjs.io/">NW.js</a>'s "Normal" version (not "SDK") for your platform.<img src="https://user-images.githubusercontent.com/17209175/58752962-441c6200-847d-11e9-9387-4fb25f164025.png"></li>
+        <li><a href="https://nwjs.io/">Download NW.js's "Normal" version</a> (not "SDK") for your platform.<img src="https://user-images.githubusercontent.com/17209175/58752962-441c6200-847d-11e9-9387-4fb25f164025.png" height="329"><small>Version numbers will no doubt be different, but compatibility shouldn't be an issue. The "SDK" version works but includes tools we don't need.</small></li>
         <li>Extract the archive</li>
-        <li>Move project.html (file by the packager) into the extracted folder (the same folder where "nw.exe" is located)</li>
+        <li>Move "project.html" (file created by the packager, it's probably in your Downloads folder) into the extracted folder from the previous step (the same folder where "nw.exe" is located). Make sure it is named exactly "project.html" and not something else like "project(1).html"</li>
         <li>Create the file "package.json" in the same folder with the content:
           <pre>
 {
@@ -56,21 +56,23 @@
   }
 }</pre>
           <ul>
+            <li>You should copy and paste the above to avoid issues.</li>
             <li>Underlined sections may be changed.</li>
             <li><code>name</code>: The name of the project. It doesn't really matter what you set this to.</li>
             <li><code>title</code>: This will be the Window's title.</li>
-            <li><code>icon</code>: This is the path to the image that will be the Window's icon. If you remove this line or do not create an icon, an icon will be generated automatically.</li>
-            <li><code>resizable</code>: Allows the window to be resized. Set this to <code>false</code> to disallow resizing.</li>
-            <li><code>width</code> and <code>height</code>: The initial width and height (in pixels) of the window. Scratch's project player is 480x360 by default.</li>
+            <li><code>icon</code>: This is the path to the image that will be the Window's icon. If you  do not create an icon, an icon will be generated automatically.</li>
+            <li><code>resizable</code>: Allows the window to be resized. Set this to <code>false</code> to disallow resizing. (on Mac OS, <a href="http://docs.nwjs.io/en/latest/References/Manifest%20Format/#resizable">you may need to do additional steps</a> to disallow resizing)</li>
+            <li><code>width</code> and <code>height</code>: The initial width and height (in pixels) of the window. Scratch's project player is 480x360 by default. Aspect ratios other than 4:3 will result in black bars around the project.</li>
             <li>For a full list of fields you can use, see <a href="http://docs.nwjs.io/en/latest/References/Manifest%20Format/#window-subfields">the NW.js documentation</a>.</li>
           </ul>
           <br>
           At this point, your NW.js folder should look something like this:
-          <img src="https://user-images.githubusercontent.com/17209175/59154860-a0652000-8a41-11e9-85d0-109e59c0316c.png">
+          <img src="https://user-images.githubusercontent.com/17209175/59154860-a0652000-8a41-11e9-85d0-109e59c0316c.png" height="481">
           <small>Highlighted files are ones you should have created.</small>
         </li>
-        <li>Open nw.exe</li>
-        <li>You're done! <img src="https://user-images.githubusercontent.com/17209175/59154894-67797b00-8a42-11e9-9678-e24bca31f285.png"><small><a href="https://scratch.mit.edu/projects/10128407/">griffpatch's Paper Minecraft project</a> running in an exe on Windows with a solid blue icon.</small></li>
+        <li>Optionally rename "nw.exe" to something else, such as the name of your project. (make sure to keep the .exe ending)</li>
+        <li>Open "nw.exe" or whatever you renamed it.</li>
+        <li>You're done! <img src="https://user-images.githubusercontent.com/17209175/59154894-67797b00-8a42-11e9-9678-e24bca31f285.png" height="402"><small><a href="https://scratch.mit.edu/projects/10128407/">griffpatch's Paper Minecraft project</a> running as an exe on Windows with a solid blue icon.</small></li>
       </ol>
     </section>
 
@@ -79,8 +81,6 @@
     <section>
       <h2>Creating a self-extracting archive</h2>
 
-      <p style="background: yellow; border-left: 10px solid orange; padding: 4px;"><b>Warning: I've seen this step getting detected by anti-virus software (Windows Defender in particular) as a trojan. This detection is inaccurate, but consider using other tools such as <a href="https://rarlab.com/">WinRar</a> or <a href="http://www.peazip.org/">Peazip</a> instead of makesfx.</b></p>
-
       <p>NW.js works great, but it has a few problems. Specifically:
         <ul>
           <li>There's a lot of files</li>
@@ -88,21 +88,26 @@
         </ul>
       </p>
 
-      <p>We can create a self-extracting archive with <a href="http://74.cz/en/make-sfx/index.php">makesfx</a> to help address these problems. This will only work on Windows.</p>
+      <p>At the very least, you should compress the NW.js folder into a ZIP archive. We're going to go a bit beyond that and create a <a href="https://en.wikipedia.org/wiki/Self-extracting_archive">self-extracting archive</a>. However, note that this step is optional.</p>
 
+      <h3>A note on anti-viruses</h3>
+      <p style="background: yellow; border: 3px solid red; padding: 4px;">Some anti-virus software detect all self-extracting archives as viruses. For this reason, <b>I would recommend just creating a ZIP archive and telling people to extract and run "nw.exe" (or whatever you renamed it)</b> instead of creating a self-extracting archive.</p>
+
+      <h3>Using Make SFX</h3>
+      <p>Make SFX is a tool for creating self-extracting archives. Other similar tools include <a href="https://www.7-zip.org/">7-Zip</a>, <a href="https://www.peazip.org/">PeaZip</a>, and <a href="https://rarlab.com/download.htm">WinRAR</a>.</p>
       <ol>
-        <li>Complete the above instructions using NW.js first</li>
-        <li>Download makesfx from <a href="http://74.cz/en/make-sfx/index.php">their website</a></li>
-        <li>The makesfx interface is rather daunting. Pretty much, configure it so that it looks like this:<img src="https://user-images.githubusercontent.com/17209175/58766023-61b20000-853f-11e9-8712-90336b9ad987.png">
+        <li>Complete the first section using NW.js first.</li>
+        <li>Download Make SFX from <a href="http://74.cz/en/make-sfx/index.php">their website</a>.</li>
+        <li>The Make SFX interface is rather daunting. Pretty much, configure it so that it looks like this:<img src="https://user-images.githubusercontent.com/17209175/58766023-61b20000-853f-11e9-8712-90336b9ad987.png" height="557">
           <ul>
-            <li>"Source folder" is where you extracted NW.js to</li>
-            <li>"Target SFX file" is where the output of makesfx will be saved</li>
+            <li>"Source folder" is where you extracted NW.js to (again, the folder that contains "nw.exe" or what you renamed it)</li>
+            <li>"Target SFX file" is where the .exe created by Make SFX will be saved</li>
             <li>You may want to change the icon of the file. This does not affect the icon of the Window.</li>
-            <li>Set "Extraction mode" to "Extract files into specified folder and launch executable", and set the executable file to nw.exe (the file you ran at the end of the previous section).</li>
+            <li>Set "Extraction mode" to "Extract files into specified folder and launch executable", and set the executable file to the path to "nw.exe" (or whatever you renamed it)</li>
             <li>Set "Overwrite mode during extraction" to "Automatically overwrite all existing files"</li>
           </ul>
         </li>
-        <li>Run the output file</li>
+        <li>Run the output file and make sure it works.</li>
         <li>You're done!</li>
       </ol>
     </section>
@@ -111,7 +116,10 @@
 
   <hr>
 
-  <footer><p>Roughly based on <a href="https://scratch.mit.edu/discuss/topic/341617/">SpeedDesign's tutorial for Scratch 3</a>. If you want to package Scratch 3 instead of forkphorus, use that!</p></footer>
+  <footer>
+    <p>If you encounter problems or wish to improve this guide, visit <a href="https://github.com/forkphorus/forkphorus/">the GitHub repo</a>.</p>
+    <p>This guide is based on <a href="https://scratch.mit.edu/discuss/topic/341617/">SpeedDesign's tutorial for packaging Scratch 3</a>.</p>
+  </footer>
 
   <script>
     (function() {
