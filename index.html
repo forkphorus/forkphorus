@@ -6,30 +6,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Forkphorus is a JavaScript compiler for Scratch 2 and Scratch 3 projects.">
   <title>forkphorus - phosphorus for Scratch 3</title>
-  <link rel="stylesheet" href="phosphorus.css">
-  <link rel="stylesheet" href="player.css">
-  <link rel="stylesheet" href="studioview/studioview.css">
-  <link rel="stylesheet" href="index.css">
-
-  <!-- I've seen a non-zero amount of people use forkphorus.github.io/forkphorus/ when they should be using forkphorus.github.io/, so we'll just redirect them to the correct location and hope they take note. -->
   <script>
+    // I've seen a non-zero amount of people use forkphorus.github.io/forkphorus/ when they should be using forkphorus.github.io/, so we'll just redirect them to the correct location and hope they take note.
     if (location.origin === 'https://forkphorus.github.io' && location.pathname === '/forkphorus/') {
       location.pathname = '/';
     }
 
-    // Apply dark mode right away to avoid a flash of white
+    // Apply local dark mode preference very early to avoid a flash of white
     (function() {
       try {
-        var isDark = localStorage.getItem('userPrefersDark') === 'true';
-        if (isDark) {
+        if (localStorage.getItem('userPrefersDark') === 'true') {
           document.documentElement.classList.add('dark');
         }
       } catch (e) {
-        console.error(e);
+        console.error('error loading theme choice', e);
       }
     }());
   </script>
-
+  <link rel="stylesheet" href="phosphorus.css">
+  <link rel="stylesheet" href="player.css">
+  <link rel="stylesheet" href="studioview/studioview.css">
+  <link rel="stylesheet" href="index.css">
 </head>
 
 <body>
