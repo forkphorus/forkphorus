@@ -2584,17 +2584,6 @@ var P;
                 this.direction = Math.atan2(dy, dx) * 180 / Math.PI + 90;
                 if (this.saying)
                     this.updateBubble();
-                b = this.rotatedBounds();
-                var x = this.scratchX;
-                var y = this.scratchY;
-                if (b.left < -240)
-                    x += -240 - b.left;
-                if (b.top > 180)
-                    y += 180 - b.top;
-                if (b.right > 240)
-                    x += 240 - b.left;
-                if (b.bottom < -180)
-                    y += -180 - b.top;
             }
             /**
              * Determines the distance from this Sprite's center to another position.
