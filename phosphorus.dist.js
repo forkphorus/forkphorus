@@ -2261,6 +2261,7 @@ var P;
                             this.videoElement.onloadedmetadata = () => {
                                 this.videoElement.play();
                             };
+                            this.videoElement.style.opacity = '0.5';
                             this.root.insertBefore(this.videoElement, this.canvas);
                             navigator.mediaDevices.getUserMedia({ video: true, audio: false })
                                 .then((stream) => this.videoElement.srcObject = stream);
@@ -5267,7 +5268,12 @@ var P;
                         source += '  self.children.splice(i, 1);\n';
                         source += '  self.children.splice(Math.max(0, i - ' + num(block[1]) + '), 0, S);\n';
                         source += '}\n';
-                        // } else if (block[0] === 'setVideoState') {
+                    }
+                    else if (block[0] === 'setVideoState') {
+                        source += 'switch (' + val(block[1]) + ') {';
+                        source += '  case "off": self.showVideo(false); break;';
+                        source += '  case "on": self.showVideo(true); break;';
+                        source += '}';
                         // } else if (block[0] === 'setVideoTransparency') {
                     }
                     else if (block[0] === 'playSound:') { /* Sound */
@@ -7717,9 +7723,9 @@ var P;
     statementLibrary['videoSensing_videoToggle'] = function (util) {
         const VIDEO_STATE = util.getInput('VIDEO_STATE', 'string');
         util.writeLn(`switch (${VIDEO_STATE}) {`);
-        util.writeLn(`  case "off": self.showVideo(false); break;`);
-        util.writeLn(`  case "on": self.showVideo(true); break;`);
-        util.writeLn(`}`);
+        util.writeLn('  case "off": self.showVideo(false); break;');
+        util.writeLn('  case "on": self.showVideo(true); break;');
+        util.writeLn('}');
     };
     // Legacy no-ops
     // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L19

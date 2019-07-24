@@ -1410,7 +1410,12 @@ namespace P.sb2.compiler {
         source += '  self.children.splice(Math.max(0, i - ' + num(block[1]) + '), 0, S);\n';
         source += '}\n';
 
-      // } else if (block[0] === 'setVideoState') {
+      } else if (block[0] === 'setVideoState') {
+
+        source += 'switch (' + val(block[1]) + ') {';
+        source += '  case "off": self.showVideo(false); break;';
+        source += '  case "on": self.showVideo(true); break;';
+        source += '}';
 
       // } else if (block[0] === 'setVideoTransparency') {
 

@@ -924,6 +924,7 @@ namespace P.core {
             this.videoElement.onloadedmetadata = () => {
               this.videoElement.play();
             };
+            this.videoElement.style.opacity = '0.5';
             this.root.insertBefore(this.videoElement, this.canvas);
             navigator.mediaDevices.getUserMedia({video: true, audio: false})
               .then((stream) => this.videoElement.srcObject = stream);
