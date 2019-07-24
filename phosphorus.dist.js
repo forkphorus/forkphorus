@@ -6007,87 +6007,6 @@ var P;
             return list;
         }
         sb3.createList = createList;
-        // An Array usable by the Scratch 3 compiler.
-        // Implements Scratch list blocks and their behavior.
-        // export class Scratch3List extends Array {
-        //   public modified: boolean = false;
-        //   // Modified toString() that functions like Scratch.
-        //   toString() {
-        //     var i = this.length;
-        //     while (i--) {
-        //       if (('' + this[i]).length !== 1) {
-        //         return this.join(' ');
-        //       }
-        //     }
-        //     return this.join('');
-        //   }
-        //   /**
-        //    * Determines the "real" 0-indexed index of a 1-indexed Scratch index.
-        //    * @param index A scratch 1-indexed index, or 'random', 'any', 'last'
-        //    * @returns The 0-indexed index, or -1
-        //    */
-        //   scratchIndex(index: number | string): number {
-        //     if (index === 'random' || index === 'any') {
-        //       return Math.floor(Math.random() * this.length);
-        //     }
-        //     if (index === 'last') {
-        //       return this.length - 1;
-        //     }
-        //     index = Math.floor(+index);
-        //     if (index < 1 || index > this.length) {
-        //       return -1;
-        //     }
-        //     return index - 1;
-        //   }
-        //   // Deletes a line from the list.
-        //   // index is a scratch index.
-        //   deleteLine(index: number | 'all') {
-        //     if (index === 'all') {
-        //       this.modified = true;
-        //       this.length = 0;
-        //       return;
-        //     }
-        //     index = this.scratchIndex(index);
-        //     if (index === this.length - 1) {
-        //       this.modified = true;
-        //       this.pop();
-        //     } else if (index !== -1) {
-        //       this.modified = true;
-        //       this.splice(index, 1);
-        //     }
-        //   }
-        //   // Adds an item to the list.
-        //   push(...items: any[]) {
-        //     this.modified = true;
-        //     return super.push(...items);
-        //   }
-        //   // Inserts an item at a spot in the list.
-        //   // Index is a Scratch index.
-        //   insert(index: number, value: any) {
-        //     // TODO: simplify/refactor
-        //     if (+index === 1) {
-        //       this.modified = true;
-        //       this.unshift(value);
-        //       return;
-        //     }
-        //     index = this.scratchIndex(index);
-        //     if (index === this.length) {
-        //       this.modified = true;
-        //       this.push(value);
-        //     } else if (index !== -1) {
-        //       this.modified = true;
-        //       this.splice(index, 0, value);
-        //     }
-        //   }
-        //   // Sets the index of something in the list.
-        //   set(index: number, value: any) {
-        //     index = this.scratchIndex(index);
-        //     if (index !== -1) {
-        //       this.modified = true;
-        //       this[index] = value;
-        //     }
-        //   }
-        // }
         /**
          * Patches and modifies an SVG element in-place to make it function properly in the forkphorus environment.
          * Fixes fonts and viewBox.
@@ -7249,7 +7168,6 @@ var P;
     statementLibrary['data_addtolist'] = function (util) {
         const LIST = util.getListReference('LIST');
         const ITEM = util.getInput('ITEM', 'any');
-        // util.writeLn(`${LIST}.push(${ITEM});`);
         util.writeLn(`watchedAppendToList(${LIST}, ${ITEM});`);
     };
     statementLibrary['data_changevariableby'] = function (util) {
