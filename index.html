@@ -407,10 +407,20 @@
     /** Dark Mode **/
     function getLocalDarkMode() {
       try {
-        return localStorage.getItem('userPrefersDark') === 'true';
+        const value = localStorage.getItem('userPrefersDark');
+        if (!value) {
+          // value is undefined or null
+          return getDefaultDarkMode();
+        }
+        // value is the string 'true' or the string 'false'
+        return value === 'true';
       } catch (e) {
+        console.warn('error getting local color choice', e);
         return false;
       }
+    }
+    function getDefaultDarkMode() {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
     function setDarkMode(dark) {
       if (dark) {
@@ -424,7 +434,9 @@
       }
       try {
         return localStorage.setItem('userPrefersDark', dark);
-      } catch (e) {}
+      } catch (e) {
+        console.error('error saving color choice', e);
+      }
     }
     function toggleDarkMode(dark) {
       setDarkMode(!document.documentElement.classList.contains('dark'));
