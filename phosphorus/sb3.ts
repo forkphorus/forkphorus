@@ -2408,6 +2408,13 @@ namespace P.sb3.compiler {
       util.writeLn('S.isDraggable = false;');
     }
   };
+  statementLibrary['videoSensing_videoToggle'] = function(util) {
+    const VIDEO_STATE = util.getInput('VIDEO_STATE', 'string');
+    util.writeLn(`switch (${VIDEO_STATE}) {`);
+    util.writeLn(`  case "off": self.showVideo(false); break;`);
+    util.writeLn(`  case "on": self.showVideo(true); break;`);
+    util.writeLn(`}`);
+  };
 
   // Legacy no-ops
   // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L19
@@ -2721,6 +2728,9 @@ namespace P.sb3.compiler {
   };
   inputLibrary['sound_volume'] = function(util) {
     return util.numberInput('(S.volume * 100)');
+  };
+  inputLibrary['videoSensing_menu_VIDEO_STATE'] = function(util) {
+    return util.fieldInput('VIDEO_STATE');
   };
 
   // Legacy no-ops

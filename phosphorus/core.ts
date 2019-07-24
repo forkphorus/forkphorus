@@ -516,6 +516,8 @@ namespace P.core {
     public promptButton: HTMLElement;
     public mouseSprite: Sprite | undefined;
 
+    private videoElement: HTMLVideoElement;
+
     private _currentCostumeIndex: number = this.currentCostumeIndex;
 
     constructor() {
@@ -914,6 +916,27 @@ namespace P.core {
       this.drawChildren(renderer, skip);
     }
 
+    showVideo(visible: boolean) {
+      if (P.config.supportVideoSensing) {
+        if (visible) {
+          if (!this.videoElement) {
+            this.videoElement = document.createElement('video');
+            this.videoElement.onloadedmetadata = () => {
+              this.videoElement.play();
+            };
+            this.root.insertBefore(this.videoElement, this.canvas);
+            navigator.mediaDevices.getUserMedia({video: true, audio: false})
+              .then((stream) => this.videoElement.srcObject = stream);
+          }
+          this.videoElement.style.display = 'block';
+        } else {
+          if (this.videoElement) {
+            this.videoElement.style.display = 'none';
+          }
+        }
+      }
+    }
+
     // Implement rotatedBounds() to return something.
     rotatedBounds() {
       return {
@@ -925,6 +948,7 @@ namespace P.core {
     }
 
     // Override currentCostumeIndex to automatically update the backdrop when a change is made.
+    // TODO: don't updateBackdrop() on every change (slow), only when needed for rendering
     get currentCostumeIndex() {
       return this._currentCostumeIndex;
     }
