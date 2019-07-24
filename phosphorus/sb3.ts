@@ -2351,6 +2351,13 @@ namespace P.sb3.compiler {
     }
 
     const label = util.claimNextLabel();
+
+    var id = `${name} (${Math.random().toString().substr(0, 5)})`;
+    var measure = util.sanitizedString('' + id);
+    var start = util.sanitizedString('start-' + id);
+    var end = util.sanitizedString('end-' + id);
+    util.writeLn(`performance.mark(${start});`);
+
     util.write(`call(S.procedures[${util.sanitizedString(name)}], ${label}, [`);
 
     // The mutation has a stringified JSON list of input IDs... it's weird.
@@ -2361,6 +2368,9 @@ namespace P.sb3.compiler {
 
     util.writeLn(']); return;');
     util.addLabel(label);
+
+    util.writeLn(`performance.mark(${end});`);
+    util.writeLn(`performance.measure(${measure}, ${start}, ${end});`);
   };
   statementLibrary['sensing_askandwait'] = function(util) {
     const QUESTION = util.getInput('QUESTION', 'string');
