@@ -494,7 +494,6 @@ var P;
             if (!audio.context) {
                 return Promise.reject('No audio context');
             }
-            // TODO: does not work for some audio file
             return new Promise((resolve, reject) => {
                 decodeADPCMAudio(ab, function (err1, buffer) {
                     if (buffer) {
@@ -503,8 +502,12 @@ var P;
                     }
                     // Hope that the audio context will know what to do
                     audio.context.decodeAudioData(ab)
-                        .then((buffer) => resolve(buffer))
-                        .catch((err2) => reject(`Could not decode audio: ${err1} | ${err2}`));
+                        .then((buffer) => {
+                        resolve(buffer);
+                    })
+                        .catch((err2) => {
+                        reject(`Could not decode audio: ${err1} | ${err2}`);
+                    });
                 });
             });
         }
@@ -7575,7 +7578,7 @@ var P;
             util.writeLn('  R.duration = sound.duration;');
             util.writeLn('  var first = true;');
             const label = util.addLabel();
-            util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && runtime.stoppingSounds === 0) {');
+            util.writeLn('  if (runtime.now() - R.start < R.duration * 1000 || first) {');
             util.writeLn('    var first;');
             util.forceQueue(label);
             util.writeLn('  }');
