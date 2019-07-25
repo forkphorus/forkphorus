@@ -1350,7 +1350,10 @@ namespace P.core {
     /**
      * Set the RGB color of the pen.
      */
-    setPenColor(color: number) {
+    setPenColor(color: number | string) {
+      if (typeof color === 'string') {
+        color = parseInt(color.substr(1), 16);
+      }
       this.penColor = color;
       const r = this.penColor >> 16 & 0xff;
       const g = this.penColor >> 8 & 0xff;

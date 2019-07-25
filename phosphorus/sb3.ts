@@ -2333,7 +2333,7 @@ namespace P.sb3.compiler {
     util.writeLn(`S.setPenColorParam(${COLOR_PARAM}, ${VALUE});`);
   };
   statementLibrary['pen_setPenColorToColor'] = function(util) {
-    const COLOR = util.getInput('COLOR', 'number');
+    const COLOR = util.getInput('COLOR', 'any');
     util.writeLn(`S.setPenColor(${COLOR});`);
   };
   statementLibrary['pen_setPenHueToNumber'] = function(util) {

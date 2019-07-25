@@ -2652,6 +2652,9 @@ var P;
              * Set the RGB color of the pen.
              */
             setPenColor(color) {
+                if (typeof color === 'string') {
+                    color = parseInt(color.substr(1), 16);
+                }
                 this.penColor = color;
                 const r = this.penColor >> 16 & 0xff;
                 const g = this.penColor >> 8 & 0xff;
@@ -7651,7 +7654,7 @@ var P;
         util.writeLn(`S.setPenColorParam(${COLOR_PARAM}, ${VALUE});`);
     };
     statementLibrary['pen_setPenColorToColor'] = function (util) {
-        const COLOR = util.getInput('COLOR', 'number');
+        const COLOR = util.getInput('COLOR', 'any');
         util.writeLn(`S.setPenColor(${COLOR});`);
     };
     statementLibrary['pen_setPenHueToNumber'] = function (util) {
