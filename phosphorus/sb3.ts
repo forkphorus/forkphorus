@@ -2254,7 +2254,7 @@ namespace P.sb3.compiler {
       util.writeLn('  R.duration = sound.duration;');
       util.writeLn('  var first = true;');
       const label = util.addLabel();
-      util.writeLn('  if (runtime.now() - R.start < R.duration * 1000 || first) {');
+      util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && runtime.stopSounds === 0) {');
       util.writeLn('    var first;');
       util.forceQueue(label);
       util.writeLn('  }');
