@@ -789,7 +789,6 @@ namespace P.sb3 {
           stage.children = sprites;
           stage.allWatchers = watchers;
           watchers.forEach((watcher) => watcher.init());
-          stage.updateBackdrop();
 
           return stage;
         });

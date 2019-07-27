@@ -421,7 +421,6 @@ namespace P.sb2 {
         stage.children = sprites;
         stage.allWatchers = watchers;
         stage.allWatchers.forEach((w) => w.init());
-        stage.updateBackdrop();
 
         P.sb2.compiler.compile(stage);
         return stage;

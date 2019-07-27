@@ -8,28 +8,29 @@ namespace P.renderer {
   export interface SpriteRenderer {
     canvas: HTMLCanvasElement;
     /**
-     * Resets and resizes the renderer
-     */
-    reset(scale: number): void;
-    /**
      * Draws a Sprite or Stage on this renderer
      */
     drawChild(child: P.core.Base): void;
     /**
-     * Draws a canvas covering the full dimensions of this renderer
+     * Draw a Stage, optionally skipping an object.
      */
-    drawLayer(canvas: HTMLCanvasElement): void;
+    drawScene(stage: P.core.Stage, skip?: P.core.Base): void;
   }
 
   export interface ProjectRenderer extends SpriteRenderer {
     /**
-     * The canvas where pen things are drawn
+     * The stage that this renderer is used by.
+     * This renderer must only be used by this stage and with sprites within this stage.
      */
-    penLayer: HTMLCanvasElement;
+    stage: P.core.Stage;
     /**
-     * The canvas where the stage is drawn
+     * Reset and draw a frame.
      */
-    stageLayer: HTMLCanvasElement;
+    drawFrame(scale: number): void;
+    /**
+     * Initialize this renderer and append its canvas(es) to a given root node.
+     */
+    init(root: HTMLElement): void;
     /**
      * Draws a line on the pen canvas
      * @param color Color of the line
@@ -61,14 +62,6 @@ namespace P.renderer {
      * The renderer will do so eventually; not necessarily immediately.
      */
     penResize(scale: number): void;
-    /**
-     * Updates & resize the Stage layer. Implicitly calls updateStageFilters()
-     */
-    updateStage(scale: number): void;
-    /**
-     * Updates the filters applied to the Stage layer.
-     */
-    updateStageFilters(): void;
     /**
      * Determines if a Sprite is intersecting a point
      * @param sprite The sprite
@@ -385,7 +378,7 @@ namespace P.renderer {
 
         hsv.x = mod(hsv.x + u_color, 1.0);
         if (hsv.x < 0.0) hsv.x += 1.0;
-        color = vec4(hsv2rgb(hsv), color.a);  
+        color = vec4(hsv2rgb(hsv), color.a);
       }
       #endif
 
@@ -657,14 +650,20 @@ namespace P.renderer {
   export class WebGLProjectRenderer extends WebGLSpriteRenderer implements ProjectRenderer {
     public penLayer: HTMLCanvasElement;
     public stageLayer: HTMLCanvasElement;
+
+    protected penTexture: WebGLTexture;
+    protected penBuffer: WebGLFramebuffer;
+
     protected fallbackRenderer: ProjectRenderer;
     protected shaderOnlyShapeFilters = this.compileVariant(['ONLY_SHAPE_FILTERS']);
 
     constructor(public stage: P.core.Stage) {
       super();
-      this.fallbackRenderer = new ProjectRenderer2D(stage);
-      this.penLayer = this.fallbackRenderer.penLayer;
-      this.stageLayer = this.fallbackRenderer.stageLayer;
+      // this.fallbackRenderer = new ProjectRenderer2D(stage);
+      // this.penLayer = this.fallbackRenderer.canvas;
+      // this.stageLayer = this.fallbackRenderer.stageLayer;
+      this.penTexture = this.createTexture();
+      this.penBuffer = this.createFramebuffer();
     }
 
     /**
@@ -694,32 +693,37 @@ namespace P.renderer {
     }
 
     penLine(color: string, size: number, x: number, y: number, x2: number, y2: number): void {
-      this.fallbackRenderer.penLine(color, size, x, y, x2, y2);
+      // this.fallbackRenderer.penLine(color, size, x, y, x2, y2);
     }
 
     penDot(color: string, size: number, x: number, y: number): void {
-      this.fallbackRenderer.penDot(color, size, x, y);
+      // this.fallbackRenderer.penDot(color, size, x, y);
     }
 
     penStamp(sprite: P.core.Sprite): void {
-      this.fallbackRenderer.penStamp(sprite);
+      this.setRenderToFramebuffer(this.penBuffer, this.penTexture);
+      this.drawChild(sprite);
+      this.resetRenderFramebuffer();
+      // this.penRenderer.drawChild(sprite);
+      // this.fallbackRenderer.penStamp(sprite);
     }
 
     penClear(): void {
-      this.fallbackRenderer.penClear();
+      // this.penRenderer.
+      // this.fallbackRenderer.penClear();
     }
 
     penResize(scale: number): void {
-      this.fallbackRenderer.penResize(scale);
+      // this.fallbackRenderer.penResize(scale);
     }
 
-    updateStage(scale: number): void {
-      this.fallbackRenderer.updateStage(scale);
-    }
+    // updateStage(scale: number): void {
+    //   this.fallbackRenderer.updateStage(scale);
+    // }
 
-    updateStageFilters(): void {
-      this.fallbackRenderer.updateStageFilters();
-    }
+    // updateStageFilters(): void {
+    //   this.fallbackRenderer.updateStageFilters();
+    // }
 
     spriteTouchesPoint(sprite: core.Sprite, x: number, y: number): boolean {
       // If filters will not change the shape of the sprite, it would be faster
@@ -791,7 +795,7 @@ namespace P.renderer {
     }
 
     spriteColorTouchesColor(sprite: core.Base, spriteColor: number, otherColor: number): boolean {
-      return this.spriteColorTouchesColor(sprite, spriteColor, otherColor);
+      return this.fallbackRenderer.spriteColorTouchesColor(sprite, spriteColor, otherColor);
     }
   }
 
@@ -836,8 +840,14 @@ namespace P.renderer {
       this._drawChild(c, this.ctx);
     }
 
-    drawLayer(canvas: HTMLCanvasElement) {
-      this.ctx.drawImage(canvas, 0, 0, 480, 360);
+    drawScene(stage: P.core.Stage, skip?: P.core.Base) {
+      for (var i = 0; i < stage.children.length; i++) {
+        var child = stage.children[i];
+        if (!child.visible || child === skip) {
+          continue;
+        }
+        this._drawChild(child, this.ctx);
+      }
     }
 
     protected _reset(ctx: CanvasRenderingContext2D, scale: number) {
@@ -930,6 +940,19 @@ namespace P.renderer {
       this.stageLayer.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
     }
 
+    init(root: HTMLCanvasElement) {
+      root.appendChild(this.stageLayer);
+      root.appendChild(this.penLayer);
+      root.appendChild(this.canvas);
+    }
+
+    drawFrame(scale: number) {
+      this.reset(scale);
+      this.drawScene(this.stage);
+      // TODO: don't update stage every frame
+      this.updateStage(scale);
+    }
+
     penClear() {
       this.penLayerModified = false;
       if (this.penLayerTargetScale !== -1) {
@@ -989,12 +1012,12 @@ namespace P.renderer {
     }
 
     spriteTouchesPoint(sprite: P.core.Sprite, x: number, y: number) {
-      const costume = sprite.costumes[sprite.currentCostumeIndex];
       const bounds = sprite.rotatedBounds();
       if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top) {
         return false;
       }
 
+      const costume = sprite.costumes[sprite.currentCostumeIndex];
       var cx = (x - sprite.scratchX) / sprite.scale;
       var cy = (sprite.scratchY - y) / sprite.scale;
       if (sprite.rotationStyle === RotationStyle.Normal && sprite.direction !== 90) {
@@ -1034,7 +1057,7 @@ namespace P.renderer {
         const width = right - left;
         const height = top - bottom;
 
-        // dimensions that are less than 1 or NaN will cause issues
+        // dimensions that are less than 1 or are NaN will throw when we try to get image data
         if (width < 1 || height < 1 || width !== width || height !== height) {
           continue;
         }
@@ -1075,7 +1098,7 @@ namespace P.renderer {
       workingRenderer.ctx.save();
       workingRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
 
-      sprite.stage.drawAll(workingRenderer, sprite);
+      workingRenderer.drawScene(this.stage, sprite);
       workingRenderer.ctx.globalCompositeOperation = 'destination-in';
       workingRenderer.drawChild(sprite);
 
@@ -1105,7 +1128,7 @@ namespace P.renderer {
       workingRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
       workingRenderer2.ctx.translate(-(240 + rb.left), -(180 - rb.top));
 
-      sprite.stage.drawAll(workingRenderer, sprite);
+      workingRenderer.drawScene(this.stage, sprite);
       workingRenderer.drawChild(sprite);
 
       workingRenderer.ctx.restore();
