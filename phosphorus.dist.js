@@ -2728,7 +2728,7 @@ var P;
                         }
                         break;
                     case 'transparency':
-                        this.penAlpha = Math.max(0, Math.min(1, value / 100));
+                        this.penAlpha = Math.max(0, Math.min(1, this.penAlpha - value / 100));
                         break;
                 }
             }
