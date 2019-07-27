@@ -1370,7 +1370,7 @@ namespace P.sb3.compiler {
     asType(input: string, type: InputType): string {
       switch (type) {
         case 'string': return '("" + ' + input + ')';
-        case 'number': return '+' + input;
+        case 'number': return '(+' + input + '|| 0)';
         case 'boolean': return 'bool(' + input + ')';
         case 'any': return input;
       }

@@ -6746,7 +6746,7 @@ var P;
                 asType(input, type) {
                     switch (type) {
                         case 'string': return '("" + ' + input + ')';
-                        case 'number': return '+' + input;
+                        case 'number': return '(+' + input + '|| 0)';
                         case 'boolean': return 'bool(' + input + ')';
                         case 'any': return input;
                     }
