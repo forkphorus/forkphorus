@@ -611,13 +611,19 @@ namespace P.sb3 {
     private requests: XMLHttpRequest[] = [];
     public aborted: boolean = false;
     public onprogress = new P.utils.Slot<number>();
+    protected soundCache: ObjectMap<Promise<AudioBuffer>> = {};
+    protected imageCache: ObjectMap<Promise<HTMLImageElement>> = {};
 
     protected abstract getAsText(path: string): Promise<string>;
     protected abstract getAsArrayBuffer(path: string): Promise<ArrayBuffer>;
     protected abstract getAsImage(path: string, format: string): Promise<HTMLImageElement>;
 
     getSVG(path: string): Promise<HTMLImageElement> {
-      return this.getAsText(path)
+      if (path in this.imageCache) {
+        console.log('dedupe svg', path);
+        return this.imageCache[path];
+      }
+      return this.imageCache[path] = this.getAsText(path)
         .then((source) => {
           const parser = new DOMParser();
           const doc = parser.parseFromString(source, 'image/svg+xml');
@@ -638,10 +644,14 @@ namespace P.sb3 {
     }
 
     getBitmapImage(path: string, format: string): Promise<HTMLImageElement> {
-      return this.getAsImage(path, format);
+      if (path in this.imageCache) {
+        console.log('dedupe bitmap', path);
+        return this.imageCache[path];
+      }
+      return this.imageCache[path] = this.getAsImage(path, format);
     }
 
-    loadCostume(data: SB3Costume, index: number): Promise<P.core.Costume> {
+    loadCostume(data: SB3Costume): Promise<P.core.Costume> {
       const path = data.assetId + '.' + data.dataFormat;
       const costumeOptions = {
         name: data.name,
@@ -658,8 +668,12 @@ namespace P.sb3 {
       }
     }
 
-    getAudioBuffer(path: string) {
-      return this.getAsArrayBuffer(path)
+    getAudioBuffer(path: string): Promise<AudioBuffer> {
+      if (path in this.soundCache) {
+        console.log('dedupe audio', path);
+        return this.soundCache[path];
+      }
+      return this.soundCache[path] = this.getAsArrayBuffer(path)
         .then((buffer) => P.audio.decodeAudio(buffer))
         .catch((err) => {
           throw new Error(`Could not load audio: ${path} (${err})`);
@@ -725,7 +739,7 @@ namespace P.sb3 {
         sprite.rotationStyle = P.utils.parseRotationStyle(data.rotationStyle);
       }
 
-      const costumesPromise = Promise.all<P.core.Costume>(data.costumes.map((c: any, i: any) => this.loadCostume(c, i)));
+      const costumesPromise = Promise.all<P.core.Costume>(data.costumes.map((c: any, i: any) => this.loadCostume(c)));
       const soundsPromise = Promise.all<P.core.Sound | null>(data.sounds.map((c) => this.loadSound(c)));
 
       return Promise.all<P.core.Costume[], Array<P.core.Sound | null>>([costumesPromise, soundsPromise])

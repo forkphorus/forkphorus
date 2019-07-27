@@ -2974,7 +2974,6 @@ var P;
     })(fonts = P.fonts || (P.fonts = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
-// IO helpers and hooks
 var P;
 (function (P) {
     var IO;
@@ -2989,7 +2988,7 @@ var P;
              */
             localPath: '',
         };
-        // non-http/https protocols cannot xhr request local files, so utilize forkphorus.github.io instead
+        // non-http/https protocols cannot xhr request local files most of the time, so utilize forkphorus.github.io instead
         if (['http:', 'https:'].indexOf(location.protocol) === -1) {
             IO.config.localPath = 'https://forkphorus.github.io';
         }
@@ -3067,24 +3066,6 @@ var P;
             get type() { return 'json'; }
         }
         IO.JSONRequest = JSONRequest;
-        /**
-         * Read a file as an ArrayBuffer
-         */
-        function fileAsArrayBuffer(file) {
-            const fileReader = new FileReader();
-            return new Promise((resolve, reject) => {
-                fileReader.onloadend = function () {
-                    resolve(fileReader.result);
-                };
-                fileReader.onerror = function (err) {
-                    reject('Failed to load file');
-                };
-                fileReader.onprogress = function (progress) {
-                };
-                fileReader.readAsArrayBuffer(file);
-            });
-        }
-        IO.fileAsArrayBuffer = fileAsArrayBuffer;
         /**
          * Utilities for asynchronously reading Blobs or Files
          */
@@ -6139,9 +6120,15 @@ var P;
                 this.requests = [];
                 this.aborted = false;
                 this.onprogress = new P.utils.Slot();
+                this.soundCache = {};
+                this.imageCache = {};
             }
             getSVG(path) {
-                return this.getAsText(path)
+                if (path in this.imageCache) {
+                    console.log('dedupe svg', path);
+                    return this.imageCache[path];
+                }
+                return this.imageCache[path] = this.getAsText(path)
                     .then((source) => {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(source, 'image/svg+xml');
@@ -6160,9 +6147,13 @@ var P;
                 });
             }
             getBitmapImage(path, format) {
-                return this.getAsImage(path, format);
+                if (path in this.imageCache) {
+                    console.log('dedupe bitmap', path);
+                    return this.imageCache[path];
+                }
+                return this.imageCache[path] = this.getAsImage(path, format);
             }
-            loadCostume(data, index) {
+            loadCostume(data) {
                 const path = data.assetId + '.' + data.dataFormat;
                 const costumeOptions = {
                     name: data.name,
@@ -6180,7 +6171,11 @@ var P;
                 }
             }
             getAudioBuffer(path) {
-                return this.getAsArrayBuffer(path)
+                if (path in this.soundCache) {
+                    console.log('dedupe audio', path);
+                    return this.soundCache[path];
+                }
+                return this.soundCache[path] = this.getAsArrayBuffer(path)
                     .then((buffer) => P.audio.decodeAudio(buffer))
                     .catch((err) => {
                     throw new Error(`Could not load audio: ${path} (${err})`);
@@ -6237,7 +6232,7 @@ var P;
                     sprite.isDraggable = data.draggable;
                     sprite.rotationStyle = P.utils.parseRotationStyle(data.rotationStyle);
                 }
-                const costumesPromise = Promise.all(data.costumes.map((c, i) => this.loadCostume(c, i)));
+                const costumesPromise = Promise.all(data.costumes.map((c, i) => this.loadCostume(c)));
                 const soundsPromise = Promise.all(data.sounds.map((c) => this.loadSound(c)));
                 return Promise.all([costumesPromise, soundsPromise])
                     .then((result) => {

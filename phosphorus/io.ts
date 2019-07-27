@@ -1,7 +1,5 @@
 /// <reference path="phosphorus.ts" />
 
-// IO helpers and hooks
-
 namespace P.IO {
   /**
    * Configuration of IO behavior
@@ -14,12 +12,15 @@ namespace P.IO {
     localPath: '',
   };
 
-  // non-http/https protocols cannot xhr request local files, so utilize forkphorus.github.io instead
+  // non-http/https protocols cannot xhr request local files most of the time, so utilize forkphorus.github.io instead
   if (['http:', 'https:'].indexOf(location.protocol) === -1) {
     config.localPath = 'https://forkphorus.github.io';
   }
 
   interface RequestOptions {
+    /**
+     * Indicates that this request's URL is relative to a full installation of forkphorus.
+     */
     local?: boolean;
   }
 
@@ -97,29 +98,6 @@ namespace P.IO {
   }
   export class JSONRequest extends XHRRequest<any> {
     protected get type() { return 'json'; }
-  }
-
-  /**
-   * Read a file as an ArrayBuffer
-   */
-  export function fileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
-    const fileReader = new FileReader();
-
-    return new Promise((resolve, reject) => {
-      fileReader.onloadend = function() {
-        resolve(fileReader.result as ArrayBuffer);
-      };
-
-      fileReader.onerror = function(err) {
-        reject('Failed to load file');
-      };
-
-      fileReader.onprogress = function(progress) {
-
-      };
-
-      fileReader.readAsArrayBuffer(file);
-    });
   }
 
   /**
