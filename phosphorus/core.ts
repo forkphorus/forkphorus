@@ -555,6 +555,7 @@ namespace P.core {
 
       this.root.addEventListener('keydown', (e) => {
         var c = e.keyCode;
+        if (c >= 128) c = P.runtime.getKeyCode(e.key) as number;
         if (!this.keys[c]) this.keys.any++;
         this.keys[c] = true;
         if (e.ctrlKey || e.altKey || e.metaKey || c === 27) return;
@@ -567,6 +568,7 @@ namespace P.core {
 
       this.root.addEventListener('keyup', (e) => {
         var c = e.keyCode;
+        if (c >= 128) c = P.runtime.getKeyCode(e.key) as number;
         if (this.keys[c]) this.keys.any--;
         this.keys[c] = false;
         e.stopPropagation();
