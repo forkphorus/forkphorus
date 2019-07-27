@@ -2656,7 +2656,15 @@ var P;
              */
             setPenColor(color) {
                 if (typeof color === 'string') {
-                    color = parseInt(color.substr(1), 16);
+                    if (color.startsWith('#')) {
+                        color = parseInt(color.substr(1), 16);
+                    }
+                    else if (color.startsWith('0x')) {
+                        color = parseInt(color.substr(2), 16);
+                    }
+                    else {
+                        color = +color;
+                    }
                 }
                 this.penColor = color;
                 const r = this.penColor >> 16 & 0xff;
