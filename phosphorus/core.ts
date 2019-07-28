@@ -529,10 +529,8 @@ namespace P.core {
       this.root = document.createElement('div');
       this.root.classList.add('forkphorus-root');
 
-      const scale = P.config.scale;
-
       if (P.config.useWebGL) {
-        // this.renderer = new P.renderer.WebGLProjectRenderer(this);
+        this.renderer = new P.renderer.WebGLProjectRenderer(this);
       } else {
         this.renderer = new P.renderer.ProjectRenderer2D(this);
       }

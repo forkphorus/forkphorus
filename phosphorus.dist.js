@@ -748,15 +748,17 @@ var P;
         class WebGLSpriteRenderer {
             constructor() {
                 this.canvas = createCanvas();
-                const gl = this.canvas.getContext('webgl');
+                const gl = this.canvas.getContext('webgl', {
+                    alpha: false,
+                    antialias: false,
+                });
                 if (!gl) {
                     throw new Error('cannot get webgl rendering context');
                 }
                 this.gl = gl;
                 this.renderingShader = this.compileVariant([]);
-                // Enable transparency blending.
+                // Enable blending
                 this.gl.enable(this.gl.BLEND);
-                // TODO: investigate other blending modes
                 this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
                 // Create the quad buffer that we'll use for positioning and texture coordinates later.
                 this.quadBuffer = this.gl.createBuffer();
@@ -864,8 +866,10 @@ var P;
                 }
                 return frameBuffer;
             }
+            /**
+             * Reset and resize this renderer.
+             */
             reset(scale) {
-                // Scale the actual canvas
                 this.canvas.width = scale * P.config.scale * 480;
                 this.canvas.height = scale * P.config.scale * 360;
                 this.resetFramebuffer(scale);
@@ -886,7 +890,6 @@ var P;
             }
             /**
              * Real implementation of drawChild()
-             * Shader must be set before calling (allows for using a different shader)
              * @param child The child to draw
              */
             _drawChild(child, shader) {
@@ -947,6 +950,47 @@ var P;
                 }
                 if (shader.hasUniform('u_size')) {
                     shader.uniform2f('u_size', costume.width, costume.height);
+                }
+                this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+            }
+            drawTexture(texture) {
+                const shader = this.renderingShader;
+                this.gl.useProgram(shader.program);
+                this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+                shader.attributeBuffer('a_texcoord', this.quadBuffer);
+                shader.attributeBuffer('a_position', this.quadBuffer);
+                const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
+                P.m3.multiply(matrix, this.globalScaleMatrix);
+                P.m3.multiply(matrix, P.m3.translation(240, 180));
+                P.m3.multiply(matrix, P.m3.scaling(1, -1));
+                P.m3.multiply(matrix, P.m3.translation(-240, -180));
+                P.m3.multiply(matrix, P.m3.scaling(480, 360));
+                shader.uniformMatrix3('u_matrix', matrix);
+                // Effects
+                if (shader.hasUniform('u_opacity')) {
+                    shader.uniform1f('u_opacity', 1 - 0 / 100);
+                }
+                if (shader.hasUniform('u_brightness')) {
+                    shader.uniform1f('u_brightness', 0 / 100);
+                }
+                if (shader.hasUniform('u_color')) {
+                    shader.uniform1f('u_color', 0 / 200);
+                }
+                if (shader.hasUniform('u_mosaic')) {
+                    const mosaic = Math.round((Math.abs(0) + 10) / 10);
+                    shader.uniform1f('u_mosaic', P.utils.clamp(mosaic, 1, 512));
+                }
+                if (shader.hasUniform('u_whirl')) {
+                    shader.uniform1f('u_whirl', 0 * Math.PI / -180);
+                }
+                if (shader.hasUniform('u_fisheye')) {
+                    shader.uniform1f('u_fisheye', Math.max(0, (0 + 100) / 100));
+                }
+                if (shader.hasUniform('u_pixelate')) {
+                    shader.uniform1f('u_pixelate', Math.abs(0) / 10);
+                }
+                if (shader.hasUniform('u_size')) {
+                    shader.uniform2f('u_size', 480, 360);
                 }
                 this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
             }
@@ -1098,11 +1142,27 @@ var P;
                 super();
                 this.stage = stage;
                 this.shaderOnlyShapeFilters = this.compileVariant(['ONLY_SHAPE_FILTERS']);
-                // this.fallbackRenderer = new ProjectRenderer2D(stage);
-                // this.penLayer = this.fallbackRenderer.canvas;
-                // this.stageLayer = this.fallbackRenderer.stageLayer;
                 this.penTexture = this.createTexture();
                 this.penBuffer = this.createFramebuffer();
+                this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 480, 360, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
+                this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.penTexture, 0);
+                this.reset(1);
+            }
+            drawFrame(scale) {
+                // this.reset(scale);
+                // this.drawChild(this.stage);
+                this.drawTexture(this.penTexture);
+                // for (var i = 0; i < this.stage.children.length; i++) {
+                //   var child = this.stage.children[i];
+                //   if (!child.visible) {
+                //     continue;
+                //   }
+                //   this.drawChild(child);
+                // }
+            }
+            init(root) {
+                root.appendChild(this.canvas);
             }
             /**
              * Sets this renderer to render to a framebuffer.
@@ -1115,9 +1175,6 @@ var P;
                 // setup framebuffer
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, framebuffer);
                 // setup texture
-                this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
-                this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 480, 360, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
-                this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, texture, 0);
                 // fix viewport/clear
                 // always use a scale of 1 for now
                 this.resetFramebuffer(1);
@@ -1135,11 +1192,10 @@ var P;
                 // this.fallbackRenderer.penDot(color, size, x, y);
             }
             penStamp(sprite) {
-                this.setRenderToFramebuffer(this.penBuffer, this.penTexture);
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
+                this.gl.viewport(0, 0, 480, 360);
                 this.drawChild(sprite);
-                this.resetRenderFramebuffer();
-                // this.penRenderer.drawChild(sprite);
-                // this.fallbackRenderer.penStamp(sprite);
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
             }
             penClear() {
                 // this.penRenderer.
@@ -1215,7 +1271,6 @@ var P;
             }
         }
         renderer.WebGLProjectRenderer = WebGLProjectRenderer;
-        // 2D
         /**
          * Creates the CSS filter for a Filter object.
          * The filter is generally an estimation of the actual effect.
@@ -1253,7 +1308,7 @@ var P;
                     if (!child.visible || child === skip) {
                         continue;
                     }
-                    this._drawChild(child, this.ctx);
+                    this.drawChild(child);
                 }
             }
             _reset(ctx, scale) {
@@ -1923,9 +1978,8 @@ var P;
                 this.keys.any = 0;
                 this.root = document.createElement('div');
                 this.root.classList.add('forkphorus-root');
-                const scale = P.config.scale;
                 if (P.config.useWebGL) {
-                    // this.renderer = new P.renderer.WebGLProjectRenderer(this);
+                    this.renderer = new P.renderer.WebGLProjectRenderer(this);
                 }
                 else {
                     this.renderer = new P.renderer.ProjectRenderer2D(this);
