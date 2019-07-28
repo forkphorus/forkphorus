@@ -1142,6 +1142,7 @@ var P;
                 super();
                 this.stage = stage;
                 this.shaderOnlyShapeFilters = this.compileVariant(['ONLY_SHAPE_FILTERS']);
+                this.fallbackRenderer = new ProjectRenderer2D(stage);
                 this.penTexture = this.createTexture();
                 this.penBuffer = this.createFramebuffer();
                 this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 480, 360, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
@@ -1150,40 +1151,19 @@ var P;
                 this.reset(1);
             }
             drawFrame(scale) {
-                // this.reset(scale);
-                // this.drawChild(this.stage);
+                this.reset(scale);
+                this.drawChild(this.stage);
                 this.drawTexture(this.penTexture);
-                // for (var i = 0; i < this.stage.children.length; i++) {
-                //   var child = this.stage.children[i];
-                //   if (!child.visible) {
-                //     continue;
-                //   }
-                //   this.drawChild(child);
-                // }
+                for (var i = 0; i < this.stage.children.length; i++) {
+                    var child = this.stage.children[i];
+                    if (!child.visible) {
+                        continue;
+                    }
+                    this.drawChild(child);
+                }
             }
             init(root) {
                 root.appendChild(this.canvas);
-            }
-            /**
-             * Sets this renderer to render to a framebuffer.
-             * Initializes, binds, attaches, and clears the texture and framebuffer.
-             * Framebuffer must be reset later.
-             * @param framebuffer The framebuffer
-             * @param texture The texture
-             */
-            setRenderToFramebuffer(framebuffer, texture) {
-                // setup framebuffer
-                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, framebuffer);
-                // setup texture
-                // fix viewport/clear
-                // always use a scale of 1 for now
-                this.resetFramebuffer(1);
-            }
-            /**
-             * Sets this renderer to render to the canvas instead of a framebuffer
-             */
-            resetRenderFramebuffer() {
-                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
             }
             penLine(color, size, x, y, x2, y2) {
                 // this.fallbackRenderer.penLine(color, size, x, y, x2, y2);
@@ -1198,18 +1178,12 @@ var P;
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
             }
             penClear() {
-                // this.penRenderer.
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
                 // this.fallbackRenderer.penClear();
             }
             penResize(scale) {
                 // this.fallbackRenderer.penResize(scale);
             }
-            // updateStage(scale: number): void {
-            //   this.fallbackRenderer.updateStage(scale);
-            // }
-            // updateStageFilters(): void {
-            //   this.fallbackRenderer.updateStageFilters();
-            // }
             spriteTouchesPoint(sprite, x, y) {
                 // If filters will not change the shape of the sprite, it would be faster
                 // to avoid going to the GPU
@@ -1218,14 +1192,15 @@ var P;
                 }
                 const texture = this.createTexture();
                 const framebuffer = this.createFramebuffer();
-                this.setRenderToFramebuffer(framebuffer, texture);
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, framebuffer);
+                this.resetFramebuffer(1);
                 this._drawChild(sprite, this.shaderOnlyShapeFilters);
                 // Allocate 4 bytes to store 1 RGBA pixel
                 const result = new Uint8Array(4);
                 // Coordinates are in pixels from the lower left corner
                 // We only care about 1 pixel, the pixel at the mouse cursor.
                 this.gl.readPixels(240 + x | 0, 180 + y | 0, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, result);
-                this.resetRenderFramebuffer();
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
                 // I don't know if it's necessary to delete these
                 this.gl.deleteTexture(texture);
                 this.gl.deleteFramebuffer(framebuffer);
@@ -1233,35 +1208,7 @@ var P;
                 return result[3] !== 0;
             }
             spritesIntersect(spriteA, otherSprites) {
-                // Render the original Sprite into a buffer just once
-                const baseResult = new Uint8Array(480 * 360 * 4);
-                const baseTexture = this.createTexture();
-                const baseBuffer = this.createFramebuffer();
-                this.setRenderToFramebuffer(baseBuffer, baseTexture);
-                this._drawChild(spriteA, this.shaderOnlyShapeFilters);
-                this.gl.readPixels(0, 0, 480, 360, this.gl.RGBA, this.gl.UNSIGNED_BYTE, baseResult);
-                // Setup the rendering for the other sprite just once for performance
-                const otherResult = new Uint8Array(480 * 360 * 4);
-                const textureB = this.createTexture();
-                const framebufferB = this.createFramebuffer();
-                this.setRenderToFramebuffer(framebufferB, textureB);
-                for (var i = 0; i < otherSprites.length; i++) {
-                    const otherSprite = otherSprites[i];
-                    if (!otherSprite.visible)
-                        continue;
-                    // Does the rendering of the sprite
-                    this._drawChild(otherSprite, this.shaderOnlyShapeFilters);
-                    this.gl.readPixels(0, 0, 480, 360, this.gl.RGBA, this.gl.UNSIGNED_BYTE, otherResult);
-                    const length = 480 * 360 * 4;
-                    for (var i = 0; i < length; i += 4) {
-                        if (baseResult[i + 3] && otherResult[i + 3]) {
-                            this.resetRenderFramebuffer();
-                            return true;
-                        }
-                    }
-                }
-                this.resetRenderFramebuffer();
-                return false;
+                return this.fallbackRenderer.spritesIntersect(spriteA, otherSprites);
             }
             spriteTouchesColor(sprite, color) {
                 return this.fallbackRenderer.spriteTouchesColor(sprite, color);
