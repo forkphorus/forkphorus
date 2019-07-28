@@ -98,10 +98,6 @@
           <!-- scratch has some restrictions on usernames that we don't care about -->
           <td class="value"><input id="settings-username" value="" type="text" placeholder="(nothing)"></td>
         </tr>
-        <tr>
-          <td class="name" title="Use an alternative rendering engine."><label for="settings-username">Use WebGL</label></td>
-          <td class="value"><input id="settings-webgl" type="checkbox"></td>
-        </tr>
       </table>
       <p>Changes are applied automatically.</p>
     </div>
@@ -453,12 +449,10 @@
     /** Settings Menu **/
     var optionFramerate = querySelector('#settings-framerate');
     var optionUsername = querySelector('#settings-username');
-    var optionWebGL = querySelector('#settings-webgl');
     var settingsMenu = querySelector('#settings');
     var defaultOptions = {
       username: '',
       framerate: 30,
-      webgl: P.config.useWebGL,
     };
     var previousOptions = shallowClone(defaultOptions);
 
@@ -466,7 +460,6 @@
     function setSelectedOptions(options) {
       optionFramerate.value = options.framerate;
       optionUsername.value = options.username;
-      optionWebGL.checked = options.webgl;
     }
     // Get the current options from the DOM
     function getSelectedOptions() {
@@ -477,8 +470,8 @@
         options.framerate = +optionFramerate.value;
       }
 
+      // doesn't really matter if username is "invalid"
       options.username = optionUsername.value;
-      options.webgl = optionWebGL.checked;
 
       return options;
     }
@@ -496,28 +489,6 @@
 
       stage.username = options.username;
 
-      function replaceRenderer(renderer) {
-        stage.renderer = renderer;
-        stage.canvas = renderer.canvas;
-        while (stage.root.firstChild) stage.root.removeChild(stage.root.firstChild);
-        renderer.init(stage.root);
-        stage.root.appendChild(stage.ui);
-        for (var i = 0; i < stage.children.length; i++) {
-          for (var j = 0; j < stage.children[i].costumes.length; j++) {
-            stage.children[i].costumes[j]._glTexture = null;
-          }
-        }
-      }
-
-      P.config.useWebGL = options.webgl;
-      if (options.webgl && !(stage.renderer instanceof P.renderer.WebGLProjectRenderer)) {
-        alert("The WebGL renderer is VERY experimental and MOST PROJECTS WILL NOT WORK CORRECTLY.");
-        replaceRenderer(new P.renderer.WebGLProjectRenderer(stage));
-      }
-      if (!options.webgl && stage.renderer instanceof P.renderer.WebGLProjectRenderer) {
-        replaceRenderer(new P.renderer.ProjectRenderer2D(stage));
-      }
-
       previousOptions = options;
     }
     // Gets the currently selected options, and applies them.
@@ -529,7 +500,6 @@
     setSelectedOptions(defaultOptions);
     optionFramerate.addEventListener('input', applySelectedOptions);
     optionUsername.addEventListener('input', applySelectedOptions);
-    optionWebGL.addEventListener('change', applySelectedOptions);
     player.onload.subscribe(applySelectedOptions);
 
     if (initialId) {

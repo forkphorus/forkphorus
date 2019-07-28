@@ -237,9 +237,6 @@ code {
   background: transparent;
   color: inherit;
 }
-#settings input[type=checkbox] {
-  height: 13px;
-}
 #settings input::placeholder {
   color: inherit;
   opacity: .4;
