@@ -12,8 +12,6 @@
   </head>
 
   <body>
-    Something before.<br>
-
     <!-- Example of using the embed API -->
     <script>
 
@@ -44,15 +42,30 @@
       });
     </script>
 
-    <script src="http://localhost:8080/embed.js?id=280227362&auto-start=true&light-content=false"></script>
+    <p>Examples of all the embeds.</p>
 
-    <script src="http://localhost:8080/embed.js?id=280227362&auto-start=false&light-content=false"></script>
-
-    <script src="http://localhost:8080/embed.js?id=280227362&auto-start=false&light-content=true"></script>
-
-    <script src="http://localhost:8080/embed.js?id=280227362&ui=false"></script>
-
-    <br>Something after.
+    <table>
+      <tr>
+        <td>no autostart</td>
+        <td><script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=false&light-content=false"></script></td>
+        <td><input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=false&light-content=false">&lt;/script>' readonly onclick="this.focus();this.select();"></td>
+      </tr>
+      <tr>
+        <td>autostart</td>
+        <td><script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=true&light-content=false"></script></td>
+        <td><input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=true&light-content=false">&lt;/script>' readonly onclick="this.focus();this.select();"></td>
+      </tr>
+      <tr>
+        <td>dark</td>
+        <td style="background:black;"><script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=false&light-content=true"></script></td>
+        <td><input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=false&light-content=true">&lt;/script>' readonly onclick="this.focus();this.select();"></td>
+      </tr>
+      <tr>
+        <td>no UI + autostart</td>
+        <td><script src="https://forkphorus.github.io/embed.js?id=280227362&ui=false"></script></td>
+        <td><input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&ui=false">&lt;/script>' readonly onclick="this.focus();this.select();"></td>
+      </tr>
+    </table>
 
   </body>
 </html>
