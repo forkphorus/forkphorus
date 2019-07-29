@@ -8,25 +8,28 @@ namespace P.renderer {
   export interface SpriteRenderer {
     canvas: HTMLCanvasElement;
     /**
+     * Resets and resizes the renderer
+     */
+    reset(scale: number): void;
+    /**
      * Draws a Sprite or Stage on this renderer
      */
     drawChild(child: P.core.Base): void;
+    /**
+     * Draws a canvas covering the full dimensions of this renderer
+     */
+    drawLayer(canvas: HTMLCanvasElement): void;
   }
 
   export interface ProjectRenderer extends SpriteRenderer {
     /**
-     * The stage that this renderer is used by.
-     * This renderer must only be used by this stage and with sprites within this stage.
+     * The canvas where pen things are drawn
      */
-    stage: P.core.Stage;
+    penLayer: HTMLCanvasElement;
     /**
-     * Reset and draw a frame.
+     * The canvas where the stage is drawn
      */
-    drawFrame(scale: number): void;
-    /**
-     * Initialize this renderer and append its canvas(es) to a given root node.
-     */
-    init(root: HTMLElement): void;
+    stageLayer: HTMLCanvasElement;
     /**
      * Draws a line on the pen canvas
      * @param color Color of the line
@@ -58,6 +61,14 @@ namespace P.renderer {
      * The renderer will do so eventually; not necessarily immediately.
      */
     penResize(scale: number): void;
+    /**
+     * Updates & resize the Stage layer. Implicitly calls updateStageFilters()
+     */
+    updateStage(scale: number): void;
+    /**
+     * Updates the filters applied to the Stage layer.
+     */
+    updateStageFilters(): void;
     /**
      * Determines if a Sprite is intersecting a point
      * @param sprite The sprite
@@ -374,7 +385,7 @@ namespace P.renderer {
 
         hsv.x = mod(hsv.x + u_color, 1.0);
         if (hsv.x < 0.0) hsv.x += 1.0;
-        color = vec4(hsv2rgb(hsv), color.a);
+        color = vec4(hsv2rgb(hsv), color.a);  
       }
       #endif
 
@@ -391,10 +402,7 @@ namespace P.renderer {
 
     constructor() {
       this.canvas = createCanvas();
-      const gl = this.canvas.getContext('webgl', {
-        alpha: false,
-        antialias: false,
-      });
+      const gl = this.canvas.getContext('webgl');
       if (!gl) {
         throw new Error('cannot get webgl rendering context');
       }
@@ -402,8 +410,9 @@ namespace P.renderer {
 
       this.renderingShader = this.compileVariant([]);
 
-      // Enable blending
+      // Enable transparency blending.
       this.gl.enable(this.gl.BLEND);
+      // TODO: investigate other blending modes
       this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
 
       // Create the quad buffer that we'll use for positioning and texture coordinates later.
@@ -528,10 +537,8 @@ namespace P.renderer {
       return frameBuffer;
     }
 
-    /**
-     * Reset and resize this renderer.
-     */
     reset(scale: number) {
+      // Scale the actual canvas
       this.canvas.width = scale * P.config.scale * 480;
       this.canvas.height = scale * P.config.scale * 360;
       this.resetFramebuffer(scale);
@@ -556,6 +563,7 @@ namespace P.renderer {
 
     /**
      * Real implementation of drawChild()
+     * Shader must be set before calling (allows for using a different shader)
      * @param child The child to draw
      */
     _drawChild(child: P.core.Base, shader: ShaderVariant) {
@@ -625,54 +633,6 @@ namespace P.renderer {
       this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
     }
 
-    drawTexture(texture: WebGLTexture) {
-      const shader = this.renderingShader;
-      this.gl.useProgram(shader.program);
-
-      this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
-
-      shader.attributeBuffer('a_texcoord', this.quadBuffer);
-      shader.attributeBuffer('a_position', this.quadBuffer);
-
-      const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
-      P.m3.multiply(matrix, this.globalScaleMatrix);
-      P.m3.multiply(matrix, P.m3.translation(240, 180));
-      P.m3.multiply(matrix, P.m3.scaling(1, -1));
-      P.m3.multiply(matrix, P.m3.translation(-240, -180));
-      P.m3.multiply(matrix, P.m3.scaling(480, 360));
-
-      shader.uniformMatrix3('u_matrix', matrix);
-
-      // Effects
-      if (shader.hasUniform('u_opacity')) {
-        shader.uniform1f('u_opacity', 1 - 0 / 100);
-      }
-      if (shader.hasUniform('u_brightness')) {
-        shader.uniform1f('u_brightness', 0 / 100);
-      }
-      if (shader.hasUniform('u_color')) {
-        shader.uniform1f('u_color', 0 / 200);
-      }
-      if (shader.hasUniform('u_mosaic')) {
-        const mosaic = Math.round((Math.abs(0) + 10) / 10);
-        shader.uniform1f('u_mosaic', P.utils.clamp(mosaic, 1, 512));
-      }
-      if (shader.hasUniform('u_whirl')) {
-        shader.uniform1f('u_whirl', 0 * Math.PI / -180);
-      }
-      if (shader.hasUniform('u_fisheye')) {
-        shader.uniform1f('u_fisheye', Math.max(0, (0 + 100) / 100));
-      }
-      if (shader.hasUniform('u_pixelate')) {
-        shader.uniform1f('u_pixelate', Math.abs(0) / 10);
-      }
-      if (shader.hasUniform('u_size')) {
-        shader.uniform2f('u_size', 480, 360);
-      }
-
-      this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
-    }
-
     drawLayer(canvas: HTMLCanvasElement) {
       const shader = this.renderingShader;
       this.gl.useProgram(shader.program);
@@ -697,66 +657,68 @@ namespace P.renderer {
   export class WebGLProjectRenderer extends WebGLSpriteRenderer implements ProjectRenderer {
     public penLayer: HTMLCanvasElement;
     public stageLayer: HTMLCanvasElement;
-
-    protected penTexture: WebGLTexture;
-    protected penBuffer: WebGLFramebuffer;
-
     protected fallbackRenderer: ProjectRenderer;
     protected shaderOnlyShapeFilters = this.compileVariant(['ONLY_SHAPE_FILTERS']);
 
     constructor(public stage: P.core.Stage) {
       super();
-
       this.fallbackRenderer = new ProjectRenderer2D(stage);
+      this.penLayer = this.fallbackRenderer.penLayer;
+      this.stageLayer = this.fallbackRenderer.stageLayer;
+    }
 
-      this.penTexture = this.createTexture();
-      this.penBuffer = this.createFramebuffer();
+    /**
+     * Sets this renderer to render to a framebuffer.
+     * Initializes, binds, attaches, and clears the texture and framebuffer.
+     * Framebuffer must be reset later.
+     * @param framebuffer The framebuffer
+     * @param texture The texture
+     */
+    setRenderToFramebuffer(framebuffer: WebGLFramebuffer, texture: WebGLTexture) {
+      // setup framebuffer
+      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, framebuffer);
+      // setup texture
+      this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
       this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 480, 360, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
-      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
-      this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.penTexture, 0);
-
-      this.reset(1);
+      this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, texture, 0);
+      // fix viewport/clear
+      // always use a scale of 1 for now
+      this.resetFramebuffer(1);
     }
 
-    drawFrame(scale: number) {
-      this.reset(scale);
-      this.drawChild(this.stage);
-      this.drawTexture(this.penTexture);
-      for (var i = 0; i < this.stage.children.length; i++) {
-        var child = this.stage.children[i];
-        if (!child.visible) {
-          continue;
-        }
-        this.drawChild(child);
-      }
-    }
-
-    init(root: HTMLElement) {
-      root.appendChild(this.canvas);
-    }
-
-    penLine(color: string, size: number, x: number, y: number, x2: number, y2: number): void {
-      // this.fallbackRenderer.penLine(color, size, x, y, x2, y2);
-    }
-
-    penDot(color: string, size: number, x: number, y: number): void {
-      // this.fallbackRenderer.penDot(color, size, x, y);
-    }
-
-    penStamp(sprite: P.core.Sprite): void {
-      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
-      this.gl.viewport(0, 0, 480, 360);
-      this.drawChild(sprite);
+    /**
+     * Sets this renderer to render to the canvas instead of a framebuffer
+     */
+    resetRenderFramebuffer() {
       this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
     }
 
+    penLine(color: string, size: number, x: number, y: number, x2: number, y2: number): void {
+      this.fallbackRenderer.penLine(color, size, x, y, x2, y2);
+    }
+
+    penDot(color: string, size: number, x: number, y: number): void {
+      this.fallbackRenderer.penDot(color, size, x, y);
+    }
+
+    penStamp(sprite: P.core.Sprite): void {
+      this.fallbackRenderer.penStamp(sprite);
+    }
+
     penClear(): void {
-      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
-      // this.fallbackRenderer.penClear();
+      this.fallbackRenderer.penClear();
     }
 
     penResize(scale: number): void {
-      // this.fallbackRenderer.penResize(scale);
+      this.fallbackRenderer.penResize(scale);
+    }
+
+    updateStage(scale: number): void {
+      this.fallbackRenderer.updateStage(scale);
+    }
+
+    updateStageFilters(): void {
+      this.fallbackRenderer.updateStageFilters();
     }
 
     spriteTouchesPoint(sprite: core.Sprite, x: number, y: number): boolean {
@@ -768,8 +730,7 @@ namespace P.renderer {
 
       const texture = this.createTexture();
       const framebuffer = this.createFramebuffer();
-      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, framebuffer);
-      this.resetFramebuffer(1);
+      this.setRenderToFramebuffer(framebuffer, texture);
 
       this._drawChild(sprite, this.shaderOnlyShapeFilters);
 
@@ -779,7 +740,7 @@ namespace P.renderer {
       // We only care about 1 pixel, the pixel at the mouse cursor.
       this.gl.readPixels(240 + x | 0, 180 + y | 0, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, result);
 
-      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+      this.resetRenderFramebuffer();
 
       // I don't know if it's necessary to delete these
       this.gl.deleteTexture(texture);
@@ -790,7 +751,39 @@ namespace P.renderer {
     }
 
     spritesIntersect(spriteA: core.Sprite, otherSprites: core.Base[]): boolean {
-      return this.fallbackRenderer.spritesIntersect(spriteA, otherSprites);
+      // Render the original Sprite into a buffer just once
+      const baseResult = new Uint8Array(480 * 360 * 4);
+      const baseTexture = this.createTexture();
+      const baseBuffer = this.createFramebuffer();
+      this.setRenderToFramebuffer(baseBuffer, baseTexture);
+      this._drawChild(spriteA, this.shaderOnlyShapeFilters);
+      this.gl.readPixels(0, 0, 480, 360, this.gl.RGBA, this.gl.UNSIGNED_BYTE, baseResult);
+
+      // Setup the rendering for the other sprite just once for performance
+      const otherResult = new Uint8Array(480 * 360 * 4);
+      const textureB = this.createTexture();
+      const framebufferB = this.createFramebuffer();
+      this.setRenderToFramebuffer(framebufferB, textureB);
+
+      for (var i = 0; i < otherSprites.length; i++) {
+        const otherSprite = otherSprites[i];
+        if (!otherSprite.visible) continue;
+
+        // Does the rendering of the sprite
+        this._drawChild(otherSprite, this.shaderOnlyShapeFilters);
+        this.gl.readPixels(0, 0, 480, 360, this.gl.RGBA, this.gl.UNSIGNED_BYTE, otherResult)
+
+        const length = 480 * 360 * 4;
+        for (var i = 0; i < length; i += 4) {
+          if (baseResult[i + 3] && otherResult[i + 3]) {
+            this.resetRenderFramebuffer();
+            return true;
+          }
+        }
+      }
+
+      this.resetRenderFramebuffer();
+      return false;
     }
 
     spriteTouchesColor(sprite: core.Base, color: number): boolean {
@@ -798,9 +791,11 @@ namespace P.renderer {
     }
 
     spriteColorTouchesColor(sprite: core.Base, spriteColor: number, otherColor: number): boolean {
-      return this.fallbackRenderer.spriteColorTouchesColor(sprite, spriteColor, otherColor);
+      return this.spriteColorTouchesColor(sprite, spriteColor, otherColor);
     }
   }
+
+  // 2D
 
   /**
    * Creates the CSS filter for a Filter object.
@@ -841,14 +836,8 @@ namespace P.renderer {
       this._drawChild(c, this.ctx);
     }
 
-    drawScene(stage: P.core.Stage, skip?: P.core.Base) {
-      for (var i = 0; i < stage.children.length; i++) {
-        var child = stage.children[i];
-        if (!child.visible || child === skip) {
-          continue;
-        }
-        this.drawChild(child);
-      }
+    drawLayer(canvas: HTMLCanvasElement) {
+      this.ctx.drawImage(canvas, 0, 0, 480, 360);
     }
 
     protected _reset(ctx: CanvasRenderingContext2D, scale: number) {
@@ -941,19 +930,6 @@ namespace P.renderer {
       this.stageLayer.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
     }
 
-    init(root: HTMLCanvasElement) {
-      root.appendChild(this.stageLayer);
-      root.appendChild(this.penLayer);
-      root.appendChild(this.canvas);
-    }
-
-    drawFrame(scale: number) {
-      this.reset(scale);
-      this.drawScene(this.stage);
-      // TODO: don't update stage every frame
-      this.updateStage(scale);
-    }
-
     penClear() {
       this.penLayerModified = false;
       if (this.penLayerTargetScale !== -1) {
@@ -1013,12 +989,12 @@ namespace P.renderer {
     }
 
     spriteTouchesPoint(sprite: P.core.Sprite, x: number, y: number) {
+      const costume = sprite.costumes[sprite.currentCostumeIndex];
       const bounds = sprite.rotatedBounds();
       if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top) {
         return false;
       }
 
-      const costume = sprite.costumes[sprite.currentCostumeIndex];
       var cx = (x - sprite.scratchX) / sprite.scale;
       var cy = (sprite.scratchY - y) / sprite.scale;
       if (sprite.rotationStyle === RotationStyle.Normal && sprite.direction !== 90) {
@@ -1058,7 +1034,7 @@ namespace P.renderer {
         const width = right - left;
         const height = top - bottom;
 
-        // dimensions that are less than 1 or are NaN will throw when we try to get image data
+        // dimensions that are less than 1 or NaN will cause issues
         if (width < 1 || height < 1 || width !== width || height !== height) {
           continue;
         }
@@ -1099,7 +1075,7 @@ namespace P.renderer {
       workingRenderer.ctx.save();
       workingRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
 
-      workingRenderer.drawScene(this.stage, sprite);
+      sprite.stage.drawAll(workingRenderer, sprite);
       workingRenderer.ctx.globalCompositeOperation = 'destination-in';
       workingRenderer.drawChild(sprite);
 
@@ -1129,7 +1105,7 @@ namespace P.renderer {
       workingRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
       workingRenderer2.ctx.translate(-(240 + rb.left), -(180 - rb.top));
 
-      workingRenderer.drawScene(this.stage, sprite);
+      sprite.stage.drawAll(workingRenderer, sprite);
       workingRenderer.drawChild(sprite);
 
       workingRenderer.ctx.restore();

@@ -748,17 +748,15 @@ var P;
         class WebGLSpriteRenderer {
             constructor() {
                 this.canvas = createCanvas();
-                const gl = this.canvas.getContext('webgl', {
-                    alpha: false,
-                    antialias: false,
-                });
+                const gl = this.canvas.getContext('webgl');
                 if (!gl) {
                     throw new Error('cannot get webgl rendering context');
                 }
                 this.gl = gl;
                 this.renderingShader = this.compileVariant([]);
-                // Enable blending
+                // Enable transparency blending.
                 this.gl.enable(this.gl.BLEND);
+                // TODO: investigate other blending modes
                 this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
                 // Create the quad buffer that we'll use for positioning and texture coordinates later.
                 this.quadBuffer = this.gl.createBuffer();
@@ -866,10 +864,8 @@ var P;
                 }
                 return frameBuffer;
             }
-            /**
-             * Reset and resize this renderer.
-             */
             reset(scale) {
+                // Scale the actual canvas
                 this.canvas.width = scale * P.config.scale * 480;
                 this.canvas.height = scale * P.config.scale * 360;
                 this.resetFramebuffer(scale);
@@ -890,6 +886,7 @@ var P;
             }
             /**
              * Real implementation of drawChild()
+             * Shader must be set before calling (allows for using a different shader)
              * @param child The child to draw
              */
             _drawChild(child, shader) {
@@ -950,47 +947,6 @@ var P;
                 }
                 if (shader.hasUniform('u_size')) {
                     shader.uniform2f('u_size', costume.width, costume.height);
-                }
-                this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
-            }
-            drawTexture(texture) {
-                const shader = this.renderingShader;
-                this.gl.useProgram(shader.program);
-                this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
-                shader.attributeBuffer('a_texcoord', this.quadBuffer);
-                shader.attributeBuffer('a_position', this.quadBuffer);
-                const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
-                P.m3.multiply(matrix, this.globalScaleMatrix);
-                P.m3.multiply(matrix, P.m3.translation(240, 180));
-                P.m3.multiply(matrix, P.m3.scaling(1, -1));
-                P.m3.multiply(matrix, P.m3.translation(-240, -180));
-                P.m3.multiply(matrix, P.m3.scaling(480, 360));
-                shader.uniformMatrix3('u_matrix', matrix);
-                // Effects
-                if (shader.hasUniform('u_opacity')) {
-                    shader.uniform1f('u_opacity', 1 - 0 / 100);
-                }
-                if (shader.hasUniform('u_brightness')) {
-                    shader.uniform1f('u_brightness', 0 / 100);
-                }
-                if (shader.hasUniform('u_color')) {
-                    shader.uniform1f('u_color', 0 / 200);
-                }
-                if (shader.hasUniform('u_mosaic')) {
-                    const mosaic = Math.round((Math.abs(0) + 10) / 10);
-                    shader.uniform1f('u_mosaic', P.utils.clamp(mosaic, 1, 512));
-                }
-                if (shader.hasUniform('u_whirl')) {
-                    shader.uniform1f('u_whirl', 0 * Math.PI / -180);
-                }
-                if (shader.hasUniform('u_fisheye')) {
-                    shader.uniform1f('u_fisheye', Math.max(0, (0 + 100) / 100));
-                }
-                if (shader.hasUniform('u_pixelate')) {
-                    shader.uniform1f('u_pixelate', Math.abs(0) / 10);
-                }
-                if (shader.hasUniform('u_size')) {
-                    shader.uniform2f('u_size', 480, 360);
                 }
                 this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
             }
@@ -1129,7 +1085,7 @@ var P;
 
         hsv.x = mod(hsv.x + u_color, 1.0);
         if (hsv.x < 0.0) hsv.x += 1.0;
-        color = vec4(hsv2rgb(hsv), color.a);
+        color = vec4(hsv2rgb(hsv), color.a);  
       }
       #endif
 
@@ -1143,46 +1099,53 @@ var P;
                 this.stage = stage;
                 this.shaderOnlyShapeFilters = this.compileVariant(['ONLY_SHAPE_FILTERS']);
                 this.fallbackRenderer = new ProjectRenderer2D(stage);
-                this.penTexture = this.createTexture();
-                this.penBuffer = this.createFramebuffer();
+                this.penLayer = this.fallbackRenderer.penLayer;
+                this.stageLayer = this.fallbackRenderer.stageLayer;
+            }
+            /**
+             * Sets this renderer to render to a framebuffer.
+             * Initializes, binds, attaches, and clears the texture and framebuffer.
+             * Framebuffer must be reset later.
+             * @param framebuffer The framebuffer
+             * @param texture The texture
+             */
+            setRenderToFramebuffer(framebuffer, texture) {
+                // setup framebuffer
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, framebuffer);
+                // setup texture
+                this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
                 this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 480, 360, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
-                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
-                this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.penTexture, 0);
-                this.reset(1);
+                this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, texture, 0);
+                // fix viewport/clear
+                // always use a scale of 1 for now
+                this.resetFramebuffer(1);
             }
-            drawFrame(scale) {
-                this.reset(scale);
-                this.drawChild(this.stage);
-                this.drawTexture(this.penTexture);
-                for (var i = 0; i < this.stage.children.length; i++) {
-                    var child = this.stage.children[i];
-                    if (!child.visible) {
-                        continue;
-                    }
-                    this.drawChild(child);
-                }
-            }
-            init(root) {
-                root.appendChild(this.canvas);
-            }
-            penLine(color, size, x, y, x2, y2) {
-                // this.fallbackRenderer.penLine(color, size, x, y, x2, y2);
-            }
-            penDot(color, size, x, y) {
-                // this.fallbackRenderer.penDot(color, size, x, y);
-            }
-            penStamp(sprite) {
-                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
-                this.gl.viewport(0, 0, 480, 360);
-                this.drawChild(sprite);
+            /**
+             * Sets this renderer to render to the canvas instead of a framebuffer
+             */
+            resetRenderFramebuffer() {
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
             }
+            penLine(color, size, x, y, x2, y2) {
+                this.fallbackRenderer.penLine(color, size, x, y, x2, y2);
+            }
+            penDot(color, size, x, y) {
+                this.fallbackRenderer.penDot(color, size, x, y);
+            }
+            penStamp(sprite) {
+                this.fallbackRenderer.penStamp(sprite);
+            }
             penClear() {
-                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
-                // this.fallbackRenderer.penClear();
+                this.fallbackRenderer.penClear();
             }
             penResize(scale) {
-                // this.fallbackRenderer.penResize(scale);
+                this.fallbackRenderer.penResize(scale);
+            }
+            updateStage(scale) {
+                this.fallbackRenderer.updateStage(scale);
+            }
+            updateStageFilters() {
+                this.fallbackRenderer.updateStageFilters();
             }
             spriteTouchesPoint(sprite, x, y) {
                 // If filters will not change the shape of the sprite, it would be faster
@@ -1192,15 +1155,14 @@ var P;
                 }
                 const texture = this.createTexture();
                 const framebuffer = this.createFramebuffer();
-                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, framebuffer);
-                this.resetFramebuffer(1);
+                this.setRenderToFramebuffer(framebuffer, texture);
                 this._drawChild(sprite, this.shaderOnlyShapeFilters);
                 // Allocate 4 bytes to store 1 RGBA pixel
                 const result = new Uint8Array(4);
                 // Coordinates are in pixels from the lower left corner
                 // We only care about 1 pixel, the pixel at the mouse cursor.
                 this.gl.readPixels(240 + x | 0, 180 + y | 0, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, result);
-                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+                this.resetRenderFramebuffer();
                 // I don't know if it's necessary to delete these
                 this.gl.deleteTexture(texture);
                 this.gl.deleteFramebuffer(framebuffer);
@@ -1208,16 +1170,45 @@ var P;
                 return result[3] !== 0;
             }
             spritesIntersect(spriteA, otherSprites) {
-                return this.fallbackRenderer.spritesIntersect(spriteA, otherSprites);
+                // Render the original Sprite into a buffer just once
+                const baseResult = new Uint8Array(480 * 360 * 4);
+                const baseTexture = this.createTexture();
+                const baseBuffer = this.createFramebuffer();
+                this.setRenderToFramebuffer(baseBuffer, baseTexture);
+                this._drawChild(spriteA, this.shaderOnlyShapeFilters);
+                this.gl.readPixels(0, 0, 480, 360, this.gl.RGBA, this.gl.UNSIGNED_BYTE, baseResult);
+                // Setup the rendering for the other sprite just once for performance
+                const otherResult = new Uint8Array(480 * 360 * 4);
+                const textureB = this.createTexture();
+                const framebufferB = this.createFramebuffer();
+                this.setRenderToFramebuffer(framebufferB, textureB);
+                for (var i = 0; i < otherSprites.length; i++) {
+                    const otherSprite = otherSprites[i];
+                    if (!otherSprite.visible)
+                        continue;
+                    // Does the rendering of the sprite
+                    this._drawChild(otherSprite, this.shaderOnlyShapeFilters);
+                    this.gl.readPixels(0, 0, 480, 360, this.gl.RGBA, this.gl.UNSIGNED_BYTE, otherResult);
+                    const length = 480 * 360 * 4;
+                    for (var i = 0; i < length; i += 4) {
+                        if (baseResult[i + 3] && otherResult[i + 3]) {
+                            this.resetRenderFramebuffer();
+                            return true;
+                        }
+                    }
+                }
+                this.resetRenderFramebuffer();
+                return false;
             }
             spriteTouchesColor(sprite, color) {
                 return this.fallbackRenderer.spriteTouchesColor(sprite, color);
             }
             spriteColorTouchesColor(sprite, spriteColor, otherColor) {
-                return this.fallbackRenderer.spriteColorTouchesColor(sprite, spriteColor, otherColor);
+                return this.spriteColorTouchesColor(sprite, spriteColor, otherColor);
             }
         }
         renderer.WebGLProjectRenderer = WebGLProjectRenderer;
+        // 2D
         /**
          * Creates the CSS filter for a Filter object.
          * The filter is generally an estimation of the actual effect.
@@ -1249,14 +1240,8 @@ var P;
             drawChild(c) {
                 this._drawChild(c, this.ctx);
             }
-            drawScene(stage, skip) {
-                for (var i = 0; i < stage.children.length; i++) {
-                    var child = stage.children[i];
-                    if (!child.visible || child === skip) {
-                        continue;
-                    }
-                    this.drawChild(child);
-                }
+            drawLayer(canvas) {
+                this.ctx.drawImage(canvas, 0, 0, 480, 360);
             }
             _reset(ctx, scale) {
                 const effectiveScale = scale * P.config.scale;
@@ -1331,17 +1316,6 @@ var P;
                 // cssFilter does not include ghost
                 this.stageLayer.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
             }
-            init(root) {
-                root.appendChild(this.stageLayer);
-                root.appendChild(this.penLayer);
-                root.appendChild(this.canvas);
-            }
-            drawFrame(scale) {
-                this.reset(scale);
-                this.drawScene(this.stage);
-                // TODO: don't update stage every frame
-                this.updateStage(scale);
-            }
             penClear() {
                 this.penLayerModified = false;
                 if (this.penLayerTargetScale !== -1) {
@@ -1398,11 +1372,11 @@ var P;
                 this._drawChild(sprite, this.penContext);
             }
             spriteTouchesPoint(sprite, x, y) {
+                const costume = sprite.costumes[sprite.currentCostumeIndex];
                 const bounds = sprite.rotatedBounds();
                 if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top) {
                     return false;
                 }
-                const costume = sprite.costumes[sprite.currentCostumeIndex];
                 var cx = (x - sprite.scratchX) / sprite.scale;
                 var cy = (sprite.scratchY - y) / sprite.scale;
                 if (sprite.rotationStyle === 0 /* Normal */ && sprite.direction !== 90) {
@@ -1436,7 +1410,7 @@ var P;
                     const bottom = Math.max(mb.bottom, ob.bottom);
                     const width = right - left;
                     const height = top - bottom;
-                    // dimensions that are less than 1 or are NaN will throw when we try to get image data
+                    // dimensions that are less than 1 or NaN will cause issues
                     if (width < 1 || height < 1 || width !== width || height !== height) {
                         continue;
                     }
@@ -1467,7 +1441,7 @@ var P;
                 workingRenderer.canvas.height = b.top - b.bottom;
                 workingRenderer.ctx.save();
                 workingRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
-                workingRenderer.drawScene(this.stage, sprite);
+                sprite.stage.drawAll(workingRenderer, sprite);
                 workingRenderer.ctx.globalCompositeOperation = 'destination-in';
                 workingRenderer.drawChild(sprite);
                 workingRenderer.ctx.restore();
@@ -1489,7 +1463,7 @@ var P;
                 workingRenderer2.ctx.save();
                 workingRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
                 workingRenderer2.ctx.translate(-(240 + rb.left), -(180 - rb.top));
-                workingRenderer.drawScene(this.stage, sprite);
+                sprite.stage.drawAll(workingRenderer, sprite);
                 workingRenderer.drawChild(sprite);
                 workingRenderer.ctx.restore();
                 var dataA = workingRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
@@ -1910,13 +1884,13 @@ var P;
                 this.promptId = 0;
                 this.nextPromptId = 0;
                 this.hidePrompt = false;
+                this.tempoBPM = 60;
                 this.zoom = 1;
                 this.rawMouseX = 0;
                 this.rawMouseY = 0;
                 this.mouseX = 0;
                 this.mouseY = 0;
                 this.mousePressed = false;
-                this.tempoBPM = 60;
                 this.username = '';
                 this.counter = 0;
                 this._currentCostumeIndex = this.currentCostumeIndex;
@@ -1925,15 +1899,19 @@ var P;
                 this.keys.any = 0;
                 this.root = document.createElement('div');
                 this.root.classList.add('forkphorus-root');
+                const scale = P.config.scale;
                 if (P.config.useWebGL) {
                     this.renderer = new P.renderer.WebGLProjectRenderer(this);
                 }
                 else {
                     this.renderer = new P.renderer.ProjectRenderer2D(this);
                 }
+                this.renderer.reset(scale);
                 this.renderer.penResize(1);
-                this.renderer.init(this.root);
                 this.canvas = this.renderer.canvas;
+                this.root.appendChild(this.renderer.stageLayer);
+                this.root.appendChild(this.renderer.penLayer);
+                this.root.appendChild(this.canvas);
                 this.ui = document.createElement('div');
                 this.root.appendChild(this.ui);
                 this.ui.style.pointerEvents = 'none';
@@ -2138,13 +2116,14 @@ var P;
                 this.mouseX = x;
                 this.mouseY = y;
             }
-            // /**
-            //  * Updates the backdrop canvas to match the current backdrop.
-            //  */
-            // updateBackdrop() {
-            //   if (!this.renderer) return;
-            //   this.renderer.updateStage(this.zoom * P.config.scale);
-            // }
+            /**
+             * Updates the backdrop canvas to match the current backdrop.
+             */
+            updateBackdrop() {
+                if (!this.renderer)
+                    return;
+                this.renderer.updateStage(this.zoom * P.config.scale);
+            }
             /**
              * Changes the zoom level and resizes DOM elements.
              */
@@ -2156,7 +2135,7 @@ var P;
                 this.root.style.height = (360 * zoom | 0) + 'px';
                 this.root.style.fontSize = (zoom * 10) + 'px';
                 this.zoom = zoom;
-                // this.updateBackdrop();
+                this.updateBackdrop();
             }
             clickMouse() {
                 this.mouseSprite = undefined;
@@ -2182,11 +2161,11 @@ var P;
                     this.mouseSprite = undefined;
                 }
             }
-            // setFilter(name: string, value: number) {
-            //   // Override setFilter() to update the filters on the real stage.
-            //   super.setFilter(name, value);
-            //   // this.renderer.updateStageFilters();
-            // }
+            setFilter(name, value) {
+                // Override setFilter() to update the filters on the real stage.
+                super.setFilter(name, value);
+                this.renderer.updateStageFilters();
+            }
             /**
              * Gets an object with its name, ignoring clones.
              * SpecialObjects.Stage will point to the stage.
@@ -2242,7 +2221,8 @@ var P;
              * Draws this stage on it's renderer.
              */
             draw() {
-                this.renderer.drawFrame(this.zoom);
+                this.renderer.reset(this.zoom);
+                this.drawChildren(this.renderer);
                 for (var i = this.allWatchers.length; i--;) {
                     var w = this.allWatchers[i];
                     if (w.visible) {
@@ -2255,31 +2235,31 @@ var P;
                     this.canvas.focus();
                 }
             }
-            // /**
-            //  * Draws all the children (not including the Stage itself or pen layers) of this Stage on a renderer
-            //  * @param skip Optionally skip rendering of a single Sprite.
-            //  */
-            // drawChildren(renderer: P.renderer.SpriteRenderer, skip?: Base) {
-            //   for (var i = 0; i < this.children.length; i++) {
-            //     const c = this.children[i];
-            //     if (c.isDragging) {
-            //       // TODO: move
-            //       c.moveTo(c.dragOffsetX + c.stage.mouseX, c.dragOffsetY + c.stage.mouseY);
-            //     }
-            //     if (c.visible && c !== skip) {
-            //       renderer.drawChild(c);
-            //     }
-            //   }
-            // }
-            // /**
-            //  * Draws all parts of the Stage (including the stage itself and pen layers) on a renderer.
-            //  * @param skip Optionally skip rendering of a single Sprite.
-            //  */
-            // drawAll(renderer: P.renderer.SpriteRenderer, skip?: Base) {
-            //   renderer.drawChild(this);
-            //   renderer.drawLayer(this.renderer.penLayer);
-            //   this.drawChildren(renderer, skip);
-            // }
+            /**
+             * Draws all the children (not including the Stage itself or pen layers) of this Stage on a renderer
+             * @param skip Optionally skip rendering of a single Sprite.
+             */
+            drawChildren(renderer, skip) {
+                for (var i = 0; i < this.children.length; i++) {
+                    const c = this.children[i];
+                    if (c.isDragging) {
+                        // TODO: move
+                        c.moveTo(c.dragOffsetX + c.stage.mouseX, c.dragOffsetY + c.stage.mouseY);
+                    }
+                    if (c.visible && c !== skip) {
+                        renderer.drawChild(c);
+                    }
+                }
+            }
+            /**
+             * Draws all parts of the Stage (including the stage itself and pen layers) on a renderer.
+             * @param skip Optionally skip rendering of a single Sprite.
+             */
+            drawAll(renderer, skip) {
+                renderer.drawChild(this);
+                renderer.drawLayer(this.renderer.penLayer);
+                this.drawChildren(renderer, skip);
+            }
             showVideo(visible) {
                 if (P.config.supportVideoSensing) {
                     if (visible) {
@@ -2313,12 +2293,13 @@ var P;
             }
             // Override currentCostumeIndex to automatically update the backdrop when a change is made.
             // TODO: don't updateBackdrop() on every change (slow), only when needed for rendering
-            // get currentCostumeIndex() {
-            //   return this._currentCostumeIndex;
-            // }
-            // set currentCostumeIndex(index: number) {
-            //   this._currentCostumeIndex = index;
-            // }
+            get currentCostumeIndex() {
+                return this._currentCostumeIndex;
+            }
+            set currentCostumeIndex(index) {
+                this._currentCostumeIndex = index;
+                this.updateBackdrop();
+            }
             // Implementing Scratch blocks
             stopAllSounds() {
                 for (var children = this.children, i = children.length; i--;) {
@@ -4436,6 +4417,7 @@ var P;
                 stage.children = sprites;
                 stage.allWatchers = watchers;
                 stage.allWatchers.forEach((w) => w.init());
+                stage.updateBackdrop();
                 P.sb2.compiler.compile(stage);
                 return stage;
             });
@@ -6311,6 +6293,7 @@ var P;
                     stage.children = sprites;
                     stage.allWatchers = watchers;
                     watchers.forEach((watcher) => watcher.init());
+                    stage.updateBackdrop();
                     return stage;
                 });
             }
