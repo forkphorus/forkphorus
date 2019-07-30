@@ -5815,6 +5815,7 @@ var P;
                 // Not all opcodes have a set()
                 if (this.libraryEntry.set) {
                     this.libraryEntry.set(this, value);
+                    this.update();
                 }
             }
             // Updates or creates the layout of the watcher.

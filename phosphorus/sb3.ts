@@ -236,6 +236,7 @@ namespace P.sb3 {
       // Not all opcodes have a set()
       if (this.libraryEntry.set) {
         this.libraryEntry.set(this, value);
+        this.update();
       }
     }
 
