@@ -871,6 +871,7 @@ namespace P.core {
      */
     draw() {
       // TODO: should this be moved somewhere else? maybe the renderers should do a .tick() or something on the sprites?
+      // maybe a separate list of sprites should be maintained instead of looping through all the sprites.
       for (var i = 0; i < this.children.length; i++) {
         const c = this.children[i];
         if (c.isDragging) {

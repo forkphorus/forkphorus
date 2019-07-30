@@ -747,6 +747,7 @@ var P;
         }
         class WebGLSpriteRenderer {
             constructor() {
+                this.globalScaleMatrix = P.m3.scaling(1, 1);
                 this.canvas = createCanvas();
                 const gl = this.canvas.getContext('webgl', {
                     alpha: false,
@@ -880,9 +881,12 @@ var P;
              */
             resetFramebuffer(scale) {
                 this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-                this.globalScaleMatrix = P.m3.scaling(scale, scale);
+                // the first element of the matrix is the x-scale, so we can use that to only recreate the matrix when needed
+                if (this.globalScaleMatrix[0] !== scale) {
+                    this.globalScaleMatrix = P.m3.scaling(scale, scale);
+                }
                 // Clear the canvas
-                this.gl.clearColor(0, 0, 0, 0);
+                this.gl.clearColor(255, 255, 255, 0);
                 this.gl.clear(this.gl.COLOR_BUFFER_BIT);
             }
             drawChild(child) {
@@ -1104,8 +1108,6 @@ var P;
 
       // apply ghost effect
       color.a *= u_opacity;
-      // handle premultiplied alpha
-      color.rgb *= u_opacity;
 
       // apply brightness effect
       #ifndef ONLY_SHAPE_FILTERS
@@ -1149,6 +1151,7 @@ var P;
                 this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 480, 360, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
                 this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.penTexture, 0);
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
                 this.reset(1);
             }
             drawFrame() {
@@ -2274,6 +2277,7 @@ var P;
              */
             draw() {
                 // TODO: should this be moved somewhere else? maybe the renderers should do a .tick() or something on the sprites?
+                // maybe a separate list of sprites should be maintained instead of looping through all the sprites.
                 for (var i = 0; i < this.children.length; i++) {
                     const c = this.children[i];
                     if (c.isDragging) {
