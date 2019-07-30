@@ -677,7 +677,7 @@ namespace P.renderer {
   }
 
   export class WebGLProjectRenderer extends WebGLSpriteRenderer implements ProjectRenderer {
-    public static readonly PEN_DOT_VERTEX_SHADER = `
+    public static readonly PEN_VERTEX_SHADER = `
     attribute vec2 a_position;
     varying vec2 v_position;
     uniform mat3 u_matrix;
@@ -699,6 +699,14 @@ namespace P.renderer {
       gl_FragColor = u_color;
     }
     `;
+    public static readonly PEN_LINE_FRAGMENT_SHADER = `
+    precision mediump float;
+    uniform vec4 u_color;
+    varying vec2 v_position;
+    void main() {
+      gl_FragColor = u_color;
+    }
+    `;
 
     public penLayer: HTMLCanvasElement;
     public stageLayer: HTMLCanvasElement;
@@ -710,6 +718,7 @@ namespace P.renderer {
     protected fallbackRenderer: ProjectRenderer;
     protected shaderOnlyShapeFilters = this.compileVariant(['ONLY_SHAPE_FILTERS']);
     protected penDotShader: ShaderVariant;
+    protected penLineShader: ShaderVariant;
 
     constructor(public stage: P.core.Stage) {
       super();
@@ -724,8 +733,12 @@ namespace P.renderer {
       this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
 
       this.penDotShader = new ShaderVariant(this.gl, this.compileProgram(
-        WebGLProjectRenderer.PEN_DOT_VERTEX_SHADER,
-        WebGLProjectRenderer.PEN_DOT_FRAGMENT_SHADER
+        WebGLProjectRenderer.PEN_VERTEX_SHADER,
+        WebGLProjectRenderer.PEN_DOT_FRAGMENT_SHADER,
+      ));
+      this.penLineShader = new ShaderVariant(this.gl, this.compileProgram(
+        WebGLProjectRenderer.PEN_VERTEX_SHADER,
+        WebGLProjectRenderer.PEN_LINE_FRAGMENT_SHADER,
       ));
 
       this.reset(1);
@@ -753,20 +766,46 @@ namespace P.renderer {
     }
 
     penLine(color: string, size: number, x: number, y: number, x2: number, y2: number): void {
-      // TODO
+      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
+
+      const shader = this.penLineShader;
+      this.gl.useProgram(shader.program);
+
+      shader.attributeBuffer('a_position', this.quadBuffer);
+
+      const distance = Math.sqrt((x - x2) ** 2 + (y - y2) ** 2);
+      const xDiff = x - x2;
+      const yDiff = y - y2;
+      const angle = Math.atan(yDiff / xDiff) * 180 / Math.PI;
+
+      const matrix = P.m3.projection(480, 360);
+      P.m3.multiply(matrix, P.m3.translation(240 + x | 0, 180 - y - size / 2 | 0));
+      P.m3.multiply(matrix, P.m3.rotation(angle));
+      P.m3.multiply(matrix, P.m3.scaling(distance, size));
+      shader.uniformMatrix3('u_matrix', matrix);
+
+      // TODO: color
+      shader.uniform4f('u_color', 0, 1, 0, 1);
+
+      this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+
+      // TODO: don't use penDot for the rounded ends
+      this.penDot(color, size, x2, y2);
     }
 
     penDot(color: string, size: number, x: number, y: number): void {
       this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
 
       const shader = this.penDotShader;
-      this.gl.useProgram(this.penDotShader.program);
+      this.gl.useProgram(shader.program);
 
       shader.attributeBuffer('a_position', this.quadBuffer);
       const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
-      P.m3.multiply(matrix, P.m3.translation(240 + x - size / 4 | 0, 180 - y - size / 4 | 0));
-      P.m3.multiply(matrix, P.m3.scaling(size / 2, size / 2));
+      P.m3.multiply(matrix, P.m3.translation(240 + x - size / 2 | 0, 180 - y - size / 2 | 0));
+      P.m3.multiply(matrix, P.m3.scaling(size, size));
       shader.uniformMatrix3('u_matrix', matrix);
+
       // TODO: color
       shader.uniform4f('u_color', 1, 0, 0, 1);
 
