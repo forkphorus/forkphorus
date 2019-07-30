@@ -22,11 +22,19 @@ namespace P.renderer {
     /**
      * Reset and draw a frame.
      */
-    drawFrame(scale: number): void;
+    drawFrame(): void;
     /**
      * Initialize this renderer and append its canvas(es) to a given root node.
      */
     init(root: HTMLElement): void;
+    /**
+     * Called when the filters on the stage have changed.
+     */
+    onStageFiltersChanged(): void;
+    /**
+     * Asks this renderer to resize itself to a new zoom level.
+     */
+    resize(scale: number): void;
     /**
      * Draws a line on the pen canvas
      * @param color Color of the line
@@ -53,11 +61,6 @@ namespace P.renderer {
      * Clear the pen canvas
      */
     penClear(): void;
-    /**
-     * Notifies the renderer that the pen layer should be resized.
-     * The renderer will do so eventually; not necessarily immediately.
-     */
-    penResize(scale: number): void;
     /**
      * Determines if a Sprite is intersecting a point
      * @param sprite The sprite
@@ -697,6 +700,7 @@ namespace P.renderer {
   export class WebGLProjectRenderer extends WebGLSpriteRenderer implements ProjectRenderer {
     public penLayer: HTMLCanvasElement;
     public stageLayer: HTMLCanvasElement;
+    public zoom: number = 1;
 
     protected penTexture: WebGLTexture;
     protected penBuffer: WebGLFramebuffer;
@@ -718,8 +722,8 @@ namespace P.renderer {
       this.reset(1);
     }
 
-    drawFrame(scale: number) {
-      this.reset(scale);
+    drawFrame() {
+      this.reset(this.zoom);
       this.drawChild(this.stage);
       this.drawTexture(this.penTexture);
       for (var i = 0; i < this.stage.children.length; i++) {
@@ -735,7 +739,13 @@ namespace P.renderer {
       root.appendChild(this.canvas);
     }
 
+    onStageFiltersChanged() {
+      // no-op
+      // we always re-render the stage in full
+    }
+
     penLine(color: string, size: number, x: number, y: number, x2: number, y2: number): void {
+      // TODO
       // this.fallbackRenderer.penLine(color, size, x, y, x2, y2);
     }
 
@@ -751,12 +761,12 @@ namespace P.renderer {
     }
 
     penClear(): void {
-      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
-      // this.fallbackRenderer.penClear();
+      // TODO
     }
 
-    penResize(scale: number): void {
-      // this.fallbackRenderer.penResize(scale);
+    resize(scale: number): void {
+      this.zoom = scale;
+      // TODO: pen resizing?
     }
 
     spriteTouchesPoint(sprite: core.Sprite, x: number, y: number): boolean {
@@ -815,12 +825,16 @@ namespace P.renderer {
     if (filters.color) {
       filter += 'hue-rotate(' + (filters.color / 200 * 360) + 'deg) ';
     }
+    // ghost could be supported through opacity(), however that effect is applied with the opacity property because more browsers support it
     return filter;
   }
 
   export class SpriteRenderer2D implements SpriteRenderer {
     public ctx: CanvasRenderingContext2D;
     public canvas: HTMLCanvasElement;
+    /**
+     * Disables rendering filters on the 
+     */
     public noEffects: boolean = false;
 
     constructor() {
@@ -833,18 +847,14 @@ namespace P.renderer {
       this._reset(this.ctx, scale);
     }
 
-    drawImage(image: CanvasImageSource, x: number, y: number) {
-      this.ctx.drawImage(image, x, y);
-    }
-
     drawChild(c: P.core.Base) {
       this._drawChild(c, this.ctx);
     }
 
-    drawScene(stage: P.core.Stage, skip?: P.core.Base) {
-      for (var i = 0; i < stage.children.length; i++) {
-        var child = stage.children[i];
-        if (!child.visible || child === skip) {
+    drawObjects(children: P.core.Base[]) {
+      for (var i = 0; i < children.length; i++) {
+        var child = children[i];
+        if (!child.visible) {
           continue;
         }
         this.drawChild(child);
@@ -905,10 +915,12 @@ namespace P.renderer {
     public stageContext: CanvasRenderingContext2D;
     public penLayer: HTMLCanvasElement;
     public penContext: CanvasRenderingContext2D;
+    public zoom: number = 1;
 
     private penLayerModified: boolean = false;
     private penLayerTargetScale: number = -1;
     private penLayerMaxScale: number = -1;
+    private stageCostumeIndex: number = -1;
 
     constructor(public stage: P.core.Stage) {
       super();
@@ -921,17 +933,9 @@ namespace P.renderer {
       this.penLayer = penLayer;
     }
 
-    updateStage(scale: number) {
-      this._reset(this.stageContext, scale);
-      this.noEffects = true;
-      this._drawChild(this.stage, this.stageContext);
-      this.noEffects = false;
-      this.updateStageFilters();
-    }
-
-    updateStageFilters() {
+    onStageFiltersChanged() {
       const filter = getCSSFilter(this.stage.filters);
-      // Only reapply a CSS filter if it has changed for performance.
+      // Only reapply a CSS filter if it has changed for performance, specifically in firefox.
       // Might not be necessary here.
       if (this.stageLayer.style.filter !== filter) {
         this.stageLayer.style.filter = filter;
@@ -941,17 +945,61 @@ namespace P.renderer {
       this.stageLayer.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
     }
 
+    renderStageCostume(scale: number) {
+      this._reset(this.stageContext, scale);
+      this.noEffects = true;
+      this._drawChild(this.stage, this.stageContext);
+      this.noEffects = false;
+    }
+
     init(root: HTMLCanvasElement) {
       root.appendChild(this.stageLayer);
       root.appendChild(this.penLayer);
       root.appendChild(this.canvas);
     }
 
-    drawFrame(scale: number) {
-      this.reset(scale);
-      this.drawScene(this.stage);
-      // TODO: don't update stage every frame
-      this.updateStage(scale);
+    drawFrame() {
+      this.reset(this.zoom);
+      this.drawObjects(this.stage.children);
+      if (this.stage.currentCostumeIndex !== this.stageCostumeIndex) {
+        this.stageCostumeIndex = this.stage.currentCostumeIndex;
+        this.renderStageCostume(this.zoom);
+      }
+    }
+
+    /**
+     * Draw everything from this renderer and its stage onto another renderer. (including backdrop, pen)
+     */
+    drawAll(renderer: SpriteRenderer2D, skip: P.core.Base) {
+      renderer.drawChild(this.stage);
+      renderer.ctx.drawImage(this.penLayer, 0, 0, this.canvas.width, this.canvas.height);
+      for (var i = 0; i < this.stage.children.length; i++) {
+        var child = this.stage.children[i];
+        if (!child.visible || child === skip) {
+          continue;
+        }
+        renderer.drawChild(child);
+      }
+    }
+
+    resize(zoom: number) {
+      this.zoom = zoom;
+      if (zoom > this.penLayerMaxScale) {
+        // Immediately scale up
+        this.penLayerMaxScale = zoom;
+        const cachedCanvas = document.createElement('canvas');
+        cachedCanvas.width = this.penLayer.width;
+        cachedCanvas.height = this.penLayer.height;
+        cachedCanvas.getContext('2d')!.drawImage(this.penLayer, 0, 0);
+        this._reset(this.penContext, zoom);
+        this.penContext.drawImage(cachedCanvas, 0, 0, 480, 360);
+      } else if (!this.penLayerModified) {
+        // Immediately scale down if no changes have been made
+        this._reset(this.penContext, zoom);
+      } else {
+        // We'll resize on the next clear, as resizing now would result in a loss of detail.
+        this.penLayerTargetScale = zoom;
+      }
     }
 
     penClear() {
@@ -961,25 +1009,6 @@ namespace P.renderer {
         this.penLayerTargetScale = -1;
       }
       this.penContext.clearRect(0, 0, 480, 360);
-    }
-
-    penResize(scale: number) {
-      if (scale > this.penLayerMaxScale) {
-        // Immediately scale up
-        this.penLayerMaxScale = scale;
-        const cachedCanvas = document.createElement('canvas');
-        cachedCanvas.width = this.penLayer.width;
-        cachedCanvas.height = this.penLayer.height;
-        cachedCanvas.getContext('2d')!.drawImage(this.penLayer, 0, 0);
-        this._reset(this.penContext, scale);
-        this.penContext.drawImage(cachedCanvas, 0, 0, 480, 360);
-      } else if (!this.penLayerModified) {
-        // Immediately scale down if no changes have been made
-        this._reset(this.penContext, scale);
-      } else {
-        // Attempt again later
-        this.penLayerTargetScale = scale;
-      }
     }
 
     penDot(color: string, size: number, x: number, y: number) {
@@ -1042,7 +1071,9 @@ namespace P.renderer {
 
       for (var i = 0; i < otherSprites.length; i++) {
         const spriteB = otherSprites[i];
-        if (!spriteB.visible) continue;
+        if (!spriteB.visible) {
+          continue;
+        }
 
         const ob = spriteB.rotatedBounds();
 
@@ -1099,7 +1130,7 @@ namespace P.renderer {
       workingRenderer.ctx.save();
       workingRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
 
-      workingRenderer.drawScene(this.stage, sprite);
+      this.drawAll(workingRenderer, sprite);
       workingRenderer.ctx.globalCompositeOperation = 'destination-in';
       workingRenderer.drawChild(sprite);
 
@@ -1129,13 +1160,14 @@ namespace P.renderer {
       workingRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
       workingRenderer2.ctx.translate(-(240 + rb.left), -(180 - rb.top));
 
-      workingRenderer.drawScene(this.stage, sprite);
-      workingRenderer.drawChild(sprite);
+      this.drawAll(workingRenderer, sprite);
+      workingRenderer2.drawChild(sprite);
 
       workingRenderer.ctx.restore();
+      workingRenderer2.ctx.restore();
 
       var dataA = workingRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
-      var dataB = workingRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
+      var dataB = workingRenderer2.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
 
       spriteColor = spriteColor & 0xffffff;
       otherColor = otherColor & 0xffffff;

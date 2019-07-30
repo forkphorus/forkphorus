@@ -599,7 +599,7 @@ var P;
 var P;
 (function (P) {
     var renderer;
-    (function (renderer) {
+    (function (renderer_1) {
         // HELPERS
         /**
          * Create an HTML canvas with any type of context.
@@ -1136,11 +1136,12 @@ var P;
       gl_FragColor = color;
     }
     `;
-        renderer.WebGLSpriteRenderer = WebGLSpriteRenderer;
+        renderer_1.WebGLSpriteRenderer = WebGLSpriteRenderer;
         class WebGLProjectRenderer extends WebGLSpriteRenderer {
             constructor(stage) {
                 super();
                 this.stage = stage;
+                this.zoom = 1;
                 this.shaderOnlyShapeFilters = this.compileVariant(['ONLY_SHAPE_FILTERS']);
                 this.fallbackRenderer = new ProjectRenderer2D(stage);
                 this.penTexture = this.createTexture();
@@ -1150,8 +1151,8 @@ var P;
                 this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.penTexture, 0);
                 this.reset(1);
             }
-            drawFrame(scale) {
-                this.reset(scale);
+            drawFrame() {
+                this.reset(this.zoom);
                 this.drawChild(this.stage);
                 this.drawTexture(this.penTexture);
                 for (var i = 0; i < this.stage.children.length; i++) {
@@ -1165,7 +1166,12 @@ var P;
             init(root) {
                 root.appendChild(this.canvas);
             }
+            onStageFiltersChanged() {
+                // no-op
+                // we always re-render the stage in full
+            }
             penLine(color, size, x, y, x2, y2) {
+                // TODO
                 // this.fallbackRenderer.penLine(color, size, x, y, x2, y2);
             }
             penDot(color, size, x, y) {
@@ -1178,11 +1184,11 @@ var P;
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
             }
             penClear() {
-                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
-                // this.fallbackRenderer.penClear();
+                // TODO
             }
-            penResize(scale) {
-                // this.fallbackRenderer.penResize(scale);
+            resize(scale) {
+                this.zoom = scale;
+                // TODO: pen resizing?
             }
             spriteTouchesPoint(sprite, x, y) {
                 // If filters will not change the shape of the sprite, it would be faster
@@ -1217,7 +1223,7 @@ var P;
                 return this.fallbackRenderer.spriteColorTouchesColor(sprite, spriteColor, otherColor);
             }
         }
-        renderer.WebGLProjectRenderer = WebGLProjectRenderer;
+        renderer_1.WebGLProjectRenderer = WebGLProjectRenderer;
         /**
          * Creates the CSS filter for a Filter object.
          * The filter is generally an estimation of the actual effect.
@@ -1231,10 +1237,14 @@ var P;
             if (filters.color) {
                 filter += 'hue-rotate(' + (filters.color / 200 * 360) + 'deg) ';
             }
+            // ghost could be supported through opacity(), however that effect is applied with the opacity property because more browsers support it
             return filter;
         }
         class SpriteRenderer2D {
             constructor() {
+                /**
+                 * Disables rendering filters on the
+                 */
                 this.noEffects = false;
                 const { canvas, ctx } = create2dCanvas();
                 this.canvas = canvas;
@@ -1243,16 +1253,13 @@ var P;
             reset(scale) {
                 this._reset(this.ctx, scale);
             }
-            drawImage(image, x, y) {
-                this.ctx.drawImage(image, x, y);
-            }
             drawChild(c) {
                 this._drawChild(c, this.ctx);
             }
-            drawScene(stage, skip) {
-                for (var i = 0; i < stage.children.length; i++) {
-                    var child = stage.children[i];
-                    if (!child.visible || child === skip) {
+            drawObjects(children) {
+                for (var i = 0; i < children.length; i++) {
+                    var child = children[i];
+                    if (!child.visible) {
                         continue;
                     }
                     this.drawChild(child);
@@ -1296,7 +1303,7 @@ var P;
                 ctx.restore();
             }
         }
-        renderer.SpriteRenderer2D = SpriteRenderer2D;
+        renderer_1.SpriteRenderer2D = SpriteRenderer2D;
         // Renderers used for some features such as collision detection
         const workingRenderer = new SpriteRenderer2D();
         const workingRenderer2 = new SpriteRenderer2D();
@@ -1304,9 +1311,11 @@ var P;
             constructor(stage) {
                 super();
                 this.stage = stage;
+                this.zoom = 1;
                 this.penLayerModified = false;
                 this.penLayerTargetScale = -1;
                 this.penLayerMaxScale = -1;
+                this.stageCostumeIndex = -1;
                 const { ctx: stageContext, canvas: stageLayer } = create2dCanvas();
                 this.stageContext = stageContext;
                 this.stageLayer = stageLayer;
@@ -1314,16 +1323,9 @@ var P;
                 this.penContext = penContext;
                 this.penLayer = penLayer;
             }
-            updateStage(scale) {
-                this._reset(this.stageContext, scale);
-                this.noEffects = true;
-                this._drawChild(this.stage, this.stageContext);
-                this.noEffects = false;
-                this.updateStageFilters();
-            }
-            updateStageFilters() {
+            onStageFiltersChanged() {
                 const filter = getCSSFilter(this.stage.filters);
-                // Only reapply a CSS filter if it has changed for performance.
+                // Only reapply a CSS filter if it has changed for performance, specifically in firefox.
                 // Might not be necessary here.
                 if (this.stageLayer.style.filter !== filter) {
                     this.stageLayer.style.filter = filter;
@@ -1331,16 +1333,59 @@ var P;
                 // cssFilter does not include ghost
                 this.stageLayer.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
             }
+            renderStageCostume(scale) {
+                this._reset(this.stageContext, scale);
+                this.noEffects = true;
+                this._drawChild(this.stage, this.stageContext);
+                this.noEffects = false;
+            }
             init(root) {
                 root.appendChild(this.stageLayer);
                 root.appendChild(this.penLayer);
                 root.appendChild(this.canvas);
             }
-            drawFrame(scale) {
-                this.reset(scale);
-                this.drawScene(this.stage);
-                // TODO: don't update stage every frame
-                this.updateStage(scale);
+            drawFrame() {
+                this.reset(this.zoom);
+                this.drawObjects(this.stage.children);
+                if (this.stage.currentCostumeIndex !== this.stageCostumeIndex) {
+                    this.stageCostumeIndex = this.stage.currentCostumeIndex;
+                    this.renderStageCostume(this.zoom);
+                }
+            }
+            /**
+             * Draw everything from this renderer and its stage onto another renderer. (including backdrop, pen)
+             */
+            drawAll(renderer, skip) {
+                renderer.drawChild(this.stage);
+                renderer.ctx.drawImage(this.penLayer, 0, 0, this.canvas.width, this.canvas.height);
+                for (var i = 0; i < this.stage.children.length; i++) {
+                    var child = this.stage.children[i];
+                    if (!child.visible || child === skip) {
+                        continue;
+                    }
+                    renderer.drawChild(child);
+                }
+            }
+            resize(zoom) {
+                this.zoom = zoom;
+                if (zoom > this.penLayerMaxScale) {
+                    // Immediately scale up
+                    this.penLayerMaxScale = zoom;
+                    const cachedCanvas = document.createElement('canvas');
+                    cachedCanvas.width = this.penLayer.width;
+                    cachedCanvas.height = this.penLayer.height;
+                    cachedCanvas.getContext('2d').drawImage(this.penLayer, 0, 0);
+                    this._reset(this.penContext, zoom);
+                    this.penContext.drawImage(cachedCanvas, 0, 0, 480, 360);
+                }
+                else if (!this.penLayerModified) {
+                    // Immediately scale down if no changes have been made
+                    this._reset(this.penContext, zoom);
+                }
+                else {
+                    // We'll resize on the next clear, as resizing now would result in a loss of detail.
+                    this.penLayerTargetScale = zoom;
+                }
             }
             penClear() {
                 this.penLayerModified = false;
@@ -1349,26 +1394,6 @@ var P;
                     this.penLayerTargetScale = -1;
                 }
                 this.penContext.clearRect(0, 0, 480, 360);
-            }
-            penResize(scale) {
-                if (scale > this.penLayerMaxScale) {
-                    // Immediately scale up
-                    this.penLayerMaxScale = scale;
-                    const cachedCanvas = document.createElement('canvas');
-                    cachedCanvas.width = this.penLayer.width;
-                    cachedCanvas.height = this.penLayer.height;
-                    cachedCanvas.getContext('2d').drawImage(this.penLayer, 0, 0);
-                    this._reset(this.penContext, scale);
-                    this.penContext.drawImage(cachedCanvas, 0, 0, 480, 360);
-                }
-                else if (!this.penLayerModified) {
-                    // Immediately scale down if no changes have been made
-                    this._reset(this.penContext, scale);
-                }
-                else {
-                    // Attempt again later
-                    this.penLayerTargetScale = scale;
-                }
             }
             penDot(color, size, x, y) {
                 this.penLayerModified = true;
@@ -1424,8 +1449,9 @@ var P;
                 const mb = spriteA.rotatedBounds();
                 for (var i = 0; i < otherSprites.length; i++) {
                     const spriteB = otherSprites[i];
-                    if (!spriteB.visible)
+                    if (!spriteB.visible) {
                         continue;
+                    }
                     const ob = spriteB.rotatedBounds();
                     if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
                         continue;
@@ -1467,7 +1493,7 @@ var P;
                 workingRenderer.canvas.height = b.top - b.bottom;
                 workingRenderer.ctx.save();
                 workingRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
-                workingRenderer.drawScene(this.stage, sprite);
+                this.drawAll(workingRenderer, sprite);
                 workingRenderer.ctx.globalCompositeOperation = 'destination-in';
                 workingRenderer.drawChild(sprite);
                 workingRenderer.ctx.restore();
@@ -1489,11 +1515,12 @@ var P;
                 workingRenderer2.ctx.save();
                 workingRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
                 workingRenderer2.ctx.translate(-(240 + rb.left), -(180 - rb.top));
-                workingRenderer.drawScene(this.stage, sprite);
-                workingRenderer.drawChild(sprite);
+                this.drawAll(workingRenderer, sprite);
+                workingRenderer2.drawChild(sprite);
                 workingRenderer.ctx.restore();
+                workingRenderer2.ctx.restore();
                 var dataA = workingRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
-                var dataB = workingRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
+                var dataB = workingRenderer2.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
                 spriteColor = spriteColor & 0xffffff;
                 otherColor = otherColor & 0xffffff;
                 var length = dataA.length;
@@ -1507,7 +1534,7 @@ var P;
                 return false;
             }
         }
-        renderer.ProjectRenderer2D = ProjectRenderer2D;
+        renderer_1.ProjectRenderer2D = ProjectRenderer2D;
     })(renderer = P.renderer || (P.renderer = {}));
 })(P || (P = {}));
 /// <reference path="phosphorus.ts" />
@@ -1931,7 +1958,7 @@ var P;
                 else {
                     this.renderer = new P.renderer.ProjectRenderer2D(this);
                 }
-                this.renderer.penResize(1);
+                this.renderer.resize(1);
                 this.renderer.init(this.root);
                 this.canvas = this.renderer.canvas;
                 this.ui = document.createElement('div');
@@ -2151,7 +2178,7 @@ var P;
             setZoom(zoom) {
                 if (this.zoom === zoom)
                     return;
-                this.renderer.penResize(zoom);
+                this.renderer.resize(zoom);
                 this.root.style.width = (480 * zoom | 0) + 'px';
                 this.root.style.height = (360 * zoom | 0) + 'px';
                 this.root.style.fontSize = (zoom * 10) + 'px';
@@ -2182,11 +2209,15 @@ var P;
                     this.mouseSprite = undefined;
                 }
             }
-            // setFilter(name: string, value: number) {
-            //   // Override setFilter() to update the filters on the real stage.
-            //   super.setFilter(name, value);
-            //   // this.renderer.updateStageFilters();
-            // }
+            setFilter(name, value) {
+                // Override setFilter() to update the filters on the real stage.
+                super.setFilter(name, value);
+                this.renderer.onStageFiltersChanged();
+            }
+            resetFilters() {
+                super.resetFilters();
+                this.renderer.onStageFiltersChanged();
+            }
             /**
              * Gets an object with its name, ignoring clones.
              * SpecialObjects.Stage will point to the stage.
@@ -2242,7 +2273,14 @@ var P;
              * Draws this stage on it's renderer.
              */
             draw() {
-                this.renderer.drawFrame(this.zoom);
+                // TODO: should this be moved somewhere else? maybe the renderers should do a .tick() or something on the sprites?
+                for (var i = 0; i < this.children.length; i++) {
+                    const c = this.children[i];
+                    if (c.isDragging) {
+                        c.moveTo(c.dragOffsetX + c.stage.mouseX, c.dragOffsetY + c.stage.mouseY);
+                    }
+                }
+                this.renderer.drawFrame();
                 for (var i = this.allWatchers.length; i--;) {
                     var w = this.allWatchers[i];
                     if (w.visible) {

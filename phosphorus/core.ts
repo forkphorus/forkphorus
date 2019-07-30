@@ -534,7 +534,7 @@ namespace P.core {
       } else {
         this.renderer = new P.renderer.ProjectRenderer2D(this);
       }
-      this.renderer.penResize(1);
+      this.renderer.resize(1);
       this.renderer.init(this.root);
       this.canvas = this.renderer.canvas;
 
@@ -768,7 +768,7 @@ namespace P.core {
      */
     setZoom(zoom: number) {
       if (this.zoom === zoom) return;
-      this.renderer.penResize(zoom);
+      this.renderer.resize(zoom);
       this.root.style.width = (480 * zoom | 0) + 'px';
       this.root.style.height = (360 * zoom | 0) + 'px';
       this.root.style.fontSize = (zoom*10) + 'px';
@@ -801,11 +801,16 @@ namespace P.core {
       }
     }
 
-    // setFilter(name: string, value: number) {
-    //   // Override setFilter() to update the filters on the real stage.
-    //   super.setFilter(name, value);
-    //   // this.renderer.updateStageFilters();
-    // }
+    setFilter(name: string, value: number) {
+      // Override setFilter() to update the filters on the real stage.
+      super.setFilter(name, value);
+      this.renderer.onStageFiltersChanged();
+    }
+
+    resetFilters() {
+      super.resetFilters();
+      this.renderer.onStageFiltersChanged();
+    }
 
     /**
      * Gets an object with its name, ignoring clones.
@@ -865,7 +870,14 @@ namespace P.core {
      * Draws this stage on it's renderer.
      */
     draw() {
-      this.renderer.drawFrame(this.zoom);
+      // TODO: should this be moved somewhere else? maybe the renderers should do a .tick() or something on the sprites?
+      for (var i = 0; i < this.children.length; i++) {
+        const c = this.children[i];
+        if (c.isDragging) {
+          c.moveTo(c.dragOffsetX + c.stage.mouseX, c.dragOffsetY + c.stage.mouseY);
+        }
+      }
+      this.renderer.drawFrame();
 
       for (var i = this.allWatchers.length; i--;) {
         var w = this.allWatchers[i];
