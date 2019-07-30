@@ -246,6 +246,7 @@
         examplesContainer.style.height = studioViewAreaHeight + 'px';
         examplesViewContainer.appendChild(studioView.root);
       }
+      resetTitle();
     }
     function showPlayerArea() {
       titleArea.style.height = '0px';
@@ -258,6 +259,7 @@
       showPlayerArea();
       player.loadProjectId(id);
       updateLinks();
+      setTitleToProjectTitle(id);
     }
     function loadProjectFile(file) {
       var extension = file.name.split('.').pop();
@@ -268,12 +270,26 @@
       showPlayerArea();
       player.loadProjectFile(file);
       updateLinks();
+      resetTitle();
     }
     function updateLinks() {
       projectLink.href = player.projectLink;
       bugLink.href = errorHandler.createBugReportLink(player.getString('bug.manual.instructions'));
       updatePackageLink();
       updateEmbedCode();
+    }
+    var cachedTitles = {};
+    var initialTitle = document.title;
+    function resetTitle() {
+      document.title = initialTitle;
+    }
+    function setTitleToProjectTitle(id) {
+      new P.IO.TextRequest('https://scratch.garbomuffin.com/api/forkphorus/?t=title&p=' + id).load()
+        .then(function(title) {
+          if (title) {
+            document.title = title + ' - forkphorus';
+          }
+        });
     }
 
     /** Packaging **/
