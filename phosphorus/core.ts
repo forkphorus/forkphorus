@@ -715,19 +715,11 @@ namespace P.core {
       this.promptButton.addEventListener(P.config.hasTouchEvents ? 'touchstart' : 'mousedown', this.submitPrompt.bind(this));
     }
 
-    // Event hooks for implementing stages to optionally use
-    ontouch(e: TouchEvent, t: Touch) {
-
-    }
-    onmousedown(e: MouseEvent) {
-
-    }
-    onmouseup(e: MouseEvent) {
-
-    }
-    onmousemove(e: MouseEvent) {
-
-    }
+    // Event hooks for responding to user actions
+    ontouch(e: TouchEvent, t: Touch) {}
+    onmousedown(e: MouseEvent) {}
+    onmouseup(e: MouseEvent) {}
+    onmousemove(e: MouseEvent) {}
 
     /**
      * Delete the stage.

@@ -2071,15 +2071,11 @@ var P;
                 });
                 this.promptButton.addEventListener(P.config.hasTouchEvents ? 'touchstart' : 'mousedown', this.submitPrompt.bind(this));
             }
-            // Event hooks for implementing stages to optionally use
-            ontouch(e, t) {
-            }
-            onmousedown(e) {
-            }
-            onmouseup(e) {
-            }
-            onmousemove(e) {
-            }
+            // Event hooks for responding to user actions
+            ontouch(e, t) { }
+            onmousedown(e) { }
+            onmouseup(e) { }
+            onmousemove(e) { }
             /**
              * Delete the stage.
              */
