@@ -540,7 +540,7 @@ namespace P.renderer {
 
     /**
      * Resizes and resets the current framebuffer
-     * @param scale Scale
+     * @param scale Zoom level
      */
     resetFramebuffer(scale: number) {
       this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
@@ -629,6 +629,10 @@ namespace P.renderer {
       this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
     }
 
+    /**
+     * Draw a texture covering the entire screen
+     * @param texture The texture to draw. Must belong to this renderer.
+     */
     drawTexture(texture: WebGLTexture) {
       const shader = this.renderingShader;
       this.gl.useProgram(shader.program);
@@ -647,54 +651,17 @@ namespace P.renderer {
 
       shader.uniformMatrix3('u_matrix', matrix);
 
-      // Effects
-      if (shader.hasUniform('u_opacity')) {
-        shader.uniform1f('u_opacity', 1 - 0 / 100);
-      }
-      if (shader.hasUniform('u_brightness')) {
-        shader.uniform1f('u_brightness', 0 / 100);
-      }
-      if (shader.hasUniform('u_color')) {
-        shader.uniform1f('u_color', 0 / 200);
-      }
-      if (shader.hasUniform('u_mosaic')) {
-        const mosaic = Math.round((Math.abs(0) + 10) / 10);
-        shader.uniform1f('u_mosaic', P.utils.clamp(mosaic, 1, 512));
-      }
-      if (shader.hasUniform('u_whirl')) {
-        shader.uniform1f('u_whirl', 0 * Math.PI / -180);
-      }
-      if (shader.hasUniform('u_fisheye')) {
-        shader.uniform1f('u_fisheye', Math.max(0, (0 + 100) / 100));
-      }
-      if (shader.hasUniform('u_pixelate')) {
-        shader.uniform1f('u_pixelate', Math.abs(0) / 10);
-      }
-      if (shader.hasUniform('u_size')) {
-        shader.uniform2f('u_size', 480, 360);
-      }
+      // Apply empty effect values
+      if (shader.hasUniform('u_opacity')) shader.uniform1f('u_opacity', 1);
+      if (shader.hasUniform('u_brightness')) shader.uniform1f('u_brightness', 0);
+      if (shader.hasUniform('u_color')) shader.uniform1f('u_color', 0);
+      if (shader.hasUniform('u_mosaic')) shader.uniform1f('u_mosaic', 1);
+      if (shader.hasUniform('u_whirl')) shader.uniform1f('u_whirl', 0);
+      if (shader.hasUniform('u_fisheye')) shader.uniform1f('u_fisheye', 1);
+      if (shader.hasUniform('u_pixelate')) shader.uniform1f('u_pixelate', 0);
+      if (shader.hasUniform('u_size')) shader.uniform2f('u_size', this.canvas.width, this.canvas.height);
 
       this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
-    }
-
-    drawLayer(canvas: HTMLCanvasElement) {
-      const shader = this.renderingShader;
-      this.gl.useProgram(shader.program);
-
-      const texture = this.convertToTexture(canvas);
-      this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
-
-      shader.attributeBuffer('a_texcoord', this.quadBuffer);
-      shader.attributeBuffer('a_position', this.quadBuffer);
-
-      const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
-      P.m3.multiply(matrix, this.globalScaleMatrix);
-
-      shader.uniformMatrix3('u_matrix', matrix);
-      shader.uniform1f('u_opacity', 1);
-
-      // TODO: is it necessary to delete textures?
-      this.gl.deleteTexture(texture);
     }
   }
 
@@ -948,7 +915,7 @@ namespace P.renderer {
     }
 
     renderStageCostume(scale: number) {
-      this._reset(this.stageContext, scale);
+      this._reset(this.stageContext, scale * P.config.scale);
       this.noEffects = true;
       this._drawChild(this.stage, this.stageContext);
       this.noEffects = false;
@@ -1002,6 +969,7 @@ namespace P.renderer {
         // We'll resize on the next clear, as resizing now would result in a loss of detail.
         this.penLayerTargetScale = zoom;
       }
+      this.renderStageCostume(this.zoom);
     }
 
     penClear() {

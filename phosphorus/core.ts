@@ -755,14 +755,6 @@ namespace P.core {
       this.mouseY = y;
     }
 
-    // /**
-    //  * Updates the backdrop canvas to match the current backdrop.
-    //  */
-    // updateBackdrop() {
-    //   if (!this.renderer) return;
-    //   this.renderer.updateStage(this.zoom * P.config.scale);
-    // }
-
     /**
      * Changes the zoom level and resizes DOM elements.
      */
@@ -773,7 +765,6 @@ namespace P.core {
       this.root.style.height = (360 * zoom | 0) + 'px';
       this.root.style.fontSize = (zoom*10) + 'px';
       this.zoom = zoom;
-      // this.updateBackdrop();
     }
 
     clickMouse() {
@@ -894,33 +885,6 @@ namespace P.core {
       }
     }
 
-    // /**
-    //  * Draws all the children (not including the Stage itself or pen layers) of this Stage on a renderer
-    //  * @param skip Optionally skip rendering of a single Sprite.
-    //  */
-    // drawChildren(renderer: P.renderer.SpriteRenderer, skip?: Base) {
-    //   for (var i = 0; i < this.children.length; i++) {
-    //     const c = this.children[i];
-    //     if (c.isDragging) {
-    //       // TODO: move
-    //       c.moveTo(c.dragOffsetX + c.stage.mouseX, c.dragOffsetY + c.stage.mouseY);
-    //     }
-    //     if (c.visible && c !== skip) {
-    //       renderer.drawChild(c);
-    //     }
-    //   }
-    // }
-
-    // /**
-    //  * Draws all parts of the Stage (including the stage itself and pen layers) on a renderer.
-    //  * @param skip Optionally skip rendering of a single Sprite.
-    //  */
-    // drawAll(renderer: P.renderer.SpriteRenderer, skip?: Base) {
-    //   renderer.drawChild(this);
-    //   renderer.drawLayer(this.renderer.penLayer);
-    //   this.drawChildren(renderer, skip);
-    // }
-
     showVideo(visible: boolean) {
       if (P.config.supportVideoSensing) {
         if (visible) {
@@ -952,17 +916,6 @@ namespace P.core {
         right: 0,
       };
     }
-
-    // Override currentCostumeIndex to automatically update the backdrop when a change is made.
-    // TODO: don't updateBackdrop() on every change (slow), only when needed for rendering
-    // get currentCostumeIndex() {
-    //   return this._currentCostumeIndex;
-    // }
-    // set currentCostumeIndex(index: number) {
-    //   this._currentCostumeIndex = index;
-    // }
-
-    // Implementing Scratch blocks
 
     stopAllSounds() {
       for (var children = this.children, i = children.length; i--;) {

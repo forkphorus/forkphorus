@@ -877,7 +877,7 @@ var P;
             }
             /**
              * Resizes and resets the current framebuffer
-             * @param scale Scale
+             * @param scale Zoom level
              */
             resetFramebuffer(scale) {
                 this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
@@ -957,6 +957,10 @@ var P;
                 }
                 this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
             }
+            /**
+             * Draw a texture covering the entire screen
+             * @param texture The texture to draw. Must belong to this renderer.
+             */
             drawTexture(texture) {
                 const shader = this.renderingShader;
                 this.gl.useProgram(shader.program);
@@ -970,47 +974,24 @@ var P;
                 P.m3.multiply(matrix, P.m3.translation(-240, -180));
                 P.m3.multiply(matrix, P.m3.scaling(480, 360));
                 shader.uniformMatrix3('u_matrix', matrix);
-                // Effects
-                if (shader.hasUniform('u_opacity')) {
-                    shader.uniform1f('u_opacity', 1 - 0 / 100);
-                }
-                if (shader.hasUniform('u_brightness')) {
-                    shader.uniform1f('u_brightness', 0 / 100);
-                }
-                if (shader.hasUniform('u_color')) {
-                    shader.uniform1f('u_color', 0 / 200);
-                }
-                if (shader.hasUniform('u_mosaic')) {
-                    const mosaic = Math.round((Math.abs(0) + 10) / 10);
-                    shader.uniform1f('u_mosaic', P.utils.clamp(mosaic, 1, 512));
-                }
-                if (shader.hasUniform('u_whirl')) {
-                    shader.uniform1f('u_whirl', 0 * Math.PI / -180);
-                }
-                if (shader.hasUniform('u_fisheye')) {
-                    shader.uniform1f('u_fisheye', Math.max(0, (0 + 100) / 100));
-                }
-                if (shader.hasUniform('u_pixelate')) {
-                    shader.uniform1f('u_pixelate', Math.abs(0) / 10);
-                }
-                if (shader.hasUniform('u_size')) {
-                    shader.uniform2f('u_size', 480, 360);
-                }
+                // Apply empty effect values
+                if (shader.hasUniform('u_opacity'))
+                    shader.uniform1f('u_opacity', 1);
+                if (shader.hasUniform('u_brightness'))
+                    shader.uniform1f('u_brightness', 0);
+                if (shader.hasUniform('u_color'))
+                    shader.uniform1f('u_color', 0);
+                if (shader.hasUniform('u_mosaic'))
+                    shader.uniform1f('u_mosaic', 1);
+                if (shader.hasUniform('u_whirl'))
+                    shader.uniform1f('u_whirl', 0);
+                if (shader.hasUniform('u_fisheye'))
+                    shader.uniform1f('u_fisheye', 1);
+                if (shader.hasUniform('u_pixelate'))
+                    shader.uniform1f('u_pixelate', 0);
+                if (shader.hasUniform('u_size'))
+                    shader.uniform2f('u_size', this.canvas.width, this.canvas.height);
                 this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
-            }
-            drawLayer(canvas) {
-                const shader = this.renderingShader;
-                this.gl.useProgram(shader.program);
-                const texture = this.convertToTexture(canvas);
-                this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
-                shader.attributeBuffer('a_texcoord', this.quadBuffer);
-                shader.attributeBuffer('a_position', this.quadBuffer);
-                const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
-                P.m3.multiply(matrix, this.globalScaleMatrix);
-                shader.uniformMatrix3('u_matrix', matrix);
-                shader.uniform1f('u_opacity', 1);
-                // TODO: is it necessary to delete textures?
-                this.gl.deleteTexture(texture);
             }
         }
         WebGLSpriteRenderer.vertexShader = `
@@ -1337,7 +1318,7 @@ var P;
                 this.stageLayer.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
             }
             renderStageCostume(scale) {
-                this._reset(this.stageContext, scale);
+                this._reset(this.stageContext, scale * P.config.scale);
                 this.noEffects = true;
                 this._drawChild(this.stage, this.stageContext);
                 this.noEffects = false;
@@ -1389,6 +1370,7 @@ var P;
                     // We'll resize on the next clear, as resizing now would result in a loss of detail.
                     this.penLayerTargetScale = zoom;
                 }
+                this.renderStageCostume(this.zoom);
             }
             penClear() {
                 this.penLayerModified = false;
@@ -2168,13 +2150,6 @@ var P;
                 this.mouseX = x;
                 this.mouseY = y;
             }
-            // /**
-            //  * Updates the backdrop canvas to match the current backdrop.
-            //  */
-            // updateBackdrop() {
-            //   if (!this.renderer) return;
-            //   this.renderer.updateStage(this.zoom * P.config.scale);
-            // }
             /**
              * Changes the zoom level and resizes DOM elements.
              */
@@ -2186,7 +2161,6 @@ var P;
                 this.root.style.height = (360 * zoom | 0) + 'px';
                 this.root.style.fontSize = (zoom * 10) + 'px';
                 this.zoom = zoom;
-                // this.updateBackdrop();
             }
             clickMouse() {
                 this.mouseSprite = undefined;
@@ -2297,31 +2271,6 @@ var P;
                     this.canvas.focus();
                 }
             }
-            // /**
-            //  * Draws all the children (not including the Stage itself or pen layers) of this Stage on a renderer
-            //  * @param skip Optionally skip rendering of a single Sprite.
-            //  */
-            // drawChildren(renderer: P.renderer.SpriteRenderer, skip?: Base) {
-            //   for (var i = 0; i < this.children.length; i++) {
-            //     const c = this.children[i];
-            //     if (c.isDragging) {
-            //       // TODO: move
-            //       c.moveTo(c.dragOffsetX + c.stage.mouseX, c.dragOffsetY + c.stage.mouseY);
-            //     }
-            //     if (c.visible && c !== skip) {
-            //       renderer.drawChild(c);
-            //     }
-            //   }
-            // }
-            // /**
-            //  * Draws all parts of the Stage (including the stage itself and pen layers) on a renderer.
-            //  * @param skip Optionally skip rendering of a single Sprite.
-            //  */
-            // drawAll(renderer: P.renderer.SpriteRenderer, skip?: Base) {
-            //   renderer.drawChild(this);
-            //   renderer.drawLayer(this.renderer.penLayer);
-            //   this.drawChildren(renderer, skip);
-            // }
             showVideo(visible) {
                 if (P.config.supportVideoSensing) {
                     if (visible) {
@@ -2353,15 +2302,6 @@ var P;
                     right: 0,
                 };
             }
-            // Override currentCostumeIndex to automatically update the backdrop when a change is made.
-            // TODO: don't updateBackdrop() on every change (slow), only when needed for rendering
-            // get currentCostumeIndex() {
-            //   return this._currentCostumeIndex;
-            // }
-            // set currentCostumeIndex(index: number) {
-            //   this._currentCostumeIndex = index;
-            // }
-            // Implementing Scratch blocks
             stopAllSounds() {
                 for (var children = this.children, i = children.length; i--;) {
                     children[i].stopSounds();
