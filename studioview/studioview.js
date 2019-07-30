@@ -126,6 +126,8 @@
   StudioView.prototype.placeholderToProject = function(el, id, title, author) {
     el.className = 'studioview-project studioview-loaded';
     el.dataset.id = id;
+    el.dataset.title = title;
+    el.dataset.author = author;
     el.title = title + ' by ' + author;
     el.href = StudioView.PROJECT_PAGE.replace('$id', id);
 
@@ -165,7 +167,7 @@
       el = el.parentNode;
     }
     var id = el.dataset.id;
-    this.onselect(id);
+    this.onselect(id, el);
   }
 
   // Called when click is fired on a project element
@@ -310,7 +312,7 @@
     this.root.setAttribute('theme', theme);
   };
 
-  StudioView.prototype.onselect = function(id) {};
+  StudioView.prototype.onselect = function(id, el) {};
   StudioView.prototype.onpageload = function() {};
   StudioView.prototype.onend = function() {};
 

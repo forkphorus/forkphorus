@@ -284,12 +284,17 @@
       document.title = initialTitle;
     }
     function setTitleToProjectTitle(id) {
-      new P.IO.TextRequest('https://scratch.garbomuffin.com/api/forkphorus/?t=title&p=' + id).load()
-        .then(function(title) {
-          if (title) {
-            document.title = title + ' - forkphorus';
-          }
-        });
+      if (cachedTitles[id]) {
+        document.title = cachedTitles[id] + ' - forkphorus';
+      } else {
+        new P.IO.TextRequest('https://scratch.garbomuffin.com/api/forkphorus/?t=title&p=' + id).load()
+          .then(function(title) {
+            if (title) {
+              cachedTitles[id] = title;
+              document.title = title + ' - forkphorus';
+            }
+          });
+      }
     }
 
     /** Packaging **/
@@ -393,7 +398,8 @@
     function initStudioView() {
       studioView = new StudioView(STUDIO);
       studioView.visible = false;
-      studioView.onselect = function(id) {
+      studioView.onselect = function(id, el) {
+        cachedTitles[id] = el.dataset.title;
         location.hash = '#' + id;
       };
       studioView.shuffleProjects = true;
