@@ -192,6 +192,17 @@ namespace P.renderer {
     }
 
     /**
+     * Sets a uniform to a vec4
+     * @param name The name of the uniform
+     * @param a The first value
+     * @param b The second value
+     */
+    uniform4f(name: string, a: number, b: number, c: number, d: number) {
+      const location = this.getUniform(name);
+      this.gl.uniform4f(location, a, b, c, d);
+    }
+
+    /**
      * Sets a uniform to a 3x3 matrix
      * @param name The name of the uniform
      * @param value The 3x3 matrix
@@ -426,7 +437,7 @@ namespace P.renderer {
      * @param source The string source of the shader.
      * @param definitions Flags to define in the shader source.
      */
-    compileShader(type: number, source: string, definitions?: string[]): WebGLShader {
+    protected compileShader(type: number, source: string, definitions?: string[]): WebGLShader {
       const addDefinition = (def: string) => {
         source = '#define ' + def + '\n' + source;
       }
@@ -459,7 +470,7 @@ namespace P.renderer {
      * @param fs Fragment shader source.
      * @param definitions Things to define in the source of both shaders.
      */
-    compileProgram(vs: string, fs: string, definitions?: string[]): WebGLProgram {
+    protected compileProgram(vs: string, fs: string, definitions?: string[]): WebGLProgram {
       const vertexShader = this.compileShader(this.gl.VERTEX_SHADER, vs, definitions);
       const fragmentShader = this.compileShader(this.gl.FRAGMENT_SHADER, fs, definitions);
 
@@ -484,7 +495,7 @@ namespace P.renderer {
      * Compiles a variant of the default shader.
      * @param definitions Things to define in the shader
      */
-    compileVariant(definitions: string[]): ShaderVariant {
+    protected compileVariant(definitions: string[]): ShaderVariant {
       const program = this.compileProgram(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, definitions);
       return new ShaderVariant(this.gl, program);
     }
@@ -494,7 +505,7 @@ namespace P.renderer {
      * Texture will be bound to TEXTURE_2D, so you can texImage2D() on it
      * Mipmapping will be disabled to allow for any size texture.
      */
-    createTexture(): WebGLTexture {
+    protected createTexture(): WebGLTexture {
       const texture = this.gl.createTexture();
       if (!texture) {
         throw new Error('Cannot create texture');
@@ -512,7 +523,7 @@ namespace P.renderer {
      * Converts a canvas to a WebGL texture
      * @param canvas The source canvas. Dimensions do not matter.
      */
-    convertToTexture(canvas: HTMLImageElement | HTMLCanvasElement): WebGLTexture {
+    protected convertToTexture(canvas: HTMLImageElement | HTMLCanvasElement): WebGLTexture {
       const texture = this.createTexture();
       this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
       return texture;
@@ -521,7 +532,7 @@ namespace P.renderer {
     /**
      * Creates a new framebuffer
      */
-    createFramebuffer(): WebGLFramebuffer {
+    protected createFramebuffer(): WebGLFramebuffer {
       const frameBuffer = this.gl.createFramebuffer();
       if (!frameBuffer) {
         throw new Error('cannot create frame buffer');
@@ -542,7 +553,7 @@ namespace P.renderer {
      * Resizes and resets the current framebuffer
      * @param scale Zoom level
      */
-    resetFramebuffer(scale: number) {
+    protected resetFramebuffer(scale: number) {
       this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
       // the first element of the matrix is the x-scale, so we can use that to only recreate the matrix when needed
       if (this.globalScaleMatrix[0] !== scale) {
@@ -562,7 +573,7 @@ namespace P.renderer {
      * Real implementation of drawChild()
      * @param child The child to draw
      */
-    _drawChild(child: P.core.Base, shader: ShaderVariant) {
+    protected _drawChild(child: P.core.Base, shader: ShaderVariant) {
       this.gl.useProgram(shader.program);
 
       // Create the texture if it doesn't already exist.
@@ -633,7 +644,7 @@ namespace P.renderer {
      * Draw a texture covering the entire screen
      * @param texture The texture to draw. Must belong to this renderer.
      */
-    drawTexture(texture: WebGLTexture) {
+    protected drawTexture(texture: WebGLTexture) {
       const shader = this.renderingShader;
       this.gl.useProgram(shader.program);
 
@@ -666,6 +677,29 @@ namespace P.renderer {
   }
 
   export class WebGLProjectRenderer extends WebGLSpriteRenderer implements ProjectRenderer {
+    public static readonly PEN_DOT_VERTEX_SHADER = `
+    attribute vec2 a_position;
+    varying vec2 v_position;
+    uniform mat3 u_matrix;
+    void main() {
+      gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
+      v_position = a_position;
+    }
+    `;
+    public static readonly PEN_DOT_FRAGMENT_SHADER = `
+    precision mediump float;
+    uniform vec4 u_color;
+    varying vec2 v_position;
+    void main() {
+      float x = (v_position.x - 0.5) * 2.0;
+      float y = (v_position.y - 0.5) * 2.0;
+      if (sqrt(x * x + y * y) >= 1.0) {
+        discard;
+      }
+      gl_FragColor = u_color;
+    }
+    `;
+
     public penLayer: HTMLCanvasElement;
     public stageLayer: HTMLCanvasElement;
     public zoom: number = 1;
@@ -675,6 +709,7 @@ namespace P.renderer {
 
     protected fallbackRenderer: ProjectRenderer;
     protected shaderOnlyShapeFilters = this.compileVariant(['ONLY_SHAPE_FILTERS']);
+    protected penDotShader: ShaderVariant;
 
     constructor(public stage: P.core.Stage) {
       super();
@@ -687,6 +722,11 @@ namespace P.renderer {
       this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
       this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.penTexture, 0);
       this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+
+      this.penDotShader = new ShaderVariant(this.gl, this.compileProgram(
+        WebGLProjectRenderer.PEN_DOT_VERTEX_SHADER,
+        WebGLProjectRenderer.PEN_DOT_FRAGMENT_SHADER
+      ));
 
       this.reset(1);
     }
@@ -709,17 +749,29 @@ namespace P.renderer {
     }
 
     onStageFiltersChanged() {
-      // no-op
-      // we always re-render the stage in full
+      // no-op; we always re-render the stage in full
     }
 
     penLine(color: string, size: number, x: number, y: number, x2: number, y2: number): void {
       // TODO
-      // this.fallbackRenderer.penLine(color, size, x, y, x2, y2);
     }
 
     penDot(color: string, size: number, x: number, y: number): void {
-      // this.fallbackRenderer.penDot(color, size, x, y);
+      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
+
+      const shader = this.penDotShader;
+      this.gl.useProgram(this.penDotShader.program);
+
+      shader.attributeBuffer('a_position', this.quadBuffer);
+      const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
+      P.m3.multiply(matrix, P.m3.translation(240 + x - size / 4 | 0, 180 - y - size / 4 | 0));
+      P.m3.multiply(matrix, P.m3.scaling(size / 2, size / 2));
+      shader.uniformMatrix3('u_matrix', matrix);
+      // TODO: color
+      shader.uniform4f('u_color', 1, 0, 0, 1);
+
+      this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
     }
 
     penStamp(sprite: P.core.Sprite): void {
@@ -730,7 +782,11 @@ namespace P.renderer {
     }
 
     penClear(): void {
-      // TODO
+      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
+      // transparent white
+      this.gl.clearColor(255, 255, 255, 0);
+      this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
     }
 
     resize(scale: number): void {

@@ -688,6 +688,16 @@ var P;
                 this.gl.uniform2f(location, a, b);
             }
             /**
+             * Sets a uniform to a vec4
+             * @param name The name of the uniform
+             * @param a The first value
+             * @param b The second value
+             */
+            uniform4f(name, a, b, c, d) {
+                const location = this.getUniform(name);
+                this.gl.uniform4f(location, a, b, c, d);
+            }
+            /**
              * Sets a uniform to a 3x3 matrix
              * @param name The name of the uniform
              * @param value The 3x3 matrix
@@ -1133,6 +1143,7 @@ var P;
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
                 this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.penTexture, 0);
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+                this.penDotShader = new ShaderVariant(this.gl, this.compileProgram(WebGLProjectRenderer.PEN_DOT_VERTEX_SHADER, WebGLProjectRenderer.PEN_DOT_FRAGMENT_SHADER));
                 this.reset(1);
             }
             drawFrame() {
@@ -1151,15 +1162,24 @@ var P;
                 root.appendChild(this.canvas);
             }
             onStageFiltersChanged() {
-                // no-op
-                // we always re-render the stage in full
+                // no-op; we always re-render the stage in full
             }
             penLine(color, size, x, y, x2, y2) {
                 // TODO
-                // this.fallbackRenderer.penLine(color, size, x, y, x2, y2);
             }
             penDot(color, size, x, y) {
-                // this.fallbackRenderer.penDot(color, size, x, y);
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
+                const shader = this.penDotShader;
+                this.gl.useProgram(this.penDotShader.program);
+                shader.attributeBuffer('a_position', this.quadBuffer);
+                const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
+                P.m3.multiply(matrix, P.m3.translation(240 + x - size / 4 | 0, 180 - y - size / 4 | 0));
+                P.m3.multiply(matrix, P.m3.scaling(size / 2, size / 2));
+                shader.uniformMatrix3('u_matrix', matrix);
+                // TODO: color
+                shader.uniform4f('u_color', 1, 0, 0, 1);
+                this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
             }
             penStamp(sprite) {
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
@@ -1168,7 +1188,11 @@ var P;
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
             }
             penClear() {
-                // TODO
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
+                // transparent white
+                this.gl.clearColor(255, 255, 255, 0);
+                this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
             }
             resize(scale) {
                 this.zoom = scale;
@@ -1207,6 +1231,28 @@ var P;
                 return this.fallbackRenderer.spriteColorTouchesColor(sprite, spriteColor, otherColor);
             }
         }
+        WebGLProjectRenderer.PEN_DOT_VERTEX_SHADER = `
+    attribute vec2 a_position;
+    varying vec2 v_position;
+    uniform mat3 u_matrix;
+    void main() {
+      gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
+      v_position = a_position;
+    }
+    `;
+        WebGLProjectRenderer.PEN_DOT_FRAGMENT_SHADER = `
+    precision mediump float;
+    uniform vec4 u_color;
+    varying vec2 v_position;
+    void main() {
+      float x = (v_position.x - 0.5) * 2.0;
+      float y = (v_position.y - 0.5) * 2.0;
+      if (sqrt(x * x + y * y) >= 1.0) {
+        discard;
+      }
+      gl_FragColor = u_color;
+    }
+    `;
         renderer_1.WebGLProjectRenderer = WebGLProjectRenderer;
         /**
          * Creates the CSS filter for a Filter object.
