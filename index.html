@@ -57,12 +57,12 @@
     <div class="area" id="project-area">
 
       <section>
-        <h1>Report a problem</h1>
+        <h1 data-i18n="index.report">Report a problem</h1>
         <p>forkphorus is still in development and has many bugs. <a id="bug-link" target="_blank" rel="noopener" href="https://github.com/forkphorus/forkphorus/issues/new">Click here</a> to report a problem with this project.</p>
       </section>
 
       <section class=package>
-        <h1>Embed this project</h1>
+        <h1 data-i18n="index.embed">Embed this project</h1>
         <p>Include the forkphorus player in your web site.</p>
         <p class="embed-options">
           <input readonly id=embed-code>
@@ -76,7 +76,7 @@
       </section>
 
       <section class=package>
-        <h1>Package this project</h1>
+        <h1 data-i18n="index.package">Package this project</h1>
         <p>Get a link to a web page that automatically runs your project. To package to HTML, EXE, APK, or other formats, use the <a href="packager/">HTML packager</a>.</p>
         <p class="package-options">
           <a href=# target=_blank id=package-link>Package</a>
@@ -87,7 +87,7 @@
         </p>
       </section>
 
-      <h1>Settings</h1>
+      <h1 data-i18n="index.settings">Settings</h1>
       <table id="settings">
         <tr>
           <td class="name" title="Forkphorus will **attempt** to run at this framerate."><label for="settings-framerate">Framerate (FPS)</label></td>
@@ -103,10 +103,10 @@
     </div>
 
     <section>
-      <h1>Credits</h1>
+      <h1 data-i18n="index.credits">Credits</h1>
       <p>forkphorus is a fork of <a href="https://phosphorus.github.io/">phosphorus</a> by <a href="https://github.com/nathan">Nathan</a>. Its CPS-style compilation and overall design was inspired by <a href="https://github.com/RHY3756547">Rhys</a>'s <a href="https://code.google.com/p/sb2-js/">sb2.js</a>. It would have more bugs if not for <a href="https://github.com/trumank">Truman</a> and <a href="https://github.com/tjvr">Tim</a>. The <a href="https://stuk.github.io/jszip/">JSZip</a> library is used to read <code>.sb2</code> and <code>.sb3</code> files.</p>
 
-      <h1>Code</h1>
+      <h1 data-i18n="index.code">Code</h1>
       <p>The source code for forkphorus is available <a href=https://github.com/forkphorus/forkphorus>on GitHub</a>.</p>
 
       <!-- the deploy bot for forkphorus.github.io will replace this next line with the version info -->
@@ -120,6 +120,7 @@
   <script src="lib/rgbcolor.js"></script>
   <script src="lib/canvg.min.js"></script>
   <script src="phosphorus.dist.js"></script>
+  <script src="i18n.js"></script>
   <script src="player.js"></script>
   <script src="studioview/studioview.js"></script>
 
@@ -150,6 +151,10 @@
       }
       return result;
     }
+
+    /** i18n */
+    document.title = P.i18n.translate('document.title');
+    P.i18n.translateElement(document.body);
 
     /** Constants **/
     var PROJECT_PREFIX = 'https://scratch.mit.edu/projects/';
@@ -274,7 +279,7 @@
     }
     function updateLinks() {
       projectLink.href = player.projectLink;
-      bugLink.href = errorHandler.createBugReportLink(player.getString('bug.manual.instructions'));
+      bugLink.href = errorHandler.createBugReportLink(P.i18n.translate('report.bug.instructions'));
       updatePackageLink();
       updateEmbedCode();
     }
@@ -407,7 +412,7 @@
       studioView.setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
 
       var link = document.createElement('a');
-      link.innerText = player.getString('studio.view');
+      link.innerText = P.i18n.translate('studio.view');
       link.target = '_blank';
       link.rel = 'noopener';
       link.href = STUDIO_PREFIX + STUDIO;

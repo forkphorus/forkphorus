@@ -2,7 +2,6 @@
 /// <reference path="config.ts" />
 
 namespace P.audio {
-  // Create an audio context involves a little bit of logic, so an IIFE is used.
   export const context = (function(): AudioContext | null {
     if ((window as any).AudioContext) {
       return new AudioContext();

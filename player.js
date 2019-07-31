@@ -1,4 +1,5 @@
 // @ts-check
+// @ts-ignore
 var P = P || {};
 
 /**
@@ -62,30 +63,6 @@ P.Player = (function() {
   Player.UNKNOWN_LINK = '(no link)';
 
   /**
-   * Internationalization.
-   * Maps languages to the strings for that language.
-   * When a language has no mapping for a string, it will fallback to english translations.
-   */
-  Player.i18n = {
-    en: {
-      'controls.turbo': 'Turbo Mode',
-      'controls.flag.title': 'Shift+click to enable turbo mode.',
-      'controls.flag.title.enabled': 'Turbo is enabled. Shift+click to disable turbo mode.',
-      'controls.flag.title.disabled': 'Turbo is disabled. Shift+click to enable turbo mode.',
-      'audio.muted': 'Muted',
-      'audio.muted.title': 'Your browser isn\'t allowing us to play audio. You may need to interact with the page before audio can be played.',
-      'bug.html': 'An internal error occurred. <a $attrs>Click here</a> to file a bug report.',
-      'bug.instructions': 'Describe what you were doing to cause this error:',
-      'bug.manual.instructions': 'Describe the issue:',
-      'studio.view': 'View studio on Scratch.',
-    },
-    es: {
-      'controls.turbo': 'Modo Turbo',
-      'audio.muted': 'Silenciado',
-    },
-  };
-
-  /**
    * Determines the type of a project.
    * @param {any} data
    * @returns {2|3|null} 2 for sb2, 3 for sb3, null for uknown
@@ -98,51 +75,12 @@ P.Player = (function() {
   };
 
   /**
-   * The user's languages, in order of preference.
-   */
-  Player.languages = (function() {
-    var languages = navigator.languages || [navigator.language];
-    var langs = [];
-    for (var i = 0; i < languages.length; i++) {
-      var value = languages[i].toLowerCase();
-      // We don't care about country codes.
-      if (value.indexOf('-') !== -1) {
-        value = value.substring(0, value.indexOf('-'));
-      }
-      langs.push(value);
-    }
-    langs.push('en');
-    langs = langs.filter(function(value, index) {
-      // removing duplicates
-      if (langs.indexOf(value) !== index) return false;
-      // removing unrecognized languages
-      if (!Player.i18n[value]) return false;
-      return true;
-    });
-    return langs;
-  }());
-
-  /**
    * Asserts that a stage is loaded, and throws otherwise.
    */
   Player.prototype.assertStage = function() {
     if (!this.stage) {
       throw new Error('The player does not currently contain a stage to operate on.');
     }
-  };
-
-  /**
-   * Get a translated string.
-   */
-  Player.prototype.getString = function(str) {
-    for (var i = 0; i < Player.languages.length; i++) {
-      var lang = Player.languages[i];
-      var messages = Player.i18n[lang];
-      if (str in messages) {
-        return messages[str];
-      }
-    }
-    throw new Error('Unknown translation string: ' + str);
   };
 
   /**
@@ -221,11 +159,11 @@ P.Player = (function() {
 
     this.flagButton = document.createElement('span');
     this.flagButton.className = 'player-button player-flag';
-    this.flagButton.title = this.getString('controls.flag.title');
+    this.flagButton.title = P.i18n.translate('player.controls.flag.title');
     this.controlsEl.appendChild(this.flagButton);
 
     this.turboText = document.createElement('span');
-    this.turboText.innerText = this.getString('controls.turbo');
+    this.turboText.innerText = P.i18n.translate('player.controls.turboIndicator');
     this.turboText.className = 'player-label player-turbo';
     this.controlsEl.appendChild(this.turboText);
 
@@ -235,8 +173,8 @@ P.Player = (function() {
 
     if (options.showMutedIndicator && P.audio.context) {
       this.mutedText = document.createElement('div');
-      this.mutedText.innerText = this.getString('audio.muted');
-      this.mutedText.title = this.getString('audio.muted.title');
+      this.mutedText.innerText = P.i18n.translate('player.controls.muted');
+      this.mutedText.title = P.i18n.translate('player.controls.muted.title');
       this.mutedText.className = 'player-label player-muted';
       this.controlsEl.appendChild(this.mutedText);
 
@@ -287,9 +225,9 @@ P.Player = (function() {
     }
     if (this.flagButton) {
       if (turbo) {
-        this.flagButton.title = this.getString('controls.flag.title.enabled');
+        this.flagButton.title = P.i18n.translate('player.controls.flag.title.enabled');
       } else {
-        this.flagButton.title = this.getString('controls.flag.title.disabled');
+        this.flagButton.title = P.i18n.translate('player.controls.flag.title.disabled');
       }
     }
   };
@@ -766,7 +704,7 @@ P.Player.ErrorHandler = (function() {
    * Get the URL to report an error to.
    */
   ErrorHandler.prototype.createErrorLink = function(error) {
-    var body = this.player.getString('bug.instructions');
+    var body = P.i18n.translate('report.crash.instructions');
     return this.createBugReportLink(body, '```\n' + this.stringifyError(error) + '\n```');
   };
 
@@ -782,7 +720,7 @@ P.Player.ErrorHandler = (function() {
     var errorEl = document.createElement('div');
     var attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
     errorEl.className = 'player-error';
-    errorEl.innerHTML = this.player.getString('bug.html').replace('$attrs', attributes);
+    errorEl.innerHTML = P.i18n.translate('report.crash.html').replace('$attrs', attributes);
     this.errorContainer.appendChild(errorEl);
     this.errorEl = errorEl;
   };

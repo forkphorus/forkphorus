@@ -52,7 +52,6 @@ var P;
 (function (P) {
     var audio;
     (function (audio) {
-        // Create an audio context involves a little bit of logic, so an IIFE is used.
         audio.context = (function () {
             if (window.AudioContext) {
                 return new AudioContext();
