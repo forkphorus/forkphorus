@@ -128,7 +128,7 @@
     el.dataset.id = id;
     el.dataset.title = title;
     el.dataset.author = author;
-    el.title = title + ' by ' + author;
+    el.title = StudioView.PROJECT_HOVER_TEXT.replace('$author', author).replace('$title', title);
     el.href = StudioView.PROJECT_PAGE.replace('$id', id);
 
     var thumbnailSrc = StudioView.THUMBNAIL_SRC.replace('$id', id);
@@ -136,7 +136,7 @@
     el.thumbnailEl.appendChild(thumbnailImg);
 
     el.titleEl.innerText = title;
-    el.authorEl.innerText = 'by ' + author;
+    el.authorEl.innerText = StudioView.AUTHOR_ATTRIBUTION.replace('$author', author);
 
     el.addEventListener('click', this.handleClick.bind(this), true);
     el.addEventListener('keydown', this.handleKeyDown.bind(this), true);
@@ -329,6 +329,14 @@
   // The URL for a project's page.
   // $id is replaced with the project ID.
   StudioView.PROJECT_PAGE = 'https://scratch.mit.edu/projects/$id/';
+
+  // The text to appear under a project to credit the author of the project.
+  // $author is replaced with the author's name.
+  StudioView.AUTHOR_ATTRIBUTION = 'by $author';
+
+  // The text to appear when hovering over a project.
+  // $title becomes the project's title, $author becomes the author's name.
+  StudioView.PROJECT_HOVER_TEXT = '$title by $author';
 
   // The amount of "placeholders" to insert before the next page loads.
   StudioView.PLACEHOLDER_COUNT = 9;

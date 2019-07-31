@@ -169,6 +169,7 @@ P.Player = (function() {
 
     this.fullscreenButton = document.createElement('span');
     this.fullscreenButton.className = 'player-button player-fullscreen-btn';
+    this.fullscreenButton.title = P.i18n.translate('player.controls.fullscreen.title');
     this.controlsEl.appendChild(this.fullscreenButton);
 
     if (options.showMutedIndicator && P.audio.context) {
