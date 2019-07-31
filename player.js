@@ -650,7 +650,7 @@ P.Player.ErrorHandler = (function() {
     if (options.container) {
       this.errorContainer = options.container;
     } else {
-      this.errorContainer = player.root;
+      this.errorContainer = null;
     }
   };
 
@@ -722,7 +722,11 @@ P.Player.ErrorHandler = (function() {
     var attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
     errorEl.className = 'player-error';
     errorEl.innerHTML = P.i18n.translate('report.crash.html').replace('$attrs', attributes);
-    this.errorContainer.appendChild(errorEl);
+    if (this.errorContainer) {
+      this.errorContainer.appendChild(errorEl);
+    } else {
+      this.player.stage.ui.appendChild(errorEl);
+    }
     this.errorEl = errorEl;
   };
 

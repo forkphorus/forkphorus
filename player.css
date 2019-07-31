@@ -25,8 +25,11 @@
   color: rgb(128, 0, 0);
   font: 500 12px sans-serif;
   padding: 8px;
-  transform: translateY(-100%);
-  background-color: rgba(255, 200, 200, 0.85);
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  background-color: rgba(255, 200, 200, 0.9);
+  pointer-events: auto;
 }
 .player-error a {
   color: rgb(100, 0, 0);
