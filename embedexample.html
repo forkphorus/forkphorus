@@ -21,47 +21,44 @@
           return;
         }
 
-        // data will be sent from forkphorus to the parent website.
         var data = e.data;
 
         // `id` (string) - The unique (random) ID of the forkphorus embed that sent this message.
         var id = data.id;
         // `type` (string) - The type of message that this is. (we'll see what this means later)
         var type = data.type;
-        // `payload` (varies) - The payload part of the message. (varies by type)
-        var payload = data.payload;
 
         if (type === 'hello') {
-          // This is fired once before embed starts loading, and never again.
-          // The stage has not begun to load when this is fired.
-          // payload is a number, indicating API version, currently `1`
-          // The API version will probably never change.
-          console.log(id, 'says hello with API version', payload);
+          if (data.version !== 1) {
+            // That's not supposed to happen.
+            // You should probably log a warning somewhere, but not more than that.
+            console.warn('unexpected api version', data.version);
+          }
+          console.log(id, 'says hello with API version', data.version);
         }
 
         if (type === 'startload') {
-          // This is fired once when the embed starts loading, and never again.
-          // payload is null
-          console.log(id, 'is starting to load', payload);
+          console.log(id, 'is starting to load');
         }
 
         if (type === 'progress') {
-          // This is fired when progress has been made in the loading process.
-          // payload is a number between 0 and 1 indicating progress, where 1 is 100% done
-          // This should only be used for progress bars.
-          console.log(id, 'has progressed to ' + payload * 100 + '% complete')
+          console.log(id, 'has progressed to ' + data.progress * 100 + '% complete')
         }
 
         if (type === 'load') {
-          // This is fired when the stage has finished loading and is ready to start.
-          // payload is null
           console.log(id, 'is ready to start');
         }
 
+        if (type === 'start') {
+          console.log(id, 'has started');
+        }
+
+        if (type === 'pause') {
+          console.log(id, 'has paused');
+        }
+
         if (type === 'error') {
-          // This is fired when an error occurred.
-          // payload is the error.
-          console.log(id, 'has encountered an error', payload);
+          console.log(id, 'has encountered an error', data.error);
         }
       });
     </script>

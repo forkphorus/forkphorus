@@ -73,22 +73,32 @@
     // Combination of project ID, auto start, light content, ui, current time, and some randomness.
     var id = Math.random().toString().substr(2, 5) + '-' + projectId + '-' + Date.now();
 
-    function postMessage(type, payload) {
+    function postMessage(type, data) {
       if (window.parent && window.parent.postMessage) {
-        window.parent.postMessage({
+        var data = Object.assign({
           id: id,
           type: type,
-          payload: payload,
-        }, '*');
+        }, data || {});
+        window.parent.postMessage(data);
       }
     }
 
+    var player = new P.Player({theme: lightContent ? 'dark' : 'light'});
+
+    window.addEventListener('message', function(e) {
+      var data = e.data;
+      var type = data.type;
+
+      if (type === 'start') {
+        player.start();
+      }
+      if (type === 'pause') {
+        player.pause();
+      }
+    });
+
     if (hasUI) {
       document.body.classList.add('has-ui');
-    }
-
-    var player = new P.Player({theme: lightContent ? 'dark' : 'light'});
-    if (hasUI) {
       player.addControls();
       new P.Player.ProgressBar(player, {position: 'controls'});
     }
@@ -96,19 +106,24 @@
     document.querySelector('.player').appendChild(player.root);
 
     player.onprogress.subscribe(function(progress) {
-      postMessage('progress', progress);
+      postMessage('progress', { progress: progress });
     });
     player.onload.subscribe(function() {
-      postMessage('load', null);
+      postMessage('load');
     });
-    player.onstartload.subscribe(function(stage) {
-      // we cannot pass stage through postMessage
-      postMessage('startload', null);
+    player.onstartload.subscribe(function() {
+      postMessage('startload');
     });
     player.onerror.subscribe(function(error) {
-      postMessage('error', error);
+      postMessage('error', { error: error });
     });
-    postMessage('hello', 1);
+    player.onstart.subscribe(function(error) {
+      postMessage('start');
+    });
+    player.onpause.subscribe(function(error) {
+      postMessage('pause');
+    });
+    postMessage('hello', { version: 1 });
 
     player.loadProjectId(projectId, { start: autoStart });
   }());

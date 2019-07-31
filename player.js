@@ -23,6 +23,8 @@ P.Player = (function() {
     this.oncleanup = new P.utils.Slot();
     this.onthemechange = new P.utils.Slot();
     this.onerror = new P.utils.Slot();
+    this.onstart = new P.utils.Slot();
+    this.onpause = new P.utils.Slot();
 
     this.root = document.createElement('div');
     this.root.className = 'player-root';
@@ -240,6 +242,7 @@ P.Player = (function() {
     this.assertStage();
     this.stage.runtime.pause();
     this.root.removeAttribute('running');
+    this.onpause.emit();
   };
 
   /**
@@ -249,6 +252,7 @@ P.Player = (function() {
     this.assertStage();
     this.stage.runtime.start();
     this.root.setAttribute('running', '');
+    this.onstart.emit();
   };
 
   /**
