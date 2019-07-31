@@ -71,7 +71,7 @@
     });
 
     // Combination of project ID, auto start, light content, ui, current time, and some randomness.
-    var id = projectId + '-' + +autoStart + +lightContent + +hasUI + '-' + Date.now() + '-' + Math.random().toString().substr(2, 5);
+    var id = Math.random().toString().substr(2, 5) + '-' + projectId + '-' + Date.now();
 
     function postMessage(type, payload) {
       if (window.parent && window.parent.postMessage) {
@@ -94,12 +94,23 @@
     }
     var errorHandler = new P.Player.ErrorHandler(player);
     document.querySelector('.player').appendChild(player.root);
-    postMessage('stateChange', 'loading');
 
-    player.loadProjectId(projectId, { start: autoStart })
-      .then(function() {
-        postMessage('stateChange', 'ready');
-      });
+    player.onprogress.subscribe(function(progress) {
+      postMessage('progress', progress);
+    });
+    player.onload.subscribe(function() {
+      postMessage('load', null);
+    });
+    player.onstartload.subscribe(function(stage) {
+      // we cannot pass stage through postMessage
+      postMessage('startload', null);
+    });
+    player.onerror.subscribe(function(error) {
+      postMessage('error', error);
+    });
+    postMessage('hello', 1);
+
+    player.loadProjectId(projectId, { start: autoStart });
   }());
   </script>
 </body>

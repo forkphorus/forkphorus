@@ -6,7 +6,6 @@
       /* How to apply styles to the forkphorus embed <iframe> */
       .forkphorus-embed {
         margin: 10px;
-        display: block;
       }
     </style>
   </head>
@@ -24,7 +23,6 @@
 
         // data will be sent from forkphorus to the parent website.
         var data = e.data;
-        console.log('got message from forkphorus', data);
 
         // `id` (string) - The unique (random) ID of the forkphorus embed that sent this message.
         var id = data.id;
@@ -33,11 +31,37 @@
         // `payload` (varies) - The payload part of the message. (varies by type)
         var payload = data.payload;
 
-        switch (type) {
-          case 'stateChange':
-            // payload is a string of the current state ('loading', 'ready')
-            console.log('forkphorus state changed to', payload);
-            break;
+        if (type === 'hello') {
+          // This is fired once before embed starts loading, and never again.
+          // The stage has not begun to load when this is fired.
+          // payload is a number, indicating API version, currently `1`
+          // The API version will probably never change.
+          console.log(id, 'says hello with API version', payload);
+        }
+
+        if (type === 'startload') {
+          // This is fired once when the embed starts loading, and never again.
+          // payload is null
+          console.log(id, 'is starting to load', payload);
+        }
+
+        if (type === 'progress') {
+          // This is fired when progress has been made in the loading process.
+          // payload is a number between 0 and 1 indicating progress, where 1 is 100% done
+          // This should only be used for progress bars.
+          console.log(id, 'has progressed to ' + payload * 100 + '% complete')
+        }
+
+        if (type === 'load') {
+          // This is fired when the stage has finished loading and is ready to start.
+          // payload is null
+          console.log(id, 'is ready to start');
+        }
+
+        if (type === 'error') {
+          // This is fired when an error occurred.
+          // payload is the error.
+          console.log(id, 'has encountered an error', payload);
         }
       });
     </script>
