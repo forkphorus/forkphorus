@@ -117,6 +117,7 @@ namespace P.sb3 {
   // Adds Scratch 3 specific things such as broadcastReferences
   export class Scratch3Stage extends P.core.Stage {
     public sb3data: SB3Target;
+    public listIds: ObjectMap<string> = {};
 
     createVariableWatcher(target: P.core.Base, variableName: string) {
       // TODO: implement
@@ -127,6 +128,7 @@ namespace P.sb3 {
   // Implements a Scratch 3 Sprite.
   export class Scratch3Sprite extends P.core.Sprite {
     public sb3data: any;
+    public listIds: ObjectMap<string> = {};
 
     _clone() {
       return new Scratch3Sprite(this.stage);
@@ -323,6 +325,7 @@ namespace P.sb3 {
 
   export class Scratch3ListWatcher extends P.core.Watcher {
     private params: any;
+    private id: string;
     private width: number;
     private height: number;
     private list: Scratch3List;
@@ -335,6 +338,7 @@ namespace P.sb3 {
     constructor(stage: Scratch3Stage, data: SB3Watcher) {
       super(stage, data.spriteName || '');
 
+      this.id = data.id;
       this.params = data.params;
       this.x = data.x;
       this.y = data.y;
@@ -390,7 +394,9 @@ namespace P.sb3 {
 
     init() {
       super.init();
-      const listName = this.params.LIST;
+      const target = this.target as Target;
+      const listId = this.id;
+      const listName = target.listIds[listId];
       if (!(listName in this.target.lists)) {
         // Create the list if it doesn't exist.
         // It might be better to mark ourselves as invalid instead, but this works just fine.
@@ -707,6 +713,7 @@ namespace P.sb3 {
         const name = list[0];
         const content = list[1];
         target.lists[name] = new Scratch3List().concat(content);
+        target.listIds[id] = name;
       }
 
       target.name = data.name;

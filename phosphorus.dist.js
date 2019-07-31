@@ -5720,6 +5720,10 @@ var P;
         // Implements a Scratch 3 Stage.
         // Adds Scratch 3 specific things such as broadcastReferences
         class Scratch3Stage extends P.core.Stage {
+            constructor() {
+                super(...arguments);
+                this.listIds = {};
+            }
             createVariableWatcher(target, variableName) {
                 // TODO: implement
                 return null;
@@ -5728,6 +5732,10 @@ var P;
         sb3.Scratch3Stage = Scratch3Stage;
         // Implements a Scratch 3 Sprite.
         class Scratch3Sprite extends P.core.Sprite {
+            constructor() {
+                super(...arguments);
+                this.listIds = {};
+            }
             _clone() {
                 return new Scratch3Sprite(this.stage);
             }
@@ -5880,6 +5888,7 @@ var P;
             constructor(stage, data) {
                 super(stage, data.spriteName || '');
                 this.domRows = [];
+                this.id = data.id;
                 this.params = data.params;
                 this.x = data.x;
                 this.y = data.y;
@@ -5929,7 +5938,9 @@ var P;
             }
             init() {
                 super.init();
-                const listName = this.params.LIST;
+                const target = this.target;
+                const listId = this.id;
+                const listName = target.listIds[listId];
                 if (!(listName in this.target.lists)) {
                     // Create the list if it doesn't exist.
                     // It might be better to mark ourselves as invalid instead, but this works just fine.
@@ -6218,6 +6229,7 @@ var P;
                     const name = list[0];
                     const content = list[1];
                     target.lists[name] = new Scratch3List().concat(content);
+                    target.listIds[id] = name;
                 }
                 target.name = data.name;
                 target.currentCostumeIndex = data.currentCostume;
