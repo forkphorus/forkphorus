@@ -34,6 +34,7 @@
   <script src="lib/rgbcolor.js"></script>
   <script src="lib/canvg.min.js"></script>
   <script src="phosphorus.dist.js"></script>
+  <script src="i18n.js"></script>
   <script src="player.js"></script>
 
   <script>
@@ -91,6 +92,7 @@
       player.addControls();
       new P.Player.ProgressBar(player, {position: 'controls'});
     }
+    var errorHandler = new P.Player.ErrorHandler(player);
     document.querySelector('.player').appendChild(player.root);
     postMessage('stateChange', 'loading');
 

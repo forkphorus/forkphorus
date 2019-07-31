@@ -178,6 +178,7 @@
         getFile('../lib/rgbcolor.js'),
         getFile('../lib/canvg.min.js'),
         getFile('../phosphorus.dist.js'),
+        getFile('../i18n.js'),
         getFile('../player.js'),
       ]).then((sources) => {
         return inlineURLs(sources.join('\n'), [
