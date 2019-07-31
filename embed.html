@@ -79,7 +79,7 @@
           id: id,
           type: type,
         }, data || {});
-        window.parent.postMessage(data);
+        window.parent.postMessage(data, '*');
       }
     }
 
