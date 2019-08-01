@@ -41,16 +41,13 @@
   (function() {
     'use strict';
 
-    var stage;
-
     var projectId = 17088932;
     var autoStart = true;
     var lightContent = false;
     var hasUI = true;
+    var id = Math.random().toString().substr(2, 5) + '-' + projectId + '-' + Date.now();
 
-    // Reads URL parameters.
-    var params = location.search.substr(1).split('&');
-    params.forEach(function(p) {
+    location.search.substr(1).split('&').forEach(function(p) {
       const parts = p.split('=');
       if (parts.length > 1) {
         switch (parts[0]) {
@@ -70,9 +67,6 @@
       }
     });
 
-    // Combination of project ID, auto start, light content, ui, current time, and some randomness.
-    var id = Math.random().toString().substr(2, 5) + '-' + projectId + '-' + Date.now();
-
     function postMessage(type, data) {
       if (window.parent && window.parent.postMessage) {
         var data = Object.assign({
@@ -85,26 +79,35 @@
 
     var player = new P.Player({theme: lightContent ? 'dark' : 'light'});
 
-    window.addEventListener('message', function(e) {
-      var data = e.data;
-      var type = data.type;
-
-      if (type === 'start') {
-        player.start();
-      }
-      if (type === 'pause') {
-        player.pause();
-      }
-    });
-
     if (hasUI) {
       document.body.classList.add('has-ui');
       player.addControls();
       new P.Player.ProgressBar(player, {position: 'controls'});
     }
-    var errorHandler = new P.Player.ErrorHandler(player);
+    // TODO: don't add ErrorHandler if UI is not set to be visible?
+    new P.Player.ErrorHandler(player);
     document.querySelector('.player').appendChild(player.root);
 
+    // Implement Parent -> Embed API
+    window.addEventListener('message', function(e) {
+      var data = e.data;
+      var type = data.type;
+      switch (type) {
+        case 'start': {
+          player.start();
+          break;
+        }
+        case 'pause': {
+          player.pause();
+          break;
+        }
+        default: {
+          console.warn('Unknown message type from parent', type);
+        }
+      }
+    });
+
+    // Implement Embed -> Parent API
     player.onprogress.subscribe(function(progress) {
       postMessage('progress', { progress: progress });
     });
