@@ -845,7 +845,6 @@ var P;
             /**
              * Creates a new texture without inserting data.
              * Texture will be bound to TEXTURE_2D, so you can texImage2D() on it
-             * Mipmapping will be disabled to allow for any size texture.
              */
             createTexture() {
                 const texture = this.gl.createTexture();
@@ -1208,14 +1207,13 @@ var P;
             }
             penClear() {
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
-                // transparent white
                 this.gl.clearColor(255, 255, 255, 0);
                 this.gl.clear(this.gl.COLOR_BUFFER_BIT);
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
             }
             resize(scale) {
                 this.zoom = scale;
-                // TODO: pen resizing?
+                // TODO: resize pen layer
             }
             spriteTouchesPoint(sprite, x, y) {
                 // If filters will not change the shape of the sprite, it would be faster
@@ -1410,9 +1408,10 @@ var P;
                 }
             }
             /**
-             * Draw everything from this renderer and its stage onto another renderer. (including backdrop, pen)
+             * Draw everything from this renderer onto another 2d renderer, skipping a single item.
+             * "Everything" includes stage, pen, and all visible children.
              */
-            drawAll(renderer, skip) {
+            drawAllExcept(renderer, skip) {
                 renderer.drawChild(this.stage);
                 renderer.ctx.drawImage(this.penLayer, 0, 0, this.canvas.width, this.canvas.height);
                 for (var i = 0; i < this.stage.children.length; i++) {
@@ -1551,7 +1550,7 @@ var P;
                 workingRenderer.canvas.height = b.top - b.bottom;
                 workingRenderer.ctx.save();
                 workingRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
-                this.drawAll(workingRenderer, sprite);
+                this.drawAllExcept(workingRenderer, sprite);
                 workingRenderer.ctx.globalCompositeOperation = 'destination-in';
                 workingRenderer.drawChild(sprite);
                 workingRenderer.ctx.restore();
@@ -1573,7 +1572,7 @@ var P;
                 workingRenderer2.ctx.save();
                 workingRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
                 workingRenderer2.ctx.translate(-(240 + rb.left), -(180 - rb.top));
-                this.drawAll(workingRenderer, sprite);
+                this.drawAllExcept(workingRenderer, sprite);
                 workingRenderer2.drawChild(sprite);
                 workingRenderer.ctx.restore();
                 workingRenderer2.ctx.restore();
@@ -3142,24 +3141,6 @@ var P;
         }
         IO.JSONRequest = JSONRequest;
         /**
-         * Read a file as an ArrayBuffer
-         */
-        function fileAsArrayBuffer(file) {
-            const fileReader = new FileReader();
-            return new Promise((resolve, reject) => {
-                fileReader.onloadend = function () {
-                    resolve(fileReader.result);
-                };
-                fileReader.onerror = function (err) {
-                    reject('Failed to load file');
-                };
-                fileReader.onprogress = function (progress) {
-                };
-                fileReader.readAsArrayBuffer(file);
-            });
-        }
-        IO.fileAsArrayBuffer = fileAsArrayBuffer;
-        /**
          * Utilities for asynchronously reading Blobs or Files
          */
         let readers;
@@ -4015,18 +3996,6 @@ var P;
 (function (P) {
     var utils;
     (function (utils) {
-        // Returns the string representation of an error.
-        // TODO: does this need to be here?
-        function stringifyError(error) {
-            if (!error) {
-                return 'unknown error';
-            }
-            if (error.stack) {
-                return 'Message: ' + error.message + '\nStack:\n' + error.stack;
-            }
-            return error.toString();
-        }
-        utils.stringifyError = stringifyError;
         /**
          * Parses a Scratch rotation style string to a RotationStyle enum
          */

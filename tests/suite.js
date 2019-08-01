@@ -105,6 +105,16 @@ P.suite = (function() {
     throw new Error('unknown type: ' + type);
   }
 
+  function stringifyError(error) {
+    if (!error) {
+      return 'unknown error';
+    }
+    if (error.stack) {
+      return 'Message: ' + error.message + '\nStack:\n' + error.stack;
+    }
+    return error.toString();
+  }
+
   /**
    * Runs and tests a Stage
    * @param {P.core.Stage} stage
@@ -162,7 +172,7 @@ P.suite = (function() {
        * testFail() when the project encounters an error
        */
       const handleError = (e) => {
-        const message = P.utils.stringifyError(e);
+        const message = stringifyError(e);
         stage.runtime.testFail('ERROR: ' + message);
       };
 

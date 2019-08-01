@@ -20,7 +20,7 @@ namespace P.renderer {
      */
     stage: P.core.Stage;
     /**
-     * Reset and draw a frame.
+     * Reset and draw a new frame.
      */
     drawFrame(): void;
     /**
@@ -32,7 +32,8 @@ namespace P.renderer {
      */
     onStageFiltersChanged(): void;
     /**
-     * Asks this renderer to resize itself to a new zoom level.
+     * Asks this renderer to resize itself.
+     * Renderer may choose what to resize and when.
      */
     resize(scale: number): void;
     /**
@@ -46,7 +47,7 @@ namespace P.renderer {
      */
     penLine(color: string, size: number, x: number, y: number, x2: number, y2: number): void;
     /**
-     * Draws a circular dot on the pen canvas
+     * Draws a circular dot on the pen layer
      * @param color Color of the dot
      * @param size Diameter of the circle
      * @param x Central X coordinate in the Scratch coordinate grid
@@ -58,7 +59,7 @@ namespace P.renderer {
      */
     penStamp(sprite: P.core.Sprite): void;
     /**
-     * Clear the pen canvas
+     * Clear the pen layer
      */
     penClear(): void;
     /**
@@ -81,7 +82,7 @@ namespace P.renderer {
      */
     spriteTouchesColor(sprite: P.core.Base, color: number): boolean;
     /**
-     * Determines if one Sprite's color touches another Sprite's color
+     * Determines if a color from one object is touching a color
      * @param sprite The sprite
      * @param spriteColor The color on the Sprite
      * @param otherColor The color on the rest of the stage
@@ -503,7 +504,6 @@ namespace P.renderer {
     /**
      * Creates a new texture without inserting data.
      * Texture will be bound to TEXTURE_2D, so you can texImage2D() on it
-     * Mipmapping will be disabled to allow for any size texture.
      */
     protected createTexture(): WebGLTexture {
       const texture = this.gl.createTexture();
@@ -822,7 +822,6 @@ namespace P.renderer {
 
     penClear(): void {
       this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
-      // transparent white
       this.gl.clearColor(255, 255, 255, 0);
       this.gl.clear(this.gl.COLOR_BUFFER_BIT);
       this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
@@ -830,7 +829,7 @@ namespace P.renderer {
 
     resize(scale: number): void {
       this.zoom = scale;
-      // TODO: pen resizing?
+      // TODO: resize pen layer
     }
 
     spriteTouchesPoint(sprite: core.Sprite, x: number, y: number): boolean {
@@ -1032,9 +1031,10 @@ namespace P.renderer {
     }
 
     /**
-     * Draw everything from this renderer and its stage onto another renderer. (including backdrop, pen)
+     * Draw everything from this renderer onto another 2d renderer, skipping a single item.
+     * "Everything" includes stage, pen, and all visible children.
      */
-    drawAll(renderer: SpriteRenderer2D, skip: P.core.Base) {
+    drawAllExcept(renderer: SpriteRenderer2D, skip: P.core.Base) {
       renderer.drawChild(this.stage);
       renderer.ctx.drawImage(this.penLayer, 0, 0, this.canvas.width, this.canvas.height);
       for (var i = 0; i < this.stage.children.length; i++) {
@@ -1195,7 +1195,7 @@ namespace P.renderer {
       workingRenderer.ctx.save();
       workingRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
 
-      this.drawAll(workingRenderer, sprite);
+      this.drawAllExcept(workingRenderer, sprite);
       workingRenderer.ctx.globalCompositeOperation = 'destination-in';
       workingRenderer.drawChild(sprite);
 
@@ -1225,7 +1225,7 @@ namespace P.renderer {
       workingRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
       workingRenderer2.ctx.translate(-(240 + rb.left), -(180 - rb.top));
 
-      this.drawAll(workingRenderer, sprite);
+      this.drawAllExcept(workingRenderer, sprite);
       workingRenderer2.drawChild(sprite);
 
       workingRenderer.ctx.restore();
