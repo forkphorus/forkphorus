@@ -486,29 +486,27 @@ namespace P.core {
     public nextPromptId: number = 0;
     public hidePrompt: boolean = false;
 
-    public tempoBPM: number = 60;
-
+    
     public zoom: number = 1;
-
-    public keys: KeyList;
-
+    
     public rawMouseX: number = 0;
     public rawMouseY: number = 0;
     public mouseX: number = 0;
     public mouseY: number = 0;
     public mousePressed: boolean = false;
-
+    
+    public tempoBPM: number = 60;
+    public keys: KeyList;
     public username: string = '';
+    public counter: number = 0;
 
     public runtime: P.runtime.Runtime;
 
-    public counter: number = 0;
+    public canvas: HTMLCanvasElement;
+    public renderer: P.renderer.ProjectRenderer;
 
     public root: HTMLElement;
     public ui: HTMLElement;
-
-    public canvas: HTMLCanvasElement;
-    public renderer: P.renderer.ProjectRenderer;
 
     public prompt: HTMLInputElement;
     public prompter: HTMLElement;
@@ -531,20 +529,14 @@ namespace P.core {
       this.root = document.createElement('div');
       this.root.classList.add('forkphorus-root');
 
-      const scale = P.config.scale;
-
       if (P.config.useWebGL) {
         this.renderer = new P.renderer.WebGLProjectRenderer(this);
       } else {
         this.renderer = new P.renderer.ProjectRenderer2D(this);
       }
-      this.renderer.reset(scale);
       this.renderer.penResize(1);
-
+      this.renderer.init(this.root);
       this.canvas = this.renderer.canvas;
-      this.root.appendChild(this.renderer.stageLayer);
-      this.root.appendChild(this.renderer.penLayer);
-      this.root.appendChild(this.canvas);
 
       this.ui = document.createElement('div');
       this.root.appendChild(this.ui);
@@ -755,13 +747,13 @@ namespace P.core {
       this.mouseY = y;
     }
 
-    /**
-     * Updates the backdrop canvas to match the current backdrop.
-     */
-    updateBackdrop() {
-      if (!this.renderer) return;
-      this.renderer.updateStage(this.zoom * P.config.scale);
-    }
+    // /**
+    //  * Updates the backdrop canvas to match the current backdrop.
+    //  */
+    // updateBackdrop() {
+    //   if (!this.renderer) return;
+    //   this.renderer.updateStage(this.zoom * P.config.scale);
+    // }
 
     /**
      * Changes the zoom level and resizes DOM elements.
@@ -773,7 +765,7 @@ namespace P.core {
       this.root.style.height = (360 * zoom | 0) + 'px';
       this.root.style.fontSize = (zoom*10) + 'px';
       this.zoom = zoom;
-      this.updateBackdrop();
+      // this.updateBackdrop();
     }
 
     clickMouse() {
@@ -801,11 +793,11 @@ namespace P.core {
       }
     }
 
-    setFilter(name: string, value: number) {
-      // Override setFilter() to update the filters on the real stage.
-      super.setFilter(name, value);
-      this.renderer.updateStageFilters();
-    }
+    // setFilter(name: string, value: number) {
+    //   // Override setFilter() to update the filters on the real stage.
+    //   super.setFilter(name, value);
+    //   // this.renderer.updateStageFilters();
+    // }
 
     /**
      * Gets an object with its name, ignoring clones.
@@ -865,9 +857,7 @@ namespace P.core {
      * Draws this stage on it's renderer.
      */
     draw() {
-      this.renderer.reset(this.zoom);
-
-      this.drawChildren(this.renderer);
+      this.renderer.drawFrame(this.zoom);
 
       for (var i = this.allWatchers.length; i--;) {
         var w = this.allWatchers[i];
@@ -883,32 +873,32 @@ namespace P.core {
       }
     }
 
-    /**
-     * Draws all the children (not including the Stage itself or pen layers) of this Stage on a renderer
-     * @param skip Optionally skip rendering of a single Sprite.
-     */
-    drawChildren(renderer: P.renderer.SpriteRenderer, skip?: Base) {
-      for (var i = 0; i < this.children.length; i++) {
-        const c = this.children[i];
-        if (c.isDragging) {
-          // TODO: move
-          c.moveTo(c.dragOffsetX + c.stage.mouseX, c.dragOffsetY + c.stage.mouseY);
-        }
-        if (c.visible && c !== skip) {
-          renderer.drawChild(c);
-        }
-      }
-    }
+    // /**
+    //  * Draws all the children (not including the Stage itself or pen layers) of this Stage on a renderer
+    //  * @param skip Optionally skip rendering of a single Sprite.
+    //  */
+    // drawChildren(renderer: P.renderer.SpriteRenderer, skip?: Base) {
+    //   for (var i = 0; i < this.children.length; i++) {
+    //     const c = this.children[i];
+    //     if (c.isDragging) {
+    //       // TODO: move
+    //       c.moveTo(c.dragOffsetX + c.stage.mouseX, c.dragOffsetY + c.stage.mouseY);
+    //     }
+    //     if (c.visible && c !== skip) {
+    //       renderer.drawChild(c);
+    //     }
+    //   }
+    // }
 
-    /**
-     * Draws all parts of the Stage (including the stage itself and pen layers) on a renderer.
-     * @param skip Optionally skip rendering of a single Sprite.
-     */
-    drawAll(renderer: P.renderer.SpriteRenderer, skip?: Base) {
-      renderer.drawChild(this);
-      renderer.drawLayer(this.renderer.penLayer);
-      this.drawChildren(renderer, skip);
-    }
+    // /**
+    //  * Draws all parts of the Stage (including the stage itself and pen layers) on a renderer.
+    //  * @param skip Optionally skip rendering of a single Sprite.
+    //  */
+    // drawAll(renderer: P.renderer.SpriteRenderer, skip?: Base) {
+    //   renderer.drawChild(this);
+    //   renderer.drawLayer(this.renderer.penLayer);
+    //   this.drawChildren(renderer, skip);
+    // }
 
     showVideo(visible: boolean) {
       if (P.config.supportVideoSensing) {
@@ -944,13 +934,12 @@ namespace P.core {
 
     // Override currentCostumeIndex to automatically update the backdrop when a change is made.
     // TODO: don't updateBackdrop() on every change (slow), only when needed for rendering
-    get currentCostumeIndex() {
-      return this._currentCostumeIndex;
-    }
-    set currentCostumeIndex(index: number) {
-      this._currentCostumeIndex = index;
-      this.updateBackdrop();
-    }
+    // get currentCostumeIndex() {
+    //   return this._currentCostumeIndex;
+    // }
+    // set currentCostumeIndex(index: number) {
+    //   this._currentCostumeIndex = index;
+    // }
 
     // Implementing Scratch blocks
 
