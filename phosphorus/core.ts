@@ -534,7 +534,7 @@ namespace P.core {
       } else {
         this.renderer = new P.renderer.ProjectRenderer2D(this);
       }
-      this.renderer.penResize(1);
+      this.renderer.resize(1);
       this.renderer.init(this.root);
       this.canvas = this.renderer.canvas;
 
@@ -747,25 +747,16 @@ namespace P.core {
       this.mouseY = y;
     }
 
-    // /**
-    //  * Updates the backdrop canvas to match the current backdrop.
-    //  */
-    // updateBackdrop() {
-    //   if (!this.renderer) return;
-    //   this.renderer.updateStage(this.zoom * P.config.scale);
-    // }
-
     /**
      * Changes the zoom level and resizes DOM elements.
      */
     setZoom(zoom: number) {
       if (this.zoom === zoom) return;
-      this.renderer.penResize(zoom);
+      this.renderer.resize(zoom);
       this.root.style.width = (480 * zoom | 0) + 'px';
       this.root.style.height = (360 * zoom | 0) + 'px';
       this.root.style.fontSize = (zoom*10) + 'px';
       this.zoom = zoom;
-      // this.updateBackdrop();
     }
 
     clickMouse() {
@@ -793,11 +784,16 @@ namespace P.core {
       }
     }
 
-    // setFilter(name: string, value: number) {
-    //   // Override setFilter() to update the filters on the real stage.
-    //   super.setFilter(name, value);
-    //   // this.renderer.updateStageFilters();
-    // }
+    setFilter(name: string, value: number) {
+      // Override setFilter() to update the filters on the real stage.
+      super.setFilter(name, value);
+      this.renderer.onStageFiltersChanged();
+    }
+
+    resetFilters() {
+      super.resetFilters();
+      this.renderer.onStageFiltersChanged();
+    }
 
     /**
      * Gets an object with its name, ignoring clones.
@@ -857,7 +853,15 @@ namespace P.core {
      * Draws this stage on it's renderer.
      */
     draw() {
-      this.renderer.drawFrame(this.zoom);
+      // TODO: should this be moved somewhere else? maybe the renderers should do a .tick() or something on the sprites?
+      // maybe a separate list of sprites should be maintained instead of looping through all the sprites.
+      for (var i = 0; i < this.children.length; i++) {
+        const c = this.children[i];
+        if (c.isDragging) {
+          c.moveTo(c.dragOffsetX + c.stage.mouseX, c.dragOffsetY + c.stage.mouseY);
+        }
+      }
+      this.renderer.drawFrame();
 
       for (var i = this.allWatchers.length; i--;) {
         var w = this.allWatchers[i];
@@ -872,33 +876,6 @@ namespace P.core {
         this.canvas.focus();
       }
     }
-
-    // /**
-    //  * Draws all the children (not including the Stage itself or pen layers) of this Stage on a renderer
-    //  * @param skip Optionally skip rendering of a single Sprite.
-    //  */
-    // drawChildren(renderer: P.renderer.SpriteRenderer, skip?: Base) {
-    //   for (var i = 0; i < this.children.length; i++) {
-    //     const c = this.children[i];
-    //     if (c.isDragging) {
-    //       // TODO: move
-    //       c.moveTo(c.dragOffsetX + c.stage.mouseX, c.dragOffsetY + c.stage.mouseY);
-    //     }
-    //     if (c.visible && c !== skip) {
-    //       renderer.drawChild(c);
-    //     }
-    //   }
-    // }
-
-    // /**
-    //  * Draws all parts of the Stage (including the stage itself and pen layers) on a renderer.
-    //  * @param skip Optionally skip rendering of a single Sprite.
-    //  */
-    // drawAll(renderer: P.renderer.SpriteRenderer, skip?: Base) {
-    //   renderer.drawChild(this);
-    //   renderer.drawLayer(this.renderer.penLayer);
-    //   this.drawChildren(renderer, skip);
-    // }
 
     showVideo(visible: boolean) {
       if (P.config.supportVideoSensing) {
@@ -931,17 +908,6 @@ namespace P.core {
         right: 0,
       };
     }
-
-    // Override currentCostumeIndex to automatically update the backdrop when a change is made.
-    // TODO: don't updateBackdrop() on every change (slow), only when needed for rendering
-    // get currentCostumeIndex() {
-    //   return this._currentCostumeIndex;
-    // }
-    // set currentCostumeIndex(index: number) {
-    //   this._currentCostumeIndex = index;
-    // }
-
-    // Implementing Scratch blocks
 
     stopAllSounds() {
       for (var children = this.children, i = children.length; i--;) {

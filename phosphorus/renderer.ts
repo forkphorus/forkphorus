@@ -20,13 +20,22 @@ namespace P.renderer {
      */
     stage: P.core.Stage;
     /**
-     * Reset and draw a frame.
+     * Reset and draw a new frame.
      */
-    drawFrame(scale: number): void;
+    drawFrame(): void;
     /**
      * Initialize this renderer and append its canvas(es) to a given root node.
      */
     init(root: HTMLElement): void;
+    /**
+     * Called when the filters on the stage have changed.
+     */
+    onStageFiltersChanged(): void;
+    /**
+     * Asks this renderer to resize itself.
+     * Renderer may choose what to resize and when.
+     */
+    resize(scale: number): void;
     /**
      * Draws a line on the pen canvas
      * @param color Color of the line
@@ -38,7 +47,7 @@ namespace P.renderer {
      */
     penLine(color: string, size: number, x: number, y: number, x2: number, y2: number): void;
     /**
-     * Draws a circular dot on the pen canvas
+     * Draws a circular dot on the pen layer
      * @param color Color of the dot
      * @param size Diameter of the circle
      * @param x Central X coordinate in the Scratch coordinate grid
@@ -50,14 +59,9 @@ namespace P.renderer {
      */
     penStamp(sprite: P.core.Sprite): void;
     /**
-     * Clear the pen canvas
+     * Clear the pen layer
      */
     penClear(): void;
-    /**
-     * Notifies the renderer that the pen layer should be resized.
-     * The renderer will do so eventually; not necessarily immediately.
-     */
-    penResize(scale: number): void;
     /**
      * Determines if a Sprite is intersecting a point
      * @param sprite The sprite
@@ -78,7 +82,7 @@ namespace P.renderer {
      */
     spriteTouchesColor(sprite: P.core.Base, color: number): boolean;
     /**
-     * Determines if one Sprite's color touches another Sprite's color
+     * Determines if a color from one object is touching a color
      * @param sprite The sprite
      * @param spriteColor The color on the Sprite
      * @param otherColor The color on the rest of the stage
@@ -186,6 +190,17 @@ namespace P.renderer {
     uniform2f(name: string, a: number, b: number) {
       const location = this.getUniform(name);
       this.gl.uniform2f(location, a, b);
+    }
+
+    /**
+     * Sets a uniform to a vec4
+     * @param name The name of the uniform
+     * @param a The first value
+     * @param b The second value
+     */
+    uniform4f(name: string, a: number, b: number, c: number, d: number) {
+      const location = this.getUniform(name);
+      this.gl.uniform4f(location, a, b, c, d);
     }
 
     /**
@@ -349,8 +364,6 @@ namespace P.renderer {
 
       // apply ghost effect
       color.a *= u_opacity;
-      // handle premultiplied alpha
-      color.rgb *= u_opacity;
 
       // apply brightness effect
       #ifndef ONLY_SHAPE_FILTERS
@@ -386,7 +399,7 @@ namespace P.renderer {
     public gl: WebGLRenderingContext;
 
     protected quadBuffer: WebGLBuffer;
-    protected globalScaleMatrix: P.m3.Matrix3;
+    protected globalScaleMatrix: P.m3.Matrix3 = P.m3.scaling(1, 1);
     protected renderingShader: ShaderVariant;
 
     constructor() {
@@ -425,7 +438,7 @@ namespace P.renderer {
      * @param source The string source of the shader.
      * @param definitions Flags to define in the shader source.
      */
-    compileShader(type: number, source: string, definitions?: string[]): WebGLShader {
+    protected compileShader(type: number, source: string, definitions?: string[]): WebGLShader {
       const addDefinition = (def: string) => {
         source = '#define ' + def + '\n' + source;
       }
@@ -458,7 +471,7 @@ namespace P.renderer {
      * @param fs Fragment shader source.
      * @param definitions Things to define in the source of both shaders.
      */
-    compileProgram(vs: string, fs: string, definitions?: string[]): WebGLProgram {
+    protected compileProgram(vs: string, fs: string, definitions?: string[]): WebGLProgram {
       const vertexShader = this.compileShader(this.gl.VERTEX_SHADER, vs, definitions);
       const fragmentShader = this.compileShader(this.gl.FRAGMENT_SHADER, fs, definitions);
 
@@ -483,7 +496,7 @@ namespace P.renderer {
      * Compiles a variant of the default shader.
      * @param definitions Things to define in the shader
      */
-    compileVariant(definitions: string[]): ShaderVariant {
+    protected compileVariant(definitions: string[]): ShaderVariant {
       const program = this.compileProgram(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, definitions);
       return new ShaderVariant(this.gl, program);
     }
@@ -491,9 +504,8 @@ namespace P.renderer {
     /**
      * Creates a new texture without inserting data.
      * Texture will be bound to TEXTURE_2D, so you can texImage2D() on it
-     * Mipmapping will be disabled to allow for any size texture.
      */
-    createTexture(): WebGLTexture {
+    protected createTexture(): WebGLTexture {
       const texture = this.gl.createTexture();
       if (!texture) {
         throw new Error('Cannot create texture');
@@ -511,7 +523,7 @@ namespace P.renderer {
      * Converts a canvas to a WebGL texture
      * @param canvas The source canvas. Dimensions do not matter.
      */
-    convertToTexture(canvas: HTMLImageElement | HTMLCanvasElement): WebGLTexture {
+    protected convertToTexture(canvas: HTMLImageElement | HTMLCanvasElement): WebGLTexture {
       const texture = this.createTexture();
       this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
       return texture;
@@ -520,7 +532,7 @@ namespace P.renderer {
     /**
      * Creates a new framebuffer
      */
-    createFramebuffer(): WebGLFramebuffer {
+    protected createFramebuffer(): WebGLFramebuffer {
       const frameBuffer = this.gl.createFramebuffer();
       if (!frameBuffer) {
         throw new Error('cannot create frame buffer');
@@ -539,14 +551,17 @@ namespace P.renderer {
 
     /**
      * Resizes and resets the current framebuffer
-     * @param scale Scale
+     * @param scale Zoom level
      */
-    resetFramebuffer(scale: number) {
+    protected resetFramebuffer(scale: number) {
       this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-      this.globalScaleMatrix = P.m3.scaling(scale, scale);
+      // the first element of the matrix is the x-scale, so we can use that to only recreate the matrix when needed
+      if (this.globalScaleMatrix[0] !== scale) {
+        this.globalScaleMatrix = P.m3.scaling(scale, scale);
+      }
 
       // Clear the canvas
-      this.gl.clearColor(0, 0, 0, 0);
+      this.gl.clearColor(255, 255, 255, 0);
       this.gl.clear(this.gl.COLOR_BUFFER_BIT);
     }
 
@@ -558,7 +573,7 @@ namespace P.renderer {
      * Real implementation of drawChild()
      * @param child The child to draw
      */
-    _drawChild(child: P.core.Base, shader: ShaderVariant) {
+    protected _drawChild(child: P.core.Base, shader: ShaderVariant) {
       this.gl.useProgram(shader.program);
 
       // Create the texture if it doesn't already exist.
@@ -625,7 +640,11 @@ namespace P.renderer {
       this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
     }
 
-    drawTexture(texture: WebGLTexture) {
+    /**
+     * Draw a texture covering the entire screen
+     * @param texture The texture to draw. Must belong to this renderer.
+     */
+    protected drawTexture(texture: WebGLTexture) {
       const shader = this.renderingShader;
       this.gl.useProgram(shader.program);
 
@@ -643,66 +662,63 @@ namespace P.renderer {
 
       shader.uniformMatrix3('u_matrix', matrix);
 
-      // Effects
-      if (shader.hasUniform('u_opacity')) {
-        shader.uniform1f('u_opacity', 1 - 0 / 100);
-      }
-      if (shader.hasUniform('u_brightness')) {
-        shader.uniform1f('u_brightness', 0 / 100);
-      }
-      if (shader.hasUniform('u_color')) {
-        shader.uniform1f('u_color', 0 / 200);
-      }
-      if (shader.hasUniform('u_mosaic')) {
-        const mosaic = Math.round((Math.abs(0) + 10) / 10);
-        shader.uniform1f('u_mosaic', P.utils.clamp(mosaic, 1, 512));
-      }
-      if (shader.hasUniform('u_whirl')) {
-        shader.uniform1f('u_whirl', 0 * Math.PI / -180);
-      }
-      if (shader.hasUniform('u_fisheye')) {
-        shader.uniform1f('u_fisheye', Math.max(0, (0 + 100) / 100));
-      }
-      if (shader.hasUniform('u_pixelate')) {
-        shader.uniform1f('u_pixelate', Math.abs(0) / 10);
-      }
-      if (shader.hasUniform('u_size')) {
-        shader.uniform2f('u_size', 480, 360);
-      }
+      // Apply empty effect values
+      if (shader.hasUniform('u_opacity')) shader.uniform1f('u_opacity', 1);
+      if (shader.hasUniform('u_brightness')) shader.uniform1f('u_brightness', 0);
+      if (shader.hasUniform('u_color')) shader.uniform1f('u_color', 0);
+      if (shader.hasUniform('u_mosaic')) shader.uniform1f('u_mosaic', 1);
+      if (shader.hasUniform('u_whirl')) shader.uniform1f('u_whirl', 0);
+      if (shader.hasUniform('u_fisheye')) shader.uniform1f('u_fisheye', 1);
+      if (shader.hasUniform('u_pixelate')) shader.uniform1f('u_pixelate', 0);
+      if (shader.hasUniform('u_size')) shader.uniform2f('u_size', this.canvas.width, this.canvas.height);
 
       this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
-    }
-
-    drawLayer(canvas: HTMLCanvasElement) {
-      const shader = this.renderingShader;
-      this.gl.useProgram(shader.program);
-
-      const texture = this.convertToTexture(canvas);
-      this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
-
-      shader.attributeBuffer('a_texcoord', this.quadBuffer);
-      shader.attributeBuffer('a_position', this.quadBuffer);
-
-      const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
-      P.m3.multiply(matrix, this.globalScaleMatrix);
-
-      shader.uniformMatrix3('u_matrix', matrix);
-      shader.uniform1f('u_opacity', 1);
-
-      // TODO: is it necessary to delete textures?
-      this.gl.deleteTexture(texture);
     }
   }
 
   export class WebGLProjectRenderer extends WebGLSpriteRenderer implements ProjectRenderer {
+    public static readonly PEN_VERTEX_SHADER = `
+    attribute vec2 a_position;
+    varying vec2 v_position;
+    uniform mat3 u_matrix;
+    void main() {
+      gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
+      v_position = a_position;
+    }
+    `;
+    public static readonly PEN_DOT_FRAGMENT_SHADER = `
+    precision mediump float;
+    uniform vec4 u_color;
+    varying vec2 v_position;
+    void main() {
+      float x = (v_position.x - 0.5) * 2.0;
+      float y = (v_position.y - 0.5) * 2.0;
+      if (sqrt(x * x + y * y) >= 1.0) {
+        discard;
+      }
+      gl_FragColor = u_color;
+    }
+    `;
+    public static readonly PEN_LINE_FRAGMENT_SHADER = `
+    precision mediump float;
+    uniform vec4 u_color;
+    varying vec2 v_position;
+    void main() {
+      gl_FragColor = u_color;
+    }
+    `;
+
     public penLayer: HTMLCanvasElement;
     public stageLayer: HTMLCanvasElement;
+    public zoom: number = 1;
 
     protected penTexture: WebGLTexture;
     protected penBuffer: WebGLFramebuffer;
 
     protected fallbackRenderer: ProjectRenderer;
     protected shaderOnlyShapeFilters = this.compileVariant(['ONLY_SHAPE_FILTERS']);
+    protected penDotShader: ShaderVariant;
+    protected penLineShader: ShaderVariant;
 
     constructor(public stage: P.core.Stage) {
       super();
@@ -714,12 +730,22 @@ namespace P.renderer {
       this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 480, 360, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
       this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
       this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.penTexture, 0);
+      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+
+      this.penDotShader = new ShaderVariant(this.gl, this.compileProgram(
+        WebGLProjectRenderer.PEN_VERTEX_SHADER,
+        WebGLProjectRenderer.PEN_DOT_FRAGMENT_SHADER,
+      ));
+      this.penLineShader = new ShaderVariant(this.gl, this.compileProgram(
+        WebGLProjectRenderer.PEN_VERTEX_SHADER,
+        WebGLProjectRenderer.PEN_LINE_FRAGMENT_SHADER,
+      ));
 
       this.reset(1);
     }
 
-    drawFrame(scale: number) {
-      this.reset(scale);
+    drawFrame() {
+      this.reset(this.zoom);
       this.drawChild(this.stage);
       this.drawTexture(this.penTexture);
       for (var i = 0; i < this.stage.children.length; i++) {
@@ -735,12 +761,56 @@ namespace P.renderer {
       root.appendChild(this.canvas);
     }
 
+    onStageFiltersChanged() {
+      // no-op; we always re-render the stage in full
+    }
+
     penLine(color: string, size: number, x: number, y: number, x2: number, y2: number): void {
-      // this.fallbackRenderer.penLine(color, size, x, y, x2, y2);
+      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
+
+      const shader = this.penLineShader;
+      this.gl.useProgram(shader.program);
+
+      shader.attributeBuffer('a_position', this.quadBuffer);
+
+      const distance = Math.sqrt((x - x2) ** 2 + (y - y2) ** 2);
+      const xDiff = x - x2;
+      const yDiff = y - y2;
+      const angle = Math.atan(yDiff / xDiff) * 180 / Math.PI;
+
+      const matrix = P.m3.projection(480, 360);
+      P.m3.multiply(matrix, P.m3.translation(240 + x | 0, 180 - y - size / 2 | 0));
+      P.m3.multiply(matrix, P.m3.rotation(angle));
+      P.m3.multiply(matrix, P.m3.scaling(distance, size));
+      shader.uniformMatrix3('u_matrix', matrix);
+
+      // TODO: color
+      shader.uniform4f('u_color', 0, 1, 0, 1);
+
+      this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+
+      // TODO: don't use penDot for the rounded ends
+      this.penDot(color, size, x2, y2);
     }
 
     penDot(color: string, size: number, x: number, y: number): void {
-      // this.fallbackRenderer.penDot(color, size, x, y);
+      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
+
+      const shader = this.penDotShader;
+      this.gl.useProgram(shader.program);
+
+      shader.attributeBuffer('a_position', this.quadBuffer);
+      const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
+      P.m3.multiply(matrix, P.m3.translation(240 + x - size / 2 | 0, 180 - y - size / 2 | 0));
+      P.m3.multiply(matrix, P.m3.scaling(size, size));
+      shader.uniformMatrix3('u_matrix', matrix);
+
+      // TODO: color
+      shader.uniform4f('u_color', 1, 0, 0, 1);
+
+      this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
     }
 
     penStamp(sprite: P.core.Sprite): void {
@@ -752,11 +822,14 @@ namespace P.renderer {
 
     penClear(): void {
       this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
-      // this.fallbackRenderer.penClear();
+      this.gl.clearColor(255, 255, 255, 0);
+      this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
     }
 
-    penResize(scale: number): void {
-      // this.fallbackRenderer.penResize(scale);
+    resize(scale: number): void {
+      this.zoom = scale;
+      // TODO: resize pen layer
     }
 
     spriteTouchesPoint(sprite: core.Sprite, x: number, y: number): boolean {
@@ -815,12 +888,16 @@ namespace P.renderer {
     if (filters.color) {
       filter += 'hue-rotate(' + (filters.color / 200 * 360) + 'deg) ';
     }
+    // ghost could be supported through opacity(), however that effect is applied with the opacity property because more browsers support it
     return filter;
   }
 
   export class SpriteRenderer2D implements SpriteRenderer {
     public ctx: CanvasRenderingContext2D;
     public canvas: HTMLCanvasElement;
+    /**
+     * Disables rendering filters on the 
+     */
     public noEffects: boolean = false;
 
     constructor() {
@@ -833,18 +910,14 @@ namespace P.renderer {
       this._reset(this.ctx, scale);
     }
 
-    drawImage(image: CanvasImageSource, x: number, y: number) {
-      this.ctx.drawImage(image, x, y);
-    }
-
     drawChild(c: P.core.Base) {
       this._drawChild(c, this.ctx);
     }
 
-    drawScene(stage: P.core.Stage, skip?: P.core.Base) {
-      for (var i = 0; i < stage.children.length; i++) {
-        var child = stage.children[i];
-        if (!child.visible || child === skip) {
+    drawObjects(children: P.core.Base[]) {
+      for (var i = 0; i < children.length; i++) {
+        var child = children[i];
+        if (!child.visible) {
           continue;
         }
         this.drawChild(child);
@@ -905,10 +978,12 @@ namespace P.renderer {
     public stageContext: CanvasRenderingContext2D;
     public penLayer: HTMLCanvasElement;
     public penContext: CanvasRenderingContext2D;
+    public zoom: number = 1;
 
     private penLayerModified: boolean = false;
     private penLayerTargetScale: number = -1;
     private penLayerMaxScale: number = -1;
+    private stageCostumeIndex: number = -1;
 
     constructor(public stage: P.core.Stage) {
       super();
@@ -921,17 +996,9 @@ namespace P.renderer {
       this.penLayer = penLayer;
     }
 
-    updateStage(scale: number) {
-      this._reset(this.stageContext, scale);
-      this.noEffects = true;
-      this._drawChild(this.stage, this.stageContext);
-      this.noEffects = false;
-      this.updateStageFilters();
-    }
-
-    updateStageFilters() {
+    onStageFiltersChanged() {
       const filter = getCSSFilter(this.stage.filters);
-      // Only reapply a CSS filter if it has changed for performance.
+      // Only reapply a CSS filter if it has changed for performance, specifically in firefox.
       // Might not be necessary here.
       if (this.stageLayer.style.filter !== filter) {
         this.stageLayer.style.filter = filter;
@@ -941,17 +1008,63 @@ namespace P.renderer {
       this.stageLayer.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
     }
 
+    renderStageCostume(scale: number) {
+      this._reset(this.stageContext, scale * P.config.scale);
+      this.noEffects = true;
+      this._drawChild(this.stage, this.stageContext);
+      this.noEffects = false;
+    }
+
     init(root: HTMLCanvasElement) {
       root.appendChild(this.stageLayer);
       root.appendChild(this.penLayer);
       root.appendChild(this.canvas);
     }
 
-    drawFrame(scale: number) {
-      this.reset(scale);
-      this.drawScene(this.stage);
-      // TODO: don't update stage every frame
-      this.updateStage(scale);
+    drawFrame() {
+      this.reset(this.zoom);
+      this.drawObjects(this.stage.children);
+      if (this.stage.currentCostumeIndex !== this.stageCostumeIndex) {
+        this.stageCostumeIndex = this.stage.currentCostumeIndex;
+        this.renderStageCostume(this.zoom);
+      }
+    }
+
+    /**
+     * Draw everything from this renderer onto another 2d renderer, skipping a single item.
+     * "Everything" includes stage, pen, and all visible children.
+     */
+    drawAllExcept(renderer: SpriteRenderer2D, skip: P.core.Base) {
+      renderer.drawChild(this.stage);
+      renderer.ctx.drawImage(this.penLayer, 0, 0, this.canvas.width, this.canvas.height);
+      for (var i = 0; i < this.stage.children.length; i++) {
+        var child = this.stage.children[i];
+        if (!child.visible || child === skip) {
+          continue;
+        }
+        renderer.drawChild(child);
+      }
+    }
+
+    resize(zoom: number) {
+      this.zoom = zoom;
+      if (zoom > this.penLayerMaxScale) {
+        // Immediately scale up
+        this.penLayerMaxScale = zoom;
+        const cachedCanvas = document.createElement('canvas');
+        cachedCanvas.width = this.penLayer.width;
+        cachedCanvas.height = this.penLayer.height;
+        cachedCanvas.getContext('2d')!.drawImage(this.penLayer, 0, 0);
+        this._reset(this.penContext, zoom);
+        this.penContext.drawImage(cachedCanvas, 0, 0, 480, 360);
+      } else if (!this.penLayerModified) {
+        // Immediately scale down if no changes have been made
+        this._reset(this.penContext, zoom);
+      } else {
+        // We'll resize on the next clear, as resizing now would result in a loss of detail.
+        this.penLayerTargetScale = zoom;
+      }
+      this.renderStageCostume(this.zoom);
     }
 
     penClear() {
@@ -961,25 +1074,6 @@ namespace P.renderer {
         this.penLayerTargetScale = -1;
       }
       this.penContext.clearRect(0, 0, 480, 360);
-    }
-
-    penResize(scale: number) {
-      if (scale > this.penLayerMaxScale) {
-        // Immediately scale up
-        this.penLayerMaxScale = scale;
-        const cachedCanvas = document.createElement('canvas');
-        cachedCanvas.width = this.penLayer.width;
-        cachedCanvas.height = this.penLayer.height;
-        cachedCanvas.getContext('2d')!.drawImage(this.penLayer, 0, 0);
-        this._reset(this.penContext, scale);
-        this.penContext.drawImage(cachedCanvas, 0, 0, 480, 360);
-      } else if (!this.penLayerModified) {
-        // Immediately scale down if no changes have been made
-        this._reset(this.penContext, scale);
-      } else {
-        // Attempt again later
-        this.penLayerTargetScale = scale;
-      }
     }
 
     penDot(color: string, size: number, x: number, y: number) {
@@ -1042,7 +1136,9 @@ namespace P.renderer {
 
       for (var i = 0; i < otherSprites.length; i++) {
         const spriteB = otherSprites[i];
-        if (!spriteB.visible) continue;
+        if (!spriteB.visible) {
+          continue;
+        }
 
         const ob = spriteB.rotatedBounds();
 
@@ -1099,7 +1195,7 @@ namespace P.renderer {
       workingRenderer.ctx.save();
       workingRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
 
-      workingRenderer.drawScene(this.stage, sprite);
+      this.drawAllExcept(workingRenderer, sprite);
       workingRenderer.ctx.globalCompositeOperation = 'destination-in';
       workingRenderer.drawChild(sprite);
 
@@ -1129,13 +1225,14 @@ namespace P.renderer {
       workingRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
       workingRenderer2.ctx.translate(-(240 + rb.left), -(180 - rb.top));
 
-      workingRenderer.drawScene(this.stage, sprite);
-      workingRenderer.drawChild(sprite);
+      this.drawAllExcept(workingRenderer, sprite);
+      workingRenderer2.drawChild(sprite);
 
       workingRenderer.ctx.restore();
+      workingRenderer2.ctx.restore();
 
       var dataA = workingRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
-      var dataB = workingRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
+      var dataB = workingRenderer2.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
 
       spriteColor = spriteColor & 0xffffff;
       otherColor = otherColor & 0xffffff;

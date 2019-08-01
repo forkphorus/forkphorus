@@ -100,29 +100,6 @@ namespace P.IO {
   }
 
   /**
-   * Read a file as an ArrayBuffer
-   */
-  export function fileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
-    const fileReader = new FileReader();
-
-    return new Promise((resolve, reject) => {
-      fileReader.onloadend = function() {
-        resolve(fileReader.result as ArrayBuffer);
-      };
-
-      fileReader.onerror = function(err) {
-        reject('Failed to load file');
-      };
-
-      fileReader.onprogress = function(progress) {
-
-      };
-
-      fileReader.readAsArrayBuffer(file);
-    });
-  }
-
-  /**
    * Utilities for asynchronously reading Blobs or Files
    */
   export namespace readers {
