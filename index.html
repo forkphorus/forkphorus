@@ -65,13 +65,13 @@
         <h1 data-i18n="index.embed">Embed this project</h1>
         <p>Include the forkphorus player in your web site.</p>
         <p class="embed-options">
-          <input readonly id=embed-code>
-          <input type=checkbox id=embed-auto-start checked>
-          <label for=embed-auto-start>Start automatically</label>
-          <input type=checkbox id=embed-light-content>
-          <label for=embed-light-content>Light controls</label>
-          <input type=checkbox id=embed-hide-controls>
-          <label for=embed-hide-controls>Hide UI</label>
+          <input readonly id="embed-code">
+          <input type="checkbox" id="embed-auto-start" checked>
+          <label for="embed-auto-start">Start automatically</label>
+          <input type="checkbox" id="embed-light-content">
+          <label for="embed-light-content">Light controls</label>
+          <input type="checkbox" id="embed-hide-controls">
+          <label for="embed-hide-controls">Hide UI</label>
         </p>
       </section>
 
@@ -79,11 +79,22 @@
         <h1 data-i18n="index.package">Package this project</h1>
         <p>Get a link to a web page that automatically runs your project. To package to HTML, EXE, APK, or other formats, use the <a href="packager/">HTML packager</a>.</p>
         <p class="package-options">
-          <a href=# target=_blank id=package-link>Package</a>
-          <input type=checkbox id=package-turbo>
-          <label for=package-turbo>Turbo mode</label>
-          <input type=checkbox id=package-full-screen checked>
-          <label for=package-full-screen>Full screen</label>
+          <a href="#" target="_blank" id="package-link" data-i18n="index.package.button">Package</a>
+          <input type="checkbox" id="package-turbo">
+          <label for="package-turbo" data-i18n="index.package.turbo">Turbo mode</label>
+          <span>
+            <input type="radio" name="package-resolution" id="package-480">
+            <label for="package-480" data-i18n="index.package.480">480x360</label>
+
+            <input type="radio" name="package-resolution" id="package-full-screen" checked>
+            <label for="package-full-screen" data-i18n="index.package.fullscreen">Full screen</label>
+
+            <input type="radio" name="package-resolution" id="package-other">
+            <label for="package-other" data-i18n="index.package.custom">Custom:</label>
+            <input id="package-other-width" type="number" value="960" disabled min="1">
+            <span data-i18n="index.package.divider">&times;</span>
+            <input id="package-other-height" type="number" value="720" disabled min="1">
+          </span>
         </p>
       </section>
 
@@ -308,13 +319,23 @@
     var packageLink = querySelector('#package-link');
     var packageTurbo = querySelector('#package-turbo');
     var packageFullScreen = querySelector('#package-full-screen');
+    var package480x360 = querySelector('#package-480');
+    var packageOther = querySelector('#package-other');
+    var packageOtherWidth = querySelector('#package-other-width');
+    var packageOtherHeight = querySelector('#package-other-height');
 
     function updatePackageLink() {
+      packageOtherWidth.disabled = packageOtherHeight.disabled = !packageOther.checked;
       if (player.projectId) {
-        var url = location.origin + '/app.html';
-        url += '?id=' + player.projectId;
-        url += '&turbo=' + packageTurbo.checked;
-        url += '&full-screen=' + packageFullScreen.checked;
+        var url = location.origin + '/app.html?id=' + player.projectId;
+        if (packageTurbo.checked) url += '&turbo';
+        if (packageFullScreen.checked) {
+          url += '&fs';
+        } else if (package480x360.checked) {
+          url += '&w=480';
+        } else {
+          url += '&w=' + packageOtherWidth.value;
+        }
         packageLink.href = url;
       } else {
         packageLink.href = 'about:blank';
@@ -322,6 +343,16 @@
     }
     packageTurbo.addEventListener('change', updatePackageLink);
     packageFullScreen.addEventListener('change', updatePackageLink);
+    package480x360.addEventListener('change', updatePackageLink);
+    packageOther.addEventListener('change', updatePackageLink);
+    packageOtherHeight.addEventListener('input', function(e) {
+      packageOtherWidth.value = Math.round(e.target.value * 4 / 3);
+    });
+    packageOtherWidth.addEventListener('input', function(e) {
+      packageOtherHeight.value = Math.round(e.target.value * 3 / 4);
+    });
+    packageOtherHeight.addEventListener('change', updatePackageLink);
+    packageOtherWidth.addEventListener('change', updatePackageLink);
 
     /** Embedding **/
     var embedCode = querySelector('#embed-code');

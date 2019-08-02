@@ -171,9 +171,14 @@ code {
     0 0 0 1px rgba(0, 0, 0, .5),
     inset 0 2px 5px rgba(0, 0, 0, .15);
 }
-.package input[type=checkbox] {
-  margin: 0 0 0 16px;
+#package-other-width, #package-other-height {
+  width: 55px;
+  margin: 0;
 }
+.package input[type=checkbox] {
+  margin: 0 0 0 12px;
+}
+
 #embed-code {
   background-color: white;
   color: rgba(0, 0, 0, .8);

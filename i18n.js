@@ -32,6 +32,12 @@ P.i18n = (function() {
       'index.credits': 'Credits',
       'index.code': 'Code',
       'studio.view': 'View studio on Scratch.',
+      'index.package.button': 'Package',
+      'index.package.turbo': 'Turbo mode',
+      'index.package.fullscreen': 'Full screen',
+      'index.package.480': '480x360',
+      'index.package.custom': 'Other:',
+      'index.package.divider': '\u00D7',
     },
     es: {
       'player.controls.turboIndicator': 'Modo Turbo',
