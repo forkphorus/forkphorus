@@ -3,9 +3,13 @@
 <html>
   <head>
     <style>
+      body {
+        font-family: sans-serif;
+      }
       /* How to apply styles to the forkphorus embed <iframe> */
       .forkphorus-embed {
         margin: 10px;
+        display: block;
       }
     </style>
   </head>
@@ -63,30 +67,48 @@
       });
     </script>
 
-    <p>Examples of all the embeds.</p>
+    <p>Examples of the embed.</p>
 
-    <table>
-      <tr>
-        <td>no autostart</td>
-        <td><script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=false&light-content=false"></script></td>
-        <td><input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=false&light-content=false">&lt;/script>' readonly onclick="this.focus();this.select();"></td>
-      </tr>
-      <tr>
-        <td>autostart</td>
-        <td><script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=true&light-content=false"></script></td>
-        <td><input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=true&light-content=false">&lt;/script>' readonly onclick="this.focus();this.select();"></td>
-      </tr>
-      <tr>
-        <td>dark</td>
-        <td style="background:black;"><script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=false&light-content=true"></script></td>
-        <td><input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=false&light-content=true">&lt;/script>' readonly onclick="this.focus();this.select();"></td>
-      </tr>
-      <tr>
-        <td>no UI + autostart</td>
-        <td><script src="https://forkphorus.github.io/embed.js?id=280227362&ui=false"></script></td>
-        <td><input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&ui=false">&lt;/script>' readonly onclick="this.focus();this.select();"></td>
-      </tr>
-    </table>
+    <p>The project being shown here is <a href="https://scratch.mit.edu/projects/280227362">Spring Physics by HowToLogic</a>.</p>
+
+    <h2>no autostart, 480x360</h2>
+    <script src="/embed.js?id=280227362&auto-start=false&light-content=false&w=480&h=360"></script>
+    <input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=false&light-content=false&w=480&h=360">&lt;/script>'>
+
+    <h2>no autostart, 960x720</h2>
+    <script src="/embed.js?id=280227362&auto-start=false&light-content=false&w=960&h=720"></script>
+    <input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=false&light-content=false&w=960&h=720">&lt;/script>'>
+  
+    <h2>no autostart, 240x180</h2>
+    <script src="/embed.js?id=280227362&auto-start=false&light-content=false&w=240&h=180"></script>
+    <input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=false&light-content=false&w=240&h=180">&lt;/script>'>
+
+    <h2>autostart, 480x360</h2>
+    <script src="/embed.js?id=280227362&auto-start=true&light-content=false"></script>
+    <input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=true&light-content=false">&lt;/script>'>
+
+    <h2>Light controls (for dark themes)</h2>
+    <p>(black background not set by the embed, the embed is transparent so set background-color on the parent)</p>
+    <div style="background-color: #111; padding: 10px; width: 500px;">
+      <script src="/embed.js?id=280227362&auto-start=false&light-content=true&w=480&h=360"></script>
+    </div>
+    <input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=false&light-content=true&w=480&h=360">&lt;/script>'>
+
+    <h2>Hide UI (autostart)</h2>
+    <script src="/embed.js?id=280227362&ui=false"></script>
+    <input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&ui=false">&lt;/script>'>
+
+    <p>... and more. This is not a comprehensive list. You can mix resolution, dark theme, controls, etc. and it all <i>just works</i>.</p>
+
+    <script>
+      for (var i of document.querySelectorAll('input')) {
+        i.readOnly = true;
+        i.onclick = function() {
+          this.focus();
+          this.select();
+        };
+      }
+    </script>
 
   </body>
 </html>

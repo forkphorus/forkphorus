@@ -11,8 +11,9 @@ P.i18n = (function() {
   var i18n = {};
 
   i18n.translations = {
+    // Messages that start with "player" affect the project player used in the homepage, embed, packages, etc.
+    // Messages that start with "index" affect the homepage
     en: {
-      'document.title': 'forkphorus - phosphorus for Scratch 3',
       'player.controls.turboIndicator': 'Turbo Mode',
       'player.controls.fullscreen.title': 'Click to fullscreen player, Shift+click to just maximize.',
       'player.controls.flag.title': 'Shift+click to enable turbo mode.',
@@ -25,19 +26,24 @@ P.i18n = (function() {
       'report.crash.html': 'An internal error occurred. <a $attrs>Click here</a> to file a bug report.',
       'report.crash.instructions': 'Describe what you were doing to cause this error:',
       'report.bug.instructions': 'Describe the issue:',
+      'index.document.title': 'forkphorus - phosphorus for Scratch 3',
       'index.report': 'Report a problem',
       'index.embed': 'Embed this project',
       'index.package': 'Package this project',
       'index.settings': 'Settings',
       'index.credits': 'Credits',
       'index.code': 'Code',
-      'studio.view': 'View studio on Scratch.',
+      'index.studio.view': 'View studio on Scratch.',
       'index.package.button': 'Package',
       'index.package.turbo': 'Turbo mode',
       'index.package.fullscreen': 'Full screen',
       'index.package.480': '480x360',
       'index.package.custom': 'Other:',
       'index.package.divider': '\u00D7',
+      'index.embed.description': 'Include the forkphorus player in your web site.',
+      'index.embed.autostart': 'Start automatically',
+      'index.embed.lightControls': 'Light controls',
+      'index.embed.hideUI': 'Hide UI',
     },
     es: {
       'player.controls.turboIndicator': 'Modo Turbo',
@@ -89,6 +95,7 @@ P.i18n = (function() {
       var el = translatable[i];
       var messageId = el.getAttribute('data-i18n');
       var result = i18n.translate(messageId);
+      // TODO: for some of these innerHTML would actually make sense and make things simpler, but has some obvious issues.
       el.textContent = result;
     }
   };

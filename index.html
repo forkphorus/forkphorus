@@ -63,15 +63,25 @@
 
       <section class=package>
         <h1 data-i18n="index.embed">Embed this project</h1>
-        <p>Include the forkphorus player in your web site.</p>
+        <p data-i18n="index.embed.description">Include the forkphorus player in your web site.</p>
         <p class="embed-options">
           <input readonly id="embed-code">
           <input type="checkbox" id="embed-auto-start" checked>
-          <label for="embed-auto-start">Start automatically</label>
+          <label for="embed-auto-start" data-i18n="index.embed.autostart">Start automatically</label>
           <input type="checkbox" id="embed-light-content">
-          <label for="embed-light-content">Light controls</label>
+          <label for="embed-light-content" data-i18n="index.embed.lightControls">Light controls</label>
           <input type="checkbox" id="embed-hide-controls">
-          <label for="embed-hide-controls">Hide UI</label>
+          <label for="embed-hide-controls" data-i18n="index.embed.hideUI">Hide UI</label>
+          <span>
+            <!-- we re-use the i18n for the packager for this -->
+            <input type="radio" name="embed-resolution" id="embed-480" checked>
+            <label for="embed-480" data-i18n="index.package.480">480x360</label>
+            <input type="radio" name="embed-resolution" id="embed-other">
+            <label for="embed-other" data-i18n="index.package.custom">Custom:</label>
+            <input id="embed-other-width" type="number" value="960" disabled min="1">
+            <span class="package-other-divider" data-i18n="index.package.divider">&times;</span>
+            <input id="embed-other-height" type="number" value="720" disabled min="1">
+          </span>
         </p>
       </section>
 
@@ -83,16 +93,16 @@
           <input type="checkbox" id="package-turbo">
           <label for="package-turbo" data-i18n="index.package.turbo">Turbo mode</label>
           <span>
-            <input type="radio" name="package-resolution" id="package-480">
-            <label for="package-480" data-i18n="index.package.480">480x360</label>
-
             <input type="radio" name="package-resolution" id="package-full-screen" checked>
             <label for="package-full-screen" data-i18n="index.package.fullscreen">Full screen</label>
+
+            <input type="radio" name="package-resolution" id="package-480">
+            <label for="package-480" data-i18n="index.package.480">480x360</label>
 
             <input type="radio" name="package-resolution" id="package-other">
             <label for="package-other" data-i18n="index.package.custom">Custom:</label>
             <input id="package-other-width" type="number" value="960" disabled min="1">
-            <span data-i18n="index.package.divider">&times;</span>
+            <span class="package-other-divider" data-i18n="index.package.divider">&times;</span>
             <input id="package-other-height" type="number" value="720" disabled min="1">
           </span>
         </p>
@@ -164,7 +174,7 @@
     }
 
     /** i18n */
-    document.title = P.i18n.translate('document.title');
+    document.title = P.i18n.translate('index.document.title');
     StudioView.AUTHOR_ATTRIBUTION = P.i18n.translate('studioview.authorAttribution');
     StudioView.PROJECT_HOVER_TEXT = P.i18n.translate('studioview.projectHoverText');
     P.i18n.translateElement(document.body);
@@ -324,6 +334,15 @@
     var packageOtherWidth = querySelector('#package-other-width');
     var packageOtherHeight = querySelector('#package-other-height');
 
+    // Bind two inputs together so that changes to one reflect a change in the other.
+    function bindInputs(first, other, multiplier) {
+      var fun1 = function() { other.value = Math.round(first.value * multiplier); };
+      var fun2 = function() { first.value = Math.round(other.value * (1 / multiplier)); };
+      first.addEventListener('input', fun1);
+      first.addEventListener('change', fun1);
+      other.addEventListener('input', fun2);
+      other.addEventListener('change', fun2);
+    }
     function updatePackageLink() {
       packageOtherWidth.disabled = packageOtherHeight.disabled = !packageOther.checked;
       if (player.projectId) {
@@ -341,16 +360,11 @@
         packageLink.href = 'about:blank';
       }
     }
+    bindInputs(packageOtherHeight, packageOtherWidth, 4 / 3);
     packageTurbo.addEventListener('change', updatePackageLink);
     packageFullScreen.addEventListener('change', updatePackageLink);
     package480x360.addEventListener('change', updatePackageLink);
     packageOther.addEventListener('change', updatePackageLink);
-    packageOtherHeight.addEventListener('input', function(e) {
-      packageOtherWidth.value = Math.round(e.target.value * 4 / 3);
-    });
-    packageOtherWidth.addEventListener('input', function(e) {
-      packageOtherHeight.value = Math.round(e.target.value * 3 / 4);
-    });
     packageOtherHeight.addEventListener('change', updatePackageLink);
     packageOtherWidth.addEventListener('change', updatePackageLink);
 
@@ -359,6 +373,10 @@
     var embedAutoStart = querySelector('#embed-auto-start');
     var embedLightContent = querySelector('#embed-light-content');
     var embedHideControls = querySelector('#embed-hide-controls');
+    var embed480 = querySelector('#embed-480');
+    var embedOther = querySelector('#embed-other');
+    var embedOtherWidth = querySelector('#embed-other-width');
+    var embedOtherHeight = querySelector('#embed-other-height');
 
     function updateEmbedCode(e) {
       // Hide UI replaces other options.
@@ -368,6 +386,7 @@
         embedAutoStart.checked = true;
         embedLightContent.checked = false;
       }
+      embedOtherWidth.disabled = embedOtherHeight.disabled = !embedOther.checked;
 
       if (player.projectId) {
         var source = location.protocol + '//' + location.host + '/embed.js?id=' + player.projectId;
@@ -377,13 +396,18 @@
           source += '&auto-start=' + embedAutoStart.checked;
           source += '&light-content=' + embedLightContent.checked;
         }
+        if (embedOther.checked) {
+          source += '&w=' + embedOtherWidth.value;
+          source += '&h=' + embedOtherHeight.value;
+        } else {
+          source += '&w=480&h=360';
+        }
         // We need to break up the closing script tag, otherwise things break.
         embedCode.value = '<script src="' + source + '"></scrip' + 't>';
       } else {
         embedCode.value = '';
       }
 
-      // Focus the embed code if we are an event callback
       if (e) {
         selectEmbedCode();
       }
@@ -391,11 +415,16 @@
     function selectEmbedCode() {
       embedCode.select();
     }
+    bindInputs(embedOtherHeight, embedOtherWidth, 4 / 3);
     embedCode.addEventListener('focus', selectEmbedCode);
     embedCode.addEventListener('click', selectEmbedCode);
     embedHideControls.addEventListener('change', updateEmbedCode);
     embedAutoStart.addEventListener('change', updateEmbedCode);
     embedLightContent.addEventListener('change', updateEmbedCode);
+    embed480.addEventListener('change', updateEmbedCode);
+    embedOther.addEventListener('change', updateEmbedCode);
+    embedOtherHeight.addEventListener('change', updateEmbedCode);
+    embedOtherWidth.addEventListener('change', updateEmbedCode);
 
     /** Local File Loading **/
     var uploadFileInput = querySelector('#upload-file-input');
@@ -445,7 +474,7 @@
       studioView.setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
 
       var link = document.createElement('a');
-      link.innerText = P.i18n.translate('studio.view');
+      link.innerText = P.i18n.translate('index.studio.view');
       link.target = '_blank';
       link.rel = 'noopener';
       link.href = STUDIO_PREFIX + STUDIO;

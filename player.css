@@ -3,10 +3,6 @@
   color: #000;
   height: auto;
 }
-.player-stage {
-  width: 480px;
-  height: 360px;
-}
 /* Fullscreen */
 .player-root[fullscreen] {
   position: absolute;
