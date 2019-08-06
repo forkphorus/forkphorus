@@ -1036,7 +1036,7 @@ namespace P.sb3.compiler {
     precompile?(compiler: Compiler, hat: SB3Block): void;
   };
 
-  export type InputType = 'string' | 'boolean' | 'number' | 'any';
+  export type InputType = 'string' | 'boolean' | 'number' | 'any' | 'list';
 
   /**
    * General block generation utilities.
@@ -1367,6 +1367,7 @@ namespace P.sb3.compiler {
         case 'boolean': return 'false';
         case 'string': return '""';
         case 'any': return '""';
+        case 'list': return '""';
       }
       assertNever(type);
     }
@@ -1377,9 +1378,10 @@ namespace P.sb3.compiler {
     asType(input: string, type: InputType): string {
       switch (type) {
         case 'string': return '("" + ' + input + ')';
-        case 'number': return '(+' + input + '|| 0)';
+        case 'number': return '(+' + input + ' || 0)';
         case 'boolean': return 'bool(' + input + ')';
         case 'any': return input;
+        case 'list': throw new Error("Converting to 'list' type is not something you're supposed to do");
       }
       assertNever(type);
     }
@@ -1391,6 +1393,12 @@ namespace P.sb3.compiler {
       // If the types are already identical, no changes are necessary
       if (input.type === type) {
         return input.source;
+      }
+      // Special handling for the 'list' type
+      // Even if the requested type is 'any', we'll convert it to a string.
+      // Having lists at runtime causes many weird problems.
+      if (input.type === 'list' && type === 'any') {
+        type = 'string';
       }
       return this.asType(input.source, type);
     }
@@ -1509,7 +1517,7 @@ namespace P.sb3.compiler {
 
         case NativeTypes.LIST:
           // [type, name, id]
-          return anyInput(this.getListReference(native[1]));
+          return new CompiledInput(this.getListReference(native[1]), 'list');
 
         case NativeTypes.BROADCAST:
           // [type, name, id]
@@ -2686,10 +2694,11 @@ namespace P.sb3.compiler {
   };
   inputLibrary['sensing_keypressed'] = function(util) {
     const KEY_OPTION = util.getInput('KEY_OPTION', 'any');
+    // note: sb2 compiler can optimize out getKeyCode calls, but sb3 compiler can't because KEY_OPTION might be dynamic
     return util.booleanInput(`!!self.keys[P.runtime.getKeyCode(${KEY_OPTION})]`);
   };
   inputLibrary['sensing_loud'] = function(util) {
-    // see sensing_loudness above
+    // see sensing_loudness
     return util.booleanInput('false');
   };
   inputLibrary['sensing_loudness'] = function(util) {

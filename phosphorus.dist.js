@@ -5997,21 +5997,26 @@ var P;
                         case 'boolean': return 'false';
                         case 'string': return '""';
                         case 'any': return '""';
+                        case 'list': return '""';
                     }
                     assertNever(type);
                 }
                 asType(input, type) {
                     switch (type) {
                         case 'string': return '("" + ' + input + ')';
-                        case 'number': return '(+' + input + '|| 0)';
+                        case 'number': return '(+' + input + ' || 0)';
                         case 'boolean': return 'bool(' + input + ')';
                         case 'any': return input;
+                        case 'list': throw new Error("Converting to 'list' type is not something you're supposed to do");
                     }
                     assertNever(type);
                 }
                 convertInputType(input, type) {
                     if (input.type === type) {
                         return input.source;
+                    }
+                    if (input.type === 'list' && type === 'any') {
+                        type = 'string';
                     }
                     return this.asType(input.source, type);
                 }
@@ -6089,7 +6094,7 @@ var P;
                         case 12:
                             return anyInput(this.getVariableReference(native[1]));
                         case 13:
-                            return anyInput(this.getListReference(native[1]));
+                            return new CompiledInput(this.getListReference(native[1]), 'list');
                         case 11:
                             return this.sanitizedInput(native[1]);
                         case 9: {

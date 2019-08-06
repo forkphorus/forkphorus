@@ -67,7 +67,7 @@ P.Player = (function() {
   /**
    * Determines the type of a project.
    * @param {any} data
-   * @returns {2|3|null} 2 for sb2, 3 for sb3, null for uknown
+   * @returns {2|3|null} 2 for sb2, 3 for sb3, null for unknown
    */
   Player.getProjectType = function(data) {
     if (!data) return null;
@@ -92,8 +92,7 @@ P.Player = (function() {
    * @param {ControlOptions} [options]
    */
   Player.prototype.addControls = function(options) {
-    /** @param {MouseEvent} e */
-    var clickStop = function(e) {
+    var clickStop = /** @param {MouseEvent} e */ function(e) {
       this.assertStage();
       this.pause();
       this.stage.runtime.stopAll();
@@ -101,13 +100,11 @@ P.Player = (function() {
       e.preventDefault();
     }.bind(this);
 
-    /** @param {MouseEvent} e */
-    var clickPause = function(e) {
+    var clickPause = /** @param {MouseEvent} e */ function(e) {
       this.toggleRunning();
     }.bind(this);
 
-    /** @param {MouseEvent} e */
-    var clickFullscreen = function(e) {
+    var clickFullscreen = /** @param {MouseEvent} e */ function(e) {
       this.assertStage();
       if (this.fullscreen) {
         this.exitFullscreen();
@@ -116,8 +113,7 @@ P.Player = (function() {
       }
     }.bind(this);
 
-    /** @param {MouseEvent} e */
-    var clickFlag = function(e) {
+    var clickFlag = /** @param {MouseEvent} e */ function(e) {
       // @ts-ignore
       if (this.flagTouchTimeout === true) return;
       if (this.flagTouchTimeout) {
@@ -135,8 +131,7 @@ P.Player = (function() {
       e.preventDefault();
     }.bind(this);
 
-    /** @param {MouseEvent} e */
-    var startTouchFlag = function(e) {
+    var startTouchFlag = /** @param {MouseEvent} e */ function(e) {
       this.flagTouchTimeout = setTimeout(function() {
         this.flagTouchTimeout = true;
         this.setTurbo(!this.stage.runtime.isTurbo);
