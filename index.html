@@ -181,7 +181,6 @@
 
     /** Constants **/
     var PROJECT_PREFIX = 'https://scratch.mit.edu/projects/';
-    var STUDIO_PREFIX = 'https://scratch.mit.edu/studios/';
     var STUDIO = '15926401';
 
     /** Core Player Logic **/
@@ -273,6 +272,7 @@
       if (studioView && studioView.visible) {
         examplesContainer.style.height = studioViewAreaHeight + 'px';
         examplesViewContainer.appendChild(studioView.root);
+        studioView.projectList.scrollTop = studioView.scrollTop;
       }
       resetTitle();
     }
@@ -459,6 +459,7 @@
     function hideStudioView() {
       examplesContainer.style.height = '0px';
       if (studioView && studioView.visible && studioView.root.parentNode) {
+        studioView.scrollTop = studioView.projectList.scrollTop;
         examplesViewContainer.removeChild(studioView.root);
       }
     }
@@ -469,15 +470,16 @@
         cachedTitles[id] = el.dataset.title;
         location.hash = '#' + id;
       };
-      studioView.shuffleProjects = true;
+      studioView.shuffler = StudioView.Shufflers.random();
       studioView.loadNextPage();
       studioView.setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+      studioView.scrollTop = 0;
 
       var link = document.createElement('a');
       link.innerText = P.i18n.translate('index.studio.view');
       link.target = '_blank';
       link.rel = 'noopener';
-      link.href = STUDIO_PREFIX + STUDIO;
+      link.href = studioView.getURL();
       examplesFooter.appendChild(link);
     }
     examples.addEventListener('click', function(e) {

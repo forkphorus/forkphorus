@@ -22,16 +22,6 @@
     return true;
   }
 
-  function shuffleList(list) {
-    // https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle#The_modern_algorithm
-    for (var i = list.length - 1; i > 0; i--) {
-      var random = Math.floor(Math.random() * (i + 1));
-      var tmp = list[i];
-      list[i] = list[random];
-      list[random] = tmp;
-    }
-  }
-
   /**
    * @class
    */
@@ -40,7 +30,6 @@
     this.page = 1;
     this.ended = false;
     this.loadingPage = false;
-    this.shuffleProjects = false;
     this.unusedPlaceholders = [];
 
     this.root = document.createElement('div');
@@ -54,8 +43,7 @@
     if ('IntersectionObserver' in window) {
       this.intersectionObserver = new IntersectionObserver(this.handleIntersection.bind(this), {
         root: this.projectList,
-        // load images roughly 100px before they become visible to make them load quicker
-        rootMargin: '100px 0px 100px 0px',
+        rootMargin: '25px 0px 25px 0px',
       });
     } else {
       this.intersectionObserver = null;
@@ -227,6 +215,14 @@
   };
 
   /**
+   * Make changes to the order of projects.
+   * Default shuffler does nothing.
+   */
+  StudioView.prototype.shuffler = function(projects) {
+    return projects;
+  };
+
+  /**
    * Begins loading the next page.
    */
   StudioView.prototype.loadNextPage = function() {
@@ -272,9 +268,7 @@
           author: author,
         });
       }
-      if (this.shuffleProjects) {
-        shuffleList(projects);
-      }
+      projects = this.shuffler(projects);
       for (var i = 0; i < projects.length; i++) {
         this.addProject(projects[i]);
       }
@@ -312,9 +306,43 @@
     this.root.setAttribute('theme', theme);
   };
 
+  StudioView.prototype.getURL = function() {
+    return StudioView.STUDIO_PAGE.replace('$id', this.studioId);
+  };
+
   StudioView.prototype.onselect = function(id, el) {};
   StudioView.prototype.onpageload = function() {};
   StudioView.prototype.onend = function() {};
+
+  // Types of shufflers
+  function shuffleList(list) {
+    // https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle#The_modern_algorithm
+    for (var i = list.length - 1; i > 0; i--) {
+      var random = Math.floor(Math.random() * (i + 1));
+      var tmp = list[i];
+      list[i] = list[random];
+      list[random] = tmp;
+    }
+  }
+  StudioView.Shufflers = {};
+  StudioView.Shufflers.random = function(groupSize) {
+    groupSize = groupSize || Infinity;
+    return function(projects) {
+      if (groupSize === Infinity) {
+        shuffleList(projects);
+        return projects;
+      }
+      var result = [];
+      for (var i = 0; i < projects.length; i += groupSize) {
+        var group = projects.slice(i, i + groupSize);
+        shuffleList(group);
+        for (var j = 0; j < group.length; j++) {
+          result.push(group[j]);
+        }
+      }
+      return result;
+    };
+  };
 
   // This can be any URL that is a proxy for https://scratch.mit.edu/site-api/projects/in/5235006/1/
   // Understandably scratch does not set CORS headers on this URL, but a proxy can set it manually.
@@ -323,12 +351,16 @@
   StudioView.STUDIO_API = 'https://scratch.garbomuffin.com/api/site-api/projects/in/$id/$page/';
 
   // The URL to download thumbnails from.
-  // $id is replaced with the project's ID
+  // $id is replaced with the project's ID.
   StudioView.THUMBNAIL_SRC = 'https://cdn2.scratch.mit.edu/get_image/project/$id_144x108.png';
 
-  // The URL for a project's page.
+  // The URL for project pages.
   // $id is replaced with the project ID.
   StudioView.PROJECT_PAGE = 'https://scratch.mit.edu/projects/$id/';
+
+  // The URL for studio pages.
+  // $id is replaced with the studio ID.
+  StudioView.STUDIO_PAGE = 'https://scratch.mit.edu/studios/$id/';
 
   // The text to appear under a project to credit the author of the project.
   // $author is replaced with the author's name.
