@@ -1968,12 +1968,6 @@ var P;
                 };
             }
             draw() {
-                for (var i = 0; i < this.children.length; i++) {
-                    const c = this.children[i];
-                    if (c.isDragging) {
-                        c.moveTo(c.dragOffsetX + c.stage.mouseX, c.dragOffsetY + c.stage.mouseY);
-                    }
-                }
                 this.renderer.drawFrame();
                 for (var i = this.allWatchers.length; i--;) {
                     var w = this.allWatchers[i];
@@ -3252,6 +3246,12 @@ var P;
                 self = this.stage;
                 runtime = this;
                 VISUAL = false;
+                for (var i = 0; i < this.stage.children.length; i++) {
+                    const c = this.stage.children[i];
+                    if (c.isDragging) {
+                        c.moveTo(c.dragOffsetX + c.stage.mouseX, c.dragOffsetY + c.stage.mouseY);
+                    }
+                }
                 if (audioContext && audioContext.state === 'suspended') {
                     audioContext.resume();
                 }

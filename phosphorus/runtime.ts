@@ -646,6 +646,14 @@ namespace P.runtime {
       runtime = this;
       VISUAL = false;
 
+      // TODO: instead of looping through all sprites, maintain a separate list of draggable sprites?
+      for (var i = 0; i < this.stage.children.length; i++) {
+        const c = this.stage.children[i];
+        if (c.isDragging) {
+          c.moveTo(c.dragOffsetX + c.stage.mouseX, c.dragOffsetY + c.stage.mouseY);
+        }
+      }
+
       if (audioContext && audioContext.state === 'suspended') {
         audioContext.resume();
       }
