@@ -349,7 +349,7 @@
         var url = location.origin + '/app.html?id=' + player.projectId;
         if (packageTurbo.checked) url += '&turbo';
         if (packageFullScreen.checked) {
-          url += '&fs';
+          // fullscreen is the default
         } else if (package480x360.checked) {
           url += '&w=480';
         } else {

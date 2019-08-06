@@ -98,7 +98,7 @@
 
     var projectId = 17088932;
     var turbo = false;
-    var maxWidth = 480;
+    var maxWidth = Infinity;
 
     var params = location.search.substr(1).split('&');
     params.forEach(function(p) {
@@ -113,9 +113,6 @@
         case 'full-screen':
           // legacy value
           maxWidth = parts[1] !== 'false' ? Infinity : 480;
-          break;
-        case 'fs':
-          maxWidth = Infinity;
           break;
         case 'w':
           maxWidth = Number(parts[1]) || 480;
