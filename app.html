@@ -117,7 +117,9 @@
         case 'w':
           maxWidth = Number(parts[1]) || 480;
           break;
-        }
+        default:
+          console.warn('unknown search param', parts);
+      }
     });
 
     var splash = document.querySelector('.splash');
