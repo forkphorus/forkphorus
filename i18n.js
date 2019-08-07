@@ -37,7 +37,7 @@ P.i18n = (function() {
       'index.package.button': 'Package',
       'index.package.turbo': 'Turbo mode',
       'index.package.fullscreen': 'Full screen',
-      'index.package.480': '480x360',
+      'index.package.480': '480\u00D7360',
       'index.package.custom': 'Other:',
       'index.package.divider': '\u00D7',
       'index.embed.description': 'Include the forkphorus player in your web site.',
