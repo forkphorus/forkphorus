@@ -1421,6 +1421,7 @@ var P;
                     brightness: 0,
                     ghost: 0,
                 };
+                this.activeSounds = new Set();
                 for (var i = 0; i < 128; i++) {
                     this.listeners.whenKeyPressed.push([]);
                 }
@@ -1539,8 +1540,22 @@ var P;
             }
             stopSounds() {
                 if (this.node) {
-                    this.node.disconnect();
-                    this.node = null;
+                    for (const sound of this.activeSounds) {
+                        sound.stopped = true;
+                        sound.node.disconnect();
+                    }
+                    this.activeSounds.clear();
+                }
+            }
+            stopSoundsExcept(originBase) {
+                if (this.node) {
+                    for (const sound of this.activeSounds) {
+                        if (sound.base !== originBase) {
+                            sound.node.disconnect();
+                            sound.stopped = true;
+                            this.activeSounds.delete(sound);
+                        }
+                    }
                 }
             }
             ask(question) {
@@ -1642,8 +1657,16 @@ var P;
                     this.stage.ui.removeChild(this.bubbleContainer);
                     delete this.bubbleContainer;
                 }
-                if (this.node) {
+                if (this.node && this.isClone && !this.isStage) {
+                    for (const sound of this.activeSounds) {
+                        if (sound.waiting) {
+                            sound.node.disconnect();
+                            sound.stopped = true;
+                        }
+                    }
+                    this.activeSounds.clear();
                     this.node.disconnect();
+                    this.node.connect(this.stage.getAudioNode());
                     this.node = null;
                 }
             }
@@ -2016,7 +2039,6 @@ var P;
                     children[i].stopSounds();
                 }
                 this.stopSounds();
-                this.runtime.stopSounds = this.runtime.playingSounds;
             }
             removeAllClones() {
                 var i = this.children.length;
@@ -3025,8 +3047,15 @@ var P;
             var playSpan = function (span, key, duration) {
                 P.audio.playSpan(span, key, duration, S.getAudioNode());
             };
-            var playSound = function (sound) {
-                sound.createSourceNode().connect(S.getAudioNode());
+            var playSound = function (sound, waitUntilDone) {
+                const node = sound.createSourceNode();
+                node.connect(S.getAudioNode());
+                return {
+                    stopped: false,
+                    node,
+                    base: BASE,
+                    waiting: waitUntilDone,
+                };
             };
         }
         var save = function () {
@@ -3123,8 +3152,6 @@ var P;
                 this.baseNow = 0;
                 this.isTurbo = false;
                 this.framerate = 30;
-                this.playingSounds = 0;
-                this.stopSounds = 0;
                 this.onError = this.onError.bind(this);
                 this.step = this.step.bind(this);
             }
@@ -4728,27 +4755,24 @@ var P;
                     else if (block[0] === 'playSound:') {
                         if (P.audio.context) {
                             source += 'var sound = S.getSound(' + val(block[1]) + ');\n';
-                            source += 'if (sound) playSound(sound);\n';
+                            source += 'if (sound) S.activeSounds.add(playSound(sound, false));\n';
                         }
                     }
                     else if (block[0] === 'doPlaySoundAndWait') {
                         if (P.audio.context) {
                             source += 'var sound = S.getSound(' + val(block[1]) + ');\n';
                             source += 'if (sound) {\n';
-                            source += '  playSound(sound);\n';
-                            source += '  runtime.playingSounds++;\n';
                             source += '  save();\n';
-                            source += '  R.sound = sound;\n';
+                            source += '  R.sound = playSound(sound, true);\n';
+                            source += '  S.activeSounds.add(R.sound);\n';
                             source += '  R.start = runtime.now();\n';
                             source += '  R.duration = sound.duration;\n';
                             source += '  var first = true;\n';
                             var id = label();
-                            source += '  if ((runtime.now() - R.start < R.duration * 1000 || first) && runtime.stopSounds === 0) {\n';
+                            source += '  if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {\n';
                             source += '    var first;\n';
                             forceQueue(id);
                             source += '  }\n';
-                            source += '  if (runtime.stopSounds) runtime.stopSounds--;\n';
-                            source += '  runtime.playingSounds--;\n';
                             source += '  restore();\n';
                             source += '}\n';
                         }
@@ -4986,6 +5010,7 @@ var P;
                         source += '    return;\n';
                         source += '  case "other scripts in sprite":\n';
                         source += '  case "other scripts in stage":\n';
+                        source += '    S.stopSoundsExcept(BASE);\n';
                         source += '    for (var i = 0; i < runtime.queue.length; i++) {\n';
                         source += '      if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
                         source += '        runtime.queue[i] = undefined;\n';
@@ -6283,17 +6308,17 @@ var P;
         util.writeLn(`clone(${CLONE_OPTION});`);
     };
     statementLibrary['control_delete_this_clone'] = function (util) {
-        util.writeLn('if (S.isClone) {\n');
-        util.writeLn('  S.remove();\n');
-        util.writeLn('  var i = self.children.indexOf(S);\n');
-        util.writeLn('  if (i !== -1) self.children.splice(i, 1);\n');
-        util.writeLn('  for (var i = 0; i < runtime.queue.length; i++) {\n');
-        util.writeLn('    if (runtime.queue[i] && runtime.queue[i].sprite === S) {\n');
-        util.writeLn('      runtime.queue[i] = undefined;\n');
-        util.writeLn('    }\n');
-        util.writeLn('  }\n');
-        util.writeLn('  return;\n');
-        util.writeLn('}\n');
+        util.writeLn('if (S.isClone) {');
+        util.writeLn('  S.remove();');
+        util.writeLn('  var i = self.children.indexOf(S);');
+        util.writeLn('  if (i !== -1) self.children.splice(i, 1);');
+        util.writeLn('  for (var i = 0; i < runtime.queue.length; i++) {');
+        util.writeLn('    if (runtime.queue[i] && runtime.queue[i].sprite === S) {');
+        util.writeLn('      runtime.queue[i] = undefined;');
+        util.writeLn('    }');
+        util.writeLn('  }');
+        util.writeLn('  return;');
+        util.writeLn('}');
     };
     statementLibrary['control_forever'] = function (util) {
         const SUBSTACK = util.getSubstack('SUBSTACK');
@@ -6380,7 +6405,7 @@ var P;
                 break;
             case 'other scripts in sprite':
             case 'other scripts in stage':
-                util.writeLn('S.stopSounds();');
+                util.writeLn('S.stopSoundsExcept(BASE);');
                 util.writeLn('for (var i = 0; i < runtime.queue.length; i++) {');
                 util.writeLn('  if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {');
                 util.writeLn('    runtime.queue[i] = undefined;');
@@ -6734,7 +6759,7 @@ var P;
         if (P.audio.context) {
             util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
             util.writeLn('if (sound) {');
-            util.writeLn('  playSound(sound);');
+            util.writeLn('  S.activeSounds.add(playSound(sound, false));');
             util.writeLn('}');
         }
     };
@@ -6743,20 +6768,17 @@ var P;
         if (P.audio.context) {
             util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
             util.writeLn('if (sound) {');
-            util.writeLn('  playSound(sound);');
-            util.writeLn('  runtime.playingSounds++;');
             util.writeLn('  save();');
-            util.writeLn('  R.sound = sound;');
+            util.writeLn('  R.sound = playSound(sound, true);');
+            util.writeLn('  S.activeSounds.add(R.sound);');
             util.writeLn('  R.start = runtime.now();');
             util.writeLn('  R.duration = sound.duration;');
             util.writeLn('  var first = true;');
             const label = util.addLabel();
-            util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && runtime.stopSounds === 0) {');
+            util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
             util.writeLn('    var first;');
             util.forceQueue(label);
             util.writeLn('  }');
-            util.writeLn('  if (runtime.stopSounds) runtime.stopSounds--;');
-            util.writeLn('  runtime.playingSounds--;');
             util.writeLn('  restore();');
             util.writeLn('}');
         }

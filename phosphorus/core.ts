@@ -32,6 +32,13 @@ namespace P.core {
     // whenSensorGreaterThan: P.runtime.Fn[]
   }
 
+  export interface ActiveSound {
+    stopped: boolean;
+    node: AudioNode;
+    base: P.runtime.Fn;
+    waiting: boolean;
+  }
+
   export interface Filters {
     color: number;
     fisheye: number;
@@ -179,6 +186,7 @@ namespace P.core {
       brightness: 0,
       ghost: 0,
     };
+    public activeSounds: Set<ActiveSound> = new Set();
 
     constructor() {
       for (var i = 0; i < 128; i++) {
@@ -308,8 +316,23 @@ namespace P.core {
      */
     stopSounds() {
       if (this.node) {
-        this.node.disconnect();
-        this.node = null;
+        for (const sound of this.activeSounds) {
+          sound.stopped = true;
+          sound.node.disconnect();
+        }
+        this.activeSounds.clear();
+      }
+    }
+
+    stopSoundsExcept(originBase: P.runtime.Fn) {
+      if (this.node) {
+        for (const sound of this.activeSounds) {
+          if (sound.base !== originBase) {
+            sound.node.disconnect();
+            sound.stopped = true;
+            this.activeSounds.delete(sound);
+          }
+        }
       }
     }
 
@@ -419,17 +442,23 @@ namespace P.core {
       this.bubbleContainer.style.bottom = (bottom / 14) + 'em';
     }
 
-    /**
-     * Tells this object to cleanup some of the things it may have created.
-     */
     remove() {
       if (this.bubbleContainer) {
         this.stage.ui.removeChild(this.bubbleContainer);
         // I don't think doing this is necessary.
         delete this.bubbleContainer;
       }
-      if (this.node) {
+      if (this.node && this.isClone && !this.isStage) {
+        // Continue playing sounds started with "start sound" after this sprite has been removed.
+        for (const sound of this.activeSounds) {
+          if (sound.waiting) {
+            sound.node.disconnect();
+            sound.stopped = true;
+          }
+        }
+        this.activeSounds.clear();
         this.node.disconnect();
+        this.node.connect(this.stage.getAudioNode());
         this.node = null;
       }
     }
@@ -906,7 +935,6 @@ namespace P.core {
         children[i].stopSounds();
       }
       this.stopSounds();
-      this.runtime.stopSounds = this.runtime.playingSounds;
     }
 
     removeAllClones() {

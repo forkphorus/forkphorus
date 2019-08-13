@@ -1422,7 +1422,7 @@ namespace P.sb2.compiler {
 
         if (P.audio.context) {
           source += 'var sound = S.getSound(' + val(block[1]) + ');\n';
-          source += 'if (sound) playSound(sound);\n';
+          source += 'if (sound) S.activeSounds.add(playSound(sound, false));\n';
         }
 
       } else if (block[0] === 'doPlaySoundAndWait') {
@@ -1430,20 +1430,17 @@ namespace P.sb2.compiler {
         if (P.audio.context) {
           source += 'var sound = S.getSound(' + val(block[1]) + ');\n';
           source += 'if (sound) {\n';
-          source += '  playSound(sound);\n';
-          source += '  runtime.playingSounds++;\n';
           source += '  save();\n';
-          source += '  R.sound = sound;\n';
+          source += '  R.sound = playSound(sound, true);\n';
+          source += '  S.activeSounds.add(R.sound);\n';
           source += '  R.start = runtime.now();\n';
           source += '  R.duration = sound.duration;\n';
           source += '  var first = true;\n';
           var id = label();
-          source += '  if ((runtime.now() - R.start < R.duration * 1000 || first) && runtime.stopSounds === 0) {\n';
+          source += '  if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {\n';
           source += '    var first;\n';
           forceQueue(id);
           source += '  }\n';
-          source += '  if (runtime.stopSounds) runtime.stopSounds--;\n';
-          source += '  runtime.playingSounds--;\n';
           source += '  restore();\n';
           source += '}\n';
         }
@@ -1737,6 +1734,7 @@ namespace P.sb2.compiler {
         source += '    return;\n';
         source += '  case "other scripts in sprite":\n';
         source += '  case "other scripts in stage":\n';
+        source += '    S.stopSoundsExcept(BASE);\n';
         source += '    for (var i = 0; i < runtime.queue.length; i++) {\n';
         source += '      if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
         source += '        runtime.queue[i] = undefined;\n';

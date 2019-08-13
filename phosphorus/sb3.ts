@@ -1806,17 +1806,17 @@ namespace P.sb3.compiler {
     util.writeLn(`clone(${CLONE_OPTION});`);
   };
   statementLibrary['control_delete_this_clone'] = function(util) {
-    util.writeLn('if (S.isClone) {\n');
-    util.writeLn('  S.remove();\n');
-    util.writeLn('  var i = self.children.indexOf(S);\n');
-    util.writeLn('  if (i !== -1) self.children.splice(i, 1);\n');
-    util.writeLn('  for (var i = 0; i < runtime.queue.length; i++) {\n');
-    util.writeLn('    if (runtime.queue[i] && runtime.queue[i].sprite === S) {\n');
-    util.writeLn('      runtime.queue[i] = undefined;\n');
-    util.writeLn('    }\n');
-    util.writeLn('  }\n');
-    util.writeLn('  return;\n');
-    util.writeLn('}\n');
+    util.writeLn('if (S.isClone) {');
+    util.writeLn('  S.remove();');
+    util.writeLn('  var i = self.children.indexOf(S);');
+    util.writeLn('  if (i !== -1) self.children.splice(i, 1);');
+    util.writeLn('  for (var i = 0; i < runtime.queue.length; i++) {');
+    util.writeLn('    if (runtime.queue[i] && runtime.queue[i].sprite === S) {');
+    util.writeLn('      runtime.queue[i] = undefined;');
+    util.writeLn('    }');
+    util.writeLn('  }');
+    util.writeLn('  return;');
+    util.writeLn('}');
   };
   statementLibrary['control_forever'] = function(util) {
     const SUBSTACK = util.getSubstack('SUBSTACK');
@@ -1900,7 +1900,7 @@ namespace P.sb3.compiler {
         break;
       case 'other scripts in sprite':
       case 'other scripts in stage':
-        util.writeLn('S.stopSounds();');
+        util.writeLn('S.stopSoundsExcept(BASE);');
         util.writeLn('for (var i = 0; i < runtime.queue.length; i++) {');
         util.writeLn('  if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {');
         util.writeLn('    runtime.queue[i] = undefined;');
@@ -2252,7 +2252,7 @@ namespace P.sb3.compiler {
     if (P.audio.context) {
       util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
       util.writeLn('if (sound) {');
-      util.writeLn('  playSound(sound);');
+      util.writeLn('  S.activeSounds.add(playSound(sound, false));');
       util.writeLn('}');
     }
   };
@@ -2261,20 +2261,17 @@ namespace P.sb3.compiler {
     if (P.audio.context) {
       util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
       util.writeLn('if (sound) {');
-      util.writeLn('  playSound(sound);');
-      util.writeLn('  runtime.playingSounds++;');
       util.writeLn('  save();');
-      util.writeLn('  R.sound = sound;');
+      util.writeLn('  R.sound = playSound(sound, true);');
+      util.writeLn('  S.activeSounds.add(R.sound);')
       util.writeLn('  R.start = runtime.now();');
       util.writeLn('  R.duration = sound.duration;');
       util.writeLn('  var first = true;');
       const label = util.addLabel();
-      util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && runtime.stopSounds === 0) {');
+      util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
       util.writeLn('    var first;');
       util.forceQueue(label);
       util.writeLn('  }');
-      util.writeLn('  if (runtime.stopSounds) runtime.stopSounds--;');
-      util.writeLn('  runtime.playingSounds--;');
       util.writeLn('  restore();');
       util.writeLn('}');
     }

@@ -37,19 +37,17 @@ namespace P.runtime {
 
   // Note:
   // Your editor might warn you about "unused variables" or things like that.
-  // That is a complete lie and you should disregard such warnings.
+  // Due to the nature of the runtime you should ignore these warnings.
 
   const epoch = Date.UTC(2000, 0, 1);
   const INSTRUMENTS = P.audio.instruments;
   const DRUMS = P.audio.drums;
   const DIGIT = /\d/;
 
-  // Converts a value to its boolean equivalent
   var bool = function(v) {
     return +v !== 0 && v !== '' && v !== 'false' && v !== false;
   };
 
-  // Compares two values. Returns -1 if x < y, 1 if x > y, 0 if x === y
   var compare = function(x, y) {
     if ((typeof x === 'number' || DIGIT.test(x)) && (typeof y === 'number' || DIGIT.test(y))) {
       var nx = +x;
@@ -63,7 +61,6 @@ namespace P.runtime {
     return xs < ys ? -1 : xs === ys ? 0 : 1;
   };
 
-  // Determines if y is less than nx
   var numLess = function(nx, y) {
     if (typeof y === 'number' || DIGIT.test(y)) {
       var ny = +y;
@@ -75,7 +72,6 @@ namespace P.runtime {
     return '' + nx < ys;
   };
 
-  // Determines if y is greater than nx
   var numGreater = function(nx, y) {
     if (typeof y === 'number' || DIGIT.test(y)) {
       var ny = +y;
@@ -87,13 +83,10 @@ namespace P.runtime {
     return '' + nx > ys;
   };
 
-  // Determines if x is equal to y
   var equal = function(x, y) {
-    // numbers, booleans, and strings that look like numbers will go through the number comparison
     if ((typeof x === 'number' || typeof x === 'boolean' || DIGIT.test(x)) && (typeof y === 'number' || typeof x === 'boolean' || DIGIT.test(y))) {
       var nx = +x;
       var ny = +y;
-      // if either is NaN, don't do the comparison
       if (nx === nx && ny === ny) {
         return nx === ny;
       }
@@ -103,7 +96,6 @@ namespace P.runtime {
     return xs === ys;
   };
 
-  // Determines if x (number) and y (number) are equal to each other
   var numEqual = function(nx, y) {
     if (typeof y === 'number' || DIGIT.test(y)) {
       var ny = +y;
@@ -112,16 +104,15 @@ namespace P.runtime {
     return false;
   };
 
-  // Modulo
   var mod = function(x, y) {
     var r = x % y;
+    // need special behavior for handling negatives
     if (r / y < 0) {
       r += y;
     }
     return r;
   };
 
-  // Random number in range
   var random = function(x, y) {
     x = +x || 0;
     y = +y || 0;
@@ -136,7 +127,6 @@ namespace P.runtime {
     return Math.random() * (y - x) + x;
   };
 
-  // Converts an RGB color as a number to HSL
   var rgb2hsl = function(rgb) {
     // TODO: P.utils.rgb2hsl?
     var r = (rgb >> 16 & 0xff) / 0xff;
@@ -382,8 +372,15 @@ namespace P.runtime {
       P.audio.playSpan(span, key, duration, S.getAudioNode());
     };
 
-    var playSound = function(sound: P.core.Sound) {
-      sound.createSourceNode().connect(S.getAudioNode());
+    var playSound = function(sound: P.core.Sound, waitUntilDone: boolean): P.core.ActiveSound {
+      const node = sound.createSourceNode();
+      node.connect(S.getAudioNode());
+      return {
+        stopped: false,
+        node,
+        base: BASE,
+        waiting: waitUntilDone,
+      };
     };
   }
 
@@ -496,8 +493,6 @@ namespace P.runtime {
     public interval: number;
     public isTurbo: boolean = false;
     public framerate: number = 30;
-    public playingSounds: number = 0;
-    public stopSounds: number = 0;
 
     constructor(public stage: P.core.Stage) {
       // Fix scoping
