@@ -1726,7 +1726,7 @@ var P;
                 this.canvas.style.outline = 'none';
                 this.root.addEventListener('keydown', (e) => {
                     var c = e.keyCode;
-                    if (c >= 128)
+                    if (c >= 128 && e.key.length === 1)
                         c = P.runtime.getKeyCode(e.key);
                     if (!this.keys[c])
                         this.keys.any++;
