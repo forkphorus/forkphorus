@@ -277,6 +277,11 @@ P.suite = (function() {
     listEl.appendChild(createElement('li', {
       textContent: `Of ${totalTests} test, ${passingTests} passed and ${failingTests} failed. (${percentPassing}% passing)`,
     }));
+    if (failingTests > 0) {
+      listEl.classList.add('suite-failed');
+    } else {
+      listEl.classList.add('suite-passed');
+    }
 
     finalResultsEl.appendChild(listEl);
   }
