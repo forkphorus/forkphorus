@@ -114,6 +114,9 @@ namespace P.runtime {
   };
 
   var random = function(x, y) {
+    var fractional =
+      (typeof x === 'string' && !isNaN(+x) && x.indexOf('.') > -1) ||
+      (typeof y === 'string' && !isNaN(+y) && y.indexOf('.') > -1);
     x = +x || 0;
     y = +y || 0;
     if (x > y) {
@@ -121,7 +124,7 @@ namespace P.runtime {
       y = x;
       x = tmp;
     }
-    if (x % 1 === 0 && y % 1 === 0) {
+    if (!fractional && (x % 1 === 0 && y % 1 === 0)) {
       return Math.floor(Math.random() * (y - x + 1)) + x;
     }
     return Math.random() * (y - x) + x;

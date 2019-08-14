@@ -1489,7 +1489,7 @@ namespace P.sb3.compiler {
     /**
      * Compile a native or primitive value.
      */
-    compileNativeInput(native: any[]): CompiledInput {
+    compileNativeInput(native: any[], desiredType: InputType): CompiledInput {
       const type = native[0];
       switch (type) {
         // These all function as numbers. I believe they are only differentiated so the editor can be more helpful.
@@ -1500,10 +1500,10 @@ namespace P.sb3.compiler {
         case NativeTypes.ANGLE_NUM: {
           // [type, value]
           const number = parseFloat(native[1]);
-          if (!isNaN(number)) {
-            return numberInput(number.toString());
-          } else {
+          if (isNaN(number) || desiredType === 'string') {
             return this.sanitizedInput(native[1]);
+          } else {
+            return numberInput(number.toString());
           }
         }
 
@@ -1558,7 +1558,7 @@ namespace P.sb3.compiler {
 
       if (Array.isArray(input[1])) {
         const native = input[1];
-        return this.convertInputType(this.compileNativeInput(native), type);
+        return this.convertInputType(this.compileNativeInput(native, type), type);
       }
 
       const inputBlockId = input[1];
@@ -2639,8 +2639,8 @@ namespace P.sb3.compiler {
     return util.booleanInput(`(${OPERAND1} || ${OPERAND2})`);
   };
   inputLibrary['operator_random'] = function(util) {
-    const FROM = util.getInput('FROM', 'number');
-    const TO = util.getInput('TO', 'number');
+    const FROM = util.getInput('FROM', 'string');
+    const TO = util.getInput('TO', 'string');
     return util.numberInput(`random(${FROM}, ${TO})`);
   };
   inputLibrary['operator_round'] = function(util) {

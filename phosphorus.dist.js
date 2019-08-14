@@ -2805,6 +2805,8 @@ var P;
             return r;
         };
         var random = function (x, y) {
+            var fractional = (typeof x === 'string' && !isNaN(+x) && x.indexOf('.') > -1) ||
+                (typeof y === 'string' && !isNaN(+y) && y.indexOf('.') > -1);
             x = +x || 0;
             y = +y || 0;
             if (x > y) {
@@ -2812,7 +2814,7 @@ var P;
                 y = x;
                 x = tmp;
             }
-            if (x % 1 === 0 && y % 1 === 0) {
+            if (!fractional && (x % 1 === 0 && y % 1 === 0)) {
                 return Math.floor(Math.random() * (y - x + 1)) + x;
             }
             return Math.random() * (y - x) + x;
@@ -6098,7 +6100,7 @@ var P;
                 getListReference(name) {
                     return `${this.getListScope(name)}.lists[${this.sanitizedString(name)}]`;
                 }
-                compileNativeInput(native) {
+                compileNativeInput(native, desiredType) {
                     const type = native[0];
                     switch (type) {
                         case 4:
@@ -6107,11 +6109,11 @@ var P;
                         case 7:
                         case 8: {
                             const number = parseFloat(native[1]);
-                            if (!isNaN(number)) {
-                                return numberInput(number.toString());
+                            if (isNaN(number) || desiredType === 'string') {
+                                return this.sanitizedInput(native[1]);
                             }
                             else {
-                                return this.sanitizedInput(native[1]);
+                                return numberInput(number.toString());
                             }
                         }
                         case 10:
@@ -6146,7 +6148,7 @@ var P;
                     const input = parentBlock.inputs[inputName];
                     if (Array.isArray(input[1])) {
                         const native = input[1];
-                        return this.convertInputType(this.compileNativeInput(native), type);
+                        return this.convertInputType(this.compileNativeInput(native, type), type);
                     }
                     const inputBlockId = input[1];
                     if (!inputBlockId) {
@@ -7125,8 +7127,8 @@ var P;
         return util.booleanInput(`(${OPERAND1} || ${OPERAND2})`);
     };
     inputLibrary['operator_random'] = function (util) {
-        const FROM = util.getInput('FROM', 'number');
-        const TO = util.getInput('TO', 'number');
+        const FROM = util.getInput('FROM', 'string');
+        const TO = util.getInput('TO', 'string');
         return util.numberInput(`random(${FROM}, ${TO})`);
     };
     inputLibrary['operator_round'] = function (util) {
