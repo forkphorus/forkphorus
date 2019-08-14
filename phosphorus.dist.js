@@ -1327,8 +1327,13 @@ var P;
             }
             spriteTouchesColor(sprite, color) {
                 const b = sprite.rotatedBounds();
-                workingRenderer.canvas.width = b.right - b.left;
-                workingRenderer.canvas.height = b.top - b.bottom;
+                const width = b.right - b.left;
+                const height = b.top - b.bottom;
+                if (width < 1 || height < 1 || width !== width || height !== height) {
+                    return false;
+                }
+                workingRenderer.canvas.width = width;
+                workingRenderer.canvas.height = height;
                 workingRenderer.ctx.save();
                 workingRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
                 this.drawAllExcept(workingRenderer, sprite);
@@ -1347,8 +1352,13 @@ var P;
             }
             spriteColorTouchesColor(sprite, spriteColor, otherColor) {
                 var rb = sprite.rotatedBounds();
-                workingRenderer.canvas.width = workingRenderer2.canvas.width = rb.right - rb.left;
-                workingRenderer.canvas.height = workingRenderer2.canvas.height = rb.top - rb.bottom;
+                const width = rb.right - rb.left;
+                const height = rb.top - rb.bottom;
+                if (width < 1 || height < 1 || width !== width || height !== height) {
+                    return false;
+                }
+                workingRenderer.canvas.width = workingRenderer2.canvas.width = width;
+                workingRenderer.canvas.height = workingRenderer2.canvas.height = height;
                 workingRenderer.ctx.save();
                 workingRenderer2.ctx.save();
                 workingRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
@@ -1357,8 +1367,8 @@ var P;
                 workingRenderer2.drawChild(sprite);
                 workingRenderer.ctx.restore();
                 workingRenderer2.ctx.restore();
-                var dataA = workingRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
-                var dataB = workingRenderer2.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
+                var dataA = workingRenderer.ctx.getImageData(0, 0, width, height).data;
+                var dataB = workingRenderer2.ctx.getImageData(0, 0, width, height).data;
                 spriteColor = spriteColor & 0xffffff;
                 otherColor = otherColor & 0xffffff;
                 var length = dataA.length;
