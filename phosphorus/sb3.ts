@@ -2272,6 +2272,7 @@ namespace P.sb3.compiler {
       util.writeLn('    var first;');
       util.forceQueue(label);
       util.writeLn('  }');
+      util.writeLn('  S.activeSounds.delete(R.sound);');
       util.writeLn('  restore();');
       util.writeLn('}');
     }

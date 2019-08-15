@@ -1714,7 +1714,6 @@ var P;
                 this.tempoBPM = 60;
                 this.username = '';
                 this.counter = 0;
-                this._currentCostumeIndex = this.currentCostumeIndex;
                 this.runtime = new P.runtime.Runtime(this);
                 this.keys = [];
                 this.keys.any = 0;
@@ -4785,6 +4784,7 @@ var P;
                             source += '    var first;\n';
                             forceQueue(id);
                             source += '  }\n';
+                            source += '  S.activeSounds.delete(R.sound);\n';
                             source += '  restore();\n';
                             source += '}\n';
                         }
@@ -6791,6 +6791,7 @@ var P;
             util.writeLn('    var first;');
             util.forceQueue(label);
             util.writeLn('  }');
+            util.writeLn('  S.activeSounds.delete(R.sound);');
             util.writeLn('  restore();');
             util.writeLn('}');
         }

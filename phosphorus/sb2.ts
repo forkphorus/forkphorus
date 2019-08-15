@@ -1441,6 +1441,7 @@ namespace P.sb2.compiler {
           source += '    var first;\n';
           forceQueue(id);
           source += '  }\n';
+          source += '  S.activeSounds.delete(R.sound);\n';
           source += '  restore();\n';
           source += '}\n';
         }
