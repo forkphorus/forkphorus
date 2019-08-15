@@ -545,8 +545,6 @@ namespace P.core {
 
     private videoElement: HTMLVideoElement;
 
-    private _currentCostumeIndex: number = this.currentCostumeIndex;
-
     constructor() {
       super();
 
