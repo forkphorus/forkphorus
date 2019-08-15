@@ -1405,7 +1405,6 @@ var P;
                 this.instrument = 0;
                 this.volume = 1;
                 this.node = null;
-                this.passiveNode = null;
                 this.activeSounds = new Set();
                 this.watchers = {};
                 this.vars = {};
@@ -1556,10 +1555,8 @@ var P;
                         sound.node.disconnect();
                     }
                     this.activeSounds.clear();
-                    if (this.passiveNode) {
-                        this.passiveNode.disconnect();
-                        this.passiveNode = null;
-                    }
+                    this.node.disconnect();
+                    this.node = null;
                 }
             }
             stopSoundsExcept(originBase) {
@@ -1694,19 +1691,6 @@ var P;
                 this.node.gain.value = this.volume;
                 P.audio.connectNode(this.node);
                 return this.node;
-            }
-            getPassiveNode() {
-                if (this.passiveNode) {
-                    return this.passiveNode;
-                }
-                if (!P.audio.context) {
-                    throw new Error('No audio context');
-                }
-                const destination = this.getAudioNode();
-                const node = P.audio.context.createGain();
-                node.connect(destination);
-                this.passiveNode = node;
-                return node;
             }
         }
         core.Base = Base;
@@ -3085,7 +3069,7 @@ var P;
             };
             var startSound = function (sound) {
                 const node = sound.createSourceNode();
-                node.connect(S.getPassiveNode());
+                node.connect(S.getAudioNode());
             };
         }
         var save = function () {

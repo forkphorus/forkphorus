@@ -387,7 +387,7 @@ namespace P.runtime {
 
     var startSound = function(sound: P.core.Sound) {
       const node = sound.createSourceNode();
-      node.connect(S.getPassiveNode());
+      node.connect(S.getAudioNode());
     };
   }
 

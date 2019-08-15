@@ -132,10 +132,6 @@ namespace P.core {
      */
     public node: GainNode | null = null;
     /**
-     * The audio node that sounds started with "start sound" output to.
-     */
-    public passiveNode: AudioNode | null = null;
-    /**
      * Actively playing sounds started with "play until done"
      */
     public activeSounds: Set<ActiveSound> = new Set();
@@ -327,10 +323,8 @@ namespace P.core {
           sound.node.disconnect();
         }
         this.activeSounds.clear();
-        if (this.passiveNode) {
-          this.passiveNode.disconnect();
-          this.passiveNode = null;
-        }
+        this.node.disconnect();
+        this.node = null;
       }
     }
 
@@ -486,21 +480,6 @@ namespace P.core {
       this.node.gain.value = this.volume;
       P.audio.connectNode(this.node);
       return this.node;
-    }
-
-    getPassiveNode(): AudioNode {
-      if (this.passiveNode) {
-        return this.passiveNode;
-      }
-      if (!P.audio.context) {
-        throw new Error('No audio context');
-      }
-      const destination = this.getAudioNode();
-      // TODO: is there a simpler AudioNode that just passes audio around and nothing else?
-      const node = P.audio.context.createGain();
-      node.connect(destination);
-      this.passiveNode = node;
-      return node;
     }
 
     /**
