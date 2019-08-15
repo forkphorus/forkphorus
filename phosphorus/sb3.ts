@@ -2251,9 +2251,7 @@ namespace P.sb3.compiler {
     const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
     if (P.audio.context) {
       util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
-      util.writeLn('if (sound) {');
-      util.writeLn('  S.activeSounds.add(playSound(sound, false));');
-      util.writeLn('}');
+      util.writeLn('if (sound) startSound(sound);');
     }
   };
   statementLibrary['sound_playuntildone'] = function(util) {
@@ -2262,7 +2260,7 @@ namespace P.sb3.compiler {
       util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
       util.writeLn('if (sound) {');
       util.writeLn('  save();');
-      util.writeLn('  R.sound = playSound(sound, true);');
+      util.writeLn('  R.sound = playSound(sound);');
       util.writeLn('  S.activeSounds.add(R.sound);')
       util.writeLn('  R.start = runtime.now();');
       util.writeLn('  R.duration = sound.duration;');

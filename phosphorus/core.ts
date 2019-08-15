@@ -36,7 +36,6 @@ namespace P.core {
     stopped: boolean;
     node: AudioNode;
     base: P.runtime.Fn;
-    waiting: boolean;
   }
 
   export interface Filters {
@@ -133,6 +132,14 @@ namespace P.core {
      */
     public node: GainNode | null = null;
     /**
+     * The audio node that sounds started with "start sound" output to.
+     */
+    public passiveNode: AudioNode | null = null;
+    /**
+     * Actively playing sounds started with "play until done"
+     */
+    public activeSounds: Set<ActiveSound> = new Set();
+    /**
      * Maps names (or ids) of variables or lists to their Watcher, if any.
      */
     public watchers: ObjectMap<Watcher> = {};
@@ -186,7 +193,6 @@ namespace P.core {
       brightness: 0,
       ghost: 0,
     };
-    public activeSounds: Set<ActiveSound> = new Set();
 
     constructor() {
       for (var i = 0; i < 128; i++) {
@@ -321,6 +327,10 @@ namespace P.core {
           sound.node.disconnect();
         }
         this.activeSounds.clear();
+        if (this.passiveNode) {
+          this.passiveNode.disconnect();
+          this.passiveNode = null;
+        }
       }
     }
 
@@ -451,10 +461,8 @@ namespace P.core {
       if (this.node && this.isClone && !this.isStage) {
         // Continue playing sounds started with "start sound" after this sprite has been removed.
         for (const sound of this.activeSounds) {
-          if (sound.waiting) {
-            sound.node.disconnect();
-            sound.stopped = true;
-          }
+          sound.node.disconnect();
+          sound.stopped = true;
         }
         this.activeSounds.clear();
         this.node.disconnect();
@@ -478,6 +486,21 @@ namespace P.core {
       this.node.gain.value = this.volume;
       P.audio.connectNode(this.node);
       return this.node;
+    }
+
+    getPassiveNode(): AudioNode {
+      if (this.passiveNode) {
+        return this.passiveNode;
+      }
+      if (!P.audio.context) {
+        throw new Error('No audio context');
+      }
+      const destination = this.getAudioNode();
+      // TODO: is there a simpler AudioNode that just passes audio around and nothing else?
+      const node = P.audio.context.createGain();
+      node.connect(destination);
+      this.passiveNode = node;
+      return node;
     }
 
     /**

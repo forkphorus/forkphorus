@@ -1405,6 +1405,8 @@ var P;
                 this.instrument = 0;
                 this.volume = 1;
                 this.node = null;
+                this.passiveNode = null;
+                this.activeSounds = new Set();
                 this.watchers = {};
                 this.vars = {};
                 this.lists = {};
@@ -1431,7 +1433,6 @@ var P;
                     brightness: 0,
                     ghost: 0,
                 };
-                this.activeSounds = new Set();
                 for (var i = 0; i < 128; i++) {
                     this.listeners.whenKeyPressed.push([]);
                 }
@@ -1555,6 +1556,10 @@ var P;
                         sound.node.disconnect();
                     }
                     this.activeSounds.clear();
+                    if (this.passiveNode) {
+                        this.passiveNode.disconnect();
+                        this.passiveNode = null;
+                    }
                 }
             }
             stopSoundsExcept(originBase) {
@@ -1669,10 +1674,8 @@ var P;
                 }
                 if (this.node && this.isClone && !this.isStage) {
                     for (const sound of this.activeSounds) {
-                        if (sound.waiting) {
-                            sound.node.disconnect();
-                            sound.stopped = true;
-                        }
+                        sound.node.disconnect();
+                        sound.stopped = true;
                     }
                     this.activeSounds.clear();
                     this.node.disconnect();
@@ -1691,6 +1694,19 @@ var P;
                 this.node.gain.value = this.volume;
                 P.audio.connectNode(this.node);
                 return this.node;
+            }
+            getPassiveNode() {
+                if (this.passiveNode) {
+                    return this.passiveNode;
+                }
+                if (!P.audio.context) {
+                    throw new Error('No audio context');
+                }
+                const destination = this.getAudioNode();
+                const node = P.audio.context.createGain();
+                node.connect(destination);
+                this.passiveNode = node;
+                return node;
             }
         }
         core.Base = Base;
@@ -3058,15 +3074,18 @@ var P;
             var playSpan = function (span, key, duration) {
                 P.audio.playSpan(span, key, duration, S.getAudioNode());
             };
-            var playSound = function (sound, waitUntilDone) {
+            var playSound = function (sound) {
                 const node = sound.createSourceNode();
                 node.connect(S.getAudioNode());
                 return {
                     stopped: false,
                     node,
                     base: BASE,
-                    waiting: waitUntilDone,
                 };
+            };
+            var startSound = function (sound) {
+                const node = sound.createSourceNode();
+                node.connect(S.getPassiveNode());
             };
         }
         var save = function () {
@@ -4766,7 +4785,7 @@ var P;
                     else if (block[0] === 'playSound:') {
                         if (P.audio.context) {
                             source += 'var sound = S.getSound(' + val(block[1]) + ');\n';
-                            source += 'if (sound) S.activeSounds.add(playSound(sound, false));\n';
+                            source += 'if (sound) startSound(sound);\n';
                         }
                     }
                     else if (block[0] === 'doPlaySoundAndWait') {
@@ -4774,7 +4793,7 @@ var P;
                             source += 'var sound = S.getSound(' + val(block[1]) + ');\n';
                             source += 'if (sound) {\n';
                             source += '  save();\n';
-                            source += '  R.sound = playSound(sound, true);\n';
+                            source += '  R.sound = playSound(sound);\n';
                             source += '  S.activeSounds.add(R.sound);\n';
                             source += '  R.start = runtime.now();\n';
                             source += '  R.duration = sound.duration;\n';
@@ -6770,9 +6789,7 @@ var P;
         const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
         if (P.audio.context) {
             util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
-            util.writeLn('if (sound) {');
-            util.writeLn('  S.activeSounds.add(playSound(sound, false));');
-            util.writeLn('}');
+            util.writeLn('if (sound) startSound(sound);');
         }
     };
     statementLibrary['sound_playuntildone'] = function (util) {
@@ -6781,7 +6798,7 @@ var P;
             util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
             util.writeLn('if (sound) {');
             util.writeLn('  save();');
-            util.writeLn('  R.sound = playSound(sound, true);');
+            util.writeLn('  R.sound = playSound(sound);');
             util.writeLn('  S.activeSounds.add(R.sound);');
             util.writeLn('  R.start = runtime.now();');
             util.writeLn('  R.duration = sound.duration;');

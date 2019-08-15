@@ -1422,7 +1422,7 @@ namespace P.sb2.compiler {
 
         if (P.audio.context) {
           source += 'var sound = S.getSound(' + val(block[1]) + ');\n';
-          source += 'if (sound) S.activeSounds.add(playSound(sound, false));\n';
+          source += 'if (sound) startSound(sound);\n';
         }
 
       } else if (block[0] === 'doPlaySoundAndWait') {
@@ -1431,7 +1431,7 @@ namespace P.sb2.compiler {
           source += 'var sound = S.getSound(' + val(block[1]) + ');\n';
           source += 'if (sound) {\n';
           source += '  save();\n';
-          source += '  R.sound = playSound(sound, true);\n';
+          source += '  R.sound = playSound(sound);\n';
           source += '  S.activeSounds.add(R.sound);\n';
           source += '  R.start = runtime.now();\n';
           source += '  R.duration = sound.duration;\n';

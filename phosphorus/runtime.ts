@@ -375,15 +375,19 @@ namespace P.runtime {
       P.audio.playSpan(span, key, duration, S.getAudioNode());
     };
 
-    var playSound = function(sound: P.core.Sound, waitUntilDone: boolean): P.core.ActiveSound {
+    var playSound = function(sound: P.core.Sound): P.core.ActiveSound {
       const node = sound.createSourceNode();
       node.connect(S.getAudioNode());
       return {
         stopped: false,
         node,
         base: BASE,
-        waiting: waitUntilDone,
       };
+    };
+
+    var startSound = function(sound: P.core.Sound) {
+      const node = sound.createSourceNode();
+      node.connect(S.getPassiveNode());
     };
   }
 
