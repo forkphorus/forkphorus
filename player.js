@@ -380,6 +380,7 @@ P.Player = (function() {
 
     if (this.stage) {
       this.stage.destroy();
+      this.stage = null;
     }
     while (this.player.firstChild) {
       this.player.removeChild(this.player.firstChild);
