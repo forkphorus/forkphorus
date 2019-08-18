@@ -5525,14 +5525,22 @@ var P;
             const usedFonts = [];
             for (var i = 0; i < textElements.length; i++) {
                 const el = textElements[i];
-                let font = el.getAttribute('font-family') || '';
-                if (!P.fonts.scratch3[font]) {
-                    console.warn('unknown font', font);
-                    font = 'Sans Serif';
-                    el.setAttribute('font-family', font);
+                let fonts = (el.getAttribute('font-family') || '')
+                    .split(',')
+                    .map((i) => i.trim());
+                let found = false;
+                for (const family of fonts) {
+                    if (P.fonts.scratch3[family]) {
+                        found = true;
+                        if (usedFonts.indexOf(family) === -1) {
+                            usedFonts.push(family);
+                        }
+                        break;
+                    }
                 }
-                if (usedFonts.indexOf(font) === -1) {
-                    usedFonts.push(font);
+                if (!found) {
+                    console.warn('unknown fonts', fonts);
+                    el.setAttribute('font-family', 'Sans Serif');
                 }
             }
             P.fonts.addFontRules(svg, usedFonts);
