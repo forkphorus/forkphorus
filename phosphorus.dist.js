@@ -5523,6 +5523,11 @@ var P;
             }
             const textElements = svg.querySelectorAll('text');
             const usedFonts = [];
+            const addFont = (font) => {
+                if (usedFonts.indexOf(font) === -1) {
+                    usedFonts.push(font);
+                }
+            };
             for (var i = 0; i < textElements.length; i++) {
                 const el = textElements[i];
                 let fonts = (el.getAttribute('font-family') || '')
@@ -5532,15 +5537,19 @@ var P;
                 for (const family of fonts) {
                     if (P.fonts.scratch3[family]) {
                         found = true;
-                        if (usedFonts.indexOf(family) === -1) {
-                            usedFonts.push(family);
-                        }
+                        addFont(family);
+                        break;
+                    }
+                    else if (family === 'sans-serif') {
+                        found = true;
                         break;
                     }
                 }
                 if (!found) {
                     console.warn('unknown fonts', fonts);
-                    el.setAttribute('font-family', 'Sans Serif');
+                    const font = 'Sans Serif';
+                    addFont(font);
+                    el.setAttribute('font-family', font);
                 }
             }
             P.fonts.addFontRules(svg, usedFonts);

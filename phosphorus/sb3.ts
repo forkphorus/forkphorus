@@ -591,6 +591,11 @@ namespace P.sb3 {
 
     const textElements = svg.querySelectorAll('text');
     const usedFonts: string[] = [];
+    const addFont = (font: string) => {
+      if (usedFonts.indexOf(font) === -1) {
+        usedFonts.push(font);
+      }
+    };
 
     for (var i = 0; i < textElements.length; i++) {
       const el = textElements[i];
@@ -601,15 +606,20 @@ namespace P.sb3 {
       for (const family of fonts) {
         if (P.fonts.scratch3[family]) {
           found = true;
-          if (usedFonts.indexOf(family) === -1) {
-            usedFonts.push(family);
-          }
+          addFont(family);
+          break;
+        } else if (family === 'sans-serif') {
+          found = true;
+          // We let the system handle their respective 'sans-serif' fonts
+          // https://scratch.mit.edu/projects/319138929/
           break;
         }
       }
       if (!found) {
         console.warn('unknown fonts', fonts);
-        el.setAttribute('font-family', 'Sans Serif');
+        const font = 'Sans Serif';
+        addFont(font);
+        el.setAttribute('font-family', font);
       }
     }
 
