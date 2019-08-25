@@ -7,7 +7,8 @@
     "test": "tests"
   },
   "scripts": {
-    "watch": "node dev.js"
+    "watch": "node dev.js",
+    "build": "tsc"
   },
   "repository": {
     "type": "git",
