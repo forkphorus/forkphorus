@@ -959,8 +959,8 @@ var P;
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
                 this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.penTexture, 0);
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
-                this.penDotShader = new ShaderVariant(this.gl, this.compileProgram(WebGLProjectRenderer.PEN_VERTEX_SHADER, WebGLProjectRenderer.PEN_DOT_FRAGMENT_SHADER));
-                this.penLineShader = new ShaderVariant(this.gl, this.compileProgram(WebGLProjectRenderer.PEN_VERTEX_SHADER, WebGLProjectRenderer.PEN_LINE_FRAGMENT_SHADER));
+                this.penDotShader = new ShaderVariant(this.gl, this.compileProgram(WebGLProjectRenderer.PEN_DOT_VERTEX_SHADER, WebGLProjectRenderer.PEN_DOT_FRAGMENT_SHADER));
+                this.penLineShader = new ShaderVariant(this.gl, this.compileProgram(WebGLProjectRenderer.PEN_LINE_VERTEX_SHADER, WebGLProjectRenderer.PEN_LINE_FRAGMENT_SHADER));
                 this.reset(1);
             }
             drawFrame() {
@@ -984,20 +984,19 @@ var P;
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
                 const shader = this.penLineShader;
                 this.gl.useProgram(shader.program);
-                shader.attributeBuffer('a_position', this.quadBuffer);
-                const distance = Math.sqrt(Math.pow((x - x2), 2) + Math.pow((y - y2), 2));
-                const xDiff = x - x2;
-                const yDiff = y - y2;
-                const angle = Math.atan(yDiff / xDiff) * 180 / Math.PI;
-                const matrix = P.m3.projection(480, 360);
-                P.m3.multiply(matrix, P.m3.translation(240 + x | 0, 180 - y - size / 2 | 0));
-                P.m3.multiply(matrix, P.m3.rotation(angle));
-                P.m3.multiply(matrix, P.m3.scaling(distance, size));
-                shader.uniformMatrix3('u_matrix', matrix);
+                const buffer = this.gl.createBuffer();
+                if (buffer === null) {
+                    throw new Error('buffer is null');
+                }
+                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
+                this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
+                    x / 240, y / 180,
+                    x2 / 240, y2 / 180,
+                ]), this.gl.STATIC_DRAW);
+                shader.attributeBuffer('a_position', buffer);
                 shader.uniform4f('u_color', 0, 1, 0, 1);
-                this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+                this.gl.drawArrays(this.gl.LINES, 0, 2);
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
-                this.penDot(color, size, x2, y2);
             }
             penDot(color, size, x, y) {
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
@@ -1053,7 +1052,7 @@ var P;
                 return this.fallbackRenderer.spriteColorTouchesColor(sprite, spriteColor, otherColor);
             }
         }
-        WebGLProjectRenderer.PEN_VERTEX_SHADER = `
+        WebGLProjectRenderer.PEN_DOT_VERTEX_SHADER = `
     attribute vec2 a_position;
     varying vec2 v_position;
     uniform mat3 u_matrix;
@@ -1075,10 +1074,15 @@ var P;
       gl_FragColor = u_color;
     }
     `;
+        WebGLProjectRenderer.PEN_LINE_VERTEX_SHADER = `
+    attribute vec2 a_position;
+    void main() {
+      gl_Position = vec4(a_position, 0, 1);
+    }
+    `;
         WebGLProjectRenderer.PEN_LINE_FRAGMENT_SHADER = `
     precision mediump float;
     uniform vec4 u_color;
-    varying vec2 v_position;
     void main() {
       gl_FragColor = u_color;
     }
