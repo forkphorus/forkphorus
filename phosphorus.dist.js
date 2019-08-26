@@ -5462,7 +5462,7 @@ var P;
                     return this.length - 1;
                 }
                 index = Math.floor(+index);
-                if (index < 1 || index > this.length) {
+                if (index < 1 || index > this.length + 1) {
                     return -1;
                 }
                 return index - 1;
