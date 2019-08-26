@@ -240,7 +240,10 @@ P.suite = (function() {
       href: projectMeta.path,
     }));
 
-    const message = (result.success ? 'OKAY: ' : 'FAIL: ') + result.message;
+    let message = result.success ? 'OKAY' : 'FAIL';
+    if (result.message) {
+      message += ': ' + result.message;
+    }
     const successClass = result.success ? 'cell-result-okay' : 'cell-result-fail';
     row.appendChild(createElement('td', {
       className: 'cell-result ' + successClass,
