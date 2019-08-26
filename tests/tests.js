@@ -16,6 +16,7 @@
     'regressions/56.sb3',
     'regressions/58.sb3',
     'regressions/63.sb3',
+    'regressions/66.sb3',
   ];
 
   /**
