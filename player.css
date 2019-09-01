@@ -3,6 +3,10 @@
   color: #000;
   height: auto;
 }
+.player-stage {
+  position: relative;
+  overflow: hidden;
+}
 /* Fullscreen */
 .player-root[fullscreen] {
   position: absolute;
@@ -23,6 +27,7 @@
   padding: 8px;
   position: absolute;
   bottom: 0;
+  left: 0;
   width: 100%;
   background-color: rgba(255, 200, 200, 0.9);
   pointer-events: auto;
