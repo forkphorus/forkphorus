@@ -1029,6 +1029,12 @@ namespace P.sb3.compiler {
    * Returns the source when stringified, making the raw type safe to use in concatenation.
    */
   export class CompiledInput {
+    /**
+     * Whether this input could potentially be a number-like object at runtime.
+     * A string value may become number-like if it contains a number value.
+     */
+    public potentialNumber: boolean = true;
+
     constructor(public source: string, public type: InputType) {
 
     }
@@ -1550,9 +1556,11 @@ namespace P.sb3.compiler {
           }
         }
 
-        case NativeTypes.TEXT:
-          // [type, text]
-          return this.sanitizedInput(native[1] + '');
+        case NativeTypes.TEXT: {
+          const input = this.sanitizedInput(native[1] + '');
+          input.potentialNumber = /\d/.test(native[1]);
+          return input;
+        }
 
         case NativeTypes.VAR:
           // [type, name, id]
