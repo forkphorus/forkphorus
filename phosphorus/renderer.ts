@@ -1087,12 +1087,6 @@ namespace P.renderer {
     penLine(color: string, size: number, x1: number, y1: number, x2: number, y2: number) {
       this.penLayerModified = true;
       this.penContext.lineCap = 'round';
-      if (size % 2 > .5 && size % 2 < 1.5) {
-        x1 -= .5;
-        y1 -= .5;
-        x2 -= .5;
-        y2 -= .5;
-      }
       this.penContext.strokeStyle = color;
       this.penContext.lineWidth = size;
       this.penContext.beginPath();

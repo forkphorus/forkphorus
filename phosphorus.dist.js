@@ -1249,12 +1249,6 @@ var P;
             penLine(color, size, x1, y1, x2, y2) {
                 this.penLayerModified = true;
                 this.penContext.lineCap = 'round';
-                if (size % 2 > .5 && size % 2 < 1.5) {
-                    x1 -= .5;
-                    y1 -= .5;
-                    x2 -= .5;
-                    y2 -= .5;
-                }
                 this.penContext.strokeStyle = color;
                 this.penContext.lineWidth = size;
                 this.penContext.beginPath();
@@ -5878,6 +5872,9 @@ var P;
                     this.source = source;
                     this.type = type;
                 }
+                toString() {
+                    return this.source;
+                }
             }
             compiler_1.CompiledInput = CompiledInput;
             const stringInput = (v) => new CompiledInput(v, 'string');
@@ -6074,12 +6071,17 @@ var P;
                 }
                 convertInputType(input, type) {
                     if (input.type === type) {
-                        return input.source;
+                        return input;
                     }
-                    if (input.type === 'list' && type === 'any') {
-                        type = 'string';
+                    if (type === 'any') {
+                        if (input.type === 'list') {
+                            type = 'string';
+                        }
+                        else {
+                            return input;
+                        }
                     }
-                    return this.asType(input.source, type);
+                    return new CompiledInput(this.asType(input.source, type), type);
                 }
                 sanitizedInput(string) {
                     return stringInput(this.sanitizedString(string));
@@ -6177,7 +6179,7 @@ var P;
                 compileInput(parentBlock, inputName, type) {
                     if (!parentBlock.inputs[inputName]) {
                         this.warn('missing input', inputName);
-                        return this.getInputFallback(type);
+                        return new CompiledInput(this.getInputFallback(type), type);
                     }
                     const input = parentBlock.inputs[inputName];
                     if (Array.isArray(input[1])) {
@@ -6186,14 +6188,14 @@ var P;
                     }
                     const inputBlockId = input[1];
                     if (!inputBlockId) {
-                        return this.getInputFallback(type);
+                        return new CompiledInput(this.getInputFallback(type), type);
                     }
                     const inputBlock = this.blocks[inputBlockId];
                     const opcode = inputBlock.opcode;
                     const compiler = this.getInputCompiler(opcode);
                     if (!compiler) {
                         this.warn('unknown input', opcode, inputBlock);
-                        return this.getInputFallback(type);
+                        return new CompiledInput(this.getInputFallback(type), type);
                     }
                     const util = new InputUtil(this, inputBlock);
                     let result = compiler(util);
@@ -7078,6 +7080,12 @@ var P;
     inputLibrary['operator_equals'] = function (util) {
         const OPERAND1 = util.getInput('OPERAND1', 'any');
         const OPERAND2 = util.getInput('OPERAND2', 'any');
+        if (OPERAND1.type === 'number') {
+            return util.numberInput(`numEqual(${OPERAND1}, ${OPERAND2})`);
+        }
+        if (OPERAND2.type === 'number') {
+            return util.numberInput(`numEqual(${OPERAND2}, ${OPERAND1})`);
+        }
         return util.booleanInput(`equal(${OPERAND1}, ${OPERAND2})`);
     };
     inputLibrary['operator_gt'] = function (util) {
@@ -7322,7 +7330,7 @@ var P;
         handle(util) {
             const KEY = util.getInput('KEY', 'string');
             try {
-                const value = P.runtime.scopedEval(KEY);
+                const value = P.runtime.scopedEval(KEY.source);
                 var keycode = P.runtime.getKeyCode(value);
             }
             catch (e) {
@@ -7343,7 +7351,7 @@ var P;
         handle(util) {
             const SEQUENCE = util.getInput('SEQUENCE', 'string');
             try {
-                var sequence = P.runtime.scopedEval(SEQUENCE);
+                var sequence = P.runtime.scopedEval(SEQUENCE.source);
             }
             catch (e) {
                 console.warn('makeymakey sequence generation error', e);
