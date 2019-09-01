@@ -6166,7 +6166,7 @@ var P;
                         case 6:
                         case 7:
                         case 8: {
-                            const number = parseFloat(native[1]);
+                            const number = +native[1];
                             if (isNaN(number) || desiredType === 'string') {
                                 return this.sanitizedInput(native[1]);
                             }

@@ -1560,7 +1560,7 @@ namespace P.sb3.compiler {
         case NativeTypes.INTEGER_NUM:
         case NativeTypes.ANGLE_NUM: {
           // [type, value]
-          const number = parseFloat(native[1]);
+          const number = +native[1];
           if (isNaN(number) || desiredType === 'string') {
             return this.sanitizedInput(native[1]);
           } else {
