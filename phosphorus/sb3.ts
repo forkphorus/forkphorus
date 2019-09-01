@@ -2582,6 +2582,12 @@ namespace P.sb3.compiler {
   inputLibrary['operator_equals'] = function(util) {
     const OPERAND1 = util.getInput('OPERAND1', 'any');
     const OPERAND2 = util.getInput('OPERAND2', 'any');
+    if (OPERAND1.type === 'number') {
+      return util.numberInput(`numEqual(${OPERAND1}, ${OPERAND2})`);
+    }
+    if (OPERAND2.type === 'number') {
+      return util.numberInput(`numEqual(${OPERAND2}, ${OPERAND1})`);
+    }
     return util.booleanInput(`equal(${OPERAND1}, ${OPERAND2})`);
   };
   inputLibrary['operator_gt'] = function(util) {
