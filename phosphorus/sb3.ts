@@ -1560,7 +1560,7 @@ namespace P.sb3.compiler {
         case NativeTypes.INTEGER_NUM:
         case NativeTypes.ANGLE_NUM: {
           // [type, value]
-          const number = parseFloat(native[1]);
+          const number = +native[1];
           if (isNaN(number) || desiredType === 'string') {
             return this.sanitizedInput(native[1]);
           } else {
@@ -1569,8 +1569,13 @@ namespace P.sb3.compiler {
         }
 
         case NativeTypes.TEXT: {
-          const input = this.sanitizedInput(native[1] + '');
-          input.potentialNumber = this.isStringLiteralPotentialNumber(native[1]);
+          const value = native[1] + '';
+          // Opportunistically treat text as a number because it has huge performance boosts.
+          if (/\d/.test(value) && !isNaN(+value)) {
+            return numberInput(value);
+          }
+          const input = this.sanitizedInput(value);
+          input.potentialNumber = this.isStringLiteralPotentialNumber(value);
           return input;
         }
 
