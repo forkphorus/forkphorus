@@ -665,6 +665,7 @@ namespace P.sb3 {
           scratchList[i] = content[i];
         }
         target.lists[name] = scratchList;
+        target.listIds[id] = name;
       }
 
       target.name = data.name;
@@ -1027,6 +1028,10 @@ namespace P.sb3.compiler {
 
     }
 
+    get target() {
+      return this.compiler.target;
+    }
+
     /**
      * Compile an input, and give it a type.
      */
@@ -1220,7 +1225,6 @@ namespace P.sb3.compiler {
 
     constructor(compiler: Compiler, block: SB3Block, public startingFunction: Fn) {
       super(compiler, block);
-      this.target = compiler.target;
     }
   }
 

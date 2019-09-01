@@ -5613,6 +5613,7 @@ var P;
                         scratchList[i] = content[i];
                     }
                     target.lists[name] = scratchList;
+                    target.listIds[id] = name;
                 }
                 target.name = data.name;
                 target.currentCostumeIndex = data.currentCostume;
@@ -5872,6 +5873,9 @@ var P;
                     this.compiler = compiler;
                     this.block = block;
                 }
+                get target() {
+                    return this.compiler.target;
+                }
                 getInput(name, type) {
                     return this.compiler.compileInput(this.block, name, type);
                 }
@@ -5982,7 +5986,6 @@ var P;
                 constructor(compiler, block, startingFunction) {
                     super(compiler, block);
                     this.startingFunction = startingFunction;
-                    this.target = compiler.target;
                 }
             }
             compiler_1.HatUtil = HatUtil;
