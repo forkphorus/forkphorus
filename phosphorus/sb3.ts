@@ -783,6 +783,19 @@ namespace P.sb3 {
       return Promise.all(promises);
     }
 
+    compileTargets(targets: Target[]): void {
+      if (P.config.debug) {
+        console.time('Scratch 3 compile');
+      }
+      for (const target of targets) {
+        const compiler = new P.sb3.compiler.Compiler(target);
+        compiler.compile();
+      }
+      if (P.config.debug) {
+        console.timeEnd('Scratch 3 compile');
+      }
+    }
+
     load() {
       if (!this.projectData) {
         throw new Error('invalid project data');
@@ -811,7 +824,7 @@ namespace P.sb3 {
             .filter((i) => i && i.valid);
 
           sprites.forEach((sprite) => sprite.stage = stage);
-          targets.forEach((base) => new P.sb3.compiler.Compiler(base).compile());
+          this.compileTargets(targets);
           stage.children = sprites;
           stage.allWatchers = watchers;
           watchers.forEach((watcher) => watcher.init());
