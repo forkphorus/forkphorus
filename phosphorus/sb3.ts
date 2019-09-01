@@ -2678,7 +2678,7 @@ namespace P.sb3.compiler {
       case 'e ^':
         return util.numberInput(`Math.exp(${NUM})`);
       case '10 ^':
-        return util.numberInput(`Math.exp(${NUM} * Math.LN10)`);
+        return util.numberInput(`Math.pow(10, ${NUM})`);
       default:
         return util.numberInput('0');
     }
