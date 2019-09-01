@@ -1075,8 +1075,8 @@ namespace P.sb2.compiler {
       } else if (e[0] === '<' || e[0] === '>') { /* Operators */
 
         var less: boolean;
-        var x;
-        var y;
+        let x;
+        let y;
 
         if (typeof e[1] === 'string' && DIGIT.test(e[1]) || typeof e[1] === 'number') {
           less = e[0] === '<';
@@ -1095,12 +1095,14 @@ namespace P.sb2.compiler {
 
       } else if (e[0] === '=') {
 
+        let x;
+        let y;
         if (typeof e[1] === 'string' && DIGIT.test(e[1]) || typeof e[1] === 'number') {
-          var x = e[1];
-          var y = e[2];
+          x = e[1];
+          y = e[2];
         } else if (typeof e[2] === 'string' && DIGIT.test(e[2]) || typeof e[2] === 'number') {
-          var x = e[2];
-          var y = e[1];
+          x = e[2];
+          y = e[1];
         }
         var nx = +x;
         if (x == null || nx !== nx) {
