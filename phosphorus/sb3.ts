@@ -1564,11 +1564,22 @@ namespace P.sb3.compiler {
           if (isNaN(number) || desiredType === 'string') {
             return this.sanitizedInput(native[1]);
           } else {
+            // It's important that we use number.toString() instead of native[1] to avoid invalid syntax
+            // For example the input "0123" represents the number "123", but including "0123" in JS will throw SyntaxErrors.
             return numberInput(number.toString());
           }
         }
 
         case NativeTypes.TEXT: {
+          // [type, value]
+          const value = native[1];
+          if (desiredType !== 'string' && /\d/.test(value)) {
+            const number = +value;
+            if (!isNaN(number)) {
+              // see comment and similar code above
+              return numberInput(number.toString());
+            }
+          }
           const input = this.sanitizedInput(native[1] + '');
           input.potentialNumber = this.isStringLiteralPotentialNumber(native[1]);
           return input;
