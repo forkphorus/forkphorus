@@ -1011,9 +1011,17 @@ namespace P.sb3.compiler {
     LIST = 13,
   }
 
+  /**
+   * JS code with an associated type.
+   * Returns the source when stringified, making the raw type safe to use in concatenation.
+   */
   export class CompiledInput {
     constructor(public source: string, public type: InputType) {
 
+    }
+
+    toString() {
+      return this.source;
     }
   }
 
@@ -1067,7 +1075,7 @@ namespace P.sb3.compiler {
     /**
      * Compile an input, and give it a type.
      */
-    getInput(name: string, type: InputType): string {
+    getInput(name: string, type: InputType): CompiledInput {
       return this.compiler.compileInput(this.block, name, type);
     }
 
@@ -1407,18 +1415,22 @@ namespace P.sb3.compiler {
     /**
      * Converts a compiled input to another type, if necessary
      */
-    convertInputType(input: CompiledInput, type: InputType): string {
+    convertInputType(input: CompiledInput, type: InputType): CompiledInput {
       // If the types are already identical, no changes are necessary
       if (input.type === type) {
-        return input.source;
+        return input;
       }
-      // Special handling for the 'list' type
-      // Even if the requested type is 'any', we'll convert it to a string.
-      // Having lists at runtime causes many weird problems.
-      if (input.type === 'list' && type === 'any') {
-        type = 'string';
+      // The 'any' type is a little bit special.
+      // When the input is of type 'list', we change the desired type to string to fix list stringification.
+      // In all other cases no action is necessary.
+      if (type === 'any') {
+        if (input.type === 'list') {
+          type = 'string';
+        } else {
+          return input;
+        }
       }
-      return this.asType(input.source, type);
+      return new CompiledInput(this.asType(input.source, type), type);
     }
 
     /**
@@ -1564,12 +1576,12 @@ namespace P.sb3.compiler {
     /**
      * Compile an input of a block, and do any necessary type coercions.
      */
-    compileInput(parentBlock: SB3Block, inputName: string, type: InputType): string {
+    compileInput(parentBlock: SB3Block, inputName: string, type: InputType): CompiledInput {
       // Handling when the block does not contain an input entry.
       if (!parentBlock.inputs[inputName]) {
         // This could be a sign of another issue, so log a warning.
         this.warn('missing input', inputName);
-        return this.getInputFallback(type);
+        return new CompiledInput(this.getInputFallback(type), type);
       }
 
       const input = parentBlock.inputs[inputName];
@@ -1584,7 +1596,7 @@ namespace P.sb3.compiler {
       // Handling null inputs where the input exists but is just empty.
       // This is normal and happens very often.
       if (!inputBlockId) {
-        return this.getInputFallback(type);
+        return new CompiledInput(this.getInputFallback(type), type);
       }
 
       const inputBlock = this.blocks[inputBlockId];
@@ -1594,7 +1606,7 @@ namespace P.sb3.compiler {
       // If we don't recognize this block, that's a problem.
       if (!compiler) {
         this.warn('unknown input', opcode, inputBlock);
-        return this.getInputFallback(type);
+        return new CompiledInput(this.getInputFallback(type), type);
       }
 
       const util = new InputUtil(this, inputBlock);
@@ -2826,7 +2838,7 @@ namespace P.sb3.compiler {
     handle(util) {
       const KEY = util.getInput('KEY', 'string');
       try {
-        const value = P.runtime.scopedEval(KEY);
+        const value = P.runtime.scopedEval(KEY.source);
         var keycode = P.runtime.getKeyCode(value);
       } catch (e) {
         console.warn('makeymakey key generation error', e);
@@ -2845,7 +2857,7 @@ namespace P.sb3.compiler {
     handle(util) {
       const SEQUENCE = util.getInput('SEQUENCE', 'string');
       try {
-        var sequence = P.runtime.scopedEval(SEQUENCE);
+        var sequence = P.runtime.scopedEval(SEQUENCE.source);
       } catch (e) {
         console.warn('makeymakey sequence generation error', e);
         return;
