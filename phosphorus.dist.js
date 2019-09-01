@@ -40,6 +40,7 @@ var P;
         config.useWebGL = features.indexOf('webgl') > -1;
         config.useCrashMonitor = features.indexOf('crashmonitor') > -1;
         config.supportVideoSensing = features.indexOf('video') > -1;
+        config.experimentalOptimizations = features.indexOf('opt') > -1;
         config.scale = window.devicePixelRatio || 1;
         config.hasTouchEvents = 'ontouchstart' in document;
         config.PROJECT_API = 'https://projects.scratch.mit.edu/$id';
@@ -2803,6 +2804,9 @@ var P;
                 return ny === ny && nx === ny;
             }
             return false;
+        };
+        var strEqual = function (a, b) {
+            return (a + '').toLowerCase() === (b + '').toLowerCase();
         };
         var mod = function (x, y) {
             var r = x % y;
@@ -5684,6 +5688,18 @@ var P;
                 }
                 return Promise.all(promises);
             }
+            compileTargets(targets) {
+                if (P.config.debug) {
+                    console.time('Scratch 3 compile');
+                }
+                for (const target of targets) {
+                    const compiler = new P.sb3.compiler.Compiler(target);
+                    compiler.compile();
+                }
+                if (P.config.debug) {
+                    console.timeEnd('Scratch 3 compile');
+                }
+            }
             load() {
                 if (!this.projectData) {
                     throw new Error('invalid project data');
@@ -5708,7 +5724,7 @@ var P;
                         .map((data) => this.loadWatcher(data, stage))
                         .filter((i) => i && i.valid);
                     sprites.forEach((sprite) => sprite.stage = stage);
-                    targets.forEach((base) => new P.sb3.compiler.Compiler(base).compile());
+                    this.compileTargets(targets);
                     stage.children = sprites;
                     stage.allWatchers = watchers;
                     watchers.forEach((watcher) => watcher.init());
@@ -5871,6 +5887,7 @@ var P;
                 constructor(source, type) {
                     this.source = source;
                     this.type = type;
+                    this.potentialNumber = true;
                 }
                 toString() {
                     return this.source;
@@ -6152,8 +6169,11 @@ var P;
                                 return numberInput(number.toString());
                             }
                         }
-                        case 10:
-                            return this.sanitizedInput(native[1] + '');
+                        case 10: {
+                            const input = this.sanitizedInput(native[1] + '');
+                            input.potentialNumber = /\d/.test(native[1]);
+                            return input;
+                        }
                         case 12:
                             return anyInput(this.getVariableReference(native[1]));
                         case 13:
@@ -7080,11 +7100,16 @@ var P;
     inputLibrary['operator_equals'] = function (util) {
         const OPERAND1 = util.getInput('OPERAND1', 'any');
         const OPERAND2 = util.getInput('OPERAND2', 'any');
-        if (OPERAND1.type === 'number') {
-            return util.numberInput(`numEqual(${OPERAND1}, ${OPERAND2})`);
-        }
-        if (OPERAND2.type === 'number') {
-            return util.numberInput(`numEqual(${OPERAND2}, ${OPERAND1})`);
+        if (P.config.experimentalOptimizations) {
+            if (OPERAND1.type === 'number') {
+                return util.booleanInput(`numEqual(${OPERAND1}, ${OPERAND2})`);
+            }
+            if (OPERAND2.type === 'number') {
+                return util.booleanInput(`numEqual(${OPERAND2}, ${OPERAND1})`);
+            }
+            if (!OPERAND1.potentialNumber || !OPERAND2.potentialNumber) {
+                return util.booleanInput(`strEqual(${OPERAND1}, ${OPERAND2})`);
+            }
         }
         return util.booleanInput(`equal(${OPERAND1}, ${OPERAND2})`);
     };
