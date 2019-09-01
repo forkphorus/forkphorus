@@ -83,7 +83,7 @@ namespace P.runtime {
     return '' + nx > ys;
   };
 
-  var equal = function(x, y) {
+  var equal = function(x: any, y: any) {
     if ((typeof x === 'number' || typeof x === 'boolean' || DIGIT.test(x)) && (typeof y === 'number' || typeof x === 'boolean' || DIGIT.test(y))) {
       var nx = +x;
       var ny = +y;
@@ -96,7 +96,7 @@ namespace P.runtime {
     return xs === ys;
   };
 
-  var numEqual = function(nx, y) {
+  var numEqual = function(nx: number, y: any) {
     if (typeof y === 'number' || DIGIT.test(y)) {
       var ny = +y;
       return ny === ny && nx === ny;
