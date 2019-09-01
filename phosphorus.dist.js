@@ -6166,7 +6166,7 @@ var P;
                         case 6:
                         case 7:
                         case 8: {
-                            const number = +native[1];
+                            const number = parseFloat(native[1]);
                             if (isNaN(number) || desiredType === 'string') {
                                 return this.sanitizedInput(native[1]);
                             }
@@ -6175,12 +6175,8 @@ var P;
                             }
                         }
                         case 10: {
-                            const value = native[1] + '';
-                            if (/\d/.test(value) && !isNaN(+value)) {
-                                return numberInput(value);
-                            }
-                            const input = this.sanitizedInput(value);
-                            input.potentialNumber = this.isStringLiteralPotentialNumber(value);
+                            const input = this.sanitizedInput(native[1] + '');
+                            input.potentialNumber = this.isStringLiteralPotentialNumber(native[1]);
                             return input;
                         }
                         case 12:
