@@ -5,13 +5,13 @@
 
   const tests = [
     'sb2/sb2-template.sb2',
-    // 'sb2/pen-colors.sb2',
-    // 'sb2/operators.sb2',
+
     'sb3/sb3-template.sb3',
     'sb3/quicksort.sb3',
     'sb3/befunge-eratosthenes.sb3',
     'sb3/string-functions.sb3',
-    // 'sb3/operators.sb3',
+    'sb3/operators.sb3',
+
     'regressions/54-pen-colors.sb3',
     'regressions/56-NaN.sb3',
     'regressions/58-list-reference.sb3',
