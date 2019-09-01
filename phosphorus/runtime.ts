@@ -96,12 +96,18 @@ namespace P.runtime {
     return xs === ys;
   };
 
+  // Equality testing optimized for the first argument always being a number.
   var numEqual = function(nx: number, y: any) {
     if (typeof y === 'number' || DIGIT.test(y)) {
       var ny = +y;
       return ny === ny && nx === ny;
     }
     return false;
+  };
+
+  // Equality testing optimized for either argument never being number-like.
+  var strEqual = function(a: any, b: any) {
+    return (a + '').toLowerCase() === (b + '').toLowerCase();
   };
 
   var mod = function(x, y) {
