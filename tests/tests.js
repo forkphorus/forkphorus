@@ -12,11 +12,11 @@
     'sb3/befunge-eratosthenes.sb3',
     'sb3/string-functions.sb3',
     // 'sb3/operators.sb3',
-    'regressions/54.sb3',
-    'regressions/56.sb3',
-    'regressions/58.sb3',
-    'regressions/63.sb3',
-    'regressions/66.sb3',
+    'regressions/54-pen-colors.sb3',
+    'regressions/56-NaN.sb3',
+    'regressions/58-list-reference.sb3',
+    'regressions/63-random.sb3',
+    'regressions/66-insert.sb3',
   ];
 
   /**
