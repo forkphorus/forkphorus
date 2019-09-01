@@ -421,7 +421,6 @@ namespace P.sb2 {
         stage.children = sprites;
         stage.allWatchers = watchers;
         stage.allWatchers.forEach((w) => w.init());
-        stage.updateBackdrop();
 
         P.sb2.compiler.compile(stage);
         return stage;
@@ -1076,8 +1075,8 @@ namespace P.sb2.compiler {
       } else if (e[0] === '<' || e[0] === '>') { /* Operators */
 
         var less: boolean;
-        var x;
-        var y;
+        let x;
+        let y;
 
         if (typeof e[1] === 'string' && DIGIT.test(e[1]) || typeof e[1] === 'number') {
           less = e[0] === '<';
@@ -1096,12 +1095,14 @@ namespace P.sb2.compiler {
 
       } else if (e[0] === '=') {
 
+        let x;
+        let y;
         if (typeof e[1] === 'string' && DIGIT.test(e[1]) || typeof e[1] === 'number') {
-          var x = e[1];
-          var y = e[2];
+          x = e[1];
+          y = e[2];
         } else if (typeof e[2] === 'string' && DIGIT.test(e[2]) || typeof e[2] === 'number') {
-          var x = e[2];
-          var y = e[1];
+          x = e[2];
+          y = e[1];
         }
         var nx = +x;
         if (x == null || nx !== nx) {
@@ -1410,7 +1411,12 @@ namespace P.sb2.compiler {
         source += '  self.children.splice(Math.max(0, i - ' + num(block[1]) + '), 0, S);\n';
         source += '}\n';
 
-      // } else if (block[0] === 'setVideoState') {
+      } else if (block[0] === 'setVideoState') {
+
+        source += 'switch (' + val(block[1]) + ') {';
+        source += '  case "off": self.showVideo(false); break;';
+        source += '  case "on": self.showVideo(true); break;';
+        source += '}';
 
       // } else if (block[0] === 'setVideoTransparency') {
 
@@ -1418,7 +1424,7 @@ namespace P.sb2.compiler {
 
         if (P.audio.context) {
           source += 'var sound = S.getSound(' + val(block[1]) + ');\n';
-          source += 'if (sound) playSound(sound);\n';
+          source += 'if (sound) startSound(sound);\n';
         }
 
       } else if (block[0] === 'doPlaySoundAndWait') {
@@ -1426,20 +1432,18 @@ namespace P.sb2.compiler {
         if (P.audio.context) {
           source += 'var sound = S.getSound(' + val(block[1]) + ');\n';
           source += 'if (sound) {\n';
-          source += '  playSound(sound);\n';
-          source += '  runtime.playingSounds++;\n';
           source += '  save();\n';
-          source += '  R.sound = sound;\n';
+          source += '  R.sound = playSound(sound);\n';
+          source += '  S.activeSounds.add(R.sound);\n';
           source += '  R.start = runtime.now();\n';
           source += '  R.duration = sound.duration;\n';
           source += '  var first = true;\n';
           var id = label();
-          source += '  if ((runtime.now() - R.start < R.duration * 1000 || first) && runtime.stopSounds === 0) {\n';
+          source += '  if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {\n';
           source += '    var first;\n';
           forceQueue(id);
           source += '  }\n';
-          source += '  if (runtime.stopSounds) runtime.stopSounds--;\n';
-          source += '  runtime.playingSounds--;\n';
+          source += '  S.activeSounds.delete(R.sound);\n';
           source += '  restore();\n';
           source += '}\n';
         }
@@ -1733,6 +1737,7 @@ namespace P.sb2.compiler {
         source += '    return;\n';
         source += '  case "other scripts in sprite":\n';
         source += '  case "other scripts in stage":\n';
+        source += '    S.stopSoundsExcept(BASE);\n';
         source += '    for (var i = 0; i < runtime.queue.length; i++) {\n';
         source += '      if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
         source += '        runtime.queue[i] = undefined;\n';

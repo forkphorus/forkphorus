@@ -5,31 +5,28 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Forkphorus is a JavaScript compiler for Scratch 2 and Scratch 3 projects.">
-  <title>forkphorus</title>
-  <link rel="stylesheet" href="phosphorus.css">
-  <link rel="stylesheet" href="player.css">
-  <link rel="stylesheet" href="studioview/studioview.css">
-  <link rel="stylesheet" href="index.css">
-
-  <!-- I've seen a non-zero amount of people use forkphorus.github.io/forkphorus/ when they should be using forkphorus.github.io/, so we'll just redirect them to the correct location and hope they take note. -->
+  <title>forkphorus - phosphorus for Scratch 3</title>
   <script>
+    // I've seen a non-zero amount of people use forkphorus.github.io/forkphorus/ when they should be using forkphorus.github.io/, so we'll just redirect them to the correct location and hope they take note.
     if (location.origin === 'https://forkphorus.github.io' && location.pathname === '/forkphorus/') {
       location.pathname = '/';
     }
 
-    // Apply dark mode right away to avoid a flash of white
+    // Apply local dark mode preference very early to avoid a flash of white
     (function() {
       try {
-        var isDark = localStorage.getItem('userPrefersDark') === 'true';
-        if (isDark) {
+        if (localStorage.getItem('userPrefersDark') === 'true') {
           document.documentElement.classList.add('dark');
         }
       } catch (e) {
-        console.error(e);
+        console.error('error loading theme choice', e);
       }
     }());
   </script>
-
+  <link rel="stylesheet" href="phosphorus.css">
+  <link rel="stylesheet" href="player.css">
+  <link rel="stylesheet" href="studioview/studioview.css">
+  <link rel="stylesheet" href="index.css">
 </head>
 
 <body>
@@ -60,37 +57,58 @@
     <div class="area" id="project-area">
 
       <section>
-        <h1>Report a problem</h1>
-        <p>forkphorus is still in development and has many bugs. <a id="bug-link" target="_blank" rel="noopener" href="https://github.com/forkphorus/forkphorus/issues/new">Click here</a> to report a problem with this project.</p>
+        <h1 data-i18n="index.report">Report a problem</h1>
+        <p>forkphorus is still in development. <a id="bug-link" target="_blank" rel="noopener" href="https://github.com/forkphorus/forkphorus/issues/new">Click here</a> to report a problem with this project. You can also comment problems <a href="https://scratch.mit.edu/users/GarboMuffin/#comments" target="_blank" rel="noopener">here</a> if you don't have a GitHub account.</p>
       </section>
 
       <section class=package>
-        <h1>Embed this project</h1>
-        <p>Include the forkphorus player in your web site.</p>
+        <h1 data-i18n="index.embed">Embed this project</h1>
+        <p data-i18n="index.embed.description">Include the forkphorus player in your web site.</p>
         <p class="embed-options">
-          <input readonly id=embed-code>
-          <input type=checkbox id=embed-auto-start checked>
-          <label for=embed-auto-start>Start automatically</label>
-          <input type=checkbox id=embed-light-content>
-          <label for=embed-light-content>Light controls</label>
-          <input type=checkbox id=embed-hide-controls>
-          <label for=embed-hide-controls>Hide UI</label>
+          <input readonly id="embed-code">
+          <input type="checkbox" id="embed-auto-start" checked>
+          <label for="embed-auto-start" data-i18n="index.embed.autostart">Start automatically</label>
+          <input type="checkbox" id="embed-light-content">
+          <label for="embed-light-content" data-i18n="index.embed.lightControls">Light controls</label>
+          <input type="checkbox" id="embed-hide-controls">
+          <label for="embed-hide-controls" data-i18n="index.embed.hideUI">Hide UI</label>
+          <span>
+            <!-- we re-use the i18n for the packager for this -->
+            <input type="radio" name="embed-resolution" id="embed-480" checked>
+            <label for="embed-480" data-i18n="index.package.480">480x360</label>
+            <input type="radio" name="embed-resolution" id="embed-other">
+            <label for="embed-other" data-i18n="index.package.custom">Custom:</label>
+            <input id="embed-other-width" type="number" value="960" disabled min="1">
+            <span class="package-other-divider" data-i18n="index.package.divider">&times;</span>
+            <input id="embed-other-height" type="number" value="720" disabled min="1">
+          </span>
         </p>
       </section>
 
       <section class=package>
-        <h1>Package this project</h1>
-        <p>Get a link to a web page that automatically runs your project. To package to HTML or EXE, use the <a href="packager/">HTML packager</a>.</p>
+        <h1 data-i18n="index.package">Package this project</h1>
+        <p>Get a link to a web page that automatically runs your project. To package to HTML, EXE, APK, or other formats, use the <a href="packager/">HTML packager</a>.</p>
         <p class="package-options">
-          <a href=# target=_blank id=package-link>Package</a>
-          <input type=checkbox id=package-turbo>
-          <label for=package-turbo>Turbo mode</label>
-          <input type=checkbox id=package-full-screen checked>
-          <label for=package-full-screen>Full screen</label>
+          <a href="#" target="_blank" id="package-link" data-i18n="index.package.button">Package</a>
+          <input type="checkbox" id="package-turbo">
+          <label for="package-turbo" data-i18n="index.package.turbo">Turbo mode</label>
+          <span>
+            <input type="radio" name="package-resolution" id="package-full-screen" checked>
+            <label for="package-full-screen" data-i18n="index.package.fullscreen">Full screen</label>
+
+            <input type="radio" name="package-resolution" id="package-480">
+            <label for="package-480" data-i18n="index.package.480">480x360</label>
+
+            <input type="radio" name="package-resolution" id="package-other">
+            <label for="package-other" data-i18n="index.package.custom">Custom:</label>
+            <input id="package-other-width" type="number" value="960" disabled min="1">
+            <span class="package-other-divider" data-i18n="index.package.divider">&times;</span>
+            <input id="package-other-height" type="number" value="720" disabled min="1">
+          </span>
         </p>
       </section>
 
-      <h1>Settings</h1>
+      <h1 data-i18n="index.settings">Settings</h1>
       <table id="settings">
         <tr>
           <td class="name" title="Forkphorus will **attempt** to run at this framerate."><label for="settings-framerate">Framerate (FPS)</label></td>
@@ -106,10 +124,10 @@
     </div>
 
     <section>
-      <h1>Credits</h1>
+      <h1 data-i18n="index.credits">Credits</h1>
       <p>forkphorus is a fork of <a href="https://phosphorus.github.io/">phosphorus</a> by <a href="https://github.com/nathan">Nathan</a>. Its CPS-style compilation and overall design was inspired by <a href="https://github.com/RHY3756547">Rhys</a>'s <a href="https://code.google.com/p/sb2-js/">sb2.js</a>. It would have more bugs if not for <a href="https://github.com/trumank">Truman</a> and <a href="https://github.com/tjvr">Tim</a>. The <a href="https://stuk.github.io/jszip/">JSZip</a> library is used to read <code>.sb2</code> and <code>.sb3</code> files.</p>
 
-      <h1>Code</h1>
+      <h1 data-i18n="index.code">Code</h1>
       <p>The source code for forkphorus is available <a href=https://github.com/forkphorus/forkphorus>on GitHub</a>.</p>
 
       <!-- the deploy bot for forkphorus.github.io will replace this next line with the version info -->
@@ -123,6 +141,7 @@
   <script src="lib/rgbcolor.js"></script>
   <script src="lib/canvg.min.js"></script>
   <script src="phosphorus.dist.js"></script>
+  <script src="i18n.js"></script>
   <script src="player.js"></script>
   <script src="studioview/studioview.js"></script>
 
@@ -154,9 +173,14 @@
       return result;
     }
 
+    /** i18n */
+    document.title = P.i18n.translate('index.document.title');
+    StudioView.AUTHOR_ATTRIBUTION = P.i18n.translate('studioview.authorAttribution');
+    StudioView.PROJECT_HOVER_TEXT = P.i18n.translate('studioview.projectHoverText');
+    P.i18n.translateElement(document.body);
+
     /** Constants **/
     var PROJECT_PREFIX = 'https://scratch.mit.edu/projects/';
-    var STUDIO_PREFIX = 'https://scratch.mit.edu/studios/';
     var STUDIO = '15926401';
 
     /** Core Player Logic **/
@@ -166,7 +190,7 @@
 
     var player = new P.Player();
     window.player = player;
-    player.addControls({});
+    player.addControls();
     new P.Player.ProgressBar(player, {
       position: querySelector('.url').parentNode,
     });
@@ -248,7 +272,9 @@
       if (studioView && studioView.visible) {
         examplesContainer.style.height = studioViewAreaHeight + 'px';
         examplesViewContainer.appendChild(studioView.root);
+        studioView.projectList.scrollTop = studioView.scrollTop;
       }
+      resetTitle();
     }
     function showPlayerArea() {
       titleArea.style.height = '0px';
@@ -261,6 +287,7 @@
       showPlayerArea();
       player.loadProjectId(id);
       updateLinks();
+      setTitleToProjectTitle(id);
     }
     function loadProjectFile(file) {
       var extension = file.name.split('.').pop();
@@ -271,38 +298,85 @@
       showPlayerArea();
       player.loadProjectFile(file);
       updateLinks();
+      resetTitle();
     }
     function updateLinks() {
       projectLink.href = player.projectLink;
-      bugLink.href = errorHandler.createBugReportLink(player.getString('bug.manual.instructions'));
+      bugLink.href = errorHandler.createBugReportLink(P.i18n.translate('report.bug.instructions'));
       updatePackageLink();
       updateEmbedCode();
+    }
+    var cachedTitles = {};
+    var initialTitle = document.title;
+    function resetTitle() {
+      document.title = initialTitle;
+    }
+    function setTitleToProjectTitle(id) {
+      if (cachedTitles[id]) {
+        document.title = cachedTitles[id] + ' - forkphorus';
+      } else {
+        new P.IO.TextRequest('https://scratch.garbomuffin.com/api/forkphorus/?t=title&p=' + id).load()
+          .then(function(title) {
+            if (title) {
+              cachedTitles[id] = title;
+              document.title = title + ' - forkphorus';
+            }
+          });
+      }
     }
 
     /** Packaging **/
     var packageLink = querySelector('#package-link');
     var packageTurbo = querySelector('#package-turbo');
     var packageFullScreen = querySelector('#package-full-screen');
+    var package480x360 = querySelector('#package-480');
+    var packageOther = querySelector('#package-other');
+    var packageOtherWidth = querySelector('#package-other-width');
+    var packageOtherHeight = querySelector('#package-other-height');
 
+    // Bind two inputs together so that changes to one reflect a change in the other.
+    function bindInputs(first, other, multiplier) {
+      var fun1 = function() { other.value = Math.round(first.value * multiplier); };
+      var fun2 = function() { first.value = Math.round(other.value * (1 / multiplier)); };
+      first.addEventListener('input', fun1);
+      first.addEventListener('change', fun1);
+      other.addEventListener('input', fun2);
+      other.addEventListener('change', fun2);
+    }
     function updatePackageLink() {
+      packageOtherWidth.disabled = packageOtherHeight.disabled = !packageOther.checked;
       if (player.projectId) {
-        var url = location.origin + '/app.html';
-        url += '?id=' + player.projectId;
-        url += '&turbo=' + packageTurbo.checked;
-        url += '&full-screen=' + packageFullScreen.checked;
+        var url = location.origin + '/app.html?id=' + player.projectId;
+        if (packageTurbo.checked) url += '&turbo';
+        if (packageFullScreen.checked) {
+          // fullscreen is the default
+        } else if (package480x360.checked) {
+          url += '&w=480';
+        } else {
+          url += '&w=' + packageOtherWidth.value;
+        }
         packageLink.href = url;
       } else {
         packageLink.href = 'about:blank';
       }
     }
+    bindInputs(packageOtherHeight, packageOtherWidth, 4 / 3);
     packageTurbo.addEventListener('change', updatePackageLink);
     packageFullScreen.addEventListener('change', updatePackageLink);
+    package480x360.addEventListener('change', updatePackageLink);
+    packageOther.addEventListener('change', updatePackageLink);
+    packageOtherHeight.addEventListener('change', updatePackageLink);
+    packageOtherWidth.addEventListener('change', updatePackageLink);
 
     /** Embedding **/
     var embedCode = querySelector('#embed-code');
     var embedAutoStart = querySelector('#embed-auto-start');
     var embedLightContent = querySelector('#embed-light-content');
     var embedHideControls = querySelector('#embed-hide-controls');
+    var embed480 = querySelector('#embed-480');
+    var embedOther = querySelector('#embed-other');
+    var embedOtherWidth = querySelector('#embed-other-width');
+    var embedOtherHeight = querySelector('#embed-other-height');
 
     function updateEmbedCode(e) {
       // Hide UI replaces other options.
@@ -312,6 +386,7 @@
         embedAutoStart.checked = true;
         embedLightContent.checked = false;
       }
+      embedOtherWidth.disabled = embedOtherHeight.disabled = !embedOther.checked;
 
       if (player.projectId) {
         var source = location.protocol + '//' + location.host + '/embed.js?id=' + player.projectId;
@@ -321,13 +396,18 @@
           source += '&auto-start=' + embedAutoStart.checked;
           source += '&light-content=' + embedLightContent.checked;
         }
+        if (embedOther.checked) {
+          source += '&w=' + embedOtherWidth.value;
+          source += '&h=' + embedOtherHeight.value;
+        } else {
+          source += '&w=480&h=360';
+        }
         // We need to break up the closing script tag, otherwise things break.
         embedCode.value = '<script src="' + source + '"></scrip' + 't>';
       } else {
         embedCode.value = '';
       }
 
-      // Focus the embed code if we are an event callback
       if (e) {
         selectEmbedCode();
       }
@@ -335,11 +415,16 @@
     function selectEmbedCode() {
       embedCode.select();
     }
+    bindInputs(embedOtherHeight, embedOtherWidth, 4 / 3);
     embedCode.addEventListener('focus', selectEmbedCode);
     embedCode.addEventListener('click', selectEmbedCode);
     embedHideControls.addEventListener('change', updateEmbedCode);
     embedAutoStart.addEventListener('change', updateEmbedCode);
     embedLightContent.addEventListener('change', updateEmbedCode);
+    embed480.addEventListener('change', updateEmbedCode);
+    embedOther.addEventListener('change', updateEmbedCode);
+    embedOtherHeight.addEventListener('change', updateEmbedCode);
+    embedOtherWidth.addEventListener('change', updateEmbedCode);
 
     /** Local File Loading **/
     var uploadFileInput = querySelector('#upload-file-input');
@@ -374,24 +459,27 @@
     function hideStudioView() {
       examplesContainer.style.height = '0px';
       if (studioView && studioView.visible && studioView.root.parentNode) {
+        studioView.scrollTop = studioView.projectList.scrollTop;
         examplesViewContainer.removeChild(studioView.root);
       }
     }
     function initStudioView() {
       studioView = new StudioView(STUDIO);
       studioView.visible = false;
-      studioView.onselect = function(id) {
+      studioView.onselect = function(id, el) {
+        cachedTitles[id] = el.dataset.title;
         location.hash = '#' + id;
       };
-      studioView.shuffleProjects = true;
+      studioView.shuffler = StudioView.Shufflers.random();
       studioView.loadNextPage();
       studioView.setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+      studioView.scrollTop = 0;
 
       var link = document.createElement('a');
-      link.innerText = player.getString('studio.view');
+      link.innerText = P.i18n.translate('index.studio.view');
       link.target = '_blank';
       link.rel = 'noopener';
-      link.href = STUDIO_PREFIX + STUDIO;
+      link.href = studioView.getURL();
       examplesFooter.appendChild(link);
     }
     examples.addEventListener('click', function(e) {
@@ -410,10 +498,20 @@
     /** Dark Mode **/
     function getLocalDarkMode() {
       try {
-        return localStorage.getItem('userPrefersDark') === 'true';
+        const value = localStorage.getItem('userPrefersDark');
+        if (!value) {
+          // value is undefined or null
+          return getDefaultDarkMode();
+        }
+        // value is the string 'true' or the string 'false'
+        return value === 'true';
       } catch (e) {
+        console.warn('error getting local color choice', e);
         return false;
       }
+    }
+    function getDefaultDarkMode() {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
     function setDarkMode(dark) {
       if (dark) {
@@ -427,7 +525,9 @@
       }
       try {
         return localStorage.setItem('userPrefersDark', dark);
-      } catch (e) {}
+      } catch (e) {
+        console.error('error saving color choice', e);
+      }
     }
     function toggleDarkMode(dark) {
       setDarkMode(!document.documentElement.classList.contains('dark'));

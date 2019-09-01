@@ -105,6 +105,16 @@ P.suite = (function() {
     throw new Error('unknown type: ' + type);
   }
 
+  function stringifyError(error) {
+    if (!error) {
+      return 'unknown error';
+    }
+    if (error.stack) {
+      return 'Message: ' + error.message + '\nStack:\n' + error.stack;
+    }
+    return error.toString();
+  }
+
   /**
    * Runs and tests a Stage
    * @param {P.core.Stage} stage
@@ -162,7 +172,7 @@ P.suite = (function() {
        * testFail() when the project encounters an error
        */
       const handleError = (e) => {
-        const message = P.utils.stringifyError(e);
+        const message = stringifyError(e);
         stage.runtime.testFail('ERROR: ' + message);
       };
 
@@ -230,7 +240,10 @@ P.suite = (function() {
       href: projectMeta.path,
     }));
 
-    const message = (result.success ? 'OKAY: ' : 'FAIL: ') + result.message;
+    let message = result.success ? 'OKAY' : 'FAIL';
+    if (result.message) {
+      message += ': ' + result.message;
+    }
     const successClass = result.success ? 'cell-result-okay' : 'cell-result-fail';
     row.appendChild(createElement('td', {
       className: 'cell-result ' + successClass,
@@ -267,6 +280,11 @@ P.suite = (function() {
     listEl.appendChild(createElement('li', {
       textContent: `Of ${totalTests} test, ${passingTests} passed and ${failingTests} failed. (${percentPassing}% passing)`,
     }));
+    if (failingTests > 0) {
+      listEl.classList.add('suite-failed');
+    } else {
+      listEl.classList.add('suite-passed');
+    }
 
     finalResultsEl.appendChild(listEl);
   }

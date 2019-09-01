@@ -3,6 +3,9 @@
 <html>
   <head>
     <style>
+      body {
+        font-family: sans-serif;
+      }
       /* How to apply styles to the forkphorus embed <iframe> */
       .forkphorus-embed {
         margin: 10px;
@@ -12,8 +15,6 @@
   </head>
 
   <body>
-    Something before.<br>
-
     <!-- Example of using the embed API -->
     <script>
 
@@ -24,35 +25,90 @@
           return;
         }
 
-        // data will be sent from forkphorus to the parent website.
         var data = e.data;
-        console.log('got message from forkphorus', data);
 
         // `id` (string) - The unique (random) ID of the forkphorus embed that sent this message.
         var id = data.id;
         // `type` (string) - The type of message that this is. (we'll see what this means later)
         var type = data.type;
-        // `payload` (varies) - The payload part of the message. (varies by type)
-        var payload = data.payload;
 
-        switch (type) {
-          case 'stateChange':
-            // payload is a string of the current state ('loading', 'ready')
-            console.log('forkphorus state changed to', payload);
-            break;
+        if (type === 'hello') {
+          if (data.version !== 1) {
+            // That's not supposed to happen.
+            // You should probably log a warning somewhere, but not more than that.
+            console.warn('unexpected api version', data.version);
+          }
+          console.log(id, 'says hello with API version', data.version);
+        }
+
+        if (type === 'startload') {
+          console.log(id, 'is starting to load');
+        }
+
+        if (type === 'progress') {
+          console.log(id, 'has progressed to ' + data.progress * 100 + '% complete')
+        }
+
+        if (type === 'load') {
+          console.log(id, 'is ready to start');
+        }
+
+        if (type === 'start') {
+          console.log(id, 'has started');
+        }
+
+        if (type === 'pause') {
+          console.log(id, 'has paused');
+        }
+
+        if (type === 'error') {
+          console.log(id, 'has encountered an error', data.error);
         }
       });
     </script>
 
-    <script src="http://localhost:8080/embed.js?id=280227362&auto-start=true&light-content=false"></script>
+    <p>Examples of the embed.</p>
 
-    <script src="http://localhost:8080/embed.js?id=280227362&auto-start=false&light-content=false"></script>
+    <p>The project being shown here is <a href="https://scratch.mit.edu/projects/280227362">Spring Physics by HowToLogic</a>.</p>
 
-    <script src="http://localhost:8080/embed.js?id=280227362&auto-start=false&light-content=true"></script>
+    <h2>no autostart, 480x360</h2>
+    <script src="/embed.js?id=280227362&auto-start=false&light-content=false&w=480&h=360"></script>
+    <input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=false&light-content=false&w=480&h=360">&lt;/script>'>
 
-    <script src="http://localhost:8080/embed.js?id=280227362&ui=false"></script>
+    <h2>no autostart, 960x720</h2>
+    <script src="/embed.js?id=280227362&auto-start=false&light-content=false&w=960&h=720"></script>
+    <input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=false&light-content=false&w=960&h=720">&lt;/script>'>
+  
+    <h2>no autostart, 240x180</h2>
+    <script src="/embed.js?id=280227362&auto-start=false&light-content=false&w=240&h=180"></script>
+    <input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=false&light-content=false&w=240&h=180">&lt;/script>'>
 
-    <br>Something after.
+    <h2>autostart, 480x360</h2>
+    <script src="/embed.js?id=280227362&auto-start=true&light-content=false"></script>
+    <input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=true&light-content=false">&lt;/script>'>
+
+    <h2>Light controls (for dark themes)</h2>
+    <p>(black background not set by the embed, the embed is transparent so set background-color on the parent)</p>
+    <div style="background-color: #111; padding: 10px; width: 500px;">
+      <script src="/embed.js?id=280227362&auto-start=false&light-content=true&w=480&h=360"></script>
+    </div>
+    <input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=false&light-content=true&w=480&h=360">&lt;/script>'>
+
+    <h2>Hide UI (autostart)</h2>
+    <script src="/embed.js?id=280227362&ui=false"></script>
+    <input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&ui=false">&lt;/script>'>
+
+    <p>... and more. This is not a comprehensive list. You can mix resolution, dark theme, controls, etc. and it all <i>just works</i>.</p>
+
+    <script>
+      for (var i of document.querySelectorAll('input')) {
+        i.readOnly = true;
+        i.onclick = function() {
+          this.focus();
+          this.select();
+        };
+      }
+    </script>
 
   </body>
 </html>

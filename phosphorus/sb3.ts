@@ -117,6 +117,7 @@ namespace P.sb3 {
   // Adds Scratch 3 specific things such as broadcastReferences
   export class Scratch3Stage extends P.core.Stage {
     public sb3data: SB3Target;
+    public listIds: ObjectMap<string> = {};
 
     createVariableWatcher(target: P.core.Base, variableName: string) {
       // TODO: implement
@@ -127,6 +128,7 @@ namespace P.sb3 {
   // Implements a Scratch 3 Sprite.
   export class Scratch3Sprite extends P.core.Sprite {
     public sb3data: any;
+    public listIds: ObjectMap<string> = {};
 
     _clone() {
       return new Scratch3Sprite(this.stage);
@@ -236,6 +238,7 @@ namespace P.sb3 {
       // Not all opcodes have a set()
       if (this.libraryEntry.set) {
         this.libraryEntry.set(this, value);
+        this.update();
       }
     }
 
@@ -322,6 +325,7 @@ namespace P.sb3 {
 
   export class Scratch3ListWatcher extends P.core.Watcher {
     private params: any;
+    private id: string;
     private width: number;
     private height: number;
     private list: Scratch3List;
@@ -334,6 +338,7 @@ namespace P.sb3 {
     constructor(stage: Scratch3Stage, data: SB3Watcher) {
       super(stage, data.spriteName || '');
 
+      this.id = data.id;
       this.params = data.params;
       this.x = data.x;
       this.y = data.y;
@@ -389,7 +394,9 @@ namespace P.sb3 {
 
     init() {
       super.init();
-      const listName = this.params.LIST;
+      const target = this.target as Target;
+      const listId = this.id;
+      const listName = target.listIds[listId];
       if (!(listName in this.target.lists)) {
         // Create the list if it doesn't exist.
         // It might be better to mark ourselves as invalid instead, but this works just fine.
@@ -514,17 +521,35 @@ namespace P.sb3 {
 
     const textElements = svg.querySelectorAll('text');
     const usedFonts: string[] = [];
+    const addFont = (font: string) => {
+      if (usedFonts.indexOf(font) === -1) {
+        usedFonts.push(font);
+      }
+    };
 
     for (var i = 0; i < textElements.length; i++) {
       const el = textElements[i];
-      let font = el.getAttribute('font-family') || '';
-      if (!P.fonts.scratch3[font]) {
-        console.warn('unknown font', font);
-        font = 'Sans Serif';
-        el.setAttribute('font-family', font);
+      let fonts = (el.getAttribute('font-family') || '')
+        .split(',')
+        .map((i) => i.trim());
+      let found = false;
+      for (const family of fonts) {
+        if (P.fonts.scratch3[family]) {
+          found = true;
+          addFont(family);
+          break;
+        } else if (family === 'sans-serif') {
+          found = true;
+          // We let the system handle their respective 'sans-serif' fonts
+          // https://scratch.mit.edu/projects/319138929/
+          break;
+        }
       }
-      if (usedFonts.indexOf(font) === -1) {
-        usedFonts.push(font);
+      if (!found) {
+        console.warn('unknown fonts', fonts);
+        const font = 'Sans Serif';
+        addFont(font);
+        el.setAttribute('font-family', font);
       }
     }
 
@@ -691,6 +716,19 @@ namespace P.sb3 {
       return Promise.all(promises);
     }
 
+    compileTargets(targets: Target[]): void {
+      if (P.config.debug) {
+        console.time('Scratch 3 compile');
+      }
+      for (const target of targets) {
+        const compiler = new P.sb3.compiler.Compiler(target);
+        compiler.compile();
+      }
+      if (P.config.debug) {
+        console.timeEnd('Scratch 3 compile');
+      }
+    }
+
     load() {
       if (!this.projectData) {
         throw new Error('invalid project data');
@@ -719,11 +757,10 @@ namespace P.sb3 {
             .filter((i) => i && i.valid);
 
           sprites.forEach((sprite) => sprite.stage = stage);
-          targets.forEach((base) => new P.sb3.compiler.Compiler(base).compile());
+          this.compileTargets(targets);
           stage.children = sprites;
           stage.allWatchers = watchers;
           watchers.forEach((watcher) => watcher.init());
-          stage.updateBackdrop();
 
           return stage;
         });
@@ -920,9 +957,26 @@ namespace P.sb3.compiler {
     LIST = 13,
   }
 
+  /**
+   * JS code with an associated type.
+   * Returns the source when stringified, making the raw type safe to use in concatenation.
+   */
   export class CompiledInput {
+    /**
+     * Whether this input could potentially be a number-like object at runtime.
+     * A value may be a potential number if:
+     *  - it is a number
+     *  - it is a boolean
+     *  - it is a string that represents a number or a boolean
+     */
+    public potentialNumber: boolean = true;
+
     constructor(public source: string, public type: InputType) {
 
+    }
+
+    toString() {
+      return this.source;
     }
   }
 
@@ -963,7 +1017,7 @@ namespace P.sb3.compiler {
     precompile?(compiler: Compiler, hat: SB3Block): void;
   };
 
-  export type InputType = 'string' | 'boolean' | 'number' | 'any';
+  export type InputType = 'string' | 'boolean' | 'number' | 'any' | 'list';
 
   /**
    * General block generation utilities.
@@ -976,7 +1030,7 @@ namespace P.sb3.compiler {
     /**
      * Compile an input, and give it a type.
      */
-    getInput(name: string, type: InputType): string {
+    getInput(name: string, type: InputType): CompiledInput {
       return this.compiler.compileInput(this.block, name, type);
     }
 
@@ -1223,6 +1277,7 @@ namespace P.sb3.compiler {
      */
     public labelCount: number = 0;
     public state: CompilerState;
+    public usedExtensions: Set<string> = new Set();
 
     constructor(target: Target) {
       this.target = target;
@@ -1238,11 +1293,25 @@ namespace P.sb3.compiler {
         .filter((i) => this.blocks[i].topLevel);
     }
 
+    getOpcodeExtension(opcode: string): string {
+      const index = opcode.indexOf('_');
+      if (index !== -1) {
+        return opcode.substring(0, index);
+      }
+      return opcode;
+    }
+
+    useOpcode(opcode: string) {
+      const extension = this.getOpcodeExtension(opcode);
+      this.usedExtensions.add(extension);
+    }
+
     /**
      * Get the compiler for a statement
      */
     getStatementCompiler(opcode: string): StatementCompiler | null {
       if (statementLibrary[opcode]) {
+        this.useOpcode(opcode);
         return statementLibrary[opcode];
       }
       return null;
@@ -1253,6 +1322,7 @@ namespace P.sb3.compiler {
      */
     getInputCompiler(opcode: string): InputCompiler | null {
       if (inputLibrary[opcode]) {
+        this.useOpcode(opcode);
         return inputLibrary[opcode];
       }
       return null;
@@ -1263,6 +1333,7 @@ namespace P.sb3.compiler {
      */
     getHatCompiler(opcode: string): HatCompiler | null {
       if (hatLibrary[opcode]) {
+        this.useOpcode(opcode);
         return hatLibrary[opcode];
       }
       return null;
@@ -1277,6 +1348,7 @@ namespace P.sb3.compiler {
         case 'boolean': return 'false';
         case 'string': return '""';
         case 'any': return '""';
+        case 'list': return '""';
       }
       assertNever(type);
     }
@@ -1287,9 +1359,10 @@ namespace P.sb3.compiler {
     asType(input: string, type: InputType): string {
       switch (type) {
         case 'string': return '("" + ' + input + ')';
-        case 'number': return '+' + input;
+        case 'number': return '(+' + input + ' || 0)';
         case 'boolean': return 'bool(' + input + ')';
         case 'any': return input;
+        case 'list': throw new Error("Converting to 'list' type is not something you're supposed to do");
       }
       assertNever(type);
     }
@@ -1297,12 +1370,22 @@ namespace P.sb3.compiler {
     /**
      * Converts a compiled input to another type, if necessary
      */
-    convertInputType(input: CompiledInput, type: InputType): string {
+    convertInputType(input: CompiledInput, type: InputType): CompiledInput {
       // If the types are already identical, no changes are necessary
       if (input.type === type) {
-        return input.source;
+        return input;
       }
-      return this.asType(input.source, type);
+      // The 'any' type is a little bit special.
+      // When the input is of type 'list', we change the desired type to string to fix list stringification.
+      // In all other cases no action is necessary.
+      if (type === 'any') {
+        if (input.type === 'list') {
+          type = 'string';
+        } else {
+          return input;
+        }
+      }
+      return new CompiledInput(this.asType(input.source, type), type);
     }
 
     /**
@@ -1389,9 +1472,18 @@ namespace P.sb3.compiler {
     }
 
     /**
+     * Determine if a string literal could potentially become a number at runtime.
+     * May return false positives.
+     * @see CompiledInput
+     */
+    isStringLiteralPotentialNumber(text: string) {
+      return /\d|true|false|Infinity/.test(text);
+    }
+
+    /**
      * Compile a native or primitive value.
      */
-    compileNativeInput(native: any[]): CompiledInput {
+    compileNativeInput(native: any[], desiredType: InputType): CompiledInput {
       const type = native[0];
       switch (type) {
         // These all function as numbers. I believe they are only differentiated so the editor can be more helpful.
@@ -1402,16 +1494,18 @@ namespace P.sb3.compiler {
         case NativeTypes.ANGLE_NUM: {
           // [type, value]
           const number = parseFloat(native[1]);
-          if (!isNaN(number)) {
-            return numberInput(number.toString());
-          } else {
+          if (isNaN(number) || desiredType === 'string') {
             return this.sanitizedInput(native[1]);
+          } else {
+            return numberInput(number.toString());
           }
         }
 
-        case NativeTypes.TEXT:
-          // [type, text]
-          return this.sanitizedInput(native[1] + '');
+        case NativeTypes.TEXT: {
+          const input = this.sanitizedInput(native[1] + '');
+          input.potentialNumber = this.isStringLiteralPotentialNumber(native[1]);
+          return input;
+        }
 
         case NativeTypes.VAR:
           // [type, name, id]
@@ -1419,7 +1513,7 @@ namespace P.sb3.compiler {
 
         case NativeTypes.LIST:
           // [type, name, id]
-          return anyInput(this.getListReference(native[1]));
+          return new CompiledInput(this.getListReference(native[1]), 'list');
 
         case NativeTypes.BROADCAST:
           // [type, name, id]
@@ -1448,19 +1542,19 @@ namespace P.sb3.compiler {
     /**
      * Compile an input of a block, and do any necessary type coercions.
      */
-    compileInput(parentBlock: SB3Block, inputName: string, type: InputType): string {
+    compileInput(parentBlock: SB3Block, inputName: string, type: InputType): CompiledInput {
       // Handling when the block does not contain an input entry.
       if (!parentBlock.inputs[inputName]) {
         // This could be a sign of another issue, so log a warning.
         this.warn('missing input', inputName);
-        return this.getInputFallback(type);
+        return new CompiledInput(this.getInputFallback(type), type);
       }
 
       const input = parentBlock.inputs[inputName];
 
       if (Array.isArray(input[1])) {
         const native = input[1];
-        return this.convertInputType(this.compileNativeInput(native), type);
+        return this.convertInputType(this.compileNativeInput(native, type), type);
       }
 
       const inputBlockId = input[1];
@@ -1468,7 +1562,7 @@ namespace P.sb3.compiler {
       // Handling null inputs where the input exists but is just empty.
       // This is normal and happens very often.
       if (!inputBlockId) {
-        return this.getInputFallback(type);
+        return new CompiledInput(this.getInputFallback(type), type);
       }
 
       const inputBlock = this.blocks[inputBlockId];
@@ -1478,7 +1572,7 @@ namespace P.sb3.compiler {
       // If we don't recognize this block, that's a problem.
       if (!compiler) {
         this.warn('unknown input', opcode, inputBlock);
-        return this.getInputFallback(type);
+        return new CompiledInput(this.getInputFallback(type), type);
       }
 
       const util = new InputUtil(this, inputBlock);
@@ -1708,17 +1802,17 @@ namespace P.sb3.compiler {
     util.writeLn(`clone(${CLONE_OPTION});`);
   };
   statementLibrary['control_delete_this_clone'] = function(util) {
-    util.writeLn('if (S.isClone) {\n');
-    util.writeLn('  S.remove();\n');
-    util.writeLn('  var i = self.children.indexOf(S);\n');
-    util.writeLn('  if (i !== -1) self.children.splice(i, 1);\n');
-    util.writeLn('  for (var i = 0; i < runtime.queue.length; i++) {\n');
-    util.writeLn('    if (runtime.queue[i] && runtime.queue[i].sprite === S) {\n');
-    util.writeLn('      runtime.queue[i] = undefined;\n');
-    util.writeLn('    }\n');
-    util.writeLn('  }\n');
-    util.writeLn('  return;\n');
-    util.writeLn('}\n');
+    util.writeLn('if (S.isClone) {');
+    util.writeLn('  S.remove();');
+    util.writeLn('  var i = self.children.indexOf(S);');
+    util.writeLn('  if (i !== -1) self.children.splice(i, 1);');
+    util.writeLn('  for (var i = 0; i < runtime.queue.length; i++) {');
+    util.writeLn('    if (runtime.queue[i] && runtime.queue[i].sprite === S) {');
+    util.writeLn('      runtime.queue[i] = undefined;');
+    util.writeLn('    }');
+    util.writeLn('  }');
+    util.writeLn('  return;');
+    util.writeLn('}');
   };
   statementLibrary['control_forever'] = function(util) {
     const SUBSTACK = util.getSubstack('SUBSTACK');
@@ -1802,7 +1896,7 @@ namespace P.sb3.compiler {
         break;
       case 'other scripts in sprite':
       case 'other scripts in stage':
-        util.writeLn('S.stopSounds();');
+        util.writeLn('S.stopSoundsExcept(BASE);');
         util.writeLn('for (var i = 0; i < runtime.queue.length; i++) {');
         util.writeLn('  if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {');
         util.writeLn('    runtime.queue[i] = undefined;');
@@ -2153,9 +2247,7 @@ namespace P.sb3.compiler {
     const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
     if (P.audio.context) {
       util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
-      util.writeLn('if (sound) {');
-      util.writeLn('  playSound(sound);');
-      util.writeLn('}');
+      util.writeLn('if (sound) startSound(sound);');
     }
   };
   statementLibrary['sound_playuntildone'] = function(util) {
@@ -2163,20 +2255,18 @@ namespace P.sb3.compiler {
     if (P.audio.context) {
       util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
       util.writeLn('if (sound) {');
-      util.writeLn('  S.playingSounds++;');
-      util.writeLn('  playSound(sound);');
       util.writeLn('  save();');
-      util.writeLn('  R.sound = sound;');
+      util.writeLn('  R.sound = playSound(sound);');
+      util.writeLn('  S.activeSounds.add(R.sound);')
       util.writeLn('  R.start = runtime.now();');
       util.writeLn('  R.duration = sound.duration;');
       util.writeLn('  var first = true;');
       const label = util.addLabel();
-      util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && S.stoppingSounds === 0) {');
+      util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
       util.writeLn('    var first;');
       util.forceQueue(label);
       util.writeLn('  }');
-      util.writeLn('  if (S.stoppingSounds) S.stoppingSounds--;');
-      util.writeLn('  S.playingSounds--;');
+      util.writeLn('  S.activeSounds.delete(R.sound);');
       util.writeLn('  restore();');
       util.writeLn('}');
     }
@@ -2250,7 +2340,7 @@ namespace P.sb3.compiler {
     util.writeLn(`S.setPenColorParam(${COLOR_PARAM}, ${VALUE});`);
   };
   statementLibrary['pen_setPenColorToColor'] = function(util) {
-    const COLOR = util.getInput('COLOR', 'number');
+    const COLOR = util.getInput('COLOR', 'any');
     util.writeLn(`S.setPenColor(${COLOR});`);
   };
   statementLibrary['pen_setPenHueToNumber'] = function(util) {
@@ -2324,6 +2414,13 @@ namespace P.sb3.compiler {
     } else {
       util.writeLn('S.isDraggable = false;');
     }
+  };
+  statementLibrary['videoSensing_videoToggle'] = function(util) {
+    const VIDEO_STATE = util.getInput('VIDEO_STATE', 'string');
+    util.writeLn(`switch (${VIDEO_STATE}) {`);
+    util.writeLn('  case "off": self.showVideo(false); break;');
+    util.writeLn('  case "on": self.showVideo(true); break;');
+    util.writeLn('}');
   };
 
   // Legacy no-ops
@@ -2451,6 +2548,20 @@ namespace P.sb3.compiler {
   inputLibrary['operator_equals'] = function(util) {
     const OPERAND1 = util.getInput('OPERAND1', 'any');
     const OPERAND2 = util.getInput('OPERAND2', 'any');
+    // If we know at compile-time that either input cannot be a number, we will use the faster strEqual
+    if (!OPERAND1.potentialNumber || !OPERAND2.potentialNumber) {
+      return util.booleanInput(`strEqual(${OPERAND1}, ${OPERAND2})`);
+    }
+    if (P.config.experimentalOptimizations) {
+      // If we know at compile-time that an input is going to be a number, we will use the faster numEqual method.
+      // The first argument to numEqual must be a number, the other will be converted if necessary.
+      if (OPERAND1.type === 'number') {
+        return util.booleanInput(`numEqual(${OPERAND1}, ${OPERAND2})`);
+      }
+      if (OPERAND2.type === 'number') {
+        return util.booleanInput(`numEqual(${OPERAND2}, ${OPERAND1})`);
+      }
+    }
     return util.booleanInput(`equal(${OPERAND1}, ${OPERAND2})`);
   };
   inputLibrary['operator_gt'] = function(util) {
@@ -2512,7 +2623,7 @@ namespace P.sb3.compiler {
       case 'e ^':
         return util.numberInput(`Math.exp(${NUM})`);
       case '10 ^':
-        return util.numberInput(`Math.exp(${NUM} * Math.LN10)`);
+        return util.numberInput(`Math.pow(10, ${NUM})`);
       default:
         return util.numberInput('0');
     }
@@ -2537,8 +2648,8 @@ namespace P.sb3.compiler {
     return util.booleanInput(`(${OPERAND1} || ${OPERAND2})`);
   };
   inputLibrary['operator_random'] = function(util) {
-    const FROM = util.getInput('FROM', 'number');
-    const TO = util.getInput('TO', 'number');
+    const FROM = util.getInput('FROM', 'string');
+    const TO = util.getInput('TO', 'string');
     return util.numberInput(`random(${FROM}, ${TO})`);
   };
   inputLibrary['operator_round'] = function(util) {
@@ -2589,10 +2700,11 @@ namespace P.sb3.compiler {
   };
   inputLibrary['sensing_keypressed'] = function(util) {
     const KEY_OPTION = util.getInput('KEY_OPTION', 'any');
+    // note: sb2 compiler can optimize out getKeyCode calls, but sb3 compiler can't because KEY_OPTION might be dynamic
     return util.booleanInput(`!!self.keys[P.runtime.getKeyCode(${KEY_OPTION})]`);
   };
   inputLibrary['sensing_loud'] = function(util) {
-    // see sensing_loudness above
+    // see sensing_loudness
     return util.booleanInput('false');
   };
   inputLibrary['sensing_loudness'] = function(util) {
@@ -2638,6 +2750,9 @@ namespace P.sb3.compiler {
   };
   inputLibrary['sound_volume'] = function(util) {
     return util.numberInput('(S.volume * 100)');
+  };
+  inputLibrary['videoSensing_menu_VIDEO_STATE'] = function(util) {
+    return util.fieldInput('VIDEO_STATE');
   };
 
   // Legacy no-ops
@@ -2703,7 +2818,7 @@ namespace P.sb3.compiler {
     handle(util) {
       const KEY = util.getInput('KEY', 'string');
       try {
-        const value = P.runtime.scopedEval(KEY);
+        const value = P.runtime.scopedEval(KEY.source);
         var keycode = P.runtime.getKeyCode(value);
       } catch (e) {
         console.warn('makeymakey key generation error', e);
@@ -2722,7 +2837,7 @@ namespace P.sb3.compiler {
     handle(util) {
       const SEQUENCE = util.getInput('SEQUENCE', 'string');
       try {
-        var sequence = P.runtime.scopedEval(SEQUENCE);
+        var sequence = P.runtime.scopedEval(SEQUENCE.source);
       } catch (e) {
         console.warn('makeymakey sequence generation error', e);
         return;

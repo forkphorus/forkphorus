@@ -31,7 +31,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 if (!('Promise' in window)) {
     throw new Error('Browser does not support Promise');
 }
-/// <reference path="phosphorus.ts" />
 var P;
 (function (P) {
     var config;
@@ -40,18 +39,17 @@ var P;
         config.debug = features.indexOf('debug') > -1;
         config.useWebGL = features.indexOf('webgl') > -1;
         config.useCrashMonitor = features.indexOf('crashmonitor') > -1;
+        config.supportVideoSensing = features.indexOf('video') > -1;
+        config.experimentalOptimizations = features.indexOf('opt') > -1;
         config.scale = window.devicePixelRatio || 1;
         config.hasTouchEvents = 'ontouchstart' in document;
         config.PROJECT_API = 'https://projects.scratch.mit.edu/$id';
     })(config = P.config || (P.config = {}));
 })(P || (P = {}));
-/// <reference path="phosphorus.ts" />
-/// <reference path="config.ts" />
 var P;
 (function (P) {
     var audio;
     (function (audio) {
-        // Create an audio context involves a little bit of logic, so an IIFE is used.
         audio.context = (function () {
             if (window.AudioContext) {
                 return new AudioContext();
@@ -64,32 +62,11 @@ var P;
             }
         })();
         if (audio.context) {
-            // TODO: customizable volume
             var volume = 0.3;
             var globalNode = audio.context.createGain();
             globalNode.gain.value = volume;
             globalNode.connect(audio.context.destination);
         }
-        /*
-          copy(JSON.stringify(drums.map(function(d) {
-            var decayTime = d[4] || 0;
-            var baseRatio = Math.pow(2, (60 - d[1] - 69) / 12);
-            if (d[2]) {
-              var length = d[3] - d[2];
-              baseRatio = 22050 * Math.round(length * 440 * baseRatio / 22050) / length / 440;
-            }
-            return {
-              name: d[0],
-              baseRatio: baseRatio,
-              loop: !!d[2],
-              loopStart: d[2] / 22050,
-              loopEnd: d[3] / 22050,
-              attackEnd: 0,
-              holdEnd: 0,
-              decayEnd: decayTime
-            }
-          }))
-        */
         audio.drums = [
             { name: 'SnareDrum', baseRatio: 0.5946035575013605, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
             { name: 'Tom', baseRatio: 0.5946035575013605, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
@@ -110,31 +87,6 @@ var P;
             { name: 'Vibraslap', baseRatio: 0.8408964152537145, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 },
             { name: 'Cuica', baseRatio: 0.7937005259840998, loop: false, loopStart: null, loopEnd: null, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
         ];
-        /*
-          copy(JSON.stringify(instruments.map(function(g) {
-            return g.map(function(r) {
-              var attackTime = r[5] ? r[5][0] * 0.001 : 0;
-              var holdTime = r[5] ? r[5][1] * 0.001 : 0;
-              var decayTime = r[5] ? r[5][2] : 0;
-              var baseRatio = Math.pow(2, (r[2] - 69) / 12);
-              if (r[3] !== -1) {
-                var length = r[4] - r[3];
-                baseRatio = 22050 * Math.round(length * 440 * baseRatio / 22050) / length / 440;
-              }
-              return {
-                top: r[0],
-                name: r[1],
-                baseRatio: baseRatio,
-                loop: r[3] !== -1,
-                loopStart: r[3] / 22050,
-                loopEnd: r[4] / 22050,
-                attackEnd: attackTime,
-                holdEnd: attackTime + holdTime,
-                decayEnd: attackTime + holdTime + decayTime
-              }
-            })
-          }))
-        */
         audio.instruments = [
             [
                 { top: 38, name: 'AcousticPiano_As3', baseRatio: 0.5316313272700484, loop: true, loopStart: 0.465578231292517, loopEnd: 0.7733786848072562, attackEnd: 0, holdEnd: 0.1, decayEnd: 22.1 },
@@ -318,9 +270,6 @@ var P;
             'WoodBlock': 'drums/WoodBlock(1)_22k.wav'
         };
         const soundbank = {};
-        /**
-         * Loads missing soundbank files, if any.
-         */
         function loadSB2Soundbank(hooks) {
             if (!audio.context)
                 return Promise.resolve();
@@ -337,9 +286,6 @@ var P;
             return Promise.all(promises);
         }
         audio.loadSB2Soundbank = loadSB2Soundbank;
-        /**
-         * Loads a soundbank file
-         */
         function loadSoundbankBuffer(name) {
             return new P.IO.ArrayBufferRequest(SOUNDBANK_URL + SOUNDBANK_FILES[name], { local: true }).load()
                 .then((buffer) => P.audio.decodeAudio(buffer))
@@ -390,9 +336,6 @@ var P;
             source.stop(time + duration + 0.02267573696);
         }
         audio.playSpan = playSpan;
-        /**
-         * Connect an audio node
-         */
         function connectNode(node) {
             node.connect(globalNode);
         }
@@ -493,36 +436,29 @@ var P;
             if (!audio.context) {
                 return Promise.reject('No audio context');
             }
-            // TODO: does not work for some audio file
             return new Promise((resolve, reject) => {
                 decodeADPCMAudio(ab, function (err1, buffer) {
                     if (buffer) {
                         resolve(buffer);
                         return;
                     }
-                    // Hope that the audio context will know what to do
                     audio.context.decodeAudioData(ab)
-                        .then((buffer) => resolve(buffer))
-                        .catch((err2) => reject(`Could not decode audio: ${err1} | ${err2}`));
+                        .then((buffer) => {
+                        resolve(buffer);
+                    })
+                        .catch((err2) => {
+                        reject(`Could not decode audio: ${err1} | ${err2}`);
+                    });
                 });
             });
         }
         audio.decodeAudio = decodeAudio;
     })(audio = P.audio || (P.audio = {}));
 })(P || (P = {}));
-/// <reference path="phosphorus.ts" />
 var P;
 (function (P) {
     var m3;
     (function (m3) {
-        // Most of this is heavily based on:
-        // https://webglfundamentals.org/webgl/lessons/webgl-2d-matrices.html
-        // Eventually I want to move this to the shader itself.
-        /**
-         * Multiplies two 3x3 matrices together
-         * @param out The first matrix. The result will be stored here.
-         * @param other The second matrix.
-         */
         function multiply(out, other) {
             const a0 = out[0];
             const a1 = out[1];
@@ -590,26 +526,16 @@ var P;
         m3.projection = projection;
     })(m3 = P.m3 || (P.m3 = {}));
 })(P || (P = {}));
-/// <reference path="phosphorus.ts" />
-/// <reference path="matrix.ts" />
 var P;
 (function (P) {
     var renderer;
-    (function (renderer) {
-        // HELPERS
-        /**
-         * Create an HTML canvas with any type of context.
-         */
+    (function (renderer_1) {
         function createCanvas() {
             const canvas = document.createElement('canvas');
             canvas.width = 480;
             canvas.height = 360;
             return canvas;
         }
-        /**
-         * Create an HTML canvas with a 2d context.
-         * Throws an error if a context cannot be obtained.
-         */
         function create2dCanvas() {
             const canvas = createCanvas();
             const ctx = canvas.getContext('2d');
@@ -619,24 +545,15 @@ var P;
             ctx.imageSmoothingEnabled = false;
             return { canvas, ctx };
         }
-        /**
-         * Determines if a Sprite's filters will change its shape.
-         * @param filters The Sprite's filters
-         */
         function filtersAffectShape(filters) {
             return filters.fisheye !== 0 ||
                 filters.mosaic !== 0 ||
                 filters.pixelate !== 0 ||
                 filters.whirl !== 0;
         }
-        // WEBGL
-        // Used in the WebGL renderer for inverting sprites.
         const horizontalInvertMatrix = P.m3.scaling(-1, 1);
         class ShaderVariant {
             constructor(gl, program) {
-                // When loaded we'll lookup all of our attributes and uniforms, and store
-                // their locations locally.
-                // WebGL can tell us how many there are, so we can do lookups.
                 this.gl = gl;
                 this.program = program;
                 this.uniformLocations = {};
@@ -660,60 +577,34 @@ var P;
                     if (!info) {
                         throw new Error('attribute at index ' + index + ' does not exist');
                     }
-                    // Attribute index is location, I believe.
                     this.attributeLocations[info.name] = index;
                 }
             }
-            /**
-             * Sets a uniform to a float
-             * @param name The name of the uniform
-             * @param value A float
-             */
             uniform1f(name, value) {
                 const location = this.getUniform(name);
                 this.gl.uniform1f(location, value);
             }
-            /**
-             * Sets a uniform to a vec2
-             * @param name The name of the uniform
-             * @param a The first value
-             * @param b The second value
-             */
             uniform2f(name, a, b) {
                 const location = this.getUniform(name);
                 this.gl.uniform2f(location, a, b);
             }
-            /**
-             * Sets a uniform to a 3x3 matrix
-             * @param name The name of the uniform
-             * @param value The 3x3 matrix
-             */
+            uniform4f(name, a, b, c, d) {
+                const location = this.getUniform(name);
+                this.gl.uniform4f(location, a, b, c, d);
+            }
             uniformMatrix3(name, value) {
                 const location = this.getUniform(name);
                 this.gl.uniformMatrix3fv(location, false, value);
             }
-            /**
-             * Determines if this shader variant contains a uniform.
-             * @param name The name of the uniform
-             */
             hasUniform(name) {
                 return this.uniformLocations.hasOwnProperty(name);
             }
-            /**
-             * Determines the location of a uniform, or errors if it does not exist.
-             * @param name The name of the uniform
-             */
             getUniform(name) {
                 if (!this.hasUniform(name)) {
                     throw new Error('uniform of name ' + name + ' does not exist');
                 }
                 return this.uniformLocations[name];
             }
-            /**
-             * Binds a buffer to an attribute
-             * @param name The name of the attribute
-             * @param value The WebGL buffer to bind
-             */
             attributeBuffer(name, value) {
                 if (!this.hasAttribute(name)) {
                     throw new Error('attribute of name ' + name + ' does not exist');
@@ -723,17 +614,9 @@ var P;
                 this.gl.bindBuffer(this.gl.ARRAY_BUFFER, value);
                 this.gl.vertexAttribPointer(location, 2, this.gl.FLOAT, false, 0, 0);
             }
-            /**
-             * Determines if this shader contains an attribute
-             * @param name The name of the attribute
-             */
             hasAttribute(name) {
                 return this.attributeLocations.hasOwnProperty(name);
             }
-            /**
-             * Determines the location of an attribute, and errors if it does not exist.
-             * @param name The name of the attribute
-             */
             getAttribute(name) {
                 if (!this.hasAttribute(name)) {
                     throw new Error('attribute of name ' + name + ' does not exist');
@@ -743,18 +626,19 @@ var P;
         }
         class WebGLSpriteRenderer {
             constructor() {
+                this.globalScaleMatrix = P.m3.scaling(1, 1);
                 this.canvas = createCanvas();
-                const gl = this.canvas.getContext('webgl');
+                const gl = this.canvas.getContext('webgl', {
+                    alpha: false,
+                    antialias: false,
+                });
                 if (!gl) {
                     throw new Error('cannot get webgl rendering context');
                 }
                 this.gl = gl;
                 this.renderingShader = this.compileVariant([]);
-                // Enable transparency blending.
                 this.gl.enable(this.gl.BLEND);
-                // TODO: investigate other blending modes
                 this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
-                // Create the quad buffer that we'll use for positioning and texture coordinates later.
                 this.quadBuffer = this.gl.createBuffer();
                 this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
                 this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
@@ -766,12 +650,6 @@ var P;
                     1, 1,
                 ]), this.gl.STATIC_DRAW);
             }
-            /**
-             * Compile a single shader
-             * @param type The type of the shader. Use this.gl.VERTEX_SHADER or FRAGMENT_SHADER
-             * @param source The string source of the shader.
-             * @param definitions Flags to define in the shader source.
-             */
             compileShader(type, source, definitions) {
                 const addDefinition = (def) => {
                     source = '#define ' + def + '\n' + source;
@@ -794,12 +672,6 @@ var P;
                 }
                 return shader;
             }
-            /**
-             * Compiles a vertex shader and fragment shader into a program.
-             * @param vs Vertex shader source.
-             * @param fs Fragment shader source.
-             * @param definitions Things to define in the source of both shaders.
-             */
             compileProgram(vs, fs, definitions) {
                 const vertexShader = this.compileShader(this.gl.VERTEX_SHADER, vs, definitions);
                 const fragmentShader = this.compileShader(this.gl.FRAGMENT_SHADER, fs, definitions);
@@ -817,19 +689,10 @@ var P;
                 }
                 return program;
             }
-            /**
-             * Compiles a variant of the default shader.
-             * @param definitions Things to define in the shader
-             */
             compileVariant(definitions) {
                 const program = this.compileProgram(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, definitions);
                 return new ShaderVariant(this.gl, program);
             }
-            /**
-             * Creates a new texture without inserting data.
-             * Texture will be bound to TEXTURE_2D, so you can texImage2D() on it
-             * Mipmapping will be disabled to allow for any size texture.
-             */
             createTexture() {
                 const texture = this.gl.createTexture();
                 if (!texture) {
@@ -841,18 +704,11 @@ var P;
                 this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
                 return texture;
             }
-            /**
-             * Converts a canvas to a WebGL texture
-             * @param canvas The source canvas. Dimensions do not matter.
-             */
             convertToTexture(canvas) {
                 const texture = this.createTexture();
                 this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
                 return texture;
             }
-            /**
-             * Creates a new framebuffer
-             */
             createFramebuffer() {
                 const frameBuffer = this.gl.createFramebuffer();
                 if (!frameBuffer) {
@@ -861,34 +717,23 @@ var P;
                 return frameBuffer;
             }
             reset(scale) {
-                // Scale the actual canvas
                 this.canvas.width = scale * P.config.scale * 480;
                 this.canvas.height = scale * P.config.scale * 360;
                 this.resetFramebuffer(scale);
             }
-            /**
-             * Resizes and resets the current framebuffer
-             * @param scale Scale
-             */
             resetFramebuffer(scale) {
                 this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-                this.globalScaleMatrix = P.m3.scaling(scale, scale);
-                // Clear the canvas
-                this.gl.clearColor(0, 0, 0, 0);
+                if (this.globalScaleMatrix[0] !== scale) {
+                    this.globalScaleMatrix = P.m3.scaling(scale, scale);
+                }
+                this.gl.clearColor(255, 255, 255, 0);
                 this.gl.clear(this.gl.COLOR_BUFFER_BIT);
             }
             drawChild(child) {
                 this._drawChild(child, this.renderingShader);
             }
-            /**
-             * Real implementation of drawChild()
-             * Shader must be set before calling (allows for using a different shader)
-             * @param child The child to draw
-             */
             _drawChild(child, shader) {
                 this.gl.useProgram(shader.program);
-                // Create the texture if it doesn't already exist.
-                // We'll create a texture only once for performance.
                 const costume = child.costumes[child.currentCostumeIndex];
                 if (!costume._glTexture) {
                     const texture = this.convertToTexture(costume.get(1));
@@ -897,15 +742,14 @@ var P;
                 this.gl.bindTexture(this.gl.TEXTURE_2D, costume._glTexture);
                 shader.attributeBuffer('a_texcoord', this.quadBuffer);
                 shader.attributeBuffer('a_position', this.quadBuffer);
-                // TODO: do this in the shader if its possible/faster
                 const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
                 P.m3.multiply(matrix, this.globalScaleMatrix);
                 P.m3.multiply(matrix, P.m3.translation(240 + child.scratchX | 0, 180 - child.scratchY | 0));
                 if (P.core.isSprite(child)) {
-                    if (child.rotationStyle === 0 /* Normal */ && child.direction !== 90) {
+                    if (child.rotationStyle === 0 && child.direction !== 90) {
                         P.m3.multiply(matrix, P.m3.rotation(90 - child.direction));
                     }
-                    else if (child.rotationStyle === 1 /* LeftRight */ && child.direction < 0) {
+                    else if (child.rotationStyle === 1 && child.direction < 0) {
                         P.m3.multiply(matrix, horizontalInvertMatrix);
                     }
                     if (child.scale !== 1) {
@@ -918,7 +762,6 @@ var P;
                 P.m3.multiply(matrix, P.m3.translation(-costume.rotationCenterX, -costume.rotationCenterY));
                 P.m3.multiply(matrix, P.m3.scaling(costume.width, costume.height));
                 shader.uniformMatrix3('u_matrix', matrix);
-                // Effects
                 if (shader.hasUniform('u_opacity')) {
                     shader.uniform1f('u_opacity', 1 - child.filters.ghost / 100);
                 }
@@ -946,19 +789,36 @@ var P;
                 }
                 this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
             }
-            drawLayer(canvas) {
+            drawTexture(texture) {
                 const shader = this.renderingShader;
                 this.gl.useProgram(shader.program);
-                const texture = this.convertToTexture(canvas);
                 this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
                 shader.attributeBuffer('a_texcoord', this.quadBuffer);
                 shader.attributeBuffer('a_position', this.quadBuffer);
                 const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
                 P.m3.multiply(matrix, this.globalScaleMatrix);
+                P.m3.multiply(matrix, P.m3.translation(240, 180));
+                P.m3.multiply(matrix, P.m3.scaling(1, -1));
+                P.m3.multiply(matrix, P.m3.translation(-240, -180));
+                P.m3.multiply(matrix, P.m3.scaling(480, 360));
                 shader.uniformMatrix3('u_matrix', matrix);
-                shader.uniform1f('u_opacity', 1);
-                // TODO: is it necessary to delete textures?
-                this.gl.deleteTexture(texture);
+                if (shader.hasUniform('u_opacity'))
+                    shader.uniform1f('u_opacity', 1);
+                if (shader.hasUniform('u_brightness'))
+                    shader.uniform1f('u_brightness', 0);
+                if (shader.hasUniform('u_color'))
+                    shader.uniform1f('u_color', 0);
+                if (shader.hasUniform('u_mosaic'))
+                    shader.uniform1f('u_mosaic', 1);
+                if (shader.hasUniform('u_whirl'))
+                    shader.uniform1f('u_whirl', 0);
+                if (shader.hasUniform('u_fisheye'))
+                    shader.uniform1f('u_fisheye', 1);
+                if (shader.hasUniform('u_pixelate'))
+                    shader.uniform1f('u_pixelate', 0);
+                if (shader.hasUniform('u_size'))
+                    shader.uniform2f('u_size', this.canvas.width, this.canvas.height);
+                this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
             }
         }
         WebGLSpriteRenderer.vertexShader = `
@@ -1056,8 +916,6 @@ var P;
 
       // apply ghost effect
       color.a *= u_opacity;
-      // handle premultiplied alpha
-      color.rgb *= u_opacity;
 
       // apply brightness effect
       #ifndef ONLY_SHAPE_FILTERS
@@ -1081,135 +939,156 @@ var P;
 
         hsv.x = mod(hsv.x + u_color, 1.0);
         if (hsv.x < 0.0) hsv.x += 1.0;
-        color = vec4(hsv2rgb(hsv), color.a);  
+        color = vec4(hsv2rgb(hsv), color.a);
       }
       #endif
 
       gl_FragColor = color;
     }
     `;
-        renderer.WebGLSpriteRenderer = WebGLSpriteRenderer;
+        renderer_1.WebGLSpriteRenderer = WebGLSpriteRenderer;
         class WebGLProjectRenderer extends WebGLSpriteRenderer {
             constructor(stage) {
                 super();
                 this.stage = stage;
+                this.zoom = 1;
                 this.shaderOnlyShapeFilters = this.compileVariant(['ONLY_SHAPE_FILTERS']);
                 this.fallbackRenderer = new ProjectRenderer2D(stage);
-                this.penLayer = this.fallbackRenderer.penLayer;
-                this.stageLayer = this.fallbackRenderer.stageLayer;
-            }
-            /**
-             * Sets this renderer to render to a framebuffer.
-             * Initializes, binds, attaches, and clears the texture and framebuffer.
-             * Framebuffer must be reset later.
-             * @param framebuffer The framebuffer
-             * @param texture The texture
-             */
-            setRenderToFramebuffer(framebuffer, texture) {
-                // setup framebuffer
-                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, framebuffer);
-                // setup texture
-                this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+                this.penTexture = this.createTexture();
+                this.penBuffer = this.createFramebuffer();
                 this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 480, 360, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
-                this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, texture, 0);
-                // fix viewport/clear
-                // always use a scale of 1 for now
-                this.resetFramebuffer(1);
-            }
-            /**
-             * Sets this renderer to render to the canvas instead of a framebuffer
-             */
-            resetRenderFramebuffer() {
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
+                this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.penTexture, 0);
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+                this.penDotShader = new ShaderVariant(this.gl, this.compileProgram(WebGLProjectRenderer.PEN_DOT_VERTEX_SHADER, WebGLProjectRenderer.PEN_DOT_FRAGMENT_SHADER));
+                this.penLineShader = new ShaderVariant(this.gl, this.compileProgram(WebGLProjectRenderer.PEN_LINE_VERTEX_SHADER, WebGLProjectRenderer.PEN_LINE_FRAGMENT_SHADER));
+                this.reset(1);
+            }
+            drawFrame() {
+                this.reset(this.zoom);
+                this.drawChild(this.stage);
+                this.drawTexture(this.penTexture);
+                for (var i = 0; i < this.stage.children.length; i++) {
+                    var child = this.stage.children[i];
+                    if (!child.visible) {
+                        continue;
+                    }
+                    this.drawChild(child);
+                }
+            }
+            init(root) {
+                root.appendChild(this.canvas);
+            }
+            onStageFiltersChanged() {
             }
             penLine(color, size, x, y, x2, y2) {
-                this.fallbackRenderer.penLine(color, size, x, y, x2, y2);
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
+                const shader = this.penLineShader;
+                this.gl.useProgram(shader.program);
+                const buffer = this.gl.createBuffer();
+                if (buffer === null) {
+                    throw new Error('buffer is null');
+                }
+                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
+                this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
+                    x / 240, y / 180,
+                    x2 / 240, y2 / 180,
+                ]), this.gl.STATIC_DRAW);
+                shader.attributeBuffer('a_position', buffer);
+                shader.uniform4f('u_color', 0, 1, 0, 1);
+                this.gl.drawArrays(this.gl.LINES, 0, 2);
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
             }
             penDot(color, size, x, y) {
-                this.fallbackRenderer.penDot(color, size, x, y);
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
+                const shader = this.penDotShader;
+                this.gl.useProgram(shader.program);
+                shader.attributeBuffer('a_position', this.quadBuffer);
+                const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
+                P.m3.multiply(matrix, P.m3.translation(240 + x - size / 2 | 0, 180 - y - size / 2 | 0));
+                P.m3.multiply(matrix, P.m3.scaling(size, size));
+                shader.uniformMatrix3('u_matrix', matrix);
+                shader.uniform4f('u_color', 1, 0, 0, 1);
+                this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
             }
             penStamp(sprite) {
-                this.fallbackRenderer.penStamp(sprite);
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
+                this.gl.viewport(0, 0, 480, 360);
+                this.drawChild(sprite);
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
             }
             penClear() {
-                this.fallbackRenderer.penClear();
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
+                this.gl.clearColor(255, 255, 255, 0);
+                this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
             }
-            penResize(scale) {
-                this.fallbackRenderer.penResize(scale);
-            }
-            updateStage(scale) {
-                this.fallbackRenderer.updateStage(scale);
-            }
-            updateStageFilters() {
-                this.fallbackRenderer.updateStageFilters();
+            resize(scale) {
+                this.zoom = scale;
             }
             spriteTouchesPoint(sprite, x, y) {
-                // If filters will not change the shape of the sprite, it would be faster
-                // to avoid going to the GPU
                 if (!filtersAffectShape(sprite.filters)) {
                     return this.fallbackRenderer.spriteTouchesPoint(sprite, x, y);
                 }
                 const texture = this.createTexture();
                 const framebuffer = this.createFramebuffer();
-                this.setRenderToFramebuffer(framebuffer, texture);
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, framebuffer);
+                this.resetFramebuffer(1);
                 this._drawChild(sprite, this.shaderOnlyShapeFilters);
-                // Allocate 4 bytes to store 1 RGBA pixel
                 const result = new Uint8Array(4);
-                // Coordinates are in pixels from the lower left corner
-                // We only care about 1 pixel, the pixel at the mouse cursor.
                 this.gl.readPixels(240 + x | 0, 180 + y | 0, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, result);
-                this.resetRenderFramebuffer();
-                // I don't know if it's necessary to delete these
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
                 this.gl.deleteTexture(texture);
                 this.gl.deleteFramebuffer(framebuffer);
-                // Just look for a non-zero alpha channel
                 return result[3] !== 0;
             }
             spritesIntersect(spriteA, otherSprites) {
-                // Render the original Sprite into a buffer just once
-                const baseResult = new Uint8Array(480 * 360 * 4);
-                const baseTexture = this.createTexture();
-                const baseBuffer = this.createFramebuffer();
-                this.setRenderToFramebuffer(baseBuffer, baseTexture);
-                this._drawChild(spriteA, this.shaderOnlyShapeFilters);
-                this.gl.readPixels(0, 0, 480, 360, this.gl.RGBA, this.gl.UNSIGNED_BYTE, baseResult);
-                // Setup the rendering for the other sprite just once for performance
-                const otherResult = new Uint8Array(480 * 360 * 4);
-                const textureB = this.createTexture();
-                const framebufferB = this.createFramebuffer();
-                this.setRenderToFramebuffer(framebufferB, textureB);
-                for (var i = 0; i < otherSprites.length; i++) {
-                    const otherSprite = otherSprites[i];
-                    if (!otherSprite.visible)
-                        continue;
-                    // Does the rendering of the sprite
-                    this._drawChild(otherSprite, this.shaderOnlyShapeFilters);
-                    this.gl.readPixels(0, 0, 480, 360, this.gl.RGBA, this.gl.UNSIGNED_BYTE, otherResult);
-                    const length = 480 * 360 * 4;
-                    for (var i = 0; i < length; i += 4) {
-                        if (baseResult[i + 3] && otherResult[i + 3]) {
-                            this.resetRenderFramebuffer();
-                            return true;
-                        }
-                    }
-                }
-                this.resetRenderFramebuffer();
-                return false;
+                return this.fallbackRenderer.spritesIntersect(spriteA, otherSprites);
             }
             spriteTouchesColor(sprite, color) {
                 return this.fallbackRenderer.spriteTouchesColor(sprite, color);
             }
             spriteColorTouchesColor(sprite, spriteColor, otherColor) {
-                return this.spriteColorTouchesColor(sprite, spriteColor, otherColor);
+                return this.fallbackRenderer.spriteColorTouchesColor(sprite, spriteColor, otherColor);
             }
         }
-        renderer.WebGLProjectRenderer = WebGLProjectRenderer;
-        // 2D
-        /**
-         * Creates the CSS filter for a Filter object.
-         * The filter is generally an estimation of the actual effect.
-         * Includes brightness and color. (does not include ghost)
-         */
+        WebGLProjectRenderer.PEN_DOT_VERTEX_SHADER = `
+    attribute vec2 a_position;
+    varying vec2 v_position;
+    uniform mat3 u_matrix;
+    void main() {
+      gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
+      v_position = a_position;
+    }
+    `;
+        WebGLProjectRenderer.PEN_DOT_FRAGMENT_SHADER = `
+    precision mediump float;
+    uniform vec4 u_color;
+    varying vec2 v_position;
+    void main() {
+      float x = (v_position.x - 0.5) * 2.0;
+      float y = (v_position.y - 0.5) * 2.0;
+      if (sqrt(x * x + y * y) >= 1.0) {
+        discard;
+      }
+      gl_FragColor = u_color;
+    }
+    `;
+        WebGLProjectRenderer.PEN_LINE_VERTEX_SHADER = `
+    attribute vec2 a_position;
+    void main() {
+      gl_Position = vec4(a_position, 0, 1);
+    }
+    `;
+        WebGLProjectRenderer.PEN_LINE_FRAGMENT_SHADER = `
+    precision mediump float;
+    uniform vec4 u_color;
+    void main() {
+      gl_FragColor = u_color;
+    }
+    `;
+        renderer_1.WebGLProjectRenderer = WebGLProjectRenderer;
         function getCSSFilter(filters) {
             let filter = '';
             if (filters.brightness) {
@@ -1230,14 +1109,17 @@ var P;
             reset(scale) {
                 this._reset(this.ctx, scale);
             }
-            drawImage(image, x, y) {
-                this.ctx.drawImage(image, x, y);
-            }
             drawChild(c) {
                 this._drawChild(c, this.ctx);
             }
-            drawLayer(canvas) {
-                this.ctx.drawImage(canvas, 0, 0, 480, 360);
+            drawObjects(children) {
+                for (var i = 0; i < children.length; i++) {
+                    var child = children[i];
+                    if (!child.visible) {
+                        continue;
+                    }
+                    this.drawChild(child);
+                }
             }
             _reset(ctx, scale) {
                 const effectiveScale = scale * P.config.scale;
@@ -1254,12 +1136,11 @@ var P;
                 const globalScale = c.stage.zoom * P.config.scale;
                 ctx.translate(((c.scratchX + 240) * globalScale | 0) / globalScale, ((180 - c.scratchY) * globalScale | 0) / globalScale);
                 let objectScale = costume.scale;
-                // Direction transforms are only applied to Sprites because Stages cannot be rotated.
                 if (P.core.isSprite(c)) {
-                    if (c.rotationStyle === 0 /* Normal */) {
+                    if (c.rotationStyle === 0) {
                         ctx.rotate((c.direction - 90) * Math.PI / 180);
                     }
-                    else if (c.rotationStyle === 1 /* LeftRight */ && c.direction < 0) {
+                    else if (c.rotationStyle === 1 && c.direction < 0) {
                         ctx.scale(-1, 1);
                     }
                     objectScale *= c.scale;
@@ -1267,7 +1148,6 @@ var P;
                 if (!this.noEffects) {
                     ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
                     const filter = getCSSFilter(c.filters);
-                    // Only apply a filter when needed because of a Firefox performance bug
                     if (filter !== '') {
                         ctx.filter = filter;
                     }
@@ -1277,17 +1157,18 @@ var P;
                 ctx.restore();
             }
         }
-        renderer.SpriteRenderer2D = SpriteRenderer2D;
-        // Renderers used for some features such as collision detection
+        renderer_1.SpriteRenderer2D = SpriteRenderer2D;
         const workingRenderer = new SpriteRenderer2D();
         const workingRenderer2 = new SpriteRenderer2D();
         class ProjectRenderer2D extends SpriteRenderer2D {
             constructor(stage) {
                 super();
                 this.stage = stage;
+                this.zoom = 1;
                 this.penLayerModified = false;
                 this.penLayerTargetScale = -1;
                 this.penLayerMaxScale = -1;
+                this.stageCostumeIndex = -1;
                 const { ctx: stageContext, canvas: stageLayer } = create2dCanvas();
                 this.stageContext = stageContext;
                 this.stageLayer = stageLayer;
@@ -1295,22 +1176,61 @@ var P;
                 this.penContext = penContext;
                 this.penLayer = penLayer;
             }
-            updateStage(scale) {
-                this._reset(this.stageContext, scale);
-                this.noEffects = true;
-                this._drawChild(this.stage, this.stageContext);
-                this.noEffects = false;
-                this.updateStageFilters();
-            }
-            updateStageFilters() {
+            onStageFiltersChanged() {
                 const filter = getCSSFilter(this.stage.filters);
-                // Only reapply a CSS filter if it has changed for performance.
-                // Might not be necessary here.
                 if (this.stageLayer.style.filter !== filter) {
                     this.stageLayer.style.filter = filter;
                 }
-                // cssFilter does not include ghost
                 this.stageLayer.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
+            }
+            renderStageCostume(scale) {
+                this._reset(this.stageContext, scale * P.config.scale);
+                this.noEffects = true;
+                this._drawChild(this.stage, this.stageContext);
+                this.noEffects = false;
+            }
+            init(root) {
+                root.appendChild(this.stageLayer);
+                root.appendChild(this.penLayer);
+                root.appendChild(this.canvas);
+            }
+            drawFrame() {
+                this.reset(this.zoom);
+                this.drawObjects(this.stage.children);
+                if (this.stage.currentCostumeIndex !== this.stageCostumeIndex) {
+                    this.stageCostumeIndex = this.stage.currentCostumeIndex;
+                    this.renderStageCostume(this.zoom);
+                }
+            }
+            drawAllExcept(renderer, skip) {
+                renderer.drawChild(this.stage);
+                renderer.ctx.drawImage(this.penLayer, 0, 0, this.canvas.width, this.canvas.height);
+                for (var i = 0; i < this.stage.children.length; i++) {
+                    var child = this.stage.children[i];
+                    if (!child.visible || child === skip) {
+                        continue;
+                    }
+                    renderer.drawChild(child);
+                }
+            }
+            resize(zoom) {
+                this.zoom = zoom;
+                if (zoom > this.penLayerMaxScale) {
+                    this.penLayerMaxScale = zoom;
+                    const cachedCanvas = document.createElement('canvas');
+                    cachedCanvas.width = this.penLayer.width;
+                    cachedCanvas.height = this.penLayer.height;
+                    cachedCanvas.getContext('2d').drawImage(this.penLayer, 0, 0);
+                    this._reset(this.penContext, zoom);
+                    this.penContext.drawImage(cachedCanvas, 0, 0, 480, 360);
+                }
+                else if (!this.penLayerModified) {
+                    this._reset(this.penContext, zoom);
+                }
+                else {
+                    this.penLayerTargetScale = zoom;
+                }
+                this.renderStageCostume(this.zoom);
             }
             penClear() {
                 this.penLayerModified = false;
@@ -1319,26 +1239,6 @@ var P;
                     this.penLayerTargetScale = -1;
                 }
                 this.penContext.clearRect(0, 0, 480, 360);
-            }
-            penResize(scale) {
-                if (scale > this.penLayerMaxScale) {
-                    // Immediately scale up
-                    this.penLayerMaxScale = scale;
-                    const cachedCanvas = document.createElement('canvas');
-                    cachedCanvas.width = this.penLayer.width;
-                    cachedCanvas.height = this.penLayer.height;
-                    cachedCanvas.getContext('2d').drawImage(this.penLayer, 0, 0);
-                    this._reset(this.penContext, scale);
-                    this.penContext.drawImage(cachedCanvas, 0, 0, 480, 360);
-                }
-                else if (!this.penLayerModified) {
-                    // Immediately scale down if no changes have been made
-                    this._reset(this.penContext, scale);
-                }
-                else {
-                    // Attempt again later
-                    this.penLayerTargetScale = scale;
-                }
             }
             penDot(color, size, x, y) {
                 this.penLayerModified = true;
@@ -1350,12 +1250,6 @@ var P;
             penLine(color, size, x1, y1, x2, y2) {
                 this.penLayerModified = true;
                 this.penContext.lineCap = 'round';
-                if (size % 2 > .5 && size % 2 < 1.5) {
-                    x1 -= .5;
-                    y1 -= .5;
-                    x2 -= .5;
-                    y2 -= .5;
-                }
                 this.penContext.strokeStyle = color;
                 this.penContext.lineWidth = size;
                 this.penContext.beginPath();
@@ -1368,21 +1262,21 @@ var P;
                 this._drawChild(sprite, this.penContext);
             }
             spriteTouchesPoint(sprite, x, y) {
-                const costume = sprite.costumes[sprite.currentCostumeIndex];
                 const bounds = sprite.rotatedBounds();
                 if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top) {
                     return false;
                 }
+                const costume = sprite.costumes[sprite.currentCostumeIndex];
                 var cx = (x - sprite.scratchX) / sprite.scale;
                 var cy = (sprite.scratchY - y) / sprite.scale;
-                if (sprite.rotationStyle === 0 /* Normal */ && sprite.direction !== 90) {
+                if (sprite.rotationStyle === 0 && sprite.direction !== 90) {
                     const d = (90 - sprite.direction) * Math.PI / 180;
                     const ox = cx;
                     const s = Math.sin(d), c = Math.cos(d);
                     cx = c * ox - s * cy;
                     cy = s * ox + c * cy;
                 }
-                else if (sprite.rotationStyle === 1 /* LeftRight */ && sprite.direction < 0) {
+                else if (sprite.rotationStyle === 1 && sprite.direction < 0) {
                     cx = -cx;
                 }
                 const positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
@@ -1394,8 +1288,9 @@ var P;
                 const mb = spriteA.rotatedBounds();
                 for (var i = 0; i < otherSprites.length; i++) {
                     const spriteB = otherSprites[i];
-                    if (!spriteB.visible)
+                    if (!spriteB.visible) {
                         continue;
+                    }
                     const ob = spriteB.rotatedBounds();
                     if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
                         continue;
@@ -1406,7 +1301,6 @@ var P;
                     const bottom = Math.max(mb.bottom, ob.bottom);
                     const width = right - left;
                     const height = top - bottom;
-                    // dimensions that are less than 1 or NaN will cause issues
                     if (width < 1 || height < 1 || width !== width || height !== height) {
                         continue;
                     }
@@ -1423,7 +1317,6 @@ var P;
                     const data = workingRenderer.ctx.getImageData(0, 0, width, height).data;
                     const length = data.length;
                     for (var j = 0; j < length; j += 4) {
-                        // check for the opacity byte being a non-zero number
                         if (data[j + 3]) {
                             return true;
                         }
@@ -1433,11 +1326,16 @@ var P;
             }
             spriteTouchesColor(sprite, color) {
                 const b = sprite.rotatedBounds();
-                workingRenderer.canvas.width = b.right - b.left;
-                workingRenderer.canvas.height = b.top - b.bottom;
+                const width = b.right - b.left;
+                const height = b.top - b.bottom;
+                if (width < 1 || height < 1 || width !== width || height !== height) {
+                    return false;
+                }
+                workingRenderer.canvas.width = width;
+                workingRenderer.canvas.height = height;
                 workingRenderer.ctx.save();
                 workingRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
-                sprite.stage.drawAll(workingRenderer, sprite);
+                this.drawAllExcept(workingRenderer, sprite);
                 workingRenderer.ctx.globalCompositeOperation = 'destination-in';
                 workingRenderer.drawChild(sprite);
                 workingRenderer.ctx.restore();
@@ -1453,17 +1351,23 @@ var P;
             }
             spriteColorTouchesColor(sprite, spriteColor, otherColor) {
                 var rb = sprite.rotatedBounds();
-                workingRenderer.canvas.width = workingRenderer2.canvas.width = rb.right - rb.left;
-                workingRenderer.canvas.height = workingRenderer2.canvas.height = rb.top - rb.bottom;
+                const width = rb.right - rb.left;
+                const height = rb.top - rb.bottom;
+                if (width < 1 || height < 1 || width !== width || height !== height) {
+                    return false;
+                }
+                workingRenderer.canvas.width = workingRenderer2.canvas.width = width;
+                workingRenderer.canvas.height = workingRenderer2.canvas.height = height;
                 workingRenderer.ctx.save();
                 workingRenderer2.ctx.save();
                 workingRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
                 workingRenderer2.ctx.translate(-(240 + rb.left), -(180 - rb.top));
-                sprite.stage.drawAll(workingRenderer, sprite);
-                workingRenderer.drawChild(sprite);
+                this.drawAllExcept(workingRenderer, sprite);
+                workingRenderer2.drawChild(sprite);
                 workingRenderer.ctx.restore();
-                var dataA = workingRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
-                var dataB = workingRenderer.ctx.getImageData(0, 0, rb.right - rb.left, rb.top - rb.bottom).data;
+                workingRenderer2.ctx.restore();
+                var dataA = workingRenderer.ctx.getImageData(0, 0, width, height).data;
+                var dataB = workingRenderer2.ctx.getImageData(0, 0, width, height).data;
                 spriteColor = spriteColor & 0xffffff;
                 otherColor = otherColor & 0xffffff;
                 var length = dataA.length;
@@ -1477,107 +1381,36 @@ var P;
                 return false;
             }
         }
-        renderer.ProjectRenderer2D = ProjectRenderer2D;
+        renderer_1.ProjectRenderer2D = ProjectRenderer2D;
     })(renderer = P.renderer || (P.renderer = {}));
 })(P || (P = {}));
-/// <reference path="phosphorus.ts" />
-/// <reference path="config.ts" />
-/// <reference path="renderer.ts" />
-// Phosphorus base classes
-// Implements most functionality while leaving some specifics to implementations (P.sb2, P.sb3)
 var P;
 (function (P) {
     var core;
     (function (core) {
         class Base {
             constructor() {
-                /**
-                 * Is this a stage?
-                 */
                 this.isStage = false;
-                /**
-                 * Is this a sprite?
-                 */
                 this.isSprite = false;
-                /**
-                 * Was this Sprite created as a clone of another?
-                 */
                 this.isClone = false;
-                /**
-                 * Is this object visible?
-                 */
                 this.visible = true;
-                /**
-                 * The sprite's X coordinate on the Scratch grid.
-                 */
                 this.scratchX = 0;
-                /**
-                 * The sprite's Y coordinate on the Scratch grid.
-                 */
                 this.scratchY = 0;
-                /**
-                 * The name of this object.
-                 */
                 this.name = '';
-                /**
-                 * Costumes that belong to this object.
-                 */
                 this.costumes = [];
-                /**
-                 * The index of the currently selected costume in its costume list.
-                 */
                 this.currentCostumeIndex = 0;
-                /**
-                 * Sounds that belong to this object.
-                 */
                 this.sounds = [];
-                /**
-                 * Maps the names of sounds to the corresponding Sound
-                 */
                 this.soundRefs = {};
-                /**
-                 * Currently selected instrument
-                 */
                 this.instrument = 0;
-                /**
-                 * The volume of this object, where 1.0 === 100% volume
-                 */
                 this.volume = 1;
-                /**
-                 * The audio node that this object outputs to.
-                 */
                 this.node = null;
-                /**
-                 * Maps names (or ids) of variables or lists to their Watcher, if any.
-                 */
+                this.activeSounds = new Set();
                 this.watchers = {};
-                /**
-                 * Variables of this object.
-                 * Maps variable names (or ids) to their value.
-                 * Values can be of any type and should likely be converted first.
-                 */
                 this.vars = {};
-                /**
-                 * Lists of this object.
-                 * Maps list names (or ids) to their list.
-                 * Each list can contain objects of any type, and should be converted first.
-                 */
                 this.lists = {};
-                /**
-                 * Is this object saying something?
-                 */
                 this.saying = false;
-                /**
-                 * Should this object's speech bubble be a thinking bubble instead?
-                 */
                 this.thinking = false;
-                /**
-                 * The ID of the last thing said.
-                 */
                 this.sayId = 0;
-                /**
-                 * Maps procedure names (usually includes parameters) to the Procedure object
-                 */
                 this.procedures = {};
                 this.listeners = {
                     whenClicked: [],
@@ -1598,21 +1431,16 @@ var P;
                     brightness: 0,
                     ghost: 0,
                 };
-                this.playingSounds = 0;
-                this.stoppingSounds = 0;
                 for (var i = 0; i < 128; i++) {
                     this.listeners.whenKeyPressed.push([]);
                 }
             }
-            // Data/Loading methods
             addSound(sound) {
                 this.soundRefs[sound.name] = sound;
                 this.sounds.push(sound);
             }
-            // Implementations of Scratch blocks
             showVariable(name, visible) {
                 let watcher = this.watchers[name];
-                // Create watchers that might not exist
                 if (!watcher) {
                     const newWatcher = this.createVariableWatcher(this, name);
                     if (!newWatcher) {
@@ -1719,15 +1547,27 @@ var P;
                     return this.sounds[i];
                 }
             }
-            /**
-             * Stops all sounds in this object.
-             */
             stopSounds() {
                 if (this.node) {
+                    for (const sound of this.activeSounds) {
+                        sound.stopped = true;
+                        sound.node.disconnect();
+                    }
+                    this.activeSounds.clear();
                     this.node.disconnect();
                     this.node = null;
                 }
-                this.stoppingSounds = this.playingSounds;
+            }
+            stopSoundsExcept(originBase) {
+                if (this.node) {
+                    for (const sound of this.activeSounds) {
+                        if (sound.base !== originBase) {
+                            sound.node.disconnect();
+                            sound.stopped = true;
+                            this.activeSounds.delete(sound);
+                        }
+                    }
+                }
             }
             ask(question) {
                 var stage = this.stage;
@@ -1749,15 +1589,8 @@ var P;
                 stage.prompt.value = '';
                 stage.prompt.focus();
             }
-            /**
-             * Makes this object say some text.
-             * @param text The text to say
-             * @param thinking If the text box should be in the thinking style or just speaking
-             * @returns A unique ID for this bubble
-             */
             say(text, thinking = false) {
                 text = text.toString();
-                // Empty strings disable saying anything.
                 if (text.length === 0) {
                     this.saying = false;
                     if (this.bubbleContainer)
@@ -1797,9 +1630,6 @@ var P;
                 this.updateBubble();
                 return ++this.sayId;
             }
-            /**
-             * Updates the position of the speech bubble, or hides it.
-             */
             updateBubble() {
                 if (!this.visible || !this.saying) {
                     this.bubbleContainer.style.display = 'none';
@@ -1833,24 +1663,22 @@ var P;
                 }
                 this.bubbleContainer.style.bottom = (bottom / 14) + 'em';
             }
-            /**
-             * Tells this object to cleanup some of the things it may have created.
-             */
             remove() {
                 if (this.bubbleContainer) {
                     this.stage.ui.removeChild(this.bubbleContainer);
-                    // I don't think doing this is necessary.
                     delete this.bubbleContainer;
                 }
-                if (this.node) {
+                if (this.node && this.isClone && !this.isStage) {
+                    for (const sound of this.activeSounds) {
+                        sound.node.disconnect();
+                        sound.stopped = true;
+                    }
+                    this.activeSounds.clear();
                     this.node.disconnect();
+                    this.node.connect(this.stage.getAudioNode());
                     this.node = null;
                 }
             }
-            /**
-             * Gets this object's AudioNode, or creates it if it doesn't exist.
-             * @throws Error if there is no audio context.
-             */
             getAudioNode() {
                 if (this.node) {
                     return this.node;
@@ -1865,52 +1693,40 @@ var P;
             }
         }
         core.Base = Base;
-        // A stage object
         class Stage extends Base {
             constructor() {
                 super();
                 this.stage = this;
                 this.isStage = true;
-                /**
-                 * Sprites inside of this stage.
-                 */
                 this.children = [];
-                /**
-                 * All variable watchers in this stage.
-                 */
                 this.allWatchers = [];
                 this.answer = '';
                 this.promptId = 0;
                 this.nextPromptId = 0;
                 this.hidePrompt = false;
-                this.tempoBPM = 60;
                 this.zoom = 1;
                 this.rawMouseX = 0;
                 this.rawMouseY = 0;
                 this.mouseX = 0;
                 this.mouseY = 0;
                 this.mousePressed = false;
+                this.tempoBPM = 60;
                 this.username = '';
                 this.counter = 0;
-                this._currentCostumeIndex = this.currentCostumeIndex;
                 this.runtime = new P.runtime.Runtime(this);
                 this.keys = [];
                 this.keys.any = 0;
                 this.root = document.createElement('div');
                 this.root.classList.add('forkphorus-root');
-                const scale = P.config.scale;
                 if (P.config.useWebGL) {
                     this.renderer = new P.renderer.WebGLProjectRenderer(this);
                 }
                 else {
                     this.renderer = new P.renderer.ProjectRenderer2D(this);
                 }
-                this.renderer.reset(scale);
-                this.renderer.penResize(1);
+                this.renderer.resize(1);
+                this.renderer.init(this.root);
                 this.canvas = this.renderer.canvas;
-                this.root.appendChild(this.renderer.stageLayer);
-                this.root.appendChild(this.renderer.penLayer);
-                this.root.appendChild(this.canvas);
                 this.ui = document.createElement('div');
                 this.root.appendChild(this.ui);
                 this.ui.style.pointerEvents = 'none';
@@ -1918,6 +1734,8 @@ var P;
                 this.canvas.style.outline = 'none';
                 this.root.addEventListener('keydown', (e) => {
                     var c = e.keyCode;
+                    if (c >= 128 && e.key.length === 1)
+                        c = P.runtime.getKeyCode(e.key);
                     if (!this.keys[c])
                         this.keys.any++;
                     this.keys[c] = true;
@@ -1931,6 +1749,8 @@ var P;
                 });
                 this.root.addEventListener('keyup', (e) => {
                     var c = e.keyCode;
+                    if (c >= 128)
+                        c = P.runtime.getKeyCode(e.key);
                     if (this.keys[c])
                         this.keys.any--;
                     this.keys[c] = false;
@@ -1940,13 +1760,10 @@ var P;
                     }
                 });
                 this.root.addEventListener('wheel', (e) => {
-                    // Scroll up/down triggers key listeners for up/down arrows, but without affecting "is key pressed?" blocks
                     if (e.deltaY > 0) {
-                        // 40 = down arrow
                         this.runtime.trigger('whenKeyPressed', 40);
                     }
                     else if (e.deltaY < 0) {
-                        // 38 = up arrow
                         this.runtime.trigger('whenKeyPressed', 38);
                     }
                 }, { passive: true });
@@ -2066,26 +1883,15 @@ var P;
                 });
                 this.promptButton.addEventListener(P.config.hasTouchEvents ? 'touchstart' : 'mousedown', this.submitPrompt.bind(this));
             }
-            // Event hooks for implementing stages to optionally use
-            ontouch(e, t) {
-            }
-            onmousedown(e) {
-            }
-            onmouseup(e) {
-            }
-            onmousemove(e) {
-            }
-            /**
-             * Delete the stage.
-             */
+            ontouch(e, t) { }
+            onmousedown(e) { }
+            onmouseup(e) { }
+            onmousemove(e) { }
             destroy() {
                 this.runtime.stopAll();
                 this.runtime.pause();
                 this.stopAllSounds();
             }
-            /**
-             * Give browser focus to the Stage.
-             */
             focus() {
                 if (this.promptId < this.nextPromptId) {
                     this.prompt.focus();
@@ -2111,32 +1917,20 @@ var P;
                 this.mouseX = x;
                 this.mouseY = y;
             }
-            /**
-             * Updates the backdrop canvas to match the current backdrop.
-             */
-            updateBackdrop() {
-                if (!this.renderer)
-                    return;
-                this.renderer.updateStage(this.zoom * P.config.scale);
-            }
-            /**
-             * Changes the zoom level and resizes DOM elements.
-             */
             setZoom(zoom) {
                 if (this.zoom === zoom)
                     return;
-                this.renderer.penResize(zoom);
+                this.renderer.resize(zoom);
                 this.root.style.width = (480 * zoom | 0) + 'px';
                 this.root.style.height = (360 * zoom | 0) + 'px';
                 this.root.style.fontSize = (zoom * 10) + 'px';
                 this.zoom = zoom;
-                this.updateBackdrop();
             }
             clickMouse() {
                 this.mouseSprite = undefined;
                 for (var i = this.children.length; i--;) {
                     var c = this.children[i];
-                    if (c.visible && c.filters.ghost < 100 && c.touching("_mouse_" /* Mouse */)) {
+                    if (c.visible && c.filters.ghost < 100 && c.touching("_mouse_")) {
                         if (c.isDraggable) {
                             this.mouseSprite = c;
                             c.mouseDown();
@@ -2157,14 +1951,13 @@ var P;
                 }
             }
             setFilter(name, value) {
-                // Override setFilter() to update the filters on the real stage.
                 super.setFilter(name, value);
-                this.renderer.updateStageFilters();
+                this.renderer.onStageFiltersChanged();
             }
-            /**
-             * Gets an object with its name, ignoring clones.
-             * SpecialObjects.Stage will point to the stage.
-             */
+            resetFilters() {
+                super.resetFilters();
+                this.renderer.onStageFiltersChanged();
+            }
             getObject(name) {
                 for (var i = 0; i < this.children.length; i++) {
                     var c = this.children[i];
@@ -2172,15 +1965,11 @@ var P;
                         return c;
                     }
                 }
-                if (name === "_stage_" /* Stage */ || name === this.name) {
+                if (name === "_stage_" || name === this.name) {
                     return this;
                 }
                 return null;
             }
-            /**
-             * Gets all the objects with a name, including clones.
-             * Special values are not supported.
-             */
             getObjects(name) {
                 const result = [];
                 for (var i = 0; i < this.children.length; i++) {
@@ -2190,16 +1979,13 @@ var P;
                 }
                 return result;
             }
-            /**
-             * Determines the position of an object, with support for special values.
-             */
             getPosition(name) {
                 switch (name) {
-                    case "_mouse_" /* Mouse */: return {
+                    case "_mouse_": return {
                         x: this.mouseX,
                         y: this.mouseY,
                     };
-                    case "_random_" /* Random */: return {
+                    case "_random_": return {
                         x: Math.round(480 * Math.random() - 240),
                         y: Math.round(360 * Math.random() - 180),
                     };
@@ -2212,12 +1998,8 @@ var P;
                     y: sprite.scratchY,
                 };
             }
-            /**
-             * Draws this stage on it's renderer.
-             */
             draw() {
-                this.renderer.reset(this.zoom);
-                this.drawChildren(this.renderer);
+                this.renderer.drawFrame();
                 for (var i = this.allWatchers.length; i--;) {
                     var w = this.allWatchers[i];
                     if (w.visible) {
@@ -2230,32 +2012,28 @@ var P;
                     this.canvas.focus();
                 }
             }
-            /**
-             * Draws all the children (not including the Stage itself or pen layers) of this Stage on a renderer
-             * @param skip Optionally skip rendering of a single Sprite.
-             */
-            drawChildren(renderer, skip) {
-                for (var i = 0; i < this.children.length; i++) {
-                    const c = this.children[i];
-                    if (c.isDragging) {
-                        // TODO: move
-                        c.moveTo(c.dragOffsetX + c.stage.mouseX, c.dragOffsetY + c.stage.mouseY);
+            showVideo(visible) {
+                if (P.config.supportVideoSensing) {
+                    if (visible) {
+                        if (!this.videoElement) {
+                            this.videoElement = document.createElement('video');
+                            this.videoElement.onloadedmetadata = () => {
+                                this.videoElement.play();
+                            };
+                            this.videoElement.style.opacity = '0.5';
+                            this.root.insertBefore(this.videoElement, this.canvas);
+                            navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+                                .then((stream) => this.videoElement.srcObject = stream);
+                        }
+                        this.videoElement.style.display = 'block';
                     }
-                    if (c.visible && c !== skip) {
-                        renderer.drawChild(c);
+                    else {
+                        if (this.videoElement) {
+                            this.videoElement.style.display = 'none';
+                        }
                     }
                 }
             }
-            /**
-             * Draws all parts of the Stage (including the stage itself and pen layers) on a renderer.
-             * @param skip Optionally skip rendering of a single Sprite.
-             */
-            drawAll(renderer, skip) {
-                renderer.drawChild(this);
-                renderer.drawLayer(this.renderer.penLayer);
-                this.drawChildren(renderer, skip);
-            }
-            // Implement rotatedBounds() to return something.
             rotatedBounds() {
                 return {
                     top: 0,
@@ -2264,15 +2042,6 @@ var P;
                     right: 0,
                 };
             }
-            // Override currentCostumeIndex to automatically update the backdrop when a change is made.
-            get currentCostumeIndex() {
-                return this._currentCostumeIndex;
-            }
-            set currentCostumeIndex(index) {
-                this._currentCostumeIndex = index;
-                this.updateBackdrop();
-            }
-            // Implementing Scratch blocks
             stopAllSounds() {
                 for (var children = this.children, i = children.length; i--;) {
                     children[i].stopSounds();
@@ -2289,7 +2058,6 @@ var P;
                 }
             }
             moveTo() {
-                // do nothing -- stage cannot be moved
             }
             submitPrompt() {
                 if (this.promptId < this.nextPromptId) {
@@ -2305,38 +2073,16 @@ var P;
             }
         }
         core.Stage = Stage;
-        // A sprite object
         class Sprite extends Base {
             constructor(stage) {
                 super();
                 this.isSprite = true;
-                /**
-                 * Is this Sprite a clone of another Sprite?
-                 */
                 this.isClone = false;
-                /**
-                 * The direction this Sprite is facing.
-                 * 0 is directly up, and 90 is directly right.
-                 */
                 this.direction = 90;
-                /**
-                 * How this object rotates.
-                 */
-                this.rotationStyle = 0 /* Normal */;
-                /**
-                 * Can this Sprite be dragged?
-                 */
+                this.rotationStyle = 0;
                 this.isDraggable = false;
-                /**
-                 * Is this Sprite currently being dragged?
-                 */
                 this.isDragging = false;
-                /**
-                 * This sprite's size, with 1 being 100% (normal size)
-                 * Sprites are scaled from their costume's center
-                 */
                 this.scale = 1;
-                // Pen data
                 this.penHue = 240;
                 this.penSaturation = 100;
                 this.penLightness = 50;
@@ -2345,7 +2091,6 @@ var P;
                 this.penSize = 1;
                 this.penColor = 0x000000;
                 this.isPenDown = false;
-                // It's related to dragging sprites.
                 this.dragStartX = 0;
                 this.dragStartY = 0;
                 this.dragOffsetX = 0;
@@ -2360,13 +2105,11 @@ var P;
                 this.isDragging = true;
             }
             mouseUp() {
-                // We consider a sprite to be clicked if it has been dragged to the same start & end points
                 if (this.isDragging && this.scratchX === this.dragStartX && this.scratchY === this.dragStartY) {
                     this.stage.runtime.triggerFor(this, 'whenClicked');
                 }
                 this.isDragging = false;
             }
-            // Determines the rotated bounds of the sprite.
             rotatedBounds() {
                 const costume = this.costumes[this.currentCostumeIndex];
                 const scale = costume.scale * this.scale;
@@ -2374,8 +2117,8 @@ var P;
                 var top = costume.rotationCenterY * scale;
                 var right = left + costume.width * scale;
                 var bottom = top - costume.height * scale;
-                if (this.rotationStyle !== 0 /* Normal */) {
-                    if (this.rotationStyle === 1 /* LeftRight */ && this.direction < 0) {
+                if (this.rotationStyle !== 0) {
+                    if (this.rotationStyle === 1 && this.direction < 0) {
                         right = -left;
                         left = right - costume.width * costume.scale * this.scale;
                     }
@@ -2388,16 +2131,12 @@ var P;
                 }
                 const mSin = Math.sin(this.direction * Math.PI / 180);
                 const mCos = Math.cos(this.direction * Math.PI / 180);
-                // Top left
                 const tlX = mSin * left - mCos * top;
                 const tlY = mCos * left + mSin * top;
-                // Top right
                 const trX = mSin * right - mCos * top;
                 const trY = mCos * right + mSin * top;
-                // Bottom left
                 const blX = mSin * left - mCos * bottom;
                 const blY = mCos * left + mSin * bottom;
-                // Bottom right
                 const brX = mSin * right - mCos * bottom;
                 const brY = mCos * right + mSin * bottom;
                 return {
@@ -2407,7 +2146,6 @@ var P;
                     bottom: this.scratchY + Math.min(tlY, trY, blY, brY)
                 };
             }
-            // Shows the rotated bounds of the sprite. For debugging.
             showRotatedBounds() {
                 var bounds = this.rotatedBounds();
                 var div = document.createElement('div');
@@ -2419,18 +2157,13 @@ var P;
                 div.style.height = (bounds.top - bounds.bottom) + 'px';
                 this.stage.canvas.parentNode.appendChild(div);
             }
-            // Implementing Scratch blocks
             createVariableWatcher(target, variableName) {
-                // Asking our parent to handle it is easier.
                 return this.stage.createVariableWatcher(target, variableName);
             }
-            // Moves forward some number of steps in the current direction.
             forward(steps) {
                 const d = (90 - this.direction) * Math.PI / 180;
                 this.moveTo(this.scratchX + steps * Math.cos(d), this.scratchY + steps * Math.sin(d));
             }
-            // Moves the sprite to a coordinate
-            // Draws a line if the pen is currently down.
             moveTo(x, y) {
                 var ox = this.scratchX;
                 var oy = this.scratchY;
@@ -2446,19 +2179,15 @@ var P;
                     this.updateBubble();
                 }
             }
-            // Makes a pen dot at the current location.
             dotPen() {
                 this.stage.renderer.penDot(this.getPenCSS(), this.penSize, this.scratchX, this.scratchY);
             }
-            // Stamps the sprite onto the pen layer.
             stamp() {
                 this.stage.renderer.penStamp(this);
             }
             getPenCSS() {
-                // This is only temporary
                 return this.penCSS || 'hsla(' + this.penHue + 'deg,' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
             }
-            // Faces in a direction.
             setDirection(degrees) {
                 var d = degrees % 360;
                 if (d > 180)
@@ -2469,11 +2198,9 @@ var P;
                 if (this.saying)
                     this.updateBubble();
             }
-            // Clones this sprite.
             clone() {
                 const clone = this._clone();
                 clone.isClone = true;
-                // Copy variables and lists without passing reference
                 for (const key of Object.keys(this.vars)) {
                     clone.vars[key] = this.vars[key];
                 }
@@ -2489,11 +2216,9 @@ var P;
                     brightness: this.filters.brightness,
                     ghost: this.filters.ghost
                 };
-                // Copy scripts
                 clone.procedures = this.procedures;
                 clone.listeners = this.listeners;
                 clone.fns = this.fns;
-                // Copy Data
                 clone.name = this.name;
                 clone.costumes = this.costumes;
                 clone.currentCostumeIndex = this.currentCostumeIndex;
@@ -2518,17 +2243,13 @@ var P;
                 clone.watchers = this.watchers;
                 return clone;
             }
-            /**
-             * Determines if this sprite is touching another object.
-             * @param thing The name of the other object(s)
-             */
             touching(thing) {
-                if (thing === "_mouse_" /* Mouse */) {
+                if (thing === "_mouse_") {
                     const x = this.stage.rawMouseX;
                     const y = this.stage.rawMouseY;
                     return this.stage.renderer.spriteTouchesPoint(this, x, y);
                 }
-                else if (thing === "_edge_" /* Edge */) {
+                else if (thing === "_edge_") {
                     const bounds = this.rotatedBounds();
                     return bounds.left <= -240 || bounds.right >= 240 || bounds.top >= 180 || bounds.bottom <= -180;
                 }
@@ -2539,24 +2260,12 @@ var P;
                     return this.stage.renderer.spritesIntersect(this, sprites);
                 }
             }
-            /**
-             * Determines if this Sprite is touching a color.
-             * @param color RGB color, as a single number.
-             */
             touchingColor(color) {
                 return this.stage.renderer.spriteTouchesColor(this, color);
             }
-            /**
-             * Determines if one of this Sprite's colors are touching another color.
-             * @param sourceColor This sprite's color, as an RGB color.
-             * @param touchingColor The other color, as an RGB color.
-             */
             colorTouchingColor(sourceColor, touchingColor) {
                 return this.stage.renderer.spriteColorTouchesColor(this, sourceColor, touchingColor);
             }
-            /**
-             * Bounces this Sprite off of an edge of the Stage, if this Sprite is touching one.
-             */
             bounceOffEdge() {
                 var b = this.rotatedBounds();
                 var dl = 240 + b.left;
@@ -2586,22 +2295,7 @@ var P;
                 this.direction = Math.atan2(dy, dx) * 180 / Math.PI + 90;
                 if (this.saying)
                     this.updateBubble();
-                b = this.rotatedBounds();
-                var x = this.scratchX;
-                var y = this.scratchY;
-                if (b.left < -240)
-                    x += -240 - b.left;
-                if (b.top > 180)
-                    y += 180 - b.top;
-                if (b.right > 240)
-                    x += 240 - b.left;
-                if (b.bottom < -180)
-                    y += -180 - b.top;
             }
-            /**
-             * Determines the distance from this Sprite's center to another position.
-             * @param thing The name of any position or Sprite, as accepted by getPosition()
-             */
             distanceTo(thing) {
                 const p = this.stage.getPosition(thing);
                 if (!p) {
@@ -2611,10 +2305,6 @@ var P;
                 const y = p.y;
                 return Math.sqrt((this.scratchX - x) * (this.scratchX - x) + (this.scratchY - y) * (this.scratchY - y));
             }
-            /**
-             * Makes this Sprite go to another Sprite
-             * @param thing The name of any position or Sprite, as accepted by getPosition()
-             */
             gotoObject(thing) {
                 const position = this.stage.getPosition(thing);
                 if (!position) {
@@ -2622,10 +2312,6 @@ var P;
                 }
                 this.moveTo(position.x, position.y);
             }
-            /**
-             * Makes this Sprite point towards another object.
-             * @param thing The name of any position or Sprite, as accepted by getPosition()
-             */
             pointTowards(thing) {
                 const position = this.stage.getPosition(thing);
                 if (!position) {
@@ -2637,10 +2323,18 @@ var P;
                 if (this.saying)
                     this.updateBubble();
             }
-            /**
-             * Set the RGB color of the pen.
-             */
             setPenColor(color) {
+                if (typeof color === 'string') {
+                    if (color.startsWith('#')) {
+                        color = parseInt(color.substr(1), 16);
+                    }
+                    else if (color.startsWith('0x')) {
+                        color = parseInt(color.substr(2), 16);
+                    }
+                    else {
+                        color = +color;
+                    }
+                }
                 this.penColor = color;
                 const r = this.penColor >> 16 & 0xff;
                 const g = this.penColor >> 8 & 0xff;
@@ -2648,9 +2342,6 @@ var P;
                 const a = (this.penColor >> 24 & 0xff) / 0xff || 1;
                 this.penCSS = 'rgba(' + r + ', ' + g + ', ' + b + ', ' + a + ')';
             }
-            /**
-             * Convert the pen's color from RGB to HSL
-             */
             setPenColorHSL() {
                 if (this.penCSS) {
                     const hsl = P.utils.rgbToHSL(this.penColor);
@@ -2661,7 +2352,6 @@ var P;
                     this.penCSS = '';
                 }
             }
-            // Sets a pen color HSL parameter.
             setPenColorParam(param, value) {
                 this.setPenColorHSL();
                 switch (param) {
@@ -2686,7 +2376,6 @@ var P;
                         break;
                 }
             }
-            // Changes a pen color HSL parameter.
             changePenColorParam(param, value) {
                 this.setPenColorHSL();
                 switch (param) {
@@ -2703,13 +2392,12 @@ var P;
                         }
                         break;
                     case 'transparency':
-                        this.penAlpha = Math.max(0, Math.min(1, value / 100));
+                        this.penAlpha = Math.max(0, Math.min(1, this.penAlpha - value / 100));
                         break;
                 }
             }
         }
         core.Sprite = Sprite;
-        // A costume
         class Costume {
             constructor(costumeData) {
                 this.bitmapResolution = costumeData.bitmapResolution;
@@ -2738,7 +2426,6 @@ var P;
                 this.height = source.height;
             }
             get(scale) {
-                // Bitmap costumes do not have different resolutions
                 return this.source;
             }
             getContext() {
@@ -2767,8 +2454,6 @@ var P;
                 this.width = svg.width;
                 this.height = svg.height;
                 this.source = svg;
-                // calculate the 1x zoom before load because it'll most likely be used.
-                // TODO: maybe don't do this?
                 this.scales[0] = this.getScale(1);
             }
             getScale(scale) {
@@ -2806,7 +2491,6 @@ var P;
             }
         }
         core.VectorCostume = VectorCostume;
-        // A sound
         class Sound {
             constructor(data) {
                 this.source = null;
@@ -2833,23 +2517,17 @@ var P;
                 this.visible = true;
                 this.x = 0;
                 this.y = 0;
-                // The stage this variable watcher belongs to.
                 this.stage = stage;
-                // The name of the owner of this watcher, if any.
                 this.targetName = targetName;
             }
-            // Initializes the Watcher. Called once.
-            // Expected to be overridden.
             init() {
                 this.target = this.stage.getObject(this.targetName) || this.stage;
             }
-            // The intended way to change visibility
             setVisible(visible) {
                 this.visible = visible;
             }
         }
         core.Watcher = Watcher;
-        // An abstract callable procedure
         class Procedure {
             constructor(fn, warp, inputs) {
                 this.fn = fn;
@@ -2858,20 +2536,12 @@ var P;
             }
         }
         core.Procedure = Procedure;
-        /**
-         * Determines if an object is a sprite
-         * Can be used to ease type assertions.
-         */
         function isSprite(base) {
             return base.isSprite;
         }
         core.isSprite = isSprite;
     })(core = P.core || (P.core = {}));
 })(P || (P = {}));
-/// <reference path="phosphorus.ts" />
-/**
- * Font helpers
- */
 var P;
 (function (P) {
     var fonts;
@@ -2886,9 +2556,6 @@ var P;
             'Sans Serif': '/fonts/NotoSans-Regular.woff',
             'Scratch': '/fonts/Scratch.ttf',
         };
-        /**
-         * Asynchronously load and cache a font
-         */
         function loadLocalFont(fontFamily, src) {
             if (fontFamilyCache[fontFamily]) {
                 return Promise.resolve(fontFamilyCache[fontFamily]);
@@ -2901,9 +2568,6 @@ var P;
             });
         }
         fonts_1.loadLocalFont = loadLocalFont;
-        /**
-         * Gets an already loaded and cached font
-         */
         function getFont(fontFamily) {
             if (!(fontFamily in fontFamilyCache)) {
                 return null;
@@ -2913,9 +2577,6 @@ var P;
         function getCSSFontFace(fontFamily, src) {
             return `@font-face { font-family: "${fontFamily}"; src: url("${src}"); }`;
         }
-        /**
-         * Add an inline <style> element to an SVG containing fonts loaded through loadFontSet
-         */
         function addFontRules(svg, fonts) {
             const cssRules = [];
             for (const fontName of fonts) {
@@ -2934,9 +2595,6 @@ var P;
             svg.appendChild(style);
         }
         fonts_1.addFontRules = addFontRules;
-        /**
-         * Load a CSS @font-face font.
-         */
         function loadWebFont(name) {
             const observer = new FontFaceObserver(name);
             return observer.load();
@@ -2944,23 +2602,13 @@ var P;
         fonts_1.loadWebFont = loadWebFont;
     })(fonts = P.fonts || (P.fonts = {}));
 })(P || (P = {}));
-/// <reference path="phosphorus.ts" />
-// IO helpers and hooks
 var P;
 (function (P) {
     var IO;
     (function (IO) {
-        /**
-         * Configuration of IO behavior
-         */
         IO.config = {
-            /**
-             * A relative or absolute path to a full installation of forkphorus, from which "local" files can be fetched.
-             * Do not including a trailing slash.
-             */
             localPath: '',
         };
-        // non-http/https protocols cannot xhr request local files, so utilize forkphorus.github.io instead
         if (['http:', 'https:'].indexOf(location.protocol) === -1) {
             IO.config.localPath = 'https://forkphorus.github.io';
         }
@@ -2973,11 +2621,7 @@ var P;
                 }
                 this.url = url;
             }
-            /**
-             * Attempts to load this request.
-             */
             load() {
-                // We attempt to load twice, which I hope will fix random loading errors from failed fetches.
                 return new Promise((resolve, reject) => {
                     const attempt = (errorCallback) => {
                         this._load()
@@ -2989,7 +2633,6 @@ var P;
                         });
                     };
                     attempt(() => {
-                        // try once more
                         attempt((err) => {
                             reject(err);
                         });
@@ -3038,27 +2681,6 @@ var P;
             get type() { return 'json'; }
         }
         IO.JSONRequest = JSONRequest;
-        /**
-         * Read a file as an ArrayBuffer
-         */
-        function fileAsArrayBuffer(file) {
-            const fileReader = new FileReader();
-            return new Promise((resolve, reject) => {
-                fileReader.onloadend = function () {
-                    resolve(fileReader.result);
-                };
-                fileReader.onerror = function (err) {
-                    reject('Failed to load file');
-                };
-                fileReader.onprogress = function (progress) {
-                };
-                fileReader.readAsArrayBuffer(file);
-            });
-        }
-        IO.fileAsArrayBuffer = fileAsArrayBuffer;
-        /**
-         * Utilities for asynchronously reading Blobs or Files
-         */
         let readers;
         (function (readers) {
             function toArrayBuffer(object) {
@@ -3109,54 +2731,29 @@ var P;
         })(readers = IO.readers || (IO.readers = {}));
     })(IO = P.IO || (P.IO = {}));
 })(P || (P = {}));
-/// <reference path="phosphorus.ts" />
-/// <reference path="core.ts" />
-/// <reference path="audio.ts" />
-// The phosphorus runtime for Scratch
-// Provides methods expected at runtime by scripts created by the compiler and an environment for Scratch scripts to run
 var P;
 (function (P) {
     var runtime;
     (function (runtime_1) {
-        // Global variables expected by scripts at runtime:
-        // Current runtime
         var runtime;
-        // Current stage
         var self;
-        // Current sprite or stage
         var S;
-        // Current thread state.
         var R;
-        // Stack of states (R) for this thread
         var STACK;
-        // Current procedure call, if any. Contains arguments.
         var C;
-        // This thread's call (C) stack
         var CALLS;
-        // If level of layers of "Run without screen refresh" we are in
-        // Each level (usually procedures) of depth will increment and decrement as they start and stop.
-        // As long as this is greater than 0, functions will run without waiting for the screen.
         var WARP;
-        // ??
         var BASE;
-        // The ID of the active thread in the Runtime's queue
         var THREAD;
-        // The next function to run immediately after this one.
         var IMMEDIATE;
-        // Has a "visual change" been made in this frame?
         var VISUAL;
-        // Note:
-        // Your editor might warn you about "unused variables" or things like that.
-        // That is a complete lie and you should disregard such warnings.
         const epoch = Date.UTC(2000, 0, 1);
         const INSTRUMENTS = P.audio.instruments;
         const DRUMS = P.audio.drums;
         const DIGIT = /\d/;
-        // Converts a value to its boolean equivalent
         var bool = function (v) {
             return +v !== 0 && v !== '' && v !== 'false' && v !== false;
         };
-        // Compares two values. Returns -1 if x < y, 1 if x > y, 0 if x === y
         var compare = function (x, y) {
             if ((typeof x === 'number' || DIGIT.test(x)) && (typeof y === 'number' || DIGIT.test(y))) {
                 var nx = +x;
@@ -3169,7 +2766,6 @@ var P;
             var ys = ('' + y).toLowerCase();
             return xs < ys ? -1 : xs === ys ? 0 : 1;
         };
-        // Determines if y is less than nx
         var numLess = function (nx, y) {
             if (typeof y === 'number' || DIGIT.test(y)) {
                 var ny = +y;
@@ -3180,7 +2776,6 @@ var P;
             var ys = ('' + y).toLowerCase();
             return '' + nx < ys;
         };
-        // Determines if y is greater than nx
         var numGreater = function (nx, y) {
             if (typeof y === 'number' || DIGIT.test(y)) {
                 var ny = +y;
@@ -3191,13 +2786,10 @@ var P;
             var ys = ('' + y).toLowerCase();
             return '' + nx > ys;
         };
-        // Determines if x is equal to y
         var equal = function (x, y) {
-            // numbers, booleans, and strings that look like numbers will go through the number comparison
             if ((typeof x === 'number' || typeof x === 'boolean' || DIGIT.test(x)) && (typeof y === 'number' || typeof x === 'boolean' || DIGIT.test(y))) {
                 var nx = +x;
                 var ny = +y;
-                // if either is NaN, don't do the comparison
                 if (nx === nx && ny === ny) {
                     return nx === ny;
                 }
@@ -3206,7 +2798,6 @@ var P;
             var ys = ('' + y).toLowerCase();
             return xs === ys;
         };
-        // Determines if x (number) and y (number) are equal to each other
         var numEqual = function (nx, y) {
             if (typeof y === 'number' || DIGIT.test(y)) {
                 var ny = +y;
@@ -3214,7 +2805,9 @@ var P;
             }
             return false;
         };
-        // Modulo
+        var strEqual = function (a, b) {
+            return (a + '').toLowerCase() === (b + '').toLowerCase();
+        };
         var mod = function (x, y) {
             var r = x % y;
             if (r / y < 0) {
@@ -3222,8 +2815,9 @@ var P;
             }
             return r;
         };
-        // Random number in range
         var random = function (x, y) {
+            var fractional = (typeof x === 'string' && !isNaN(+x) && x.indexOf('.') > -1) ||
+                (typeof y === 'string' && !isNaN(+y) && y.indexOf('.') > -1);
             x = +x || 0;
             y = +y || 0;
             if (x > y) {
@@ -3231,14 +2825,12 @@ var P;
                 y = x;
                 x = tmp;
             }
-            if (x % 1 === 0 && y % 1 === 0) {
+            if (!fractional && (x % 1 === 0 && y % 1 === 0)) {
                 return Math.floor(Math.random() * (y - x + 1)) + x;
             }
             return Math.random() * (y - x) + x;
         };
-        // Converts an RGB color as a number to HSL
         var rgb2hsl = function (rgb) {
-            // TODO: P.utils.rgb2hsl?
             var r = (rgb >> 16 & 0xff) / 0xff;
             var g = (rgb >> 8 & 0xff) / 0xff;
             var b = (rgb & 0xff) / 0xff;
@@ -3265,7 +2857,6 @@ var P;
             h *= 60;
             return [h, s * 100, l * 100];
         };
-        // Clone a sprite
         var clone = function (name) {
             const parent = name === '_myself_' ? S : self.getObject(name);
             if (!parent) {
@@ -3361,7 +2952,6 @@ var P;
                 list[i] = value;
             }
         };
-        // "Watched" variants of the above that set modified=true
         var watchedAppendToList = function (list, value) {
             appendToList(list, value);
             if (!list.modified)
@@ -3416,7 +3006,6 @@ var P;
             return 0;
         };
         var attribute = function (attr, objName) {
-            // https://github.com/LLK/scratch-vm/blob/e236d29ff5e03f7c4d77a614751da860521771fd/src/blocks/scratch3_sensing.js#L280
             const o = self.getObject(objName);
             if (!o)
                 return 0;
@@ -3464,9 +3053,6 @@ var P;
             }
             return 0;
         };
-        /**
-         * Converts the name of a key to its code
-         */
         function getKeyCode(keyName) {
             switch (keyName.toLowerCase()) {
                 case 'space': return 32;
@@ -3479,7 +3065,6 @@ var P;
             return keyName.toUpperCase().charCodeAt(0);
         }
         runtime_1.getKeyCode = getKeyCode;
-        // Load audio methods if audio is supported
         const audioContext = P.audio.context;
         if (audioContext) {
             var playNote = function (key, duration) {
@@ -3496,7 +3081,17 @@ var P;
                 P.audio.playSpan(span, key, duration, S.getAudioNode());
             };
             var playSound = function (sound) {
-                sound.createSourceNode().connect(S.getAudioNode());
+                const node = sound.createSourceNode();
+                node.connect(S.getAudioNode());
+                return {
+                    stopped: false,
+                    node,
+                    base: BASE,
+                };
+            };
+            var startSound = function (sound) {
+                const node = sound.createSourceNode();
+                node.connect(S.getAudioNode());
             };
         }
         var save = function () {
@@ -3593,7 +3188,6 @@ var P;
                 this.baseNow = 0;
                 this.isTurbo = false;
                 this.framerate = 30;
-                // Fix scoping
                 this.onError = this.onError.bind(this);
                 this.step = this.step.bind(this);
             }
@@ -3602,7 +3196,6 @@ var P;
                         args: [],
                         stack: [{}],
                     }]);
-                // Replace an existing thread instead of adding a new one when possible.
                 for (let i = 0; i < this.queue.length; i++) {
                     const q = this.queue[i];
                     if (q && q.sprite === sprite && q.base === base) {
@@ -3612,9 +3205,6 @@ var P;
                 }
                 this.queue.push(thread);
             }
-            /**
-             * Triggers an event for a single sprite.
-             */
             triggerFor(sprite, event, arg) {
                 let threads;
                 switch (event) {
@@ -3638,7 +3228,6 @@ var P;
                         break;
                     case 'whenIReceive':
                         arg = '' + arg;
-                        // TODO: remove toLowerCase() check?
                         threads = sprite.listeners.whenIReceive[arg] || sprite.listeners.whenIReceive[arg.toLowerCase()];
                         break;
                     default: throw new Error('Unknown trigger event: ' + event);
@@ -3650,9 +3239,6 @@ var P;
                 }
                 return threads || [];
             }
-            /**
-             * Triggers an event on all sprites.
-             */
             trigger(event, arg) {
                 let threads = [];
                 for (let i = this.stage.children.length; i--;) {
@@ -3660,17 +3246,10 @@ var P;
                 }
                 return threads.concat(this.triggerFor(this.stage, event, arg));
             }
-            /**
-             * Trigger's the project's green flag.
-             */
             triggerGreenFlag() {
                 this.timerStart = this.now();
                 this.trigger('whenGreenFlag');
             }
-            /**
-             * Begins the runtime's event loop.
-             * Does not start any scripts.
-             */
             start() {
                 this.isRunning = true;
                 if (this.interval)
@@ -3681,9 +3260,6 @@ var P;
                 if (audioContext)
                     audioContext.resume();
             }
-            /**
-             * Pauses the event loop
-             */
             pause() {
                 if (this.interval) {
                     this.baseNow = this.now();
@@ -3695,9 +3271,6 @@ var P;
                 }
                 this.isRunning = false;
             }
-            /**
-             * Resets the interval loop without the effects of pausing/starting
-             */
             resetInterval() {
                 if (!this.isRunning) {
                     throw new Error('cannot restart interval when paused');
@@ -3729,20 +3302,19 @@ var P;
                     }
                 }
             }
-            /**
-             * The current time in the project
-             */
             now() {
                 return this.baseNow + Date.now() - this.baseTime;
             }
-            /**
-             * Advances one frame into the future.
-             */
             step() {
-                // Reset runtime variables
                 self = this.stage;
                 runtime = this;
                 VISUAL = false;
+                for (var i = 0; i < this.stage.children.length; i++) {
+                    const c = this.stage.children[i];
+                    if (c.isDragging) {
+                        c.moveTo(c.dragOffsetX + c.stage.mouseX, c.dragOffsetY + c.stage.mouseY);
+                    }
+                }
                 if (audioContext && audioContext.state === 'suspended') {
                     audioContext.resume();
                 }
@@ -3752,7 +3324,6 @@ var P;
                     for (THREAD = 0; THREAD < queue.length; THREAD++) {
                         const thread = queue[THREAD];
                         if (thread) {
-                            // Load thread data
                             S = thread.sprite;
                             IMMEDIATE = thread.fn;
                             BASE = thread.base;
@@ -3771,7 +3342,6 @@ var P;
                             CALLS.push(C);
                         }
                     }
-                    // Remove empty elements in the queue list
                     for (let i = queue.length; i--;) {
                         if (!queue[i]) {
                             queue.splice(i, 1);
@@ -3785,15 +3355,12 @@ var P;
                 this.handleError(e.error);
             }
             handleError(e) {
-                // Default error handler
                 console.error(e);
             }
         }
         runtime_1.Runtime = Runtime;
-        // Very dirty temporary hack to get a crashmonitor installed w/o affecting performance
         if (P.config.useCrashMonitor) {
             Runtime.prototype.step = function () {
-                // Reset runtime variables
                 self = this.stage;
                 runtime = this;
                 VISUAL = false;
@@ -3806,7 +3373,6 @@ var P;
                     for (THREAD = 0; THREAD < queue.length; THREAD++) {
                         const thread = queue[THREAD];
                         if (thread) {
-                            // Load thread data
                             S = thread.sprite;
                             IMMEDIATE = thread.fn;
                             BASE = thread.base;
@@ -3836,7 +3402,6 @@ var P;
                             CALLS.push(C);
                         }
                     }
-                    // Remove empty elements in the queue list
                     for (let i = queue.length; i--;) {
                         if (!queue[i]) {
                             queue.splice(i, 1);
@@ -3847,7 +3412,6 @@ var P;
             };
         }
         function createContinuation(source) {
-            // TODO: make understandable
             var result = '(function() {\n';
             var brackets = 0;
             var delBrackets = 0;
@@ -3919,53 +3483,32 @@ var P;
             return scopedEval(result);
         }
         runtime_1.createContinuation = createContinuation;
-        // Evaluate JavaScript within the scope of the runtime.
         function scopedEval(source) {
             return eval(source);
         }
         runtime_1.scopedEval = scopedEval;
     })(runtime = P.runtime || (P.runtime = {}));
 })(P || (P = {}));
-/// <reference path="phosphorus.ts" />
 var P;
 (function (P) {
     var utils;
     (function (utils) {
-        // Returns the string representation of an error.
-        // TODO: does this need to be here?
-        function stringifyError(error) {
-            if (!error) {
-                return 'unknown error';
-            }
-            if (error.stack) {
-                return 'Message: ' + error.message + '\nStack:\n' + error.stack;
-            }
-            return error.toString();
-        }
-        utils.stringifyError = stringifyError;
-        /**
-         * Parses a Scratch rotation style string to a RotationStyle enum
-         */
         function parseRotationStyle(style) {
             switch (style) {
                 case 'leftRight':
                 case 'left-right':
-                    return 1 /* LeftRight */;
+                    return 1;
                 case 'none':
                 case 'don\'t rotate':
-                    return 2 /* None */;
+                    return 2;
                 case 'normal':
                 case 'all around':
-                    return 0 /* Normal */;
+                    return 0;
             }
             console.warn('unknown rotation style', style);
-            return 0 /* Normal */;
+            return 0;
         }
         utils.parseRotationStyle = parseRotationStyle;
-        /**
-         * Converts an RGB color to an HSL color
-         * @param rgb RGB Color
-         */
         function rgbToHSL(rgb) {
             var r = (rgb >> 16 & 0xff) / 0xff;
             var g = (rgb >> 8 & 0xff) / 0xff;
@@ -3994,19 +3537,10 @@ var P;
             return [h, s * 100, l * 100];
         }
         utils.rgbToHSL = rgbToHSL;
-        /**
-         * Clamps a number within a range
-         * @param number The number
-         * @param min Minimum, inclusive
-         * @param max Maximum, inclusive
-         */
         function clamp(number, min, max) {
             return Math.min(max, Math.max(min, number));
         }
         utils.clamp = clamp;
-        /*
-         * Creates a promise that resolves when the original promise resolves or fails.
-         */
         function settled(promise) {
             return new Promise((resolve, _reject) => {
                 promise
@@ -4031,11 +3565,6 @@ var P;
         utils.Slot = Slot;
     })(utils = P.utils || (P.utils = {}));
 })(P || (P = {}));
-/// <reference path="phosphorus.ts" />
-/// <reference path="utils.ts" />
-/// <reference path="core.ts" />
-/// <reference path="fonts.ts" />
-/// <reference path="config.ts" />
 var P;
 (function (P) {
     var sb2;
@@ -4148,10 +3677,8 @@ var P;
                         value = this.stage.getCostumeName();
                         break;
                     case 'senseVideoMotion':
-                        // TODO
                         break;
                     case 'soundLevel':
-                        // TODO
                         break;
                     case 'tempo':
                         value = this.stage.tempoBPM;
@@ -4230,7 +3757,6 @@ var P;
                     this.el.style.background = 'rgb(193,196,199)';
                     this.el.style.padding = '.2em .6em .3em .5em';
                     this.labelEl.textContent = this.label;
-                    // this.labelEl.style.marginTop = (1/11)+'em';
                     this.labelEl.style.font = 'bold 1.1em/1 sans-serif';
                     this.labelEl.style.display = 'inline-block';
                     this.labelEl.style.verticalAlign =
@@ -4299,11 +3825,9 @@ var P;
                 });
             }
             say(text, thinking) {
-                // Stage cannot say things in Scratch 2.
                 return ++this.sayId;
             }
             updateBubble() {
-                // Stage cannot say things in Scratch 2.
             }
             watcherStart(id, t, e) {
                 var p = e.target;
@@ -4359,7 +3883,6 @@ var P;
             }
         }
         sb2.Scratch2Sprite = Scratch2Sprite;
-        // loads an image from a URL
         function loadImage(url) {
             sb2.hooks.newTask();
             var image = new Image();
@@ -4376,7 +3899,6 @@ var P;
             });
         }
         sb2.loadImage = loadImage;
-        // Loads a .sb2 file from an ArrayBuffer containing the .sb2 file
         function loadSB2Project(arrayBuffer) {
             return JSZip.loadAsync(arrayBuffer)
                 .then((zip) => {
@@ -4389,7 +3911,6 @@ var P;
             });
         }
         sb2.loadSB2Project = loadSB2Project;
-        // Loads a project on the scratch.mit.edu website from its project.json
         function loadProject(data) {
             var children;
             var stage;
@@ -4407,7 +3928,6 @@ var P;
                 stage.children = sprites;
                 stage.allWatchers = watchers;
                 stage.allWatchers.forEach((w) => w.init());
-                stage.updateBackdrop();
                 P.sb2.compiler.compile(stage);
                 return stage;
             });
@@ -4438,7 +3958,6 @@ var P;
                         lists[list.listName] = list.contents;
                     }
                 }
-                // Dirty hack to construct a target with a null stage
                 const object = new (isStage ? Scratch2Stage : Scratch2Sprite)(null);
                 object.name = data.objName;
                 object.vars = variables;
@@ -4458,14 +3977,11 @@ var P;
                     sprite.scale = data.scale;
                     sprite.visible = data.visible;
                 }
-                // We store the scripts on the Sprite so the compiler can find them easier
-                // TODO: to something different?
                 object.scripts = data.scripts || [];
                 return object;
             });
         }
         sb2.loadBase = loadBase;
-        // A weird mix of Array.map and Promise.all
         function loadArray(data, process) {
             return Promise.all((data || []).map((i, ind) => process(i, ind)));
         }
@@ -4485,7 +4001,6 @@ var P;
                 return loadVariableWatcher(data);
             }
             else if (data.listName) {
-                // TODO: list watcher
             }
             else {
                 return loadBase(data);
@@ -4565,7 +4080,6 @@ var P;
             if (element.nodeType !== 1)
                 return;
             if (element.nodeName === 'text') {
-                // Correct fonts
                 var font = element.getAttribute('font-family') || '';
                 font = FONTS[font] || font;
                 if (font) {
@@ -4603,7 +4117,6 @@ var P;
         }
         sb2.patchSVG = patchSVG;
         function loadSVG(source) {
-            // canvg needs and actual SVG element, not the source.
             const parser = new DOMParser();
             var doc = parser.parseFromString(source, 'image/svg+xml');
             var svg = doc.documentElement;
@@ -4628,7 +4141,6 @@ var P;
             patchSVG(svg, svg);
             document.body.removeChild(svg);
             svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
-            // TODO: use native renderer
             return new Promise((resolve, reject) => {
                 const canvas = document.createElement('canvas');
                 canvg(canvas, new XMLSerializer().serializeToString(svg), {
@@ -4693,15 +4205,12 @@ var P;
         sb2.loadMD5 = loadMD5;
     })(sb2 = P.sb2 || (P.sb2 = {}));
 })(P || (P = {}));
-// Compiler for .sb2 projects
 (function (P) {
     var sb2;
     (function (sb2) {
         var compiler;
         (function (compiler) {
             var LOG_PRIMITIVES;
-            // Implements a Scratch 2 procedure.
-            // Scratch 2 argument references just go by index, so its very simple.
             class Scratch2Procedure extends P.core.Procedure {
                 call(inputs) {
                     return inputs;
@@ -4716,7 +4225,7 @@ var P;
                 'whenIReceive',
                 'whenKeyPressed',
                 'whenSceneStarts',
-                'whenSensorGreaterThan' // TODO
+                'whenSensorGreaterThan'
             ];
             var compileScripts = function (object) {
                 for (var i = 0; i < object.scripts.length; i++) {
@@ -4826,7 +4335,7 @@ var P;
                     else if (e[0] === 'letter:of:') {
                         return '(("" + ' + val(e[2]) + ')[(' + num(e[1]) + ' | 0) - 1] || "")';
                     }
-                    else if (e[0] === 'answer') { /* Sensing */
+                    else if (e[0] === 'answer') {
                         return 'self.answer';
                     }
                     else if (e[0] === 'getAttribute:of:') {
@@ -4872,7 +4381,7 @@ var P;
                     }
                 };
                 var numval = function (e) {
-                    if (e[0] === 'xpos') { /* Motion */
+                    if (e[0] === 'xpos') {
                         return 'S.scratchX';
                     }
                     else if (e[0] === 'ypos') {
@@ -4881,7 +4390,7 @@ var P;
                     else if (e[0] === 'heading') {
                         return 'S.direction';
                     }
-                    else if (e[0] === 'costumeIndex') { /* Looks */
+                    else if (e[0] === 'costumeIndex') {
                         return '(S.currentCostumeIndex + 1)';
                     }
                     else if (e[0] === 'backgroundIndex') {
@@ -4890,16 +4399,16 @@ var P;
                     else if (e[0] === 'scale') {
                         return '(S.scale * 100)';
                     }
-                    else if (e[0] === 'volume') { /* Sound */
+                    else if (e[0] === 'volume') {
                         return '(S.volume * 100)';
                     }
                     else if (e[0] === 'tempo') {
                         return 'self.tempoBPM';
                     }
-                    else if (e[0] === 'lineCountOfList:') { /* Data */
+                    else if (e[0] === 'lineCountOfList:') {
                         return listRef(e[1]) + '.length';
                     }
-                    else if (e[0] === '+') { /* Operators */
+                    else if (e[0] === '+') {
                         return '(' + num(e[1]) + ' + ' + num(e[2]) + ' || 0)';
                     }
                     else if (e[0] === '-') {
@@ -4965,7 +4474,7 @@ var P;
                         }
                         return 'mathFunc(' + val(e[1]) + ', ' + num(e[2]) + ')';
                     }
-                    else if (e[0] === 'mouseX') { /* Sensing */
+                    else if (e[0] === 'mouseX') {
                         return 'self.mouseX';
                     }
                     else if (e[0] === 'mouseY') {
@@ -4976,25 +4485,23 @@ var P;
                     }
                     else if (e[0] === 'distanceTo:') {
                         return 'S.distanceTo(' + val(e[1]) + ')';
-                        // } else if (e[0] === 'soundLevel') {
                     }
                     else if (e[0] === 'timestamp') {
                         return '((Date.now() - epoch) / 86400000)';
                     }
                     else if (e[0] === 'timeAndDate') {
                         return 'timeAndDate(' + val(e[1]) + ')';
-                        // } else if (e[0] === 'sensor:') {
                     }
                 };
                 var DIGIT = /\d/;
                 var boolval = function (e) {
-                    if (e[0] === 'list:contains:') { /* Data */
+                    if (e[0] === 'list:contains:') {
                         return 'listContains(' + listRef(e[1]) + ', ' + val(e[2]) + ')';
                     }
-                    else if (e[0] === '<' || e[0] === '>') { /* Operators */
+                    else if (e[0] === '<' || e[0] === '>') {
                         var less;
-                        var x;
-                        var y;
+                        let x;
+                        let y;
                         if (typeof e[1] === 'string' && DIGIT.test(e[1]) || typeof e[1] === 'number') {
                             less = e[0] === '<';
                             x = e[1];
@@ -5012,13 +4519,15 @@ var P;
                         return (less ? 'numLess' : 'numGreater') + '(' + nx + ', ' + val(y) + ')';
                     }
                     else if (e[0] === '=') {
+                        let x;
+                        let y;
                         if (typeof e[1] === 'string' && DIGIT.test(e[1]) || typeof e[1] === 'number') {
-                            var x = e[1];
-                            var y = e[2];
+                            x = e[1];
+                            y = e[2];
                         }
                         else if (typeof e[2] === 'string' && DIGIT.test(e[2]) || typeof e[2] === 'number') {
-                            var x = e[2];
-                            var y = e[1];
+                            x = e[2];
+                            y = e[1];
                         }
                         var nx = +x;
                         if (x == null || nx !== nx) {
@@ -5035,7 +4544,7 @@ var P;
                     else if (e[0] === 'not') {
                         return '!' + bool(e[1]) + '';
                     }
-                    else if (e[0] === 'mousePressed') { /* Sensing */
+                    else if (e[0] === 'mousePressed') {
                         return 'self.mousePressed';
                     }
                     else if (e[0] === 'touching:') {
@@ -5051,8 +4560,6 @@ var P;
                         var v = typeof e[1] === 'object' ?
                             'getKeyCode(' + val(e[1]) + ')' : val(P.runtime.getKeyCode(e[1]));
                         return '!!self.keys[' + v + ']';
-                        // } else if (e[0] === 'isLoud') {
-                        // } else if (e[0] === 'sensorPressed:') {
                     }
                 };
                 var bool = function (e) {
@@ -5138,7 +4645,7 @@ var P;
                         else if (P.config.debug)
                             source += '/* visual: 3 */\n';
                     }
-                    if (block[0] === 'forward:') { /* Motion */
+                    if (block[0] === 'forward:') {
                         source += 'S.forward(' + num(block[1]) + ');\n';
                     }
                     else if (block[0] === 'turnRight:') {
@@ -5177,7 +4684,7 @@ var P;
                     else if (block[0] === 'setRotationStyle') {
                         source += 'S.rotationStyle = P.utils.parseRotationStyle(' + val(block[1]) + ');\n';
                     }
-                    else if (block[0] === 'lookLike:') { /* Looks */
+                    else if (block[0] === 'lookLike:') {
                         source += 'S.setCostume(' + val(block[1]) + ');\n';
                     }
                     else if (block[0] === 'nextCostume') {
@@ -5276,33 +4783,35 @@ var P;
                         source += '  self.children.splice(i, 1);\n';
                         source += '  self.children.splice(Math.max(0, i - ' + num(block[1]) + '), 0, S);\n';
                         source += '}\n';
-                        // } else if (block[0] === 'setVideoState') {
-                        // } else if (block[0] === 'setVideoTransparency') {
                     }
-                    else if (block[0] === 'playSound:') { /* Sound */
+                    else if (block[0] === 'setVideoState') {
+                        source += 'switch (' + val(block[1]) + ') {';
+                        source += '  case "off": self.showVideo(false); break;';
+                        source += '  case "on": self.showVideo(true); break;';
+                        source += '}';
+                    }
+                    else if (block[0] === 'playSound:') {
                         if (P.audio.context) {
                             source += 'var sound = S.getSound(' + val(block[1]) + ');\n';
-                            source += 'if (sound) playSound(sound);\n';
+                            source += 'if (sound) startSound(sound);\n';
                         }
                     }
                     else if (block[0] === 'doPlaySoundAndWait') {
                         if (P.audio.context) {
                             source += 'var sound = S.getSound(' + val(block[1]) + ');\n';
                             source += 'if (sound) {\n';
-                            source += '  playSound(sound);\n';
-                            source += '  runtime.playingSounds++;\n';
                             source += '  save();\n';
-                            source += '  R.sound = sound;\n';
+                            source += '  R.sound = playSound(sound);\n';
+                            source += '  S.activeSounds.add(R.sound);\n';
                             source += '  R.start = runtime.now();\n';
                             source += '  R.duration = sound.duration;\n';
                             source += '  var first = true;\n';
                             var id = label();
-                            source += '  if ((runtime.now() - R.start < R.duration * 1000 || first) && runtime.stopSounds === 0) {\n';
+                            source += '  if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {\n';
                             source += '    var first;\n';
                             forceQueue(id);
                             source += '  }\n';
-                            source += '  if (runtime.stopSounds) runtime.stopSounds--;\n';
-                            source += '  runtime.playingSounds--;\n';
+                            source += '  S.activeSounds.delete(R.sound);\n';
                             source += '  restore();\n';
                             source += '}\n';
                         }
@@ -5311,7 +4820,6 @@ var P;
                         if (P.audio.context) {
                             source += 'self.stopAllSounds();\n';
                         }
-                        // } else if (block[0] === 'drum:duration:elapsed:from:') {
                     }
                     else if (block[0] === 'playDrum') {
                         beatHead(block[2]);
@@ -5330,7 +4838,6 @@ var P;
                             source += 'playNote(' + num(block[1]) + ', R.duration);\n';
                         }
                         beatTail();
-                        // } else if (block[0] === 'midiInstrument:') {
                     }
                     else if (block[0] === 'instrument:') {
                         source += 'S.instrument = Math.max(0, Math.min(INSTRUMENTS.length - 1, ' + num(block[1]) + ' - 1)) | 0;';
@@ -5345,7 +4852,7 @@ var P;
                     else if (block[0] === 'setTempoTo:') {
                         source += 'self.tempoBPM = ' + num(block[1]) + ';\n';
                     }
-                    else if (block[0] === 'clearPenTrails') { /* Pen */
+                    else if (block[0] === 'clearPenTrails') {
                         source += 'self.clearPen();\n';
                     }
                     else if (block[0] === 'putPenDown') {
@@ -5394,7 +4901,7 @@ var P;
                     else if (block[0] === 'stampCostume') {
                         source += 'S.stamp();\n';
                     }
-                    else if (block[0] === 'setVar:to:') { /* Data */
+                    else if (block[0] === 'setVar:to:') {
                         source += varRef(block[1]) + ' = ' + val(block[2]) + ';\n';
                     }
                     else if (block[0] === 'changeVar:by:') {
@@ -5420,10 +4927,8 @@ var P;
                         }
                         var o = object.vars[block[1]] !== undefined ? 'S' : 'self';
                         source += o + '.showVariable(' + val(block[1]) + ', ' + isShow + ');\n';
-                        // } else if (block[0] === 'showList:') {
-                        // } else if (block[0] === 'hideList:') {
                     }
-                    else if (block[0] === 'broadcast:') { /* Control */
+                    else if (block[0] === 'broadcast:') {
                         source += 'var threads = broadcast(' + val(block[1]) + ');\n';
                         source += 'if (threads.indexOf(BASE) !== -1) {return;}\n';
                     }
@@ -5464,7 +4969,6 @@ var P;
                         seq(block[2]);
                         source += '}\n';
                         forceQueue(id);
-                        // } else if (block[0] === 'doForLoop') {
                     }
                     else if (block[0] === 'doIf') {
                         source += 'if (' + bool(block[1]) + ') {\n';
@@ -5545,6 +5049,7 @@ var P;
                         source += '    return;\n';
                         source += '  case "other scripts in sprite":\n';
                         source += '  case "other scripts in stage":\n';
+                        source += '    S.stopSoundsExcept(BASE);\n';
                         source += '    for (var i = 0; i < runtime.queue.length; i++) {\n';
                         source += '      if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
                         source += '        runtime.queue[i] = undefined;\n';
@@ -5577,7 +5082,7 @@ var P;
                         source += '  return;\n';
                         source += '}\n';
                     }
-                    else if (block[0] === 'doAsk') { /* Sensing */
+                    else if (block[0] === 'doAsk') {
                         source += 'R.id = self.nextPromptId++;\n';
                         var id = label();
                         source += 'if (self.promptId < R.id) {\n';
@@ -5610,7 +5115,6 @@ var P;
                 if (script[0][0] === 'procDef') {
                     let pre = '';
                     for (let i = types.length; i--;) {
-                        // We know `used` is defined at this point, but typescript doesn't.
                         if (used[i]) {
                             const t = types[i];
                             if (t === '%d' || t === '%n' || t === '%c') {
@@ -5688,67 +5192,50 @@ var P;
         })(compiler = sb2.compiler || (sb2.compiler = {}));
     })(sb2 = P.sb2 || (P.sb2 = {}));
 })(P || (P = {}));
-/// <reference path="phosphorus.ts" />
-/// <reference path="utils.ts" />
-/// <reference path="core.ts" />
-/// <reference path="fonts.ts" />
-/// <reference path="config.ts" />
-/// <reference path="runtime.ts" />
-// Scratch 3 project loader and runtime objects
 var P;
 (function (P) {
     var sb3;
     (function (sb3) {
-        // "Scratch3*" classes implement some part of the Scratch 3 runtime.
-        // "SB3*" interfaces are just types for Scratch 3 projects
-        /**
-         * The path to fetch remote assets from.
-         * Replace $md5ext with the md5sum and the format of the asset.
-         */
         sb3.ASSETS_API = 'https://assets.scratch.mit.edu/internalapi/asset/$md5ext/get/';
-        // Implements a Scratch 3 Stage.
-        // Adds Scratch 3 specific things such as broadcastReferences
         class Scratch3Stage extends P.core.Stage {
+            constructor() {
+                super(...arguments);
+                this.listIds = {};
+            }
             createVariableWatcher(target, variableName) {
-                // TODO: implement
                 return null;
             }
         }
         sb3.Scratch3Stage = Scratch3Stage;
-        // Implements a Scratch 3 Sprite.
         class Scratch3Sprite extends P.core.Sprite {
+            constructor() {
+                super(...arguments);
+                this.listIds = {};
+            }
             _clone() {
                 return new Scratch3Sprite(this.stage);
             }
         }
         sb3.Scratch3Sprite = Scratch3Sprite;
-        // Implements a Scratch 3 VariableWatcher.
-        // Adds Scratch 3-like styling
         class Scratch3VariableWatcher extends P.core.Watcher {
             constructor(stage, data) {
                 super(stage, data.spriteName || '');
-                // Unique ID
                 this.id = data.id;
-                // Operation code, similar to other parts of Scratch 3
                 this.opcode = data.opcode;
                 this.mode = data.mode;
-                // Watcher options, varies by opcode.
                 this.params = data.params;
-                // This opcode's watcherLibrary entry.
                 this.libraryEntry = P.sb3.compiler.watcherLibrary[this.opcode];
                 this.x = data.x;
                 this.y = data.y;
                 this.visible = typeof data.visible === 'boolean' ? data.visible : true;
                 this.sliderMin = data.sliderMin || 0;
                 this.sliderMax = data.sliderMax || 0;
-                // isDiscrete doesn't always exist
                 if (typeof data.isDiscrete !== 'undefined') {
                     this.sliderStep = data.isDiscrete ? 1 : 0.01;
                 }
                 else {
                     this.sliderStep = 1;
                 }
-                // Mark ourselves as invalid if the opcode is not recognized.
                 if (!this.libraryEntry) {
                     console.warn('unknown watcher', this.opcode, this);
                     this.valid = false;
@@ -5756,7 +5243,6 @@ var P;
             }
             update() {
                 if (this.visible) {
-                    // Value is only updated when the value has changed to reduce useless paints in some browsers.
                     const value = this.getValue();
                     if (this.valueEl.textContent !== value) {
                         this.valueEl.textContent = this.getValue();
@@ -5765,7 +5251,6 @@ var P;
             }
             init() {
                 super.init();
-                // call init() if it exists
                 if (this.libraryEntry.init) {
                     this.libraryEntry.init(this);
                 }
@@ -5775,9 +5260,6 @@ var P;
                 super.setVisible(visible);
                 this.updateLayout();
             }
-            // Gets the label of the watcher.
-            // Will include the sprite's name if any.
-            // Example results are 'Sprite1: my variable' and 'timer'
             getLabel() {
                 const label = this.libraryEntry.getLabel(this);
                 if (!this.target.isStage) {
@@ -5785,26 +5267,20 @@ var P;
                 }
                 return label;
             }
-            // Gets the value of the watcher as a string.
             getValue() {
                 const value = this.libraryEntry.evaluate(this);
-                // Round off numbers to the 6th decimal
                 if (typeof value === 'number') {
                     return '' + (Math.round(value * 1e6) / 1e6);
                 }
                 return '' + value;
             }
-            // Attempts to set the value of the watcher.
-            // Will silently fail if this watcher cannot be set.
             setValue(value) {
-                // Not all opcodes have a set()
                 if (this.libraryEntry.set) {
                     this.libraryEntry.set(this, value);
+                    this.update();
                 }
             }
-            // Updates or creates the layout of the watcher.
             updateLayout() {
-                // If the HTML element has already been created, them simply update the CSS display property.
                 if (this.containerEl) {
                     this.containerEl.style.display = this.visible ? 'flex' : 'none';
                     return;
@@ -5829,8 +5305,6 @@ var P;
                     container.appendChild(value);
                 }
                 else {
-                    // mode is probably 'normal' or 'slider'
-                    // if it's not, then 'normal' would be a good fallback anyways.
                     const row = document.createElement('div');
                     row.classList.add('s3-watcher-row');
                     row.classList.add('s3-watcher-row-normal');
@@ -5841,7 +5315,6 @@ var P;
                     row.appendChild(value);
                     container.classList.add('s3-watcher-container-normal');
                     container.appendChild(row);
-                    // 'slider' is a slight variation of 'normal', just with an extra slider row.
                     if (mode === 'slider') {
                         const slider = document.createElement('div');
                         slider.classList.add('s3-watcher-row-slider');
@@ -5857,7 +5330,6 @@ var P;
                     }
                 }
             }
-            // Handles slider input events.
             sliderChanged(e) {
                 const value = +e.target.value;
                 this.setValue(value);
@@ -5868,6 +5340,7 @@ var P;
             constructor(stage, data) {
                 super(stage, data.spriteName || '');
                 this.domRows = [];
+                this.id = data.id;
                 this.params = data.params;
                 this.x = data.x;
                 this.y = data.y;
@@ -5876,12 +5349,9 @@ var P;
                 this.height = data.height || 200;
             }
             update() {
-                // We're not visible, so no changes would be seen. We'd only be wasting CPU cycles.
-                // If the list was modified, we'll find out after we become visible.
                 if (!this.visible) {
                     return;
                 }
-                // Silently rest if the list has not been modified to improve performance for static lists.
                 if (!this.list.modified) {
                     return;
                 }
@@ -5917,10 +5387,10 @@ var P;
             }
             init() {
                 super.init();
-                const listName = this.params.LIST;
+                const target = this.target;
+                const listId = this.id;
+                const listName = target.listIds[listId];
                 if (!(listName in this.target.lists)) {
-                    // Create the list if it doesn't exist.
-                    // It might be better to mark ourselves as invalid instead, but this works just fine.
                     this.target.lists[listName] = createList();
                 }
                 this.list = this.target.lists[listName];
@@ -5980,8 +5450,6 @@ var P;
             }
         }
         sb3.Scratch3ListWatcher = Scratch3ListWatcher;
-        // Implements a Scratch 3 procedure.
-        // Scratch 3 uses names as references for arguments (Scratch 2 uses indexes I believe)
         class Scratch3Procedure extends P.core.Procedure {
             call(inputs) {
                 const args = {};
@@ -6007,17 +5475,11 @@ var P;
             return list;
         }
         sb3.createList = createList;
-        /**
-         * Patches and modifies an SVG element in-place to make it function properly in the forkphorus environment.
-         * Fixes fonts and viewBox.
-         */
         function patchSVG(svg) {
-            // Special treatment for the viewBox attribute
             if (svg.hasAttribute('viewBox')) {
                 const viewBox = svg.getAttribute('viewBox').split(/ |,/).map((i) => +i);
                 if (viewBox.every((i) => !isNaN(i)) && viewBox.length === 4) {
                     const [x, y, w, h] = viewBox;
-                    // Fix width/height to include the viewBox min x/y
                     svg.setAttribute('width', (w + x).toString());
                     svg.setAttribute('height', (h + y).toString());
                 }
@@ -6028,23 +5490,37 @@ var P;
             }
             const textElements = svg.querySelectorAll('text');
             const usedFonts = [];
-            for (var i = 0; i < textElements.length; i++) {
-                const el = textElements[i];
-                let font = el.getAttribute('font-family') || '';
-                if (!P.fonts.scratch3[font]) {
-                    console.warn('unknown font', font);
-                    font = 'Sans Serif';
-                    el.setAttribute('font-family', font);
-                }
+            const addFont = (font) => {
                 if (usedFonts.indexOf(font) === -1) {
                     usedFonts.push(font);
+                }
+            };
+            for (var i = 0; i < textElements.length; i++) {
+                const el = textElements[i];
+                let fonts = (el.getAttribute('font-family') || '')
+                    .split(',')
+                    .map((i) => i.trim());
+                let found = false;
+                for (const family of fonts) {
+                    if (P.fonts.scratch3[family]) {
+                        found = true;
+                        addFont(family);
+                        break;
+                    }
+                    else if (family === 'sans-serif') {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    console.warn('unknown fonts', fonts);
+                    const font = 'Sans Serif';
+                    addFont(font);
+                    el.setAttribute('font-family', font);
                 }
             }
             P.fonts.addFontRules(svg, usedFonts);
         }
-        // Implements base SB3 loading logic.
-        // Needs to be extended to add file loading methods.
-        // Implementations are expected to set `this.projectData` to something before calling super.load()
         class BaseSB3Loader {
             constructor() {
                 this.totalTasks = 0;
@@ -6121,7 +5597,6 @@ var P;
                 return new Scratch3VariableWatcher(stage, data);
             }
             loadTarget(data) {
-                // dirty hack for null stage
                 const target = new (data.isStage ? Scratch3Stage : Scratch3Sprite)(null);
                 for (const id of Object.keys(data.variables)) {
                     const variable = data.variables[id];
@@ -6181,6 +5656,18 @@ var P;
                 }
                 return Promise.all(promises);
             }
+            compileTargets(targets) {
+                if (P.config.debug) {
+                    console.time('Scratch 3 compile');
+                }
+                for (const target of targets) {
+                    const compiler = new P.sb3.compiler.Compiler(target);
+                    compiler.compile();
+                }
+                if (P.config.debug) {
+                    console.timeEnd('Scratch 3 compile');
+                }
+            }
             load() {
                 if (!this.projectData) {
                     throw new Error('invalid project data');
@@ -6189,7 +5676,6 @@ var P;
                     throw new Error('no targets');
                 }
                 const targets = this.projectData.targets;
-                // sort targets by their layerOrder to match how they will display
                 targets.sort((a, b) => a.layerOrder - b.layerOrder);
                 return this.loadFonts()
                     .then(() => Promise.all(targets.map((data) => this.loadTarget(data))))
@@ -6206,11 +5692,10 @@ var P;
                         .map((data) => this.loadWatcher(data, stage))
                         .filter((i) => i && i.valid);
                     sprites.forEach((sprite) => sprite.stage = stage);
-                    targets.forEach((base) => new P.sb3.compiler.Compiler(base).compile());
+                    this.compileTargets(targets);
                     stage.children = sprites;
                     stage.allWatchers = watchers;
                     watchers.forEach((watcher) => watcher.init());
-                    stage.updateBackdrop();
                     return stage;
                 });
             }
@@ -6251,7 +5736,6 @@ var P;
             }
         }
         sb3.BaseSB3Loader = BaseSB3Loader;
-        // Loads a .sb3 file
         class SB3FileLoader extends BaseSB3Loader {
             constructor(buffer) {
                 super();
@@ -6311,8 +5795,6 @@ var P;
             }
         }
         sb3.SB3FileLoader = SB3FileLoader;
-        // Loads a Scratch 3 project from the scratch.mit.edu website
-        // Uses either a loaded project.json or its ID
         class Scratch3Loader extends BaseSB3Loader {
             constructor(idOrData) {
                 super();
@@ -6361,17 +5843,11 @@ var P;
         sb3.Scratch3Loader = Scratch3Loader;
     })(sb3 = P.sb3 || (P.sb3 = {}));
 })(P || (P = {}));
-/**
- * The Scratch 3 compiler.
- */
 (function (P) {
     var sb3;
     (function (sb3) {
         var compiler;
         (function (compiler_1) {
-            /**
-             * Asserts at compile-time that a value is of the type `never`
-             */
             function assertNever(i) {
                 throw new Error('assertion failed');
             }
@@ -6379,97 +5855,61 @@ var P;
                 constructor(source, type) {
                     this.source = source;
                     this.type = type;
+                    this.potentialNumber = true;
+                }
+                toString() {
+                    return this.source;
                 }
             }
             compiler_1.CompiledInput = CompiledInput;
-            // Shorter CompiledInput aliases
             const stringInput = (v) => new CompiledInput(v, 'string');
             const numberInput = (v) => new CompiledInput(v, 'number');
             const booleanInput = (v) => new CompiledInput(v, 'boolean');
             const anyInput = (v) => new CompiledInput(v, 'any');
             ;
-            /**
-             * General block generation utilities.
-             */
             class BlockUtil {
                 constructor(compiler, block) {
                     this.compiler = compiler;
                     this.block = block;
                 }
-                /**
-                 * Compile an input, and give it a type.
-                 */
                 getInput(name, type) {
                     return this.compiler.compileInput(this.block, name, type);
                 }
-                /**
-                 * Compile a field. Results are unescaped strings and unsafe to include in a script.
-                 */
                 getField(name) {
                     return this.compiler.getField(this.block, name);
                 }
-                /**
-                 * Get and sanitize a field.
-                 */
                 fieldInput(name) {
                     return this.sanitizedInput(this.getField(name));
                 }
-                /**
-                 * Sanitize an unescaped string into an input.
-                 */
                 sanitizedInput(string) {
                     return this.compiler.sanitizedInput(string);
                 }
-                /**
-                 * Sanitize an unescaped string for inclusion in a script.
-                 */
                 sanitizedString(string) {
                     return this.compiler.sanitizedString(string);
                 }
-                /**
-                 * Gets a field's reference to a variable.
-                 */
                 getVariableReference(field) {
                     return this.compiler.getVariableReference(this.getField(field));
                 }
-                /**
-                 * Gets a field's reference to a list.
-                 */
                 getListReference(field) {
                     return this.compiler.getListReference(this.getField(field));
                 }
-                /**
-                 * Gets the scope of a field's reference to a variable.
-                 */
                 getVariableScope(field) {
                     return this.compiler.getVariableScope(this.getField(field));
                 }
-                /**
-                 * Gets the scope of a field's reference to a list.
-                 */
                 getListScope(field) {
                     return this.compiler.getListScope(this.getField(field));
                 }
-                /**
-                 * Forcibly converts JS to another type.
-                 */
                 asType(input, type) {
                     return this.compiler.asType(input, type);
                 }
             }
             compiler_1.BlockUtil = BlockUtil;
-            /**
-             * General statement generation utilities.
-             */
             class StatementUtil extends BlockUtil {
                 constructor() {
                     super(...arguments);
                     this.content = '';
                     this.substacksQueue = false;
                 }
-                /**
-                 * Compile a substack.
-                 */
                 getSubstack(name) {
                     const labelsBefore = this.compiler.labelCount;
                     const substack = this.compiler.compileSubstackInput(this.block, name);
@@ -6478,40 +5918,22 @@ var P;
                     }
                     return substack;
                 }
-                /**
-                 * Gets the next label ID ready for use. The ID is unique and will cannot be reused.
-                 */
                 claimNextLabel() {
                     return this.compiler.labelCount++;
                 }
-                /**
-                 * Create a new label at this location. A label ID will be created if none is supplied.
-                 */
                 addLabel(label) {
                     if (!label) {
                         label = this.claimNextLabel();
                     }
-                    // We'll use special syntax to denote this spot as a label.
-                    // It'll be cleaned up later in compilation.
-                    // Interestingly, this is actually valid JavaScript, so cleanup isn't strictly necessary.
                     this.write(`{{${label}}}`);
                     return label;
                 }
-                /**
-                 * Writes the queue() method to call a label.
-                 */
                 queue(label) {
                     this.writeLn(`queue(${label}); return;`);
                 }
-                /**
-                 * Writes the forceQueue() method to call a label.
-                 */
                 forceQueue(label) {
                     this.writeLn(`forceQueue(${label}); return;`);
                 }
-                /**
-                 * Writes an appropriate VISUAL check
-                 */
                 visual(variant) {
                     switch (variant) {
                         case 'drawing':
@@ -6526,15 +5948,9 @@ var P;
                         default: assertNever(variant);
                     }
                 }
-                /**
-                 * Update the speech bubble, if any.
-                 */
                 updateBubble() {
                     this.writeLn('if (S.saying) S.updateBubble()');
                 }
-                /**
-                 * Writes JS to pause the script for a known duration of time.
-                 */
                 wait(seconds) {
                     this.writeLn('save();');
                     this.writeLn('R.start = runtime.now();');
@@ -6547,23 +5963,14 @@ var P;
                     this.writeLn('}');
                     this.writeLn('restore();');
                 }
-                /**
-                 * Append to the content
-                 */
                 write(content) {
                     this.content += content;
                 }
-                /**
-                 * Append to the content, followed by a newline.
-                 */
                 writeLn(content) {
                     this.content += content + '\n';
                 }
             }
             compiler_1.StatementUtil = StatementUtil;
-            /**
-             * General input generation utilities.
-             */
             class InputUtil extends BlockUtil {
                 numberInput(v) { return numberInput(v); }
                 stringInput(v) { return stringInput(v); }
@@ -6571,9 +5978,6 @@ var P;
                 anyInput(v) { return anyInput(v); }
             }
             compiler_1.InputUtil = InputUtil;
-            /**
-             * General hat handling utilities.
-             */
             class HatUtil extends BlockUtil {
                 constructor(compiler, block, startingFunction) {
                     super(compiler, block);
@@ -6582,103 +5986,92 @@ var P;
                 }
             }
             compiler_1.HatUtil = HatUtil;
-            // Block definitions
             compiler_1.statementLibrary = Object.create(null);
             compiler_1.inputLibrary = Object.create(null);
             compiler_1.hatLibrary = Object.create(null);
             compiler_1.watcherLibrary = Object.create(null);
-            /**
-             * The new compiler for Scratch 3 projects.
-             */
             class Compiler {
                 constructor(target) {
-                    /**
-                     * Total number of labels created by this compiler.
-                     */
                     this.labelCount = 0;
+                    this.usedExtensions = new Set();
                     this.target = target;
                     this.data = target.sb3data;
                     this.blocks = this.data.blocks;
                 }
-                /**
-                 * Gets the IDs of all hat blocks.
-                 */
                 getHatBlocks() {
                     return Object.keys(this.blocks)
                         .filter((i) => this.blocks[i].topLevel);
                 }
-                /**
-                 * Get the compiler for a statement
-                 */
+                getOpcodeExtension(opcode) {
+                    const index = opcode.indexOf('_');
+                    if (index !== -1) {
+                        return opcode.substring(0, index);
+                    }
+                    return opcode;
+                }
+                useOpcode(opcode) {
+                    const extension = this.getOpcodeExtension(opcode);
+                    this.usedExtensions.add(extension);
+                }
                 getStatementCompiler(opcode) {
                     if (compiler_1.statementLibrary[opcode]) {
+                        this.useOpcode(opcode);
                         return compiler_1.statementLibrary[opcode];
                     }
                     return null;
                 }
-                /**
-                 * Get the compiler for an input
-                 */
                 getInputCompiler(opcode) {
                     if (compiler_1.inputLibrary[opcode]) {
+                        this.useOpcode(opcode);
                         return compiler_1.inputLibrary[opcode];
                     }
                     return null;
                 }
-                /**
-                 * Get the compiler for a hat
-                 */
                 getHatCompiler(opcode) {
                     if (compiler_1.hatLibrary[opcode]) {
+                        this.useOpcode(opcode);
                         return compiler_1.hatLibrary[opcode];
                     }
                     return null;
                 }
-                /**
-                 * Gets the default value to use for a missing input.
-                 */
                 getInputFallback(type) {
                     switch (type) {
                         case 'number': return '0';
                         case 'boolean': return 'false';
                         case 'string': return '""';
                         case 'any': return '""';
+                        case 'list': return '""';
                     }
                     assertNever(type);
                 }
-                /**
-                 * Applies type coercions to JS to forcibly change it's type.
-                 */
                 asType(input, type) {
                     switch (type) {
                         case 'string': return '("" + ' + input + ')';
-                        case 'number': return '+' + input;
+                        case 'number': return '(+' + input + ' || 0)';
                         case 'boolean': return 'bool(' + input + ')';
                         case 'any': return input;
+                        case 'list': throw new Error("Converting to 'list' type is not something you're supposed to do");
                     }
                     assertNever(type);
                 }
-                /**
-                 * Converts a compiled input to another type, if necessary
-                 */
                 convertInputType(input, type) {
-                    // If the types are already identical, no changes are necessary
                     if (input.type === type) {
-                        return input.source;
+                        return input;
                     }
-                    return this.asType(input.source, type);
+                    if (type === 'any') {
+                        if (input.type === 'list') {
+                            type = 'string';
+                        }
+                        else {
+                            return input;
+                        }
+                    }
+                    return new CompiledInput(this.asType(input.source, type), type);
                 }
-                /**
-                 * Sanitize a string into a CompiledInput
-                 */
                 sanitizedInput(string) {
                     return stringInput(this.sanitizedString(string));
                 }
-                /**
-                 * Sanitize a string for use in the runtime.
-                 */
                 sanitizedString(string) {
-                    // Sometimes weird things happen and non-strings get passed around to here.
                     if (typeof string !== 'string') {
                         console.warn('sanitizedString got a non-string object', string);
                         string = string + '';
@@ -6693,19 +6086,11 @@ var P;
                         .replace(/\}/g, '\\x7d');
                     return `"${string}"`;
                 }
-                /**
-                 * Creates a sanitized block comment with the given contents.
-                 */
                 sanitizedComment(content) {
-                    // just disallow the content from ending the comment, and everything should be fine.
                     content = content
                         .replace(/\*\//g, '');
                     return `/* ${content} */`;
                 }
-                /**
-                 * Determines the runtime object that owns a variable in the runtime.
-                 * The variable may be created if it cannot be found.
-                 */
                 getVariableScope(name) {
                     if (name in this.target.stage.vars) {
                         return 'self';
@@ -6714,15 +6099,10 @@ var P;
                         return 'S';
                     }
                     else {
-                        // Create missing variables in the sprite scope.
                         this.target.vars[name] = 0;
                         return 'S';
                     }
                 }
-                /**
-                 * Determines the runtime object that owns a list in the runtime.
-                 * The list may be created if it cannot be found.
-                 */
                 getListScope(name) {
                     if (name in this.target.stage.lists) {
                         return 'self';
@@ -6731,62 +6111,49 @@ var P;
                         return 'S';
                     }
                     else {
-                        // Create missing lists in the sprite scope.
                         this.target.lists[name] = sb3.createList();
                         return 'S';
                     }
                 }
-                /**
-                 * Gets the runtime reference to a variable.
-                 */
                 getVariableReference(name) {
                     return `${this.getVariableScope(name)}.vars[${this.sanitizedString(name)}]`;
                 }
-                /**
-                 * Gets the runtime reference to a list.
-                 */
                 getListReference(name) {
                     return `${this.getListScope(name)}.lists[${this.sanitizedString(name)}]`;
                 }
-                /**
-                 * Compile a native or primitive value.
-                 */
-                compileNativeInput(native) {
+                isStringLiteralPotentialNumber(text) {
+                    return /\d|true|false|Infinity/.test(text);
+                }
+                compileNativeInput(native, desiredType) {
                     const type = native[0];
                     switch (type) {
-                        // These all function as numbers. I believe they are only differentiated so the editor can be more helpful.
-                        case 4 /* MATH_NUM */:
-                        case 5 /* POSITIVE_NUM */:
-                        case 6 /* WHOLE_NUM */:
-                        case 7 /* INTEGER_NUM */:
-                        case 8 /* ANGLE_NUM */: {
-                            // [type, value]
+                        case 4:
+                        case 5:
+                        case 6:
+                        case 7:
+                        case 8: {
                             const number = parseFloat(native[1]);
-                            if (!isNaN(number)) {
-                                return numberInput(number.toString());
-                            }
-                            else {
+                            if (isNaN(number) || desiredType === 'string') {
                                 return this.sanitizedInput(native[1]);
                             }
+                            else {
+                                return numberInput(number.toString());
+                            }
                         }
-                        case 10 /* TEXT */:
-                            // [type, text]
-                            return this.sanitizedInput(native[1] + '');
-                        case 12 /* VAR */:
-                            // [type, name, id]
+                        case 10: {
+                            const input = this.sanitizedInput(native[1] + '');
+                            input.potentialNumber = this.isStringLiteralPotentialNumber(native[1]);
+                            return input;
+                        }
+                        case 12:
                             return anyInput(this.getVariableReference(native[1]));
-                        case 13 /* LIST */:
-                            // [type, name, id]
-                            return anyInput(this.getListReference(native[1]));
-                        case 11 /* BROADCAST */:
-                            // [type, name, id]
+                        case 13:
+                            return new CompiledInput(this.getListReference(native[1]), 'list');
+                        case 11:
                             return this.sanitizedInput(native[1]);
-                        case 9 /* COLOR_PICKER */: {
-                            // [type, color]
-                            // Color is a value like "#abcdef"
+                        case 9: {
                             const color = native[1];
                             const hex = color.substr(1);
-                            // Ensure that it is actually a hex number.
                             if (/^[0-9a-f]{6,8}$/.test(hex)) {
                                 return numberInput('0x' + hex);
                             }
@@ -6800,34 +6167,26 @@ var P;
                             return stringInput('""');
                     }
                 }
-                /**
-                 * Compile an input of a block, and do any necessary type coercions.
-                 */
                 compileInput(parentBlock, inputName, type) {
-                    // Handling when the block does not contain an input entry.
                     if (!parentBlock.inputs[inputName]) {
-                        // This could be a sign of another issue, so log a warning.
                         this.warn('missing input', inputName);
-                        return this.getInputFallback(type);
+                        return new CompiledInput(this.getInputFallback(type), type);
                     }
                     const input = parentBlock.inputs[inputName];
                     if (Array.isArray(input[1])) {
                         const native = input[1];
-                        return this.convertInputType(this.compileNativeInput(native), type);
+                        return this.convertInputType(this.compileNativeInput(native, type), type);
                     }
                     const inputBlockId = input[1];
-                    // Handling null inputs where the input exists but is just empty.
-                    // This is normal and happens very often.
                     if (!inputBlockId) {
-                        return this.getInputFallback(type);
+                        return new CompiledInput(this.getInputFallback(type), type);
                     }
                     const inputBlock = this.blocks[inputBlockId];
                     const opcode = inputBlock.opcode;
                     const compiler = this.getInputCompiler(opcode);
-                    // If we don't recognize this block, that's a problem.
                     if (!compiler) {
                         this.warn('unknown input', opcode, inputBlock);
-                        return this.getInputFallback(type);
+                        return new CompiledInput(this.getInputFallback(type), type);
                     }
                     const util = new InputUtil(this, inputBlock);
                     let result = compiler(util);
@@ -6836,23 +6195,15 @@ var P;
                     }
                     return this.convertInputType(result, type);
                 }
-                /**
-                 * Get a field of a block.
-                 */
                 getField(block, fieldName) {
                     const value = block.fields[fieldName];
                     if (!value) {
-                        // This could be a sign of another issue, so log a warning.
                         this.warn('missing field', fieldName);
                         return '';
                     }
                     return value[0];
                 }
-                /**
-                 * Compile a script within a script.
-                 */
                 compileSubstackInput(block, substackName) {
-                    // empty substacks are normal
                     if (!block.inputs[substackName]) {
                         return '';
                     }
@@ -6864,17 +6215,11 @@ var P;
                     }
                     return this.compileStack(id);
                 }
-                /**
-                 * Creates a fresh CompilerState
-                 */
                 getNewState() {
                     return {
                         isWarp: false,
                     };
                 }
-                /**
-                 * Compile an entire script from a starting block.
-                 */
                 compileStack(startingBlock) {
                     let script = '';
                     let block = this.blocks[startingBlock];
@@ -6900,15 +6245,9 @@ var P;
                     }
                     return script;
                 }
-                /**
-                 * Compile a hat block and its children.
-                 * The hat handler will be used, and the scripts will be installed.
-                 */
                 compileHat(hat) {
                     const hatCompiler = this.getHatCompiler(hat.opcode);
                     if (!hatCompiler) {
-                        // If a hat block is otherwise recognized as an input or statement, don't warn.
-                        // Most projects have at least one of these "dangling" blocks.
                         if (!this.getInputCompiler(hat.opcode) && !this.getStatementCompiler(hat.opcode)) {
                             this.warn('unknown hat block', hat.opcode, hat);
                         }
@@ -6916,7 +6255,6 @@ var P;
                     }
                     this.labelCount = this.target.fns.length;
                     const startingBlock = hat.next;
-                    // Empty hats will be ignored
                     if (!startingBlock) {
                         return;
                     }
@@ -6924,16 +6262,11 @@ var P;
                     if (hatCompiler.precompile) {
                         hatCompiler.precompile(this, hat);
                     }
-                    // There is always a label placed at the beginning of the script.
-                    // If you're clever, you may be able to remove this at some point.
                     let script = `{{${this.labelCount++}}}`;
                     script += this.compileStack(startingBlock);
-                    // If a block wants to do some changes to the script after script generation but before compilation, let it.
-                    // TODO: should this happen after parseResult?
                     if (hatCompiler.postcompile) {
                         script = hatCompiler.postcompile(this, script, hat);
                     }
-                    // Parse the script to search for labels, and remove the label metadata.
                     const parseResult = this.parseScript(script);
                     const parsedScript = parseResult.script;
                     const startFn = this.target.fns.length;
@@ -6947,9 +6280,6 @@ var P;
                         this.log('compiled sb3 script', hat.opcode, script, this.target);
                     }
                 }
-                /**
-                 * Parse a generated script for label locations, and remove redundant data.
-                 */
                 parseScript(script) {
                     const labels = {};
                     let index = 0;
@@ -6966,29 +6296,18 @@ var P;
                         labels[id] = labelEnd + 2 - accumulator;
                         index = labelEnd + 2;
                     }
-                    // We don't **actually* have to remove the {{0}} labels (its technically valid JS),
-                    // but it's probably a good idea.
                     const fixedScript = script.replace(/{{\d+}}/g, '');
                     return {
                         labels,
                         script: fixedScript,
                     };
                 }
-                /**
-                 * Log a warning
-                 */
                 warn(...args) {
                     console.warn.apply(console, args);
                 }
-                /**
-                 * Log info
-                 */
                 log(...args) {
                     console.log.apply(console, args);
                 }
-                /**
-                 * Compiles the scripts of the target with the current data.
-                 */
                 compile() {
                     const hats = this.getHatBlocks();
                     for (const hatId of hats) {
@@ -7001,17 +6320,12 @@ var P;
         })(compiler = sb3.compiler || (sb3.compiler = {}));
     })(sb3 = P.sb3 || (P.sb3 = {}));
 })(P || (P = {}));
-/**
- * Scratch 3 blocks.
- */
 (function () {
     const statementLibrary = P.sb3.compiler.statementLibrary;
     const inputLibrary = P.sb3.compiler.inputLibrary;
     const hatLibrary = P.sb3.compiler.hatLibrary;
     const watcherLibrary = P.sb3.compiler.watcherLibrary;
-    /* Statements */
     statementLibrary['control_all_at_once'] = function (util) {
-        // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_control.js#L194-L199
         const SUBSTACK = util.getSubstack('SUBSTACK');
         util.write(SUBSTACK);
     };
@@ -7023,17 +6337,17 @@ var P;
         util.writeLn(`clone(${CLONE_OPTION});`);
     };
     statementLibrary['control_delete_this_clone'] = function (util) {
-        util.writeLn('if (S.isClone) {\n');
-        util.writeLn('  S.remove();\n');
-        util.writeLn('  var i = self.children.indexOf(S);\n');
-        util.writeLn('  if (i !== -1) self.children.splice(i, 1);\n');
-        util.writeLn('  for (var i = 0; i < runtime.queue.length; i++) {\n');
-        util.writeLn('    if (runtime.queue[i] && runtime.queue[i].sprite === S) {\n');
-        util.writeLn('      runtime.queue[i] = undefined;\n');
-        util.writeLn('    }\n');
-        util.writeLn('  }\n');
-        util.writeLn('  return;\n');
-        util.writeLn('}\n');
+        util.writeLn('if (S.isClone) {');
+        util.writeLn('  S.remove();');
+        util.writeLn('  var i = self.children.indexOf(S);');
+        util.writeLn('  if (i !== -1) self.children.splice(i, 1);');
+        util.writeLn('  for (var i = 0; i < runtime.queue.length; i++) {');
+        util.writeLn('    if (runtime.queue[i] && runtime.queue[i].sprite === S) {');
+        util.writeLn('      runtime.queue[i] = undefined;');
+        util.writeLn('    }');
+        util.writeLn('  }');
+        util.writeLn('  return;');
+        util.writeLn('}');
     };
     statementLibrary['control_forever'] = function (util) {
         const SUBSTACK = util.getSubstack('SUBSTACK');
@@ -7120,7 +6434,7 @@ var P;
                 break;
             case 'other scripts in sprite':
             case 'other scripts in stage':
-                util.writeLn('S.stopSounds();');
+                util.writeLn('S.stopSoundsExcept(BASE);');
                 util.writeLn('for (var i = 0; i < runtime.queue.length; i++) {');
                 util.writeLn('  if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {');
                 util.writeLn('    runtime.queue[i] = undefined;');
@@ -7419,7 +6733,6 @@ var P;
         util.visual('drawing');
     };
     statementLibrary['motion_ifonedgebounce'] = function (util) {
-        // TODO: set visual if bounced
         util.writeLn('S.bounceOffEdge();');
     };
     statementLibrary['motion_movesteps'] = function (util) {
@@ -7474,9 +6787,7 @@ var P;
         const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
         if (P.audio.context) {
             util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
-            util.writeLn('if (sound) {');
-            util.writeLn('  playSound(sound);');
-            util.writeLn('}');
+            util.writeLn('if (sound) startSound(sound);');
         }
     };
     statementLibrary['sound_playuntildone'] = function (util) {
@@ -7484,20 +6795,18 @@ var P;
         if (P.audio.context) {
             util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
             util.writeLn('if (sound) {');
-            util.writeLn('  S.playingSounds++;');
-            util.writeLn('  playSound(sound);');
             util.writeLn('  save();');
-            util.writeLn('  R.sound = sound;');
+            util.writeLn('  R.sound = playSound(sound);');
+            util.writeLn('  S.activeSounds.add(R.sound);');
             util.writeLn('  R.start = runtime.now();');
             util.writeLn('  R.duration = sound.duration;');
             util.writeLn('  var first = true;');
             const label = util.addLabel();
-            util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && S.stoppingSounds === 0) {');
+            util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
             util.writeLn('    var first;');
             util.forceQueue(label);
             util.writeLn('  }');
-            util.writeLn('  if (S.stoppingSounds) S.stoppingSounds--;');
-            util.writeLn('  S.playingSounds--;');
+            util.writeLn('  S.activeSounds.delete(R.sound);');
             util.writeLn('  restore();');
             util.writeLn('}');
         }
@@ -7534,7 +6843,6 @@ var P;
         util.writeLn(`S.changePenColorParam(${COLOR_PARAM}, ${VALUE});`);
     };
     statementLibrary['pen_changePenHueBy'] = function (util) {
-        // This is an old pen hue block, which functions differently from the new one.
         const HUE = util.getInput('HUE', 'number');
         util.writeLn('S.setPenColorHSL();');
         util.writeLn(`S.penHue += ${HUE} * 360 / 200;`);
@@ -7561,8 +6869,6 @@ var P;
         util.visual('always');
     };
     statementLibrary['pen_penUp'] = function (util) {
-        // TODO: determine visual variant
-        // definitely not 'always' or 'visible', might be a 'if (S.isPenDown)'
         util.writeLn('S.isPenDown = false;');
     };
     statementLibrary['pen_setPenColorParamTo'] = function (util) {
@@ -7571,11 +6877,10 @@ var P;
         util.writeLn(`S.setPenColorParam(${COLOR_PARAM}, ${VALUE});`);
     };
     statementLibrary['pen_setPenColorToColor'] = function (util) {
-        const COLOR = util.getInput('COLOR', 'number');
+        const COLOR = util.getInput('COLOR', 'any');
         util.writeLn(`S.setPenColor(${COLOR});`);
     };
     statementLibrary['pen_setPenHueToNumber'] = function (util) {
-        // This is an old pen hue block, which functions differently from the new one.
         const HUE = util.getInput('HUE', 'number');
         util.writeLn('S.setPenColorHSL();');
         util.writeLn(`S.penHue = ${HUE} * 360 / 200;`);
@@ -7605,7 +6910,6 @@ var P;
         }
         const label = util.claimNextLabel();
         util.write(`call(S.procedures[${util.sanitizedString(name)}], ${label}, [`);
-        // The mutation has a stringified JSON list of input IDs... it's weird.
         const inputNames = JSON.parse(mutation.argumentids);
         for (const inputName of inputNames) {
             util.write(`${util.getInput(inputName, 'any')}, `);
@@ -7640,9 +6944,13 @@ var P;
             util.writeLn('S.isDraggable = false;');
         }
     };
-    // Legacy no-ops
-    // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L19
-    // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_looks.js#L248
+    statementLibrary['videoSensing_videoToggle'] = function (util) {
+        const VIDEO_STATE = util.getInput('VIDEO_STATE', 'string');
+        util.writeLn(`switch (${VIDEO_STATE}) {`);
+        util.writeLn('  case "off": self.showVideo(false); break;');
+        util.writeLn('  case "on": self.showVideo(true); break;');
+        util.writeLn('}');
+    };
     const noopStatement = (util) => util.writeLn('/* noop */');
     statementLibrary['motion_align_scene'] = noopStatement;
     statementLibrary['motion_scroll_right'] = noopStatement;
@@ -7650,7 +6958,6 @@ var P;
     statementLibrary['looks_changestretchby'] = noopStatement;
     statementLibrary['looks_hideallsprites'] = noopStatement;
     statementLibrary['looks_setstretchto'] = noopStatement;
-    /* Inputs */
     inputLibrary['argument_reporter_boolean'] = function (util) {
         const VALUE = util.sanitizedString(util.getField('VALUE'));
         return util.booleanInput(util.asType(`C.args[${VALUE}]`, 'boolean'));
@@ -7754,8 +7061,6 @@ var P;
     inputLibrary['operator_contains'] = function (util) {
         const STRING1 = util.getInput('STRING1', 'string');
         const STRING2 = util.getInput('STRING2', 'string');
-        // TODO: case sensitivity?
-        // TODO: use indexOf?
         return util.booleanInput(`${STRING1}.includes(${STRING2})`);
     };
     inputLibrary['operator_divide'] = function (util) {
@@ -7766,12 +7071,22 @@ var P;
     inputLibrary['operator_equals'] = function (util) {
         const OPERAND1 = util.getInput('OPERAND1', 'any');
         const OPERAND2 = util.getInput('OPERAND2', 'any');
+        if (!OPERAND1.potentialNumber || !OPERAND2.potentialNumber) {
+            return util.booleanInput(`strEqual(${OPERAND1}, ${OPERAND2})`);
+        }
+        if (P.config.experimentalOptimizations) {
+            if (OPERAND1.type === 'number') {
+                return util.booleanInput(`numEqual(${OPERAND1}, ${OPERAND2})`);
+            }
+            if (OPERAND2.type === 'number') {
+                return util.booleanInput(`numEqual(${OPERAND2}, ${OPERAND1})`);
+            }
+        }
         return util.booleanInput(`equal(${OPERAND1}, ${OPERAND2})`);
     };
     inputLibrary['operator_gt'] = function (util) {
         const OPERAND1 = util.getInput('OPERAND1', 'any');
         const OPERAND2 = util.getInput('OPERAND2', 'any');
-        // TODO: use numGreater?
         return util.booleanInput(`(compare(${OPERAND1}, ${OPERAND2}) === 1)`);
     };
     inputLibrary['operator_join'] = function (util) {
@@ -7781,7 +7096,6 @@ var P;
     };
     inputLibrary['operator_length'] = function (util) {
         const STRING = util.getInput('STRING', 'string');
-        // TODO: parenthesis important?
         return util.numberInput(`(${STRING}).length`);
     };
     inputLibrary['operator_letter_of'] = function (util) {
@@ -7792,7 +7106,6 @@ var P;
     inputLibrary['operator_lt'] = function (util) {
         const OPERAND1 = util.getInput('OPERAND1', 'any');
         const OPERAND2 = util.getInput('OPERAND2', 'any');
-        // TODO: use numLess?
         return util.booleanInput(`(compare(${OPERAND1}, ${OPERAND2}) === -1)`);
     };
     inputLibrary['operator_mathop'] = function (util) {
@@ -7826,7 +7139,7 @@ var P;
             case 'e ^':
                 return util.numberInput(`Math.exp(${NUM})`);
             case '10 ^':
-                return util.numberInput(`Math.exp(${NUM} * Math.LN10)`);
+                return util.numberInput(`Math.pow(10, ${NUM})`);
             default:
                 return util.numberInput('0');
         }
@@ -7851,8 +7164,8 @@ var P;
         return util.booleanInput(`(${OPERAND1} || ${OPERAND2})`);
     };
     inputLibrary['operator_random'] = function (util) {
-        const FROM = util.getInput('FROM', 'number');
-        const TO = util.getInput('TO', 'number');
+        const FROM = util.getInput('FROM', 'string');
+        const TO = util.getInput('TO', 'string');
         return util.numberInput(`random(${FROM}, ${TO})`);
     };
     inputLibrary['operator_round'] = function (util) {
@@ -7906,11 +7219,9 @@ var P;
         return util.booleanInput(`!!self.keys[P.runtime.getKeyCode(${KEY_OPTION})]`);
     };
     inputLibrary['sensing_loud'] = function (util) {
-        // see sensing_loudness above
         return util.booleanInput('false');
     };
     inputLibrary['sensing_loudness'] = function (util) {
-        // We don't implement loudness, we always return -1 which indicates that there is no microphone available.
         return util.numberInput('-1');
     };
     inputLibrary['sensing_mousedown'] = function (util) {
@@ -7953,14 +7264,13 @@ var P;
     inputLibrary['sound_volume'] = function (util) {
         return util.numberInput('(S.volume * 100)');
     };
-    // Legacy no-ops
-    // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_sensing.js#L74
-    // https://github.com/LLK/scratch-vm/blob/bb42c0019c60f5d1947f3432038aa036a0fddca6/src/blocks/scratch3_motion.js#L42-L43
+    inputLibrary['videoSensing_menu_VIDEO_STATE'] = function (util) {
+        return util.fieldInput('VIDEO_STATE');
+    };
     const noopInput = (util) => util.anyInput('undefined');
     inputLibrary['motion_yscroll'] = noopInput;
     inputLibrary['motion_xscroll'] = noopInput;
     inputLibrary['sensing_userid'] = noopInput;
-    /* Hats */
     hatLibrary['control_start_as_clone'] = {
         handle(util) {
             util.target.listeners.whenCloned.push(util.startingFunction);
@@ -8016,7 +7326,7 @@ var P;
         handle(util) {
             const KEY = util.getInput('KEY', 'string');
             try {
-                const value = P.runtime.scopedEval(KEY);
+                const value = P.runtime.scopedEval(KEY.source);
                 var keycode = P.runtime.getKeyCode(value);
             }
             catch (e) {
@@ -8037,7 +7347,7 @@ var P;
         handle(util) {
             const SEQUENCE = util.getInput('SEQUENCE', 'string');
             try {
-                var sequence = P.runtime.scopedEval(SEQUENCE);
+                var sequence = P.runtime.scopedEval(SEQUENCE.source);
             }
             catch (e) {
                 console.warn('makeymakey sequence generation error', e);
@@ -8074,13 +7384,10 @@ var P;
     };
     hatLibrary['procedures_definition'] = {
         handle(util) {
-            // TODO: HatUtil helpers for this
             const customBlockId = util.block.inputs.custom_block[1];
             const mutation = util.compiler.blocks[customBlockId].mutation;
             const proccode = mutation.proccode;
-            // Warp is either a boolean or a string representation of that boolean for some reason.
             const warp = typeof mutation.warp === 'string' ? mutation.warp === 'true' : mutation.warp;
-            // It's a stringified JSON array.
             const argumentNames = JSON.parse(mutation.argumentnames);
             const procedure = new P.sb3.Scratch3Procedure(util.startingFunction, warp, argumentNames);
             util.target.procedures[proccode] = procedure;
@@ -8097,7 +7404,6 @@ var P;
             }
         },
     };
-    /* Watchers */
     watcherLibrary['data_variable'] = {
         init(watcher) {
             const name = watcher.params.VARIABLE;
@@ -8185,7 +7491,6 @@ var P;
         },
         getLabel(watcher) {
             const param = watcher.params.CURRENTMENU.toLowerCase();
-            // all expected params except DAYOFWEEK can just be lowercased and used directly
             if (param === 'dayofweek') {
                 return 'day of week';
             }
@@ -8193,7 +7498,6 @@ var P;
         }
     };
     watcherLibrary['sensing_loudness'] = {
-        // We don't implement loudness.
         evaluate() { return -1; },
         getLabel() { return 'loudness'; },
     };

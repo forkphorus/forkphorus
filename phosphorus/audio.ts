@@ -2,7 +2,6 @@
 /// <reference path="config.ts" />
 
 namespace P.audio {
-  // Create an audio context involves a little bit of logic, so an IIFE is used.
   export const context = (function(): AudioContext | null {
     if ((window as any).AudioContext) {
       return new AudioContext();
@@ -466,8 +465,6 @@ namespace P.audio {
       return Promise.reject('No audio context');
     }
 
-    // TODO: does not work for some audio file
-
     return new Promise((resolve, reject) => {
       decodeADPCMAudio(ab, function(err1: any, buffer: AudioBuffer) {
         if (buffer) {
@@ -477,8 +474,12 @@ namespace P.audio {
 
         // Hope that the audio context will know what to do
         audio.context!.decodeAudioData(ab)
-          .then((buffer) => resolve(buffer))
-          .catch((err2) => reject(`Could not decode audio: ${err1} | ${err2}`));
+          .then((buffer) => {
+            resolve(buffer);
+          })
+          .catch((err2) => {
+            reject(`Could not decode audio: ${err1} | ${err2}`);
+          });
       });
     });
   }

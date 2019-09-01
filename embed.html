@@ -34,22 +34,21 @@
   <script src="lib/rgbcolor.js"></script>
   <script src="lib/canvg.min.js"></script>
   <script src="phosphorus.dist.js"></script>
+  <script src="i18n.js"></script>
   <script src="player.js"></script>
 
   <script>
   (function() {
     'use strict';
 
-    var stage;
-
     var projectId = 17088932;
     var autoStart = true;
     var lightContent = false;
     var hasUI = true;
+    var id = Math.random().toString().substr(2, 5) + '-' + projectId + '-' + Date.now();
+    var width = 480;
 
-    // Reads URL parameters.
-    var params = location.search.substr(1).split('&');
-    params.forEach(function(p) {
+    location.search.substr(1).split('&').forEach(function(p) {
       const parts = p.split('=');
       if (parts.length > 1) {
         switch (parts[0]) {
@@ -65,38 +64,79 @@
           case 'ui':
             hasUI = parts[1] !== 'false';
             break;
+          case 'w':
+            width = Number(parts[1]);
+            break;
+          default:
+            console.warn('unknown search param', parts);
         }
       }
     });
 
-    // Combination of project ID, auto start, light content, ui, current time, and some randomness.
-    var id = projectId + '-' + +autoStart + +lightContent + +hasUI + '-' + Date.now() + '-' + Math.random().toString().substr(2, 5);
-
-    function postMessage(type, payload) {
+    function postMessage(type, data) {
       if (window.parent && window.parent.postMessage) {
-        window.parent.postMessage({
+        var data = Object.assign({
           id: id,
           type: type,
-          payload: payload,
-        }, '*');
+        }, data || {});
+        window.parent.postMessage(data, '*');
       }
     }
 
+    var player = new P.Player({theme: lightContent ? 'dark' : 'light'});
+
     if (hasUI) {
       document.body.classList.add('has-ui');
-    }
-
-    var player = new P.Player({theme: lightContent ? 'dark' : 'light'});
-    if (hasUI) {
       player.addControls();
       new P.Player.ProgressBar(player, {position: 'controls'});
     }
+    // TODO: don't add ErrorHandler if UI is not set to be visible?
+    new P.Player.ErrorHandler(player);
     document.querySelector('.player').appendChild(player.root);
-    postMessage('stateChange', 'loading');
+
+    // Implement Parent -> Embed API
+    window.addEventListener('message', function(e) {
+      var data = e.data;
+      var type = data.type;
+      switch (type) {
+        case 'start': {
+          player.start();
+          break;
+        }
+        case 'pause': {
+          player.pause();
+          break;
+        }
+        default: {
+          console.warn('Unknown message type from parent', type);
+        }
+      }
+    });
+
+    // Implement Embed -> Parent API
+    player.onprogress.subscribe(function(progress) {
+      postMessage('progress', { progress: progress });
+    });
+    player.onload.subscribe(function() {
+      postMessage('load');
+    });
+    player.onstartload.subscribe(function() {
+      postMessage('startload');
+    });
+    player.onerror.subscribe(function(error) {
+      postMessage('error', { error: error });
+    });
+    player.onstart.subscribe(function(error) {
+      postMessage('start');
+    });
+    player.onpause.subscribe(function(error) {
+      postMessage('pause');
+    });
+    postMessage('hello', { version: 1 });
 
     player.loadProjectId(projectId, { start: autoStart })
       .then(function() {
-        postMessage('stateChange', 'ready');
+        player.stage.setZoom(width / 480);
       });
   }());
   </script>

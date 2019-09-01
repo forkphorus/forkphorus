@@ -89,6 +89,7 @@
   <script src="lib/rgbcolor.js"></script>
   <script src="lib/canvg.min.js"></script>
   <script src="phosphorus.dist.js"></script>
+  <script src="i18n.js"></script>
   <script src="player.js"></script>
 
   <script>
@@ -97,23 +98,27 @@
 
     var projectId = 17088932;
     var turbo = false;
-    var fullscreen = true;
+    var maxWidth = Infinity;
 
     var params = location.search.substr(1).split('&');
     params.forEach(function(p) {
       var parts = p.split('=');
-      if (parts.length > 1) {
-        switch (parts[0]) {
-          case 'id':
-            projectId = Number(parts[1]);
-            break;
-          case 'turbo':
-            turbo = parts[1] !== 'false';
-            break;
-          case 'full-screen':
-            fullscreen = parts[1] !== 'false';
-            break;
-        }
+      switch (parts[0]) {
+        case 'id':
+          projectId = Number(parts[1]);
+          break;
+        case 'turbo':
+          turbo = parts[1] !== 'false';
+          break;
+        case 'full-screen':
+          // legacy value
+          maxWidth = parts[1] !== 'false' ? Infinity : 480;
+          break;
+        case 'w':
+          maxWidth = Number(parts[1]) || 480;
+          break;
+        default:
+          console.warn('unknown search param', parts);
       }
     });
 
@@ -143,9 +148,7 @@
     player.loadProjectId(projectId, { turbo: turbo })
       .then(function() {
         player.fullscreenPadding = 0;
-        if (!fullscreen) {
-          player.fullscreenMaxWidth = 480;
-        }
+        player.fullscreenMaxWidth = maxWidth;
         player.enterFullscreen(false);
         splash.style.display = 'none';
       });

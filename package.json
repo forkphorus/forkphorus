@@ -7,7 +7,8 @@
     "test": "tests"
   },
   "scripts": {
-    "watch": "node dev.js"
+    "watch": "node dev.js",
+    "build": "tsc"
   },
   "repository": {
     "type": "git",
@@ -21,6 +22,6 @@
   "homepage": "https://github.com/forkphorus/forkphorus#readme",
   "private": true,
   "dependencies": {
-    "typescript": "^3.4.5"
+    "typescript": "^3.6.2"
   }
 }

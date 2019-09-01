@@ -32,6 +32,12 @@ namespace P.core {
     // whenSensorGreaterThan: P.runtime.Fn[]
   }
 
+  export interface ActiveSound {
+    stopped: boolean;
+    node: AudioNode;
+    base: P.runtime.Fn;
+  }
+
   export interface Filters {
     color: number;
     fisheye: number;
@@ -126,6 +132,10 @@ namespace P.core {
      */
     public node: GainNode | null = null;
     /**
+     * Actively playing sounds started with "play until done"
+     */
+    public activeSounds: Set<ActiveSound> = new Set();
+    /**
      * Maps names (or ids) of variables or lists to their Watcher, if any.
      */
     public watchers: ObjectMap<Watcher> = {};
@@ -179,8 +189,6 @@ namespace P.core {
       brightness: 0,
       ghost: 0,
     };
-    public playingSounds: number = 0;
-    public stoppingSounds: number = 0;
 
     constructor() {
       for (var i = 0; i < 128; i++) {
@@ -310,10 +318,26 @@ namespace P.core {
      */
     stopSounds() {
       if (this.node) {
+        for (const sound of this.activeSounds) {
+          sound.stopped = true;
+          sound.node.disconnect();
+        }
+        this.activeSounds.clear();
         this.node.disconnect();
         this.node = null;
       }
-      this.stoppingSounds = this.playingSounds;
+    }
+
+    stopSoundsExcept(originBase: P.runtime.Fn) {
+      if (this.node) {
+        for (const sound of this.activeSounds) {
+          if (sound.base !== originBase) {
+            sound.node.disconnect();
+            sound.stopped = true;
+            this.activeSounds.delete(sound);
+          }
+        }
+      }
     }
 
     ask(question: string) {
@@ -422,17 +446,21 @@ namespace P.core {
       this.bubbleContainer.style.bottom = (bottom / 14) + 'em';
     }
 
-    /**
-     * Tells this object to cleanup some of the things it may have created.
-     */
     remove() {
       if (this.bubbleContainer) {
         this.stage.ui.removeChild(this.bubbleContainer);
         // I don't think doing this is necessary.
         delete this.bubbleContainer;
       }
-      if (this.node) {
+      if (this.node && this.isClone && !this.isStage) {
+        // Continue playing sounds started with "start sound" after this sprite has been removed.
+        for (const sound of this.activeSounds) {
+          sound.node.disconnect();
+          sound.stopped = true;
+        }
+        this.activeSounds.clear();
         this.node.disconnect();
+        this.node.connect(this.stage.getAudioNode());
         this.node = null;
       }
     }
@@ -489,29 +517,27 @@ namespace P.core {
     public nextPromptId: number = 0;
     public hidePrompt: boolean = false;
 
-    public tempoBPM: number = 60;
-
+    
     public zoom: number = 1;
-
-    public keys: KeyList;
-
+    
     public rawMouseX: number = 0;
     public rawMouseY: number = 0;
     public mouseX: number = 0;
     public mouseY: number = 0;
     public mousePressed: boolean = false;
-
+    
+    public tempoBPM: number = 60;
+    public keys: KeyList;
     public username: string = '';
+    public counter: number = 0;
 
     public runtime: P.runtime.Runtime;
 
-    public counter: number = 0;
+    public canvas: HTMLCanvasElement;
+    public renderer: P.renderer.ProjectRenderer;
 
     public root: HTMLElement;
     public ui: HTMLElement;
-
-    public canvas: HTMLCanvasElement;
-    public renderer: P.renderer.ProjectRenderer;
 
     public prompt: HTMLInputElement;
     public prompter: HTMLElement;
@@ -519,7 +545,7 @@ namespace P.core {
     public promptButton: HTMLElement;
     public mouseSprite: Sprite | undefined;
 
-    private _currentCostumeIndex: number = this.currentCostumeIndex;
+    private videoElement: HTMLVideoElement;
 
     constructor() {
       super();
@@ -532,20 +558,14 @@ namespace P.core {
       this.root = document.createElement('div');
       this.root.classList.add('forkphorus-root');
 
-      const scale = P.config.scale;
-
       if (P.config.useWebGL) {
         this.renderer = new P.renderer.WebGLProjectRenderer(this);
       } else {
         this.renderer = new P.renderer.ProjectRenderer2D(this);
       }
-      this.renderer.reset(scale);
-      this.renderer.penResize(1);
-
+      this.renderer.resize(1);
+      this.renderer.init(this.root);
       this.canvas = this.renderer.canvas;
-      this.root.appendChild(this.renderer.stageLayer);
-      this.root.appendChild(this.renderer.penLayer);
-      this.root.appendChild(this.canvas);
 
       this.ui = document.createElement('div');
       this.root.appendChild(this.ui);
@@ -556,6 +576,7 @@ namespace P.core {
 
       this.root.addEventListener('keydown', (e) => {
         var c = e.keyCode;
+        if (c >= 128 && e.key.length === 1) c = P.runtime.getKeyCode(e.key) as number;
         if (!this.keys[c]) this.keys.any++;
         this.keys[c] = true;
         if (e.ctrlKey || e.altKey || e.metaKey || c === 27) return;
@@ -568,6 +589,7 @@ namespace P.core {
 
       this.root.addEventListener('keyup', (e) => {
         var c = e.keyCode;
+        if (c >= 128) c = P.runtime.getKeyCode(e.key) as number;
         if (this.keys[c]) this.keys.any--;
         this.keys[c] = false;
         e.stopPropagation();
@@ -714,19 +736,11 @@ namespace P.core {
       this.promptButton.addEventListener(P.config.hasTouchEvents ? 'touchstart' : 'mousedown', this.submitPrompt.bind(this));
     }
 
-    // Event hooks for implementing stages to optionally use
-    ontouch(e: TouchEvent, t: Touch) {
-
-    }
-    onmousedown(e: MouseEvent) {
-
-    }
-    onmouseup(e: MouseEvent) {
-
-    }
-    onmousemove(e: MouseEvent) {
-
-    }
+    // Event hooks for responding to user actions
+    ontouch(e: TouchEvent, t: Touch) {}
+    onmousedown(e: MouseEvent) {}
+    onmouseup(e: MouseEvent) {}
+    onmousemove(e: MouseEvent) {}
 
     /**
      * Delete the stage.
@@ -763,24 +777,15 @@ namespace P.core {
     }
 
     /**
-     * Updates the backdrop canvas to match the current backdrop.
-     */
-    updateBackdrop() {
-      if (!this.renderer) return;
-      this.renderer.updateStage(this.zoom * P.config.scale);
-    }
-
-    /**
      * Changes the zoom level and resizes DOM elements.
      */
     setZoom(zoom: number) {
       if (this.zoom === zoom) return;
-      this.renderer.penResize(zoom);
+      this.renderer.resize(zoom);
       this.root.style.width = (480 * zoom | 0) + 'px';
       this.root.style.height = (360 * zoom | 0) + 'px';
       this.root.style.fontSize = (zoom*10) + 'px';
       this.zoom = zoom;
-      this.updateBackdrop();
     }
 
     clickMouse() {
@@ -811,7 +816,12 @@ namespace P.core {
     setFilter(name: string, value: number) {
       // Override setFilter() to update the filters on the real stage.
       super.setFilter(name, value);
-      this.renderer.updateStageFilters();
+      this.renderer.onStageFiltersChanged();
+    }
+
+    resetFilters() {
+      super.resetFilters();
+      this.renderer.onStageFiltersChanged();
     }
 
     /**
@@ -872,9 +882,7 @@ namespace P.core {
      * Draws this stage on it's renderer.
      */
     draw() {
-      this.renderer.reset(this.zoom);
-
-      this.drawChildren(this.renderer);
+      this.renderer.drawFrame();
 
       for (var i = this.allWatchers.length; i--;) {
         var w = this.allWatchers[i];
@@ -890,31 +898,26 @@ namespace P.core {
       }
     }
 
-    /**
-     * Draws all the children (not including the Stage itself or pen layers) of this Stage on a renderer
-     * @param skip Optionally skip rendering of a single Sprite.
-     */
-    drawChildren(renderer: P.renderer.SpriteRenderer, skip?: Base) {
-      for (var i = 0; i < this.children.length; i++) {
-        const c = this.children[i];
-        if (c.isDragging) {
-          // TODO: move
-          c.moveTo(c.dragOffsetX + c.stage.mouseX, c.dragOffsetY + c.stage.mouseY);
-        }
-        if (c.visible && c !== skip) {
-          renderer.drawChild(c);
+    showVideo(visible: boolean) {
+      if (P.config.supportVideoSensing) {
+        if (visible) {
+          if (!this.videoElement) {
+            this.videoElement = document.createElement('video');
+            this.videoElement.onloadedmetadata = () => {
+              this.videoElement.play();
+            };
+            this.videoElement.style.opacity = '0.5';
+            this.root.insertBefore(this.videoElement, this.canvas);
+            navigator.mediaDevices.getUserMedia({video: true, audio: false})
+              .then((stream) => this.videoElement.srcObject = stream);
+          }
+          this.videoElement.style.display = 'block';
+        } else {
+          if (this.videoElement) {
+            this.videoElement.style.display = 'none';
+          }
         }
       }
-    }
-
-    /**
-     * Draws all parts of the Stage (including the stage itself and pen layers) on a renderer.
-     * @param skip Optionally skip rendering of a single Sprite.
-     */
-    drawAll(renderer: P.renderer.SpriteRenderer, skip?: Base) {
-      renderer.drawChild(this);
-      renderer.drawLayer(this.renderer.penLayer);
-      this.drawChildren(renderer, skip);
     }
 
     // Implement rotatedBounds() to return something.
@@ -926,17 +929,6 @@ namespace P.core {
         right: 0,
       };
     }
-
-    // Override currentCostumeIndex to automatically update the backdrop when a change is made.
-    get currentCostumeIndex() {
-      return this._currentCostumeIndex;
-    }
-    set currentCostumeIndex(index: number) {
-      this._currentCostumeIndex = index;
-      this.updateBackdrop();
-    }
-
-    // Implementing Scratch blocks
 
     stopAllSounds() {
       for (var children = this.children, i = children.length; i--;) {
@@ -1281,14 +1273,6 @@ namespace P.core {
 
       this.direction = Math.atan2(dy, dx) * 180 / Math.PI + 90;
       if (this.saying) this.updateBubble();
-
-      b = this.rotatedBounds();
-      var x = this.scratchX;
-      var y = this.scratchY;
-      if (b.left < -240) x += -240 - b.left;
-      if (b.top > 180) y += 180 - b.top;
-      if (b.right > 240) x += 240 - b.left;
-      if (b.bottom < -180) y += -180 - b.top;
     }
 
     /**
@@ -1335,7 +1319,16 @@ namespace P.core {
     /**
      * Set the RGB color of the pen.
      */
-    setPenColor(color: number) {
+    setPenColor(color: number | string) {
+      if (typeof color === 'string') {
+        if (color.startsWith('#')) {
+          color = parseInt(color.substr(1), 16);
+        } else if (color.startsWith('0x')) {
+          color = parseInt(color.substr(2), 16);
+        } else {
+          color = +color;
+        }
+      }
       this.penColor = color;
       const r = this.penColor >> 16 & 0xff;
       const g = this.penColor >> 8 & 0xff;
@@ -1399,7 +1392,7 @@ namespace P.core {
           }
           break;
         case 'transparency':
-          this.penAlpha = Math.max(0, Math.min(1, value / 100));
+          this.penAlpha = Math.max(0, Math.min(1, this.penAlpha - value / 100));
           break;
       }
     }

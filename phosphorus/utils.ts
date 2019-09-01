@@ -1,18 +1,6 @@
 /// <reference path="phosphorus.ts" />
 
 namespace P.utils {
-  // Returns the string representation of an error.
-  // TODO: does this need to be here?
-  export function stringifyError(error: any): string {
-    if (!error) {
-      return 'unknown error';
-    }
-    if (error.stack) {
-      return 'Message: ' + error.message + '\nStack:\n' + error.stack;
-    }
-    return error.toString();
-  }
-
   import RotationStyle = P.core.RotationStyle;
   /**
    * Parses a Scratch rotation style string to a RotationStyle enum

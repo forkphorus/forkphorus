@@ -10,6 +10,7 @@
     "noImplicitThis": true,
     "strictBindCallApply": true,
     "strictNullChecks": true,
+    "removeComments": true
   },
   "include": [
     "phosphorus/**/*",

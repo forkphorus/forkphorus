@@ -6,36 +6,38 @@ To visit the test suite: [https://forkphorus.github.io/tests/suite.html](https:/
 
 To visit the test suite in benchmark mode: [https://forkphorus.github.io/tests/suite.html?benchmark](https://forkphorus.github.io/tests/suite.html?benchmark) (runs each test 50 times)
 
-## Scratch 3
+## Tests
 
-| Project | Description |
-|---------|-------------|
-| `sb3/sb3-template.sb3` | Tests the test suite itself. Acts as a template for other test projects. |
+| Test | Description |
+| ---- | ----------- |
+| `sb2/sb2-template.sb2` | Example sb2 test |
+| `sb3/sb3-template.sb3` | Example sb3 test |
+| `sb3/operators.sb3` | Tests operator blocks. |
 | `sb3/quicksort.sb3` | Implements quicksort and insertion sort. Based on https://scratch.mit.edu/projects/142449228/ |
 | `sb3/befunge-eratosthenes.sb3` | A Befunge 93 interpreter running the Sieve of Eratosthenes. Based on https://scratch.mit.edu/projects/237437817/ using the code from https://esolangs.org/wiki/Befunge#Sieve_of_Eratosthenes |
 | `sb3/string-functions.sb3` | Tests some algorithms related to strings. Based on https://scratch.mit.edu/projects/167183861/ |
-| `sb3/operators.sb3` | Tests Scratch operator blocks and their behavior in certain edge cases. Currently expected to fail. |
+| `regressions/*` | Tests fixes for bugs. The filename is the GitHub issue it is a test for, along with a short description of the thing being tested. |
 
-### Writing Scratch 3 Tests
+All project files are [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/) licensed because that's what Scratch uses.
 
-The easiest way to write a new test is by copying the template file, `sb3/sb3-template.sb3`.
+## Writing Tests
 
-You write the behavior you want to test in a `When green flag clicked` block, and you check that they function correctly. For example, you might move a Sprite, then check that the coordinates match what you expect.
+Tests are written as Scratch projects and executed by the compiler.
+
+The easiest way to write a new test is by copying the template file, `sb3/sb3-template.sb3`. You write the behavior you want to test in a `When green flag clicked` block, and you check that they function correctly. For example, you might move a Sprite, then check that the coordinates match what you expect.
 
 The template project provides some custom blocks. The custom blocks `OK` (or `OKAY`) and `FAIL` are treated specially during the tests; their definition is replaced with a special JavaScript implementation during the test (whatever you write in them is ignored and is only a development convenience).
 
-When `FAIL` is called (with an optional message), the project will stop execution and the test will fail. When `OK`/`OKAY` is called (again, with an optional message), the project will stop execution and the tests passes.
+When `FAIL` is used (with an optional message), the project will stop execution and the test is marked as failed. When `OK`/`OKAY` is used (with an optional message), the project will stop execution and the test is marked as passed. Either `OK` or `FAIL` must be executed exactly once.
 
 `assertTrue` is a utility function that calls `FAIL` with a supplied message when the given boolean is false. `assertFalse` is the opposite.
 
-## Scratch 2
-
-| Project | Description |
-|---------|-------------|
-| `sb2/sb2-template.sb2` | Tests the test suite itself. Acts as a template for other test projects. |
-| `sb2/operators.sb2` | Tests operator blocks. Currently expected to fail. |
-| `sb2/pen-colors.sb2` | Tests the color of pen blocks. |
+Try to remove all unused costumes and sounds to keep the files small.
 
 ### Writing Scratch 2 Tests
 
-The same process as writing Scratch 3 tests, but just save them as .sb2 instead of .sb3. The template file is `sb2/sb2-template.sb2`.
+The same process as writing Scratch 3 tests (described above), but just save them as .sb2 instead of .sb3. The template file is `sb2/sb2-template.sb2`.
+
+### Adding it to the tests
+
+Open tests.js and add the path to your test to `const tests = [...`.
