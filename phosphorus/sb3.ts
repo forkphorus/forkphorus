@@ -1031,7 +1031,10 @@ namespace P.sb3.compiler {
   export class CompiledInput {
     /**
      * Whether this input could potentially be a number-like object at runtime.
-     * A string value may become number-like if it contains a number value.
+     * A value may be a potential number if:
+     *  - it is a number
+     *  - it is a boolean
+     *  - it is a string that represents a number or a boolean
      */
     public potentialNumber: boolean = true;
 
@@ -1536,6 +1539,15 @@ namespace P.sb3.compiler {
     }
 
     /**
+     * Determine if a string literal could potentially become a number at runtime.
+     * May return false positives.
+     * @see CompiledInput
+     */
+    isStringLiteralPotentialNumber(text: string) {
+      return /\d|true|false|Infinity/.test(text);
+    }
+
+    /**
      * Compile a native or primitive value.
      */
     compileNativeInput(native: any[], desiredType: InputType): CompiledInput {
@@ -1558,7 +1570,7 @@ namespace P.sb3.compiler {
 
         case NativeTypes.TEXT: {
           const input = this.sanitizedInput(native[1] + '');
-          input.potentialNumber = /\d/.test(native[1]);
+          input.potentialNumber = this.isStringLiteralPotentialNumber(native[1]);
           return input;
         }
 
@@ -2603,6 +2615,10 @@ namespace P.sb3.compiler {
   inputLibrary['operator_equals'] = function(util) {
     const OPERAND1 = util.getInput('OPERAND1', 'any');
     const OPERAND2 = util.getInput('OPERAND2', 'any');
+    // If we know at compile-time that either input cannot be a number, we will use the faster strEqual
+    if (!OPERAND1.potentialNumber || !OPERAND2.potentialNumber) {
+      return util.booleanInput(`strEqual(${OPERAND1}, ${OPERAND2})`);
+    }
     if (P.config.experimentalOptimizations) {
       // If we know at compile-time that an input is going to be a number, we will use the faster numEqual method.
       // The first argument to numEqual must be a number, the other will be converted if necessary.
@@ -2611,10 +2627,6 @@ namespace P.sb3.compiler {
       }
       if (OPERAND2.type === 'number') {
         return util.booleanInput(`numEqual(${OPERAND2}, ${OPERAND1})`);
-      }
-      // If we know at compile-time that either input cannot be a number, we will use the faster strEqual
-      if (!OPERAND1.potentialNumber || !OPERAND2.potentialNumber) {
-        return util.booleanInput(`strEqual(${OPERAND1}, ${OPERAND2})`);
       }
     }
     return util.booleanInput(`equal(${OPERAND1}, ${OPERAND2})`);

@@ -6155,6 +6155,9 @@ var P;
                 getListReference(name) {
                     return `${this.getListScope(name)}.lists[${this.sanitizedString(name)}]`;
                 }
+                isStringLiteralPotentialNumber(text) {
+                    return /\d|true|false|Infinity/.test(text);
+                }
                 compileNativeInput(native, desiredType) {
                     const type = native[0];
                     switch (type) {
@@ -6173,7 +6176,7 @@ var P;
                         }
                         case 10: {
                             const input = this.sanitizedInput(native[1] + '');
-                            input.potentialNumber = /\d/.test(native[1]);
+                            input.potentialNumber = this.isStringLiteralPotentialNumber(native[1]);
                             return input;
                         }
                         case 12:
@@ -7102,15 +7105,15 @@ var P;
     inputLibrary['operator_equals'] = function (util) {
         const OPERAND1 = util.getInput('OPERAND1', 'any');
         const OPERAND2 = util.getInput('OPERAND2', 'any');
+        if (!OPERAND1.potentialNumber || !OPERAND2.potentialNumber) {
+            return util.booleanInput(`strEqual(${OPERAND1}, ${OPERAND2})`);
+        }
         if (P.config.experimentalOptimizations) {
             if (OPERAND1.type === 'number') {
                 return util.booleanInput(`numEqual(${OPERAND1}, ${OPERAND2})`);
             }
             if (OPERAND2.type === 'number') {
                 return util.booleanInput(`numEqual(${OPERAND2}, ${OPERAND1})`);
-            }
-            if (!OPERAND1.potentialNumber || !OPERAND2.potentialNumber) {
-                return util.booleanInput(`strEqual(${OPERAND1}, ${OPERAND2})`);
             }
         }
         return util.booleanInput(`equal(${OPERAND1}, ${OPERAND2})`);
