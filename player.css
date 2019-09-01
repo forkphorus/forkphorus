@@ -5,7 +5,6 @@
 }
 .player-stage {
   position: relative;
-  overflow: hidden;
 }
 /* Fullscreen */
 .player-root[fullscreen] {
