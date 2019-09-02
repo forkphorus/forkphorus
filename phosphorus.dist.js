@@ -1165,9 +1165,9 @@ var P;
                 super();
                 this.stage = stage;
                 this.zoom = 1;
-                this.penLayerModified = false;
-                this.penLayerTargetScale = -1;
-                this.penLayerMaxScale = -1;
+                this.penModified = false;
+                this.penTargetZoom = -1;
+                this.penZoom = 1;
                 this.stageCostumeIndex = -1;
                 const { ctx: stageContext, canvas: stageLayer } = create2dCanvas();
                 this.stageContext = stageContext;
@@ -1215,8 +1215,12 @@ var P;
             }
             resize(zoom) {
                 this.zoom = zoom;
-                if (zoom > this.penLayerMaxScale) {
-                    this.penLayerMaxScale = zoom;
+                this.resizePen(zoom);
+                this.renderStageCostume(this.zoom);
+            }
+            resizePen(zoom) {
+                if (zoom > this.penZoom) {
+                    this.penZoom = zoom;
                     const cachedCanvas = document.createElement('canvas');
                     cachedCanvas.width = this.penLayer.width;
                     cachedCanvas.height = this.penLayer.height;
@@ -1224,32 +1228,41 @@ var P;
                     this._reset(this.penContext, zoom);
                     this.penContext.drawImage(cachedCanvas, 0, 0, 480, 360);
                 }
-                else if (!this.penLayerModified) {
+                else if (!this.penModified) {
+                    this.penZoom = zoom;
                     this._reset(this.penContext, zoom);
                 }
                 else {
-                    this.penLayerTargetScale = zoom;
+                    this.penTargetZoom = zoom;
                 }
-                this.renderStageCostume(this.zoom);
             }
             penClear() {
-                this.penLayerModified = false;
-                if (this.penLayerTargetScale !== -1) {
-                    this._reset(this.penContext, this.penLayerTargetScale);
-                    this.penLayerTargetScale = -1;
+                this.penModified = false;
+                if (this.penTargetZoom !== -1) {
+                    this._reset(this.penContext, this.penTargetZoom);
+                    this.penZoom = this.penTargetZoom;
+                    this.penTargetZoom = -1;
                 }
                 this.penContext.clearRect(0, 0, 480, 360);
             }
             penDot(color, size, x, y) {
-                this.penLayerModified = true;
+                this.penModified = true;
                 this.penContext.fillStyle = color;
                 this.penContext.beginPath();
                 this.penContext.arc(240 + x, 180 - y, size / 2, 0, 2 * Math.PI, false);
                 this.penContext.fill();
             }
             penLine(color, size, x1, y1, x2, y2) {
-                this.penLayerModified = true;
+                this.penModified = true;
                 this.penContext.lineCap = 'round';
+                if (this.penZoom === 1) {
+                    if (size % 2 > .5 && size % 2 < 1.5) {
+                        x1 -= .5;
+                        y1 -= .5;
+                        x2 -= .5;
+                        y2 -= .5;
+                    }
+                }
                 this.penContext.strokeStyle = color;
                 this.penContext.lineWidth = size;
                 this.penContext.beginPath();
@@ -1258,7 +1271,7 @@ var P;
                 this.penContext.stroke();
             }
             penStamp(sprite) {
-                this.penLayerModified = true;
+                this.penModified = true;
                 this._drawChild(sprite, this.penContext);
             }
             spriteTouchesPoint(sprite, x, y) {
