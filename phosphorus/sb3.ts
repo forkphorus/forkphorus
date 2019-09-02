@@ -114,15 +114,9 @@ namespace P.sb3 {
   type SB3Variable = [string, any];
 
   // Implements a Scratch 3 Stage.
-  // Adds Scratch 3 specific things such as broadcastReferences
   export class Scratch3Stage extends P.core.Stage {
     public sb3data: SB3Target;
     public listIds: ObjectMap<string> = {};
-
-    createVariableWatcher(target: P.core.Base, variableName: string) {
-      // TODO: implement
-      return null;
-    }
   }
 
   // Implements a Scratch 3 Sprite.
@@ -403,7 +397,7 @@ namespace P.sb3 {
         this.target.lists[listName] = new Scratch3List();
       }
       this.list = this.target.lists[listName] as Scratch3List;
-      this.target.watchers[listName] = this;
+      this.target.listWatchers[listName] = this;
       this.updateLayout();
       if (this.visible) {
         this.updateContents();
@@ -2047,7 +2041,7 @@ namespace P.sb3.compiler {
   statementLibrary['data_hidelist'] = function(util) {
     const LIST = util.sanitizedString(util.getField('LIST'));
     const scope = util.getListScope('LIST');
-    util.writeLn(`${scope}.showVariable(${LIST}, false);`);
+    util.writeLn(`${scope}.showList(${LIST}, false);`);
   };
   statementLibrary['data_hidevariable'] = function(util) {
     const VARIABLE = util.sanitizedString(util.getField('VARIABLE'));
@@ -2074,7 +2068,7 @@ namespace P.sb3.compiler {
   statementLibrary['data_showlist'] = function(util) {
     const LIST = util.sanitizedString(util.getField('LIST'));
     const scope = util.getListScope('LIST');
-    util.writeLn(`${scope}.showVariable(${LIST}, true);`);
+    util.writeLn(`${scope}.showList(${LIST}, true);`);
   };
   statementLibrary['data_showvariable'] = function(util) {
     const VARIABLE = util.sanitizedString(util.getField('VARIABLE'));

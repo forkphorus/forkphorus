@@ -1419,6 +1419,7 @@ var P;
                 this.node = null;
                 this.activeSounds = new Set();
                 this.watchers = {};
+                this.listWatchers = {};
                 this.vars = {};
                 this.lists = {};
                 this.saying = false;
@@ -1461,6 +1462,19 @@ var P;
                     }
                     newWatcher.init();
                     this.watchers[name] = watcher = newWatcher;
+                    this.stage.allWatchers.push(watcher);
+                }
+                watcher.setVisible(visible);
+            }
+            showList(name, visible) {
+                let watcher = this.listWatchers[name];
+                if (!watcher) {
+                    const newWatcher = this.createListWatcher(this, name);
+                    if (!newWatcher) {
+                        return;
+                    }
+                    newWatcher.init();
+                    this.listWatchers[name] = watcher = newWatcher;
                     this.stage.allWatchers.push(watcher);
                 }
                 watcher.setVisible(visible);
@@ -1703,6 +1717,12 @@ var P;
                 this.node.gain.value = this.volume;
                 P.audio.connectNode(this.node);
                 return this.node;
+            }
+            createVariableWatcher(target, variableName) {
+                return null;
+            }
+            createListWatcher(target, listName) {
+                return null;
             }
         }
         core.Base = Base;
@@ -2254,6 +2274,7 @@ var P;
                 clone.penSize = this.penSize;
                 clone.isPenDown = this.isPenDown;
                 clone.watchers = this.watchers;
+                clone.listWatchers = this.listWatchers;
                 return clone;
             }
             touching(thing) {
@@ -5195,9 +5216,6 @@ var P;
                 super(...arguments);
                 this.listIds = {};
             }
-            createVariableWatcher(target, variableName) {
-                return null;
-            }
         }
         sb3.Scratch3Stage = Scratch3Stage;
         class Scratch3Sprite extends P.core.Sprite {
@@ -5387,7 +5405,7 @@ var P;
                     this.target.lists[listName] = new Scratch3List();
                 }
                 this.list = this.target.lists[listName];
-                this.target.watchers[listName] = this;
+                this.target.listWatchers[listName] = this;
                 this.updateLayout();
                 if (this.visible) {
                     this.updateContents();
@@ -6559,7 +6577,7 @@ var P;
     statementLibrary['data_hidelist'] = function (util) {
         const LIST = util.sanitizedString(util.getField('LIST'));
         const scope = util.getListScope('LIST');
-        util.writeLn(`${scope}.showVariable(${LIST}, false);`);
+        util.writeLn(`${scope}.showList(${LIST}, false);`);
     };
     statementLibrary['data_hidevariable'] = function (util) {
         const VARIABLE = util.sanitizedString(util.getField('VARIABLE'));
@@ -6586,7 +6604,7 @@ var P;
     statementLibrary['data_showlist'] = function (util) {
         const LIST = util.sanitizedString(util.getField('LIST'));
         const scope = util.getListScope('LIST');
-        util.writeLn(`${scope}.showVariable(${LIST}, true);`);
+        util.writeLn(`${scope}.showList(${LIST}, true);`);
     };
     statementLibrary['data_showvariable'] = function (util) {
         const VARIABLE = util.sanitizedString(util.getField('VARIABLE'));
