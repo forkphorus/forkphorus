@@ -8,7 +8,8 @@
   },
   "scripts": {
     "watch": "node dev.js",
-    "build": "tsc"
+    "build": "tsc",
+    "test": "node tests/runner.js"
   },
   "repository": {
     "type": "git",

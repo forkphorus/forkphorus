@@ -42,6 +42,11 @@ P.suite = (function() {
   const tableBodyEl = document.getElementById('suite-table');
   const finalResultsEl = document.getElementById('suite-final-results');
 
+  // Configure IO for automated test environments
+  if (location.search.indexOf('automatedtest') > -1) {
+    P.IO.config.localPath = '../';
+  }
+
   /**
    * Removes all children of an HTML element
    * @param {HTMLElement} element 

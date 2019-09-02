@@ -1,0 +1,18 @@
+{
+  "name": "forkphorus-tests",
+  "version": "1.0.0",
+  "description": "Test suite for forkphorus. Automatically runs a few Scratch projects and validates they function correctly.",
+  "main": "runner.js",
+  "scripts": {
+    "test": "node runner.js"
+  },
+  "dependencies": {
+    "puppeteer": "^1.19.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:forkphorus/forkphorus.git",
+    "directory": "tests"
+  },
+  "license": "MIT"
+}

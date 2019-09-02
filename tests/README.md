@@ -10,8 +10,8 @@ To visit the test suite in benchmark mode: [https://forkphorus.github.io/tests/s
 
 | Test | Description |
 | ---- | ----------- |
-| `sb2/sb2-template.sb2` | Example sb2 test |
-| `sb3/sb3-template.sb3` | Example sb3 test |
+| `sb2/sb2-template.sb2` | Example sb2 test. |
+| `sb3/sb3-template.sb3` | Example sb3 test. |
 | `sb3/operators.sb3` | Tests operator blocks. |
 | `sb3/quicksort.sb3` | Implements quicksort and insertion sort. Based on https://scratch.mit.edu/projects/142449228/ |
 | `sb3/befunge-eratosthenes.sb3` | A Befunge 93 interpreter running the Sieve of Eratosthenes. Based on https://scratch.mit.edu/projects/237437817/ using the code from https://esolangs.org/wiki/Befunge#Sieve_of_Eratosthenes |
