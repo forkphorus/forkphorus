@@ -23,6 +23,7 @@
 .player-root .player-error {
   color: rgb(128, 0, 0);
   font: 500 12px sans-serif;
+  box-sizing: border-box;
   padding: 8px;
   position: absolute;
   bottom: 0;
