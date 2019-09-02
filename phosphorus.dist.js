@@ -6344,9 +6344,11 @@ var P;
                     };
                 }
                 warn(...args) {
+                    args.unshift('[sb3 compiler]');
                     console.warn.apply(console, args);
                 }
                 log(...args) {
+                    args.unshift('[sb3 compiler]');
                     console.log.apply(console, args);
                 }
                 compile() {
@@ -7371,7 +7373,7 @@ var P;
                 var keycode = P.runtime.getKeyCode(value);
             }
             catch (e) {
-                console.warn('makeymakey key generation error', e);
+                util.compiler.warn('makeymakey key generation error', e);
                 return;
             }
             if (keycode === 'any') {
@@ -7391,7 +7393,7 @@ var P;
                 var sequence = P.runtime.scopedEval(SEQUENCE.source);
             }
             catch (e) {
-                console.warn('makeymakey sequence generation error', e);
+                util.compiler.warn('makeymakey sequence generation error', e);
                 return;
             }
             const ARROWS = ['up', 'down', 'left', 'right'];

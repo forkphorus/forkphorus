@@ -1833,6 +1833,7 @@ namespace P.sb3.compiler {
      * Log a warning
      */
     warn(...args: any[]) {
+      args.unshift('[sb3 compiler]');
       console.warn.apply(console, args);
     }
 
@@ -1840,6 +1841,7 @@ namespace P.sb3.compiler {
      * Log info
      */
     log(...args: any[]) {
+      args.unshift('[sb3 compiler]');
       console.log.apply(console, args);
     }
 
@@ -2899,7 +2901,7 @@ namespace P.sb3.compiler {
         const value = P.runtime.scopedEval(KEY.source);
         var keycode = P.runtime.getKeyCode(value);
       } catch (e) {
-        console.warn('makeymakey key generation error', e);
+        util.compiler.warn('makeymakey key generation error', e);
         return;
       }
       if (keycode === 'any') {
@@ -2917,7 +2919,7 @@ namespace P.sb3.compiler {
       try {
         var sequence = P.runtime.scopedEval(SEQUENCE.source);
       } catch (e) {
-        console.warn('makeymakey sequence generation error', e);
+        util.compiler.warn('makeymakey sequence generation error', e);
         return;
       }
       const ARROWS = ['up', 'down', 'left', 'right'];
