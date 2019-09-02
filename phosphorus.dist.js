@@ -6178,8 +6178,10 @@ var P;
                             const value = native[1];
                             if (desiredType !== 'string' && /\d/.test(value)) {
                                 const number = +value;
-                                if (!isNaN(number)) {
-                                    return numberInput(number.toString());
+                                if (number.toString() === value) {
+                                    if (!isNaN(number)) {
+                                        return numberInput(number.toString());
+                                    }
                                 }
                             }
                             const input = this.sanitizedInput(native[1] + '');

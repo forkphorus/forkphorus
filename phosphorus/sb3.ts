@@ -1573,11 +1573,16 @@ namespace P.sb3.compiler {
         case NativeTypes.TEXT: {
           // [type, value]
           const value = native[1];
+          // Do not attempt any conversions if the desired type is string or if the value does not appear to be number-like
           if (desiredType !== 'string' && /\d/.test(value)) {
             const number = +value;
-            if (!isNaN(number)) {
-              // see comment and similar code above
-              return numberInput(number.toString());
+            // If the stringification of the number is not the same as the original value, do not convert.
+            // This fixes issues where the stringification is used instead of the number itself.
+            // For example the number "0123" will end up "123" so reading the first letter of "0123" would return 1 instead of 0
+            if (number.toString() === value) {
+              if (!isNaN(number)) {
+                return numberInput(number.toString());
+              }
             }
           }
           const input = this.sanitizedInput(native[1] + '');
