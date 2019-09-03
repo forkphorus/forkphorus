@@ -33,21 +33,24 @@ namespace P.microphone {
     }
 
     state = MicrophoneState.Connecting;
-    navigator.mediaDevices.getUserMedia({audio: true}).then((mediaStream) => {
-      const source = P.audio.context!.createMediaStreamSource(mediaStream);
-      const analyzer = P.audio.context!.createAnalyser();
-      source.connect(analyzer);
-      microphone = {
-        stream: mediaStream,
-        source,
-        analyzer,
-        dataArray: new Float32Array(analyzer.fftSize),
-        lastValue: -1,
-        lastCheck: 0,
-      };
-      state = MicrophoneState.Connected;
-      console.log('Connected to microphone');
-    });
+    navigator.mediaDevices.getUserMedia({audio: true})
+      .then((mediaStream) => {
+        const source = P.audio.context!.createMediaStreamSource(mediaStream);
+        const analyzer = P.audio.context!.createAnalyser();
+        source.connect(analyzer);
+        microphone = {
+          stream: mediaStream,
+          source,
+          analyzer,
+          dataArray: new Float32Array(analyzer.fftSize),
+          lastValue: -1,
+          lastCheck: 0,
+        };
+        state = MicrophoneState.Connected;
+      })
+    .catch((err) => {
+      console.warn('Cannot connect to microphone: ' + err);
+    })
   }
 
   /**

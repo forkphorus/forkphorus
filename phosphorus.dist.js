@@ -2794,7 +2794,8 @@ var P;
                 return;
             }
             state = 2;
-            navigator.mediaDevices.getUserMedia({ audio: true }).then((mediaStream) => {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then((mediaStream) => {
                 const source = P.audio.context.createMediaStreamSource(mediaStream);
                 const analyzer = P.audio.context.createAnalyser();
                 source.connect(analyzer);
@@ -2807,7 +2808,9 @@ var P;
                     lastCheck: 0,
                 };
                 state = 1;
-                console.log('Connected to microphone');
+            })
+                .catch((err) => {
+                console.warn('Cannot connect to microphone: ' + err);
             });
         }
         function getLoudness() {
