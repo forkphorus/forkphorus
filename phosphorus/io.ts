@@ -39,7 +39,6 @@ namespace P.IO {
      * Attempts to load this request.
      */
     load(): Promise<T> {
-      // We attempt to load twice, which I hope will fix random loading errors from failed fetches.
       return new Promise((resolve, reject) => {
         const attempt = (errorCallback: (err: any) => void) => {
           this._load()
@@ -50,9 +49,9 @@ namespace P.IO {
               errorCallback(err);
             });
         };
-        attempt(() => {
+        attempt((err) => {
           // try once more after a short delay
-          console.warn(`First attempt to download ${this.url} failed, trying again`);
+          console.warn(`First attempt to download ${this.url} failed, trying again (${err})`);
           setTimeout(function() {
             attempt((err) => {
               reject(err);
@@ -67,12 +66,13 @@ namespace P.IO {
 
   export abstract class XHRRequest<T> extends Request<T> {
     public xhr: XMLHttpRequest = new XMLHttpRequest();
+    public static acceptableResponseCodes = [0, 200];
 
     protected _load(): Promise<T> {
       return new Promise((resolve, reject) => {
         const xhr = this.xhr;
         xhr.addEventListener('load', () => {
-          if (xhr.status === 200) {
+          if (XHRRequest.acceptableResponseCodes.indexOf(xhr.status) !== -1) {
             resolve(xhr.response);
           } else {
             reject(new Error(`HTTP Error ${xhr.status} while downloading ${this.url}`));

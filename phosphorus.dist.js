@@ -2666,8 +2666,8 @@ var P;
                             errorCallback(err);
                         });
                     };
-                    attempt(() => {
-                        console.warn(`First attempt to download ${this.url} failed, trying again`);
+                    attempt((err) => {
+                        console.warn(`First attempt to download ${this.url} failed, trying again (${err})`);
                         setTimeout(function () {
                             attempt((err) => {
                                 reject(err);
@@ -2687,7 +2687,7 @@ var P;
                 return new Promise((resolve, reject) => {
                     const xhr = this.xhr;
                     xhr.addEventListener('load', () => {
-                        if (xhr.status === 200) {
+                        if (XHRRequest.acceptableResponseCodes.indexOf(xhr.status) !== -1) {
                             resolve(xhr.response);
                         }
                         else {
@@ -2706,6 +2706,7 @@ var P;
                 });
             }
         }
+        XHRRequest.acceptableResponseCodes = [0, 200];
         IO.XHRRequest = XHRRequest;
         class ArrayBufferRequest extends XHRRequest {
             get type() { return 'arraybuffer'; }

@@ -3,10 +3,11 @@ const path = require('path');
 
 (async () => {
   setTimeout(function() {
-    console.error('Test timed out');
+    console.error('[Runner] Test timed out');
     process.exit(1);
   }, 1000 * 60);
 
+  console.log('[Runner] Starting puppeteer');
   const browser = await puppeteer.launch({
     headless: true,
     args: [
@@ -14,8 +15,16 @@ const path = require('path');
     ],
   });
 
+  console.log('[Runner] Opening new page');
   const page = await browser.newPage();
-  await page.goto(`file:${path.join(__dirname, 'suite.html?automatedtest')}`);
+
+  page.on('console', (msg) => {
+    console.log('[Log]', msg.text());
+  });
+
+  const file = path.join(__dirname, 'suite.html?automatedtest');
+  console.log('[Runner] Opening file: ' + file);
+  await page.goto(`file:${file}`);
 
   const results = await new Promise(async (resolve, reject) => {
     await page.exposeFunction('testsFinishedHook', async (results) => {
@@ -25,21 +34,23 @@ const path = require('path');
   });
 
   let failed = false;
+  console.log('');
   for (const i of results) {
-    const time = `(${Math.round(i.totalTime)}/${Math.round(i.projectTime)}ms)`;
+    const time = `${Math.round(i.totalTime)}/${Math.round(i.projectTime)}ms`;
     if (i.success) {
-      console.log(`${i.path}\tPASSED\t${i.message} ${time}`);
+      console.log(`PASSED\t${i.path}\t${i.message} (${time})`)
     } else {
-      console.error(`${i.path}\tFAILED\t${i.message} ${time}`);
+      console.log(`FAILED\t${i.path}\t${i.message} (${time})`)
       failed = true;
     }
   }
+  console.log('');
   if (failed) {
-    console.error('Tests failed.');
+    console.error('[Runner] Tests failed.');
     process.exit(1);
   }
 
-  console.log('All tests passed');
+  console.log('[Runner] All tests passed');
   process.exit(0);
 })().catch((err) => {
   console.error(err.stack);
