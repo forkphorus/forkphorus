@@ -2067,6 +2067,9 @@ var P;
                     }
                 }
             }
+            getLoudness() {
+                return P.microphone.getLoudness();
+            }
             rotatedBounds() {
                 return {
                     top: 0,
@@ -2773,6 +2776,79 @@ var P;
             readers.toText = toText;
         })(readers = IO.readers || (IO.readers = {}));
     })(IO = P.IO || (P.IO = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
+    var microphone;
+    (function (microphone_1) {
+        let microphone = null;
+        let state = 0;
+        const CACHE_TIME = 1000 / 30;
+        function connect() {
+            if (state !== 0) {
+                return;
+            }
+            if (!P.audio.context) {
+                console.warn('Cannot connect to microphone without audio context.');
+                state = 3;
+                return;
+            }
+            state = 2;
+            navigator.mediaDevices.getUserMedia({ audio: true }).then((mediaStream) => {
+                const source = P.audio.context.createMediaStreamSource(mediaStream);
+                const analyzer = P.audio.context.createAnalyser();
+                source.connect(analyzer);
+                microphone = {
+                    stream: mediaStream,
+                    source,
+                    analyzer,
+                    dataArray: new Float32Array(analyzer.fftSize),
+                    lastValue: -1,
+                    lastCheck: 0,
+                };
+                state = 1;
+                console.log('Connected to microphone');
+            });
+        }
+        function getLoudness() {
+            if (microphone === null) {
+                connect();
+                return -1;
+            }
+            if (!microphone.stream.active) {
+                return -1;
+            }
+            if (Date.now() - microphone.lastCheck < CACHE_TIME) {
+                return microphone.lastValue;
+            }
+            `
+    The following lines of source code are from the GitHub project LLK/scratch-audio
+    You can find the license for this code here: https://raw.githubusercontent.com/LLK/scratch-audio/develop/LICENSE
+    (our build tool removes comments so a multiline string is used instead)
+    Copyright (c) 2016, Massachusetts Institute of Technology
+    Modifications copyright (c) 2019 Thomas Weber
+    `;
+            microphone.analyzer.getFloatTimeDomainData(microphone.dataArray);
+            let sum = 0;
+            for (let i = 0; i < microphone.dataArray.length; i++) {
+                sum += Math.pow(microphone.dataArray[i], 2);
+            }
+            let rms = Math.sqrt(sum / microphone.dataArray.length);
+            if (microphone.lastValue !== -1) {
+                rms = Math.max(rms, microphone.lastValue * 0.6);
+            }
+            microphone.lastValue = rms;
+            rms *= 1.63;
+            rms = Math.sqrt(rms);
+            rms = Math.round(rms * 100);
+            rms = Math.min(rms, 100);
+            `
+    End of code from LLK/scratch-audio
+    `;
+            return rms;
+        }
+        microphone_1.getLoudness = getLoudness;
+    })(microphone = P.microphone || (P.microphone = {}));
 })(P || (P = {}));
 var P;
 (function (P) {
@@ -3702,6 +3778,7 @@ var P;
                     case 'senseVideoMotion':
                         break;
                     case 'soundLevel':
+                        value = this.stage.getLoudness();
                         break;
                     case 'tempo':
                         value = this.stage.tempoBPM;
@@ -4508,6 +4585,9 @@ var P;
                     }
                     else if (e[0] === 'distanceTo:') {
                         return 'S.distanceTo(' + val(e[1]) + ')';
+                    }
+                    else if (e[0] === 'soundLevel') {
+                        return 'self.getLoudness()';
                     }
                     else if (e[0] === 'timestamp') {
                         return '((Date.now() - epoch) / 86400000)';
@@ -7306,10 +7386,10 @@ var P;
         return util.booleanInput(`!!self.keys[P.runtime.getKeyCode(${KEY_OPTION})]`);
     };
     inputLibrary['sensing_loud'] = function (util) {
-        return util.booleanInput('false');
+        return util.booleanInput('(self.getLoudness() > 10)');
     };
     inputLibrary['sensing_loudness'] = function (util) {
-        return util.numberInput('-1');
+        return util.numberInput('self.getLoudness()');
     };
     inputLibrary['sensing_mousedown'] = function (util) {
         return util.booleanInput('self.mousePressed');
@@ -7585,7 +7665,7 @@ var P;
         }
     };
     watcherLibrary['sensing_loudness'] = {
-        evaluate() { return -1; },
+        evaluate(watcher) { return watcher.target.stage.getLoudness(); },
         getLabel() { return 'loudness'; },
     };
     watcherLibrary['sensing_timer'] = {

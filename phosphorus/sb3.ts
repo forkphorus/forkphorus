@@ -2785,12 +2785,11 @@ namespace P.sb3.compiler {
     return util.booleanInput(`!!self.keys[P.runtime.getKeyCode(${KEY_OPTION})]`);
   };
   inputLibrary['sensing_loud'] = function(util) {
-    // see sensing_loudness
-    return util.booleanInput('false');
+    // TODO: parenthsis needed?
+    return util.booleanInput('(self.getLoudness() > 10)');
   };
   inputLibrary['sensing_loudness'] = function(util) {
-    // We don't implement loudness, we always return -1 which indicates that there is no microphone available.
-    return util.numberInput('-1');
+    return util.numberInput('self.getLoudness()');
   };
   inputLibrary['sensing_mousedown'] = function(util) {
     return util.booleanInput('self.mousePressed');
@@ -3073,8 +3072,7 @@ namespace P.sb3.compiler {
     }
   };
   watcherLibrary['sensing_loudness'] = {
-    // We don't implement loudness.
-    evaluate() { return -1; },
+    evaluate(watcher) { return watcher.target.stage.getLoudness(); },
     getLabel() { return 'loudness'; },
   };
   watcherLibrary['sensing_timer'] = {

@@ -946,6 +946,10 @@ namespace P.core {
       }
     }
 
+    getLoudness() {
+      return P.microphone.getLoudness();
+    }
+
     // Implement rotatedBounds() to return something.
     rotatedBounds() {
       return {
