@@ -5350,6 +5350,7 @@ var P;
         class Scratch3ListWatcher extends P.core.Watcher {
             constructor(stage, data) {
                 super(stage, data.spriteName || '');
+                this.firstUpdate = true;
                 this.domRows = [];
                 this.id = data.id;
                 this.params = data.params;
@@ -5363,9 +5364,10 @@ var P;
                 if (!this.visible) {
                     return;
                 }
-                if (!this.list.modified) {
+                if (!this.list.modified && !this.firstUpdate) {
                     return;
                 }
+                this.firstUpdate = false;
                 this.list.modified = false;
                 this.updateContents();
             }

@@ -318,6 +318,7 @@ namespace P.sb3 {
   }
 
   export class Scratch3ListWatcher extends P.core.Watcher {
+    private firstUpdate: boolean = true;
     private params: any;
     private id: string;
     private width: number;
@@ -349,9 +350,10 @@ namespace P.sb3 {
       }
 
       // Silently rest if the list has not been modified to improve performance for static lists.
-      if (!this.list.modified) {
+      if (!this.list.modified && !this.firstUpdate) {
         return;
       }
+      this.firstUpdate = false;
       this.list.modified = false;
       this.updateContents();
     }
