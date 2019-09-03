@@ -51,10 +51,13 @@ namespace P.IO {
             });
         };
         attempt(() => {
-          // try once more
-          attempt((err) => {
-            reject(err);
-          });
+          // try once more after a short delay
+          console.warn(`First attempt to download ${this.url} failed, trying again`);
+          setTimeout(function() {
+            attempt((err) => {
+              reject(err);
+            });
+          }, 250);
         });
       });
     }
@@ -69,7 +72,11 @@ namespace P.IO {
       return new Promise((resolve, reject) => {
         const xhr = this.xhr;
         xhr.addEventListener('load', () => {
-          resolve(xhr.response);
+          if (xhr.status === 200) {
+            resolve(xhr.response);
+          } else {
+            reject(new Error(`HTTP Error ${xhr.status} while downloading ${this.url}`));
+          }
         });
         xhr.addEventListener('error', () => {
           reject(`Error while downloading ${this.url} (onerror) (${xhr.status} ${xhr.statusText})`);
@@ -79,7 +86,7 @@ namespace P.IO {
         });
         xhr.open('GET', this.url);
         xhr.responseType = this.type as XMLHttpRequestResponseType;
-        xhr.send();
+        setTimeout(xhr.send.bind(xhr));
       });
     }
 
