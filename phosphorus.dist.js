@@ -62,7 +62,7 @@ var P;
             }
         })();
         if (audio.context) {
-            var volume = 0.3;
+            var volume = 0.5;
             var globalNode = audio.context.createGain();
             globalNode.gain.value = volume;
             globalNode.connect(audio.context.destination);

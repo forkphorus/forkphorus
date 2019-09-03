@@ -14,7 +14,7 @@ namespace P.audio {
 
   if (context) {
     // TODO: customizable volume
-    var volume = 0.3;
+    var volume = 0.5;
     var globalNode = context.createGain();
     globalNode.gain.value = volume;
     globalNode.connect(context.destination);
