@@ -950,6 +950,14 @@ namespace P.core {
       return P.microphone.getLoudness();
     }
 
+    listenAndWait() {
+      return P.speech2text.listen();
+    }
+
+    getSpeechMessage() {
+      return P.speech2text.lastMessage;
+    }
+
     // Implement rotatedBounds() to return something.
     rotatedBounds() {
       return {

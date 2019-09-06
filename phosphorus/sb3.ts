@@ -2496,6 +2496,17 @@ namespace P.sb3.compiler {
       util.writeLn('S.isDraggable = false;');
     }
   };
+  statementLibrary['speech2text_listenAndWait'] = function(util) {
+    util.writeLn('var r = self.listenAndWait();');
+    util.writeLn('if (r) {');
+    util.writeLn('  R.recognition = r;');
+    const label = util.addLabel();
+    util.writeLn('  if (!R.recognition.forkphorusDone) {')
+    util.forceQueue(label);
+    util.writeLn('  }');
+    util.writeLn('} else {');
+    util.writeLn('}');
+  };
   statementLibrary['videoSensing_videoToggle'] = function(util) {
     const VIDEO_STATE = util.getInput('VIDEO_STATE', 'string');
     util.writeLn(`switch (${VIDEO_STATE}) {`);
@@ -2831,6 +2842,9 @@ namespace P.sb3.compiler {
   inputLibrary['sound_volume'] = function(util) {
     return util.numberInput('(S.volume * 100)');
   };
+  inputLibrary['speech2text_getSpeech'] = function(util) {
+    return util.stringInput('self.getSpeechMessage()');
+  };
   inputLibrary['videoSensing_menu_VIDEO_STATE'] = function(util) {
     return util.fieldInput('VIDEO_STATE');
   };
@@ -3088,5 +3102,9 @@ namespace P.sb3.compiler {
   watcherLibrary['sound_volume'] = {
     evaluate(watcher) { return watcher.target.volume * 100; },
     getLabel() { return 'volume'; },
+  };
+  watcherLibrary['speech2text_getSpeech'] = {
+    evaluate(watcher) { return watcher.target.stage.getSpeechMessage(); },
+    getLabel(watcher) { return 'Speech to text: speech'; },
   };
 }());

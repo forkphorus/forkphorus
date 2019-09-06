@@ -2070,6 +2070,12 @@ var P;
             getLoudness() {
                 return P.microphone.getLoudness();
             }
+            listenAndWait() {
+                return P.speech2text.listen();
+            }
+            getSpeechMessage() {
+                return P.speech2text.lastMessage;
+            }
             rotatedBounds() {
                 return {
                     top: 0,
@@ -2782,18 +2788,18 @@ var P;
     var microphone;
     (function (microphone_1) {
         let microphone = null;
-        let state = 0;
+        microphone_1.state = 0;
         const CACHE_TIME = 1000 / 30;
         function connect() {
-            if (state !== 0) {
+            if (microphone_1.state !== 0) {
                 return;
             }
             if (!P.audio.context) {
                 console.warn('Cannot connect to microphone without audio context.');
-                state = 3;
+                microphone_1.state = 3;
                 return;
             }
-            state = 2;
+            microphone_1.state = 2;
             navigator.mediaDevices.getUserMedia({ audio: true })
                 .then((mediaStream) => {
                 const source = P.audio.context.createMediaStreamSource(mediaStream);
@@ -2801,16 +2807,16 @@ var P;
                 source.connect(analyzer);
                 microphone = {
                     stream: mediaStream,
-                    source,
                     analyzer,
                     dataArray: new Float32Array(analyzer.fftSize),
                     lastValue: -1,
                     lastCheck: 0,
                 };
-                state = 1;
+                microphone_1.state = 1;
             })
                 .catch((err) => {
                 console.warn('Cannot connect to microphone: ' + err);
+                microphone_1.state = 3;
             });
         }
         function getLoudness() {
@@ -7114,6 +7120,17 @@ var P;
             util.writeLn('S.isDraggable = false;');
         }
     };
+    statementLibrary['speech2text_listenAndWait'] = function (util) {
+        util.writeLn('var r = self.listenAndWait();');
+        util.writeLn('if (r) {');
+        util.writeLn('  R.recognition = r;');
+        const label = util.addLabel();
+        util.writeLn('  if (!R.recognition.forkphorusDone) {');
+        util.forceQueue(label);
+        util.writeLn('  }');
+        util.writeLn('} else {');
+        util.writeLn('}');
+    };
     statementLibrary['videoSensing_videoToggle'] = function (util) {
         const VIDEO_STATE = util.getInput('VIDEO_STATE', 'string');
         util.writeLn(`switch (${VIDEO_STATE}) {`);
@@ -7434,6 +7451,9 @@ var P;
     inputLibrary['sound_volume'] = function (util) {
         return util.numberInput('(S.volume * 100)');
     };
+    inputLibrary['speech2text_getSpeech'] = function (util) {
+        return util.stringInput('self.getSpeechMessage()');
+    };
     inputLibrary['videoSensing_menu_VIDEO_STATE'] = function (util) {
         return util.fieldInput('VIDEO_STATE');
     };
@@ -7685,5 +7705,34 @@ var P;
         evaluate(watcher) { return watcher.target.volume * 100; },
         getLabel() { return 'volume'; },
     };
+    watcherLibrary['speech2text_getSpeech'] = {
+        evaluate(watcher) { return watcher.target.stage.getSpeechMessage(); },
+        getLabel(watcher) { return 'Speech to text: speech'; },
+    };
 }());
+var P;
+(function (P) {
+    var speech2text;
+    (function (speech2text) {
+        var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        speech2text.lastMessage = '';
+        function listen() {
+            if (!SpeechRecognition) {
+                return null;
+            }
+            const recognition = new SpeechRecognition();
+            recognition.forkphorusDone = false;
+            recognition.lang = 'en-US';
+            recognition.start();
+            recognition.onresult = function (event) {
+                const message = event.results[0][0].transcript;
+                debugger;
+                speech2text.lastMessage = message;
+                recognition.forkphorusDone = true;
+            };
+            return recognition;
+        }
+        speech2text.listen = listen;
+    })(speech2text = P.speech2text || (P.speech2text = {}));
+})(P || (P = {}));
 //# sourceMappingURL=phosphorus.dist.js.map
