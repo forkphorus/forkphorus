@@ -1,15 +1,15 @@
 /// <reference path="phosphorus.ts" />
+/// <reference path="audio.ts" />
 
 namespace P.microphone {
   const enum MicrophoneState {
-    Disconnected,
-    Connected,
-    Connecting,
-    Error,
+    Disconnected = 0,
+    Connected = 1,
+    Connecting = 2,
+    Error = 3,
   }
 
   interface MicrophoneData {
-    source: MediaStreamAudioSourceNode;
     stream: MediaStream;
     analyzer: AnalyserNode;
     dataArray: Float32Array;
@@ -18,7 +18,7 @@ namespace P.microphone {
   }
 
   let microphone: MicrophoneData | null = null;
-  let state: MicrophoneState = MicrophoneState.Disconnected;
+  export let state: MicrophoneState = MicrophoneState.Disconnected;
   // The loudness will be cached for this long, in milliseconds.
   const CACHE_TIME = 1000 / 30;
 
@@ -40,7 +40,6 @@ namespace P.microphone {
         source.connect(analyzer);
         microphone = {
           stream: mediaStream,
-          source,
           analyzer,
           dataArray: new Float32Array(analyzer.fftSize),
           lastValue: -1,
@@ -50,7 +49,8 @@ namespace P.microphone {
       })
     .catch((err) => {
       console.warn('Cannot connect to microphone: ' + err);
-    })
+      state = MicrophoneState.Error;
+    });
   }
 
   /**
