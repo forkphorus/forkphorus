@@ -776,6 +776,9 @@ namespace P.core {
       this.runtime.stopAll();
       this.runtime.pause();
       this.stopAllSounds();
+      if (this.speech2text) {
+        this.speech2text.destroy();
+      }
     }
 
     /**

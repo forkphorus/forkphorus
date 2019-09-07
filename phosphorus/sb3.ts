@@ -789,7 +789,7 @@ namespace P.sb3 {
         compiler.usedExtensions = usedExtensions;
         compiler.compile();
       }
-      if (usedExtensions.has('speech2text')) {
+      if (P.speech2text.supported && usedExtensions.has('speech2text')) {
         stage.initSpeech2Text();
       }
       if (P.config.debug) {
@@ -2502,17 +2502,15 @@ namespace P.sb3.compiler {
     }
   };
   statementLibrary['speech2text_listenAndWait'] = function(util) {
-    util.writeLn('save();');
-    util.writeLn('var r = self.speech2text.listen();');
-    util.writeLn('if (r) {');
-    util.writeLn('  R.recognition = r;');
+    util.writeLn('if (self.speech2text) {');
+    util.writeLn('  save();');
+    util.writeLn('  R.id = self.speech2text.id();');
     const label = util.addLabel();
-    util.writeLn('  if (!R.recognition.forkphorusDone) {')
+    util.writeLn('  if (self.speech2text.id() === R.id) {')
     util.forceQueue(label);
     util.writeLn('  }');
-    util.writeLn('} else {');
+    util.writeLn('  restore();');
     util.writeLn('}');
-    util.writeLn('restore();');
   };
   statementLibrary['videoSensing_videoToggle'] = function(util) {
     const VIDEO_STATE = util.getInput('VIDEO_STATE', 'string');
@@ -2850,7 +2848,7 @@ namespace P.sb3.compiler {
     return util.numberInput('(S.volume * 100)');
   };
   inputLibrary['speech2text_getSpeech'] = function(util) {
-    return util.stringInput('self.speech2text.speech');
+    return util.stringInput('(self.speech2text ? self.speech2text.speech : "")');
   };
   inputLibrary['videoSensing_menu_VIDEO_STATE'] = function(util) {
     return util.fieldInput('VIDEO_STATE');
@@ -3115,7 +3113,7 @@ namespace P.sb3.compiler {
       if (watcher.stage.speech2text) {
         return watcher.stage.speech2text.speech;
       }
-      return '???';
+      return '';
     },
     getLabel(watcher) { return 'Speech to text: speech'; },
   };

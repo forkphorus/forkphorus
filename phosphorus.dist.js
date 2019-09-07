@@ -1434,6 +1434,7 @@ var P;
                     whenKeyPressed: [],
                     whenBackdropChanges: {},
                     whenSceneStarts: {},
+                    whenSpoke: [],
                 };
                 this.fns = [];
                 this.filters = {
@@ -1924,6 +1925,9 @@ var P;
                 this.runtime.stopAll();
                 this.runtime.pause();
                 this.stopAllSounds();
+                if (this.speech2text) {
+                    this.speech2text.destroy();
+                }
             }
             focus() {
                 if (this.promptId < this.nextPromptId) {
@@ -5828,7 +5832,7 @@ var P;
                     compiler.usedExtensions = usedExtensions;
                     compiler.compile();
                 }
-                if (usedExtensions.has('speech2text')) {
+                if (P.speech2text.supported && usedExtensions.has('speech2text')) {
                     stage.initSpeech2Text();
                 }
                 if (P.config.debug) {
@@ -7123,17 +7127,15 @@ var P;
         }
     };
     statementLibrary['speech2text_listenAndWait'] = function (util) {
-        util.writeLn('save();');
-        util.writeLn('var r = self.speech2text.listen();');
-        util.writeLn('if (r) {');
-        util.writeLn('  R.recognition = r;');
+        util.writeLn('if (self.speech2text) {');
+        util.writeLn('  save();');
+        util.writeLn('  R.id = self.speech2text.id();');
         const label = util.addLabel();
-        util.writeLn('  if (!R.recognition.forkphorusDone) {');
+        util.writeLn('  if (self.speech2text.id() === R.id) {');
         util.forceQueue(label);
         util.writeLn('  }');
-        util.writeLn('} else {');
+        util.writeLn('  restore();');
         util.writeLn('}');
-        util.writeLn('restore();');
     };
     statementLibrary['videoSensing_videoToggle'] = function (util) {
         const VIDEO_STATE = util.getInput('VIDEO_STATE', 'string');
@@ -7456,7 +7458,7 @@ var P;
         return util.numberInput('(S.volume * 100)');
     };
     inputLibrary['speech2text_getSpeech'] = function (util) {
-        return util.stringInput('self.speech2text.speech');
+        return util.stringInput('(self.speech2text ? self.speech2text.speech : "")');
     };
     inputLibrary['videoSensing_menu_VIDEO_STATE'] = function (util) {
         return util.fieldInput('VIDEO_STATE');
@@ -7714,7 +7716,7 @@ var P;
             if (watcher.stage.speech2text) {
                 return watcher.stage.speech2text.speech;
             }
-            return '???';
+            return '';
         },
         getLabel(watcher) { return 'Speech to text: speech'; },
     };
@@ -7724,29 +7726,34 @@ var P;
     var speech2text;
     (function (speech2text) {
         var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || window.mozSpeechRecognition || window.msSpeechRecognition;
-        if (!SpeechRecognition) {
-            console.warn('Speech to text is not supported in this browser.');
+        speech2text.supported = typeof SpeechRecognition !== 'undefined';
+        if (!speech2text.supported) {
+            console.warn('Speech to text is not supported in this browser. (https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition)');
         }
         class SpeechToTextExtension {
             constructor() {
                 this.speech = '';
+                this.recognition = new SpeechRecognition();
+                this.recognition.lang = 'en-US';
+                this.recognition.continuous = true;
+                this.recognition.onresult = (event) => this.onresult(event);
+                this.recognition.start();
             }
-            listen() {
-                if (!SpeechRecognition) {
-                    return null;
-                }
-                const recognition = new SpeechRecognition();
-                recognition.forkphorusDone = false;
-                recognition.lang = 'en-US';
-                recognition.start();
-                recognition.onresult = (event) => {
-                    const message = event.results[0][0].transcript;
-                    this.speech = message;
-                    recognition.forkphorusDone = true;
-                };
-                return recognition;
+            onresult(event) {
+                this.lastResultIndex = event.resultIndex;
+                const lastResult = event.results[event.resultIndex];
+                const message = lastResult[0];
+                const transcript = message.transcript.trim();
+                this.speech = transcript;
+                this.triggerListeners(transcript);
             }
-            when(message, callback) {
+            triggerListeners(message) {
+            }
+            destroy() {
+                this.recognition.abort();
+            }
+            id() {
+                return this.lastResultIndex;
             }
         }
         speech2text.SpeechToTextExtension = SpeechToTextExtension;

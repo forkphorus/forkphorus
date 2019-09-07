@@ -3,36 +3,45 @@
 namespace P.speech2text {
   // Currently only Chrome supports SpeechRecognition with the webkit prefix.
   var SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition || (window as any).mozSpeechRecognition || (window as any).msSpeechRecognition;
-  if (!SpeechRecognition) {
-    console.warn('Speech to text is not supported in this browser.');
-  }
+  export const supported = typeof SpeechRecognition !== 'undefined';
 
-  interface ForkphorusSpeechRecognition extends SpeechRecognition {
-    forkphorusDone: boolean;
+  if (!supported) {
+    console.warn('Speech to text is not supported in this browser. (https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition)');
   }
 
   export class SpeechToTextExtension {
     public speech: string = '';
+    private recognition: SpeechRecognition;
+    private lastResultIndex: number;
 
-    listen(): ForkphorusSpeechRecognition | null {
-      if (!SpeechRecognition) {
-        return null;
-      }
-      const recognition = new SpeechRecognition() as ForkphorusSpeechRecognition;
-      recognition.forkphorusDone = false;
-      // TODO: language settings?
-      recognition.lang = 'en-US';
-      recognition.start();
-      recognition.onresult = (event) => {
-        const message = event.results[0][0].transcript;
-        this.speech = message;
-        recognition.forkphorusDone = true;
-      };
-      return recognition;
+    constructor() {
+      this.recognition = new SpeechRecognition();
+      this.recognition.lang = 'en-US';
+      this.recognition.continuous = true;
+      this.recognition.onresult = (event) => this.onresult(event);
+      this.recognition.start();
     }
 
-    when(message: string, callback: P.runtime.Fn) {
-      // TODO
+    private onresult(event: SpeechRecognitionEvent) {
+      this.lastResultIndex = event.resultIndex;
+      const lastResult = event.results[event.resultIndex];
+      const message = lastResult[0];
+      const transcript = message.transcript.trim();
+      this.speech = transcript;
+    }
+
+    /**
+     * Delete this extension.
+     */
+    destroy() {
+      this.recognition.abort();
+    }
+
+    /**
+     * Get the ID of the current message.
+     */
+    id() {
+      return this.lastResultIndex;
     }
   }
 }
