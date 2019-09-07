@@ -580,7 +580,7 @@ namespace P.renderer {
       // We'll create a texture only once for performance.
       const costume = child.costumes[child.currentCostumeIndex] as WebGLCostume;
       if (!costume._glTexture) {
-        const texture = this.convertToTexture(costume.get(1));
+        const texture = this.convertToTexture(costume.get(1).image);
         costume._glTexture = texture;
       }
       this.gl.bindTexture(this.gl.TEXTURE_2D, costume._glTexture);
@@ -964,7 +964,8 @@ namespace P.renderer {
       }
 
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(costume.get(objectScale * c.stage.zoom), -costume.rotationCenterX * objectScale, -costume.rotationCenterY * objectScale, costume.width * objectScale, costume.height * objectScale);
+      const lod = costume.get(objectScale * c.stage.zoom);
+      ctx.drawImage(lod.image, -costume.rotationCenterX * objectScale, -costume.rotationCenterY * objectScale, costume.width * objectScale, costume.height * objectScale);
       ctx.restore();
     }
   }

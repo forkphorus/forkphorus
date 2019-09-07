@@ -736,7 +736,7 @@ var P;
                 this.gl.useProgram(shader.program);
                 const costume = child.costumes[child.currentCostumeIndex];
                 if (!costume._glTexture) {
-                    const texture = this.convertToTexture(costume.get(1));
+                    const texture = this.convertToTexture(costume.get(1).image);
                     costume._glTexture = texture;
                 }
                 this.gl.bindTexture(this.gl.TEXTURE_2D, costume._glTexture);
@@ -1153,7 +1153,8 @@ var P;
                     }
                 }
                 ctx.imageSmoothingEnabled = false;
-                ctx.drawImage(costume.get(objectScale * c.stage.zoom), -costume.rotationCenterX * objectScale, -costume.rotationCenterY * objectScale, costume.width * objectScale, costume.height * objectScale);
+                const lod = costume.get(objectScale * c.stage.zoom);
+                ctx.drawImage(lod.image, -costume.rotationCenterX * objectScale, -costume.rotationCenterY * objectScale, costume.width * objectScale, costume.height * objectScale);
                 ctx.restore();
             }
         }
@@ -2443,6 +2444,46 @@ var P;
             }
         }
         core.Sprite = Sprite;
+        class ImageLOD {
+            constructor(image) {
+                this.imageData = null;
+                this.image = image;
+                if (image.tagName === 'CANVAS') {
+                    const ctx = image.getContext('2d');
+                    if (!ctx) {
+                        throw new Error('Cannot get 2d rendering context of costume image');
+                    }
+                    this.context = ctx;
+                }
+                else {
+                    this.context = null;
+                }
+                this.width = image.width;
+                this.height = image.height;
+            }
+            getContext() {
+                if (this.context)
+                    return this.context;
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    throw new Error('cannot get 2d rendering context');
+                }
+                canvas.width = this.width;
+                canvas.height = this.height;
+                ctx.drawImage(this.image, 0, 0);
+                this.context = ctx;
+                return ctx;
+            }
+            getImageData() {
+                if (this.imageData)
+                    return this.imageData;
+                const context = this.getContext();
+                this.imageData = context.getImageData(0, 0, context.canvas.width, context.canvas.height);
+                return this.imageData;
+            }
+        }
+        core.ImageLOD = ImageLOD;
         class Costume {
             constructor(costumeData) {
                 this.bitmapResolution = costumeData.bitmapResolution;
@@ -2451,41 +2492,20 @@ var P;
                 this.rotationCenterX = costumeData.rotationCenterX;
                 this.rotationCenterY = costumeData.rotationCenterY;
             }
+            getContext() {
+                return this.get(1).getContext();
+            }
         }
         core.Costume = Costume;
         class BitmapCostume extends Costume {
             constructor(source, options) {
                 super(options);
-                this.source = source;
-                if (source.tagName === 'CANVAS') {
-                    const ctx = source.getContext('2d');
-                    if (!ctx) {
-                        throw new Error('Cannot get 2d rendering context of costume source');
-                    }
-                    this._context = ctx;
-                }
-                else {
-                    this._context = null;
-                }
+                this.source = new ImageLOD(source);
                 this.width = source.width;
                 this.height = source.height;
             }
             get(scale) {
                 return this.source;
-            }
-            getContext() {
-                if (this._context)
-                    return this._context;
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                    throw new Error('cannot get 2d rendering context');
-                }
-                canvas.width = this.width;
-                canvas.height = this.height;
-                ctx.drawImage(this.source, 0, 0);
-                this._context = ctx;
-                return ctx;
             }
         }
         core.BitmapCostume = BitmapCostume;
@@ -2510,7 +2530,7 @@ var P;
                     throw new Error('cannot get 2d rendering context');
                 }
                 ctx.drawImage(this.source, 0, 0, canvas.width, canvas.height);
-                return canvas;
+                return new ImageLOD(canvas);
             }
             get(scale) {
                 scale = Math.min(8, Math.ceil(scale));
@@ -2519,20 +2539,6 @@ var P;
                     this.scales[index] = this.getScale(scale);
                 }
                 return this.scales[index];
-            }
-            getContext() {
-                if (this._context)
-                    return this._context;
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                    throw new Error('cannot get 2d rendering context');
-                }
-                canvas.width = this.width;
-                canvas.height = this.height;
-                ctx.drawImage(this.source, 0, 0);
-                this._context = ctx;
-                return ctx;
             }
         }
         core.VectorCostume = VectorCostume;

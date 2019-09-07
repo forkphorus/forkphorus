@@ -1446,6 +1446,51 @@ namespace P.core {
     rotationCenterY: number;
   }
 
+  export class ImageLOD {
+    public image: HTMLImageElement | HTMLCanvasElement;
+    private width: number;
+    private height: number;
+    private context: CanvasRenderingContext2D | null;
+    private imageData: ImageData | null = null;
+
+    constructor(image: HTMLCanvasElement | HTMLImageElement) {
+      this.image = image;
+      if (image.tagName === 'CANVAS') {
+        const ctx = (image as HTMLCanvasElement).getContext('2d');
+        if (!ctx) {
+          throw new Error('Cannot get 2d rendering context of costume image');
+        }
+        this.context = ctx;
+      } else {
+        this.context = null;
+      }
+      this.width = image.width;
+      this.height = image.height;
+    }
+
+    getContext() {
+      if (this.context) return this.context;
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('cannot get 2d rendering context');
+      }
+      canvas.width = this.width;
+      canvas.height = this.height;
+      ctx.drawImage(this.image, 0, 0);
+      this.context = ctx;
+      return ctx;
+    }
+
+    getImageData() {
+      if (this.imageData) return this.imageData;
+      const context = this.getContext();
+      this.imageData = context.getImageData(0, 0, context.canvas.width, context.canvas.height);
+      return this.imageData;
+    }
+  }
+
   // A costume
   export abstract class Costume {
     public name: string;
@@ -1453,7 +1498,6 @@ namespace P.core {
     public rotationCenterY: number;
     public bitmapResolution: number;
     public scale: number;
-
     public width: number;
     public height: number;
 
@@ -1464,63 +1508,35 @@ namespace P.core {
       this.rotationCenterX = costumeData.rotationCenterX;
       this.rotationCenterY = costumeData.rotationCenterY;
     }
-
-    /**
-     * Gets a 2D context representation of the costume's source (1x zoom)
-     */
-    abstract getContext(): CanvasRenderingContext2D;
+    
+    getContext() {
+      return this.get(1).getContext();
+    }
 
     /**
      * Gets a zoom level of the costume. The costume may provide a different zoom level than requested.
      */
-    abstract get(scale: number): HTMLImageElement | HTMLCanvasElement;
+    abstract get(scale: number): ImageLOD;
   }
 
   export class BitmapCostume extends Costume {
-    private _context: CanvasRenderingContext2D | null;
-    private source: HTMLCanvasElement | HTMLImageElement;
+    private source: ImageLOD;
 
     constructor(source: HTMLCanvasElement | HTMLImageElement, options: CostumeOptions) {
       super(options);
-      this.source = source;
-      if (source.tagName === 'CANVAS') {
-        const ctx = (source as HTMLCanvasElement).getContext('2d');
-        if (!ctx) {
-          throw new Error('Cannot get 2d rendering context of costume source');
-        }
-        this._context = ctx;
-      } else {
-        this._context = null;
-      }
+      this.source = new ImageLOD(source);
       this.width = source.width;
       this.height = source.height;
     }
 
     get(scale: number) {
-      // Bitmap costumes do not have different resolutions
       return this.source;
-    }
-
-    getContext() {
-      if (this._context) return this._context;
-
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        throw new Error('cannot get 2d rendering context');
-      }
-      canvas.width = this.width;
-      canvas.height = this.height;
-      ctx.drawImage(this.source, 0, 0);
-      this._context = ctx;
-      return ctx;
     }
   }
 
   export class VectorCostume extends Costume {
     private source: HTMLImageElement;
-    private _context: CanvasRenderingContext2D;
-    private scales: Array<HTMLCanvasElement> = [];
+    private scales: Array<ImageLOD> = [];
 
     constructor(svg: HTMLImageElement, options: CostumeOptions) {
       super(options);
@@ -1544,7 +1560,7 @@ namespace P.core {
         throw new Error('cannot get 2d rendering context');
       }
       ctx.drawImage(this.source, 0, 0, canvas.width, canvas.height);
-      return canvas;
+      return new ImageLOD(canvas);
     }
 
     get(scale: number) {
@@ -1554,21 +1570,6 @@ namespace P.core {
         this.scales[index] = this.getScale(scale);
       }
       return this.scales[index];
-    }
-
-    getContext() {
-      if (this._context) return this._context;
-
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        throw new Error('cannot get 2d rendering context');
-      }
-      canvas.width = this.width;
-      canvas.height = this.height;
-      ctx.drawImage(this.source, 0, 0);
-      this._context = ctx;
-      return ctx;
     }
   }
 
