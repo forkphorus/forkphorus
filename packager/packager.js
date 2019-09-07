@@ -501,14 +501,6 @@
       });
     }
 
-    document.querySelector('.player').appendChild(player.root);
-
-    if (P.config.hasTouchEvents) {
-      document.addEventListener('touchmove', function(e) {
-        e.preventDefault();
-      });
-    }
-
     // ---
     var turbo = ${options.turbo};
     var type = '${result.type}';
