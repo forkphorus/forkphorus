@@ -3,10 +3,16 @@
 namespace P.speech2text {
   // Currently only Chrome supports SpeechRecognition with the webkit prefix.
   var SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition || (window as any).mozSpeechRecognition || (window as any).msSpeechRecognition;
-  export const supported = typeof SpeechRecognition !== 'undefined';
 
-  if (!supported) {
-    console.warn('Speech to text is not supported in this browser. (https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition)');
+  let supported: null | boolean = null;
+  export function isSupported(): boolean {
+    if (supported === null) {
+      supported = typeof SpeechRecognition !== 'undefined';
+      if (!supported) {
+        console.warn('Speech to text is not supported in this browser. (https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition)');
+      }
+    }
+    return supported;
   }
 
   interface SpeechToTextHat {

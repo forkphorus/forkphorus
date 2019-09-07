@@ -955,7 +955,7 @@ namespace P.core {
     }
 
     initSpeech2Text() {
-      if (!this.speech2text && P.speech2text.supported) {
+      if (!this.speech2text && P.speech2text.isSupported()) {
         this.speech2text = new P.speech2text.SpeechToTextExtension(this);
       }
     }
