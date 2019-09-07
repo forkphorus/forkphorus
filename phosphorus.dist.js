@@ -7754,25 +7754,33 @@ var P;
                 this.speech = '';
                 this.listeners = 0;
                 this.hats = [];
+                this.initRecognition();
+                this.initOverlay();
+            }
+            initRecognition() {
                 this.recognition = new SpeechRecognition();
                 this.recognition.lang = 'en-US';
                 this.recognition.continuous = true;
                 this.recognition.onresult = (event) => this.onresult(event);
+                this.recognition.onerror = (event) => {
+                    if (event.error !== 'aborted') {
+                        console.error('speech2text error', event);
+                    }
+                };
                 this.recognition.start();
-                this.initOverlay();
             }
             initOverlay() {
+                if (this.overlayElement) {
+                    throw new Error('initializing overlay twice');
+                }
                 const container = document.createElement('div');
                 container.className = 'speech2text-container';
                 const indicator = document.createElement('div');
                 indicator.className = 'speech2text-indicator';
                 const animation = document.createElement('div');
                 animation.className = 'speech2text-animation';
-                const image = document.createElement('div');
-                image.className = 'speech2text-image';
                 container.appendChild(animation);
                 container.appendChild(indicator);
-                container.appendChild(image);
                 this.stage.ui.appendChild(container);
                 this.overlayElement = container;
             }

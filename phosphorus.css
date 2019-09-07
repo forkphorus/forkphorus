@@ -190,13 +190,15 @@
 .speech2text-container[listening] {
   display: block;
 }
-.speech2text-animation, .speech2text-indicator, .speech2text-image {
+.speech2text-animation, .speech2text-indicator {
   position: absolute;
   top: 0;
   left: 0;
-  border-radius: 100%;
   width: 100%;
   height: 100%;
+}
+.speech2text-animation, .speech2text-indicator {
+  border-radius: 100%;
 }
 .speech2text-indicator {
   background: #ff5e5e;
@@ -217,14 +219,4 @@
   animation-iteration-count: infinite;
   animation-duration: 1.5s;
   animation-delay: 0.5s;
-}
-.speech2text-image {
-  font-size: 3em;
-  text-align: center;
-  top: 50%;
-  transform: translateY(-50%);
-  line-height: 1.7;
-}
-.speech2text-image::after {
-  content: "🎤";
 }

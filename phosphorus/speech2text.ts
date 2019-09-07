@@ -24,15 +24,30 @@ namespace P.speech2text {
     private hats: SpeechToTextHat[] = [];
 
     constructor(public stage: P.core.Stage) {
+      this.initRecognition();
+      this.initOverlay();
+    }
+
+    private initRecognition() {
       this.recognition = new SpeechRecognition();
       this.recognition.lang = 'en-US';
       this.recognition.continuous = true;
       this.recognition.onresult = (event) => this.onresult(event);
+      this.recognition.onerror = (event) => {
+        // Abort is expected when this extension is destroyed.
+        if (event.error !== 'aborted') {
+          console.error('speech2text error', event);
+          // TODO: attempt to reconnect?
+        }
+      };
       this.recognition.start();
-      this.initOverlay();
     }
 
     private initOverlay() {
+      if (this.overlayElement) {
+        throw new Error('initializing overlay twice');
+      }
+
       const container = document.createElement('div');
       container.className = 'speech2text-container';
 
@@ -42,12 +57,8 @@ namespace P.speech2text {
       const animation = document.createElement('div');
       animation.className = 'speech2text-animation';
 
-      const image = document.createElement('div');
-      image.className = 'speech2text-image';
-
       container.appendChild(animation);
       container.appendChild(indicator);
-      container.appendChild(image);
 
       this.stage.ui.appendChild(container);
       this.overlayElement = container;
