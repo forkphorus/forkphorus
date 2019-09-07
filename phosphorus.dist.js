@@ -1434,7 +1434,6 @@ var P;
                     whenKeyPressed: [],
                     whenBackdropChanges: {},
                     whenSceneStarts: {},
-                    whenSpoke: [],
                 };
                 this.fns = [];
                 this.filters = {
@@ -2075,7 +2074,7 @@ var P;
                 return P.microphone.getLoudness();
             }
             initSpeech2Text() {
-                this.speech2text = new P.speech2text.SpeechToTextExtension();
+                this.speech2text = new P.speech2text.SpeechToTextExtension(this);
             }
             rotatedBounds() {
                 return {
@@ -7129,11 +7128,13 @@ var P;
     statementLibrary['speech2text_listenAndWait'] = function (util) {
         util.writeLn('if (self.speech2text) {');
         util.writeLn('  save();');
+        util.writeLn('  self.speech2text.startListen();');
         util.writeLn('  R.id = self.speech2text.id();');
         const label = util.addLabel();
         util.writeLn('  if (self.speech2text.id() === R.id) {');
         util.forceQueue(label);
         util.writeLn('  }');
+        util.writeLn('  self.speech2text.endListen();');
         util.writeLn('  restore();');
         util.writeLn('}');
     };
@@ -7731,23 +7732,50 @@ var P;
             console.warn('Speech to text is not supported in this browser. (https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition)');
         }
         class SpeechToTextExtension {
-            constructor() {
+            constructor(stage) {
+                this.stage = stage;
                 this.speech = '';
+                this.listeners = 0;
                 this.recognition = new SpeechRecognition();
                 this.recognition.lang = 'en-US';
                 this.recognition.continuous = true;
                 this.recognition.onresult = (event) => this.onresult(event);
                 this.recognition.start();
+                this.initOverlay();
+            }
+            initOverlay() {
+                const container = document.createElement('div');
+                container.className = 'speech2text-container';
+                const indicator = document.createElement('div');
+                indicator.className = 'speech2text-indicator';
+                const animation = document.createElement('div');
+                animation.className = 'speech2text-animation';
+                const image = document.createElement('div');
+                image.className = 'speech2text-image';
+                container.appendChild(animation);
+                container.appendChild(indicator);
+                container.appendChild(image);
+                this.stage.ui.appendChild(container);
+                this.overlayElement = container;
             }
             onresult(event) {
                 this.lastResultIndex = event.resultIndex;
                 const lastResult = event.results[event.resultIndex];
                 const message = lastResult[0];
                 const transcript = message.transcript.trim();
-                this.speech = transcript;
-                this.triggerListeners(transcript);
+                if (this.listeners !== 0) {
+                    this.speech = transcript;
+                }
             }
-            triggerListeners(message) {
+            startListen() {
+                this.listeners++;
+                this.overlayElement.setAttribute('listening', '');
+            }
+            endListen() {
+                this.listeners--;
+                if (this.listeners === 0) {
+                    this.overlayElement.removeAttribute('listening');
+                }
             }
             destroy() {
                 this.recognition.abort();

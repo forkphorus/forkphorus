@@ -13,13 +13,37 @@ namespace P.speech2text {
     public speech: string = '';
     private recognition: SpeechRecognition;
     private lastResultIndex: number;
+    private listeners: number = 0;
+    private overlayElement: HTMLElement;
 
-    constructor() {
+    constructor(public stage: P.core.Stage) {
       this.recognition = new SpeechRecognition();
       this.recognition.lang = 'en-US';
       this.recognition.continuous = true;
       this.recognition.onresult = (event) => this.onresult(event);
       this.recognition.start();
+      this.initOverlay();
+    }
+
+    private initOverlay() {
+      const container = document.createElement('div');
+      container.className = 'speech2text-container';
+
+      const indicator = document.createElement('div');
+      indicator.className = 'speech2text-indicator';
+
+      const animation = document.createElement('div');
+      animation.className = 'speech2text-animation';
+
+      const image = document.createElement('div');
+      image.className = 'speech2text-image';
+
+      container.appendChild(animation);
+      container.appendChild(indicator);
+      container.appendChild(image);
+
+      this.stage.ui.appendChild(container);
+      this.overlayElement = container;
     }
 
     private onresult(event: SpeechRecognitionEvent) {
@@ -27,7 +51,20 @@ namespace P.speech2text {
       const lastResult = event.results[event.resultIndex];
       const message = lastResult[0];
       const transcript = message.transcript.trim();
-      this.speech = transcript;
+      if (this.listeners !== 0) {
+        this.speech = transcript;
+      }
+    }
+
+    startListen() {
+      this.listeners++;
+      this.overlayElement.setAttribute('listening', '');
+    }
+    endListen() {
+      this.listeners--;
+      if (this.listeners === 0) {
+        this.overlayElement.removeAttribute('listening');
+      }
     }
 
     /**

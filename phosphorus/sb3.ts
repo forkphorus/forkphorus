@@ -2504,11 +2504,13 @@ namespace P.sb3.compiler {
   statementLibrary['speech2text_listenAndWait'] = function(util) {
     util.writeLn('if (self.speech2text) {');
     util.writeLn('  save();');
+    util.writeLn('  self.speech2text.startListen();');
     util.writeLn('  R.id = self.speech2text.id();');
     const label = util.addLabel();
     util.writeLn('  if (self.speech2text.id() === R.id) {')
     util.forceQueue(label);
     util.writeLn('  }');
+    util.writeLn('  self.speech2text.endListen();');
     util.writeLn('  restore();');
     util.writeLn('}');
   };
