@@ -779,13 +779,18 @@ namespace P.sb3 {
       return Promise.all(promises);
     }
 
-    compileTargets(targets: Target[]): void {
+    compileTargets(targets: Target[], stage: P.core.Stage): void {
       if (P.config.debug) {
         console.time('Scratch 3 compile');
       }
+      const usedExtensions = new Set<string>();
       for (const target of targets) {
         const compiler = new P.sb3.compiler.Compiler(target);
+        compiler.usedExtensions = usedExtensions;
         compiler.compile();
+      }
+      if (usedExtensions.has('speech2text')) {
+        stage.initSpeech2Text();
       }
       if (P.config.debug) {
         console.timeEnd('Scratch 3 compile');
@@ -820,7 +825,7 @@ namespace P.sb3 {
             .filter((i) => i && i.valid);
 
           sprites.forEach((sprite) => sprite.stage = stage);
-          this.compileTargets(targets);
+          this.compileTargets(targets, stage);
           stage.children = sprites;
           stage.allWatchers = watchers;
           watchers.forEach((watcher) => watcher.init());
@@ -2497,7 +2502,8 @@ namespace P.sb3.compiler {
     }
   };
   statementLibrary['speech2text_listenAndWait'] = function(util) {
-    util.writeLn('var r = self.listenAndWait();');
+    util.writeLn('save();');
+    util.writeLn('var r = self.speech2text.listen();');
     util.writeLn('if (r) {');
     util.writeLn('  R.recognition = r;');
     const label = util.addLabel();
@@ -2506,6 +2512,7 @@ namespace P.sb3.compiler {
     util.writeLn('  }');
     util.writeLn('} else {');
     util.writeLn('}');
+    util.writeLn('restore();');
   };
   statementLibrary['videoSensing_videoToggle'] = function(util) {
     const VIDEO_STATE = util.getInput('VIDEO_STATE', 'string');
@@ -2843,7 +2850,7 @@ namespace P.sb3.compiler {
     return util.numberInput('(S.volume * 100)');
   };
   inputLibrary['speech2text_getSpeech'] = function(util) {
-    return util.stringInput('self.getSpeechMessage()');
+    return util.stringInput('self.speech2text.speech');
   };
   inputLibrary['videoSensing_menu_VIDEO_STATE'] = function(util) {
     return util.fieldInput('VIDEO_STATE');
@@ -3086,7 +3093,7 @@ namespace P.sb3.compiler {
     }
   };
   watcherLibrary['sensing_loudness'] = {
-    evaluate(watcher) { return watcher.target.stage.getLoudness(); },
+    evaluate(watcher) { return watcher.stage.getLoudness(); },
     getLabel() { return 'loudness'; },
   };
   watcherLibrary['sensing_timer'] = {
@@ -3104,7 +3111,12 @@ namespace P.sb3.compiler {
     getLabel() { return 'volume'; },
   };
   watcherLibrary['speech2text_getSpeech'] = {
-    evaluate(watcher) { return watcher.target.stage.getSpeechMessage(); },
+    evaluate(watcher) {
+      if (watcher.stage.speech2text) {
+        return watcher.stage.speech2text.speech;
+      }
+      return '???';
+    },
     getLabel(watcher) { return 'Speech to text: speech'; },
   };
 }());

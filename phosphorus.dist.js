@@ -2070,11 +2070,8 @@ var P;
             getLoudness() {
                 return P.microphone.getLoudness();
             }
-            listenAndWait() {
-                return P.speech2text.listen();
-            }
-            getSpeechMessage() {
-                return P.speech2text.lastMessage;
+            initSpeech2Text() {
+                this.speech2text = new P.speech2text.SpeechToTextExtension();
             }
             rotatedBounds() {
                 return {
@@ -5821,13 +5818,18 @@ var P;
                 }
                 return Promise.all(promises);
             }
-            compileTargets(targets) {
+            compileTargets(targets, stage) {
                 if (P.config.debug) {
                     console.time('Scratch 3 compile');
                 }
+                const usedExtensions = new Set();
                 for (const target of targets) {
                     const compiler = new P.sb3.compiler.Compiler(target);
+                    compiler.usedExtensions = usedExtensions;
                     compiler.compile();
+                }
+                if (usedExtensions.has('speech2text')) {
+                    stage.initSpeech2Text();
                 }
                 if (P.config.debug) {
                     console.timeEnd('Scratch 3 compile');
@@ -5857,7 +5859,7 @@ var P;
                         .map((data) => this.loadWatcher(data, stage))
                         .filter((i) => i && i.valid);
                     sprites.forEach((sprite) => sprite.stage = stage);
-                    this.compileTargets(targets);
+                    this.compileTargets(targets, stage);
                     stage.children = sprites;
                     stage.allWatchers = watchers;
                     watchers.forEach((watcher) => watcher.init());
@@ -7121,7 +7123,8 @@ var P;
         }
     };
     statementLibrary['speech2text_listenAndWait'] = function (util) {
-        util.writeLn('var r = self.listenAndWait();');
+        util.writeLn('save();');
+        util.writeLn('var r = self.speech2text.listen();');
         util.writeLn('if (r) {');
         util.writeLn('  R.recognition = r;');
         const label = util.addLabel();
@@ -7130,6 +7133,7 @@ var P;
         util.writeLn('  }');
         util.writeLn('} else {');
         util.writeLn('}');
+        util.writeLn('restore();');
     };
     statementLibrary['videoSensing_videoToggle'] = function (util) {
         const VIDEO_STATE = util.getInput('VIDEO_STATE', 'string');
@@ -7452,7 +7456,7 @@ var P;
         return util.numberInput('(S.volume * 100)');
     };
     inputLibrary['speech2text_getSpeech'] = function (util) {
-        return util.stringInput('self.getSpeechMessage()');
+        return util.stringInput('self.speech2text.speech');
     };
     inputLibrary['videoSensing_menu_VIDEO_STATE'] = function (util) {
         return util.fieldInput('VIDEO_STATE');
@@ -7688,7 +7692,7 @@ var P;
         }
     };
     watcherLibrary['sensing_loudness'] = {
-        evaluate(watcher) { return watcher.target.stage.getLoudness(); },
+        evaluate(watcher) { return watcher.stage.getLoudness(); },
         getLabel() { return 'loudness'; },
     };
     watcherLibrary['sensing_timer'] = {
@@ -7706,7 +7710,12 @@ var P;
         getLabel() { return 'volume'; },
     };
     watcherLibrary['speech2text_getSpeech'] = {
-        evaluate(watcher) { return watcher.target.stage.getSpeechMessage(); },
+        evaluate(watcher) {
+            if (watcher.stage.speech2text) {
+                return watcher.stage.speech2text.speech;
+            }
+            return '???';
+        },
         getLabel(watcher) { return 'Speech to text: speech'; },
     };
 }());
@@ -7714,25 +7723,33 @@ var P;
 (function (P) {
     var speech2text;
     (function (speech2text) {
-        var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        speech2text.lastMessage = '';
-        function listen() {
-            if (!SpeechRecognition) {
-                return null;
-            }
-            const recognition = new SpeechRecognition();
-            recognition.forkphorusDone = false;
-            recognition.lang = 'en-US';
-            recognition.start();
-            recognition.onresult = function (event) {
-                const message = event.results[0][0].transcript;
-                debugger;
-                speech2text.lastMessage = message;
-                recognition.forkphorusDone = true;
-            };
-            return recognition;
+        var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || window.mozSpeechRecognition || window.msSpeechRecognition;
+        if (!SpeechRecognition) {
+            console.warn('Speech to text is not supported in this browser.');
         }
-        speech2text.listen = listen;
+        class SpeechToTextExtension {
+            constructor() {
+                this.speech = '';
+            }
+            listen() {
+                if (!SpeechRecognition) {
+                    return null;
+                }
+                const recognition = new SpeechRecognition();
+                recognition.forkphorusDone = false;
+                recognition.lang = 'en-US';
+                recognition.start();
+                recognition.onresult = (event) => {
+                    const message = event.results[0][0].transcript;
+                    this.speech = message;
+                    recognition.forkphorusDone = true;
+                };
+                return recognition;
+            }
+            when(message, callback) {
+            }
+        }
+        speech2text.SpeechToTextExtension = SpeechToTextExtension;
     })(speech2text = P.speech2text || (P.speech2text = {}));
 })(P || (P = {}));
 //# sourceMappingURL=phosphorus.dist.js.map

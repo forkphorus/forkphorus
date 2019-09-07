@@ -572,6 +572,7 @@ namespace P.core {
     public mouseSprite: Sprite | undefined;
 
     private videoElement: HTMLVideoElement;
+    public speech2text: P.speech2text.SpeechToTextExtension | null;
 
     constructor() {
       super();
@@ -950,12 +951,8 @@ namespace P.core {
       return P.microphone.getLoudness();
     }
 
-    listenAndWait() {
-      return P.speech2text.listen();
-    }
-
-    getSpeechMessage() {
-      return P.speech2text.lastMessage;
+    initSpeech2Text() {
+      this.speech2text = new P.speech2text.SpeechToTextExtension();
     }
 
     // Implement rotatedBounds() to return something.
