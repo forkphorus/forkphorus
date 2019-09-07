@@ -9,12 +9,19 @@ namespace P.speech2text {
     console.warn('Speech to text is not supported in this browser. (https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition)');
   }
 
+  interface SpeechToTextHat {
+    target: P.core.Base;
+    startingFunction: P.runtime.Fn;
+    phraseFunction: () => any;
+  }
+
   export class SpeechToTextExtension {
     public speech: string = '';
     private recognition: SpeechRecognition;
     private lastResultIndex: number;
     private listeners: number = 0;
     private overlayElement: HTMLElement;
+    private hats: SpeechToTextHat[] = [];
 
     constructor(public stage: P.core.Stage) {
       this.recognition = new SpeechRecognition();
@@ -51,15 +58,40 @@ namespace P.speech2text {
       const lastResult = event.results[event.resultIndex];
       const message = lastResult[0];
       const transcript = message.transcript.trim();
+      // Only update the speech value when someone is actually listening
       if (this.listeners !== 0) {
         this.speech = transcript;
       }
+      // Trigger our hat blocks, if any.
+      for (const hat of this.hats) {
+        const target = hat.target;
+        const phraseFunction = hat.phraseFunction;
+        const startingFunction = hat.startingFunction;
+        const value = this.stage.runtime.evaluateExpression(target, phraseFunction);
+        if (value === transcript) {
+          this.stage.runtime.startThread(target, startingFunction);
+        }
+      }
     }
 
+    /**
+     * Add a new hat block listener
+     */
+    addHat(hat: SpeechToTextHat) {
+      this.hats.push(hat);
+    }
+
+    /**
+     * Should be called at the start of "listen and wait"
+     */
     startListen() {
       this.listeners++;
       this.overlayElement.setAttribute('listening', '');
     }
+
+    /**
+     * Should be called at the end of "listen and wait"
+     */
     endListen() {
       this.listeners--;
       if (this.listeners === 0) {

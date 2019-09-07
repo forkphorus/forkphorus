@@ -2074,7 +2074,9 @@ var P;
                 return P.microphone.getLoudness();
             }
             initSpeech2Text() {
-                this.speech2text = new P.speech2text.SpeechToTextExtension(this);
+                if (!this.speech2text && P.speech2text.supported) {
+                    this.speech2text = new P.speech2text.SpeechToTextExtension(this);
+                }
             }
             rotatedBounds() {
                 return {
@@ -3412,6 +3414,17 @@ var P;
             }
             now() {
                 return this.baseNow + Date.now() - this.baseTime;
+            }
+            evaluateExpression(sprite, fn) {
+                self = this.stage;
+                runtime = this;
+                S = sprite;
+                try {
+                    return fn();
+                }
+                catch (e) {
+                    return undefined;
+                }
             }
             step() {
                 self = this.stage;
@@ -5831,9 +5844,6 @@ var P;
                     compiler.usedExtensions = usedExtensions;
                     compiler.compile();
                 }
-                if (P.speech2text.supported && usedExtensions.has('speech2text')) {
-                    stage.initSpeech2Text();
-                }
                 if (P.config.debug) {
                     console.timeEnd('Scratch 3 compile');
                 }
@@ -6042,6 +6052,12 @@ var P;
                     this.compiler = compiler;
                     this.block = block;
                 }
+                get target() {
+                    return this.compiler.target;
+                }
+                get stage() {
+                    return this.compiler.target.stage;
+                }
                 getInput(name, type) {
                     return this.compiler.compileInput(this.block, name, type);
                 }
@@ -6152,7 +6168,6 @@ var P;
                 constructor(compiler, block, startingFunction) {
                     super(compiler, block);
                     this.startingFunction = startingFunction;
-                    this.target = compiler.target;
                 }
             }
             compiler_1.HatUtil = HatUtil;
@@ -7126,6 +7141,7 @@ var P;
         }
     };
     statementLibrary['speech2text_listenAndWait'] = function (util) {
+        util.stage.initSpeech2Text();
         util.writeLn('if (self.speech2text) {');
         util.writeLn('  save();');
         util.writeLn('  self.speech2text.startListen();');
@@ -7459,6 +7475,7 @@ var P;
         return util.numberInput('(S.volume * 100)');
     };
     inputLibrary['speech2text_getSpeech'] = function (util) {
+        util.stage.initSpeech2Text();
         return util.stringInput('(self.speech2text ? self.speech2text.speech : "")');
     };
     inputLibrary['videoSensing_menu_VIDEO_STATE'] = function (util) {
@@ -7601,6 +7618,20 @@ var P;
             }
         },
     };
+    hatLibrary['speech2text_whenIHearHat'] = {
+        handle(util) {
+            util.stage.initSpeech2Text();
+            if (util.stage.speech2text) {
+                const PHRASE = util.getInput('PHRASE', 'string');
+                const phraseFunction = `return ${PHRASE}`;
+                util.stage.speech2text.addHat({
+                    target: util.target,
+                    startingFunction: util.startingFunction,
+                    phraseFunction: P.runtime.createContinuation(phraseFunction),
+                });
+            }
+        },
+    };
     watcherLibrary['data_variable'] = {
         init(watcher) {
             const name = watcher.params.VARIABLE;
@@ -7713,6 +7744,9 @@ var P;
         getLabel() { return 'volume'; },
     };
     watcherLibrary['speech2text_getSpeech'] = {
+        init(watcher) {
+            watcher.stage.initSpeech2Text();
+        },
         evaluate(watcher) {
             if (watcher.stage.speech2text) {
                 return watcher.stage.speech2text.speech;
@@ -7736,6 +7770,7 @@ var P;
                 this.stage = stage;
                 this.speech = '';
                 this.listeners = 0;
+                this.hats = [];
                 this.recognition = new SpeechRecognition();
                 this.recognition.lang = 'en-US';
                 this.recognition.continuous = true;
@@ -7766,6 +7801,18 @@ var P;
                 if (this.listeners !== 0) {
                     this.speech = transcript;
                 }
+                for (const hat of this.hats) {
+                    const target = hat.target;
+                    const phraseFunction = hat.phraseFunction;
+                    const startingFunction = hat.startingFunction;
+                    const value = this.stage.runtime.evaluateExpression(target, phraseFunction);
+                    if (value === transcript) {
+                        this.stage.runtime.startThread(target, startingFunction);
+                    }
+                }
+            }
+            addHat(hat) {
+                this.hats.push(hat);
             }
             startListen() {
                 this.listeners++;

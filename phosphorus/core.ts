@@ -955,7 +955,9 @@ namespace P.core {
     }
 
     initSpeech2Text() {
-      this.speech2text = new P.speech2text.SpeechToTextExtension(this);
+      if (!this.speech2text && P.speech2text.supported) {
+        this.speech2text = new P.speech2text.SpeechToTextExtension(this);
+      }
     }
 
     // Implement rotatedBounds() to return something.

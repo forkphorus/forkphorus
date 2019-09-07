@@ -789,9 +789,6 @@ namespace P.sb3 {
         compiler.usedExtensions = usedExtensions;
         compiler.compile();
       }
-      if (P.speech2text.supported && usedExtensions.has('speech2text')) {
-        stage.initSpeech2Text();
-      }
       if (P.config.debug) {
         console.timeEnd('Scratch 3 compile');
       }
@@ -1095,6 +1092,14 @@ namespace P.sb3.compiler {
 
     }
 
+    get target() {
+      return this.compiler.target;
+    }
+
+    get stage() {
+      return this.compiler.target.stage;
+    }
+
     /**
      * Compile an input, and give it a type.
      */
@@ -1284,11 +1289,8 @@ namespace P.sb3.compiler {
    * General hat handling utilities.
    */
   export class HatUtil extends BlockUtil {
-    public target: Target;
-
     constructor(compiler: Compiler, block: SB3Block, public startingFunction: Fn) {
       super(compiler, block);
-      this.target = compiler.target;
     }
   }
 
@@ -2502,6 +2504,7 @@ namespace P.sb3.compiler {
     }
   };
   statementLibrary['speech2text_listenAndWait'] = function(util) {
+    util.stage.initSpeech2Text();
     util.writeLn('if (self.speech2text) {');
     util.writeLn('  save();');
     util.writeLn('  self.speech2text.startListen();');
@@ -2850,6 +2853,7 @@ namespace P.sb3.compiler {
     return util.numberInput('(S.volume * 100)');
   };
   inputLibrary['speech2text_getSpeech'] = function(util) {
+    util.stage.initSpeech2Text();
     return util.stringInput('(self.speech2text ? self.speech2text.speech : "")');
   };
   inputLibrary['videoSensing_menu_VIDEO_STATE'] = function(util) {
@@ -2998,6 +3002,20 @@ namespace P.sb3.compiler {
       }
     },
   };
+  hatLibrary['speech2text_whenIHearHat'] = {
+    handle(util) {
+      util.stage.initSpeech2Text();
+      if (util.stage.speech2text) {
+        const PHRASE = util.getInput('PHRASE', 'string');
+        const phraseFunction = `return ${PHRASE}`;
+        util.stage.speech2text.addHat({
+          target: util.target,
+          startingFunction: util.startingFunction,
+          phraseFunction: P.runtime.createContinuation(phraseFunction),
+        });
+      }
+    },
+  };
 
   /* Watchers */
   watcherLibrary['data_variable'] = {
@@ -3111,6 +3129,9 @@ namespace P.sb3.compiler {
     getLabel() { return 'volume'; },
   };
   watcherLibrary['speech2text_getSpeech'] = {
+    init(watcher) {
+      watcher.stage.initSpeech2Text();
+    },
     evaluate(watcher) {
       if (watcher.stage.speech2text) {
         return watcher.stage.speech2text.speech;
