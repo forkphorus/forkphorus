@@ -1145,15 +1145,37 @@ var P;
                     }
                     objectScale *= c.scale;
                 }
+                const image = costume.get(objectScale * c.stage.zoom);
+                const x = -costume.rotationCenterX * objectScale;
+                const y = -costume.rotationCenterY * objectScale;
+                const w = costume.width * objectScale;
+                const h = costume.height * objectScale;
+                ctx.imageSmoothingEnabled = false;
                 if (!this.noEffects) {
-                    ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
-                    const filter = getCSSFilter(c.filters);
-                    if (filter !== '') {
-                        ctx.filter = filter;
+                    if (c.filters.brightness === 100) {
+                        workingRenderer.canvas.width = w;
+                        workingRenderer.canvas.height = h;
+                        workingRenderer.ctx.save();
+                        workingRenderer.ctx.translate(0, 0);
+                        workingRenderer.ctx.drawImage(image, 0, 0, w, h);
+                        workingRenderer.ctx.globalCompositeOperation = 'source-in';
+                        workingRenderer.ctx.fillStyle = 'white';
+                        workingRenderer.ctx.fillRect(0, 0, 480, 360);
+                        ctx.drawImage(workingRenderer.canvas, x, y);
+                        workingRenderer.ctx.restore();
+                    }
+                    else {
+                        ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
+                        const filter = getCSSFilter(c.filters);
+                        if (filter !== '') {
+                            ctx.filter = filter;
+                        }
+                        ctx.drawImage(image, x, y, w, h);
                     }
                 }
-                ctx.imageSmoothingEnabled = false;
-                ctx.drawImage(costume.get(objectScale * c.stage.zoom), -costume.rotationCenterX * objectScale, -costume.rotationCenterY * objectScale, costume.width * objectScale, costume.height * objectScale);
+                else {
+                    ctx.drawImage(image, x, y, w, h);
+                }
                 ctx.restore();
             }
         }
