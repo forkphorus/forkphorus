@@ -763,18 +763,9 @@ namespace P.sb3 {
     }
 
     loadFonts() {
-      const fonts = {
-        'Marker': '/fonts/Knewave-Regular.woff',
-        'Handwriting': '/fonts/Handlee-Regular.woff',
-        'Pixel': '/fonts/Grand9K-Pixel.ttf',
-        'Curly': '/fonts/Griffy-Regular.woff',
-        'Serif': '/fonts/SourceSerifPro-Regular.woff',
-        'Sans Serif': '/fonts/NotoSans-Regular.woff',
-        'Scratch': '/fonts/Scratch.ttf',
-      };
       const promises: Promise<unknown>[] = [];
-      for (const family in fonts) {
-        promises.push(this.promiseTask(P.utils.settled(P.fonts.loadLocalFont(family, fonts[family]))));
+      for (const family in P.fonts.scratch3) {
+        promises.push(this.promiseTask(P.utils.settled(P.fonts.loadLocalFont(family, P.fonts.scratch3[family]))));
       }
       return Promise.all(promises);
     }
