@@ -783,10 +783,8 @@ namespace P.sb3 {
       if (P.config.debug) {
         console.time('Scratch 3 compile');
       }
-      const usedExtensions = new Set<string>();
       for (const target of targets) {
         const compiler = new P.sb3.compiler.Compiler(target);
-        compiler.usedExtensions = usedExtensions;
         compiler.compile();
       }
       if (P.config.debug) {
@@ -1347,7 +1345,6 @@ namespace P.sb3.compiler {
      */
     public labelCount: number = 0;
     public state: CompilerState;
-    public usedExtensions: Set<string> = new Set();
 
     constructor(target: Target) {
       this.target = target;
@@ -1363,25 +1360,11 @@ namespace P.sb3.compiler {
         .filter((i) => this.blocks[i].topLevel);
     }
 
-    getOpcodeExtension(opcode: string): string {
-      const index = opcode.indexOf('_');
-      if (index !== -1) {
-        return opcode.substring(0, index);
-      }
-      return opcode;
-    }
-
-    useOpcode(opcode: string) {
-      const extension = this.getOpcodeExtension(opcode);
-      this.usedExtensions.add(extension);
-    }
-
     /**
      * Get the compiler for a statement
      */
     getStatementCompiler(opcode: string): StatementCompiler | null {
       if (statementLibrary[opcode]) {
-        this.useOpcode(opcode);
         return statementLibrary[opcode];
       }
       return null;
@@ -1392,7 +1375,6 @@ namespace P.sb3.compiler {
      */
     getInputCompiler(opcode: string): InputCompiler | null {
       if (inputLibrary[opcode]) {
-        this.useOpcode(opcode);
         return inputLibrary[opcode];
       }
       return null;
@@ -1403,7 +1385,6 @@ namespace P.sb3.compiler {
      */
     getHatCompiler(opcode: string): HatCompiler | null {
       if (hatLibrary[opcode]) {
-        this.useOpcode(opcode);
         return hatLibrary[opcode];
       }
       return null;

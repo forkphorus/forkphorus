@@ -5838,10 +5838,8 @@ var P;
                 if (P.config.debug) {
                     console.time('Scratch 3 compile');
                 }
-                const usedExtensions = new Set();
                 for (const target of targets) {
                     const compiler = new P.sb3.compiler.Compiler(target);
-                    compiler.usedExtensions = usedExtensions;
                     compiler.compile();
                 }
                 if (P.config.debug) {
@@ -6178,7 +6176,6 @@ var P;
             class Compiler {
                 constructor(target) {
                     this.labelCount = 0;
-                    this.usedExtensions = new Set();
                     this.target = target;
                     this.data = target.sb3data;
                     this.blocks = this.data.blocks;
@@ -6187,34 +6184,20 @@ var P;
                     return Object.keys(this.blocks)
                         .filter((i) => this.blocks[i].topLevel);
                 }
-                getOpcodeExtension(opcode) {
-                    const index = opcode.indexOf('_');
-                    if (index !== -1) {
-                        return opcode.substring(0, index);
-                    }
-                    return opcode;
-                }
-                useOpcode(opcode) {
-                    const extension = this.getOpcodeExtension(opcode);
-                    this.usedExtensions.add(extension);
-                }
                 getStatementCompiler(opcode) {
                     if (compiler_1.statementLibrary[opcode]) {
-                        this.useOpcode(opcode);
                         return compiler_1.statementLibrary[opcode];
                     }
                     return null;
                 }
                 getInputCompiler(opcode) {
                     if (compiler_1.inputLibrary[opcode]) {
-                        this.useOpcode(opcode);
                         return compiler_1.inputLibrary[opcode];
                     }
                     return null;
                 }
                 getHatCompiler(opcode) {
                     if (compiler_1.hatLibrary[opcode]) {
-                        this.useOpcode(opcode);
                         return compiler_1.hatLibrary[opcode];
                     }
                     return null;
