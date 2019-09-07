@@ -1145,16 +1145,40 @@ var P;
                     }
                     objectScale *= c.scale;
                 }
+                const lod = costume.get(objectScale * c.stage.zoom);
+                ctx.imageSmoothingEnabled = false;
+                const x = -costume.rotationCenterX * objectScale;
+                const y = -costume.rotationCenterY * objectScale;
+                const w = costume.width * objectScale;
+                const h = costume.height * objectScale;
                 if (!this.noEffects) {
                     ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
-                    const filter = getCSSFilter(c.filters);
-                    if (filter !== '') {
-                        ctx.filter = filter;
+                    if (c.filters.color !== 0) {
+                        ctx.filter = 'hue-rotate(' + (c.filters.color / 200 * 360) + 'deg)';
+                    }
+                    if (c.filters.brightness !== 0) {
+                        const brightnessShift = c.filters.brightness / 100 * 255;
+                        const imageData = lod.getImageData();
+                        const newData = ctx.createImageData(imageData.width, imageData.height);
+                        const length = newData.data.length;
+                        for (var i = 0; i < length; i += 4) {
+                            newData.data[i] = imageData.data[i] + brightnessShift;
+                            newData.data[i + 1] = imageData.data[i + 1] + brightnessShift;
+                            newData.data[i + 2] = imageData.data[i + 2] + brightnessShift;
+                            newData.data[i + 3] = imageData.data[i + 3];
+                        }
+                        workingRenderer.canvas.width = imageData.width;
+                        workingRenderer.canvas.height = imageData.height;
+                        workingRenderer.ctx.putImageData(newData, 0, 0);
+                        ctx.drawImage(workingRenderer.canvas, x, y, w, h);
+                    }
+                    else {
+                        ctx.drawImage(lod.image, x, y, w, h);
                     }
                 }
-                ctx.imageSmoothingEnabled = false;
-                const lod = costume.get(objectScale * c.stage.zoom);
-                ctx.drawImage(lod.image, -costume.rotationCenterX * objectScale, -costume.rotationCenterY * objectScale, costume.width * objectScale, costume.height * objectScale);
+                else {
+                    ctx.drawImage(lod.image, x, y, w, h);
+                }
                 ctx.restore();
             }
         }
