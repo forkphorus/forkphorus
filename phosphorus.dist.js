@@ -2705,11 +2705,11 @@ var P;
                             reject(new Error(`HTTP Error ${xhr.status} while downloading ${this.url}`));
                         }
                     });
-                    xhr.addEventListener('error', () => {
-                        reject(`Error while downloading ${this.url} (onerror) (${xhr.status} ${xhr.statusText})`);
+                    xhr.addEventListener('error', (err) => {
+                        reject(`Error while downloading ${this.url} (error) (${xhr.status})`);
                     });
-                    xhr.addEventListener('abort', () => {
-                        reject(`Error while downloading ${this.url} (onabort) (${xhr.status} ${xhr.statusText})`);
+                    xhr.addEventListener('abort', (err) => {
+                        reject(`Error while downloading ${this.url} (abort) (${xhr.status})`);
                     });
                     xhr.open('GET', this.url);
                     xhr.responseType = this.type;
