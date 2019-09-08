@@ -72,7 +72,7 @@ P.suite = (function() {
 
   /**
    * @param {string} path The path to fetch
-   * @returns {ArrayBuffer} The ArrayBuffer representing the fetched content
+   * @returns {Promise<ArrayBuffer>} The ArrayBuffer representing the fetched content
    */
   function fetchAsArrayBuffer(path) {
     return new P.IO.ArrayBufferRequest(path).load();
