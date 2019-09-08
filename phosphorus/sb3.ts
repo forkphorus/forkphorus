@@ -740,15 +740,14 @@ namespace P.sb3 {
             throw new Error('no stage object');
           }
           const sprites = targets.filter((i) => i.isSprite) as Scratch3Sprite[];
-          const watchers = this.projectData.monitors
+          stage.allWatchers = this.projectData.monitors
             .map((data) => this.loadWatcher(data, stage))
             .filter((i) => i && i.valid);
+          stage.allWatchers.forEach((watcher) => watcher.init());
 
           sprites.forEach((sprite) => sprite.stage = stage);
           this.compileTargets(targets, stage);
           stage.children = sprites;
-          stage.allWatchers = watchers;
-          watchers.forEach((watcher) => watcher.init());
 
           return stage;
         });
