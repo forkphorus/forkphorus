@@ -309,7 +309,7 @@ P.suite = (function() {
       const repeatCount = projectMetadata.repeatCount;
 
       const projectType = getProjectType(path);
-      const buffer = await fetchAsArrayBuffer('/tests/' + path);
+      const buffer = await fetchAsArrayBuffer(path);
 
       for (let i = 0; i < repeatCount; i++) {
         const result = await runProject(projectMetadata, buffer, projectType);
