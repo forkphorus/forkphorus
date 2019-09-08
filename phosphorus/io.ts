@@ -39,7 +39,6 @@ namespace P.IO {
      * Attempts to load this request.
      */
     load(): Promise<T> {
-      // We attempt to load twice, which I hope will fix random loading errors from failed fetches.
       return new Promise((resolve, reject) => {
         const attempt = (errorCallback: (err: any) => void) => {
           this._load()
@@ -50,11 +49,14 @@ namespace P.IO {
               errorCallback(err);
             });
         };
-        attempt(() => {
-          // try once more
-          attempt((err) => {
-            reject(err);
-          });
+        attempt((err) => {
+          // try once more after a short delay
+          console.warn(`First attempt to download ${this.url} failed, trying again (${err})`);
+          setTimeout(function() {
+            attempt((err) => {
+              reject(err);
+            });
+          }, 250);
         });
       });
     }
@@ -64,12 +66,17 @@ namespace P.IO {
 
   export abstract class XHRRequest<T> extends Request<T> {
     public xhr: XMLHttpRequest = new XMLHttpRequest();
+    public static acceptableResponseCodes = [0, 200];
 
     protected _load(): Promise<T> {
       return new Promise((resolve, reject) => {
         const xhr = this.xhr;
         xhr.addEventListener('load', () => {
-          resolve(xhr.response);
+          if (XHRRequest.acceptableResponseCodes.indexOf(xhr.status) !== -1) {
+            resolve(xhr.response);
+          } else {
+            reject(new Error(`HTTP Error ${xhr.status} while downloading ${this.url}`));
+          }
         });
         xhr.addEventListener('error', () => {
           reject(`Error while downloading ${this.url} (onerror) (${xhr.status} ${xhr.statusText})`);
@@ -79,7 +86,7 @@ namespace P.IO {
         });
         xhr.open('GET', this.url);
         xhr.responseType = this.type as XMLHttpRequestResponseType;
-        xhr.send();
+        setTimeout(xhr.send.bind(xhr));
       });
     }
 

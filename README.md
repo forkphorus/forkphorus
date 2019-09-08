@@ -10,9 +10,11 @@ Projects should, in general, run faster in forkphorus than in Scratch 3 and much
 
 | Environment | Min | Avg | Max |
 | ----------- | --- | --- | --- |
-| Forkphorus (sb3 compiler) | 0.261 | 0.2848 | 0.316 |
-| Scratch 3 | 11.545 | 12.066 | 13.653 |
+| Forkphorus (sb3 compiler) | 0.19 | 0.198 | 0.221 |
+| Scratch 3 | 11.043 | 11.2131 | 11.599 |
 | Scratch 2 |  | 17.55 |  |
+
+(September 2019, Chrome 76)
 
 ## Build Steps
 

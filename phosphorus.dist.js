@@ -62,7 +62,7 @@ var P;
             }
         })();
         if (audio.context) {
-            var volume = 0.3;
+            var volume = 0.5;
             var globalNode = audio.context.createGain();
             globalNode.gain.value = volume;
             globalNode.connect(audio.context.destination);
@@ -1165,9 +1165,9 @@ var P;
                 super();
                 this.stage = stage;
                 this.zoom = 1;
-                this.penLayerModified = false;
-                this.penLayerTargetScale = -1;
-                this.penLayerMaxScale = -1;
+                this.penModified = false;
+                this.penTargetZoom = -1;
+                this.penZoom = 1;
                 this.stageCostumeIndex = -1;
                 const { ctx: stageContext, canvas: stageLayer } = create2dCanvas();
                 this.stageContext = stageContext;
@@ -1215,8 +1215,12 @@ var P;
             }
             resize(zoom) {
                 this.zoom = zoom;
-                if (zoom > this.penLayerMaxScale) {
-                    this.penLayerMaxScale = zoom;
+                this.resizePen(zoom);
+                this.renderStageCostume(this.zoom);
+            }
+            resizePen(zoom) {
+                if (zoom > this.penZoom) {
+                    this.penZoom = zoom;
                     const cachedCanvas = document.createElement('canvas');
                     cachedCanvas.width = this.penLayer.width;
                     cachedCanvas.height = this.penLayer.height;
@@ -1224,32 +1228,41 @@ var P;
                     this._reset(this.penContext, zoom);
                     this.penContext.drawImage(cachedCanvas, 0, 0, 480, 360);
                 }
-                else if (!this.penLayerModified) {
+                else if (!this.penModified) {
+                    this.penZoom = zoom;
                     this._reset(this.penContext, zoom);
                 }
                 else {
-                    this.penLayerTargetScale = zoom;
+                    this.penTargetZoom = zoom;
                 }
-                this.renderStageCostume(this.zoom);
             }
             penClear() {
-                this.penLayerModified = false;
-                if (this.penLayerTargetScale !== -1) {
-                    this._reset(this.penContext, this.penLayerTargetScale);
-                    this.penLayerTargetScale = -1;
+                this.penModified = false;
+                if (this.penTargetZoom !== -1) {
+                    this._reset(this.penContext, this.penTargetZoom);
+                    this.penZoom = this.penTargetZoom;
+                    this.penTargetZoom = -1;
                 }
                 this.penContext.clearRect(0, 0, 480, 360);
             }
             penDot(color, size, x, y) {
-                this.penLayerModified = true;
+                this.penModified = true;
                 this.penContext.fillStyle = color;
                 this.penContext.beginPath();
                 this.penContext.arc(240 + x, 180 - y, size / 2, 0, 2 * Math.PI, false);
                 this.penContext.fill();
             }
             penLine(color, size, x1, y1, x2, y2) {
-                this.penLayerModified = true;
+                this.penModified = true;
                 this.penContext.lineCap = 'round';
+                if (this.penZoom === 1) {
+                    if (size % 2 > .5 && size % 2 < 1.5) {
+                        x1 -= .5;
+                        y1 -= .5;
+                        x2 -= .5;
+                        y2 -= .5;
+                    }
+                }
                 this.penContext.strokeStyle = color;
                 this.penContext.lineWidth = size;
                 this.penContext.beginPath();
@@ -1258,7 +1271,7 @@ var P;
                 this.penContext.stroke();
             }
             penStamp(sprite) {
-                this.penLayerModified = true;
+                this.penModified = true;
                 this._drawChild(sprite, this.penContext);
             }
             spriteTouchesPoint(sprite, x, y) {
@@ -1406,6 +1419,7 @@ var P;
                 this.node = null;
                 this.activeSounds = new Set();
                 this.watchers = {};
+                this.listWatchers = {};
                 this.vars = {};
                 this.lists = {};
                 this.saying = false;
@@ -1448,6 +1462,19 @@ var P;
                     }
                     newWatcher.init();
                     this.watchers[name] = watcher = newWatcher;
+                    this.stage.allWatchers.push(watcher);
+                }
+                watcher.setVisible(visible);
+            }
+            showList(name, visible) {
+                let watcher = this.listWatchers[name];
+                if (!watcher) {
+                    const newWatcher = this.createListWatcher(this, name);
+                    if (!newWatcher) {
+                        return;
+                    }
+                    newWatcher.init();
+                    this.listWatchers[name] = watcher = newWatcher;
                     this.stage.allWatchers.push(watcher);
                 }
                 watcher.setVisible(visible);
@@ -1691,6 +1718,12 @@ var P;
                 P.audio.connectNode(this.node);
                 return this.node;
             }
+            createVariableWatcher(target, variableName) {
+                return null;
+            }
+            createListWatcher(target, listName) {
+                return null;
+            }
         }
         core.Base = Base;
         class Stage extends Base {
@@ -1891,6 +1924,9 @@ var P;
                 this.runtime.stopAll();
                 this.runtime.pause();
                 this.stopAllSounds();
+                if (this.speech2text) {
+                    this.speech2text.destroy();
+                }
             }
             focus() {
                 if (this.promptId < this.nextPromptId) {
@@ -2032,6 +2068,14 @@ var P;
                             this.videoElement.style.display = 'none';
                         }
                     }
+                }
+            }
+            getLoudness() {
+                return P.microphone.getLoudness();
+            }
+            initSpeech2Text() {
+                if (!this.speech2text && P.speech2text.isSupported()) {
+                    this.speech2text = new P.speech2text.SpeechToTextExtension(this);
                 }
             }
             rotatedBounds() {
@@ -2241,6 +2285,7 @@ var P;
                 clone.penSize = this.penSize;
                 clone.isPenDown = this.isPenDown;
                 clone.watchers = this.watchers;
+                clone.listWatchers = this.listWatchers;
                 return clone;
             }
             touching(thing) {
@@ -2548,13 +2593,13 @@ var P;
     (function (fonts_1) {
         const fontFamilyCache = {};
         fonts_1.scratch3 = {
-            'Marker': '/fonts/Knewave-Regular.woff',
-            'Handwriting': '/fonts/Handlee-Regular.woff',
-            'Pixel': '/fonts/Grand9K-Pixel.ttf',
-            'Curly': '/fonts/Griffy-Regular.woff',
-            'Serif': '/fonts/SourceSerifPro-Regular.woff',
-            'Sans Serif': '/fonts/NotoSans-Regular.woff',
-            'Scratch': '/fonts/Scratch.ttf',
+            'Marker': 'fonts/Knewave-Regular.woff',
+            'Handwriting': 'fonts/Handlee-Regular.woff',
+            'Pixel': 'fonts/Grand9K-Pixel.ttf',
+            'Curly': 'fonts/Griffy-Regular.woff',
+            'Serif': 'fonts/SourceSerifPro-Regular.woff',
+            'Sans Serif': 'fonts/NotoSans-Regular.woff',
+            'Scratch': 'fonts/Scratch.ttf',
         };
         function loadLocalFont(fontFamily, src) {
             if (fontFamilyCache[fontFamily]) {
@@ -2632,10 +2677,13 @@ var P;
                             errorCallback(err);
                         });
                     };
-                    attempt(() => {
-                        attempt((err) => {
-                            reject(err);
-                        });
+                    attempt((err) => {
+                        console.warn(`First attempt to download ${this.url} failed, trying again (${err})`);
+                        setTimeout(function () {
+                            attempt((err) => {
+                                reject(err);
+                            });
+                        }, 250);
                     });
                 });
             }
@@ -2650,7 +2698,12 @@ var P;
                 return new Promise((resolve, reject) => {
                     const xhr = this.xhr;
                     xhr.addEventListener('load', () => {
-                        resolve(xhr.response);
+                        if (XHRRequest.acceptableResponseCodes.indexOf(xhr.status) !== -1) {
+                            resolve(xhr.response);
+                        }
+                        else {
+                            reject(new Error(`HTTP Error ${xhr.status} while downloading ${this.url}`));
+                        }
                     });
                     xhr.addEventListener('error', () => {
                         reject(`Error while downloading ${this.url} (onerror) (${xhr.status} ${xhr.statusText})`);
@@ -2660,10 +2713,11 @@ var P;
                     });
                     xhr.open('GET', this.url);
                     xhr.responseType = this.type;
-                    xhr.send();
+                    setTimeout(xhr.send.bind(xhr));
                 });
             }
         }
+        XHRRequest.acceptableResponseCodes = [0, 200];
         IO.XHRRequest = XHRRequest;
         class ArrayBufferRequest extends XHRRequest {
             get type() { return 'arraybuffer'; }
@@ -2730,6 +2784,82 @@ var P;
             readers.toText = toText;
         })(readers = IO.readers || (IO.readers = {}));
     })(IO = P.IO || (P.IO = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
+    var microphone;
+    (function (microphone_1) {
+        let microphone = null;
+        microphone_1.state = 0;
+        const CACHE_TIME = 1000 / 30;
+        function connect() {
+            if (microphone_1.state !== 0) {
+                return;
+            }
+            if (!P.audio.context) {
+                console.warn('Cannot connect to microphone without audio context.');
+                microphone_1.state = 3;
+                return;
+            }
+            microphone_1.state = 2;
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then((mediaStream) => {
+                const source = P.audio.context.createMediaStreamSource(mediaStream);
+                const analyzer = P.audio.context.createAnalyser();
+                source.connect(analyzer);
+                microphone = {
+                    stream: mediaStream,
+                    analyzer,
+                    dataArray: new Float32Array(analyzer.fftSize),
+                    lastValue: -1,
+                    lastCheck: 0,
+                };
+                microphone_1.state = 1;
+            })
+                .catch((err) => {
+                console.warn('Cannot connect to microphone: ' + err);
+                microphone_1.state = 3;
+            });
+        }
+        function getLoudness() {
+            if (microphone === null) {
+                connect();
+                return -1;
+            }
+            if (!microphone.stream.active) {
+                return -1;
+            }
+            if (Date.now() - microphone.lastCheck < CACHE_TIME) {
+                return microphone.lastValue;
+            }
+            `
+    The following lines of source code are from the GitHub project LLK/scratch-audio
+    You can find the license for this code here: https://raw.githubusercontent.com/LLK/scratch-audio/develop/LICENSE
+    (our build tool removes comments so a multiline string is used instead)
+    Copyright (c) 2016, Massachusetts Institute of Technology
+    Modifications copyright (c) 2019 Thomas Weber
+    `;
+            microphone.analyzer.getFloatTimeDomainData(microphone.dataArray);
+            let sum = 0;
+            for (let i = 0; i < microphone.dataArray.length; i++) {
+                sum += Math.pow(microphone.dataArray[i], 2);
+            }
+            let rms = Math.sqrt(sum / microphone.dataArray.length);
+            if (microphone.lastValue !== -1) {
+                rms = Math.max(rms, microphone.lastValue * 0.6);
+            }
+            microphone.lastValue = rms;
+            rms *= 1.63;
+            rms = Math.sqrt(rms);
+            rms = Math.round(rms * 100);
+            rms = Math.min(rms, 100);
+            `
+    End of code from LLK/scratch-audio
+    `;
+            return rms;
+        }
+        microphone_1.getLoudness = getLoudness;
+    })(microphone = P.microphone || (P.microphone = {}));
 })(P || (P = {}));
 var P;
 (function (P) {
@@ -3305,6 +3435,17 @@ var P;
             now() {
                 return this.baseNow + Date.now() - this.baseTime;
             }
+            evaluateExpression(sprite, fn) {
+                self = this.stage;
+                runtime = this;
+                S = sprite;
+                try {
+                    return fn();
+                }
+                catch (e) {
+                    return undefined;
+                }
+            }
             step() {
                 self = this.stage;
                 runtime = this;
@@ -3679,6 +3820,7 @@ var P;
                     case 'senseVideoMotion':
                         break;
                     case 'soundLevel':
+                        value = this.stage.getLoudness();
                         break;
                     case 'tempo':
                         value = this.stage.tempoBPM;
@@ -4486,6 +4628,9 @@ var P;
                     else if (e[0] === 'distanceTo:') {
                         return 'S.distanceTo(' + val(e[1]) + ')';
                     }
+                    else if (e[0] === 'soundLevel') {
+                        return 'self.getLoudness()';
+                    }
                     else if (e[0] === 'timestamp') {
                         return '((Date.now() - epoch) / 86400000)';
                     }
@@ -5202,9 +5347,6 @@ var P;
                 super(...arguments);
                 this.listIds = {};
             }
-            createVariableWatcher(target, variableName) {
-                return null;
-            }
         }
         sb3.Scratch3Stage = Scratch3Stage;
         class Scratch3Sprite extends P.core.Sprite {
@@ -5339,6 +5481,7 @@ var P;
         class Scratch3ListWatcher extends P.core.Watcher {
             constructor(stage, data) {
                 super(stage, data.spriteName || '');
+                this.firstUpdate = true;
                 this.domRows = [];
                 this.id = data.id;
                 this.params = data.params;
@@ -5352,9 +5495,10 @@ var P;
                 if (!this.visible) {
                     return;
                 }
-                if (!this.list.modified) {
+                if (!this.list.modified && !this.firstUpdate) {
                     return;
                 }
+                this.firstUpdate = false;
                 this.list.modified = false;
                 this.updateContents();
             }
@@ -5394,7 +5538,7 @@ var P;
                     this.target.lists[listName] = createList();
                 }
                 this.list = this.target.lists[listName];
-                this.target.watchers[listName] = this;
+                this.target.listWatchers[listName] = this;
                 this.updateLayout();
                 if (this.visible) {
                     this.updateContents();
@@ -5642,22 +5786,13 @@ var P;
                 });
             }
             loadFonts() {
-                const fonts = {
-                    'Marker': '/fonts/Knewave-Regular.woff',
-                    'Handwriting': '/fonts/Handlee-Regular.woff',
-                    'Pixel': '/fonts/Grand9K-Pixel.ttf',
-                    'Curly': '/fonts/Griffy-Regular.woff',
-                    'Serif': '/fonts/SourceSerifPro-Regular.woff',
-                    'Sans Serif': '/fonts/NotoSans-Regular.woff',
-                    'Scratch': '/fonts/Scratch.ttf',
-                };
                 const promises = [];
-                for (const family in fonts) {
-                    promises.push(this.promiseTask(P.utils.settled(P.fonts.loadLocalFont(family, fonts[family]))));
+                for (const family in P.fonts.scratch3) {
+                    promises.push(this.promiseTask(P.utils.settled(P.fonts.loadLocalFont(family, P.fonts.scratch3[family]))));
                 }
                 return Promise.all(promises);
             }
-            compileTargets(targets) {
+            compileTargets(targets, stage) {
                 if (P.config.debug) {
                     console.time('Scratch 3 compile');
                 }
@@ -5693,7 +5828,7 @@ var P;
                         .map((data) => this.loadWatcher(data, stage))
                         .filter((i) => i && i.valid);
                     sprites.forEach((sprite) => sprite.stage = stage);
-                    this.compileTargets(targets);
+                    this.compileTargets(targets, stage);
                     stage.children = sprites;
                     stage.allWatchers = watchers;
                     watchers.forEach((watcher) => watcher.init());
@@ -5876,6 +6011,9 @@ var P;
                 get target() {
                     return this.compiler.target;
                 }
+                get stage() {
+                    return this.compiler.target.stage;
+                }
                 getInput(name, type) {
                     return this.compiler.compileInput(this.block, name, type);
                 }
@@ -5996,7 +6134,6 @@ var P;
             class Compiler {
                 constructor(target) {
                     this.labelCount = 0;
-                    this.usedExtensions = new Set();
                     this.target = target;
                     this.data = target.sb3data;
                     this.blocks = this.data.blocks;
@@ -6005,34 +6142,20 @@ var P;
                     return Object.keys(this.blocks)
                         .filter((i) => this.blocks[i].topLevel);
                 }
-                getOpcodeExtension(opcode) {
-                    const index = opcode.indexOf('_');
-                    if (index !== -1) {
-                        return opcode.substring(0, index);
-                    }
-                    return opcode;
-                }
-                useOpcode(opcode) {
-                    const extension = this.getOpcodeExtension(opcode);
-                    this.usedExtensions.add(extension);
-                }
                 getStatementCompiler(opcode) {
                     if (compiler_1.statementLibrary[opcode]) {
-                        this.useOpcode(opcode);
                         return compiler_1.statementLibrary[opcode];
                     }
                     return null;
                 }
                 getInputCompiler(opcode) {
                     if (compiler_1.inputLibrary[opcode]) {
-                        this.useOpcode(opcode);
                         return compiler_1.inputLibrary[opcode];
                     }
                     return null;
                 }
                 getHatCompiler(opcode) {
                     if (compiler_1.hatLibrary[opcode]) {
-                        this.useOpcode(opcode);
                         return compiler_1.hatLibrary[opcode];
                     }
                     return null;
@@ -6135,7 +6258,7 @@ var P;
                         case 6:
                         case 7:
                         case 8: {
-                            const number = parseFloat(native[1]);
+                            const number = +native[1];
                             if (isNaN(number) || desiredType === 'string') {
                                 return this.sanitizedInput(native[1]);
                             }
@@ -6144,6 +6267,15 @@ var P;
                             }
                         }
                         case 10: {
+                            const value = native[1];
+                            if (desiredType !== 'string' && /\d/.test(value)) {
+                                const number = +value;
+                                if (number.toString() === value) {
+                                    if (!isNaN(number)) {
+                                        return numberInput(number.toString());
+                                    }
+                                }
+                            }
                             const input = this.sanitizedInput(native[1] + '');
                             input.potentialNumber = this.isStringLiteralPotentialNumber(native[1]);
                             return input;
@@ -6306,9 +6438,11 @@ var P;
                     };
                 }
                 warn(...args) {
+                    args.unshift('[sb3 compiler]');
                     console.warn.apply(console, args);
                 }
                 log(...args) {
+                    args.unshift('[sb3 compiler]');
                     console.log.apply(console, args);
                 }
                 compile() {
@@ -6504,7 +6638,7 @@ var P;
     statementLibrary['data_hidelist'] = function (util) {
         const LIST = util.sanitizedString(util.getField('LIST'));
         const scope = util.getListScope('LIST');
-        util.writeLn(`${scope}.showVariable(${LIST}, false);`);
+        util.writeLn(`${scope}.showList(${LIST}, false);`);
     };
     statementLibrary['data_hidevariable'] = function (util) {
         const VARIABLE = util.sanitizedString(util.getField('VARIABLE'));
@@ -6531,7 +6665,7 @@ var P;
     statementLibrary['data_showlist'] = function (util) {
         const LIST = util.sanitizedString(util.getField('LIST'));
         const scope = util.getListScope('LIST');
-        util.writeLn(`${scope}.showVariable(${LIST}, true);`);
+        util.writeLn(`${scope}.showList(${LIST}, true);`);
     };
     statementLibrary['data_showvariable'] = function (util) {
         const VARIABLE = util.sanitizedString(util.getField('VARIABLE'));
@@ -6947,6 +7081,20 @@ var P;
             util.writeLn('S.isDraggable = false;');
         }
     };
+    statementLibrary['speech2text_listenAndWait'] = function (util) {
+        util.stage.initSpeech2Text();
+        util.writeLn('if (self.speech2text) {');
+        util.writeLn('  save();');
+        util.writeLn('  self.speech2text.startListen();');
+        util.writeLn('  R.id = self.speech2text.id();');
+        const label = util.addLabel();
+        util.writeLn('  if (self.speech2text.id() === R.id) {');
+        util.forceQueue(label);
+        util.writeLn('  }');
+        util.writeLn('  self.speech2text.endListen();');
+        util.writeLn('  restore();');
+        util.writeLn('}');
+    };
     statementLibrary['videoSensing_videoToggle'] = function (util) {
         const VIDEO_STATE = util.getInput('VIDEO_STATE', 'string');
         util.writeLn(`switch (${VIDEO_STATE}) {`);
@@ -7222,10 +7370,10 @@ var P;
         return util.booleanInput(`!!self.keys[P.runtime.getKeyCode(${KEY_OPTION})]`);
     };
     inputLibrary['sensing_loud'] = function (util) {
-        return util.booleanInput('false');
+        return util.booleanInput('(self.getLoudness() > 10)');
     };
     inputLibrary['sensing_loudness'] = function (util) {
-        return util.numberInput('-1');
+        return util.numberInput('self.getLoudness()');
     };
     inputLibrary['sensing_mousedown'] = function (util) {
         return util.booleanInput('self.mousePressed');
@@ -7266,6 +7414,10 @@ var P;
     };
     inputLibrary['sound_volume'] = function (util) {
         return util.numberInput('(S.volume * 100)');
+    };
+    inputLibrary['speech2text_getSpeech'] = function (util) {
+        util.stage.initSpeech2Text();
+        return util.stringInput('(self.speech2text ? self.speech2text.speech : "")');
     };
     inputLibrary['videoSensing_menu_VIDEO_STATE'] = function (util) {
         return util.fieldInput('VIDEO_STATE');
@@ -7333,7 +7485,7 @@ var P;
                 var keycode = P.runtime.getKeyCode(value);
             }
             catch (e) {
-                console.warn('makeymakey key generation error', e);
+                util.compiler.warn('makeymakey key generation error', e);
                 return;
             }
             if (keycode === 'any') {
@@ -7353,7 +7505,7 @@ var P;
                 var sequence = P.runtime.scopedEval(SEQUENCE.source);
             }
             catch (e) {
-                console.warn('makeymakey sequence generation error', e);
+                util.compiler.warn('makeymakey sequence generation error', e);
                 return;
             }
             const ARROWS = ['up', 'down', 'left', 'right'];
@@ -7404,6 +7556,20 @@ var P;
             const warp = typeof mutation.warp === 'string' ? mutation.warp === 'true' : mutation.warp;
             if (warp) {
                 compiler.state.isWarp = true;
+            }
+        },
+    };
+    hatLibrary['speech2text_whenIHearHat'] = {
+        handle(util) {
+            util.stage.initSpeech2Text();
+            if (util.stage.speech2text) {
+                const PHRASE = util.getInput('PHRASE', 'string');
+                const phraseFunction = `return ${PHRASE}`;
+                util.stage.speech2text.addHat({
+                    target: util.target,
+                    startingFunction: util.startingFunction,
+                    phraseFunction: P.runtime.createContinuation(phraseFunction),
+                });
             }
         },
     };
@@ -7501,7 +7667,7 @@ var P;
         }
     };
     watcherLibrary['sensing_loudness'] = {
-        evaluate() { return -1; },
+        evaluate(watcher) { return watcher.stage.getLoudness(); },
         getLabel() { return 'loudness'; },
     };
     watcherLibrary['sensing_timer'] = {
@@ -7518,5 +7684,110 @@ var P;
         evaluate(watcher) { return watcher.target.volume * 100; },
         getLabel() { return 'volume'; },
     };
+    watcherLibrary['speech2text_getSpeech'] = {
+        init(watcher) {
+            watcher.stage.initSpeech2Text();
+        },
+        evaluate(watcher) {
+            if (watcher.stage.speech2text) {
+                return watcher.stage.speech2text.speech;
+            }
+            return '';
+        },
+        getLabel(watcher) { return 'Speech to text: speech'; },
+    };
 }());
+var P;
+(function (P) {
+    var speech2text;
+    (function (speech2text) {
+        var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || window.mozSpeechRecognition || window.msSpeechRecognition;
+        let supported = null;
+        function isSupported() {
+            if (supported === null) {
+                supported = typeof SpeechRecognition !== 'undefined';
+                if (!supported) {
+                    console.warn('Speech to text is not supported in this browser. (https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition)');
+                }
+            }
+            return supported;
+        }
+        speech2text.isSupported = isSupported;
+        class SpeechToTextExtension {
+            constructor(stage) {
+                this.stage = stage;
+                this.speech = '';
+                this.listeners = 0;
+                this.hats = [];
+                this.initRecognition();
+                this.initOverlay();
+            }
+            initRecognition() {
+                this.recognition = new SpeechRecognition();
+                this.recognition.lang = 'en-US';
+                this.recognition.continuous = true;
+                this.recognition.onresult = (event) => this.onresult(event);
+                this.recognition.onerror = (event) => {
+                    if (event.error !== 'aborted') {
+                        console.error('speech2text error', event);
+                    }
+                };
+                this.recognition.start();
+            }
+            initOverlay() {
+                if (this.overlayElement) {
+                    throw new Error('initializing overlay twice');
+                }
+                const container = document.createElement('div');
+                container.className = 'speech2text-container';
+                const indicator = document.createElement('div');
+                indicator.className = 'speech2text-indicator';
+                const animation = document.createElement('div');
+                animation.className = 'speech2text-animation';
+                container.appendChild(animation);
+                container.appendChild(indicator);
+                this.stage.ui.appendChild(container);
+                this.overlayElement = container;
+            }
+            onresult(event) {
+                this.lastResultIndex = event.resultIndex;
+                const lastResult = event.results[event.resultIndex];
+                const message = lastResult[0];
+                const transcript = message.transcript.trim();
+                if (this.listeners !== 0) {
+                    this.speech = transcript;
+                }
+                for (const hat of this.hats) {
+                    const target = hat.target;
+                    const phraseFunction = hat.phraseFunction;
+                    const startingFunction = hat.startingFunction;
+                    const value = this.stage.runtime.evaluateExpression(target, phraseFunction);
+                    if (value === transcript) {
+                        this.stage.runtime.startThread(target, startingFunction);
+                    }
+                }
+            }
+            addHat(hat) {
+                this.hats.push(hat);
+            }
+            startListen() {
+                this.listeners++;
+                this.overlayElement.setAttribute('listening', '');
+            }
+            endListen() {
+                this.listeners--;
+                if (this.listeners === 0) {
+                    this.overlayElement.removeAttribute('listening');
+                }
+            }
+            destroy() {
+                this.recognition.abort();
+            }
+            id() {
+                return this.lastResultIndex;
+            }
+        }
+        speech2text.SpeechToTextExtension = SpeechToTextExtension;
+    })(speech2text = P.speech2text || (P.speech2text = {}));
+})(P || (P = {}));
 //# sourceMappingURL=phosphorus.dist.js.map

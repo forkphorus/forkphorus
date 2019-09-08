@@ -114,15 +114,9 @@ namespace P.sb3 {
   type SB3Variable = [string, any];
 
   // Implements a Scratch 3 Stage.
-  // Adds Scratch 3 specific things such as broadcastReferences
   export class Scratch3Stage extends P.core.Stage {
     public sb3data: SB3Target;
     public listIds: ObjectMap<string> = {};
-
-    createVariableWatcher(target: P.core.Base, variableName: string) {
-      // TODO: implement
-      return null;
-    }
   }
 
   // Implements a Scratch 3 Sprite.
@@ -324,6 +318,7 @@ namespace P.sb3 {
   }
 
   export class Scratch3ListWatcher extends P.core.Watcher {
+    private firstUpdate: boolean = true;
     private params: any;
     private id: string;
     private width: number;
@@ -355,9 +350,10 @@ namespace P.sb3 {
       }
 
       // Silently rest if the list has not been modified to improve performance for static lists.
-      if (!this.list.modified) {
+      if (!this.list.modified && !this.firstUpdate) {
         return;
       }
+      this.firstUpdate = false;
       this.list.modified = false;
       this.updateContents();
     }
@@ -403,7 +399,7 @@ namespace P.sb3 {
         this.target.lists[listName] = createList();
       }
       this.list = this.target.lists[listName] as Scratch3List;
-      this.target.watchers[listName] = this;
+      this.target.listWatchers[listName] = this;
       this.updateLayout();
       if (this.visible) {
         this.updateContents();
@@ -701,23 +697,14 @@ namespace P.sb3 {
     }
 
     loadFonts() {
-      const fonts = {
-        'Marker': '/fonts/Knewave-Regular.woff',
-        'Handwriting': '/fonts/Handlee-Regular.woff',
-        'Pixel': '/fonts/Grand9K-Pixel.ttf',
-        'Curly': '/fonts/Griffy-Regular.woff',
-        'Serif': '/fonts/SourceSerifPro-Regular.woff',
-        'Sans Serif': '/fonts/NotoSans-Regular.woff',
-        'Scratch': '/fonts/Scratch.ttf',
-      };
       const promises: Promise<unknown>[] = [];
-      for (const family in fonts) {
-        promises.push(this.promiseTask(P.utils.settled(P.fonts.loadLocalFont(family, fonts[family]))));
+      for (const family in P.fonts.scratch3) {
+        promises.push(this.promiseTask(P.utils.settled(P.fonts.loadLocalFont(family, P.fonts.scratch3[family]))));
       }
       return Promise.all(promises);
     }
 
-    compileTargets(targets: Target[]): void {
+    compileTargets(targets: Target[], stage: P.core.Stage): void {
       if (P.config.debug) {
         console.time('Scratch 3 compile');
       }
@@ -758,7 +745,7 @@ namespace P.sb3 {
             .filter((i) => i && i.valid);
 
           sprites.forEach((sprite) => sprite.stage = stage);
-          this.compileTargets(targets);
+          this.compileTargets(targets, stage);
           stage.children = sprites;
           stage.allWatchers = watchers;
           watchers.forEach((watcher) => watcher.init());
@@ -1032,6 +1019,10 @@ namespace P.sb3.compiler {
       return this.compiler.target;
     }
 
+    get stage() {
+      return this.compiler.target.stage;
+    }
+
     /**
      * Compile an input, and give it a type.
      */
@@ -1221,8 +1212,6 @@ namespace P.sb3.compiler {
    * General hat handling utilities.
    */
   export class HatUtil extends BlockUtil {
-    public target: Target;
-
     constructor(compiler: Compiler, block: SB3Block, public startingFunction: Fn) {
       super(compiler, block);
     }
@@ -1281,7 +1270,6 @@ namespace P.sb3.compiler {
      */
     public labelCount: number = 0;
     public state: CompilerState;
-    public usedExtensions: Set<string> = new Set();
 
     constructor(target: Target) {
       this.target = target;
@@ -1297,25 +1285,11 @@ namespace P.sb3.compiler {
         .filter((i) => this.blocks[i].topLevel);
     }
 
-    getOpcodeExtension(opcode: string): string {
-      const index = opcode.indexOf('_');
-      if (index !== -1) {
-        return opcode.substring(0, index);
-      }
-      return opcode;
-    }
-
-    useOpcode(opcode: string) {
-      const extension = this.getOpcodeExtension(opcode);
-      this.usedExtensions.add(extension);
-    }
-
     /**
      * Get the compiler for a statement
      */
     getStatementCompiler(opcode: string): StatementCompiler | null {
       if (statementLibrary[opcode]) {
-        this.useOpcode(opcode);
         return statementLibrary[opcode];
       }
       return null;
@@ -1326,7 +1300,6 @@ namespace P.sb3.compiler {
      */
     getInputCompiler(opcode: string): InputCompiler | null {
       if (inputLibrary[opcode]) {
-        this.useOpcode(opcode);
         return inputLibrary[opcode];
       }
       return null;
@@ -1337,7 +1310,6 @@ namespace P.sb3.compiler {
      */
     getHatCompiler(opcode: string): HatCompiler | null {
       if (hatLibrary[opcode]) {
-        this.useOpcode(opcode);
         return hatLibrary[opcode];
       }
       return null;
@@ -1497,15 +1469,31 @@ namespace P.sb3.compiler {
         case NativeTypes.INTEGER_NUM:
         case NativeTypes.ANGLE_NUM: {
           // [type, value]
-          const number = parseFloat(native[1]);
+          const number = +native[1];
           if (isNaN(number) || desiredType === 'string') {
             return this.sanitizedInput(native[1]);
           } else {
+            // It's important that we use number.toString() instead of native[1] to avoid invalid syntax
+            // For example the input "0123" represents the number "123", but including "0123" in JS will throw SyntaxErrors.
             return numberInput(number.toString());
           }
         }
 
         case NativeTypes.TEXT: {
+          // [type, value]
+          const value = native[1];
+          // Do not attempt any conversions if the desired type is string or if the value does not appear to be number-like
+          if (desiredType !== 'string' && /\d/.test(value)) {
+            const number = +value;
+            // If the stringification of the number is not the same as the original value, do not convert.
+            // This fixes issues where the stringification is used instead of the number itself.
+            // For example the number "0123" will end up "123" so reading the first letter of "0123" would return 1 instead of 0
+            if (number.toString() === value) {
+              if (!isNaN(number)) {
+                return numberInput(number.toString());
+              }
+            }
+          }
           const input = this.sanitizedInput(native[1] + '');
           input.potentialNumber = this.isStringLiteralPotentialNumber(native[1]);
           return input;
@@ -1759,6 +1747,7 @@ namespace P.sb3.compiler {
      * Log a warning
      */
     warn(...args: any[]) {
+      args.unshift('[sb3 compiler]');
       console.warn.apply(console, args);
     }
 
@@ -1766,6 +1755,7 @@ namespace P.sb3.compiler {
      * Log info
      */
     log(...args: any[]) {
+      args.unshift('[sb3 compiler]');
       console.log.apply(console, args);
     }
 
@@ -1966,7 +1956,7 @@ namespace P.sb3.compiler {
   statementLibrary['data_hidelist'] = function(util) {
     const LIST = util.sanitizedString(util.getField('LIST'));
     const scope = util.getListScope('LIST');
-    util.writeLn(`${scope}.showVariable(${LIST}, false);`);
+    util.writeLn(`${scope}.showList(${LIST}, false);`);
   };
   statementLibrary['data_hidevariable'] = function(util) {
     const VARIABLE = util.sanitizedString(util.getField('VARIABLE'));
@@ -1993,7 +1983,7 @@ namespace P.sb3.compiler {
   statementLibrary['data_showlist'] = function(util) {
     const LIST = util.sanitizedString(util.getField('LIST'));
     const scope = util.getListScope('LIST');
-    util.writeLn(`${scope}.showVariable(${LIST}, true);`);
+    util.writeLn(`${scope}.showList(${LIST}, true);`);
   };
   statementLibrary['data_showvariable'] = function(util) {
     const VARIABLE = util.sanitizedString(util.getField('VARIABLE'));
@@ -2419,6 +2409,20 @@ namespace P.sb3.compiler {
       util.writeLn('S.isDraggable = false;');
     }
   };
+  statementLibrary['speech2text_listenAndWait'] = function(util) {
+    util.stage.initSpeech2Text();
+    util.writeLn('if (self.speech2text) {');
+    util.writeLn('  save();');
+    util.writeLn('  self.speech2text.startListen();');
+    util.writeLn('  R.id = self.speech2text.id();');
+    const label = util.addLabel();
+    util.writeLn('  if (self.speech2text.id() === R.id) {')
+    util.forceQueue(label);
+    util.writeLn('  }');
+    util.writeLn('  self.speech2text.endListen();');
+    util.writeLn('  restore();');
+    util.writeLn('}');
+  };
   statementLibrary['videoSensing_videoToggle'] = function(util) {
     const VIDEO_STATE = util.getInput('VIDEO_STATE', 'string');
     util.writeLn(`switch (${VIDEO_STATE}) {`);
@@ -2708,12 +2712,11 @@ namespace P.sb3.compiler {
     return util.booleanInput(`!!self.keys[P.runtime.getKeyCode(${KEY_OPTION})]`);
   };
   inputLibrary['sensing_loud'] = function(util) {
-    // see sensing_loudness
-    return util.booleanInput('false');
+    // TODO: parenthsis needed?
+    return util.booleanInput('(self.getLoudness() > 10)');
   };
   inputLibrary['sensing_loudness'] = function(util) {
-    // We don't implement loudness, we always return -1 which indicates that there is no microphone available.
-    return util.numberInput('-1');
+    return util.numberInput('self.getLoudness()');
   };
   inputLibrary['sensing_mousedown'] = function(util) {
     return util.booleanInput('self.mousePressed');
@@ -2754,6 +2757,10 @@ namespace P.sb3.compiler {
   };
   inputLibrary['sound_volume'] = function(util) {
     return util.numberInput('(S.volume * 100)');
+  };
+  inputLibrary['speech2text_getSpeech'] = function(util) {
+    util.stage.initSpeech2Text();
+    return util.stringInput('(self.speech2text ? self.speech2text.speech : "")');
   };
   inputLibrary['videoSensing_menu_VIDEO_STATE'] = function(util) {
     return util.fieldInput('VIDEO_STATE');
@@ -2825,7 +2832,7 @@ namespace P.sb3.compiler {
         const value = P.runtime.scopedEval(KEY.source);
         var keycode = P.runtime.getKeyCode(value);
       } catch (e) {
-        console.warn('makeymakey key generation error', e);
+        util.compiler.warn('makeymakey key generation error', e);
         return;
       }
       if (keycode === 'any') {
@@ -2843,7 +2850,7 @@ namespace P.sb3.compiler {
       try {
         var sequence = P.runtime.scopedEval(SEQUENCE.source);
       } catch (e) {
-        console.warn('makeymakey sequence generation error', e);
+        util.compiler.warn('makeymakey sequence generation error', e);
         return;
       }
       const ARROWS = ['up', 'down', 'left', 'right'];
@@ -2898,6 +2905,20 @@ namespace P.sb3.compiler {
       const warp = typeof mutation.warp === 'string' ? mutation.warp === 'true' : mutation.warp;
       if (warp) {
         compiler.state.isWarp = true;
+      }
+    },
+  };
+  hatLibrary['speech2text_whenIHearHat'] = {
+    handle(util) {
+      util.stage.initSpeech2Text();
+      if (util.stage.speech2text) {
+        const PHRASE = util.getInput('PHRASE', 'string');
+        const phraseFunction = `return ${PHRASE}`;
+        util.stage.speech2text.addHat({
+          target: util.target,
+          startingFunction: util.startingFunction,
+          phraseFunction: P.runtime.createContinuation(phraseFunction),
+        });
       }
     },
   };
@@ -2996,8 +3017,7 @@ namespace P.sb3.compiler {
     }
   };
   watcherLibrary['sensing_loudness'] = {
-    // We don't implement loudness.
-    evaluate() { return -1; },
+    evaluate(watcher) { return watcher.stage.getLoudness(); },
     getLabel() { return 'loudness'; },
   };
   watcherLibrary['sensing_timer'] = {
@@ -3013,5 +3033,17 @@ namespace P.sb3.compiler {
   watcherLibrary['sound_volume'] = {
     evaluate(watcher) { return watcher.target.volume * 100; },
     getLabel() { return 'volume'; },
+  };
+  watcherLibrary['speech2text_getSpeech'] = {
+    init(watcher) {
+      watcher.stage.initSpeech2Text();
+    },
+    evaluate(watcher) {
+      if (watcher.stage.speech2text) {
+        return watcher.stage.speech2text.speech;
+      }
+      return '';
+    },
+    getLabel(watcher) { return 'Speech to text: speech'; },
   };
 }());

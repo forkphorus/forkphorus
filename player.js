@@ -725,7 +725,11 @@ P.Player.ErrorHandler = (function() {
     if (this.errorContainer) {
       this.errorContainer.appendChild(errorEl);
     } else {
-      this.player.stage.ui.appendChild(errorEl);
+      if (this.player.stage) {
+        this.player.stage.ui.appendChild(errorEl);
+      } else {
+        this.player.player.appendChild(errorEl);
+      }
     }
     this.errorEl = errorEl;
   };

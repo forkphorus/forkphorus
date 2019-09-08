@@ -980,9 +980,10 @@ namespace P.renderer {
     public penContext: CanvasRenderingContext2D;
     public zoom: number = 1;
 
-    private penLayerModified: boolean = false;
-    private penLayerTargetScale: number = -1;
-    private penLayerMaxScale: number = -1;
+    private penModified: boolean = false;
+    private penTargetZoom: number = -1;
+    private penZoom: number = 1;
+
     private stageCostumeIndex: number = -1;
 
     constructor(public stage: P.core.Stage) {
@@ -1048,36 +1049,41 @@ namespace P.renderer {
 
     resize(zoom: number) {
       this.zoom = zoom;
-      if (zoom > this.penLayerMaxScale) {
-        // Immediately scale up
-        this.penLayerMaxScale = zoom;
+      this.resizePen(zoom);
+      this.renderStageCostume(this.zoom);
+    }
+
+    resizePen(zoom: number) {
+      if (zoom > this.penZoom) {
+        this.penZoom = zoom;
         const cachedCanvas = document.createElement('canvas');
         cachedCanvas.width = this.penLayer.width;
         cachedCanvas.height = this.penLayer.height;
         cachedCanvas.getContext('2d')!.drawImage(this.penLayer, 0, 0);
         this._reset(this.penContext, zoom);
         this.penContext.drawImage(cachedCanvas, 0, 0, 480, 360);
-      } else if (!this.penLayerModified) {
+      } else if (!this.penModified) {
         // Immediately scale down if no changes have been made
+        this.penZoom = zoom;
         this._reset(this.penContext, zoom);
       } else {
         // We'll resize on the next clear, as resizing now would result in a loss of detail.
-        this.penLayerTargetScale = zoom;
+        this.penTargetZoom = zoom;
       }
-      this.renderStageCostume(this.zoom);
     }
 
     penClear() {
-      this.penLayerModified = false;
-      if (this.penLayerTargetScale !== -1) {
-        this._reset(this.penContext, this.penLayerTargetScale);
-        this.penLayerTargetScale = -1;
+      this.penModified = false;
+      if (this.penTargetZoom !== -1) {
+        this._reset(this.penContext, this.penTargetZoom);
+        this.penZoom = this.penTargetZoom;
+        this.penTargetZoom = -1;
       }
       this.penContext.clearRect(0, 0, 480, 360);
     }
 
     penDot(color: string, size: number, x: number, y: number) {
-      this.penLayerModified = true;
+      this.penModified = true;
       this.penContext.fillStyle = color;
       this.penContext.beginPath();
       this.penContext.arc(240 + x, 180 - y, size / 2, 0, 2 * Math.PI, false);
@@ -1085,8 +1091,16 @@ namespace P.renderer {
     }
 
     penLine(color: string, size: number, x1: number, y1: number, x2: number, y2: number) {
-      this.penLayerModified = true;
+      this.penModified = true;
       this.penContext.lineCap = 'round';
+      if (this.penZoom === 1) {
+        if (size % 2 > .5 && size % 2 < 1.5) {
+          x1 -= .5;
+          y1 -= .5;
+          x2 -= .5;
+          y2 -= .5;
+        }
+      }
       this.penContext.strokeStyle = color;
       this.penContext.lineWidth = size;
       this.penContext.beginPath();
@@ -1096,7 +1110,7 @@ namespace P.renderer {
     }
 
     penStamp(sprite: P.core.Sprite) {
-      this.penLayerModified = true;
+      this.penModified = true;
       this._drawChild(sprite, this.penContext);
     }
 

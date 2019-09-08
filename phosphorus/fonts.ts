@@ -13,13 +13,13 @@ namespace P.fonts {
   const fontFamilyCache: ObjectMap<string> = {};
 
   export const scratch3 = {
-    'Marker': '/fonts/Knewave-Regular.woff',
-    'Handwriting': '/fonts/Handlee-Regular.woff',
-    'Pixel': '/fonts/Grand9K-Pixel.ttf',
-    'Curly': '/fonts/Griffy-Regular.woff',
-    'Serif': '/fonts/SourceSerifPro-Regular.woff',
-    'Sans Serif': '/fonts/NotoSans-Regular.woff',
-    'Scratch': '/fonts/Scratch.ttf',
+    'Marker': 'fonts/Knewave-Regular.woff',
+    'Handwriting': 'fonts/Handlee-Regular.woff',
+    'Pixel': 'fonts/Grand9K-Pixel.ttf',
+    'Curly': 'fonts/Griffy-Regular.woff',
+    'Serif': 'fonts/SourceSerifPro-Regular.woff',
+    'Sans Serif': 'fonts/NotoSans-Regular.woff',
+    'Scratch': 'fonts/Scratch.ttf',
   };
 
   /**

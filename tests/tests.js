@@ -17,6 +17,7 @@
     'regressions/58-list-reference.sb3',
     'regressions/63-random.sb3',
     'regressions/66-insert.sb3',
+    'regressions/70.sb3',
   ];
 
   /**

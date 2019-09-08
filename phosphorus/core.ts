@@ -136,9 +136,13 @@ namespace P.core {
      */
     public activeSounds: Set<ActiveSound> = new Set();
     /**
-     * Maps names (or ids) of variables or lists to their Watcher, if any.
+     * Variable watchers that this object owns.
      */
     public watchers: ObjectMap<Watcher> = {};
+    /**
+     * List watchers that this object owns.
+     */
+    public listWatchers: ObjectMap<Watcher> = {};
     /**
      * Variables of this object.
      * Maps variable names (or ids) to their value.
@@ -207,7 +211,6 @@ namespace P.core {
 
     showVariable(name: string, visible: boolean) {
       let watcher = this.watchers[name];
-
       // Create watchers that might not exist
       if (!watcher) {
         const newWatcher = this.createVariableWatcher(this, name);
@@ -218,7 +221,20 @@ namespace P.core {
         this.watchers[name] = watcher = newWatcher;
         this.stage.allWatchers.push(watcher);
       }
+      watcher.setVisible(visible);
+    }
 
+    showList(name: string, visible: boolean) {
+      let watcher = this.listWatchers[name];
+      if (!watcher) {
+        const newWatcher = this.createListWatcher(this, name);
+        if (!newWatcher) {
+          return;
+        }
+        newWatcher.init();
+        this.listWatchers[name] = watcher = newWatcher;
+        this.stage.allWatchers.push(watcher);
+      }
       watcher.setVisible(visible);
     }
 
@@ -492,7 +508,18 @@ namespace P.core {
      * @param target The sprite that will own the watcher
      * @param variableName The name (or id) of the variable to monitor
      */
-    abstract createVariableWatcher(target: Base, variableName: string): Watcher | null;
+    public createVariableWatcher(target: Base, variableName: string): Watcher | null {
+      return null;
+    }
+
+    /**
+     * Create a Watcher for a list.
+     * @param target The sprite that will own the watcher
+     * @param listName The name (or id) of the variable to monitor
+     */
+    public createListWatcher(target: Base, listName: string): Watcher | null {
+      return null;
+    }
   }
 
   type KeyList = Array<boolean | undefined> & { any: number; };
@@ -516,7 +543,6 @@ namespace P.core {
     public promptId: number = 0;
     public nextPromptId: number = 0;
     public hidePrompt: boolean = false;
-
     
     public zoom: number = 1;
     
@@ -546,6 +572,7 @@ namespace P.core {
     public mouseSprite: Sprite | undefined;
 
     private videoElement: HTMLVideoElement;
+    public speech2text: P.speech2text.SpeechToTextExtension | null;
 
     constructor() {
       super();
@@ -749,6 +776,9 @@ namespace P.core {
       this.runtime.stopAll();
       this.runtime.pause();
       this.stopAllSounds();
+      if (this.speech2text) {
+        this.speech2text.destroy();
+      }
     }
 
     /**
@@ -917,6 +947,16 @@ namespace P.core {
             this.videoElement.style.display = 'none';
           }
         }
+      }
+    }
+
+    getLoudness() {
+      return P.microphone.getLoudness();
+    }
+
+    initSpeech2Text() {
+      if (!this.speech2text && P.speech2text.isSupported()) {
+        this.speech2text = new P.speech2text.SpeechToTextExtension(this);
       }
     }
 
@@ -1204,6 +1244,7 @@ namespace P.core {
       clone.penSize = this.penSize;
       clone.isPenDown = this.isPenDown;
       clone.watchers = this.watchers;
+      clone.listWatchers = this.listWatchers;
 
       return clone;
     }

@@ -656,6 +656,19 @@ namespace P.runtime {
       return this.baseNow + Date.now() - this.baseTime;
     }
 
+    evaluateExpression(sprite: P.core.Base, fn: () => any) {
+      // We will load a few runtime values for this.
+      // These are the values that are most commonly used in expressions, in addition the runtime methods.
+      self = this.stage;
+      runtime = this;
+      S = sprite;
+      try {
+        return fn();
+      } catch (e) {
+        return undefined;
+      }
+    }
+
     /**
      * Advances one frame into the future.
      */
