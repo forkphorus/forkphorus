@@ -127,6 +127,42 @@ namespace P.renderer {
       filters.whirl !== 0;
   }
 
+  function rgb2hsv(r: number, g: number, b: number): [number, number, number] {
+    var max = Math.max(r, g, b), min = Math.min(r, g, b),
+      d = max - min,
+      h,
+      s = (max === 0 ? 0 : d / max),
+      v = max / 255;
+
+    switch (max) {
+        case min: h = 0; break;
+        case r: h = (g - b) + d * (g < b ? 6: 0); h /= 6 * d; break;
+        case g: h = (b - r) + d * 2; h /= 6 * d; break;
+        case b: h = (r - g) + d * 4; h /= 6 * d; break;
+    }
+
+    return [h, s, v];
+  }
+
+  function hsv2rgb(h: number, s: number, v: number): [number, number, number] {
+    // https://stackoverflow.com/a/17243070
+    var r, g, b, i, f, p, q, t;
+    i = Math.floor(h * 6);
+    f = h * 6 - i;
+    p = v * (1 - s);
+    q = v * (1 - f * s);
+    t = v * (1 - (1 - f) * s);
+    switch (i % 6) {
+      case 0: r = v, g = t, b = p; break;
+      case 1: r = q, g = v, b = p; break;
+      case 2: r = p, g = v, b = t; break;
+      case 3: r = p, g = q, b = v; break;
+      case 4: r = t, g = p, b = v; break;
+      case 5: r = v, g = p, b = q; break;
+    }
+    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+  }
+
   // WEBGL
 
   // Used in the WebGL renderer for inverting sprites.
@@ -896,7 +932,7 @@ namespace P.renderer {
     public ctx: CanvasRenderingContext2D;
     public canvas: HTMLCanvasElement;
     /**
-     * Disables rendering filters on the 
+     * Disables rendering filters on this renderer
      */
     public noEffects: boolean = false;
 
@@ -963,24 +999,44 @@ namespace P.renderer {
       if (!this.noEffects) {
         ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
 
-        if (c.filters.color !== 0) {
-          ctx.filter = 'hue-rotate(' + (c.filters.color / 200 * 360) + 'deg)';
-        }
-
-        if (c.filters.brightness !== 0) {
-          const brightnessShift = c.filters.brightness / 100 * 255;
-
+        if (c.filters.brightness !== 0 || c.filters.color !== 0) {
           const imageData = lod.getImageData();
-
           // We need to create a new copy of the image data
           const newData = ctx.createImageData(imageData.width, imageData.height);
           const length = newData.data.length;
-          for (var i = 0; i < length; i += 4) {
-            // r, g, b, a
-            newData.data[i] = imageData.data[i] + brightnessShift;
-            newData.data[i + 1] = imageData.data[i + 1] + brightnessShift;
-            newData.data[i + 2] = imageData.data[i + 2] + brightnessShift;
-            newData.data[i + 3] = imageData.data[i + 3];
+
+          if (c.filters.brightness !== 0) {
+            const brightnessShift = c.filters.brightness / 100 * 255;
+            for (var i = 0; i < length; i += 4) {
+              newData.data[i] = imageData.data[i] + brightnessShift;
+              newData.data[i + 1] = imageData.data[i + 1] + brightnessShift;
+              newData.data[i + 2] = imageData.data[i + 2] + brightnessShift;
+              newData.data[i + 3] = imageData.data[i + 3];
+            }
+          }
+
+          if (c.filters.color !== 0) {
+            const MIN_VALUE = 0.11 / 2.0;
+            const MIN_SATURATION = 0.09;
+            const hueShift = c.filters.color / 200;
+            for (var i = 0; i < length; i += 4) {
+              const r = imageData.data[i];
+              const g = imageData.data[i + 1];
+              const b = imageData.data[i + 2];
+
+              let hsv = rgb2hsv(r, g, b);
+              if (hsv[2] < MIN_VALUE) hsv = [0, 1, MIN_VALUE];
+              else if (hsv[1] < MIN_SATURATION) hsv = [0, MIN_SATURATION, hsv[2]];
+
+              hsv[0] = (hsv[0] + hueShift) - Math.floor(hsv[0] + hueShift);
+              if (hsv[0] < 0) hsv[0] += 1;
+
+              const color = hsv2rgb(hsv[0], hsv[1], hsv[2]);
+              newData.data[i] = color[0];
+              newData.data[i + 1] = color[1];
+              newData.data[i + 2] = color[2];
+              newData.data[i + 3] = imageData.data[i + 3];
+            }
           }
 
           // putImageData() doesn't respect canvas transforms so we need to draw to another canvas and then drawImage() that
