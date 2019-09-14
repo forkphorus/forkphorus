@@ -133,14 +133,12 @@ namespace P.renderer {
       h,
       s = (max === 0 ? 0 : d / max),
       v = max / 255;
-
     switch (max) {
-        case min: h = 0; break;
-        case r: h = (g - b) + d * (g < b ? 6: 0); h /= 6 * d; break;
-        case g: h = (b - r) + d * 2; h /= 6 * d; break;
-        case b: h = (r - g) + d * 4; h /= 6 * d; break;
+      case min: h = 0; break;
+      case r: h = (g - b) + d * (g < b ? 6: 0); h /= 6 * d; break;
+      case g: h = (b - r) + d * 2; h /= 6 * d; break;
+      case b: h = (r - g) + d * 4; h /= 6 * d; break;
     }
-
     return [h, s, v];
   }
 
@@ -979,7 +977,6 @@ namespace P.renderer {
       ctx.translate(((c.scratchX + 240) * globalScale | 0) / globalScale, ((180 - c.scratchY) * globalScale | 0) / globalScale);
 
       let objectScale = costume.scale;
-      // Direction transforms are only applied to Sprites because Stages cannot be rotated.
       if (P.core.isSprite(c)) {
         if (c.rotationStyle === RotationStyle.Normal) {
           ctx.rotate((c.direction - 90) * Math.PI / 180);
@@ -1001,41 +998,46 @@ namespace P.renderer {
 
         if (c.filters.brightness !== 0 || c.filters.color !== 0) {
           const imageData = lod.getImageData();
-          // We need to create a new copy of the image data
+          // directly modifying imageData would not be a good idea as it would be stored permanently,
+          // so instead we will create a new imageData and copy values into that.
+
           const newData = ctx.createImageData(imageData.width, imageData.height);
           const length = newData.data.length;
+          let oldData: Uint8ClampedArray = imageData.data;
 
           if (c.filters.brightness !== 0) {
             const brightnessShift = c.filters.brightness / 100 * 255;
             for (var i = 0; i < length; i += 4) {
-              newData.data[i] = imageData.data[i] + brightnessShift;
-              newData.data[i + 1] = imageData.data[i + 1] + brightnessShift;
-              newData.data[i + 2] = imageData.data[i + 2] + brightnessShift;
-              newData.data[i + 3] = imageData.data[i + 3];
+              newData.data[i] = oldData[i] + brightnessShift;
+              newData.data[i + 1] = oldData[i + 1] + brightnessShift;
+              newData.data[i + 2] = oldData[i + 2] + brightnessShift;
+              newData.data[i + 3] = oldData[i + 3];
             }
+            oldData = newData.data;
           }
 
           if (c.filters.color !== 0) {
-            const MIN_VALUE = 0.11 / 2.0;
+            const MIN_VALUE = 0.11 / 2;
             const MIN_SATURATION = 0.09;
             const hueShift = c.filters.color / 200;
             for (var i = 0; i < length; i += 4) {
-              const r = imageData.data[i];
-              const g = imageData.data[i + 1];
-              const b = imageData.data[i + 2];
+              const r = oldData[i];
+              const g = oldData[i + 1];
+              const b = oldData[i + 2];
 
               let hsv = rgb2hsv(r, g, b);
               if (hsv[2] < MIN_VALUE) hsv = [0, 1, MIN_VALUE];
               else if (hsv[1] < MIN_SATURATION) hsv = [0, MIN_SATURATION, hsv[2]];
 
-              hsv[0] = (hsv[0] + hueShift) - Math.floor(hsv[0] + hueShift);
+              // hsv[0] + hueShift modulo 1
+              hsv[0] = hsv[0] + hueShift - Math.floor(hsv[0] + hueShift);
               if (hsv[0] < 0) hsv[0] += 1;
 
-              const color = hsv2rgb(hsv[0], hsv[1], hsv[2]);
-              newData.data[i] = color[0];
-              newData.data[i + 1] = color[1];
-              newData.data[i + 2] = color[2];
-              newData.data[i + 3] = imageData.data[i + 3];
+              const rgb = hsv2rgb(hsv[0], hsv[1], hsv[2]);
+              newData.data[i] = rgb[0];
+              newData.data[i + 1] = rgb[1];
+              newData.data[i + 2] = rgb[2];
+              newData.data[i + 3] = oldData[i + 3];
             }
           }
 
@@ -1043,7 +1045,6 @@ namespace P.renderer {
           workingRenderer.canvas.width = imageData.width;
           workingRenderer.canvas.height = imageData.height;
           workingRenderer.ctx.putImageData(newData, 0, 0);
-
           ctx.drawImage(workingRenderer.canvas, x, y, w, h);
         } else {
           ctx.drawImage(lod.image, x, y, w, h);
@@ -1085,22 +1086,12 @@ namespace P.renderer {
     }
 
     onStageFiltersChanged() {
-      const filter = getCSSFilter(this.stage.filters);
-      // Only reapply a CSS filter if it has changed for performance, specifically in firefox.
-      // Might not be necessary here.
-      if (this.stageLayer.style.filter !== filter) {
-        this.stageLayer.style.filter = filter;
-      }
-
-      // cssFilter does not include ghost
-      this.stageLayer.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
+      this.renderStageCostume(this.zoom);
     }
 
     renderStageCostume(scale: number) {
       this._reset(this.stageContext, scale * P.config.scale);
-      this.noEffects = true;
       this._drawChild(this.stage, this.stageContext);
-      this.noEffects = false;
     }
 
     init(root: HTMLCanvasElement) {

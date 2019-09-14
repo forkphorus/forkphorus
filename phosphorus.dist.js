@@ -1207,36 +1207,38 @@ var P;
                         const imageData = lod.getImageData();
                         const newData = ctx.createImageData(imageData.width, imageData.height);
                         const length = newData.data.length;
+                        let oldData = imageData.data;
                         if (c.filters.brightness !== 0) {
                             const brightnessShift = c.filters.brightness / 100 * 255;
                             for (var i = 0; i < length; i += 4) {
-                                newData.data[i] = imageData.data[i] + brightnessShift;
-                                newData.data[i + 1] = imageData.data[i + 1] + brightnessShift;
-                                newData.data[i + 2] = imageData.data[i + 2] + brightnessShift;
-                                newData.data[i + 3] = imageData.data[i + 3];
+                                newData.data[i] = oldData[i] + brightnessShift;
+                                newData.data[i + 1] = oldData[i + 1] + brightnessShift;
+                                newData.data[i + 2] = oldData[i + 2] + brightnessShift;
+                                newData.data[i + 3] = oldData[i + 3];
                             }
+                            oldData = newData.data;
                         }
                         if (c.filters.color !== 0) {
-                            const MIN_VALUE = 0.11 / 2.0;
+                            const MIN_VALUE = 0.11 / 2;
                             const MIN_SATURATION = 0.09;
                             const hueShift = c.filters.color / 200;
                             for (var i = 0; i < length; i += 4) {
-                                const r = imageData.data[i];
-                                const g = imageData.data[i + 1];
-                                const b = imageData.data[i + 2];
+                                const r = oldData[i];
+                                const g = oldData[i + 1];
+                                const b = oldData[i + 2];
                                 let hsv = rgb2hsv(r, g, b);
                                 if (hsv[2] < MIN_VALUE)
                                     hsv = [0, 1, MIN_VALUE];
                                 else if (hsv[1] < MIN_SATURATION)
                                     hsv = [0, MIN_SATURATION, hsv[2]];
-                                hsv[0] = (hsv[0] + hueShift) - Math.floor(hsv[0] + hueShift);
+                                hsv[0] = hsv[0] + hueShift - Math.floor(hsv[0] + hueShift);
                                 if (hsv[0] < 0)
                                     hsv[0] += 1;
-                                const color = hsv2rgb(hsv[0], hsv[1], hsv[2]);
-                                newData.data[i] = color[0];
-                                newData.data[i + 1] = color[1];
-                                newData.data[i + 2] = color[2];
-                                newData.data[i + 3] = imageData.data[i + 3];
+                                const rgb = hsv2rgb(hsv[0], hsv[1], hsv[2]);
+                                newData.data[i] = rgb[0];
+                                newData.data[i + 1] = rgb[1];
+                                newData.data[i + 2] = rgb[2];
+                                newData.data[i + 3] = oldData[i + 3];
                             }
                         }
                         workingRenderer.canvas.width = imageData.width;
@@ -1274,17 +1276,11 @@ var P;
                 this.penLayer = penLayer;
             }
             onStageFiltersChanged() {
-                const filter = getCSSFilter(this.stage.filters);
-                if (this.stageLayer.style.filter !== filter) {
-                    this.stageLayer.style.filter = filter;
-                }
-                this.stageLayer.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
+                this.renderStageCostume(this.zoom);
             }
             renderStageCostume(scale) {
                 this._reset(this.stageContext, scale * P.config.scale);
-                this.noEffects = true;
                 this._drawChild(this.stage, this.stageContext);
-                this.noEffects = false;
             }
             init(root) {
                 root.appendChild(this.stageLayer);
