@@ -318,11 +318,15 @@
       } else {
         new P.IO.TextRequest('https://scratch.garbomuffin.com/api/forkphorus/?t=title&p=' + id).load()
           .then(function(title) {
-            if (player.stageId === stageId && title) {
-              cachedTitles[id] = title;
-              player.projectTitle = title;
-              document.title = title + ' - forkphorus';
-              updateLinks();
+            if (player.stageId === stageId) {
+              if (title) {
+                cachedTitles[id] = title;
+                player.projectTitle = title;
+                document.title = title + ' - forkphorus';
+                updateLinks();
+              } else {
+                resetTitle();
+              }
             }
           });
       }
