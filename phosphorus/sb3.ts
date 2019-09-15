@@ -319,6 +319,9 @@ namespace P.sb3 {
     public element: HTMLElement;
     private indexEl: HTMLElement;
     private valueEl: HTMLElement;
+    private value: any = '';
+    private index: any = -1;
+    private y: any = 0;
 
     constructor() {
       this.element = document.createElement('div');
@@ -335,7 +338,10 @@ namespace P.sb3 {
      * Set the value of this row.
      */
     setValue(value: any) {
-      this.valueEl.textContent = value;
+      if (value !== this.value) {
+        this.value = value;
+        this.valueEl.textContent = value;
+      }
     }
 
     /**
@@ -343,14 +349,20 @@ namespace P.sb3 {
      * @param index The *JavaScript* index of the row.
      */
     setIndex(index: number) {
-      this.indexEl.textContent = (index + 1).toString();
+      if (index !== this.index) {
+        this.index = index;
+        this.indexEl.textContent = (index + 1).toString();
+      }
     }
 
     /**
      * Set the Y coordinate of this row.
      */
-    setY(px: number) {
-      this.element.style.transform = 'translateY(' + px + 'px)';
+    setY(y: number) {
+      if (y !== this.y) {
+        this.y = y;
+        this.element.style.transform = 'translateY(' + y + 'px)';
+      }
     }
   }
 
@@ -386,7 +398,12 @@ namespace P.sb3 {
         return;
       }
 
-      this.updateScroll();
+      if (!this.list.modified) {
+        return;
+      }
+      this.list.modified = false;
+
+      this.updateList();
 
       const bottomLabelText = this.getBottomLabel();
       if (this.bottomLabelEl.textContent !== bottomLabelText) {
@@ -394,7 +411,7 @@ namespace P.sb3 {
       }
     }
 
-    updateScroll() {
+    updateList() {
       const cssHeight = this.list.length * this.rowHeight + 'px';
       if (this.contentEl.style.height !== cssHeight) {
         this.contentEl.style.height = cssHeight;
@@ -486,7 +503,7 @@ namespace P.sb3 {
       this.contentContainerEl.classList.add('s3-list-content');
       this.contentContainerEl.addEventListener('scroll', (e) => {
         this.scrollTop = this.contentContainerEl.scrollTop;
-        this.updateScroll();
+        this.updateList();
       });
 
       this.contentEl.classList.add('s3-list-rows');

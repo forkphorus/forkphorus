@@ -5416,6 +5416,9 @@ var P;
         sb3.Scratch3VariableWatcher = Scratch3VariableWatcher;
         class ListWatcherRow {
             constructor() {
+                this.value = '';
+                this.index = -1;
+                this.y = 0;
                 this.element = document.createElement('div');
                 this.indexEl = document.createElement('div');
                 this.valueEl = document.createElement('div');
@@ -5426,13 +5429,22 @@ var P;
                 this.element.appendChild(this.valueEl);
             }
             setValue(value) {
-                this.valueEl.textContent = value;
+                if (value !== this.value) {
+                    this.value = value;
+                    this.valueEl.textContent = value;
+                }
             }
             setIndex(index) {
-                this.indexEl.textContent = (index + 1).toString();
+                if (index !== this.index) {
+                    this.index = index;
+                    this.indexEl.textContent = (index + 1).toString();
+                }
             }
-            setY(px) {
-                this.element.style.transform = 'translateY(' + px + 'px)';
+            setY(y) {
+                if (y !== this.y) {
+                    this.y = y;
+                    this.element.style.transform = 'translateY(' + y + 'px)';
+                }
             }
         }
         sb3.ListWatcherRow = ListWatcherRow;
@@ -5454,13 +5466,17 @@ var P;
                 if (!this.visible) {
                     return;
                 }
-                this.updateScroll();
+                if (!this.list.modified) {
+                    return;
+                }
+                this.list.modified = false;
+                this.updateList();
                 const bottomLabelText = this.getBottomLabel();
                 if (this.bottomLabelEl.textContent !== bottomLabelText) {
                     this.bottomLabelEl.textContent = this.getBottomLabel();
                 }
             }
-            updateScroll() {
+            updateList() {
                 const cssHeight = this.list.length * this.rowHeight + 'px';
                 if (this.contentEl.style.height !== cssHeight) {
                     this.contentEl.style.height = cssHeight;
@@ -5534,7 +5550,7 @@ var P;
                 this.contentContainerEl.classList.add('s3-list-content');
                 this.contentContainerEl.addEventListener('scroll', (e) => {
                     this.scrollTop = this.contentContainerEl.scrollTop;
-                    this.updateScroll();
+                    this.updateList();
                 });
                 this.contentEl.classList.add('s3-list-rows');
                 this.contentContainerEl.appendChild(this.contentEl);
