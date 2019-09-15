@@ -5440,6 +5440,8 @@ var P;
             constructor(stage, data) {
                 super(stage, data.spriteName || '');
                 this.rows = [];
+                this.rowHeight = 24;
+                this.scrollTop = 0;
                 this.id = data.id;
                 this.params = data.params;
                 this.x = data.x;
@@ -5459,27 +5461,28 @@ var P;
                 }
             }
             updateScroll() {
-                this.contentEl.style.height = this.list.length * 24 + 'px';
-                const topVisible = this.contentContainerEl.scrollTop;
+                const cssHeight = this.list.length * this.rowHeight + 'px';
+                if (this.contentEl.style.height !== cssHeight) {
+                    this.contentEl.style.height = cssHeight;
+                }
+                const topVisible = this.scrollTop;
                 const bottomVisible = topVisible + this.height;
-                let firstVisibleIndex = Math.max(0, Math.floor(topVisible / 24));
-                let lastVisibleIndex = Math.min(Math.ceil(bottomVisible / 24), this.list.length - 1);
+                let firstVisibleIndex = Math.max(0, Math.floor(topVisible / this.rowHeight));
+                let lastVisibleIndex = Math.min(Math.ceil(bottomVisible / this.rowHeight), this.list.length - 1);
                 if (lastVisibleIndex - firstVisibleIndex > 50) {
                     lastVisibleIndex = firstVisibleIndex + 50;
                 }
-                const necessaryRows = lastVisibleIndex - firstVisibleIndex;
-                while (this.rows.length <= necessaryRows) {
-                    this.rows.push(new ListWatcherRow());
+                const visibleRows = lastVisibleIndex - firstVisibleIndex;
+                while (this.rows.length <= visibleRows) {
+                    const row = new ListWatcherRow();
+                    this.rows.push(row);
+                    this.contentEl.appendChild(row.element);
                 }
-                while (this.contentEl.firstChild) {
-                    this.contentEl.removeChild(this.contentEl.firstChild);
-                }
-                for (var i = firstVisibleIndex; i <= lastVisibleIndex; i++) {
-                    const row = this.rows[i - firstVisibleIndex];
+                for (var i = firstVisibleIndex, j = 0; i <= lastVisibleIndex; i++, j++) {
+                    let row = this.rows[j];
                     row.setIndex(i);
                     row.setValue(this.list[i]);
-                    row.setY(i * 24);
-                    this.contentEl.appendChild(row.element);
+                    row.setY(i * this.rowHeight);
                 }
             }
             init() {
@@ -5495,7 +5498,10 @@ var P;
                 this.updateLayout();
             }
             getTopLabel() {
-                return this.params.LIST;
+                if (this.target.isStage) {
+                    return this.params.LIST;
+                }
+                return this.target.name + ': ' + this.params.LIST;
             }
             getBottomLabel() {
                 return 'length ' + this.list.length;
@@ -5526,8 +5532,9 @@ var P;
                 this.bottomLabelEl.textContent = this.getBottomLabel();
                 this.bottomLabelEl.classList.add('s3-list-bottom-label');
                 this.contentContainerEl.classList.add('s3-list-content');
-                this.contentContainerEl.addEventListener('scroll', () => {
-                    this.update();
+                this.contentContainerEl.addEventListener('scroll', (e) => {
+                    this.scrollTop = this.contentContainerEl.scrollTop;
+                    this.updateScroll();
                 });
                 this.contentEl.classList.add('s3-list-rows');
                 this.contentContainerEl.appendChild(this.contentEl);
@@ -7880,4 +7887,3 @@ var P;
         })(speech2text = ext.speech2text || (ext.speech2text = {}));
     })(ext = P.ext || (P.ext = {}));
 })(P || (P = {}));
-//# sourceMappingURL=phosphorus.dist.js.map

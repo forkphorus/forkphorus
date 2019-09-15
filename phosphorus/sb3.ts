@@ -366,6 +366,8 @@ namespace P.sb3 {
     private contentContainerEl: HTMLElement;
     private contentEl: HTMLElement;
     private rows: ListWatcherRow[] = [];
+    private rowHeight: number = 24;
+    private scrollTop: number = 0;
 
     constructor(stage: Scratch3Stage, data: SB3Watcher) {
       super(stage, data.spriteName || '');
@@ -393,12 +395,16 @@ namespace P.sb3 {
     }
 
     updateScroll() {
-      this.contentEl.style.height = this.list.length * 24 + 'px';
-      const topVisible = this.contentContainerEl.scrollTop;
+      const cssHeight = this.list.length * this.rowHeight + 'px';
+      if (this.contentEl.style.height !== cssHeight) {
+        this.contentEl.style.height = cssHeight;
+      }
+
+      const topVisible = this.scrollTop;
       const bottomVisible = topVisible + this.height;
 
-      let firstVisibleIndex = Math.max(0, Math.floor(topVisible / 24));
-      let lastVisibleIndex = Math.min(Math.ceil(bottomVisible / 24), this.list.length - 1);
+      let firstVisibleIndex = Math.max(0, Math.floor(topVisible / this.rowHeight));
+      let lastVisibleIndex = Math.min(Math.ceil(bottomVisible / this.rowHeight), this.list.length - 1);
 
       // Sanity checks:
       // Cap ourselves at 50 rows on screen.
@@ -406,21 +412,18 @@ namespace P.sb3 {
         lastVisibleIndex = firstVisibleIndex + 50;
       }
 
-      const necessaryRows = lastVisibleIndex - firstVisibleIndex;
-      while (this.rows.length <= necessaryRows) {
-        this.rows.push(new ListWatcherRow());
+      const visibleRows = lastVisibleIndex - firstVisibleIndex;
+      while (this.rows.length <= visibleRows) {
+        const row = new ListWatcherRow();
+        this.rows.push(row);
+        this.contentEl.appendChild(row.element);
       }
 
-      while (this.contentEl.firstChild) {
-        this.contentEl.removeChild(this.contentEl.firstChild);
-      }
-
-      for (var i = firstVisibleIndex; i <= lastVisibleIndex; i++) {
-        const row = this.rows[i - firstVisibleIndex];
+      for (var i = firstVisibleIndex, j = 0; i <= lastVisibleIndex; i++, j++) {
+        let row = this.rows[j];
         row.setIndex(i);
         row.setValue(this.list[i]);
-        row.setY(i * 24);
-        this.contentEl.appendChild(row.element);
+        row.setY(i * this.rowHeight);
       }
     }
 
@@ -481,8 +484,9 @@ namespace P.sb3 {
       this.bottomLabelEl.classList.add('s3-list-bottom-label');
 
       this.contentContainerEl.classList.add('s3-list-content');
-      this.contentContainerEl.addEventListener('scroll', () => {
-        this.update();
+      this.contentContainerEl.addEventListener('scroll', (e) => {
+        this.scrollTop = this.contentContainerEl.scrollTop;
+        this.updateScroll();
       });
 
       this.contentEl.classList.add('s3-list-rows');
