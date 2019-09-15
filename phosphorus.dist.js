@@ -1204,57 +1204,18 @@ var P;
                 if (!this.noEffects) {
                     ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
                     if (c.filters.brightness !== 0 || c.filters.color !== 0) {
-                        const imageData = lod.getImageData();
-                        const newData = ctx.createImageData(imageData.width, imageData.height);
-                        const length = newData.data.length;
-                        let oldData = imageData.data;
+                        let sourceImage = lod.getImageData();
+                        let destImage = ctx.createImageData(sourceImage.width, sourceImage.height);
                         if (c.filters.color !== 0) {
-                            const MIN_VALUE = 0.11 / 2;
-                            const MIN_SATURATION = 0.09;
-                            const hueShift = c.filters.color / 200;
-                            const colorCache = {};
-                            for (var i = 0; i < length; i += 4) {
-                                const r = oldData[i];
-                                const g = oldData[i + 1];
-                                const b = oldData[i + 2];
-                                newData.data[i + 3] = oldData[i + 3];
-                                const rgbHash = (r << 16) + (g << 8) + b;
-                                const cachedColor = colorCache[rgbHash];
-                                if (cachedColor !== undefined) {
-                                    newData.data[i] = (0xff0000 & cachedColor) >> 16;
-                                    newData.data[i + 1] = (0x00ff00 & cachedColor) >> 8;
-                                    newData.data[i + 2] = (0x0000ff & cachedColor);
-                                    continue;
-                                }
-                                let hsv = rgb2hsv(r, g, b);
-                                if (hsv[2] < MIN_VALUE)
-                                    hsv = [0, 1, MIN_VALUE];
-                                else if (hsv[1] < MIN_SATURATION)
-                                    hsv = [0, MIN_SATURATION, hsv[2]];
-                                hsv[0] = hsv[0] + hueShift - Math.floor(hsv[0] + hueShift);
-                                if (hsv[0] < 0)
-                                    hsv[0] += 1;
-                                const rgb = hsv2rgb(hsv[0], hsv[1], hsv[2]);
-                                colorCache[rgbHash] = (rgb[0] << 16) + (rgb[1] << 8) + rgb[2];
-                                newData.data[i] = rgb[0];
-                                newData.data[i + 1] = rgb[1];
-                                newData.data[i + 2] = rgb[2];
-                            }
-                            oldData = newData.data;
+                            this.applyColorEffect(sourceImage, destImage, c.filters.color / 200);
+                            sourceImage = destImage;
                         }
                         if (c.filters.brightness !== 0) {
-                            const brightnessShift = c.filters.brightness / 100 * 255;
-                            for (var i = 0; i < length; i += 4) {
-                                newData.data[i] = oldData[i] + brightnessShift;
-                                newData.data[i + 1] = oldData[i + 1] + brightnessShift;
-                                newData.data[i + 2] = oldData[i + 2] + brightnessShift;
-                                newData.data[i + 3] = oldData[i + 3];
-                            }
-                            oldData = newData.data;
+                            this.applyBrightnessEffect(sourceImage, destImage, c.filters.brightness / 100 * 255);
                         }
-                        workingRenderer.canvas.width = imageData.width;
-                        workingRenderer.canvas.height = imageData.height;
-                        workingRenderer.ctx.putImageData(newData, 0, 0);
+                        workingRenderer.canvas.width = sourceImage.width;
+                        workingRenderer.canvas.height = sourceImage.height;
+                        workingRenderer.ctx.putImageData(destImage, 0, 0);
                         ctx.drawImage(workingRenderer.canvas, x, y, w, h);
                     }
                     else {
@@ -1265,6 +1226,47 @@ var P;
                     ctx.drawImage(lod.image, x, y, w, h);
                 }
                 ctx.restore();
+            }
+            applyColorEffect(sourceImage, destImage, hueShift) {
+                const MIN_VALUE = 0.11 / 2;
+                const MIN_SATURATION = 0.09;
+                const colorCache = {};
+                for (var i = 0; i < sourceImage.data.length; i += 4) {
+                    const r = sourceImage.data[i];
+                    const g = sourceImage.data[i + 1];
+                    const b = sourceImage.data[i + 2];
+                    destImage.data[i + 3] = sourceImage.data[i + 3];
+                    const rgbHash = (r << 16) + (g << 8) + b;
+                    const cachedColor = colorCache[rgbHash];
+                    if (cachedColor !== undefined) {
+                        destImage.data[i] = (0xff0000 & cachedColor) >> 16;
+                        destImage.data[i + 1] = (0x00ff00 & cachedColor) >> 8;
+                        destImage.data[i + 2] = (0x0000ff & cachedColor);
+                        continue;
+                    }
+                    let hsv = rgb2hsv(r, g, b);
+                    if (hsv[2] < MIN_VALUE)
+                        hsv = [0, 1, MIN_VALUE];
+                    else if (hsv[1] < MIN_SATURATION)
+                        hsv = [0, MIN_SATURATION, hsv[2]];
+                    hsv[0] = hsv[0] + hueShift - Math.floor(hsv[0] + hueShift);
+                    if (hsv[0] < 0)
+                        hsv[0] += 1;
+                    const rgb = hsv2rgb(hsv[0], hsv[1], hsv[2]);
+                    colorCache[rgbHash] = (rgb[0] << 16) + (rgb[1] << 8) + rgb[2];
+                    destImage.data[i] = rgb[0];
+                    destImage.data[i + 1] = rgb[1];
+                    destImage.data[i + 2] = rgb[2];
+                }
+            }
+            applyBrightnessEffect(sourceImage, destImage, brightness) {
+                const length = sourceImage.data.length;
+                for (var i = 0; i < length; i += 4) {
+                    destImage.data[i] = sourceImage.data[i] + brightness;
+                    destImage.data[i + 1] = sourceImage.data[i + 1] + brightness;
+                    destImage.data[i + 2] = sourceImage.data[i + 2] + brightness;
+                    destImage.data[i + 3] = sourceImage.data[i + 3];
+                }
             }
         }
         renderer_1.SpriteRenderer2D = SpriteRenderer2D;
