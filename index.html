@@ -472,7 +472,6 @@
         cachedTitles[id] = el.dataset.title;
         location.hash = '#' + id;
       };
-      studioView.shuffler = StudioView.Shufflers.random();
       studioView.loadNextPage();
       studioView.setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
       studioView.scrollTop = 0;
