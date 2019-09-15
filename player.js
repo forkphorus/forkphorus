@@ -710,7 +710,7 @@ P.Player.ErrorHandler = (function() {
   };
 
   ErrorHandler.prototype.oncleanup = function() {
-    if (this.errorEl) {
+    if (this.errorEl && this.errorEl.parentNode) {
       this.errorEl.parentNode.removeChild(this.errorEl);
       this.errorEl = null;
     }
