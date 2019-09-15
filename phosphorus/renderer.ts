@@ -399,11 +399,6 @@ namespace P.renderer {
       // apply ghost effect
       color.a *= u_opacity;
 
-      // apply brightness effect
-      #ifndef ONLY_SHAPE_FILTERS
-        color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
-      #endif
-
       // The color effect is rather complicated. See:
       // https://github.com/LLK/scratch-render/blob/008dc5b15b30961301e6b9a08628a063b967a001/src/shaders/sprite.frag#L175-L189
       #ifndef ONLY_SHAPE_FILTERS
@@ -423,6 +418,11 @@ namespace P.renderer {
         if (hsv.x < 0.0) hsv.x += 1.0;
         color = vec4(hsv2rgb(hsv), color.a);
       }
+      #endif
+
+      // apply brightness effect
+      #ifndef ONLY_SHAPE_FILTERS
+        color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
       #endif
 
       gl_FragColor = color;
@@ -1005,17 +1005,6 @@ namespace P.renderer {
           const length = newData.data.length;
           let oldData: Uint8ClampedArray = imageData.data;
 
-          if (c.filters.brightness !== 0) {
-            const brightnessShift = c.filters.brightness / 100 * 255;
-            for (var i = 0; i < length; i += 4) {
-              newData.data[i] = oldData[i] + brightnessShift;
-              newData.data[i + 1] = oldData[i + 1] + brightnessShift;
-              newData.data[i + 2] = oldData[i + 2] + brightnessShift;
-              newData.data[i + 3] = oldData[i + 3];
-            }
-            oldData = newData.data;
-          }
-
           if (c.filters.color !== 0) {
             const MIN_VALUE = 0.11 / 2;
             const MIN_SATURATION = 0.09;
@@ -1039,6 +1028,18 @@ namespace P.renderer {
               newData.data[i + 2] = rgb[2];
               newData.data[i + 3] = oldData[i + 3];
             }
+            oldData = newData.data;
+          }
+
+          if (c.filters.brightness !== 0) {
+            const brightnessShift = c.filters.brightness / 100 * 255;
+            for (var i = 0; i < length; i += 4) {
+              newData.data[i] = oldData[i] + brightnessShift;
+              newData.data[i + 1] = oldData[i + 1] + brightnessShift;
+              newData.data[i + 2] = oldData[i + 2] + brightnessShift;
+              newData.data[i + 3] = oldData[i + 3];
+            }
+            oldData = newData.data;
           }
 
           // putImageData() doesn't respect canvas transforms so we need to draw to another canvas and then drawImage() that
