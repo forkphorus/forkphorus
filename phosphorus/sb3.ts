@@ -136,15 +136,15 @@ namespace P.sb3 {
   export class Scratch3VariableWatcher extends P.core.Watcher {
     public id: string;
     public opcode: string;
-    public mode: string;
+    private mode: string;
     public params: any;
-    public libraryEntry: P.sb3.compiler.WatchedValue;
-    public sliderMin: number;
-    public sliderMax: number;
-    public sliderStep: number;
-
-    public containerEl: HTMLElement;
-    public valueEl: HTMLElement;
+    private libraryEntry: P.sb3.compiler.WatchedValue;
+    private sliderMin: number;
+    private sliderMax: number;
+    private sliderStep: number;
+    private sliderInput: HTMLInputElement;
+    private containerEl: HTMLElement;
+    private valueEl: HTMLElement;
 
     constructor(stage: Scratch3Stage, data: SB3Watcher) {
       super(stage, data.spriteName || '');
@@ -185,6 +185,9 @@ namespace P.sb3 {
         const value = this.getValue();
         if (this.valueEl.textContent !== value) {
           this.valueEl.textContent = this.getValue();
+        }
+        if (this.sliderInput) {
+          this.sliderInput.value = this.getValue();
         }
       }
     }
@@ -297,6 +300,7 @@ namespace P.sb3 {
           input.step = '' + this.sliderStep;
           input.value = this.getValue();
           input.addEventListener('input', this.sliderChanged.bind(this));
+          this.sliderInput = input;
 
           slider.appendChild(input);
           container.appendChild(slider);
