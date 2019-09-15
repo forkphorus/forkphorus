@@ -1212,10 +1212,20 @@ var P;
                             const MIN_VALUE = 0.11 / 2;
                             const MIN_SATURATION = 0.09;
                             const hueShift = c.filters.color / 200;
+                            const colorCache = {};
                             for (var i = 0; i < length; i += 4) {
                                 const r = oldData[i];
                                 const g = oldData[i + 1];
                                 const b = oldData[i + 2];
+                                newData.data[i + 3] = oldData[i + 3];
+                                const rgbHash = (r << 16) + (g << 8) + b;
+                                const cachedColor = colorCache[rgbHash];
+                                if (cachedColor !== undefined) {
+                                    newData.data[i] = (0xff0000 & cachedColor) >> 16;
+                                    newData.data[i + 1] = (0x00ff00 & cachedColor) >> 8;
+                                    newData.data[i + 2] = (0x0000ff & cachedColor);
+                                    continue;
+                                }
                                 let hsv = rgb2hsv(r, g, b);
                                 if (hsv[2] < MIN_VALUE)
                                     hsv = [0, 1, MIN_VALUE];
@@ -1225,10 +1235,10 @@ var P;
                                 if (hsv[0] < 0)
                                     hsv[0] += 1;
                                 const rgb = hsv2rgb(hsv[0], hsv[1], hsv[2]);
+                                colorCache[rgbHash] = (rgb[0] << 16) + (rgb[1] << 8) + rgb[2];
                                 newData.data[i] = rgb[0];
                                 newData.data[i + 1] = rgb[1];
                                 newData.data[i + 2] = rgb[2];
-                                newData.data[i + 3] = oldData[i + 3];
                             }
                             oldData = newData.data;
                         }
