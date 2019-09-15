@@ -440,7 +440,10 @@ namespace P.sb3 {
     }
 
     getTopLabel() {
-      return this.params.LIST;
+      if (this.target.isStage) {
+        return this.params.LIST;
+      }
+      return this.target.name + ': ' + this.params.LIST;
     }
     getBottomLabel() {
       return 'length ' + this.list.length;
