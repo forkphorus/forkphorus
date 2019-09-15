@@ -5477,7 +5477,7 @@ var P;
                 }
             }
             updateList() {
-                const cssHeight = this.list.length * this.rowHeight + 'px';
+                const cssHeight = this.list.length * this.rowHeight / 10 + 'em';
                 if (this.contentEl.style.height !== cssHeight) {
                     this.contentEl.style.height = cssHeight;
                 }
@@ -5498,7 +5498,7 @@ var P;
                     let row = this.rows[j];
                     row.setIndex(i);
                     row.setValue(this.list[i]);
-                    row.setY(i * this.rowHeight);
+                    row.setY(i * this.rowHeight * this.stage.zoom);
                 }
             }
             init() {
@@ -5549,7 +5549,7 @@ var P;
                 this.bottomLabelEl.classList.add('s3-list-bottom-label');
                 this.contentContainerEl.classList.add('s3-list-content');
                 this.contentContainerEl.addEventListener('scroll', (e) => {
-                    this.scrollTop = this.contentContainerEl.scrollTop;
+                    this.scrollTop = this.contentContainerEl.scrollTop / this.stage.zoom;
                     this.updateList();
                 });
                 this.contentEl.classList.add('s3-list-rows');

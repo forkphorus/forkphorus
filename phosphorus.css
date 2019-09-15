@@ -128,7 +128,7 @@
   line-height: 1.5;
 }
 .s3-list-container > * {
-  font-size: 1.2em;
+  /* font-size: 1.2em; */
 }
 .s3-list-content {
   text-align: center;
@@ -145,7 +145,7 @@
 }
 .s3-list-rows {
   position: relative;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 .s3-list-row {
   position: absolute;

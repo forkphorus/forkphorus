@@ -412,7 +412,7 @@ namespace P.sb3 {
     }
 
     updateList() {
-      const cssHeight = this.list.length * this.rowHeight + 'px';
+      const cssHeight = this.list.length * this.rowHeight / 10 + 'em';
       if (this.contentEl.style.height !== cssHeight) {
         this.contentEl.style.height = cssHeight;
       }
@@ -440,7 +440,7 @@ namespace P.sb3 {
         let row = this.rows[j];
         row.setIndex(i);
         row.setValue(this.list[i]);
-        row.setY(i * this.rowHeight);
+        row.setY(i * this.rowHeight * this.stage.zoom);
       }
     }
 
@@ -502,7 +502,7 @@ namespace P.sb3 {
 
       this.contentContainerEl.classList.add('s3-list-content');
       this.contentContainerEl.addEventListener('scroll', (e) => {
-        this.scrollTop = this.contentContainerEl.scrollTop;
+        this.scrollTop = this.contentContainerEl.scrollTop / this.stage.zoom;
         this.updateList();
       });
 
