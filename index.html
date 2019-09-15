@@ -312,14 +312,17 @@
       document.title = initialTitle;
     }
     function setTitleToProjectTitle(id) {
+      var stageId = player.stageId;
       if (cachedTitles[id]) {
         document.title = cachedTitles[id] + ' - forkphorus';
       } else {
         new P.IO.TextRequest('https://scratch.garbomuffin.com/api/forkphorus/?t=title&p=' + id).load()
           .then(function(title) {
-            if (title) {
+            if (player.stageId === stageId && title) {
               cachedTitles[id] = title;
+              player.projectTitle = title;
               document.title = title + ' - forkphorus';
+              updateLinks();
             }
           });
       }

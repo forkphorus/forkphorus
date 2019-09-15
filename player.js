@@ -40,8 +40,10 @@ P.Player = (function() {
 
     this.stage = null;
     this.stageId = 0;
+
     this.projectId = Player.UNKNOWN_ID;
     this.projectLink = Player.UNKNOWN_LINK;
+    this.projectTitle = Player.UNKNOWN_TITLE;
 
     window.addEventListener('resize', this.updateFullscreen.bind(this));
     var fullscreenChange = function(e) {
@@ -63,6 +65,7 @@ P.Player = (function() {
   Player.LARGE_Z_INDEX = '9999999999';
   Player.UNKNOWN_ID = '(no id)';
   Player.UNKNOWN_LINK = '(no link)';
+  Player.UNKNOWN_TITLE = '(no title)';
 
   /**
    * Determines the type of a project.
@@ -378,6 +381,10 @@ P.Player = (function() {
   Player.prototype.cleanup = function() {
     this.stageId++;
 
+    this.projectId = Player.UNKNOWN_ID;
+    this.projectLink = Player.UNKNOWN_LINK;
+    this.projectTitle = Player.UNKNOWN_TITLE;
+
     if (this.stage) {
       this.stage.destroy();
       this.stage = null;
@@ -521,7 +528,7 @@ P.Player = (function() {
     this.startLoadingNewProject();
     var stageId = this.getNewStageId();
 
-    this.projectId = id;
+    this.projectId = '' + id;
     this.projectLink = Player.PROJECT_LINK.replace('$id', id);
 
     var blob;
@@ -687,6 +694,9 @@ P.Player.ErrorHandler = (function() {
    * Get the title for bug reports.
    */
   ErrorHandler.prototype.getBugReportTitle = function() {
+    if (this.player.projectTitle !== P.Player.UNKNOWN_TITLE) {
+      return this.player.projectTitle + ' (' + this.player.projectId + ')';
+    }
     return this.player.projectLink;
   };
 
