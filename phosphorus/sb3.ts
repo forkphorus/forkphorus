@@ -181,13 +181,13 @@ namespace P.sb3 {
 
     update() {
       if (this.visible) {
-        // Value is only updated when the value has changed to reduce useless paints in some browsers.
         const value = this.getValue();
+        // Value is only updated when the value has changed to reduce useless paints/reflows in some browsers.
         if (this.valueEl.textContent !== value) {
-          this.valueEl.textContent = this.getValue();
+          this.valueEl.textContent = value;
         }
         if (this.sliderInput) {
-          this.sliderInput.value = this.getValue();
+          this.sliderInput.value = value;
         }
       }
     }
