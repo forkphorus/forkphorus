@@ -365,6 +365,7 @@ namespace P.sb3 {
     private bottomLabelEl: HTMLElement;
     private contentContainerEl: HTMLElement;
     private contentEl: HTMLElement;
+    private rows: ListWatcherRow[] = [];
 
     constructor(stage: Scratch3Stage, data: SB3Watcher) {
       super(stage, data.spriteName || '');
@@ -405,34 +406,23 @@ namespace P.sb3 {
         lastVisibleIndex = firstVisibleIndex + 50;
       }
 
-      // TODO: don't delete/recreate all rows every update
+      const necessaryRows = lastVisibleIndex - firstVisibleIndex;
+      while (this.rows.length <= necessaryRows) {
+        this.rows.push(new ListWatcherRow());
+      }
 
       while (this.contentEl.firstChild) {
         this.contentEl.removeChild(this.contentEl.firstChild);
       }
 
       for (var i = firstVisibleIndex; i <= lastVisibleIndex; i++) {
-        const row = new ListWatcherRow();
+        const row = this.rows[i - firstVisibleIndex];
         row.setIndex(i);
         row.setValue(this.list[i]);
         row.setY(i * 24);
         this.contentEl.appendChild(row.element);
       }
-
-      // if (this.domRows.length < length) {
-      //   while (this.domRows.length < length) {
-      //     const row = this.createRow();
-      //     this.domRows.push(row);
-      //     this.contentContainerEl.appendChild(row.row);
-      //   }
-      // } else if (this.domRows.length > length) {
-      //   while (this.domRows.length > length) {
-      //     this.domRows.pop();
-      //     this.contentContainerEl.removeChild(this.contentContainerEl.lastChild!);
-      //   }
-      // }
     }
-
 
     init() {
       super.init();

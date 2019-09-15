@@ -5439,6 +5439,7 @@ var P;
         class Scratch3ListWatcher extends P.core.Watcher {
             constructor(stage, data) {
                 super(stage, data.spriteName || '');
+                this.rows = [];
                 this.id = data.id;
                 this.params = data.params;
                 this.x = data.x;
@@ -5466,11 +5467,15 @@ var P;
                 if (lastVisibleIndex - firstVisibleIndex > 50) {
                     lastVisibleIndex = firstVisibleIndex + 50;
                 }
+                const necessaryRows = lastVisibleIndex - firstVisibleIndex;
+                while (this.rows.length <= necessaryRows) {
+                    this.rows.push(new ListWatcherRow());
+                }
                 while (this.contentEl.firstChild) {
                     this.contentEl.removeChild(this.contentEl.firstChild);
                 }
                 for (var i = firstVisibleIndex; i <= lastVisibleIndex; i++) {
-                    const row = new ListWatcherRow();
+                    const row = this.rows[i - firstVisibleIndex];
                     row.setIndex(i);
                     row.setValue(this.list[i]);
                     row.setY(i * 24);
