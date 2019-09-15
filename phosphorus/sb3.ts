@@ -315,23 +315,55 @@ namespace P.sb3 {
     }
   }
 
-  interface ListRow {
-    row: HTMLElement;
-    index: HTMLElement;
-    value: HTMLElement;
+  export class ListWatcherRow {
+    public element: HTMLElement;
+    private indexEl: HTMLElement;
+    private valueEl: HTMLElement;
+
+    constructor() {
+      this.element = document.createElement('div');
+      this.indexEl = document.createElement('div');
+      this.valueEl = document.createElement('div');
+      this.element.className = 's3-list-row';
+      this.indexEl.className = 's3-list-index';
+      this.valueEl.className = 's3-list-value';
+      this.element.appendChild(this.indexEl);
+      this.element.appendChild(this.valueEl);
+    }
+
+    /**
+     * Set the value of this row.
+     */
+    setValue(value: any) {
+      this.valueEl.textContent = value;
+    }
+
+    /**
+     * Set the index of this row.
+     * @param index The *JavaScript* index of the row.
+     */
+    setIndex(index: number) {
+      this.indexEl.textContent = (index + 1).toString();
+    }
+
+    /**
+     * Set the Y coordinate of this row.
+     */
+    setY(px: number) {
+      this.element.style.transform = 'translateY(' + px + 'px)';
+    }
   }
 
   export class Scratch3ListWatcher extends P.core.Watcher {
-    private firstUpdate: boolean = true;
     private params: any;
     private id: string;
     private width: number;
     private height: number;
     private list: Scratch3List;
-    private domRows: ListRow[] = [];
     private containerEl: HTMLElement;
     private topLabelEl: HTMLElement;
     private bottomLabelEl: HTMLElement;
+    private contentContainerEl: HTMLElement;
     private contentEl: HTMLElement;
 
     constructor(stage: Scratch3Stage, data: SB3Watcher) {
@@ -347,50 +379,60 @@ namespace P.sb3 {
     }
 
     update() {
-      // We're not visible, so no changes would be seen. We'd only be wasting CPU cycles.
-      // If the list was modified, we'll find out after we become visible.
       if (!this.visible) {
         return;
       }
 
-      // Silently rest if the list has not been modified to improve performance for static lists.
-      if (!this.list.modified && !this.firstUpdate) {
-        return;
-      }
-      this.firstUpdate = false;
-      this.list.modified = false;
-      this.updateContents();
-    }
-
-    updateContents() {
-      const length = this.list.length;
-
-      if (this.domRows.length < length) {
-        while (this.domRows.length < length) {
-          const row = this.createRow();
-          this.domRows.push(row);
-          this.contentEl.appendChild(row.row);
-        }
-      } else if (this.domRows.length > length) {
-        while (this.domRows.length > length) {
-          this.domRows.pop();
-          this.contentEl.removeChild(this.contentEl.lastChild!);
-        }
-      }
-
-      for (var i = 0; i < length; i++) {
-        const { value } = this.domRows[i];
-        const rowText = '' + this.list[i];
-        if (rowText !== value.textContent) {
-          value.textContent = rowText;
-        }
-      }
+      this.updateScroll();
 
       const bottomLabelText = this.getBottomLabel();
       if (this.bottomLabelEl.textContent !== bottomLabelText) {
         this.bottomLabelEl.textContent = this.getBottomLabel();
       }
     }
+
+    updateScroll() {
+      this.contentEl.style.height = this.list.length * 24 + 'px';
+      const topVisible = this.contentContainerEl.scrollTop;
+      const bottomVisible = topVisible + this.height;
+
+      let firstVisibleIndex = Math.max(0, Math.floor(topVisible / 24));
+      let lastVisibleIndex = Math.min(Math.ceil(bottomVisible / 24), this.list.length - 1);
+
+      // Sanity checks:
+      // Cap ourselves at 50 rows on screen.
+      if (lastVisibleIndex - firstVisibleIndex > 50) {
+        lastVisibleIndex = firstVisibleIndex + 50;
+      }
+
+      // TODO: don't delete/recreate all rows every update
+
+      while (this.contentEl.firstChild) {
+        this.contentEl.removeChild(this.contentEl.firstChild);
+      }
+
+      for (var i = firstVisibleIndex; i <= lastVisibleIndex; i++) {
+        const row = new ListWatcherRow();
+        row.setIndex(i);
+        row.setValue(this.list[i]);
+        row.setY(i * 24);
+        this.contentEl.appendChild(row.element);
+      }
+
+      // if (this.domRows.length < length) {
+      //   while (this.domRows.length < length) {
+      //     const row = this.createRow();
+      //     this.domRows.push(row);
+      //     this.contentContainerEl.appendChild(row.row);
+      //   }
+      // } else if (this.domRows.length > length) {
+      //   while (this.domRows.length > length) {
+      //     this.domRows.pop();
+      //     this.contentContainerEl.removeChild(this.contentContainerEl.lastChild!);
+      //   }
+      // }
+    }
+
 
     init() {
       super.init();
@@ -405,9 +447,6 @@ namespace P.sb3 {
       this.list = this.target.lists[listName] as Scratch3List;
       this.target.listWatchers[listName] = this;
       this.updateLayout();
-      if (this.visible) {
-        this.updateContents();
-      }
     }
 
     getTopLabel() {
@@ -429,23 +468,11 @@ namespace P.sb3 {
       this.updateLayout();
     }
 
-    createRow(): ListRow {
-      const row = document.createElement('div');
-      const index = document.createElement('div');
-      const value = document.createElement('div');
-      row.classList.add('s3-list-row');
-      index.classList.add('s3-list-index');
-      value.classList.add('s3-list-value');
-      index.textContent = (this.domRows.length + 1).toString();
-      row.appendChild(index);
-      row.appendChild(value);
-      return { row, index, value };
-    }
-
     createLayout() {
       this.containerEl = document.createElement('div');
       this.topLabelEl = document.createElement('div');
       this.bottomLabelEl = document.createElement('div');
+      this.contentContainerEl = document.createElement('div');
       this.contentEl = document.createElement('div');
 
       this.containerEl.style.top = (this.y / 10) + 'em';
@@ -460,10 +487,16 @@ namespace P.sb3 {
       this.bottomLabelEl.textContent = this.getBottomLabel();
       this.bottomLabelEl.classList.add('s3-list-bottom-label');
 
-      this.contentEl.classList.add('s3-list-content');
+      this.contentContainerEl.classList.add('s3-list-content');
+      this.contentContainerEl.addEventListener('scroll', () => {
+        this.update();
+      });
 
+      this.contentEl.classList.add('s3-list-rows');
+
+      this.contentContainerEl.appendChild(this.contentEl);
       this.containerEl.appendChild(this.topLabelEl);
-      this.containerEl.appendChild(this.contentEl);
+      this.containerEl.appendChild(this.contentContainerEl);
       this.containerEl.appendChild(this.bottomLabelEl);
       this.stage.ui.appendChild(this.containerEl);
     }

@@ -5414,11 +5414,31 @@ var P;
             }
         }
         sb3.Scratch3VariableWatcher = Scratch3VariableWatcher;
+        class ListWatcherRow {
+            constructor() {
+                this.element = document.createElement('div');
+                this.indexEl = document.createElement('div');
+                this.valueEl = document.createElement('div');
+                this.element.className = 's3-list-row';
+                this.indexEl.className = 's3-list-index';
+                this.valueEl.className = 's3-list-value';
+                this.element.appendChild(this.indexEl);
+                this.element.appendChild(this.valueEl);
+            }
+            setValue(value) {
+                this.valueEl.textContent = value;
+            }
+            setIndex(index) {
+                this.indexEl.textContent = (index + 1).toString();
+            }
+            setY(px) {
+                this.element.style.transform = 'translateY(' + px + 'px)';
+            }
+        }
+        sb3.ListWatcherRow = ListWatcherRow;
         class Scratch3ListWatcher extends P.core.Watcher {
             constructor(stage, data) {
                 super(stage, data.spriteName || '');
-                this.firstUpdate = true;
-                this.domRows = [];
                 this.id = data.id;
                 this.params = data.params;
                 this.x = data.x;
@@ -5431,38 +5451,30 @@ var P;
                 if (!this.visible) {
                     return;
                 }
-                if (!this.list.modified && !this.firstUpdate) {
-                    return;
-                }
-                this.firstUpdate = false;
-                this.list.modified = false;
-                this.updateContents();
-            }
-            updateContents() {
-                const length = this.list.length;
-                if (this.domRows.length < length) {
-                    while (this.domRows.length < length) {
-                        const row = this.createRow();
-                        this.domRows.push(row);
-                        this.contentEl.appendChild(row.row);
-                    }
-                }
-                else if (this.domRows.length > length) {
-                    while (this.domRows.length > length) {
-                        this.domRows.pop();
-                        this.contentEl.removeChild(this.contentEl.lastChild);
-                    }
-                }
-                for (var i = 0; i < length; i++) {
-                    const { value } = this.domRows[i];
-                    const rowText = '' + this.list[i];
-                    if (rowText !== value.textContent) {
-                        value.textContent = rowText;
-                    }
-                }
+                this.updateScroll();
                 const bottomLabelText = this.getBottomLabel();
                 if (this.bottomLabelEl.textContent !== bottomLabelText) {
                     this.bottomLabelEl.textContent = this.getBottomLabel();
+                }
+            }
+            updateScroll() {
+                this.contentEl.style.height = this.list.length * 24 + 'px';
+                const topVisible = this.contentContainerEl.scrollTop;
+                const bottomVisible = topVisible + this.height;
+                let firstVisibleIndex = Math.max(0, Math.floor(topVisible / 24));
+                let lastVisibleIndex = Math.min(Math.ceil(bottomVisible / 24), this.list.length - 1);
+                if (lastVisibleIndex - firstVisibleIndex > 50) {
+                    lastVisibleIndex = firstVisibleIndex + 50;
+                }
+                while (this.contentEl.firstChild) {
+                    this.contentEl.removeChild(this.contentEl.firstChild);
+                }
+                for (var i = firstVisibleIndex; i <= lastVisibleIndex; i++) {
+                    const row = new ListWatcherRow();
+                    row.setIndex(i);
+                    row.setValue(this.list[i]);
+                    row.setY(i * 24);
+                    this.contentEl.appendChild(row.element);
                 }
             }
             init() {
@@ -5476,9 +5488,6 @@ var P;
                 this.list = this.target.lists[listName];
                 this.target.listWatchers[listName] = this;
                 this.updateLayout();
-                if (this.visible) {
-                    this.updateContents();
-                }
             }
             getTopLabel() {
                 return this.params.LIST;
@@ -5496,22 +5505,11 @@ var P;
                 super.setVisible(visible);
                 this.updateLayout();
             }
-            createRow() {
-                const row = document.createElement('div');
-                const index = document.createElement('div');
-                const value = document.createElement('div');
-                row.classList.add('s3-list-row');
-                index.classList.add('s3-list-index');
-                value.classList.add('s3-list-value');
-                index.textContent = (this.domRows.length + 1).toString();
-                row.appendChild(index);
-                row.appendChild(value);
-                return { row, index, value };
-            }
             createLayout() {
                 this.containerEl = document.createElement('div');
                 this.topLabelEl = document.createElement('div');
                 this.bottomLabelEl = document.createElement('div');
+                this.contentContainerEl = document.createElement('div');
                 this.contentEl = document.createElement('div');
                 this.containerEl.style.top = (this.y / 10) + 'em';
                 this.containerEl.style.left = (this.x / 10) + 'em';
@@ -5522,9 +5520,14 @@ var P;
                 this.topLabelEl.classList.add('s3-list-top-label');
                 this.bottomLabelEl.textContent = this.getBottomLabel();
                 this.bottomLabelEl.classList.add('s3-list-bottom-label');
-                this.contentEl.classList.add('s3-list-content');
+                this.contentContainerEl.classList.add('s3-list-content');
+                this.contentContainerEl.addEventListener('scroll', () => {
+                    this.update();
+                });
+                this.contentEl.classList.add('s3-list-rows');
+                this.contentContainerEl.appendChild(this.contentEl);
                 this.containerEl.appendChild(this.topLabelEl);
-                this.containerEl.appendChild(this.contentEl);
+                this.containerEl.appendChild(this.contentContainerEl);
                 this.containerEl.appendChild(this.bottomLabelEl);
                 this.stage.ui.appendChild(this.containerEl);
             }
