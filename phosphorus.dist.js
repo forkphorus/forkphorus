@@ -5391,6 +5391,9 @@ var P;
                     if (this.valueEl.textContent !== value) {
                         this.valueEl.textContent = value;
                     }
+                    if (this.sliderInput) {
+                        this.sliderInput.value = value;
+                    }
                 }
             }
             init() {
@@ -5469,6 +5472,7 @@ var P;
                         input.step = '' + this.sliderStep;
                         input.value = this.getValue();
                         input.addEventListener('input', this.sliderChanged.bind(this));
+                        this.sliderInput = input;
                         slider.appendChild(input);
                         container.appendChild(slider);
                     }
