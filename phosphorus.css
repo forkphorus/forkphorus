@@ -144,18 +144,28 @@
   text-align: center;
 }
 .s3-list-rows {
-  position: relative;
-  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  contain: layout;
+}
+.s3-list-endpoint {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  will-change: transform;
+  contain: layout;
 }
 .s3-list-row {
   position: absolute;
-  top: 0;
-  left: 0;
   display: flex;
   flex-direction: row;
   width: 100%;
   text-align: left;
   align-items: center;
+  will-change: transform;
+  contain: layout;
 }
 .s3-list-index, .s3-list-value {
   margin: 0 3px;
@@ -184,6 +194,9 @@
 }
 .s3-list-top-label {
   border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+}
+.s3-list-row, .s3-list-top-label, .s3-list-bottom-label {
+  font-size: 1.2em;
 }
 
 /* Speech to text */

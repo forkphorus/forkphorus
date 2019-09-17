@@ -375,11 +375,13 @@ namespace P.sb3 {
     private containerEl: HTMLElement;
     private topLabelEl: HTMLElement;
     private bottomLabelEl: HTMLElement;
-    private contentContainerEl: HTMLElement;
+    private middleContainerEl: HTMLElement;
+    private endpointEl: HTMLElement;
     private contentEl: HTMLElement;
     private rows: ListWatcherRow[] = [];
     private rowHeight: number = 24;
     private scrollTop: number = 0;
+    private lastZoomLevel: number = -1;
 
     constructor(stage: Scratch3Stage, data: SB3Watcher) {
       super(stage, data.spriteName || '');
@@ -398,10 +400,11 @@ namespace P.sb3 {
         return;
       }
 
-      if (!this.list.modified) {
+      if (!this.list.modified && this.lastZoomLevel === this.stage.zoom) {
         return;
       }
       this.list.modified = false;
+      this.lastZoomLevel = this.stage.zoom;
 
       this.updateList();
 
@@ -412,10 +415,8 @@ namespace P.sb3 {
     }
 
     updateList() {
-      const cssHeight = this.list.length * this.rowHeight / 10 + 'em';
-      if (this.contentEl.style.height !== cssHeight) {
-        this.contentEl.style.height = cssHeight;
-      }
+      const height = this.list.length * this.rowHeight;
+      this.endpointEl.style.transform = 'translateY(' + (height * this.stage.zoom) + 'px)';
 
       const topVisible = this.scrollTop;
       const bottomVisible = topVisible + this.height;
@@ -432,15 +433,20 @@ namespace P.sb3 {
       const visibleRows = lastVisibleIndex - firstVisibleIndex;
       while (this.rows.length <= visibleRows) {
         const row = new ListWatcherRow();
-        this.rows.push(row);
         this.contentEl.appendChild(row.element);
+        this.rows.push(row);
       }
 
-      for (var i = firstVisibleIndex, j = 0; i <= lastVisibleIndex; i++, j++) {
-        let row = this.rows[j];
-        row.setIndex(i);
-        row.setValue(this.list[i]);
-        row.setY(i * this.rowHeight * this.stage.zoom);
+      for (var listIndex = firstVisibleIndex, rowIndex = 0; listIndex <= lastVisibleIndex; listIndex++, rowIndex++) {
+        let row = this.rows[rowIndex];
+        row.setIndex(listIndex);
+        row.setValue(this.list[listIndex]);
+        row.setY(listIndex * this.rowHeight * this.stage.zoom);
+        row.element.style.display = '';
+      }
+      while (rowIndex < this.rows.length) {
+        this.rows[rowIndex].element.style.display = 'none';
+        rowIndex++;
       }
     }
 
@@ -485,7 +491,7 @@ namespace P.sb3 {
       this.containerEl = document.createElement('div');
       this.topLabelEl = document.createElement('div');
       this.bottomLabelEl = document.createElement('div');
-      this.contentContainerEl = document.createElement('div');
+      this.middleContainerEl = document.createElement('div');
       this.contentEl = document.createElement('div');
 
       this.containerEl.style.top = (this.y / 10) + 'em';
@@ -500,17 +506,21 @@ namespace P.sb3 {
       this.bottomLabelEl.textContent = this.getBottomLabel();
       this.bottomLabelEl.classList.add('s3-list-bottom-label');
 
-      this.contentContainerEl.classList.add('s3-list-content');
-      this.contentContainerEl.addEventListener('scroll', (e) => {
-        this.scrollTop = this.contentContainerEl.scrollTop / this.stage.zoom;
+      this.middleContainerEl.classList.add('s3-list-content');
+
+      this.contentEl.classList.add('s3-list-rows');
+      this.contentEl.addEventListener('scroll', (e) => {
+        this.scrollTop = this.contentEl.scrollTop / this.stage.zoom;
         this.updateList();
       });
 
-      this.contentEl.classList.add('s3-list-rows');
+      this.endpointEl = document.createElement('div');
+      this.endpointEl.className = 's3-list-endpoint';
+      this.contentEl.appendChild(this.endpointEl);
 
-      this.contentContainerEl.appendChild(this.contentEl);
+      this.middleContainerEl.appendChild(this.contentEl);
       this.containerEl.appendChild(this.topLabelEl);
-      this.containerEl.appendChild(this.contentContainerEl);
+      this.containerEl.appendChild(this.middleContainerEl);
       this.containerEl.appendChild(this.bottomLabelEl);
       this.stage.ui.appendChild(this.containerEl);
     }
