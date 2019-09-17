@@ -572,7 +572,8 @@ namespace P.core {
     public mouseSprite: Sprite | undefined;
 
     private videoElement: HTMLVideoElement;
-    public speech2text: P.speech2text.SpeechToTextExtension | null;
+    public speech2text: P.ext.speech2text.SpeechToTextExtension | null = null;
+    private extensions: P.ext.Extension[] = [];
 
     constructor() {
       super();
@@ -776,8 +777,8 @@ namespace P.core {
       this.runtime.stopAll();
       this.runtime.pause();
       this.stopAllSounds();
-      if (this.speech2text) {
-        this.speech2text.destroy();
+      for (const extension of this.extensions) {
+        extension.destroy();
       }
     }
 
@@ -951,12 +952,17 @@ namespace P.core {
     }
 
     getLoudness() {
-      return P.microphone.getLoudness();
+      return P.ext.microphone.getLoudness();
+    }
+
+    addExtension(extension: P.ext.Extension) {
+      this.extensions.push(extension);
     }
 
     initSpeech2Text() {
-      if (!this.speech2text && P.speech2text.isSupported()) {
-        this.speech2text = new P.speech2text.SpeechToTextExtension(this);
+      if (!this.speech2text && P.ext.speech2text.isSupported()) {
+        this.speech2text = new P.ext.speech2text.SpeechToTextExtension(this);
+        this.addExtension(this.speech2text);
       }
     }
 

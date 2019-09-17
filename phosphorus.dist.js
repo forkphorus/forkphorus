@@ -1768,6 +1768,8 @@ var P;
                 this.tempoBPM = 60;
                 this.username = '';
                 this.counter = 0;
+                this.speech2text = null;
+                this.extensions = [];
                 this.runtime = new P.runtime.Runtime(this);
                 this.keys = [];
                 this.keys.any = 0;
@@ -1946,8 +1948,8 @@ var P;
                 this.runtime.stopAll();
                 this.runtime.pause();
                 this.stopAllSounds();
-                if (this.speech2text) {
-                    this.speech2text.destroy();
+                for (const extension of this.extensions) {
+                    extension.destroy();
                 }
             }
             focus() {
@@ -2093,11 +2095,15 @@ var P;
                 }
             }
             getLoudness() {
-                return P.microphone.getLoudness();
+                return P.ext.microphone.getLoudness();
+            }
+            addExtension(extension) {
+                this.extensions.push(extension);
             }
             initSpeech2Text() {
-                if (!this.speech2text && P.speech2text.isSupported()) {
-                    this.speech2text = new P.speech2text.SpeechToTextExtension(this);
+                if (!this.speech2text && P.ext.speech2text.isSupported()) {
+                    this.speech2text = new P.ext.speech2text.SpeechToTextExtension(this);
+                    this.addExtension(this.speech2text);
                 }
             }
             rotatedBounds() {
@@ -2806,82 +2812,6 @@ var P;
             readers.toText = toText;
         })(readers = IO.readers || (IO.readers = {}));
     })(IO = P.IO || (P.IO = {}));
-})(P || (P = {}));
-var P;
-(function (P) {
-    var microphone;
-    (function (microphone_1) {
-        let microphone = null;
-        microphone_1.state = 0;
-        const CACHE_TIME = 1000 / 30;
-        function connect() {
-            if (microphone_1.state !== 0) {
-                return;
-            }
-            if (!P.audio.context) {
-                console.warn('Cannot connect to microphone without audio context.');
-                microphone_1.state = 3;
-                return;
-            }
-            microphone_1.state = 2;
-            navigator.mediaDevices.getUserMedia({ audio: true })
-                .then((mediaStream) => {
-                const source = P.audio.context.createMediaStreamSource(mediaStream);
-                const analyzer = P.audio.context.createAnalyser();
-                source.connect(analyzer);
-                microphone = {
-                    stream: mediaStream,
-                    analyzer,
-                    dataArray: new Float32Array(analyzer.fftSize),
-                    lastValue: -1,
-                    lastCheck: 0,
-                };
-                microphone_1.state = 1;
-            })
-                .catch((err) => {
-                console.warn('Cannot connect to microphone: ' + err);
-                microphone_1.state = 3;
-            });
-        }
-        function getLoudness() {
-            if (microphone === null) {
-                connect();
-                return -1;
-            }
-            if (!microphone.stream.active) {
-                return -1;
-            }
-            if (Date.now() - microphone.lastCheck < CACHE_TIME) {
-                return microphone.lastValue;
-            }
-            `
-    The following lines of source code are from the GitHub project LLK/scratch-audio
-    You can find the license for this code here: https://raw.githubusercontent.com/LLK/scratch-audio/develop/LICENSE
-    (our build tool removes comments so a multiline string is used instead)
-    Copyright (c) 2016, Massachusetts Institute of Technology
-    Modifications copyright (c) 2019 Thomas Weber
-    `;
-            microphone.analyzer.getFloatTimeDomainData(microphone.dataArray);
-            let sum = 0;
-            for (let i = 0; i < microphone.dataArray.length; i++) {
-                sum += Math.pow(microphone.dataArray[i], 2);
-            }
-            let rms = Math.sqrt(sum / microphone.dataArray.length);
-            if (microphone.lastValue !== -1) {
-                rms = Math.max(rms, microphone.lastValue * 0.6);
-            }
-            microphone.lastValue = rms;
-            rms *= 1.63;
-            rms = Math.sqrt(rms);
-            rms = Math.round(rms * 100);
-            rms = Math.min(rms, 100);
-            `
-    End of code from LLK/scratch-audio
-    `;
-            return rms;
-        }
-        microphone_1.getLoudness = getLoudness;
-    })(microphone = P.microphone || (P.microphone = {}));
 })(P || (P = {}));
 var P;
 (function (P) {
@@ -7758,95 +7688,184 @@ var P;
 }());
 var P;
 (function (P) {
-    var speech2text;
-    (function (speech2text) {
-        var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || window.mozSpeechRecognition || window.msSpeechRecognition;
-        let supported = null;
-        function isSupported() {
-            if (supported === null) {
-                supported = typeof SpeechRecognition !== 'undefined';
-                if (!supported) {
-                    console.warn('Speech to text is not supported in this browser. (https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition)');
-                }
-            }
-            return supported;
-        }
-        speech2text.isSupported = isSupported;
-        class SpeechToTextExtension {
+    var ext;
+    (function (ext) {
+        class Extension {
             constructor(stage) {
                 this.stage = stage;
-                this.speech = '';
-                this.listeners = 0;
-                this.hats = [];
-                this.initRecognition();
-                this.initOverlay();
-            }
-            initRecognition() {
-                this.recognition = new SpeechRecognition();
-                this.recognition.lang = 'en-US';
-                this.recognition.continuous = true;
-                this.recognition.onresult = (event) => this.onresult(event);
-                this.recognition.onerror = (event) => {
-                    if (event.error !== 'aborted') {
-                        console.error('speech2text error', event);
-                    }
-                };
-                this.recognition.start();
-            }
-            initOverlay() {
-                if (this.overlayElement) {
-                    throw new Error('initializing overlay twice');
-                }
-                const container = document.createElement('div');
-                container.className = 'speech2text-container';
-                const indicator = document.createElement('div');
-                indicator.className = 'speech2text-indicator';
-                const animation = document.createElement('div');
-                animation.className = 'speech2text-animation';
-                container.appendChild(animation);
-                container.appendChild(indicator);
-                this.stage.ui.appendChild(container);
-                this.overlayElement = container;
-            }
-            onresult(event) {
-                this.lastResultIndex = event.resultIndex;
-                const lastResult = event.results[event.resultIndex];
-                const message = lastResult[0];
-                const transcript = message.transcript.trim();
-                if (this.listeners !== 0) {
-                    this.speech = transcript;
-                }
-                for (const hat of this.hats) {
-                    const target = hat.target;
-                    const phraseFunction = hat.phraseFunction;
-                    const startingFunction = hat.startingFunction;
-                    const value = this.stage.runtime.evaluateExpression(target, phraseFunction);
-                    if (value === transcript) {
-                        this.stage.runtime.startThread(target, startingFunction);
-                    }
-                }
-            }
-            addHat(hat) {
-                this.hats.push(hat);
-            }
-            startListen() {
-                this.listeners++;
-                this.overlayElement.setAttribute('listening', '');
-            }
-            endListen() {
-                this.listeners--;
-                if (this.listeners === 0) {
-                    this.overlayElement.removeAttribute('listening');
-                }
             }
             destroy() {
-                this.recognition.abort();
-            }
-            id() {
-                return this.lastResultIndex;
             }
         }
-        speech2text.SpeechToTextExtension = SpeechToTextExtension;
-    })(speech2text = P.speech2text || (P.speech2text = {}));
+        ext.Extension = Extension;
+    })(ext = P.ext || (P.ext = {}));
+})(P || (P = {}));
+/*!
+Parts of this file (microphone.ts) are derived from https://github.com/LLK/scratch-audio/blob/develop/src/Loudness.js
+*/
+var P;
+(function (P) {
+    var ext;
+    (function (ext) {
+        var microphone;
+        (function (microphone_1) {
+            let microphone = null;
+            microphone_1.state = 0;
+            const CACHE_TIME = 1000 / 30;
+            function connect() {
+                if (microphone_1.state !== 0) {
+                    return;
+                }
+                if (!P.audio.context) {
+                    console.warn('Cannot connect to microphone without audio context.');
+                    microphone_1.state = 3;
+                    return;
+                }
+                microphone_1.state = 2;
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then((mediaStream) => {
+                    const source = P.audio.context.createMediaStreamSource(mediaStream);
+                    const analyzer = P.audio.context.createAnalyser();
+                    source.connect(analyzer);
+                    microphone = {
+                        stream: mediaStream,
+                        analyzer,
+                        dataArray: new Float32Array(analyzer.fftSize),
+                        lastValue: -1,
+                        lastCheck: 0,
+                    };
+                    microphone_1.state = 1;
+                })
+                    .catch((err) => {
+                    console.warn('Cannot connect to microphone: ' + err);
+                    microphone_1.state = 3;
+                });
+            }
+            function getLoudness() {
+                if (microphone === null) {
+                    connect();
+                    return -1;
+                }
+                if (!microphone.stream.active) {
+                    return -1;
+                }
+                if (Date.now() - microphone.lastCheck < CACHE_TIME) {
+                    return microphone.lastValue;
+                }
+                microphone.analyzer.getFloatTimeDomainData(microphone.dataArray);
+                let sum = 0;
+                for (let i = 0; i < microphone.dataArray.length; i++) {
+                    sum += Math.pow(microphone.dataArray[i], 2);
+                }
+                let rms = Math.sqrt(sum / microphone.dataArray.length);
+                if (microphone.lastValue !== -1) {
+                    rms = Math.max(rms, microphone.lastValue * 0.6);
+                }
+                microphone.lastValue = rms;
+                rms *= 1.63;
+                rms = Math.sqrt(rms);
+                rms = Math.round(rms * 100);
+                rms = Math.min(rms, 100);
+                return rms;
+            }
+            microphone_1.getLoudness = getLoudness;
+        })(microphone = ext.microphone || (ext.microphone = {}));
+    })(ext = P.ext || (P.ext = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
+    var ext;
+    (function (ext) {
+        var speech2text;
+        (function (speech2text) {
+            var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || window.mozSpeechRecognition || window.msSpeechRecognition;
+            let supported = null;
+            function isSupported() {
+                if (supported === null) {
+                    supported = typeof SpeechRecognition !== 'undefined';
+                    if (!supported) {
+                        console.warn('Speech to text is not supported in this browser. (https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition)');
+                    }
+                }
+                return supported;
+            }
+            speech2text.isSupported = isSupported;
+            class SpeechToTextExtension extends P.ext.Extension {
+                constructor(stage) {
+                    super(stage);
+                    this.speech = '';
+                    this.listeners = 0;
+                    this.hats = [];
+                    this.initRecognition();
+                    this.initOverlay();
+                }
+                initRecognition() {
+                    this.recognition = new SpeechRecognition();
+                    this.recognition.lang = 'en-US';
+                    this.recognition.continuous = true;
+                    this.recognition.onresult = (event) => this.onresult(event);
+                    this.recognition.onerror = (event) => {
+                        if (event.error !== 'aborted') {
+                            console.error('speech2text error', event);
+                        }
+                    };
+                    this.recognition.start();
+                }
+                initOverlay() {
+                    if (this.overlayElement) {
+                        throw new Error('initializing overlay twice');
+                    }
+                    const container = document.createElement('div');
+                    container.className = 'speech2text-container';
+                    const indicator = document.createElement('div');
+                    indicator.className = 'speech2text-indicator';
+                    const animation = document.createElement('div');
+                    animation.className = 'speech2text-animation';
+                    container.appendChild(animation);
+                    container.appendChild(indicator);
+                    this.stage.ui.appendChild(container);
+                    this.overlayElement = container;
+                }
+                onresult(event) {
+                    this.lastResultIndex = event.resultIndex;
+                    const lastResult = event.results[event.resultIndex];
+                    const message = lastResult[0];
+                    const transcript = message.transcript.trim();
+                    if (this.listeners !== 0) {
+                        this.speech = transcript;
+                    }
+                    for (const hat of this.hats) {
+                        const target = hat.target;
+                        const phraseFunction = hat.phraseFunction;
+                        const startingFunction = hat.startingFunction;
+                        const value = this.stage.runtime.evaluateExpression(target, phraseFunction);
+                        if (value === transcript) {
+                            this.stage.runtime.startThread(target, startingFunction);
+                        }
+                    }
+                }
+                addHat(hat) {
+                    this.hats.push(hat);
+                }
+                startListen() {
+                    this.listeners++;
+                    this.overlayElement.setAttribute('listening', '');
+                }
+                endListen() {
+                    this.listeners--;
+                    if (this.listeners === 0) {
+                        this.overlayElement.removeAttribute('listening');
+                    }
+                }
+                destroy() {
+                    this.recognition.abort();
+                }
+                id() {
+                    return this.lastResultIndex;
+                }
+            }
+            speech2text.SpeechToTextExtension = SpeechToTextExtension;
+        })(speech2text = ext.speech2text || (ext.speech2text = {}));
+    })(ext = P.ext || (P.ext = {}));
 })(P || (P = {}));
 //# sourceMappingURL=phosphorus.dist.js.map

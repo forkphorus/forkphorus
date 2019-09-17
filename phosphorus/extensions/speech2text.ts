@@ -1,6 +1,6 @@
-/// <reference path="phosphorus.ts" />
+/// <reference path="extension.ts" />
 
-namespace P.speech2text {
+namespace P.ext.speech2text {
   // Currently only Chrome supports SpeechRecognition with the webkit prefix.
   var SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition || (window as any).mozSpeechRecognition || (window as any).msSpeechRecognition;
 
@@ -21,15 +21,17 @@ namespace P.speech2text {
     phraseFunction: () => any;
   }
 
-  export class SpeechToTextExtension {
+  export class SpeechToTextExtension extends P.ext.Extension {
     public speech: string = '';
+
     private recognition: SpeechRecognition;
     private lastResultIndex: number;
     private listeners: number = 0;
     private overlayElement: HTMLElement;
     private hats: SpeechToTextHat[] = [];
 
-    constructor(public stage: P.core.Stage) {
+    constructor(stage: P.core.Stage) {
+      super(stage);
       this.initRecognition();
       this.initOverlay();
     }
