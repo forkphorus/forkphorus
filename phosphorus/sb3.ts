@@ -381,7 +381,7 @@ namespace P.sb3 {
     private rows: ListWatcherRow[] = [];
     private rowHeight: number = 24;
     private scrollTop: number = 0;
-    private lastZoomLevel: number = -1;
+    private lastZoomLevel: number = 1;
 
     constructor(stage: Scratch3Stage, data: SB3Watcher) {
       super(stage, data.spriteName || '');
@@ -402,6 +402,9 @@ namespace P.sb3 {
 
       if (!this.list.modified && this.lastZoomLevel === this.stage.zoom) {
         return;
+      }
+      if (this.lastZoomLevel !== this.stage.zoom) {
+        this.contentEl.scrollTop *= this.stage.zoom / this.lastZoomLevel;
       }
       this.list.modified = false;
       this.lastZoomLevel = this.stage.zoom;

@@ -5454,7 +5454,7 @@ var P;
                 this.rows = [];
                 this.rowHeight = 24;
                 this.scrollTop = 0;
-                this.lastZoomLevel = -1;
+                this.lastZoomLevel = 1;
                 this.id = data.id;
                 this.params = data.params;
                 this.x = data.x;
@@ -5469,6 +5469,9 @@ var P;
                 }
                 if (!this.list.modified && this.lastZoomLevel === this.stage.zoom) {
                     return;
+                }
+                if (this.lastZoomLevel !== this.stage.zoom) {
+                    this.contentEl.scrollTop *= this.stage.zoom / this.lastZoomLevel;
                 }
                 this.list.modified = false;
                 this.lastZoomLevel = this.stage.zoom;
