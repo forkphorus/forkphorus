@@ -212,7 +212,7 @@ namespace P.audio {
     ]
   ];
 
-  const SOUNDBANK_URL = 'soundbank/';
+  const SOUNDBANK_URL = '/soundbank/';
   const SOUNDBANK_FILES = {
     'AcousticGuitar_F3': 'instruments/AcousticGuitar_F3_22k.wav',
     'AcousticPiano_As3': 'instruments/AcousticPiano(5)_A%233_22k.wav',

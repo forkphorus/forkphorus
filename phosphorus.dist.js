@@ -198,7 +198,7 @@ var P;
                 { top: 128, name: 'SynthPad_C6', baseRatio: 2.3820424708835755, loop: true, loopStart: 0.11678004535147392, loopEnd: 0.41732426303854875, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
             ]
         ];
-        const SOUNDBANK_URL = 'soundbank/';
+        const SOUNDBANK_URL = '/soundbank/';
         const SOUNDBANK_FILES = {
             'AcousticGuitar_F3': 'instruments/AcousticGuitar_F3_22k.wav',
             'AcousticPiano_As3': 'instruments/AcousticPiano(5)_A%233_22k.wav',
