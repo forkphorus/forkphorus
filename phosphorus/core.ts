@@ -817,6 +817,14 @@ namespace P.core {
       this.root.style.height = (360 * zoom | 0) + 'px';
       this.root.style.fontSize = (zoom*10) + 'px';
       this.zoom = zoom;
+      // Temporary fix to make Scratch 3 list watchers properly resize when paused
+      if (!this.runtime.isRunning) {
+        for (const watcher of this.allWatchers) {
+          if (watcher instanceof P.sb3.Scratch3ListWatcher) {
+            watcher.updateList();
+          }
+        }
+      }
     }
 
     clickMouse() {
