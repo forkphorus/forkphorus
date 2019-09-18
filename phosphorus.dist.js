@@ -5459,12 +5459,13 @@ var P;
             constructor(stage, data) {
                 super(stage, data.spriteName || '');
                 this.rows = [];
-                this.rowHeight = 24;
+                this._rowHeight = -1;
                 this.scrollTop = 0;
                 this.lastZoomLevel = 1;
-                this.scrollAhead = 3;
-                this.scrollBack = 2;
+                this.scrollAhead = 8;
+                this.scrollBack = 3;
                 this.scrollDirection = 1;
+                this._contentHeight = -1;
                 this.id = data.id;
                 this.params = data.params;
                 this.x = data.x;
@@ -5492,12 +5493,12 @@ var P;
                 }
             }
             updateList() {
-                const height = this.list.length * this.rowHeight;
+                const height = this.list.length * this.getRowHeight();
                 this.endpointEl.style.transform = 'translateY(' + (height * this.stage.zoom) + 'px)';
                 const topVisible = this.scrollTop;
-                const bottomVisible = topVisible + this.height;
-                let startingIndex = Math.floor(topVisible / this.rowHeight);
-                let endingIndex = Math.ceil(bottomVisible / this.rowHeight);
+                const bottomVisible = topVisible + this.getContentHeight();
+                let startingIndex = Math.floor(topVisible / this._rowHeight);
+                let endingIndex = Math.ceil(bottomVisible / this._rowHeight);
                 if (this.scrollDirection === 1) {
                     startingIndex -= this.scrollBack;
                     endingIndex += this.scrollAhead;
@@ -5523,7 +5524,7 @@ var P;
                     let row = this.rows[rowIndex];
                     row.setIndex(listIndex);
                     row.setValue(this.list[listIndex]);
-                    row.setY(listIndex * this.rowHeight * this.stage.zoom);
+                    row.setY(listIndex * this._rowHeight * this.stage.zoom);
                     row.setVisible(true);
                 }
                 while (rowIndex < this.rows.length) {
@@ -5551,6 +5552,23 @@ var P;
             }
             getBottomLabel() {
                 return 'length ' + this.list.length;
+            }
+            getContentHeight() {
+                if (this._contentHeight === -1) {
+                    this._contentHeight = this.contentEl.offsetHeight;
+                }
+                return this._contentHeight;
+            }
+            getRowHeight() {
+                if (this._rowHeight === -1) {
+                    const PADDING = 2;
+                    const row = new ListWatcherRow();
+                    this.rows.push(row);
+                    this.contentEl.appendChild(row.element);
+                    const height = row.element.offsetHeight;
+                    this._rowHeight = height + PADDING;
+                }
+                return this._rowHeight;
             }
             updateLayout() {
                 if (!this.containerEl) {

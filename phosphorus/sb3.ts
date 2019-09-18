@@ -393,12 +393,13 @@ namespace P.sb3 {
     private endpointEl: HTMLElement;
     private contentEl: HTMLElement;
     private rows: ListWatcherRow[] = [];
-    private rowHeight: number = 24;
+    private _rowHeight: number = -1;
     private scrollTop: number = 0;
     private lastZoomLevel: number = 1;
-    private scrollAhead: number = 3;
-    private scrollBack: number = 2;
+    private scrollAhead: number = 8;
+    private scrollBack: number = 3;
     private scrollDirection: ScrollDirection = ScrollDirection.Down;
+    private _contentHeight: number = -1;
 
     constructor(stage: Scratch3Stage, data: SB3Watcher) {
       super(stage, data.spriteName || '');
@@ -435,14 +436,14 @@ namespace P.sb3 {
     }
 
     updateList() {
-      const height = this.list.length * this.rowHeight;
+      const height = this.list.length * this.getRowHeight();
       this.endpointEl.style.transform = 'translateY(' + (height * this.stage.zoom) + 'px)';
 
       const topVisible = this.scrollTop;
-      const bottomVisible = topVisible + this.height;
+      const bottomVisible = topVisible + this.getContentHeight();
 
-      let startingIndex = Math.floor(topVisible / this.rowHeight);
-      let endingIndex = Math.ceil(bottomVisible / this.rowHeight);
+      let startingIndex = Math.floor(topVisible / this._rowHeight);
+      let endingIndex = Math.ceil(bottomVisible / this._rowHeight);
       
       if (this.scrollDirection === ScrollDirection.Down) {
         startingIndex -= this.scrollBack;
@@ -472,7 +473,7 @@ namespace P.sb3 {
         let row = this.rows[rowIndex];
         row.setIndex(listIndex);
         row.setValue(this.list[listIndex]);
-        row.setY(listIndex * this.rowHeight * this.stage.zoom);
+        row.setY(listIndex * this._rowHeight * this.stage.zoom);
         row.setVisible(true);
       }
       while (rowIndex < this.rows.length) {
@@ -496,14 +497,33 @@ namespace P.sb3 {
       this.updateLayout();
     }
 
-    getTopLabel() {
+    getTopLabel(): string {
       if (this.target.isStage) {
         return this.params.LIST;
       }
       return this.target.name + ': ' + this.params.LIST;
     }
-    getBottomLabel() {
+    getBottomLabel(): string {
       return 'length ' + this.list.length;
+    }
+
+    getContentHeight(): number {
+      if (this._contentHeight === -1) {
+        this._contentHeight = this.contentEl.offsetHeight;
+      }
+      return this._contentHeight;
+    }
+
+    getRowHeight(): number {
+      if (this._rowHeight === -1) {
+        const PADDING = 2;
+        const row = new ListWatcherRow();
+        this.rows.push(row);
+        this.contentEl.appendChild(row.element);
+        const height = row.element.offsetHeight;
+        this._rowHeight = height + PADDING;
+      }
+      return this._rowHeight;
     }
 
     updateLayout() {
