@@ -442,9 +442,9 @@ namespace P.sb3 {
       const topVisible = this.scrollTop;
       const bottomVisible = topVisible + this.getContentHeight();
 
-      let startingIndex = Math.floor(topVisible / this._rowHeight);
-      let endingIndex = Math.ceil(bottomVisible / this._rowHeight);
-      
+      let startingIndex = Math.floor(topVisible / this.getRowHeight());
+      let endingIndex = Math.ceil(bottomVisible / this.getRowHeight());
+
       if (this.scrollDirection === ScrollDirection.Down) {
         startingIndex -= this.scrollBack;
         endingIndex += this.scrollAhead;
@@ -464,9 +464,7 @@ namespace P.sb3 {
 
       const visibleRows = endingIndex - startingIndex;
       while (this.rows.length <= visibleRows) {
-        const row = new ListWatcherRow();
-        this.contentEl.appendChild(row.element);
-        this.rows.push(row);
+        this.addRow();
       }
 
       for (var listIndex = startingIndex, rowIndex = 0; listIndex <= endingIndex; listIndex++, rowIndex++) {
@@ -516,14 +514,20 @@ namespace P.sb3 {
 
     getRowHeight(): number {
       if (this._rowHeight === -1) {
+        // Space between each row, in pixels.
         const PADDING = 2;
-        const row = new ListWatcherRow();
-        this.rows.push(row);
-        this.contentEl.appendChild(row.element);
+        const row = this.addRow();
         const height = row.element.offsetHeight;
         this._rowHeight = height + PADDING;
       }
       return this._rowHeight;
+    }
+
+    addRow(): ListWatcherRow {
+      const row = new ListWatcherRow();
+      this.rows.push(row);
+      this.contentEl.appendChild(row.element);
+      return row;
     }
 
     updateLayout() {
