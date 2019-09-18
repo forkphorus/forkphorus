@@ -5419,6 +5419,7 @@ var P;
                 this.value = '';
                 this.index = -1;
                 this.y = 0;
+                this.visible = true;
                 this.element = document.createElement('div');
                 this.indexEl = document.createElement('div');
                 this.valueEl = document.createElement('div');
@@ -5446,6 +5447,12 @@ var P;
                     this.element.style.transform = 'translateY(' + y + 'px)';
                 }
             }
+            setVisible(visible) {
+                if (this.visible !== visible) {
+                    this.visible = visible;
+                    this.element.style.display = visible ? '' : 'none';
+                }
+            }
         }
         sb3.ListWatcherRow = ListWatcherRow;
         class Scratch3ListWatcher extends P.core.Watcher {
@@ -5455,6 +5462,9 @@ var P;
                 this.rowHeight = 24;
                 this.scrollTop = 0;
                 this.lastZoomLevel = 1;
+                this.scrollAhead = 3;
+                this.scrollBack = 2;
+                this.scrollDirection = 1;
                 this.id = data.id;
                 this.params = data.params;
                 this.x = data.x;
@@ -5486,26 +5496,38 @@ var P;
                 this.endpointEl.style.transform = 'translateY(' + (height * this.stage.zoom) + 'px)';
                 const topVisible = this.scrollTop;
                 const bottomVisible = topVisible + this.height;
-                let firstVisibleIndex = Math.max(0, Math.floor(topVisible / this.rowHeight));
-                let lastVisibleIndex = Math.min(Math.ceil(bottomVisible / this.rowHeight), this.list.length - 1);
-                if (lastVisibleIndex - firstVisibleIndex > 50) {
-                    lastVisibleIndex = firstVisibleIndex + 50;
+                let startingIndex = Math.floor(topVisible / this.rowHeight);
+                let endingIndex = Math.ceil(bottomVisible / this.rowHeight);
+                if (this.scrollDirection === 1) {
+                    startingIndex -= this.scrollBack;
+                    endingIndex += this.scrollAhead;
                 }
-                const visibleRows = lastVisibleIndex - firstVisibleIndex;
+                else {
+                    startingIndex -= this.scrollAhead;
+                    endingIndex += this.scrollBack;
+                }
+                if (startingIndex < 0)
+                    startingIndex = 0;
+                if (endingIndex > this.list.length - 1)
+                    endingIndex = this.list.length - 1;
+                if (endingIndex - startingIndex > 50) {
+                    endingIndex = startingIndex + 50;
+                }
+                const visibleRows = endingIndex - startingIndex;
                 while (this.rows.length <= visibleRows) {
                     const row = new ListWatcherRow();
                     this.contentEl.appendChild(row.element);
                     this.rows.push(row);
                 }
-                for (var listIndex = firstVisibleIndex, rowIndex = 0; listIndex <= lastVisibleIndex; listIndex++, rowIndex++) {
+                for (var listIndex = startingIndex, rowIndex = 0; listIndex <= endingIndex; listIndex++, rowIndex++) {
                     let row = this.rows[rowIndex];
                     row.setIndex(listIndex);
                     row.setValue(this.list[listIndex]);
                     row.setY(listIndex * this.rowHeight * this.stage.zoom);
-                    row.element.style.display = '';
+                    row.setVisible(true);
                 }
                 while (rowIndex < this.rows.length) {
-                    this.rows[rowIndex].element.style.display = 'none';
+                    this.rows[rowIndex].setVisible(false);
                     rowIndex++;
                 }
             }
@@ -5558,7 +5580,15 @@ var P;
                 this.middleContainerEl.classList.add('s3-list-content');
                 this.contentEl.classList.add('s3-list-rows');
                 this.contentEl.addEventListener('scroll', (e) => {
-                    this.scrollTop = this.contentEl.scrollTop / this.stage.zoom;
+                    const scrollTop = this.contentEl.scrollTop / this.stage.zoom;
+                    const scrollChange = this.scrollTop - scrollTop;
+                    if (scrollChange < 0) {
+                        this.scrollDirection = 1;
+                    }
+                    else if (scrollChange > 0) {
+                        this.scrollDirection = 0;
+                    }
+                    this.scrollTop = scrollTop;
                     this.updateList();
                 });
                 this.endpointEl = document.createElement('div');

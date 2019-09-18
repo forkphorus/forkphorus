@@ -322,6 +322,7 @@ namespace P.sb3 {
     private value: any = '';
     private index: any = -1;
     private y: any = 0;
+    private visible: boolean = true;
 
     constructor() {
       this.element = document.createElement('div');
@@ -364,8 +365,21 @@ namespace P.sb3 {
         this.element.style.transform = 'translateY(' + y + 'px)';
       }
     }
+
+    /**
+     * Set the visibility of this row.
+     */
+    setVisible(visible: boolean) {
+      if (this.visible !== visible) {
+        this.visible = visible;
+        this.element.style.display = visible ? '' : 'none';
+      }
+    }
   }
 
+  const enum ScrollDirection {
+    Up, Down,
+  }
   export class Scratch3ListWatcher extends P.core.Watcher {
     private params: any;
     private id: string;
@@ -382,6 +396,9 @@ namespace P.sb3 {
     private rowHeight: number = 24;
     private scrollTop: number = 0;
     private lastZoomLevel: number = 1;
+    private scrollAhead: number = 3;
+    private scrollBack: number = 2;
+    private scrollDirection: ScrollDirection = ScrollDirection.Down;
 
     constructor(stage: Scratch3Stage, data: SB3Watcher) {
       super(stage, data.spriteName || '');
@@ -424,31 +441,42 @@ namespace P.sb3 {
       const topVisible = this.scrollTop;
       const bottomVisible = topVisible + this.height;
 
-      let firstVisibleIndex = Math.max(0, Math.floor(topVisible / this.rowHeight));
-      let lastVisibleIndex = Math.min(Math.ceil(bottomVisible / this.rowHeight), this.list.length - 1);
+      let startingIndex = Math.floor(topVisible / this.rowHeight);
+      let endingIndex = Math.ceil(bottomVisible / this.rowHeight);
+      
+      if (this.scrollDirection === ScrollDirection.Down) {
+        startingIndex -= this.scrollBack;
+        endingIndex += this.scrollAhead;
+      } else {
+        startingIndex -= this.scrollAhead;
+        endingIndex += this.scrollBack;
+      }
+
+      if (startingIndex < 0) startingIndex = 0;
+      if (endingIndex > this.list.length - 1) endingIndex = this.list.length - 1;
 
       // Sanity checks:
       // Cap ourselves at 50 rows on screen.
-      if (lastVisibleIndex - firstVisibleIndex > 50) {
-        lastVisibleIndex = firstVisibleIndex + 50;
+      if (endingIndex - startingIndex > 50) {
+        endingIndex = startingIndex + 50;
       }
 
-      const visibleRows = lastVisibleIndex - firstVisibleIndex;
+      const visibleRows = endingIndex - startingIndex;
       while (this.rows.length <= visibleRows) {
         const row = new ListWatcherRow();
         this.contentEl.appendChild(row.element);
         this.rows.push(row);
       }
 
-      for (var listIndex = firstVisibleIndex, rowIndex = 0; listIndex <= lastVisibleIndex; listIndex++, rowIndex++) {
+      for (var listIndex = startingIndex, rowIndex = 0; listIndex <= endingIndex; listIndex++, rowIndex++) {
         let row = this.rows[rowIndex];
         row.setIndex(listIndex);
         row.setValue(this.list[listIndex]);
         row.setY(listIndex * this.rowHeight * this.stage.zoom);
-        row.element.style.display = '';
+        row.setVisible(true);
       }
       while (rowIndex < this.rows.length) {
-        this.rows[rowIndex].element.style.display = 'none';
+        this.rows[rowIndex].setVisible(false);
         rowIndex++;
       }
     }
@@ -513,7 +541,14 @@ namespace P.sb3 {
 
       this.contentEl.classList.add('s3-list-rows');
       this.contentEl.addEventListener('scroll', (e) => {
-        this.scrollTop = this.contentEl.scrollTop / this.stage.zoom;
+        const scrollTop = this.contentEl.scrollTop / this.stage.zoom;
+        const scrollChange = this.scrollTop - scrollTop;
+        if (scrollChange < 0) {
+          this.scrollDirection = ScrollDirection.Down;
+        } else if (scrollChange > 0) {
+          this.scrollDirection = ScrollDirection.Up;
+        }
+        this.scrollTop = scrollTop;
         this.updateList();
       });
 
