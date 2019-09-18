@@ -7,11 +7,6 @@
   <meta name="description" content="Forkphorus is a JavaScript compiler for Scratch 2 and Scratch 3 projects.">
   <title>forkphorus - phosphorus for Scratch 3</title>
   <script>
-    // I've seen a non-zero amount of people use forkphorus.github.io/forkphorus/ when they should be using forkphorus.github.io/, so we'll just redirect them to the correct location and hope they take note.
-    if (location.origin === 'https://forkphorus.github.io' && location.pathname === '/forkphorus/') {
-      location.pathname = '/';
-    }
-
     // Apply local dark mode preference very early to avoid a flash of white
     (function() {
       try {
