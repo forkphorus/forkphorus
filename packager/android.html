@@ -124,13 +124,14 @@
   <hr>
 
   <h2>Second Method - Using the HTML packager</h2>
+  <p><i>There are some known issues with this method for now -- I will try to get those fixed soon.</i></p>
   <p>An alternative method involves creating an independent HTML file for your project and embedding that. The main advantage is that this will work offline, independent of an internet connection and will always produce the same result.</p>
   <p>Generate an HTML file using <a href="/packager/">the HTML packager</a>. The only important part of this step is that you must make sure that "Include CSP" is enabled under "Advanced Options". (it is enabled by default)</p>
   <p>Keep project.html around, we will need it in the next steps.</p>
   <p>We will use PhoneGap to embed this HTML file into an Android app.</p>
 
   <ol>
-    <li>Note that <i>we actually won't need to install PhoneGap.</i> We will be using heir online build service.</li>
+    <li>Note that <i>we actually won't need to install PhoneGap.</i> We will be using their online build service.</li>
     <li>We need to generate a ZIP archive that contains project.html (but renamed to index.html). The easiest way to do that is to put it into this file selector: <input type="file" id="pg-input" accept=".html"></li>
     <li>Go to the <a href="https://build.phonegap.com">PhoneGap build service</a> and sign in with or create an Adobe account</li>
     <li>Create a new <i>Private</i> app and upload the generated ZIP to the service.</li>
