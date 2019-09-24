@@ -1776,7 +1776,7 @@ namespace P.sb3.compiler {
       hatCompiler.handle(util);
 
       if (P.config.debug) {
-        this.log('compiled sb3 script', hat.opcode, script, this.target);
+        this.log(`[${this.target.name}] compiled sb3 script "${hat.opcode}"`, script, this.target);
       }
     }
 
