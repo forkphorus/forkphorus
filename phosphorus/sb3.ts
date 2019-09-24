@@ -2267,7 +2267,7 @@ namespace P.sb3.compiler {
   statementLibrary['motion_pointindirection'] = function(util) {
     const DIRECTION = util.getInput('DIRECTION', 'number');
     util.visual('visible');
-    util.writeLn(`S.direction = ${DIRECTION};`);
+    util.writeLn(`S.setDirection(${DIRECTION});`);
   };
   statementLibrary['motion_pointtowards'] = function(util) {
     const TOWARDS = util.getInput('TOWARDS', 'any');
