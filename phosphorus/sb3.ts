@@ -136,15 +136,15 @@ namespace P.sb3 {
   export class Scratch3VariableWatcher extends P.core.Watcher {
     public id: string;
     public opcode: string;
-    public mode: string;
+    private mode: string;
     public params: any;
-    public libraryEntry: P.sb3.compiler.WatchedValue;
-    public sliderMin: number;
-    public sliderMax: number;
-    public sliderStep: number;
-
-    public containerEl: HTMLElement;
-    public valueEl: HTMLElement;
+    private libraryEntry: P.sb3.compiler.WatchedValue;
+    private sliderMin: number;
+    private sliderMax: number;
+    private sliderStep: number;
+    private sliderInput: HTMLInputElement;
+    private containerEl: HTMLElement;
+    private valueEl: HTMLElement;
 
     constructor(stage: Scratch3Stage, data: SB3Watcher) {
       super(stage, data.spriteName || '');
@@ -181,10 +181,13 @@ namespace P.sb3 {
 
     update() {
       if (this.visible) {
-        // Value is only updated when the value has changed to reduce useless paints in some browsers.
         const value = this.getValue();
+        // Value is only updated when the value has changed to reduce useless paints/reflows in some browsers.
         if (this.valueEl.textContent !== value) {
-          this.valueEl.textContent = this.getValue();
+          this.valueEl.textContent = value;
+        }
+        if (this.sliderInput) {
+          this.sliderInput.value = value;
         }
       }
     }
@@ -297,6 +300,7 @@ namespace P.sb3 {
           input.step = '' + this.sliderStep;
           input.value = this.getValue();
           input.addEventListener('input', this.sliderChanged.bind(this));
+          this.sliderInput = input;
 
           slider.appendChild(input);
           container.appendChild(slider);
@@ -311,24 +315,91 @@ namespace P.sb3 {
     }
   }
 
-  interface ListRow {
-    row: HTMLElement;
-    index: HTMLElement;
-    value: HTMLElement;
+  export class ListWatcherRow {
+    public element: HTMLElement;
+    private indexEl: HTMLElement;
+    private valueEl: HTMLElement;
+    private value: any = '';
+    private index: any = -1;
+    private y: any = 0;
+    private visible: boolean = true;
+
+    constructor() {
+      this.element = document.createElement('div');
+      this.indexEl = document.createElement('div');
+      this.valueEl = document.createElement('div');
+      this.element.className = 's3-list-row';
+      this.indexEl.className = 's3-list-index';
+      this.valueEl.className = 's3-list-value';
+      this.element.appendChild(this.indexEl);
+      this.element.appendChild(this.valueEl);
+    }
+
+    /**
+     * Set the value of this row.
+     */
+    setValue(value: any) {
+      if (value !== this.value) {
+        this.value = value;
+        this.valueEl.textContent = value;
+      }
+    }
+
+    /**
+     * Set the index of this row.
+     * @param index The *JavaScript* index of the row.
+     */
+    setIndex(index: number) {
+      if (index !== this.index) {
+        this.index = index;
+        this.indexEl.textContent = (index + 1).toString();
+      }
+    }
+
+    /**
+     * Set the Y coordinate of this row.
+     */
+    setY(y: number) {
+      if (y !== this.y) {
+        this.y = y;
+        this.element.style.transform = 'translateY(' + y + 'px)';
+      }
+    }
+
+    /**
+     * Set the visibility of this row.
+     */
+    setVisible(visible: boolean) {
+      if (this.visible !== visible) {
+        this.visible = visible;
+        this.element.style.display = visible ? '' : 'none';
+      }
+    }
   }
 
+  const enum ScrollDirection {
+    Up, Down,
+  }
   export class Scratch3ListWatcher extends P.core.Watcher {
-    private firstUpdate: boolean = true;
     private params: any;
     private id: string;
     private width: number;
     private height: number;
     private list: Scratch3List;
-    private domRows: ListRow[] = [];
     private containerEl: HTMLElement;
     private topLabelEl: HTMLElement;
     private bottomLabelEl: HTMLElement;
+    private middleContainerEl: HTMLElement;
+    private endpointEl: HTMLElement;
     private contentEl: HTMLElement;
+    private rows: ListWatcherRow[] = [];
+    private _rowHeight: number = -1;
+    private scrollTop: number = 0;
+    private lastZoomLevel: number = 1;
+    private scrollAhead: number = 8;
+    private scrollBack: number = 3;
+    private scrollDirection: ScrollDirection = ScrollDirection.Down;
+    private _contentHeight: number = -1;
 
     constructor(stage: Scratch3Stage, data: SB3Watcher) {
       super(stage, data.spriteName || '');
@@ -343,48 +414,69 @@ namespace P.sb3 {
     }
 
     update() {
-      // We're not visible, so no changes would be seen. We'd only be wasting CPU cycles.
-      // If the list was modified, we'll find out after we become visible.
       if (!this.visible) {
         return;
       }
 
-      // Silently rest if the list has not been modified to improve performance for static lists.
-      if (!this.list.modified && !this.firstUpdate) {
+      if (!this.list.modified && this.lastZoomLevel === this.stage.zoom) {
         return;
       }
-      this.firstUpdate = false;
+      if (this.lastZoomLevel !== this.stage.zoom) {
+        this.contentEl.scrollTop *= this.stage.zoom / this.lastZoomLevel;
+      }
       this.list.modified = false;
-      this.updateContents();
-    }
+      this.lastZoomLevel = this.stage.zoom;
 
-    updateContents() {
-      const length = this.list.length;
-
-      if (this.domRows.length < length) {
-        while (this.domRows.length < length) {
-          const row = this.createRow();
-          this.domRows.push(row);
-          this.contentEl.appendChild(row.row);
-        }
-      } else if (this.domRows.length > length) {
-        while (this.domRows.length > length) {
-          this.domRows.pop();
-          this.contentEl.removeChild(this.contentEl.lastChild!);
-        }
-      }
-
-      for (var i = 0; i < length; i++) {
-        const { value } = this.domRows[i];
-        const rowText = '' + this.list[i];
-        if (rowText !== value.textContent) {
-          value.textContent = rowText;
-        }
-      }
+      this.updateList();
 
       const bottomLabelText = this.getBottomLabel();
       if (this.bottomLabelEl.textContent !== bottomLabelText) {
         this.bottomLabelEl.textContent = this.getBottomLabel();
+      }
+    }
+
+    updateList() {
+      const height = this.list.length * this.getRowHeight();
+      this.endpointEl.style.transform = 'translateY(' + (height * this.stage.zoom) + 'px)';
+
+      const topVisible = this.scrollTop;
+      const bottomVisible = topVisible + this.getContentHeight();
+
+      let startingIndex = Math.floor(topVisible / this.getRowHeight());
+      let endingIndex = Math.ceil(bottomVisible / this.getRowHeight());
+
+      if (this.scrollDirection === ScrollDirection.Down) {
+        startingIndex -= this.scrollBack;
+        endingIndex += this.scrollAhead;
+      } else {
+        startingIndex -= this.scrollAhead;
+        endingIndex += this.scrollBack;
+      }
+
+      if (startingIndex < 0) startingIndex = 0;
+      if (endingIndex > this.list.length - 1) endingIndex = this.list.length - 1;
+
+      // Sanity checks:
+      // Cap ourselves at 50 rows on screen.
+      if (endingIndex - startingIndex > 50) {
+        endingIndex = startingIndex + 50;
+      }
+
+      const visibleRows = endingIndex - startingIndex;
+      while (this.rows.length <= visibleRows) {
+        this.addRow();
+      }
+
+      for (var listIndex = startingIndex, rowIndex = 0; listIndex <= endingIndex; listIndex++, rowIndex++) {
+        let row = this.rows[rowIndex];
+        row.setIndex(listIndex);
+        row.setValue(this.list[listIndex]);
+        row.setY(listIndex * this._rowHeight * this.stage.zoom);
+        row.setVisible(true);
+      }
+      while (rowIndex < this.rows.length) {
+        this.rows[rowIndex].setVisible(false);
+        rowIndex++;
       }
     }
 
@@ -401,16 +493,41 @@ namespace P.sb3 {
       this.list = this.target.lists[listName] as Scratch3List;
       this.target.listWatchers[listName] = this;
       this.updateLayout();
-      if (this.visible) {
-        this.updateContents();
-      }
     }
 
-    getTopLabel() {
-      return this.params.LIST;
+    getTopLabel(): string {
+      if (this.target.isStage) {
+        return this.params.LIST;
+      }
+      return this.target.name + ': ' + this.params.LIST;
     }
-    getBottomLabel() {
+    getBottomLabel(): string {
       return 'length ' + this.list.length;
+    }
+
+    getContentHeight(): number {
+      if (this._contentHeight === -1) {
+        this._contentHeight = this.contentEl.offsetHeight;
+      }
+      return this._contentHeight;
+    }
+
+    getRowHeight(): number {
+      if (this._rowHeight === -1) {
+        // Space between each row, in pixels.
+        const PADDING = 2;
+        const row = this.addRow();
+        const height = row.element.offsetHeight;
+        this._rowHeight = height + PADDING;
+      }
+      return this._rowHeight;
+    }
+
+    addRow(): ListWatcherRow {
+      const row = new ListWatcherRow();
+      this.rows.push(row);
+      this.contentEl.appendChild(row.element);
+      return row;
     }
 
     updateLayout() {
@@ -425,23 +542,11 @@ namespace P.sb3 {
       this.updateLayout();
     }
 
-    createRow(): ListRow {
-      const row = document.createElement('div');
-      const index = document.createElement('div');
-      const value = document.createElement('div');
-      row.classList.add('s3-list-row');
-      index.classList.add('s3-list-index');
-      value.classList.add('s3-list-value');
-      index.textContent = (this.domRows.length + 1).toString();
-      row.appendChild(index);
-      row.appendChild(value);
-      return { row, index, value };
-    }
-
     createLayout() {
       this.containerEl = document.createElement('div');
       this.topLabelEl = document.createElement('div');
       this.bottomLabelEl = document.createElement('div');
+      this.middleContainerEl = document.createElement('div');
       this.contentEl = document.createElement('div');
 
       this.containerEl.style.top = (this.y / 10) + 'em';
@@ -456,10 +561,28 @@ namespace P.sb3 {
       this.bottomLabelEl.textContent = this.getBottomLabel();
       this.bottomLabelEl.classList.add('s3-list-bottom-label');
 
-      this.contentEl.classList.add('s3-list-content');
+      this.middleContainerEl.classList.add('s3-list-content');
 
+      this.contentEl.classList.add('s3-list-rows');
+      this.contentEl.addEventListener('scroll', (e) => {
+        const scrollTop = this.contentEl.scrollTop / this.stage.zoom;
+        const scrollChange = this.scrollTop - scrollTop;
+        if (scrollChange < 0) {
+          this.scrollDirection = ScrollDirection.Down;
+        } else if (scrollChange > 0) {
+          this.scrollDirection = ScrollDirection.Up;
+        }
+        this.scrollTop = scrollTop;
+        this.updateList();
+      });
+
+      this.endpointEl = document.createElement('div');
+      this.endpointEl.className = 's3-list-endpoint';
+      this.contentEl.appendChild(this.endpointEl);
+
+      this.middleContainerEl.appendChild(this.contentEl);
       this.containerEl.appendChild(this.topLabelEl);
-      this.containerEl.appendChild(this.contentEl);
+      this.containerEl.appendChild(this.middleContainerEl);
       this.containerEl.appendChild(this.bottomLabelEl);
       this.stage.ui.appendChild(this.containerEl);
     }
@@ -1705,7 +1828,7 @@ namespace P.sb3.compiler {
       hatCompiler.handle(util);
 
       if (P.config.debug) {
-        this.log('compiled sb3 script', hat.opcode, script, this.target);
+        this.log(`[${this.target.name}] compiled sb3 script "${hat.opcode}"`, script, this.target);
       }
     }
 
@@ -2196,7 +2319,7 @@ namespace P.sb3.compiler {
   statementLibrary['motion_pointindirection'] = function(util) {
     const DIRECTION = util.getInput('DIRECTION', 'number');
     util.visual('visible');
-    util.writeLn(`S.direction = ${DIRECTION};`);
+    util.writeLn(`S.setDirection(${DIRECTION});`);
   };
   statementLibrary['motion_pointtowards'] = function(util) {
     const TOWARDS = util.getInput('TOWARDS', 'any');

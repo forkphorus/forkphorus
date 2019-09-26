@@ -1,7 +1,10 @@
-/// <reference path="phosphorus.ts" />
-/// <reference path="audio.ts" />
+/// <reference path="extension.ts" />
 
-namespace P.microphone {
+/*!
+Parts of this file (microphone.ts) are derived from https://github.com/LLK/scratch-audio/blob/develop/src/Loudness.js
+*/
+
+namespace P.ext.microphone {
   const enum MicrophoneState {
     Disconnected = 0,
     Connected = 1,
@@ -20,6 +23,7 @@ namespace P.microphone {
   let microphone: MicrophoneData | null = null;
   export let state: MicrophoneState = MicrophoneState.Disconnected;
   // The loudness will be cached for this long, in milliseconds.
+  // getLoudness() has side effects (such as affecting smoothing) so a cache is needed.
   const CACHE_TIME = 1000 / 30;
 
   function connect() {
@@ -69,14 +73,6 @@ namespace P.microphone {
       return microphone.lastValue;
     }
 
-    `
-    The following lines of source code are from the GitHub project LLK/scratch-audio
-    You can find the license for this code here: https://raw.githubusercontent.com/LLK/scratch-audio/develop/LICENSE
-    (our build tool removes comments so a multiline string is used instead)
-    Copyright (c) 2016, Massachusetts Institute of Technology
-    Modifications copyright (c) 2019 Thomas Weber
-    `
-
     microphone.analyzer.getFloatTimeDomainData(microphone.dataArray);
     let sum = 0;
     for (let i = 0; i < microphone.dataArray.length; i++){
@@ -92,10 +88,6 @@ namespace P.microphone {
     rms = Math.sqrt(rms);
     rms = Math.round(rms * 100);
     rms = Math.min(rms, 100);
-
-    `
-    End of code from LLK/scratch-audio
-    `
 
     return rms;
   }

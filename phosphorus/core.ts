@@ -572,7 +572,8 @@ namespace P.core {
     public mouseSprite: Sprite | undefined;
 
     private videoElement: HTMLVideoElement;
-    public speech2text: P.speech2text.SpeechToTextExtension | null;
+    public speech2text: P.ext.speech2text.SpeechToTextExtension | null = null;
+    private extensions: P.ext.Extension[] = [];
 
     constructor() {
       super();
@@ -776,8 +777,8 @@ namespace P.core {
       this.runtime.stopAll();
       this.runtime.pause();
       this.stopAllSounds();
-      if (this.speech2text) {
-        this.speech2text.destroy();
+      for (const extension of this.extensions) {
+        extension.destroy();
       }
     }
 
@@ -816,6 +817,14 @@ namespace P.core {
       this.root.style.height = (360 * zoom | 0) + 'px';
       this.root.style.fontSize = (zoom*10) + 'px';
       this.zoom = zoom;
+      // Temporary fix to make Scratch 3 list watchers properly resize when paused
+      if (!this.runtime.isRunning) {
+        for (const watcher of this.allWatchers) {
+          if (watcher instanceof P.sb3.Scratch3ListWatcher) {
+            watcher.updateList();
+          }
+        }
+      }
     }
 
     clickMouse() {
@@ -951,12 +960,17 @@ namespace P.core {
     }
 
     getLoudness() {
-      return P.microphone.getLoudness();
+      return P.ext.microphone.getLoudness();
+    }
+
+    addExtension(extension: P.ext.Extension) {
+      this.extensions.push(extension);
     }
 
     initSpeech2Text() {
-      if (!this.speech2text && P.speech2text.isSupported()) {
-        this.speech2text = new P.speech2text.SpeechToTextExtension(this);
+      if (!this.speech2text && P.ext.speech2text.isSupported()) {
+        this.speech2text = new P.ext.speech2text.SpeechToTextExtension(this);
+        this.addExtension(this.speech2text);
       }
     }
 

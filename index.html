@@ -7,11 +7,6 @@
   <meta name="description" content="Forkphorus is a JavaScript compiler for Scratch 2 and Scratch 3 projects.">
   <title>forkphorus - phosphorus for Scratch 3</title>
   <script>
-    // I've seen a non-zero amount of people use forkphorus.github.io/forkphorus/ when they should be using forkphorus.github.io/, so we'll just redirect them to the correct location and hope they take note.
-    if (location.origin === 'https://forkphorus.github.io' && location.pathname === '/forkphorus/') {
-      location.pathname = '/';
-    }
-
     // Apply local dark mode preference very early to avoid a flash of white
     (function() {
       try {
@@ -195,6 +190,12 @@
       position: querySelector('.url').parentNode,
     });
     var errorHandler = new P.Player.ErrorHandler(player);
+    player.onerror.subscribe(function(err) {
+      err = '' + err;
+      var el = document.createElement('div');
+      el.innerHTML = `Alternatively, <a href="https://scratch.mit.edu/users/GarboMuffin/#comments" target="_blank">post a Scratch comment</a> and include: "<span style="font-family: monospace; user-select: all">${err.replace(/<>/g, '')}</span>"`;
+      errorHandler.errorEl.appendChild(el);
+    });
     playerArea.appendChild(player.root);
 
     var initialId = location.hash.substr(1);
@@ -312,14 +313,21 @@
       document.title = initialTitle;
     }
     function setTitleToProjectTitle(id) {
+      var stageId = player.stageId;
       if (cachedTitles[id]) {
         document.title = cachedTitles[id] + ' - forkphorus';
       } else {
         new P.IO.TextRequest('https://scratch.garbomuffin.com/api/forkphorus/?t=title&p=' + id).load()
           .then(function(title) {
-            if (title) {
-              cachedTitles[id] = title;
-              document.title = title + ' - forkphorus';
+            if (player.stageId === stageId) {
+              if (title) {
+                cachedTitles[id] = title;
+                player.projectTitle = title;
+                document.title = title + ' - forkphorus';
+                updateLinks();
+              } else {
+                resetTitle();
+              }
             }
           });
       }
@@ -470,7 +478,6 @@
         cachedTitles[id] = el.dataset.title;
         location.hash = '#' + id;
       };
-      studioView.shuffler = StudioView.Shufflers.random();
       studioView.loadNextPage();
       studioView.setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
       studioView.scrollTop = 0;
