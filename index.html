@@ -190,6 +190,12 @@
       position: querySelector('.url').parentNode,
     });
     var errorHandler = new P.Player.ErrorHandler(player);
+    player.onerror.subscribe(function(err) {
+      err = '' + err;
+      var el = document.createElement('div');
+      el.innerHTML = `Alternatively, <a href="https://scratch.mit.edu/users/GarboMuffin/#comments" target="_blank">post a Scratch comment</a> and include: "<span style="font-family: monospace; user-select: all">${err.replace(/<>/g, '')}</span>"`;
+      errorHandler.errorEl.appendChild(el);
+    });
     playerArea.appendChild(player.root);
 
     var initialId = location.hash.substr(1);
