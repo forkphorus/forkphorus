@@ -5879,13 +5879,13 @@ var P;
                         throw new Error('no stage object');
                     }
                     const sprites = targets.filter((i) => i.isSprite);
+                    sprites.forEach((sprite) => sprite.stage = stage);
+                    stage.children = sprites;
                     stage.allWatchers = this.projectData.monitors
                         .map((data) => this.loadWatcher(data, stage))
                         .filter((i) => i && i.valid);
                     stage.allWatchers.forEach((watcher) => watcher.init());
-                    sprites.forEach((sprite) => sprite.stage = stage);
                     this.compileTargets(targets, stage);
-                    stage.children = sprites;
                     return stage;
                 });
             }
