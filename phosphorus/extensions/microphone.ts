@@ -21,11 +21,15 @@ namespace P.ext.microphone {
   }
 
   let microphone: MicrophoneData | null = null;
-  export let state: MicrophoneState = MicrophoneState.Disconnected;
+  let state: MicrophoneState = MicrophoneState.Disconnected;
+
   // The loudness will be cached for this long, in milliseconds.
   // getLoudness() has side effects (such as affecting smoothing) so a cache is needed.
   const CACHE_TIME = 1000 / 30;
 
+  /**
+   * Begin the process of connecting to the microphone.
+   */
   function connect() {
     if (state !== MicrophoneState.Disconnected) {
       return;
@@ -60,7 +64,7 @@ namespace P.ext.microphone {
   /**
    * @returns The volume level from 0-100 or -1 if the microphone is not active.
    */
-  export function getLoudness(): number {
+  function getLoudness(): number {
     if (microphone === null) {
       connect();
       return -1;
@@ -90,5 +94,11 @@ namespace P.ext.microphone {
     rms = Math.min(rms, 100);
 
     return rms;
+  }
+
+  export class MicrophoneExtension extends P.ext.Extension {
+    getLoudness() {
+      return getLoudness();
+    }
   }
 }

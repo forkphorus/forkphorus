@@ -573,6 +573,7 @@ namespace P.core {
 
     private videoElement: HTMLVideoElement;
     public speech2text: P.ext.speech2text.SpeechToTextExtension | null = null;
+    public microphone: P.ext.microphone.MicrophoneExtension | null = null;
     private extensions: P.ext.Extension[] = [];
 
     constructor() {
@@ -971,10 +972,6 @@ namespace P.core {
       }
     }
 
-    getLoudness() {
-      return P.ext.microphone.getLoudness();
-    }
-
     addExtension(extension: P.ext.Extension) {
       this.extensions.push(extension);
     }
@@ -983,6 +980,13 @@ namespace P.core {
       if (!this.speech2text && P.ext.speech2text.isSupported()) {
         this.speech2text = new P.ext.speech2text.SpeechToTextExtension(this);
         this.addExtension(this.speech2text);
+      }
+    }
+
+    initLoudness() {
+      if (!this.microphone) {
+        this.microphone = new P.ext.microphone.MicrophoneExtension(this);
+        this.addExtension(this.microphone);
       }
     }
 

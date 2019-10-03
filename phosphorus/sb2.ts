@@ -144,7 +144,11 @@ namespace P.sb2 {
           // TODO
           break;
         case 'soundLevel':
-          value = this.stage.getLoudness();
+          if (this.stage.microphone) {
+            value = this.stage.microphone.getLoudness();
+          } else {
+            value = -1;
+          }
           break;
         case 'tempo':
           value = this.stage.tempoBPM;
@@ -1052,7 +1056,7 @@ namespace P.sb2.compiler {
 
       } else if (e[0] === 'soundLevel') {
 
-        return 'self.getLoudness()';
+        return 'self.microphone.getLoudness()';
 
       } else if (e[0] === 'timestamp') {
 

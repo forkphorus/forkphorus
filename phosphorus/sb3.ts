@@ -2835,11 +2835,12 @@ namespace P.sb3.compiler {
     return util.booleanInput(`!!self.keys[P.runtime.getKeyCode(${KEY_OPTION})]`);
   };
   inputLibrary['sensing_loud'] = function(util) {
-    // TODO: parenthsis needed?
-    return util.booleanInput('(self.getLoudness() > 10)');
+    util.stage.initLoudness();
+    return util.booleanInput('(self.microphone.getLoudness() > 10)');
   };
   inputLibrary['sensing_loudness'] = function(util) {
-    return util.numberInput('self.getLoudness()');
+    util.stage.initLoudness();
+    return util.numberInput('self.microphone.getLoudness()');
   };
   inputLibrary['sensing_mousedown'] = function(util) {
     return util.booleanInput('self.mousePressed');
@@ -3140,7 +3141,13 @@ namespace P.sb3.compiler {
     }
   };
   watcherLibrary['sensing_loudness'] = {
-    evaluate(watcher) { return watcher.stage.getLoudness(); },
+    evaluate(watcher) {
+      if (watcher.stage.microphone) {
+        return watcher.stage.microphone.getLoudness();
+      } else {
+        return -1;
+      }
+    },
     getLabel() { return 'loudness'; },
   };
   watcherLibrary['sensing_timer'] = {
