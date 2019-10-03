@@ -1769,6 +1769,7 @@ var P;
                 this.username = '';
                 this.counter = 0;
                 this.speech2text = null;
+                this.microphone = null;
                 this.extensions = [];
                 this.runtime = new P.runtime.Runtime(this);
                 this.keys = [];
@@ -1952,6 +1953,16 @@ var P;
                     extension.destroy();
                 }
             }
+            pause() {
+                for (const extension of this.extensions) {
+                    extension.onpause();
+                }
+            }
+            start() {
+                for (const extension of this.extensions) {
+                    extension.onstart();
+                }
+            }
             focus() {
                 if (this.promptId < this.nextPromptId) {
                     this.prompt.focus();
@@ -2101,9 +2112,6 @@ var P;
                     }
                 }
             }
-            getLoudness() {
-                return P.ext.microphone.getLoudness();
-            }
             addExtension(extension) {
                 this.extensions.push(extension);
             }
@@ -2111,6 +2119,12 @@ var P;
                 if (!this.speech2text && P.ext.speech2text.isSupported()) {
                     this.speech2text = new P.ext.speech2text.SpeechToTextExtension(this);
                     this.addExtension(this.speech2text);
+                }
+            }
+            initLoudness() {
+                if (!this.microphone) {
+                    this.microphone = new P.ext.microphone.MicrophoneExtension(this);
+                    this.addExtension(this.microphone);
                 }
             }
             rotatedBounds() {
@@ -3348,6 +3362,7 @@ var P;
                 this.interval = setInterval(this.step, 1000 / this.framerate);
                 if (audioContext)
                     audioContext.resume();
+                this.stage.start();
             }
             pause() {
                 if (this.interval) {
@@ -3357,6 +3372,7 @@ var P;
                     window.removeEventListener('error', this.onError);
                     if (audioContext)
                         audioContext.suspend();
+                    this.stage.pause();
                 }
                 this.isRunning = false;
             }
@@ -3779,7 +3795,12 @@ var P;
                     case 'senseVideoMotion':
                         break;
                     case 'soundLevel':
-                        value = this.stage.getLoudness();
+                        if (this.stage.microphone) {
+                            value = this.stage.microphone.getLoudness();
+                        }
+                        else {
+                            value = -1;
+                        }
                         break;
                     case 'tempo':
                         value = this.stage.tempoBPM;
@@ -4588,7 +4609,7 @@ var P;
                         return 'S.distanceTo(' + val(e[1]) + ')';
                     }
                     else if (e[0] === 'soundLevel') {
-                        return 'self.getLoudness()';
+                        return 'self.microphone.getLoudness()';
                     }
                     else if (e[0] === 'timestamp') {
                         return '((Date.now() - epoch) / 86400000)';
@@ -7424,10 +7445,12 @@ var P;
         return util.booleanInput(`!!self.keys[P.runtime.getKeyCode(${KEY_OPTION})]`);
     };
     inputLibrary['sensing_loud'] = function (util) {
-        return util.booleanInput('(self.getLoudness() > 10)');
+        util.stage.initLoudness();
+        return util.booleanInput('(self.microphone.getLoudness() > 10)');
     };
     inputLibrary['sensing_loudness'] = function (util) {
-        return util.numberInput('self.getLoudness()');
+        util.stage.initLoudness();
+        return util.numberInput('self.microphone.getLoudness()');
     };
     inputLibrary['sensing_mousedown'] = function (util) {
         return util.booleanInput('self.mousePressed');
@@ -7721,7 +7744,14 @@ var P;
         }
     };
     watcherLibrary['sensing_loudness'] = {
-        evaluate(watcher) { return watcher.stage.getLoudness(); },
+        evaluate(watcher) {
+            if (watcher.stage.microphone) {
+                return watcher.stage.microphone.getLoudness();
+            }
+            else {
+                return -1;
+            }
+        },
         getLabel() { return 'loudness'; },
     };
     watcherLibrary['sensing_timer'] = {
@@ -7761,6 +7791,10 @@ var P;
             }
             destroy() {
             }
+            onstart() {
+            }
+            onpause() {
+            }
         }
         ext.Extension = Extension;
     })(ext = P.ext || (P.ext = {}));
@@ -7775,36 +7809,49 @@ var P;
         var microphone;
         (function (microphone_1) {
             let microphone = null;
-            microphone_1.state = 0;
+            let state = 0;
             const CACHE_TIME = 1000 / 30;
             function connect() {
-                if (microphone_1.state !== 0) {
+                if (state !== 0) {
                     return;
                 }
                 if (!P.audio.context) {
                     console.warn('Cannot connect to microphone without audio context.');
-                    microphone_1.state = 3;
+                    state = 3;
                     return;
                 }
-                microphone_1.state = 2;
+                state = 2;
                 navigator.mediaDevices.getUserMedia({ audio: true })
                     .then((mediaStream) => {
                     const source = P.audio.context.createMediaStreamSource(mediaStream);
                     const analyzer = P.audio.context.createAnalyser();
                     source.connect(analyzer);
                     microphone = {
+                        source: source,
                         stream: mediaStream,
                         analyzer,
                         dataArray: new Float32Array(analyzer.fftSize),
                         lastValue: -1,
                         lastCheck: 0,
                     };
-                    microphone_1.state = 1;
+                    state = 1;
                 })
                     .catch((err) => {
                     console.warn('Cannot connect to microphone: ' + err);
-                    microphone_1.state = 3;
+                    state = 3;
                 });
+            }
+            function reinitAnalyser() {
+                if (!microphone) {
+                    throw new Error('Microphone not connected; cannot re-init something that does not exist!');
+                }
+                const analyzer = P.audio.context.createAnalyser();
+                microphone.source.disconnect();
+                microphone.source.connect(analyzer);
+                microphone.analyzer = analyzer;
+                if (microphone.dataArray.length !== analyzer.fftSize) {
+                    microphone.dataArray = new Float32Array(analyzer.fftSize);
+                }
             }
             function getLoudness() {
                 if (microphone === null) {
@@ -7833,7 +7880,18 @@ var P;
                 rms = Math.min(rms, 100);
                 return rms;
             }
-            microphone_1.getLoudness = getLoudness;
+            class MicrophoneExtension extends P.ext.Extension {
+                getLoudness() {
+                    return getLoudness();
+                }
+                onstart() {
+                    if (microphone) {
+                        console.log('Creating a new analyser node for microphone');
+                        reinitAnalyser();
+                    }
+                }
+            }
+            microphone_1.MicrophoneExtension = MicrophoneExtension;
         })(microphone = ext.microphone || (ext.microphone = {}));
     })(ext = P.ext || (P.ext = {}));
 })(P || (P = {}));

@@ -13,6 +13,7 @@ namespace P.ext.microphone {
   }
 
   interface MicrophoneData {
+    source: MediaStreamAudioSourceNode;
     stream: MediaStream;
     analyzer: AnalyserNode;
     dataArray: Float32Array;
@@ -47,6 +48,7 @@ namespace P.ext.microphone {
         const analyzer = P.audio.context!.createAnalyser();
         source.connect(analyzer);
         microphone = {
+          source: source,
           stream: mediaStream,
           analyzer,
           dataArray: new Float32Array(analyzer.fftSize),
@@ -62,6 +64,30 @@ namespace P.ext.microphone {
   }
 
   /**
+   * Re-initializes the analyser node.
+   * This is necessary due to (what seems to be) a bug in Chrome.
+   */
+  function reinitAnalyser() {
+    // For some reason, when AudioContext.suspend() is called, all analyser nodes stop working in Chrome.
+    // getFloatTimeDomainData() will always return the same data, which isn't any good.
+    // This will fix that by creating a new analyser when the old one cannot be trusted.
+
+    if (!microphone) {
+      throw new Error('Microphone not connected; cannot re-init something that does not exist!')
+    }
+
+    const analyzer = P.audio.context!.createAnalyser();
+    microphone.source.disconnect();
+    microphone.source.connect(analyzer);
+    microphone.analyzer = analyzer;
+
+    // It's possible fftSize might change with this new analyser
+    if (microphone.dataArray.length !== analyzer.fftSize) {
+      microphone.dataArray = new Float32Array(analyzer.fftSize);
+    }
+  }
+
+  /**
    * @returns The volume level from 0-100 or -1 if the microphone is not active.
    */
   function getLoudness(): number {
@@ -72,7 +98,7 @@ namespace P.ext.microphone {
     if (!microphone.stream.active) {
       return -1;
     }
-
+    
     if (Date.now() - microphone.lastCheck < CACHE_TIME) {
       return microphone.lastValue;
     }
@@ -99,6 +125,13 @@ namespace P.ext.microphone {
   export class MicrophoneExtension extends P.ext.Extension {
     getLoudness() {
       return getLoudness();
+    }
+
+    onstart() {
+      if (microphone) {
+        console.log('Creating a new analyser node for microphone');
+        reinitAnalyser();
+      }
     }
   }
 }
