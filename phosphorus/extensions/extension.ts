@@ -14,5 +14,19 @@ namespace P.ext {
     destroy() {
 
     }
+
+    /**
+     * Called when the project is started or resumed
+     */
+    onstart() {
+
+    }
+
+    /**
+     * Called when the project is paused
+     */
+    onpause() {
+
+    }
   }
 }

@@ -782,6 +782,18 @@ namespace P.core {
       }
     }
 
+    pause() {
+      for (const extension of this.extensions) {
+        extension.onpause();
+      }
+    }
+
+    start() {
+      for (const extension of this.extensions) {
+        extension.onstart();
+      }
+    }
+
     /**
      * Give browser focus to the Stage.
      */
