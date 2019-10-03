@@ -98,7 +98,7 @@ namespace P.ext.microphone {
     if (!microphone.stream.active) {
       return -1;
     }
-    
+
     if (Date.now() - microphone.lastCheck < CACHE_TIME) {
       return microphone.lastValue;
     }
@@ -129,7 +129,6 @@ namespace P.ext.microphone {
 
     onstart() {
       if (microphone) {
-        console.log('Creating a new analyser node for microphone');
         reinitAnalyser();
       }
     }

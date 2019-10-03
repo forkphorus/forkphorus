@@ -7886,7 +7886,6 @@ var P;
                 }
                 onstart() {
                     if (microphone) {
-                        console.log('Creating a new analyser node for microphone');
                         reinitAnalyser();
                     }
                 }
