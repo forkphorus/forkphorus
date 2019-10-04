@@ -3141,6 +3141,9 @@ namespace P.sb3.compiler {
     }
   };
   watcherLibrary['sensing_loudness'] = {
+    init(watcher) {
+      watcher.stage.initLoudness();
+    },
     evaluate(watcher) {
       if (watcher.stage.microphone) {
         return watcher.stage.microphone.getLoudness();
