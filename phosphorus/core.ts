@@ -655,7 +655,7 @@ namespace P.core {
           }
 
           if (e.target === this.canvas) e.preventDefault();
-        });
+        }, { passive: false });
 
         document.addEventListener('touchmove', (e: TouchEvent) => {
           if (!this.runtime.isRunning) return;

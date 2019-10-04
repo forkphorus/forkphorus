@@ -1841,7 +1841,7 @@ var P;
                         }
                         if (e.target === this.canvas)
                             e.preventDefault();
-                    });
+                    }, { passive: false });
                     document.addEventListener('touchmove', (e) => {
                         if (!this.runtime.isRunning)
                             return;
