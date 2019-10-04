@@ -1206,7 +1206,7 @@ var P;
                 this.stageLayer.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
             }
             renderStageCostume(scale) {
-                this._reset(this.stageContext, scale * P.config.scale);
+                this._reset(this.stageContext, scale);
                 this.noEffects = true;
                 this._drawChild(this.stage, this.stageContext);
                 this.noEffects = false;

@@ -1032,7 +1032,7 @@ namespace P.renderer {
     }
 
     renderStageCostume(scale: number) {
-      this._reset(this.stageContext, scale * P.config.scale);
+      this._reset(this.stageContext, scale);
       this.noEffects = true;
       this._drawChild(this.stage, this.stageContext);
       this.noEffects = false;
