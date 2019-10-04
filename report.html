@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Report a bug</title>
+
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 10px;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+      font-weight: 300;
+    }
+    #container {
+      width: 480px;
+      margin: auto;
+    }
+    .input-container {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 3px;
+      font-weight: bold;
+    }
+    [disabled], [readonly] {
+      cursor: not-allowed;
+    }
+
+    textarea {
+      max-width: 100%;
+      min-width: 100%;
+      resize: vertical;
+    }
+    input[type=text], textarea {
+      font: inherit;
+      display: block;
+      width: 100%;
+      border-radius: 2px;
+      padding: 4px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    input:invalid {
+      border-color: rgb(255, 125, 125);
+    }
+    input[type=text]:focus, textarea:focus {
+      border-color: #888;
+    }
+
+    #input-project-detection {
+      font-weight: normal;
+      font-style: italic;
+    }
+    #input-error {
+      font-family: monospace;
+    }
+
+    .report-container {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    .report-button {
+      width: 50%;
+      margin: 0 3px 0 3px;
+    }
+
+    .notice {
+      font-weight: bold;
+      margin-bottom: 20px;
+      text-align: center;
+      padding: 2px;
+      border-radius: 2px;
+    }
+    #public-notice {
+      background: rgb(255, 238, 87);
+    }
+    #error-notice {
+      background: rgb(255, 99, 99);
+    }
+
+    #extra-information [data-enabled=false] {
+      text-decoration: line-through;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="container">
+    <h1>Report a bug</h1>
+
+    <form autocomplete="off">
+      <div class="notice" id="error-notice" hidden>There was an error loading the bug report form</div>
+
+      <div class="input-container">
+        <label for="input-project">Project ID <span id="input-project-detection"></span></label>
+        <input placeholder="Project ID" id="input-project" type="text" name="id" required>
+      </div>
+  
+      <div class="input-container">
+        <label for="input-issue">Describe the issue, including anything you did before encountering it and anything else you want to include</label>
+        <textarea id="input-issue" name="description" maxlength="2500" placeholder="Steps to recreate the issue"></textarea>
+      </div>
+
+      <div class="input-container">
+        <label for="input-username">Scratch username (optional)</label>
+        <input type="text" id="input-username" name="scratch-username" maxlength="40" placeholder="Your Scratch username"></textarea>
+        <small>If more information is needed, you will be contacted using this username.</small>
+      </div>
+
+      <div class="input-container" id="error-container" hidden>
+        <label for="input-error">Internal Error Debug Information (readonly)</label>
+        <textarea id="input-error" name="error" maxlength="2500" readonly></textarea>
+      </div>
+  
+      <div class="notice" id="public-notice">All information on this page will be public</div>
+
+      <div class="report-container">
+        <button disabled class="report-button anonymous">Report anonymously</button>
+        <button disabled class="report-button github">Report on GitHub</button>
+      </div>
+    </form>
+  
+    <details>
+      <summary>Additional debug information</summary>
+      <div>This information is also included in reports. You can choose to hide information that you do not wish to share using the checkboxes. However, this may make it take longer for bugs to be fixed.</div>
+      <table id="extra-information"></table>
+    </details>
+  </div>
+
+  <script src="lib/details-element-polyfill.js"></script>
+  <script>
+    window.addEventListener('error', function(e) {
+      document.getElementById('error-notice').hidden = false;
+    });
+  </script>
+  <script>
+
+    (function() {
+      'use strict';
+
+      /**
+       * Helper methods
+       */
+
+      /** document.querySelector() with safety guards */
+      function querySelector(q) {
+        var el = document.querySelector(q);
+        if (!el) throw new Error('Selector found none: ' + q);
+        return el;
+      }
+
+      /** Calls the callback for each element a selector matches */
+      function forEachElement(selector, callback) {
+        var els = document.querySelectorAll(selector);
+        if (!els || els.length === 0) throw new Error('Selecter found 0: ' + selector);
+        for (var i = 0; i < els.length; i++) {
+          callback(els[i]);
+        }
+      }
+
+      /** Create a new element of tagName element, setting properties from props, and appending children (elements or strings) */
+      function createElement(element, props, children) {
+        var el = document.createElement(element);
+        if (props) {
+          for (var key in props) {
+            el[key] = props[key];
+          }
+        }
+        if (children) {
+          for (var i = 0; i < children.length; i++) {
+            var item = children[i];
+            if (typeof item === 'string') {
+              el.appendChild(document.createTextNode(item));
+            } else {
+              el.appendChild(item);
+            }
+          }
+        }
+        return el;
+      }
+
+      /** Find the closest parent of an element (including the element itself) that satisfies the callback (ie. returns true) */
+      function closest(element, callback) {
+        while (element) {
+          if (callback(element)) {
+            return element;
+          }
+          element = element.parentNode;
+        }
+        throw new Error('Cannot find closest element');
+      }
+
+      /** Remove all children of an element */
+      function removeAll(element) {
+        while (element.firstChild) {
+          element.removeChild(element.firstChild);
+        }
+      }
+
+      /**
+       * Modules
+       */
+
+      // Abstraction for getting parameters from location.search
+      var searchParams = {
+        _data: {},
+        get: function(key, def) {
+          if (!this.has(key)) return def || '';
+          return this._data[key];
+        },
+        has: function(key) {
+          return this._data[key] !== undefined;
+        },
+        readParameters(search) {
+          if (search.indexOf('#') === 0) search = search.substring(1);
+          if (search.indexOf('?') === 0) search = search.substring(1);
+          var parts = search.split('&');
+          var data = {};
+          parts.forEach(function(query) {
+            var split = query.split(/=(.+)/);
+            var key = unescape(split[0]);
+            var value = unescape(split[1]);
+            data[key] = value;
+          });
+          return data;
+        },
+      };
+      if (location.search) searchParams._data = searchParams.readParameters(location.search);
+      else if (location.hash) searchParams._data = searchParams.readParameters(location.hash);
+
+      // Abstraction for handling "Additional Information"
+      var extraInformation = {
+        el: querySelector('#extra-information'),
+        _data: {},
+        add: function(key, value) {
+          var enabled = true;
+          var changeable = true;
+          if (value === '') {
+            value = '(none)';
+            enabled = false;
+            changeable = false;
+          }
+          var row = createElement('tr', {}, [
+            createElement('td', {}, [
+              createElement('input', { type: 'checkbox', checked: enabled, disabled: !changeable, onchange: this.onchange.bind(this) }),
+            ]),
+            createElement('td', {}, [key]),
+            createElement('td', {}, [value]),
+          ]);
+          row.dataset.enabled = enabled;
+          row.dataset.key = key;
+          this._data[key] = { enabled: enabled, value: value };
+          this.el.appendChild(row);
+        },
+        onchange: function(event) {
+          var row = closest(event.target, function(el) { return !!el.dataset.key; });
+          var enabled = event.target.checked;
+          var key = row.dataset.key;
+          this._data[key].enabled = enabled;
+          row.dataset.enabled = enabled;
+        },
+        data: function() {
+          return this._data;
+        },
+      };
+
+      // Abstraction around the Scratch API
+      var scratchAPI = {
+        getTitle: function(projectId, callback) {
+          var xhr = new XMLHttpRequest();
+          xhr.onload = function() {
+            var title = xhr.responseText;
+            callback(null, title);
+          };
+          xhr.onerror = function(e) {
+            callback(e, '');
+          };
+          xhr.open('GET', 'https://scratch.garbomuffin.com/api/forkphorus/?t=title&p=' + escape(projectId));
+          xhr.send();
+        },
+      };
+
+      var projectInput = {
+        input: querySelector('#input-project'),
+        detection: querySelector('#input-project-detection'),
+        init: function() {
+          this.input.addEventListener('change', this.onchange.bind(this));
+        },
+        onchange: function() {
+          removeAll(this.detection);
+          scratchAPI.getTitle(this.input.value, function(err, title) {
+            if (title === '') {
+              title = 'unshared';
+            }
+            var text = '(' + title + ')';
+            var element = createElement('a', { }, [text]);
+            this.detection.appendChild(element);
+          }.bind(this));
+        },
+        setValue: function(id) {
+          this.input.value = id;
+          this.onchange();
+        },
+      };
+      projectInput.init();
+
+      /**
+       * Actually fill in information now
+       */
+
+      extraInformation.add('UserAgent', navigator.userAgent);
+      extraInformation.add('Href', searchParams.get('href'));
+
+      if (searchParams.has('error')) {
+        querySelector('#error-container').hidden = false;
+        querySelector('#input-error').value = searchParams.get('error');
+      }
+
+      if (searchParams.get('id')) {
+        projectInput.setValue(searchParams.get('id'));
+      }
+
+      forEachElement('.report-button', function(el) {
+        el.disabled = false;
+      });
+
+    }());
+  </script>
+</body>
+
+</html>

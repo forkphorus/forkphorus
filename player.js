@@ -661,62 +661,44 @@ P.Player.ErrorHandler = (function() {
     }
   };
 
-  ErrorHandler.BUG_REPORT_LINK = 'https://github.com/forkphorus/forkphorus/issues/new?title=$title&body=$body';
+  ErrorHandler.BUG_REPORT_LINK = '/report.html?id=$id&error=$err&href=$href';
 
   /**
    * Create a string representation of an error.
    */
   ErrorHandler.prototype.stringifyError = function(error) {
     if (!error) {
-      return 'unknown error';
+      return 'unknown error (' + error + ')';
     }
-    if (error.stack) {
-      return 'Message: ' + error.message + '\nStack:\n' + error.stack;
+    if (typeof error.stack === 'string') {
+      return 'Message: ' + error.message + '\nStack:\n' + error.stack.trim();
     }
-    return error.toString();
+    return '' + error;
   };
 
   /**
-   * Generate the link to report a bug to, including title and metadata.
-   * @param {string} bodyBefore Text to appear before metadata
-   * @param {string} bodyAfter Text to appear after metadata
+   * Generate the link to report a bug to, including project ID and other metadata
+   * @param {any} error The error to report, if any.
    */
-  ErrorHandler.prototype.createBugReportLink = function(bodyBefore, bodyAfter) {
-    var title = this.getBugReportTitle();
-    bodyAfter = bodyAfter || '';
-    var body = bodyBefore + '\n\n\n-----\n' + this.getBugReportMeta() + '\n' + bodyAfter;
-    return ErrorHandler.BUG_REPORT_LINK
-      .replace('$title', encodeURIComponent(title))
-      .replace('$body', encodeURIComponent(body));
-  };
-
-  /**
-   * Get the title for bug reports.
-   */
-  ErrorHandler.prototype.getBugReportTitle = function() {
-    if (this.player.projectTitle !== P.Player.UNKNOWN_TITLE) {
-      return this.player.projectTitle + ' (' + this.player.projectId + ')';
+  ErrorHandler.prototype.createBugReportLink = function(error) {
+    var parameters = {
+      id: this.player.projectId,
+      href: location.href,
+      err: this.stringifyError(error),
+    };
+    var link = ErrorHandler.BUG_REPORT_LINK;
+    for (var key in parameters) {
+      var value = parameters[key];
+      link = link.replace('$' + key, escape(value));
     }
-    return this.player.projectLink;
-  };
-
-  /**
-   * Get the metadata to include in bug reports.
-   */
-  ErrorHandler.prototype.getBugReportMeta = function() {
-    var meta = 'Project URL: ' + this.player.projectLink + '\n';
-    meta += 'Project ID: ' + this.player.projectId + '\n';
-    meta += location.href + '\n';
-    meta += navigator.userAgent;
-    return meta;
+    return link;
   };
 
   /**
    * Get the URL to report an error to.
    */
   ErrorHandler.prototype.createErrorLink = function(error) {
-    var body = P.i18n.translate('report.crash.instructions');
-    return this.createBugReportLink(body, '```\n' + this.stringifyError(error) + '\n```');
+    return this.createBugReportLink(error);
   };
 
   ErrorHandler.prototype.oncleanup = function() {

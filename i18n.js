@@ -24,8 +24,6 @@ P.i18n = (function() {
       'studioview.authorAttribution': 'by $author',
       'studioview.projectHoverText': '$title by $author',
       'report.crash.html': 'An internal error occurred. <a $attrs>Click here</a> to file a bug report.',
-      'report.crash.instructions': 'Describe what you were doing to cause this error:',
-      'report.bug.instructions': 'Describe the issue:',
       'index.document.title': 'forkphorus - phosphorus for Scratch 3',
       'index.report': 'Report a problem',
       'index.embed': 'Embed this project',
