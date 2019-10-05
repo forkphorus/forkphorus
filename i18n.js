@@ -25,6 +25,7 @@ P.i18n = (function() {
       'studioview.projectHoverText': '$title by $author',
       'report.crash.html': 'An internal error occurred. <a $attrs>Click here</a> to file a bug report.',
       'report.crash.instructions': 'Describe what you were doing to cause this error:',
+      'report.crash.unsupported': 'This project type ($type) is not supported. For more information and workarounds, see <a href="https://github.com/forkphorus/forkphorus/wiki/Unsupported-Project-Type" target="_blank" rel="noopener">this page</a>.',
       'report.bug.instructions': 'Describe the issue:',
       'index.document.title': 'forkphorus - phosphorus for Scratch 3',
       'index.report': 'Report a problem',
