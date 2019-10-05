@@ -556,7 +556,7 @@ P.Player = (function() {
           return P.IO.readers.toArrayBuffer(blob)
             .then(function(buffer) {
               if (this.isScratch1Project(buffer)) {
-                throw new Error('Project appears to be a .sb (Scratch 1), which is not supported.');
+                throw new P.Player.ProjectNotSupportedError('.sb / Scratch 1');
               }
               return P.sb2.loadSB2Project(buffer);
             }.bind(this));
@@ -635,6 +635,17 @@ P.Player = (function() {
   return Player;
 
 }());
+
+/**
+ * An error that indicates that this project type is not supported.
+ * @param {string} type A description of the type of project
+ */
+P.Player.ProjectNotSupportedError = function(type) {
+  this.message = 'Project type (' + type + ') is not supported';
+  this.stack = new Error().stack;
+};
+P.Player.ProjectNotSupportedError.prototype = new Error();
+P.Player.ProjectNotSupportedError.prototype.name = 'ProjectNotSupportedError';
 
 P.Player.ErrorHandler = (function() {
   /**
