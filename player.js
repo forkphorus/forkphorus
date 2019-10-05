@@ -637,7 +637,7 @@ P.Player = (function() {
 }());
 
 /**
- * An error that indicates that this project type is not supported.
+ * An error that indicates that this project type is knowingly not supported.
  * @param {string} type A description of the type of project
  */
 P.Player.ProjectNotSupportedError = function(type) {
@@ -696,7 +696,7 @@ P.Player.ErrorHandler = (function() {
   ErrorHandler.prototype.createBugReportLink = function(bodyBefore, bodyAfter) {
     var title = this.getBugReportTitle();
     bodyAfter = bodyAfter || '';
-    var body = bodyBefore + '\n\n\n-----\n' + this.getBugReportMeta() + '\n' + bodyAfter;
+    var body = bodyBefore + '\n\n\n-----\n' + this.getBugReportMetadata() + '\n' + bodyAfter;
     return ErrorHandler.BUG_REPORT_LINK
       .replace('$title', encodeURIComponent(title))
       .replace('$body', encodeURIComponent(body));
@@ -715,7 +715,7 @@ P.Player.ErrorHandler = (function() {
   /**
    * Get the metadata to include in bug reports.
    */
-  ErrorHandler.prototype.getBugReportMeta = function() {
+  ErrorHandler.prototype.getBugReportMetadata = function() {
     var meta = 'Project URL: ' + this.player.projectLink + '\n';
     meta += 'Project ID: ' + this.player.projectId + '\n';
     meta += location.href + '\n';
@@ -738,14 +738,9 @@ P.Player.ErrorHandler = (function() {
     }
   };
 
-  ErrorHandler.prototype.projectNotSupportedError = function(error) {
-    var el = document.createElement('div');
-    el.className = 'player-error';
-    // use of innerHTML intentional
-    el.innerHTML = P.i18n.translate('report.crash.unsupported').replace('$type', error.type);
-    return el;
-  };
-
+  /**
+   * Create an error element indicating that forkphorus has crashed, and where to report the bug.
+   */
   ErrorHandler.prototype.createErrorElement = function(error) {
     var errorLink = this.createErrorLink(error);
     var el = document.createElement('div');
@@ -753,6 +748,17 @@ P.Player.ErrorHandler = (function() {
     el.className = 'player-error';
     // use of innerHTML intentional
     el.innerHTML = P.i18n.translate('report.crash.html').replace('$attrs', attributes);
+    return el;
+  };
+
+  /**
+   * Create an error element indicating this project is not supported.
+   */
+  ErrorHandler.prototype.projectNotSupportedError = function(error) {
+    var el = document.createElement('div');
+    el.className = 'player-error';
+    // use of innerHTML intentional
+    el.innerHTML = P.i18n.translate('report.crash.unsupported').replace('$type', error.type);
     return el;
   };
 
