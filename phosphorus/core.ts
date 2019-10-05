@@ -1439,7 +1439,7 @@ namespace P.core {
           }
           break;
         case 'transparency':
-          this.penAlpha -= value / 100;
+          this.penAlpha = 1 - (value / 100);
           if (this.penAlpha > 1) this.penAlpha = 1;
           if (this.penAlpha < 0) this.penAlpha = 0;
           break;
