@@ -603,109 +603,6 @@ namespace P.core {
       this.canvas.tabIndex = 0;
       this.canvas.style.outline = 'none';
 
-      this.root.addEventListener('keydown', (e) => {
-        var c = e.keyCode;
-        if (c >= 128 && e.key.length === 1) c = P.runtime.getKeyCode(e.key) as number;
-        if (!this.keys[c]) this.keys.any++;
-        this.keys[c] = true;
-        if (e.ctrlKey || e.altKey || e.metaKey || c === 27) return;
-        e.stopPropagation();
-        if (e.target === this.canvas) {
-          e.preventDefault();
-          this.runtime.trigger('whenKeyPressed', c);
-        }
-      });
-
-      this.root.addEventListener('keyup', (e) => {
-        var c = e.keyCode;
-        if (c >= 128) c = P.runtime.getKeyCode(e.key) as number;
-        if (this.keys[c]) this.keys.any--;
-        this.keys[c] = false;
-        e.stopPropagation();
-        if (e.target === this.canvas) {
-          e.preventDefault();
-        }
-      });
-
-      this.root.addEventListener('wheel', (e) => {
-        // Scroll up/down triggers key listeners for up/down arrows, but without affecting "is key pressed?" blocks
-        if (e.deltaY > 0) {
-          // 40 = down arrow
-          this.runtime.trigger('whenKeyPressed', 40);
-        } else if (e.deltaY < 0) {
-          // 38 = up arrow
-          this.runtime.trigger('whenKeyPressed', 38);
-        }
-      }, { passive: true });
-
-      if (P.config.hasTouchEvents) {
-        document.addEventListener('touchstart', (e: TouchEvent) => {
-          if (!this.runtime.isRunning) return;
-
-          this.mousePressed = true;
-          const target = e.target as HTMLElement;
-
-          for (var i = 0; i < e.changedTouches.length; i++) {
-            const t = e.changedTouches[i];
-            this.updateMousePosition(t);
-            if (e.target === this.canvas) {
-              this.clickMouse();
-            }
-            this.ontouch(e, t);
-          }
-
-          if (e.target === this.canvas) e.preventDefault();
-        }, { passive: false });
-
-        document.addEventListener('touchmove', (e: TouchEvent) => {
-          if (!this.runtime.isRunning) return;
-
-          this.updateMousePosition(e.changedTouches[0]);
-          for (var i = 0; i < e.changedTouches.length; i++) {
-            const t = e.changedTouches[i];
-            this.ontouch(e, t);
-          }
-        });
-
-        document.addEventListener('touchend', (e: TouchEvent) => {
-          if (!this.runtime.isRunning) return;
-
-          this.releaseMouse();
-          for (var i = 0; i < e.changedTouches.length; i++) {
-            const t = e.changedTouches[i];
-            this.ontouch(e, t);
-          }
-        });
-      } else {
-        document.addEventListener('mousedown', (e: MouseEvent) => {
-          if (!this.runtime.isRunning) return;
-
-          this.mousePressed = true;
-          this.updateMousePosition(e);
-
-          if (e.target === this.canvas) {
-            this.clickMouse();
-            e.preventDefault();
-            this.canvas.focus();
-          }
-
-          this.onmousedown(e);
-        });
-
-        document.addEventListener('mousemove', (e: MouseEvent) => {
-          if (!this.runtime.isRunning) return;
-          this.updateMousePosition(e);
-          this.onmousemove(e);
-        });
-
-        document.addEventListener('mouseup', (e: MouseEvent) => {
-          if (!this.runtime.isRunning) return;
-          this.updateMousePosition(e);
-          this.releaseMouse();
-          this.onmouseup(e);
-        });
-      }
-
       this.prompter = document.createElement('div');
       this.ui.appendChild(this.prompter);
       this.prompter.style.zIndex = '1';
@@ -756,16 +653,151 @@ namespace P.core {
       this.promptButton.style.background = 'url(icons.svg) -22.8em -0.4em';
       this.promptButton.style.backgroundSize = '38.4em 6.4em';
 
-      this.prompt.addEventListener('keydown', (e) => {
-        if (e.keyCode === 13) {
-          this.submitPrompt();
-        }
-      });
+      this.addEventListeners();
+    }
 
-      this.promptButton.addEventListener(P.config.hasTouchEvents ? 'touchstart' : 'mousedown', this.submitPrompt.bind(this));
+    private addEventListeners() {
+      // Global listeners need to have their methods redefined like this so that we can removeEventListener() later
+      this._onmousedown = this._onmousedown.bind(this);
+      this._onmouseup = this._onmouseup.bind(this);
+      this._onmousemove = this._onmousemove.bind(this);
+      this._ontouchstart = this._ontouchstart.bind(this);
+      this._ontouchend = this._ontouchend.bind(this);
+      this._ontouchmove = this._ontouchmove.bind(this);
+
+      document.addEventListener('mousedown', this._onmousedown);
+      document.addEventListener('mouseup', this._onmouseup);
+      document.addEventListener('mousemove', this._onmousemove);
+
+      document.addEventListener('touchstart', this._ontouchstart, { passive: false });
+      document.addEventListener('touchend', this._ontouchend);
+      document.addEventListener('touchmove', this._ontouchmove);
+
+      this.root.addEventListener('wheel', this._onwheel.bind(this));
+      this.root.addEventListener('keyup', this._onkeyup.bind(this));
+      this.root.addEventListener('keydown', this._onkeydown.bind(this));
+
+      this.promptButton.addEventListener('touchstart', this.submitPrompt.bind(this));
+      this.promptButton.addEventListener('mousedown', this.submitPrompt.bind(this));
+      this.prompt.addEventListener('keydown', (e) => {
+        if (e.keyCode === 13) this.submitPrompt();
+      });
+    }
+
+    private removeEventListeners() {
+      // We only need to remove the global handlers that were attached to document
+      document.removeEventListener('mousedown', this._onmousedown);
+      document.removeEventListener('mouseup', this._onmouseup);
+      document.removeEventListener('mousemove', this._onmousemove);
+      document.removeEventListener('touchstart', this._ontouchstart);
+      document.removeEventListener('touchend', this._ontouchend);
+      document.removeEventListener('touchmove', this._ontouchmove);
+    }
+
+    private _onwheel(e: WheelEvent) {
+      // Scroll up/down triggers key listeners for up/down arrows, but without affecting "is key pressed?" blocks
+      if (e.deltaY > 0) {
+        // 40 = down arrow
+        this.runtime.trigger('whenKeyPressed', 40);
+      } else if (e.deltaY < 0) {
+        // 38 = up arrow
+        this.runtime.trigger('whenKeyPressed', 38);
+      }
+    }
+
+    private _onkeyup(e: KeyboardEvent) {
+      var c = e.keyCode;
+      if (c >= 128) c = P.runtime.getKeyCode(e.key) as number;
+      if (this.keys[c]) this.keys.any--;
+      this.keys[c] = false;
+      e.stopPropagation();
+      if (e.target === this.canvas) {
+        e.preventDefault();
+      }
+    }
+
+    private _onkeydown(e: KeyboardEvent) {
+      var c = e.keyCode;
+      if (c >= 128 && e.key.length === 1) c = P.runtime.getKeyCode(e.key) as number;
+      if (!this.keys[c]) this.keys.any++;
+      this.keys[c] = true;
+      if (e.ctrlKey || e.altKey || e.metaKey || c === 27) return;
+      e.stopPropagation();
+      if (e.target === this.canvas) {
+        e.preventDefault();
+        this.runtime.trigger('whenKeyPressed', c);
+      }
+    }
+
+    private _onmousedown(e: MouseEvent) {
+      if (!this.runtime.isRunning) return;
+
+      this.updateMousePosition(e);
+      this.mousePressed = true;
+
+      if (e.target === this.canvas) {
+        this.clickMouse();
+        e.preventDefault();
+        this.canvas.focus();
+      }
+
+      this.onmousedown(e);
+    }
+
+    private _onmouseup(e: MouseEvent) {
+      if (!this.runtime.isRunning) return;
+
+      this.updateMousePosition(e);
+      this.releaseMouse();
+      this.onmouseup(e);
+    }
+
+    private _onmousemove(e: MouseEvent) {
+      if (!this.runtime.isRunning) return;
+
+      this.updateMousePosition(e);
+      this.onmousemove(e);
+    }
+
+    private _ontouchend(e: TouchEvent) {
+      if (!this.runtime.isRunning) return;
+
+      this.releaseMouse();
+      for (var i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        this.ontouch(e, t);
+      }
+    }
+
+    private _ontouchstart(e: TouchEvent) {
+      if (!this.runtime.isRunning) return;
+
+      this.mousePressed = true;
+
+      for (var i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        this.updateMousePosition(t);
+        if (e.target === this.canvas) {
+          this.clickMouse();
+        }
+        this.ontouch(e, t);
+      }
+
+      if (e.target === this.canvas) e.preventDefault();
+    }
+
+    private _ontouchmove(e: TouchEvent) {
+      if (!this.runtime.isRunning) return;
+
+      this.updateMousePosition(e.changedTouches[0]);
+      for (var i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        this.ontouch(e, t);
+      }
     }
 
     // Event hooks for responding to user actions
+    // These are designed to be used by implementors
     ontouch(e: TouchEvent, t: Touch) {}
     onmousedown(e: MouseEvent) {}
     onmouseup(e: MouseEvent) {}
@@ -781,6 +813,7 @@ namespace P.core {
       for (const extension of this.extensions) {
         extension.destroy();
       }
+      this.removeEventListeners();
     }
 
     pause() {

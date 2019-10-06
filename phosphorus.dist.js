@@ -42,7 +42,6 @@ var P;
         config.supportVideoSensing = features.indexOf('video') > -1;
         config.experimentalOptimizations = features.indexOf('opt') > -1;
         config.scale = window.devicePixelRatio || 1;
-        config.hasTouchEvents = 'ontouchstart' in document;
         config.PROJECT_API = 'https://projects.scratch.mit.edu/$id';
     })(config = P.config || (P.config = {}));
 })(P || (P = {}));
@@ -442,11 +441,9 @@ var P;
                         resolve(buffer);
                         return;
                     }
-                    audio.context.decodeAudioData(ab)
-                        .then((buffer) => {
+                    audio.context.decodeAudioData(ab, function (buffer) {
                         resolve(buffer);
-                    })
-                        .catch((err2) => {
+                    }, function (err2) {
                         reject(`Could not decode audio: ${err1} | ${err2}`);
                     });
                 });
@@ -1790,104 +1787,6 @@ var P;
                 this.ui.style.pointerEvents = 'none';
                 this.canvas.tabIndex = 0;
                 this.canvas.style.outline = 'none';
-                this.root.addEventListener('keydown', (e) => {
-                    var c = e.keyCode;
-                    if (c >= 128 && e.key.length === 1)
-                        c = P.runtime.getKeyCode(e.key);
-                    if (!this.keys[c])
-                        this.keys.any++;
-                    this.keys[c] = true;
-                    if (e.ctrlKey || e.altKey || e.metaKey || c === 27)
-                        return;
-                    e.stopPropagation();
-                    if (e.target === this.canvas) {
-                        e.preventDefault();
-                        this.runtime.trigger('whenKeyPressed', c);
-                    }
-                });
-                this.root.addEventListener('keyup', (e) => {
-                    var c = e.keyCode;
-                    if (c >= 128)
-                        c = P.runtime.getKeyCode(e.key);
-                    if (this.keys[c])
-                        this.keys.any--;
-                    this.keys[c] = false;
-                    e.stopPropagation();
-                    if (e.target === this.canvas) {
-                        e.preventDefault();
-                    }
-                });
-                this.root.addEventListener('wheel', (e) => {
-                    if (e.deltaY > 0) {
-                        this.runtime.trigger('whenKeyPressed', 40);
-                    }
-                    else if (e.deltaY < 0) {
-                        this.runtime.trigger('whenKeyPressed', 38);
-                    }
-                }, { passive: true });
-                if (P.config.hasTouchEvents) {
-                    document.addEventListener('touchstart', (e) => {
-                        if (!this.runtime.isRunning)
-                            return;
-                        this.mousePressed = true;
-                        const target = e.target;
-                        for (var i = 0; i < e.changedTouches.length; i++) {
-                            const t = e.changedTouches[i];
-                            this.updateMousePosition(t);
-                            if (e.target === this.canvas) {
-                                this.clickMouse();
-                            }
-                            this.ontouch(e, t);
-                        }
-                        if (e.target === this.canvas)
-                            e.preventDefault();
-                    }, { passive: false });
-                    document.addEventListener('touchmove', (e) => {
-                        if (!this.runtime.isRunning)
-                            return;
-                        this.updateMousePosition(e.changedTouches[0]);
-                        for (var i = 0; i < e.changedTouches.length; i++) {
-                            const t = e.changedTouches[i];
-                            this.ontouch(e, t);
-                        }
-                    });
-                    document.addEventListener('touchend', (e) => {
-                        if (!this.runtime.isRunning)
-                            return;
-                        this.releaseMouse();
-                        for (var i = 0; i < e.changedTouches.length; i++) {
-                            const t = e.changedTouches[i];
-                            this.ontouch(e, t);
-                        }
-                    });
-                }
-                else {
-                    document.addEventListener('mousedown', (e) => {
-                        if (!this.runtime.isRunning)
-                            return;
-                        this.mousePressed = true;
-                        this.updateMousePosition(e);
-                        if (e.target === this.canvas) {
-                            this.clickMouse();
-                            e.preventDefault();
-                            this.canvas.focus();
-                        }
-                        this.onmousedown(e);
-                    });
-                    document.addEventListener('mousemove', (e) => {
-                        if (!this.runtime.isRunning)
-                            return;
-                        this.updateMousePosition(e);
-                        this.onmousemove(e);
-                    });
-                    document.addEventListener('mouseup', (e) => {
-                        if (!this.runtime.isRunning)
-                            return;
-                        this.updateMousePosition(e);
-                        this.releaseMouse();
-                        this.onmouseup(e);
-                    });
-                }
                 this.prompter = document.createElement('div');
                 this.ui.appendChild(this.prompter);
                 this.prompter.style.zIndex = '1';
@@ -1934,12 +1833,131 @@ var P;
                 this.promptButton.style.bottom = '.4em';
                 this.promptButton.style.background = 'url(icons.svg) -22.8em -0.4em';
                 this.promptButton.style.backgroundSize = '38.4em 6.4em';
+                this.addEventListeners();
+            }
+            addEventListeners() {
+                this._onmousedown = this._onmousedown.bind(this);
+                this._onmouseup = this._onmouseup.bind(this);
+                this._onmousemove = this._onmousemove.bind(this);
+                this._ontouchstart = this._ontouchstart.bind(this);
+                this._ontouchend = this._ontouchend.bind(this);
+                this._ontouchmove = this._ontouchmove.bind(this);
+                document.addEventListener('mousedown', this._onmousedown);
+                document.addEventListener('mouseup', this._onmouseup);
+                document.addEventListener('mousemove', this._onmousemove);
+                document.addEventListener('touchstart', this._ontouchstart, { passive: false });
+                document.addEventListener('touchend', this._ontouchend);
+                document.addEventListener('touchmove', this._ontouchmove);
+                this.root.addEventListener('wheel', this._onwheel.bind(this));
+                this.root.addEventListener('keyup', this._onkeyup.bind(this));
+                this.root.addEventListener('keydown', this._onkeydown.bind(this));
+                this.promptButton.addEventListener('touchstart', this.submitPrompt.bind(this));
+                this.promptButton.addEventListener('mousedown', this.submitPrompt.bind(this));
                 this.prompt.addEventListener('keydown', (e) => {
-                    if (e.keyCode === 13) {
+                    if (e.keyCode === 13)
                         this.submitPrompt();
-                    }
                 });
-                this.promptButton.addEventListener(P.config.hasTouchEvents ? 'touchstart' : 'mousedown', this.submitPrompt.bind(this));
+            }
+            removeEventListeners() {
+                document.removeEventListener('mousedown', this._onmousedown);
+                document.removeEventListener('mouseup', this._onmouseup);
+                document.removeEventListener('mousemove', this._onmousemove);
+                document.removeEventListener('touchstart', this._ontouchstart);
+                document.removeEventListener('touchend', this._ontouchend);
+                document.removeEventListener('touchmove', this._ontouchmove);
+            }
+            _onwheel(e) {
+                if (e.deltaY > 0) {
+                    this.runtime.trigger('whenKeyPressed', 40);
+                }
+                else if (e.deltaY < 0) {
+                    this.runtime.trigger('whenKeyPressed', 38);
+                }
+            }
+            _onkeyup(e) {
+                var c = e.keyCode;
+                if (c >= 128)
+                    c = P.runtime.getKeyCode(e.key);
+                if (this.keys[c])
+                    this.keys.any--;
+                this.keys[c] = false;
+                e.stopPropagation();
+                if (e.target === this.canvas) {
+                    e.preventDefault();
+                }
+            }
+            _onkeydown(e) {
+                var c = e.keyCode;
+                if (c >= 128 && e.key.length === 1)
+                    c = P.runtime.getKeyCode(e.key);
+                if (!this.keys[c])
+                    this.keys.any++;
+                this.keys[c] = true;
+                if (e.ctrlKey || e.altKey || e.metaKey || c === 27)
+                    return;
+                e.stopPropagation();
+                if (e.target === this.canvas) {
+                    e.preventDefault();
+                    this.runtime.trigger('whenKeyPressed', c);
+                }
+            }
+            _onmousedown(e) {
+                if (!this.runtime.isRunning)
+                    return;
+                this.updateMousePosition(e);
+                this.mousePressed = true;
+                if (e.target === this.canvas) {
+                    this.clickMouse();
+                    e.preventDefault();
+                    this.canvas.focus();
+                }
+                this.onmousedown(e);
+            }
+            _onmouseup(e) {
+                if (!this.runtime.isRunning)
+                    return;
+                this.updateMousePosition(e);
+                this.releaseMouse();
+                this.onmouseup(e);
+            }
+            _onmousemove(e) {
+                if (!this.runtime.isRunning)
+                    return;
+                this.updateMousePosition(e);
+                this.onmousemove(e);
+            }
+            _ontouchend(e) {
+                if (!this.runtime.isRunning)
+                    return;
+                this.releaseMouse();
+                for (var i = 0; i < e.changedTouches.length; i++) {
+                    const t = e.changedTouches[i];
+                    this.ontouch(e, t);
+                }
+            }
+            _ontouchstart(e) {
+                if (!this.runtime.isRunning)
+                    return;
+                this.mousePressed = true;
+                for (var i = 0; i < e.changedTouches.length; i++) {
+                    const t = e.changedTouches[i];
+                    this.updateMousePosition(t);
+                    if (e.target === this.canvas) {
+                        this.clickMouse();
+                    }
+                    this.ontouch(e, t);
+                }
+                if (e.target === this.canvas)
+                    e.preventDefault();
+            }
+            _ontouchmove(e) {
+                if (!this.runtime.isRunning)
+                    return;
+                this.updateMousePosition(e.changedTouches[0]);
+                for (var i = 0; i < e.changedTouches.length; i++) {
+                    const t = e.changedTouches[i];
+                    this.ontouch(e, t);
+                }
             }
             ontouch(e, t) { }
             onmousedown(e) { }
@@ -1952,6 +1970,7 @@ var P;
                 for (const extension of this.extensions) {
                     extension.destroy();
                 }
+                this.removeEventListeners();
             }
             pause() {
                 for (const extension of this.extensions) {
