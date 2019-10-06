@@ -669,11 +669,11 @@ namespace P.core {
       document.addEventListener('mouseup', this._onmouseup);
       document.addEventListener('mousemove', this._onmousemove);
 
-      document.addEventListener('touchstart', this._ontouchstart, { passive: true });
+      document.addEventListener('touchstart', this._ontouchstart, { passive: false });
       document.addEventListener('touchend', this._ontouchend);
       document.addEventListener('touchmove', this._ontouchmove);
 
-      this.root.addEventListener('wheel', this._onwheel.bind(this), { passive: true })
+      this.root.addEventListener('wheel', this._onwheel.bind(this));
       this.root.addEventListener('keyup', this._onkeyup.bind(this));
       this.root.addEventListener('keydown', this._onkeydown.bind(this));
 
@@ -730,7 +730,6 @@ namespace P.core {
     }
 
     private _onmousedown(e: MouseEvent) {
-      console.log(e);
       if (!this.runtime.isRunning) return;
 
       this.updateMousePosition(e);
