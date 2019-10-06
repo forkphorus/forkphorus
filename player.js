@@ -141,6 +141,10 @@ P.Player = (function() {
       }.bind(this), 500);
     }.bind(this);
 
+    var preventDefault = /** @param {Event} e */ function(e) {
+      e.preventDefault();
+    };
+
     if (this.controlsEl) {
       throw new Error('This player already has controls.');
     }
@@ -185,28 +189,25 @@ P.Player = (function() {
       this.root.setAttribute('audio-state', P.audio.context.state);
     }
 
-    if (P.config.hasTouchEvents) {
-      function preventDefault(e) { e.preventDefault(); }
-      this.flagButton.addEventListener('touchstart', startTouchFlag);
-      this.flagButton.addEventListener('touchend', clickFlag);
-      this.pauseButton.addEventListener('touchend', clickPause);
-      this.stopButton.addEventListener('touchend', clickStop);
-      this.fullscreenButton.addEventListener('touchend', clickFullscreen);
+    this.stopButton.addEventListener('click', clickStop);
+    this.pauseButton.addEventListener('click', clickPause);
+    this.flagButton.addEventListener('click', clickFlag);
+    this.fullscreenButton.addEventListener('click', clickFullscreen);
 
-      this.flagButton.addEventListener('touchstart', preventDefault);
-      this.pauseButton.addEventListener('touchstart', preventDefault);
-      this.stopButton.addEventListener('touchstart', preventDefault);
-      this.fullscreenButton.addEventListener('touchstart', preventDefault);
+    this.flagButton.addEventListener('touchstart', startTouchFlag);
+    this.flagButton.addEventListener('touchend', clickFlag);
+    this.pauseButton.addEventListener('touchend', clickPause);
+    this.stopButton.addEventListener('touchend', clickStop);
+    this.fullscreenButton.addEventListener('touchend', clickFullscreen);
 
-      this.root.addEventListener('touchmove', function(e) {
-        if (this.fullscreen) e.preventDefault();
-      }.bind(this));
-    } else {
-      this.stopButton.addEventListener('click', clickStop);
-      this.pauseButton.addEventListener('click', clickPause);
-      this.flagButton.addEventListener('click', clickFlag);
-      this.fullscreenButton.addEventListener('click', clickFullscreen);
-    }
+    this.flagButton.addEventListener('touchstart', preventDefault);
+    this.pauseButton.addEventListener('touchstart', preventDefault);
+    this.stopButton.addEventListener('touchstart', preventDefault);
+    this.fullscreenButton.addEventListener('touchstart', preventDefault);
+
+    this.root.addEventListener('touchmove', function(e) {
+      if (this.fullscreen) e.preventDefault();
+    }.bind(this));
 
     this.root.insertBefore(this.controlsEl, this.root.firstChild);
   };
