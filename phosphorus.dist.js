@@ -441,11 +441,9 @@ var P;
                         resolve(buffer);
                         return;
                     }
-                    audio.context.decodeAudioData(ab)
-                        .then((buffer) => {
+                    audio.context.decodeAudioData(ab, function (buffer) {
                         resolve(buffer);
-                    })
-                        .catch((err2) => {
+                    }, function (err2) {
                         reject(`Could not decode audio: ${err1} | ${err2}`);
                     });
                 });

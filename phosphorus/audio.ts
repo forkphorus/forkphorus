@@ -473,13 +473,11 @@ namespace P.audio {
         }
 
         // Hope that the audio context will know what to do
-        audio.context!.decodeAudioData(ab)
-          .then((buffer) => {
-            resolve(buffer);
-          })
-          .catch((err2) => {
-            reject(`Could not decode audio: ${err1} | ${err2}`);
-          });
+        audio.context!.decodeAudioData(ab, function(buffer) {
+          resolve(buffer);
+        }, function(err2) {
+          reject(`Could not decode audio: ${err1} | ${err2}`);
+        });
       });
     });
   }
