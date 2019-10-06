@@ -653,37 +653,39 @@ namespace P.core {
       this.promptButton.style.background = 'url(icons.svg) -22.8em -0.4em';
       this.promptButton.style.backgroundSize = '38.4em 6.4em';
 
+      this.addEventListeners();
+    }
+
+    private addEventListeners() {
+      // Global listeners need to have their methods redefined like this so that we can removeEventListener() later
       this._onmousedown = this._onmousedown.bind(this);
       this._onmouseup = this._onmouseup.bind(this);
       this._onmousemove = this._onmousemove.bind(this);
       this._ontouchstart = this._ontouchstart.bind(this);
       this._ontouchend = this._ontouchend.bind(this);
       this._ontouchmove = this._ontouchmove.bind(this);
-      this._onwheel = this._onwheel.bind(this);
-      this._onkeydown = this._onkeydown.bind(this);
-      this._onkeyup = this._onkeyup.bind(this);
-      this.submitPrompt = this.submitPrompt.bind(this);
-      this.addEventListeners();
-    }
 
-    private addEventListeners() {
       document.addEventListener('mousedown', this._onmousedown);
       document.addEventListener('mouseup', this._onmouseup);
       document.addEventListener('mousemove', this._onmousemove);
+
       document.addEventListener('touchstart', this._ontouchstart, { passive: true });
       document.addEventListener('touchend', this._ontouchend);
       document.addEventListener('touchmove', this._ontouchmove);
-      this.root.addEventListener('wheel', this._onwheel, { passive: true });
-      this.root.addEventListener('keyup', this._onkeyup);
-      this.root.addEventListener('keydown', this._onkeydown);
+
+      this.root.addEventListener('wheel', this._onwheel.bind(this), { passive: true })
+      this.root.addEventListener('keyup', this._onkeyup.bind(this));
+      this.root.addEventListener('keydown', this._onkeydown.bind(this));
+
       this.promptButton.addEventListener('touchstart', this.submitPrompt.bind(this));
       this.promptButton.addEventListener('mousedown', this.submitPrompt.bind(this));
-      this.promptButton.addEventListener('keydown', (e) => {
+      this.prompt.addEventListener('keydown', (e) => {
         if (e.keyCode === 13) this.submitPrompt();
       });
     }
 
     private removeEventListeners() {
+      // We only need to remove the global handlers that were attached to document
       document.removeEventListener('mousedown', this._onmousedown);
       document.removeEventListener('mouseup', this._onmouseup);
       document.removeEventListener('mousemove', this._onmousemove);
