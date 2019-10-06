@@ -9,6 +9,5 @@ namespace P.config {
   export const experimentalOptimizations = features.indexOf('opt') > -1;
 
   export const scale = window.devicePixelRatio || 1;
-  export const hasTouchEvents = 'ontouchstart' in document;
   export const PROJECT_API: string = 'https://projects.scratch.mit.edu/$id';
 }
