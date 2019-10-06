@@ -47,7 +47,7 @@ P.suite = (function() {
 
   /**
    * Removes all children of an HTML element
-   * @param {HTMLElement} element 
+   * @param {HTMLElement} element
    */
   function removeChildren(element) {
     while (element.firstChild) {
@@ -94,7 +94,7 @@ P.suite = (function() {
 
   /**
    * Load a project
-   * @param {ArrayBuffer} buffer 
+   * @param {ArrayBuffer} buffer
    * @param {ProjectType} type
    * @returns {Promise<P.core.Stage>}
    */
@@ -275,7 +275,7 @@ P.suite = (function() {
     listEl.appendChild(createElement('li', {
       textContent: 'Done in ' + formatTime(result.time),
     }));
-    
+
     const totalTests = result.tests.length;
     const passingTests = result.tests.filter((i) => i.success).length;
     const failingTests = totalTests - passingTests;
@@ -311,6 +311,11 @@ P.suite = (function() {
       const projectType = getProjectType(path);
       const buffer = await fetchAsArrayBuffer(path);
 
+      // Allow allow automated test runners to monitor progress.
+      if (window.startProjectHook) {
+        window.startProjectHook(projectMetadata);
+      }
+
       for (let i = 0; i < repeatCount; i++) {
         const result = await runProject(projectMetadata, buffer, projectType);
         allTestResults.push(result);
@@ -326,7 +331,7 @@ P.suite = (function() {
     };
     displayFinalResults(finalResults);
 
-    // Allow the deploy bot to learn about test results.
+    // Allow automated test runners to learn the final results.
     if (window.testsFinishedHook) {
       window.testsFinishedHook(finalResults);
     }
@@ -413,7 +418,7 @@ P.suite = (function() {
       case 'OKAY %n':
         source = 'runtime.testOkay(C.args[0]); return;\n';
         break;
-      
+
       case 'FAIL':
         source = 'if (runtime.testFail("no message")) { return; }\n';
         break;
@@ -422,7 +427,7 @@ P.suite = (function() {
       case 'FAIL %n':
         source = 'if (runtime.testFail(C.args[0])) { return; }\n';
         break;
-      
+
       default:
         return originalCompileListener(object, script);
     }

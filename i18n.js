@@ -1,4 +1,3 @@
-// @ts-check
 // @ts-ignore
 var P = P || {};
 
@@ -24,6 +23,8 @@ P.i18n = (function() {
       'studioview.authorAttribution': 'by $author',
       'studioview.projectHoverText': '$title by $author',
       'report.crash.html': 'An internal error occurred. <a $attrs>Click here</a> to file a bug report.',
+      'report.crash.unsupported': 'This project type ($type) is not supported. For more information and workarounds, <a href="https://github.com/forkphorus/forkphorus/wiki/On-Scratch-1-Projects" target="_blank" rel="noopener">visit this help page</a>.',
+      'report.bug.instructions': 'Describe the issue:',
       'index.document.title': 'forkphorus - phosphorus for Scratch 3',
       'index.report': 'Report a problem',
       'index.embed': 'Embed this project',

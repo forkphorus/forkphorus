@@ -495,11 +495,10 @@
       error.style.display = 'table';
     });
     document.querySelector('.player').appendChild(player.root);
-    if (P.config.hasTouchEvents) {
-      document.addEventListener('touchmove', function(e) {
-        e.preventDefault();
-      });
-    }
+
+    document.addEventListener('touchmove', function(e) {
+      e.preventDefault();
+    });
 
     // ---
     var turbo = ${options.turbo};
