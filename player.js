@@ -684,7 +684,7 @@ P.Player.ErrorHandler = (function() {
       return 'unknown error (' + error + ')';
     }
     if (typeof error.stack === 'string') {
-      return 'Message: ' + error.message + '\nStack:\n' + error.stack.trim();
+      return 'Message: ' + error.name + ': ' + error.message + '\nStack:\n' + error.stack.trim();
     }
     return '' + error;
   };
