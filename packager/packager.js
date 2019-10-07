@@ -369,8 +369,10 @@
 <head>
   <meta charset="utf-8">
   ${options.includeCSP ? `<meta http-equiv="Content-Security-Policy" content="default-src 'unsafe-inline' 'unsafe-eval' data: blob:">` : ''}
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <!-- forkphorus core CSS -->
   <style>
-    ${fileCache.css}
+  ${fileCache.css}
   </style>
   <style>
     body {
@@ -425,6 +427,7 @@
     .error a {
       color: #fff;
     }
+    /* custom styles: */
     ${options.customStyle}
   </style>
 </head>
@@ -446,6 +449,7 @@
     </div>
   </div>
 
+  <!-- forkphorus core JS -->
   <script>
   ${fileCache.js}
   </script>
@@ -513,6 +517,8 @@
         player.fullscreenPadding = 0;
         player.enterFullscreen(false);
         splash.style.display = 'none';
+        // Custom post load script:
+        ${options.postLoadScript}
       });
   }());
 
