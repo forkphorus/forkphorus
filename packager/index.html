@@ -25,7 +25,7 @@
       width: 100%;
     }
     .label {
-      width: 150px;
+      width: 140px;
       text-align: center;
       font-weight: bold;
     }
@@ -39,8 +39,8 @@
       opacity: 0.6;
     }
     #options:hover .option:hover,
-    #advanced-summary:hover ~ .option {
-      opacity: 1;
+    summary:hover ~ .option {
+      opacity: 1 !important;
     }
     .clarification {
       text-decoration: underline dotted;
@@ -64,6 +64,10 @@
         border-color: #444;
       }
     }
+
+    #phonegap-config {
+      height: 100px;
+    }
   </style>
   <title>HTML Packager - forkphorus</title>
 </head>
@@ -75,7 +79,7 @@
 
   <ul>
     <li>Guide: <a href="guide.html">Packaging to .EXE</a> (Windows/Mac OS/Linux)</li>
-    <li>Guide: <a href="android.html">Packaging to .APK</a> (Android) (WIP)</li>
+    <li>Guide: <a href="android.html">Packaging to .APK</a> (Android, maybe iOS)</li>
     <li>Get Help: Create an issue on <a href="https://github.com/forkphorus/forkphorus/issues">GitHub</a></li>
   </ul>
 
@@ -156,10 +160,44 @@ player.stage.runtime.framerate = 30;</textarea></td>
         </tr>
       </table>
     </details>
+
+    <details>
+      <summary>Show PhoneGap options</summary>
+
+      <table class="option">
+        <tr>
+          <td class="label"><label for="phonegap-enabled">Enable PhoneGap</label></td>
+          <td><input type="checkbox" id="phonegap-enabled"></td>
+        </tr>
+        <tr>
+          <td colspan="2" class="desc">Enables special behavior and options related to PhoneGap. This will make the output of this packager a ZIP archive instead of HTML.</td>
+        </tr>
+      </table>
+
+      <table class="option">
+        <tr>
+          <td class="label"><label for="phonegap-config">PhoneGap config.xml</label></td>
+          <td><textarea type="text" id="phonegap-config">
+&lt;?xml version="1.0" encoding="UTF-8" ?&gt;
+&lt;widget xmlns="http://www.w3.org/ns/widgets" xmlns:gap="http://phonegap.com/ns/1.0" id="io.github.forkphorus.example" version="1.0.0" &gt;
+
+  &lt;name&gt;Forkphorus Packaged App&lt;/name&gt;
+
+  &lt;description&gt;Some description.&lt;/description&gt;
+
+  &lt;author href="https://scratch.mit.edu/users/you" email="you@example.com"&gt;You&lt;/author&gt;
+
+&lt;/widget&gt;</textarea>
+        </tr>
+        <tr>
+          <td colspan="2" class="desc">This is the config file for PhoneGap apps. It allows you to control name, ID, description, author, version, etc.  This is <a href="https://www.w3schools.com/XML/xml_syntax.asp">XML</a>, so formatting like quotes, angled brackets, and case are important.</td>
+        </tr>
+      </table>
+    </details>
   </div>
 
   <p>
-    <button id="package-html">Package to HTML</button>
+    <button id="package-html">Package Project</button>
   </p>
 
   <section id="loading-section"></section>

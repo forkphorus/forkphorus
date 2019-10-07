@@ -32,6 +32,8 @@
    * @property {string} customStyle
    * @property {boolean} turbo
    * @property {boolean} includeCSP
+   * @property {boolean} phonegapEnabled
+   * @property {string} phonegapConfig
    */
 
   const sectionLoading = document.getElementById('loading-section');
@@ -45,6 +47,8 @@
   const inputCustomStyle = /** @type {HTMLInputElement} */ (document.getElementById('custom-style-input'));
   const inputTurbo = /** @type {HTMLInputElement} */ (document.getElementById('turbo-input'));
   const includeCSP = /** @type {HTMLInputElement} */ (document.getElementById('include-csp'));
+  const inputPhoneGapEnabled = /** @type {HTMLInputElement} */ (document.getElementById('phonegap-enabled'));
+  const inputPhoneGapConfig = /** @type {HTMLInputElement} */ (document.getElementById('phonegap-config'));
 
   // Fully disable autocomplete on all inputs
   for (const input of document.getElementsByTagName('input')) {
@@ -274,8 +278,8 @@
   }
 
   /**
-   * @param {any} files Files from an SBDL result
-   * @returns {Blob} A Blob representation of the zip
+   * @param {{path: string, data: any}[]} files Files, compatible with those from an SBDL result
+   * @returns {Promise<Blob>} A Blob of the zip
    */
   function createArchive(files) {
     const progressBar = createProgressBar('Creating archive');
@@ -361,10 +365,10 @@
   /**
    * Creates the HTML page for a project
    * @param {ProjectResult} result The result of loading the project
+   * @param {Options} options The result of loading the project
    * @returns {string}
    */
-  function getProjectHTML(result) {
-    const options = getOptions();
+  function getProjectHTML(result, options) {
     return `<!DOCTYPE html>
 <html>
 
@@ -543,25 +547,30 @@
       customStyle: inputCustomStyle.value,
       turbo: inputTurbo.checked,
       includeCSP: includeCSP.checked,
+      phonegapEnabled: inputPhoneGapEnabled.checked,
+      phonegapConfig: inputPhoneGapConfig.value,
     };
   }
 
   /**
    * Downloads a string to the user's computer
-   * @param {string} text The file content
+   * @param {string|Blob} content The file content
    * @param {string} fileName The name of the downloaded file
    */
-  function addDownloadLink(text, fileName) {
+  function addDownloadLink(content, fileName) {
     function getBlob() {
+      if (content instanceof Blob) {
+        return content;
+      }
       if ('TextEncoder' in window) {
         // firefox, chrome
         const encoder = new TextEncoder();
-        return new Blob([encoder.encode(text)]);
+        return new Blob([encoder.encode(content)]);
       } else {
         // Using TextEncoder is the best method, but Edge doesn't support it.
-        const bytes = new Array(text.length);
-        for (let i = 0; i < text.length; i++) {
-          bytes[i] = text.charCodeAt(i);
+        const bytes = new Array(content.length);
+        for (let i = 0; i < content.length; i++) {
+          bytes[i] = content.charCodeAt(i);
         }
         return new Blob([new Uint8Array(bytes)]);
       }
@@ -582,6 +591,7 @@
   function run() {
     packageHtmlButton.disabled = true;
     removeProgressBars();
+    const options = getOptions();
     return loadSources()
       .then(() => {
         const projectType = /** @type {HTMLInputElement} */ (document.querySelector('input[name=project-type]:checked')).value;
@@ -591,8 +601,24 @@
           return getProjectByFile(inputProjectFile.files[0]);
         }
       }).then((result) => {
-        const html = getProjectHTML(result);
-        addDownloadLink(html, 'project.html');
+        const html = getProjectHTML(result, options);
+        if (options.phonegapEnabled) {
+          // Weird `new Promise` to fix weird complaints from TypeScript
+          return new Promise((resolve, reject) => {
+            return createArchive([
+              { path: 'index.html', data: html, },
+              { path: 'config.xml', data: options.phonegapConfig, },
+            ]).then((zip) => resolve({name: 'project.zip', data: zip}))
+              .catch((err) => reject(err));
+          });
+        } else {
+          return { name: 'project.html', data: html };
+        }
+      })
+      .then((result) => {
+        const data = result.data;
+        const name = result.name;
+        addDownloadLink(data, name);
         packageHtmlButton.disabled = false;
       })
       .catch((err) => {
