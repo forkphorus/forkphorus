@@ -46,6 +46,11 @@
   const inputTurbo = /** @type {HTMLInputElement} */ (document.getElementById('turbo-input'));
   const includeCSP = /** @type {HTMLInputElement} */ (document.getElementById('include-csp'));
 
+  // Fully disable autocomplete on all inputs
+  for (const input of document.getElementsByTagName('input')) {
+    input.autocomplete = 'off';
+  }
+
   /**
    * API route to fetch a project, replace $id with project ID.
    */
