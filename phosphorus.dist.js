@@ -7460,7 +7460,7 @@ var P;
         return util.fieldInput('KEY_OPTION');
     };
     inputLibrary['sensing_keypressed'] = function (util) {
-        const KEY_OPTION = util.getInput('KEY_OPTION', 'any');
+        const KEY_OPTION = util.getInput('KEY_OPTION', 'string');
         return util.booleanInput(`!!self.keys[P.runtime.getKeyCode(${KEY_OPTION})]`);
     };
     inputLibrary['sensing_loud'] = function (util) {

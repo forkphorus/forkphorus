@@ -2830,7 +2830,7 @@ namespace P.sb3.compiler {
     return util.fieldInput('KEY_OPTION');
   };
   inputLibrary['sensing_keypressed'] = function(util) {
-    const KEY_OPTION = util.getInput('KEY_OPTION', 'any');
+    const KEY_OPTION = util.getInput('KEY_OPTION', 'string');
     // note: sb2 compiler can optimize out getKeyCode calls, but sb3 compiler can't because KEY_OPTION might be dynamic
     return util.booleanInput(`!!self.keys[P.runtime.getKeyCode(${KEY_OPTION})]`);
   };
