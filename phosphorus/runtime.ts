@@ -223,7 +223,7 @@ namespace P.runtime {
     return false;
   };
   var listIndexOf = function(list, value) {
-    for (var i = list.length; i--;) {
+    for (var i = 0; i < list.length; i++) {
       if (equal(list[i], value)) return i + 1;
     }
     return 0;
