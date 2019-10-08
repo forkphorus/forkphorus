@@ -419,6 +419,7 @@ P.Player = (function() {
    * @typedef StageLoadOptions
    * @property {boolean} [start]
    * @property {boolean} [turbo]
+   * @property {number} [fps]
    * @param {StageLoadOptions} [stageOptions]
    */
   Player.prototype.installStage = function(stage, stageOptions) {
@@ -426,12 +427,15 @@ P.Player = (function() {
       throw new Error('Invalid stage.');
     }
     this.stage = stage;
+    stageOptions = stageOptions || {};
     stage.runtime.handleError = this.handleError.bind(this);
+    if (typeof stageOptions.fps !== 'undefined') {
+      stage.runtime.framerate = stageOptions.fps;
+    }
     this.player.appendChild(stage.root);
     stage.focus();
     this.onload.emit(stage);
     this.start();
-    stageOptions = stageOptions || {};
     if (stageOptions.start !== false) {
       stage.runtime.triggerGreenFlag();
     }

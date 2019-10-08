@@ -99,6 +99,7 @@
     var projectId = 17088932;
     var turbo = false;
     var maxWidth = Infinity;
+    var fps = 30;
 
     var params = location.search.substr(1).split('&');
     params.forEach(function(p) {
@@ -116,6 +117,9 @@
           break;
         case 'w':
           maxWidth = Number(parts[1]) || 480;
+          break;
+        case 'fps':
+          fps = Number(parts[1]);
           break;
         default:
           console.warn('unknown search param', parts);
@@ -144,7 +148,7 @@
       e.preventDefault();
     });
 
-    player.loadProjectId(projectId, { turbo: turbo })
+    player.loadProjectId(projectId, { turbo: turbo, fps: fps })
       .then(function() {
         player.fullscreenPadding = 0;
         player.fullscreenMaxWidth = maxWidth;
