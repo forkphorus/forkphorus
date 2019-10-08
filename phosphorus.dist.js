@@ -536,7 +536,7 @@ var P;
             const canvas = createCanvas();
             const ctx = canvas.getContext('2d');
             if (!ctx) {
-                throw new Error('Cannot get 2d rendering context');
+                throw new Error('Cannot get 2d rendering context in create2dCanvas');
             }
             ctx.imageSmoothingEnabled = false;
             return { canvas, ctx };
@@ -1242,7 +1242,11 @@ var P;
                     const cachedCanvas = document.createElement('canvas');
                     cachedCanvas.width = this.penLayer.width;
                     cachedCanvas.height = this.penLayer.height;
-                    cachedCanvas.getContext('2d').drawImage(this.penLayer, 0, 0);
+                    const cachedCanvasCtx = cachedCanvas.getContext('2d');
+                    if (!cachedCanvasCtx) {
+                        throw new Error('cannot get 2d rendering context while resizing pen layer');
+                    }
+                    cachedCanvasCtx.drawImage(this.penLayer, 0, 0);
                     this._reset(this.penContext, zoom);
                     this.penContext.drawImage(cachedCanvas, 0, 0, 480, 360);
                 }
@@ -2546,7 +2550,7 @@ var P;
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
                 if (!ctx) {
-                    throw new Error('cannot get 2d rendering context');
+                    throw new Error('cannot get 2d rendering context for BitmapCustome ' + this.name);
                 }
                 canvas.width = this.width;
                 canvas.height = this.height;
@@ -2574,13 +2578,16 @@ var P;
                 canvas.height = Math.max(1, this.height * scale);
                 const ctx = canvas.getContext('2d');
                 if (!ctx) {
-                    throw new Error('cannot get 2d rendering context');
+                    if (this.scales[0]) {
+                        return this.scales[0];
+                    }
+                    throw new Error('cannot get 2d rendering context while rendering VectorCostume ' + this.name + ' at scale ' + scale);
                 }
                 ctx.drawImage(this.source, 0, 0, canvas.width, canvas.height);
                 return canvas;
             }
             get(scale) {
-                scale = Math.min(8, Math.ceil(scale));
+                scale = Math.min(VectorCostume.MAX_ZOOM, Math.ceil(scale));
                 const index = scale - 1;
                 if (!this.scales[index]) {
                     this.scales[index] = this.getScale(scale);
@@ -2593,7 +2600,7 @@ var P;
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
                 if (!ctx) {
-                    throw new Error('cannot get 2d rendering context');
+                    throw new Error('cannot get 2d rendering context for VectorCostume ' + this.name);
                 }
                 canvas.width = this.width;
                 canvas.height = this.height;
@@ -2602,6 +2609,7 @@ var P;
                 return ctx;
             }
         }
+        VectorCostume.MAX_ZOOM = 6;
         core.VectorCostume = VectorCostume;
         class Sound {
             constructor(data) {
@@ -4116,6 +4124,9 @@ var P;
                 if (layers.length > 1) {
                     image = document.createElement('canvas');
                     const ctx = image.getContext('2d');
+                    if (!ctx) {
+                        throw new Error('Cannot get 2d rendering context loading costume ' + data.costumeName);
+                    }
                     image.width = Math.max(layers[0].width, 1);
                     image.height = Math.max(layers[0].height, 1);
                     for (const layer of layers) {

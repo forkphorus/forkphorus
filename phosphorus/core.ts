@@ -1570,7 +1570,7 @@ namespace P.core {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       if (!ctx) {
-        throw new Error('cannot get 2d rendering context');
+        throw new Error('cannot get 2d rendering context for BitmapCustome ' + this.name);
       }
       canvas.width = this.width;
       canvas.height = this.height;
@@ -1581,6 +1581,8 @@ namespace P.core {
   }
 
   export class VectorCostume extends Costume {
+    public static MAX_ZOOM: number = 6;
+
     private source: HTMLImageElement;
     private _context: CanvasRenderingContext2D;
     private scales: Array<HTMLCanvasElement> = [];
@@ -1604,14 +1606,18 @@ namespace P.core {
       canvas.height = Math.max(1, this.height * scale);
       const ctx = canvas.getContext('2d');
       if (!ctx) {
-        throw new Error('cannot get 2d rendering context');
+        // If we already have a 1x zoom calculated, it would be best to return that instead of throwing an error.
+        if (this.scales[0]) {
+          return this.scales[0];
+        }
+        throw new Error('cannot get 2d rendering context while rendering VectorCostume ' + this.name + ' at scale ' + scale);
       }
       ctx.drawImage(this.source, 0, 0, canvas.width, canvas.height);
       return canvas;
     }
 
     get(scale: number) {
-      scale = Math.min(8, Math.ceil(scale));
+      scale = Math.min(VectorCostume.MAX_ZOOM, Math.ceil(scale));
       const index = scale - 1;
       if (!this.scales[index]) {
         this.scales[index] = this.getScale(scale);
@@ -1625,7 +1631,7 @@ namespace P.core {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       if (!ctx) {
-        throw new Error('cannot get 2d rendering context');
+        throw new Error('cannot get 2d rendering context for VectorCostume ' + this.name);
       }
       canvas.width = this.width;
       canvas.height = this.height;

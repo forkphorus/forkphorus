@@ -110,7 +110,7 @@ namespace P.renderer {
     const canvas = createCanvas();
     const ctx = canvas.getContext('2d');
     if (!ctx) {
-      throw new Error('Cannot get 2d rendering context');
+      throw new Error('Cannot get 2d rendering context in create2dCanvas');
     }
     ctx.imageSmoothingEnabled = false;
     return { canvas, ctx };
@@ -1081,7 +1081,11 @@ namespace P.renderer {
         const cachedCanvas = document.createElement('canvas');
         cachedCanvas.width = this.penLayer.width;
         cachedCanvas.height = this.penLayer.height;
-        cachedCanvas.getContext('2d')!.drawImage(this.penLayer, 0, 0);
+        const cachedCanvasCtx = cachedCanvas.getContext('2d');
+        if (!cachedCanvasCtx) {
+          throw new Error('cannot get 2d rendering context while resizing pen layer');
+        }
+        cachedCanvasCtx.drawImage(this.penLayer, 0, 0);
         this._reset(this.penContext, zoom);
         this.penContext.drawImage(cachedCanvas, 0, 0, 480, 360);
       } else if (!this.penModified) {

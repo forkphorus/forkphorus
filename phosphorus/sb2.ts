@@ -535,7 +535,10 @@ namespace P.sb2 {
         var image;
         if (layers.length > 1) {
           image = document.createElement('canvas');
-          const ctx = image.getContext('2d')!;
+          const ctx = image.getContext('2d');
+          if (!ctx) {
+            throw new Error('Cannot get 2d rendering context loading costume ' + data.costumeName);
+          }
           image.width = Math.max(layers[0].width, 1);
           image.height = Math.max(layers[0].height, 1);
           for (const layer of layers) {
