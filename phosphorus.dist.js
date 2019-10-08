@@ -38,7 +38,6 @@ var P;
         const features = location.search.replace('?', '').split('&');
         config.debug = features.indexOf('debug') > -1;
         config.useWebGL = features.indexOf('webgl') > -1;
-        config.useCrashMonitor = features.indexOf('crashmonitor') > -1;
         config.supportVideoSensing = features.indexOf('video') > -1;
         config.experimentalOptimizations = features.indexOf('opt') > -1;
         config.scale = window.devicePixelRatio || 1;
@@ -3494,58 +3493,6 @@ var P;
             }
         }
         runtime_1.Runtime = Runtime;
-        if (P.config.useCrashMonitor) {
-            Runtime.prototype.step = function () {
-                self = this.stage;
-                runtime = this;
-                VISUAL = false;
-                if (audioContext && audioContext.state === 'suspended') {
-                    audioContext.resume();
-                }
-                const start = Date.now();
-                const queue = this.queue;
-                do {
-                    for (THREAD = 0; THREAD < queue.length; THREAD++) {
-                        const thread = queue[THREAD];
-                        if (thread) {
-                            S = thread.sprite;
-                            IMMEDIATE = thread.fn;
-                            BASE = thread.base;
-                            CALLS = thread.calls;
-                            C = CALLS.pop();
-                            STACK = C.stack;
-                            R = STACK.pop();
-                            queue[THREAD] = undefined;
-                            WARP = 0;
-                            while (IMMEDIATE) {
-                                if (Date.now() - start > 5000) {
-                                    const el = document.createElement('pre');
-                                    el.textContent += 'crash monitor debug:\n';
-                                    el.textContent += `S: ${S.name} (isClone=${S.isClone},isStage=${S.isStage})\n`;
-                                    el.textContent += `IMMEDIATE: ${IMMEDIATE.toString()} // (${S.fns.indexOf(IMMEDIATE)})\n`;
-                                    document.querySelector('#app').appendChild(el);
-                                    alert('forkphorus has crashed. please include the debug information at the bottom of the page.');
-                                    this.pause();
-                                    this.stopAll();
-                                    return;
-                                }
-                                const fn = IMMEDIATE;
-                                IMMEDIATE = null;
-                                fn();
-                            }
-                            STACK.push(R);
-                            CALLS.push(C);
-                        }
-                    }
-                    for (let i = queue.length; i--;) {
-                        if (!queue[i]) {
-                            queue.splice(i, 1);
-                        }
-                    }
-                } while ((this.isTurbo || !VISUAL) && Date.now() - start < 1000 / this.framerate && queue.length);
-                this.stage.draw();
-            };
-        }
         function createContinuation(source) {
             var result = '(function() {\n';
             var brackets = 0;

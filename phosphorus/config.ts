@@ -4,7 +4,6 @@ namespace P.config {
   const features = location.search.replace('?', '').split('&');
   export const debug = features.indexOf('debug') > -1;
   export const useWebGL = features.indexOf('webgl') > -1;
-  export const useCrashMonitor = features.indexOf('crashmonitor') > -1;
   export const supportVideoSensing = features.indexOf('video') > -1;
   export const experimentalOptimizations = features.indexOf('opt') > -1;
 
