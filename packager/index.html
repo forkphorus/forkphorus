@@ -68,6 +68,9 @@
     #phonegap-config {
       height: 100px;
     }
+    #phonegap-container[data-enabled=false] .option:not(.phonegap-always-visible) {
+      display: none;
+    }
   </style>
   <title>HTML Packager - forkphorus</title>
 </head>
@@ -161,10 +164,10 @@ player.stage.runtime.framerate = 30;</textarea></td>
       </table>
     </details>
 
-    <details>
+    <details id="phonegap-container">
       <summary>Show PhoneGap options</summary>
 
-      <table class="option">
+      <table class="option phonegap-always-visible">
         <tr>
           <td class="label"><label for="phonegap-enabled">Enable PhoneGap</label></td>
           <td><input type="checkbox" id="phonegap-enabled"></td>
@@ -186,11 +189,23 @@ player.stage.runtime.framerate = 30;</textarea></td>
   &lt;description&gt;Some description.&lt;/description&gt;
 
   &lt;author href="https://scratch.mit.edu/users/you" email="you@example.com"&gt;You&lt;/author&gt;
+  
+  &lt;icon src="icon.png" /&gt;
 
 &lt;/widget&gt;</textarea>
         </tr>
         <tr>
           <td colspan="2" class="desc">This is the config file for PhoneGap apps. It allows you to control name, ID, description, author, version, etc.  This is <a href="https://www.w3schools.com/XML/xml_syntax.asp">XML</a>, so formatting like quotes, angled brackets, and case are important.</td>
+        </tr>
+      </table>
+
+      <table class="option">
+        <tr>
+          <td class="label"><label for="phonegap-icon">PhoneGap Icon</label></td>
+          <td><input type="file" id="phonegap-icon" accept=".png"></td>
+        </tr>
+        <tr>
+          <td colspan="2" class="desc">(Optional) The icon that PhoneGap will use. If you do not select an icon, <a href="defaultIcon.png">this</a> will be used instead.</td>
         </tr>
       </table>
     </details>

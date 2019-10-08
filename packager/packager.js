@@ -34,6 +34,7 @@
    * @property {boolean} includeCSP
    * @property {boolean} phonegapEnabled
    * @property {string} phonegapConfig
+   * @property {File} phonegapIcon
    */
 
   const sectionLoading = document.getElementById('loading-section');
@@ -49,6 +50,8 @@
   const includeCSP = /** @type {HTMLInputElement} */ (document.getElementById('include-csp'));
   const inputPhoneGapEnabled = /** @type {HTMLInputElement} */ (document.getElementById('phonegap-enabled'));
   const inputPhoneGapConfig = /** @type {HTMLInputElement} */ (document.getElementById('phonegap-config'));
+  const inputPhoneGapIcon = /** @type {HTMLInputElement} */ (document.getElementById('phonegap-icon'));
+  const phoneGapContainer = /** @type {HTMLElement} */ (document.getElementById('phonegap-container'));
 
   // Fully disable autocomplete on all inputs
   for (const input of document.getElementsByTagName('input')) {
@@ -66,6 +69,7 @@
   const fileCache = {
     css: '',
     js: '',
+    defaultIcon: null,
   };
 
   // Replace fetch so we can observe progress of things
@@ -166,7 +170,7 @@
   function inlineURLs(source, urls) {
     const promises = urls.map((i) => fetch('../' + i)
       .then((res) => res.blob())
-      .then((blob) => readBlob(blob))
+      .then((blob) => readAsURL(blob))
       .then((url) => void (source = source.replace(i, url)))
     );
     return Promise.all(promises).then(_ => source);
@@ -219,6 +223,15 @@
         });
       }));
     }
+    if (!fileCache.defaultIcon) {
+      promises.push(
+        fetch('defaultIcon.png')
+          .then((r) => r.blob())
+          .then((blob) => {
+            fileCache.defaultIcon = blob;
+          })
+      );
+    }
     if (promises.length === 0) {
       progressBar.finish();
       return Promise.resolve();
@@ -245,12 +258,12 @@
   }
 
   /**
-   * Converts a Blob to a data: URL
+   * Converts a File or Blob to a data: URL
    * @param {Blob|File} blob
    * @param {(progress: number) => void} [progressCallback]
    * @returns {Promise<string>}
    */
-  function readBlob(blob, progressCallback) {
+  function readAsURL(blob, progressCallback) {
     return new Promise((resolve, reject) => {
       const fileReader = new FileReader();
       fileReader.onload = () => {
@@ -319,7 +332,7 @@
       })
       .then((blob) => {
         const progressBar = createProgressBar('Reading archive');
-        return readBlob(blob, (progress) => progressBar.percent(progress));
+        return readAsURL(blob, (progress) => progressBar.percent(progress));
       })
       .then((url) => {
         return {
@@ -352,7 +365,7 @@
         }
         projectTypeProgressBar.finish();
         const progressBar = createProgressBar('Reading project');
-        return readBlob(file, (progress) => progressBar.percent(progress));
+        return readAsURL(file, (progress) => progressBar.percent(progress));
       })
       .then((/** @type {string} */ url) => {
         return {
@@ -549,6 +562,7 @@
       includeCSP: includeCSP.checked,
       phonegapEnabled: inputPhoneGapEnabled.checked,
       phonegapConfig: inputPhoneGapConfig.value,
+      phonegapIcon: inputPhoneGapIcon.files[0] || fileCache.defaultIcon,
     };
   }
 
@@ -591,9 +605,10 @@
   function run() {
     packageHtmlButton.disabled = true;
     removeProgressBars();
-    const options = getOptions();
+    let options;
     return loadSources()
       .then(() => {
+        options = getOptions();
         const projectType = /** @type {HTMLInputElement} */ (document.querySelector('input[name=project-type]:checked')).value;
         if (projectType === 'id') {
           return getProjectById(inputProjectId.value);
@@ -608,7 +623,9 @@
             return createArchive([
               { path: 'index.html', data: html, },
               { path: 'config.xml', data: options.phonegapConfig, },
-            ]).then((zip) => resolve({name: 'project.zip', data: zip}))
+              { path: 'icon.png', data: options.phonegapIcon, },
+            ])
+              .then((zip) => resolve({name: 'project.zip', data: zip}))
               .catch((err) => reject(err));
           });
         } else {
@@ -636,4 +653,9 @@
       sectionProjectId.hidden = /** @type {HTMLInputElement} */(e.target).value !== 'id';
     });
   });
+
+  inputPhoneGapEnabled.addEventListener('change', (e) => {
+    phoneGapContainer.dataset.enabled = inputPhoneGapEnabled.checked + '';
+  });
+  phoneGapContainer.dataset.enabled = inputPhoneGapEnabled.checked + '';
 }());
