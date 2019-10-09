@@ -1467,6 +1467,14 @@ var P;
                     brightness: 0,
                     ghost: 0,
                 };
+                this.penHue = 240;
+                this.penSaturation = 100;
+                this.penLightness = 50;
+                this.penAlpha = 1;
+                this.penCSS = '';
+                this.penSize = 1;
+                this.penColor = 0x000000;
+                this.isPenDown = false;
                 for (var i = 0; i < 128; i++) {
                     this.listeners.whenKeyPressed.push([]);
                 }
@@ -1745,6 +1753,88 @@ var P;
             }
             createListWatcher(target, listName) {
                 return null;
+            }
+            dotPen() {
+                this.stage.renderer.penDot(this.getPenCSS(), this.penSize, this.scratchX, this.scratchY);
+            }
+            stamp() {
+                this.stage.renderer.penStamp(this);
+            }
+            getPenCSS() {
+                return this.penCSS || 'hsla(' + this.penHue + 'deg,' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
+            }
+            setPenColor(color) {
+                if (typeof color === 'string') {
+                    if (color.startsWith('#')) {
+                        color = parseInt(color.substr(1), 16);
+                    }
+                    else if (color.startsWith('0x')) {
+                        color = parseInt(color.substr(2), 16);
+                    }
+                    else {
+                        color = +color;
+                    }
+                }
+                this.penColor = color;
+                const r = this.penColor >> 16 & 0xff;
+                const g = this.penColor >> 8 & 0xff;
+                const b = this.penColor & 0xff;
+                const a = (this.penColor >> 24 & 0xff) / 0xff || 1;
+                this.penCSS = 'rgba(' + r + ', ' + g + ', ' + b + ', ' + a + ')';
+            }
+            setPenColorHSL() {
+                if (this.penCSS) {
+                    const hsl = P.utils.rgbToHSL(this.penColor);
+                    this.penHue = hsl[0];
+                    this.penSaturation = hsl[1];
+                    this.penLightness = hsl[2];
+                    this.penAlpha = (this.penColor >> 24 & 0xff) / 0xff || 1;
+                    this.penCSS = '';
+                }
+            }
+            setPenColorParam(param, value) {
+                this.setPenColorHSL();
+                switch (param) {
+                    case 'color':
+                        this.penHue = value * 360 / 100;
+                        break;
+                    case 'saturation':
+                        this.penSaturation = value;
+                        break;
+                    case 'brightness':
+                        this.penLightness = value % 200;
+                        if (this.penLightness < 0) {
+                            this.penLightness += 200;
+                        }
+                        break;
+                    case 'transparency':
+                        this.penAlpha = 1 - (value / 100);
+                        if (this.penAlpha > 1)
+                            this.penAlpha = 1;
+                        if (this.penAlpha < 0)
+                            this.penAlpha = 0;
+                        break;
+                }
+            }
+            changePenColorParam(param, value) {
+                this.setPenColorHSL();
+                switch (param) {
+                    case 'color':
+                        this.penHue += value * 360 / 100;
+                        break;
+                    case 'saturation':
+                        this.penSaturation += value;
+                        break;
+                    case 'brightness':
+                        this.penLightness = (this.penLightness + value) % 200;
+                        if (this.penLightness < 0) {
+                            this.penLightness += 200;
+                        }
+                        break;
+                    case 'transparency':
+                        this.penAlpha = Math.max(0, Math.min(1, this.penAlpha - value / 100));
+                        break;
+                }
             }
         }
         core.Base = Base;
@@ -2198,14 +2288,6 @@ var P;
                 this.isDraggable = false;
                 this.isDragging = false;
                 this.scale = 1;
-                this.penHue = 240;
-                this.penSaturation = 100;
-                this.penLightness = 50;
-                this.penAlpha = 1;
-                this.penCSS = '';
-                this.penSize = 1;
-                this.penColor = 0x000000;
-                this.isPenDown = false;
                 this.dragStartX = 0;
                 this.dragStartY = 0;
                 this.dragOffsetX = 0;
@@ -2293,15 +2375,6 @@ var P;
                 if (this.saying) {
                     this.updateBubble();
                 }
-            }
-            dotPen() {
-                this.stage.renderer.penDot(this.getPenCSS(), this.penSize, this.scratchX, this.scratchY);
-            }
-            stamp() {
-                this.stage.renderer.penStamp(this);
-            }
-            getPenCSS() {
-                return this.penCSS || 'hsla(' + this.penHue + 'deg,' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
             }
             setDirection(degrees) {
                 var d = degrees % 360;
@@ -2438,79 +2511,6 @@ var P;
                 this.direction = dx === 0 && dy === 0 ? 90 : Math.atan2(dx, dy) * 180 / Math.PI;
                 if (this.saying)
                     this.updateBubble();
-            }
-            setPenColor(color) {
-                if (typeof color === 'string') {
-                    if (color.startsWith('#')) {
-                        color = parseInt(color.substr(1), 16);
-                    }
-                    else if (color.startsWith('0x')) {
-                        color = parseInt(color.substr(2), 16);
-                    }
-                    else {
-                        color = +color;
-                    }
-                }
-                this.penColor = color;
-                const r = this.penColor >> 16 & 0xff;
-                const g = this.penColor >> 8 & 0xff;
-                const b = this.penColor & 0xff;
-                const a = (this.penColor >> 24 & 0xff) / 0xff || 1;
-                this.penCSS = 'rgba(' + r + ', ' + g + ', ' + b + ', ' + a + ')';
-            }
-            setPenColorHSL() {
-                if (this.penCSS) {
-                    const hsl = P.utils.rgbToHSL(this.penColor);
-                    this.penHue = hsl[0];
-                    this.penSaturation = hsl[1];
-                    this.penLightness = hsl[2];
-                    this.penAlpha = (this.penColor >> 24 & 0xff) / 0xff || 1;
-                    this.penCSS = '';
-                }
-            }
-            setPenColorParam(param, value) {
-                this.setPenColorHSL();
-                switch (param) {
-                    case 'color':
-                        this.penHue = value * 360 / 100;
-                        break;
-                    case 'saturation':
-                        this.penSaturation = value;
-                        break;
-                    case 'brightness':
-                        this.penLightness = value % 200;
-                        if (this.penLightness < 0) {
-                            this.penLightness += 200;
-                        }
-                        break;
-                    case 'transparency':
-                        this.penAlpha = 1 - (value / 100);
-                        if (this.penAlpha > 1)
-                            this.penAlpha = 1;
-                        if (this.penAlpha < 0)
-                            this.penAlpha = 0;
-                        break;
-                }
-            }
-            changePenColorParam(param, value) {
-                this.setPenColorHSL();
-                switch (param) {
-                    case 'color':
-                        this.penHue += value * 360 / 100;
-                        break;
-                    case 'saturation':
-                        this.penSaturation += value;
-                        break;
-                    case 'brightness':
-                        this.penLightness = (this.penLightness + value) % 200;
-                        if (this.penLightness < 0) {
-                            this.penLightness += 200;
-                        }
-                        break;
-                    case 'transparency':
-                        this.penAlpha = Math.max(0, Math.min(1, this.penAlpha - value / 100));
-                        break;
-                }
             }
         }
         core.Sprite = Sprite;

@@ -57,7 +57,7 @@ namespace P.renderer {
     /**
      * Stamp a Sprite on the pen layer
      */
-    penStamp(sprite: P.core.Sprite): void;
+    penStamp(sprite: P.core.Base): void;
     /**
      * Clear the pen layer
      */

@@ -194,6 +194,16 @@ namespace P.core {
       ghost: 0,
     };
 
+    // Pen data
+    public penHue: number = 240;
+    public penSaturation: number = 100;
+    public penLightness: number = 50;
+    public penAlpha: number = 1;
+    public penCSS: string = '';
+    public penSize: number = 1;
+    public penColor: number = 0x000000;
+    public isPenDown: boolean = false;
+
     constructor() {
       for (var i = 0; i < 128; i++) {
         this.listeners.whenKeyPressed.push([]);
@@ -519,6 +529,106 @@ namespace P.core {
      */
     public createListWatcher(target: Base, listName: string): Watcher | null {
       return null;
+    }
+
+    /**
+     * Create a dot on the pen layer at this object's location
+     */
+    dotPen() {
+      this.stage.renderer.penDot(this.getPenCSS(), this.penSize, this.scratchX, this.scratchY);
+    }
+
+    /**
+     * Create a stamp of this object, as it currently appears, on the pen layer.
+     */
+    stamp() {
+      this.stage.renderer.penStamp(this);
+    }
+
+    getPenCSS() {
+      // This is only temporary
+      return this.penCSS || 'hsla(' + this.penHue + 'deg,' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
+    }
+
+    /**
+     * Set the RGB color of the pen.
+     */
+    setPenColor(color: number | string) {
+      if (typeof color === 'string') {
+        if (color.startsWith('#')) {
+          color = parseInt(color.substr(1), 16);
+        } else if (color.startsWith('0x')) {
+          color = parseInt(color.substr(2), 16);
+        } else {
+          color = +color;
+        }
+      }
+      this.penColor = color;
+      const r = this.penColor >> 16 & 0xff;
+      const g = this.penColor >> 8 & 0xff;
+      const b = this.penColor & 0xff;
+      const a = (this.penColor >> 24 & 0xff) / 0xff || 1;
+      this.penCSS = 'rgba(' + r + ', ' + g + ', ' + b + ', ' + a + ')';
+    }
+
+    /**
+     * Convert the pen's color from RGB to HSL
+     */
+    setPenColorHSL() {
+      if (this.penCSS) {
+        const hsl = P.utils.rgbToHSL(this.penColor);
+        this.penHue = hsl[0];
+        this.penSaturation = hsl[1];
+        this.penLightness = hsl[2];
+        this.penAlpha = (this.penColor >> 24 & 0xff) / 0xff || 1;
+        this.penCSS = '';
+      }
+    }
+
+    // Sets a pen color HSL parameter.
+    setPenColorParam(param: string, value: number) {
+      this.setPenColorHSL();
+      switch (param) {
+        case 'color':
+          this.penHue = value * 360 / 100;
+          break;
+        case 'saturation':
+          this.penSaturation = value;
+          break;
+        case 'brightness':
+          this.penLightness = value % 200;
+          if (this.penLightness < 0) {
+            this.penLightness += 200;
+          }
+          break;
+        case 'transparency':
+          this.penAlpha = 1 - (value / 100);
+          if (this.penAlpha > 1) this.penAlpha = 1;
+          if (this.penAlpha < 0) this.penAlpha = 0;
+          break;
+      }
+    }
+
+    // Changes a pen color HSL parameter.
+    changePenColorParam(param: string, value: number) {
+      this.setPenColorHSL();
+      switch (param) {
+        case 'color':
+          this.penHue += value * 360 / 100;
+          break;
+        case 'saturation':
+          this.penSaturation += value;
+          break;
+        case 'brightness':
+          this.penLightness = (this.penLightness + value) % 200;
+          if (this.penLightness < 0) {
+            this.penLightness += 200;
+          }
+          break;
+        case 'transparency':
+          this.penAlpha = Math.max(0, Math.min(1, this.penAlpha - value / 100));
+          break;
+      }
     }
   }
 
@@ -1099,16 +1209,6 @@ namespace P.core {
      */
     public scale: number = 1;
 
-    // Pen data
-    public penHue: number = 240;
-    public penSaturation: number = 100;
-    public penLightness: number = 50;
-    public penAlpha: number = 1;
-    public penCSS: string = '';
-    public penSize: number = 1;
-    public penColor: number = 0x000000;
-    public isPenDown: boolean = false;
-
     // It's related to dragging sprites.
     public dragStartX: number = 0;
     public dragStartY: number = 0;
@@ -1230,21 +1330,6 @@ namespace P.core {
       if (this.saying) {
         this.updateBubble();
       }
-    }
-
-    // Makes a pen dot at the current location.
-    dotPen() {
-      this.stage.renderer.penDot(this.getPenCSS(), this.penSize, this.scratchX, this.scratchY);
-    }
-
-    // Stamps the sprite onto the pen layer.
-    stamp() {
-      this.stage.renderer.penStamp(this);
-    }
-
-    getPenCSS() {
-      // This is only temporary
-      return this.penCSS || 'hsla(' + this.penHue + 'deg,' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
     }
 
     // Faces in a direction.
@@ -1418,87 +1503,6 @@ namespace P.core {
       const dy = position.y - this.scratchY;
       this.direction = dx === 0 && dy === 0 ? 90 : Math.atan2(dx, dy) * 180 / Math.PI;
       if (this.saying) this.updateBubble();
-    }
-
-    /**
-     * Set the RGB color of the pen.
-     */
-    setPenColor(color: number | string) {
-      if (typeof color === 'string') {
-        if (color.startsWith('#')) {
-          color = parseInt(color.substr(1), 16);
-        } else if (color.startsWith('0x')) {
-          color = parseInt(color.substr(2), 16);
-        } else {
-          color = +color;
-        }
-      }
-      this.penColor = color;
-      const r = this.penColor >> 16 & 0xff;
-      const g = this.penColor >> 8 & 0xff;
-      const b = this.penColor & 0xff;
-      const a = (this.penColor >> 24 & 0xff) / 0xff || 1;
-      this.penCSS = 'rgba(' + r + ', ' + g + ', ' + b + ', ' + a + ')';
-    }
-
-    /**
-     * Convert the pen's color from RGB to HSL
-     */
-    setPenColorHSL() {
-      if (this.penCSS) {
-        const hsl = P.utils.rgbToHSL(this.penColor);
-        this.penHue = hsl[0];
-        this.penSaturation = hsl[1];
-        this.penLightness = hsl[2];
-        this.penAlpha = (this.penColor >> 24 & 0xff) / 0xff || 1;
-        this.penCSS = '';
-      }
-    }
-
-    // Sets a pen color HSL parameter.
-    setPenColorParam(param: string, value: number) {
-      this.setPenColorHSL();
-      switch (param) {
-        case 'color':
-          this.penHue = value * 360 / 100;
-          break;
-        case 'saturation':
-          this.penSaturation = value;
-          break;
-        case 'brightness':
-          this.penLightness = value % 200;
-          if (this.penLightness < 0) {
-            this.penLightness += 200;
-          }
-          break;
-        case 'transparency':
-          this.penAlpha = 1 - (value / 100);
-          if (this.penAlpha > 1) this.penAlpha = 1;
-          if (this.penAlpha < 0) this.penAlpha = 0;
-          break;
-      }
-    }
-
-    // Changes a pen color HSL parameter.
-    changePenColorParam(param: string, value: number) {
-      this.setPenColorHSL();
-      switch (param) {
-        case 'color':
-          this.penHue += value * 360 / 100;
-          break;
-        case 'saturation':
-          this.penSaturation += value;
-          break;
-        case 'brightness':
-          this.penLightness = (this.penLightness + value) % 200;
-          if (this.penLightness < 0) {
-            this.penLightness += 200;
-          }
-          break;
-        case 'transparency':
-          this.penAlpha = Math.max(0, Math.min(1, this.penAlpha - value / 100));
-          break;
-      }
     }
   }
 
