@@ -80,6 +80,9 @@ namespace P.core {
     private mode: PenMode = PenMode.RGBA;
     private css: string = 'rgba(0, 0, 255, 1)';
 
+    /**
+     * Set this color to an RGB(A) color, encoded in a single number.
+     */
     setRGBA(rgba: number) {
       this.x = rgba >> 16 & 0xff;
       this.y = rgba >> 8 & 0xff;
@@ -95,8 +98,8 @@ namespace P.core {
           this.mode = PenMode.HSLA;
           const hsl = P.utils.rgbToHSL(this.x, this.y, this.z);
           this.x = hsl[0];
-          this.y = hsl[1];
-          this.z = hsl[2];
+          this.y = hsl[1] * 100;
+          this.z = hsl[2] * 100;
           break;
         }
         case PenMode.HSVA: {
@@ -121,11 +124,17 @@ namespace P.core {
       }
     }
 
+    /**
+     * Convert this color to its RGBA parts, each from 0-1
+     */
     toParts(): [number, number, number, number] {
       // TODO, not important for now
-      return [1, 1, 1, 1];
+      return [1, 0, 0, 1];
     }
 
+    /**
+     * Convert this color to a CSS color code of some sort.
+     */
     toCSS(): string {
       switch (this.mode) {
         case PenMode.RGBA:
@@ -186,13 +195,13 @@ namespace P.core {
       }
     }
 
-    copy(color: PenColor) {
-      this.x = color.x;
-      this.y = color.y;
-      this.z = color.z;
-      this.a = color.a;
-      this.css = color.css;
-      this.mode = color.mode;
+    copy(other: PenColor) {
+      this.x = other.x;
+      this.y = other.y;
+      this.z = other.z;
+      this.a = other.a;
+      this.css = other.css;
+      this.mode = other.mode;
     }
   }
 
@@ -666,10 +675,6 @@ namespace P.core {
       this.stage.renderer.penStamp(this);
     }
 
-    getPenCSS() {
-      return this.penColor.toCSS();
-    }
-
     /**
      * Set the color of the pen.
      */
@@ -684,23 +689,6 @@ namespace P.core {
         }
       }
       this.penColor.setRGBA(color);
-    }
-
-    /**
-     * Convert the pen's color from RGB to HSL
-     */
-    setPenColorHSL() {
-      this.penColor.toHSLA();
-    }
-
-    // Sets a pen color HSL parameter.
-    setPenColorParam(param: string, value: number) {
-      this.penColor.setParam(param, value);
-    }
-
-    // Changes a pen color HSL parameter.
-    changePenColorParam(param: string, value: number) {
-      this.penColor.changeParam(param, value);
     }
   }
 
@@ -1456,7 +1444,6 @@ namespace P.core {
       clone.scratchX = this.scratchX;
       clone.scratchY = this.scratchY;
       clone.visible = this.visible;
-      clone.penColor = this.penColor;
       clone.penSize = this.penSize;
       clone.penColor.copy(this.penColor);
       clone.isPenDown = this.isPenDown;

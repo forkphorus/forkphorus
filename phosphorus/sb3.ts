@@ -2417,7 +2417,7 @@ namespace P.sb3.compiler {
   statementLibrary['pen_changePenColorParamBy'] = function(util) {
     const COLOR_PARAM = util.getInput('COLOR_PARAM', 'string');
     const VALUE = util.getInput('VALUE', 'number');
-    util.writeLn(`S.changePenColorParam(${COLOR_PARAM}, ${VALUE});`);
+    util.writeLn(`S.penColor.changeParam(${COLOR_PARAM}, ${VALUE});`);
   };
   statementLibrary['pen_changePenHueBy'] = function(util) {
     // This is an old pen hue block, which functions differently from the new one.
@@ -2454,7 +2454,7 @@ namespace P.sb3.compiler {
   statementLibrary['pen_setPenColorParamTo'] = function(util) {
     const COLOR_PARAM = util.getInput('COLOR_PARAM', 'string');
     const VALUE = util.getInput('VALUE', 'number');
-    util.writeLn(`S.setPenColorParam(${COLOR_PARAM}, ${VALUE});`);
+    util.writeLn(`S.penColor.setParam(${COLOR_PARAM}, ${VALUE});`);
   };
   statementLibrary['pen_setPenColorToColor'] = function(util) {
     const COLOR = util.getInput('COLOR', 'any');

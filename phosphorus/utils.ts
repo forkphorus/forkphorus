@@ -38,7 +38,7 @@ namespace P.utils {
     var max = Math.max(r, g, b);
 
     if (min === max) {
-      return [0, 0, r * 100];
+      return [0, 0, r];
     }
 
     var c = max - min;
@@ -53,7 +53,7 @@ namespace P.utils {
     }
     h! *= 60;
 
-    return [h!, s * 100, l * 100];
+    return [h!, s, l];
   }
 
   /**
@@ -86,7 +86,7 @@ namespace P.utils {
       h! /= 6;
     }
 
-    return [ h!, s, v ];
+    return [h! * 360, s, v];
   }
 
   /**

@@ -1449,8 +1449,8 @@ var P;
                         this.mode = 1;
                         const hsl = P.utils.rgbToHSL(this.x, this.y, this.z);
                         this.x = hsl[0];
-                        this.y = hsl[1];
-                        this.z = hsl[2];
+                        this.y = hsl[1] * 100;
+                        this.z = hsl[2] * 100;
                         break;
                     }
                     case 2: {
@@ -1474,7 +1474,7 @@ var P;
                 }
             }
             toParts() {
-                return [1, 1, 1, 1];
+                return [1, 0, 0, 1];
             }
             toCSS() {
                 switch (this.mode) {
@@ -1537,13 +1537,13 @@ var P;
                         break;
                 }
             }
-            copy(color) {
-                this.x = color.x;
-                this.y = color.y;
-                this.z = color.z;
-                this.a = color.a;
-                this.css = color.css;
-                this.mode = color.mode;
+            copy(other) {
+                this.x = other.x;
+                this.y = other.y;
+                this.z = other.z;
+                this.a = other.a;
+                this.css = other.css;
+                this.mode = other.mode;
             }
         }
         core.PenColor = PenColor;
@@ -1879,9 +1879,6 @@ var P;
             stamp() {
                 this.stage.renderer.penStamp(this);
             }
-            getPenCSS() {
-                return this.penColor.toCSS();
-            }
             setPenColor(color) {
                 if (typeof color === 'string') {
                     if (color.startsWith('#')) {
@@ -1895,15 +1892,6 @@ var P;
                     }
                 }
                 this.penColor.setRGBA(color);
-            }
-            setPenColorHSL() {
-                this.penColor.toHSLA();
-            }
-            setPenColorParam(param, value) {
-                this.penColor.setParam(param, value);
-            }
-            changePenColorParam(param, value) {
-                this.penColor.changeParam(param, value);
             }
         }
         core.Base = Base;
@@ -2490,7 +2478,6 @@ var P;
                 clone.scratchX = this.scratchX;
                 clone.scratchY = this.scratchY;
                 clone.visible = this.visible;
-                clone.penColor = this.penColor;
                 clone.penSize = this.penSize;
                 clone.penColor.copy(this.penColor);
                 clone.isPenDown = this.isPenDown;
@@ -3024,33 +3011,6 @@ var P;
                 return Math.floor(Math.random() * (y - x + 1)) + x;
             }
             return Math.random() * (y - x) + x;
-        };
-        var rgb2hsl = function (rgb) {
-            var r = (rgb >> 16 & 0xff) / 0xff;
-            var g = (rgb >> 8 & 0xff) / 0xff;
-            var b = (rgb & 0xff) / 0xff;
-            var min = Math.min(r, g, b);
-            var max = Math.max(r, g, b);
-            if (min === max) {
-                return [0, 0, r * 100];
-            }
-            var c = max - min;
-            var l = (min + max) / 2;
-            var s = c / (1 - Math.abs(2 * l - 1));
-            var h;
-            switch (max) {
-                case r:
-                    h = ((g - b) / c + 6) % 6;
-                    break;
-                case g:
-                    h = (b - r) / c + 2;
-                    break;
-                case b:
-                    h = (r - g) / c + 4;
-                    break;
-            }
-            h *= 60;
-            return [h, s * 100, l * 100];
         };
         var clone = function (name) {
             const parent = name === '_myself_' ? S : self.getObject(name);
@@ -3672,7 +3632,7 @@ var P;
             var min = Math.min(r, g, b);
             var max = Math.max(r, g, b);
             if (min === max) {
-                return [0, 0, r * 100];
+                return [0, 0, r];
             }
             var c = max - min;
             var l = (min + max) / 2;
@@ -3690,7 +3650,7 @@ var P;
                     break;
             }
             h *= 60;
-            return [h, s * 100, l * 100];
+            return [h, s, l];
         }
         utils.rgbToHSL = rgbToHSL;
         function rgbToHSV(r, g, b) {
@@ -3718,7 +3678,7 @@ var P;
                 }
                 h /= 6;
             }
-            return [h, s, v];
+            return [h * 360, s, v];
         }
         utils.rgbToHSV = rgbToHSV;
         function hsvToRGB(h, s, v) {
@@ -4834,7 +4794,7 @@ var P;
                     source += '}\n';
                     source += 'restore();\n';
                 };
-                var noRGB = 'S.penColor.toHSLA();\n';
+                var toHSLA = 'S.penColor.toHSLA();\n';
                 var visual = 0;
                 var compile = function (block) {
                     if (LOG_PRIMITIVES) {
@@ -5082,29 +5042,26 @@ var P;
                         source += 'S.isPenDown = false;\n';
                     }
                     else if (block[0] === 'penColor:') {
-                        source += 'var c = ' + num(block[1]) + ';\n';
-                        source += 'S.penColor = c;\n';
-                        source += 'var a = (c >> 24 & 0xff) / 0xff;\n';
-                        source += 'S.penCSS = "rgba(" + (c >> 16 & 0xff) + "," + (c >> 8 & 0xff) + "," + (c & 0xff) + ", " + (a || 1) + ")";\n';
+                        source += 'S.setPenColor(' + num(block[1]) + ');\n';
                     }
                     else if (block[0] === 'setPenHueTo:') {
-                        source += noRGB;
+                        source += toHSLA;
                         source += 'S.penColor.x = ' + num(block[1]) + ' * 360 / 200;\n';
                         source += 'S.penColor.y = 100;\n';
                     }
                     else if (block[0] === 'changePenHueBy:') {
-                        source += noRGB;
+                        source += toHSLA;
                         source += 'S.penColor.x += ' + num(block[1]) + ' * 360 / 200;\n';
                         source += 'S.penColor.y = 100;\n';
                     }
                     else if (block[0] === 'setPenShadeTo:') {
-                        source += noRGB;
+                        source += toHSLA;
                         source += 'S.penColor.z = ' + num(block[1]) + ' % 200;\n';
                         source += 'if (S.penColor.z < 0) S.penColor.z += 200;\n';
                         source += 'S.penColor.y = 100;\n';
                     }
                     else if (block[0] === 'changePenShadeBy:') {
-                        source += noRGB;
+                        source += toHSLA;
                         source += 'S.penColor.z = (S.penColor.z + ' + num(block[1]) + ') % 200;\n';
                         source += 'if (S.penColor.z < 0) S.penColor.z += 200;\n';
                         source += 'S.penColor.y = 100;\n';
@@ -7146,7 +7103,7 @@ var P;
     statementLibrary['pen_changePenColorParamBy'] = function (util) {
         const COLOR_PARAM = util.getInput('COLOR_PARAM', 'string');
         const VALUE = util.getInput('VALUE', 'number');
-        util.writeLn(`S.changePenColorParam(${COLOR_PARAM}, ${VALUE});`);
+        util.writeLn(`S.penColor.changeParam(${COLOR_PARAM}, ${VALUE});`);
     };
     statementLibrary['pen_changePenHueBy'] = function (util) {
         const HUE = util.getInput('HUE', 'number');
@@ -7180,7 +7137,7 @@ var P;
     statementLibrary['pen_setPenColorParamTo'] = function (util) {
         const COLOR_PARAM = util.getInput('COLOR_PARAM', 'string');
         const VALUE = util.getInput('VALUE', 'number');
-        util.writeLn(`S.setPenColorParam(${COLOR_PARAM}, ${VALUE});`);
+        util.writeLn(`S.penColor.setParam(${COLOR_PARAM}, ${VALUE});`);
     };
     statementLibrary['pen_setPenColorToColor'] = function (util) {
         const COLOR = util.getInput('COLOR', 'any');
