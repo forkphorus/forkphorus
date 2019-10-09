@@ -1214,14 +1214,7 @@ namespace P.sb2.compiler {
       source += 'restore();\n';
     };
 
-    var noRGB = '';
-    noRGB += 'if (S.penCSS) {\n';
-    noRGB += '  var hsl = rgb2hsl(S.penColor & 0xffffff);\n';
-    noRGB += '  S.penHue = hsl[0];\n';
-    noRGB += '  S.penSaturation = hsl[1];\n';
-    noRGB += '  S.penLightness = hsl[2];\n';
-    noRGB += '  S.penCSS = null;';
-    noRGB += '}\n';
+    var noRGB = 'S.penColor.toHSLA();\n';
 
     var visual = 0;
     var compile = function(block) {
@@ -1528,28 +1521,28 @@ namespace P.sb2.compiler {
       } else if (block[0] === 'setPenHueTo:') {
 
         source += noRGB;
-        source += 'S.penHue = ' + num(block[1]) + ' * 360 / 200;\n';
-        source += 'S.penSaturation = 100;\n';
+        source += 'S.penColor.x = ' + num(block[1]) + ' * 360 / 200;\n';
+        source += 'S.penColor.y = 100;\n';
 
       } else if (block[0] === 'changePenHueBy:') {
 
         source += noRGB;
-        source += 'S.penHue += ' + num(block[1]) + ' * 360 / 200;\n';
-        source += 'S.penSaturation = 100;\n';
+        source += 'S.penColor.x += ' + num(block[1]) + ' * 360 / 200;\n';
+        source += 'S.penColor.y = 100;\n';
 
       } else if (block[0] === 'setPenShadeTo:') {
 
         source += noRGB;
-        source += 'S.penLightness = ' + num(block[1]) + ' % 200;\n';
-        source += 'if (S.penLightness < 0) S.penLightness += 200;\n';
-        source += 'S.penSaturation = 100;\n';
+        source += 'S.penColor.z = ' + num(block[1]) + ' % 200;\n';
+        source += 'if (S.penColor.z < 0) S.penColor.z += 200;\n';
+        source += 'S.penColor.y = 100;\n';
 
       } else if (block[0] === 'changePenShadeBy:') {
 
         source += noRGB;
-        source += 'S.penLightness = (S.penLightness + ' + num(block[1]) + ') % 200;\n';
-        source += 'if (S.penLightness < 0) S.penLightness += 200;\n';
-        source += 'S.penSaturation = 100;\n';
+        source += 'S.penColor.z = (S.penColor.z + ' + num(block[1]) + ') % 200;\n';
+        source += 'if (S.penColor.z < 0) S.penColor.z += 200;\n';
+        source += 'S.penColor.y = 100;\n';
 
       } else if (block[0] === 'penSize:') {
 

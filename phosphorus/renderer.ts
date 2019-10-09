@@ -45,7 +45,7 @@ namespace P.renderer {
      * @param x2 Ending X coordinate in the Scratch coordinate grid
      * @param y2 Starting Y coordinate in the Scratch coordinate grid
      */
-    penLine(color: string, size: number, x: number, y: number, x2: number, y2: number): void;
+    penLine(color: P.core.PenColor, size: number, x: number, y: number, x2: number, y2: number): void;
     /**
      * Draws a circular dot on the pen layer
      * @param color Color of the dot
@@ -53,7 +53,7 @@ namespace P.renderer {
      * @param x Central X coordinate in the Scratch coordinate grid
      * @param y Central Y coordinate in the Scratch coordinate grid
      */
-    penDot(color: string, size: number, x: number, y: number): void;
+    penDot(color: P.core.PenColor, size: number, x: number, y: number): void;
     /**
      * Stamp a Sprite on the pen layer
      */
@@ -770,7 +770,7 @@ namespace P.renderer {
       // no-op; we always re-render the stage in full
     }
 
-    penLine(color: string, size: number, x: number, y: number, x2: number, y2: number): void {
+    penLine(color: P.core.PenColor, size: number, x: number, y: number, x2: number, y2: number): void {
       this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
 
       const shader = this.penLineShader;
@@ -787,14 +787,14 @@ namespace P.renderer {
       ]), this.gl.STATIC_DRAW);
       shader.attributeBuffer('a_position', buffer);
 
-      // TODO: color
-      shader.uniform4f('u_color', 0, 1, 0, 1);
+      const parts = color.toParts();
+      shader.uniform4f('u_color', parts[0], parts[1], parts[2], parts[3]);
       this.gl.drawArrays(this.gl.LINES, 0, 2);
 
       this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
     }
 
-    penDot(color: string, size: number, x: number, y: number): void {
+    penDot(color: P.core.PenColor, size: number, x: number, y: number): void {
       this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
 
       const shader = this.penDotShader;
@@ -806,8 +806,8 @@ namespace P.renderer {
       P.m3.multiply(matrix, P.m3.scaling(size, size));
       shader.uniformMatrix3('u_matrix', matrix);
 
-      // TODO: color
-      shader.uniform4f('u_color', 1, 0, 0, 1);
+      const parts = color.toParts();
+      shader.uniform4f('u_color', parts[0], parts[1], parts[2], parts[3]);
 
       this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
       this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
@@ -1108,15 +1108,15 @@ namespace P.renderer {
       this.penContext.clearRect(0, 0, 480, 360);
     }
 
-    penDot(color: string, size: number, x: number, y: number) {
+    penDot(color: P.core.PenColor, size: number, x: number, y: number) {
       this.penModified = true;
-      this.penContext.fillStyle = color;
+      this.penContext.fillStyle = color.toCSS();
       this.penContext.beginPath();
       this.penContext.arc(240 + x, 180 - y, size / 2, 0, 2 * Math.PI, false);
       this.penContext.fill();
     }
 
-    penLine(color: string, size: number, x1: number, y1: number, x2: number, y2: number) {
+    penLine(color: P.core.PenColor, size: number, x1: number, y1: number, x2: number, y2: number) {
       this.penModified = true;
       this.penContext.lineCap = 'round';
       if (this.penZoom === 1) {
@@ -1127,7 +1127,7 @@ namespace P.renderer {
           y2 -= .5;
         }
       }
-      this.penContext.strokeStyle = color;
+      this.penContext.strokeStyle = color.toCSS();
       this.penContext.lineWidth = size;
       this.penContext.beginPath();
       this.penContext.moveTo(240 + x1, 180 - y1);

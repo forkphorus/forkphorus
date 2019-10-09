@@ -2422,15 +2422,15 @@ namespace P.sb3.compiler {
   statementLibrary['pen_changePenHueBy'] = function(util) {
     // This is an old pen hue block, which functions differently from the new one.
     const HUE = util.getInput('HUE', 'number');
-    util.writeLn('S.setPenColorHSL();');
-    util.writeLn(`S.penHue += ${HUE} * 360 / 200;`);
-    util.writeLn('S.penSaturation = 100;');
+    util.writeLn('S.penColor.toHSLA();');
+    util.writeLn(`S.penColor.x += ${HUE} * 360 / 200;`);
+    util.writeLn('S.penColor.y = 100;');
   };
   statementLibrary['pen_changePenShadeBy'] = function(util) {
     const SHADE = util.getInput('SHADE', 'number');
-    util.writeLn('S.setPenColorHSL();');
-    util.writeLn(`S.penLightness = (S.penLightness + ${SHADE}) % 200;`);
-    util.writeLn('if (S.penLightness < 0) S.penLightness += 200;');
+    util.writeLn('S.penColor.toHSLA();');
+    util.writeLn(`S.penColor.z = (S.penColor.z + ${SHADE}) % 200;`);
+    util.writeLn('if (S.penColor.z < 0) S.penColor.z += 200;');
     util.writeLn('S.saturation = 100;');
   };
   statementLibrary['pen_changePenSizeBy'] = function(util) {
@@ -2463,15 +2463,15 @@ namespace P.sb3.compiler {
   statementLibrary['pen_setPenHueToNumber'] = function(util) {
     // This is an old pen hue block, which functions differently from the new one.
     const HUE = util.getInput('HUE', 'number');
-    util.writeLn('S.setPenColorHSL();');
-    util.writeLn(`S.penHue = ${HUE} * 360 / 200;`);
-    util.writeLn('S.penSaturation = 100;');
+    util.writeLn('S.penColor.toHSLA();');
+    util.writeLn(`S.penColor.x = ${HUE} * 360 / 200;`);
+    util.writeLn('S.penColor.y = 100;');
   };
   statementLibrary['pen_setPenShadeToNumber'] = function(util) {
     const SHADE = util.getInput('SHADE', 'number');
-    util.writeLn('S.setPenColorHSL();');
-    util.writeLn(`S.penLightness = ${SHADE} % 200;`);
-    util.writeLn('if (S.penLightness < 0) S.penLightness += 200;');
+    util.writeLn('S.penColor.toHSLA();');
+    util.writeLn(`S.penColor.z = ${SHADE} % 200;`);
+    util.writeLn('if (S.penColor.z < 0) S.penColor.z += 200;');
     util.writeLn('S.saturation = 100;');
   };
   statementLibrary['pen_setPenSizeTo'] = function(util) {
