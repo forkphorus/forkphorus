@@ -1455,7 +1455,6 @@ var P;
                     }
                     case 2: {
                         this.mode = 1;
-                        debugger;
                         const hsl = P.utils.hsvToHSL(this.x, this.y / 100, this.z / 100);
                         this.x = hsl[0];
                         this.y = hsl[1] * 100;

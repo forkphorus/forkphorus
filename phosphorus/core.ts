@@ -104,7 +104,6 @@ namespace P.core {
         }
         case PenMode.HSVA: {
           this.mode = PenMode.HSLA;
-          debugger;
           const hsl = P.utils.hsvToHSL(this.x, this.y / 100, this.z / 100);
           this.x = hsl[0];
           this.y = hsl[1] * 100;
