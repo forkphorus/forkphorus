@@ -95,7 +95,7 @@ namespace P.utils {
    * @param v Value in the range 0-1
    * @returns RGB, each value in the range 0-255
    */
-  export function hsvToRGB(h: number, s: number, v: number) {
+  export function hsvToRGB(h: number, s: number, v: number): [number, number, number] {
     // https://en.wikipedia.org/wiki/HSL_and_HSV
 
     var r: number, g: number, b: number;
@@ -116,6 +116,32 @@ namespace P.utils {
     }
   
     return [r! * 255, g! * 255, b! * 255];
+  }
+
+  /**
+   * 
+   * @param h Hue in the range 0-360
+   * @param s Saturation in the range 0-1
+   * @param v Lightness in the range 0-1
+   * @returns HSV, hue in 0-360, saturation and value in 0-1
+   */
+  export function hslToHSV(h: number, s: number, l: number): [number, number, number] {
+    var v = l + s * Math.min(l, 1 - l);
+    var s = v === 0 ? 0 : 2 - 2 * l / v;
+    return [h, s, v];
+  }
+
+  /**
+   * 
+   * @param h Hue in the range 0-360
+   * @param s Saturation in the range 0-1
+   * @param v Value in the range 0-1
+   * @returns HSL, hue in 0-360, saturation and lightness in 0-1
+   */
+  export function hsvToHSL(h: number, s: number, v: number): [number, number, number] {
+    var l = v - v * s / 2;
+    var s = l === 0 ? 0 : (v - l) / Math.min(2 - 2 * l / v);
+    return [h, s, l];
   }
 
   /**

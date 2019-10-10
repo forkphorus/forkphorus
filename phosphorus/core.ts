@@ -103,7 +103,13 @@ namespace P.core {
           break;
         }
         case PenMode.HSVA: {
-          throw new Error('HSVA -> HSLA not supported');
+          this.mode = PenMode.HSLA;
+          debugger;
+          const hsl = P.utils.hsvToHSL(this.x, this.y / 100, this.z / 100);
+          this.x = hsl[0];
+          this.y = hsl[1] * 100;
+          this.z = hsl[2] * 100;
+          break;
         }
       }
     }
@@ -119,7 +125,12 @@ namespace P.core {
           break;
         }
         case PenMode.HSLA: {
-          throw new Error('HSLA -> HSVA not supported');
+          this.mode = PenMode.HSVA;
+          const hsv = P.utils.hslToHSV(this.x, this.y / 100, this.z / 100);
+          this.x = hsv[0];
+          this.y = hsv[1] * 100;
+          this.z = hsv[2] * 100;
+          break;
         }
       }
     }
@@ -176,21 +187,19 @@ namespace P.core {
       this.toHSVA();
       switch (param) {
         case 'color':
-          this.x = value * 360 / 100;
+          this.x += value * 360 / 100;
           break;
         case 'saturation':
-          this.y = value;
+          this.y += value;
           break;
         case 'brightness':
-          this.z = value % 200;
+          this.z = (this.z + value) % 200;
           if (this.z < 0) {
             this.z += 200;
           }
           break;
         case 'transparency':
-          this.a = 1 - (value / 100);
-          if (this.a > 1) this.a = 1;
-          if (this.a < 0) this.a = 0;
+          this.a = Math.max(0, Math.min(1, this.a - value / 100));
           break;
       }
     }
