@@ -136,34 +136,6 @@ namespace P.runtime {
     return Math.random() * (y - x) + x;
   };
 
-  var rgb2hsl = function(rgb) {
-    // TODO: P.utils.rgb2hsl?
-    var r = (rgb >> 16 & 0xff) / 0xff;
-    var g = (rgb >> 8 & 0xff) / 0xff;
-    var b = (rgb & 0xff) / 0xff;
-
-    var min = Math.min(r, g, b);
-    var max = Math.max(r, g, b);
-
-    if (min === max) {
-      return [0, 0, r * 100];
-    }
-
-    var c = max - min;
-    var l = (min + max) / 2;
-    var s = c / (1 - Math.abs(2 * l - 1));
-
-    var h;
-    switch (max) {
-      case r: h = ((g - b) / c + 6) % 6; break;
-      case g: h = (b - r) / c + 2; break;
-      case b: h = (r - g) / c + 4; break;
-    }
-    h *= 60;
-
-    return [h, s * 100, l * 100];
-  };
-
   // Clone a sprite
   var clone = function(name) {
     const parent = name === '_myself_' ? S : self.getObject(name);

@@ -2417,20 +2417,20 @@ namespace P.sb3.compiler {
   statementLibrary['pen_changePenColorParamBy'] = function(util) {
     const COLOR_PARAM = util.getInput('COLOR_PARAM', 'string');
     const VALUE = util.getInput('VALUE', 'number');
-    util.writeLn(`S.changePenColorParam(${COLOR_PARAM}, ${VALUE});`);
+    util.writeLn(`S.penColor.changeParam(${COLOR_PARAM}, ${VALUE});`);
   };
   statementLibrary['pen_changePenHueBy'] = function(util) {
     // This is an old pen hue block, which functions differently from the new one.
     const HUE = util.getInput('HUE', 'number');
-    util.writeLn('S.setPenColorHSL();');
-    util.writeLn(`S.penHue += ${HUE} * 360 / 200;`);
-    util.writeLn('S.penSaturation = 100;');
+    util.writeLn('S.penColor.toHSLA();');
+    util.writeLn(`S.penColor.x += ${HUE} * 360 / 200;`);
+    util.writeLn('S.penColor.y = 100;');
   };
   statementLibrary['pen_changePenShadeBy'] = function(util) {
     const SHADE = util.getInput('SHADE', 'number');
-    util.writeLn('S.setPenColorHSL();');
-    util.writeLn(`S.penLightness = (S.penLightness + ${SHADE}) % 200;`);
-    util.writeLn('if (S.penLightness < 0) S.penLightness += 200;');
+    util.writeLn('S.penColor.toHSLA();');
+    util.writeLn(`S.penColor.z = (S.penColor.z + ${SHADE}) % 200;`);
+    util.writeLn('if (S.penColor.z < 0) S.penColor.z += 200;');
     util.writeLn('S.saturation = 100;');
   };
   statementLibrary['pen_changePenSizeBy'] = function(util) {
@@ -2454,7 +2454,7 @@ namespace P.sb3.compiler {
   statementLibrary['pen_setPenColorParamTo'] = function(util) {
     const COLOR_PARAM = util.getInput('COLOR_PARAM', 'string');
     const VALUE = util.getInput('VALUE', 'number');
-    util.writeLn(`S.setPenColorParam(${COLOR_PARAM}, ${VALUE});`);
+    util.writeLn(`S.penColor.setParam(${COLOR_PARAM}, ${VALUE});`);
   };
   statementLibrary['pen_setPenColorToColor'] = function(util) {
     const COLOR = util.getInput('COLOR', 'any');
@@ -2463,15 +2463,15 @@ namespace P.sb3.compiler {
   statementLibrary['pen_setPenHueToNumber'] = function(util) {
     // This is an old pen hue block, which functions differently from the new one.
     const HUE = util.getInput('HUE', 'number');
-    util.writeLn('S.setPenColorHSL();');
-    util.writeLn(`S.penHue = ${HUE} * 360 / 200;`);
-    util.writeLn('S.penSaturation = 100;');
+    util.writeLn('S.penColor.toHSLA();');
+    util.writeLn(`S.penColor.x = ${HUE} * 360 / 200;`);
+    util.writeLn('S.penColor.y = 100;');
   };
   statementLibrary['pen_setPenShadeToNumber'] = function(util) {
     const SHADE = util.getInput('SHADE', 'number');
-    util.writeLn('S.setPenColorHSL();');
-    util.writeLn(`S.penLightness = ${SHADE} % 200;`);
-    util.writeLn('if (S.penLightness < 0) S.penLightness += 200;');
+    util.writeLn('S.penColor.toHSLA();');
+    util.writeLn(`S.penColor.z = ${SHADE} % 200;`);
+    util.writeLn('if (S.penColor.z < 0) S.penColor.z += 200;');
     util.writeLn('S.saturation = 100;');
   };
   statementLibrary['pen_setPenSizeTo'] = function(util) {

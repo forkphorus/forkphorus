@@ -70,6 +70,150 @@ namespace P.core {
     Edge = '_edge_',
   }
 
+  const enum PenMode { RGBA, HSLA, HSVA };
+
+  export class PenColor {
+    private x: number = 0;
+    private y: number = 0;
+    private z: number = 255;
+    private a: number = 1;
+    private mode: PenMode = PenMode.RGBA;
+    private css: string = 'rgba(0, 0, 255, 1)';
+
+    /**
+     * Set this color to an RGB(A) color, encoded in a single number.
+     */
+    setRGBA(rgba: number) {
+      this.x = rgba >> 16 & 0xff;
+      this.y = rgba >> 8 & 0xff;
+      this.z = rgba & 0xff;
+      this.a = (rgba >> 24 & 0xff) / 0xff || 1;
+      this.css = 'rgba(' + this.x + ', ' + this.y + ', ' + this.z + ', ' + this.a + ')';
+      this.mode = PenMode.RGBA;
+    }
+
+    toHSLA() {
+      switch (this.mode) {
+        case PenMode.RGBA: {
+          this.mode = PenMode.HSLA;
+          const hsl = P.utils.rgbToHSL(this.x, this.y, this.z);
+          this.x = hsl[0];
+          this.y = hsl[1] * 100;
+          this.z = hsl[2] * 100;
+          break;
+        }
+        case PenMode.HSVA: {
+          this.mode = PenMode.HSLA;
+          debugger;
+          const hsl = P.utils.hsvToHSL(this.x, this.y / 100, this.z / 100);
+          this.x = hsl[0];
+          this.y = hsl[1] * 100;
+          this.z = hsl[2] * 100;
+          break;
+        }
+      }
+    }
+
+    toHSVA() {
+      switch (this.mode) {
+        case PenMode.RGBA: {
+          this.mode = PenMode.HSVA;
+          const hsv = P.utils.rgbToHSV(this.x, this.y, this.z);
+          this.x = hsv[0];
+          this.y = hsv[1] * 100;
+          this.z = hsv[2] * 100;
+          break;
+        }
+        case PenMode.HSLA: {
+          this.mode = PenMode.HSVA;
+          const hsv = P.utils.hslToHSV(this.x, this.y / 100, this.z / 100);
+          this.x = hsv[0];
+          this.y = hsv[1] * 100;
+          this.z = hsv[2] * 100;
+          break;
+        }
+      }
+    }
+
+    /**
+     * Convert this color to its RGBA parts, each from 0-1
+     */
+    toParts(): [number, number, number, number] {
+      // TODO, not important for now
+      return [1, 0, 0, 1];
+    }
+
+    /**
+     * Convert this color to a CSS color code of some sort.
+     */
+    toCSS(): string {
+      switch (this.mode) {
+        case PenMode.RGBA:
+          return this.css;
+        case PenMode.HSLA:
+          return 'hsla(' + this.x + 'deg,' + this.y + '%,' + (this.z > 100 ? 200 - this.z : this.z) + '%, ' + this.a + ')';
+        case PenMode.HSVA: {
+          const rgb = P.utils.hsvToRGB(this.x / 360, this.y / 100, this.z / 100);
+          return 'rgba(' + rgb[0] + ', ' + rgb[1] + ', ' + rgb[2] + ', ' + this.a + ')';
+        }
+      }
+      throw new Error('Unknown pen color mode: ' + this.mode);
+    }
+
+    setParam(param: string, value: number) {
+      this.toHSVA();
+      switch (param) {
+        case 'color':
+          this.x = value * 360 / 100;
+          break;
+        case 'saturation':
+          this.y = value;
+          break;
+        case 'brightness':
+          this.z = value % 200;
+          if (this.z < 0) {
+            this.z += 200;
+          }
+          break;
+        case 'transparency':
+          this.a = 1 - (value / 100);
+          if (this.a > 1) this.a = 1;
+          if (this.a < 0) this.a = 0;
+          break;
+      }
+    }
+
+    changeParam(param: string, value: number) {
+      this.toHSVA();
+      switch (param) {
+        case 'color':
+          this.x += value * 360 / 100;
+          break;
+        case 'saturation':
+          this.y += value;
+          break;
+        case 'brightness':
+          this.z = (this.z + value) % 200;
+          if (this.z < 0) {
+            this.z += 200;
+          }
+          break;
+        case 'transparency':
+          this.a = Math.max(0, Math.min(1, this.a - value / 100));
+          break;
+      }
+    }
+
+    copy(other: PenColor) {
+      this.x = other.x;
+      this.y = other.y;
+      this.z = other.z;
+      this.a = other.a;
+      this.css = other.css;
+      this.mode = other.mode;
+    }
+  }
+
   export abstract class Base {
     /**
      * The stage this object belongs to.
@@ -195,13 +339,8 @@ namespace P.core {
     };
 
     // Pen data
-    public penHue: number = 240;
-    public penSaturation: number = 100;
-    public penLightness: number = 50;
-    public penAlpha: number = 1;
-    public penCSS: string = '';
     public penSize: number = 1;
-    public penColor: number = 0x000000;
+    public penColor: PenColor = new PenColor();
     public isPenDown: boolean = false;
 
     constructor() {
@@ -535,7 +674,7 @@ namespace P.core {
      * Create a dot on the pen layer at this object's location
      */
     dotPen() {
-      this.stage.renderer.penDot(this.getPenCSS(), this.penSize, this.scratchX, this.scratchY);
+      this.stage.renderer.penDot(this.penColor, this.penSize, this.scratchX, this.scratchY);
     }
 
     /**
@@ -545,13 +684,8 @@ namespace P.core {
       this.stage.renderer.penStamp(this);
     }
 
-    getPenCSS() {
-      // This is only temporary
-      return this.penCSS || 'hsla(' + this.penHue + 'deg,' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
-    }
-
     /**
-     * Set the RGB color of the pen.
+     * Set the color of the pen.
      */
     setPenColor(color: number | string) {
       if (typeof color === 'string') {
@@ -563,72 +697,7 @@ namespace P.core {
           color = +color;
         }
       }
-      this.penColor = color;
-      const r = this.penColor >> 16 & 0xff;
-      const g = this.penColor >> 8 & 0xff;
-      const b = this.penColor & 0xff;
-      const a = (this.penColor >> 24 & 0xff) / 0xff || 1;
-      this.penCSS = 'rgba(' + r + ', ' + g + ', ' + b + ', ' + a + ')';
-    }
-
-    /**
-     * Convert the pen's color from RGB to HSL
-     */
-    setPenColorHSL() {
-      if (this.penCSS) {
-        const hsl = P.utils.rgbToHSL(this.penColor);
-        this.penHue = hsl[0];
-        this.penSaturation = hsl[1];
-        this.penLightness = hsl[2];
-        this.penAlpha = (this.penColor >> 24 & 0xff) / 0xff || 1;
-        this.penCSS = '';
-      }
-    }
-
-    // Sets a pen color HSL parameter.
-    setPenColorParam(param: string, value: number) {
-      this.setPenColorHSL();
-      switch (param) {
-        case 'color':
-          this.penHue = value * 360 / 100;
-          break;
-        case 'saturation':
-          this.penSaturation = value;
-          break;
-        case 'brightness':
-          this.penLightness = value % 200;
-          if (this.penLightness < 0) {
-            this.penLightness += 200;
-          }
-          break;
-        case 'transparency':
-          this.penAlpha = 1 - (value / 100);
-          if (this.penAlpha > 1) this.penAlpha = 1;
-          if (this.penAlpha < 0) this.penAlpha = 0;
-          break;
-      }
-    }
-
-    // Changes a pen color HSL parameter.
-    changePenColorParam(param: string, value: number) {
-      this.setPenColorHSL();
-      switch (param) {
-        case 'color':
-          this.penHue += value * 360 / 100;
-          break;
-        case 'saturation':
-          this.penSaturation += value;
-          break;
-        case 'brightness':
-          this.penLightness = (this.penLightness + value) % 200;
-          if (this.penLightness < 0) {
-            this.penLightness += 200;
-          }
-          break;
-        case 'transparency':
-          this.penAlpha = Math.max(0, Math.min(1, this.penAlpha - value / 100));
-          break;
-      }
+      this.penColor.setRGBA(color);
     }
   }
 
@@ -1324,7 +1393,7 @@ namespace P.core {
       this.scratchY = y;
 
       if (this.isPenDown && !this.isDragging) {
-        this.stage.renderer.penLine(this.getPenCSS(), this.penSize, ox, oy, x, y);
+        this.stage.renderer.penLine(this.penColor, this.penSize, ox, oy, x, y);
       }
 
       if (this.saying) {
@@ -1384,12 +1453,8 @@ namespace P.core {
       clone.scratchX = this.scratchX;
       clone.scratchY = this.scratchY;
       clone.visible = this.visible;
-      clone.penColor = this.penColor;
-      clone.penCSS = this.penCSS;
-      clone.penHue = this.penHue;
-      clone.penSaturation = this.penSaturation;
-      clone.penLightness = this.penLightness;
       clone.penSize = this.penSize;
+      clone.penColor.copy(this.penColor);
       clone.isPenDown = this.isPenDown;
       clone.watchers = this.watchers;
       clone.listWatchers = this.listWatchers;
