@@ -1148,6 +1148,10 @@ var P;
                 const y = -costume.rotationCenterY * objectScale;
                 const w = costume.width * objectScale;
                 const h = costume.height * objectScale;
+                if (w === 0 || h === 0) {
+                    ctx.restore();
+                    return;
+                }
                 ctx.imageSmoothingEnabled = false;
                 if (!this.noEffects) {
                     if (c.filters.brightness === 100) {
