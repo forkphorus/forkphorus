@@ -2828,13 +2828,10 @@ var P;
         }
         IO.Request = Request;
         class XHRRequest extends Request {
-            constructor() {
-                super(...arguments);
-                this.xhr = new XMLHttpRequest();
-            }
             _load() {
                 return new Promise((resolve, reject) => {
-                    const xhr = this.xhr;
+                    const xhr = new XMLHttpRequest();
+                    this.xhr = xhr;
                     xhr.addEventListener('load', () => {
                         if (XHRRequest.acceptableResponseCodes.indexOf(xhr.status) !== -1) {
                             resolve(xhr.response);
