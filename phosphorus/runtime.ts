@@ -364,8 +364,13 @@ namespace P.runtime {
       P.audio.playSpan(span, key, duration, S.getAudioNode());
     };
 
+    var applySoundEffects = function(node: AudioBufferSourceNode) {
+      node.playbackRate.value = Math.pow(2, (S.soundFilters.pitch / 10 / 12));
+    };
+
     var playSound = function(sound: P.core.Sound): P.core.ActiveSound {
       const node = sound.createSourceNode();
+      applySoundEffects(node);
       node.connect(S.getAudioNode());
       return {
         stopped: false,
@@ -376,6 +381,7 @@ namespace P.runtime {
 
     var startSound = function(sound: P.core.Sound) {
       const node = sound.createSourceNode();
+      applySoundEffects(node);
       node.connect(S.getAudioNode());
     };
   }

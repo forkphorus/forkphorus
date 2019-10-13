@@ -3264,8 +3264,12 @@ var P;
             var playSpan = function (span, key, duration) {
                 P.audio.playSpan(span, key, duration, S.getAudioNode());
             };
+            var applySoundEffects = function (node) {
+                node.playbackRate.value = Math.pow(2, S.soundFilters.pitch / 120);
+            };
             var playSound = function (sound) {
                 const node = sound.createSourceNode();
+                applySoundEffects(node);
                 node.connect(S.getAudioNode());
                 return {
                     stopped: false,
@@ -3275,6 +3279,7 @@ var P;
             };
             var startSound = function (sound) {
                 const node = sound.createSourceNode();
+                applySoundEffects(node);
                 node.connect(S.getAudioNode());
             };
         }
