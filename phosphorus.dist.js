@@ -1601,6 +1601,9 @@ var P;
                     brightness: 0,
                     ghost: 0,
                 };
+                this.soundFilters = {
+                    pitch: 0,
+                };
                 this.penSize = 1;
                 this.penColor = new PenColor();
                 this.isPenDown = false;
@@ -1716,6 +1719,25 @@ var P;
                     mosaic: 0,
                     brightness: 0,
                     ghost: 0
+                };
+            }
+            setSoundFilter(name, value) {
+                switch (name.toLowerCase()) {
+                    case 'pitch':
+                        this.soundFilters.pitch = value;
+                        break;
+                }
+            }
+            changeSoundFilter(name, value) {
+                switch (name.toLowerCase()) {
+                    case 'pitch':
+                        this.soundFilters.pitch += value;
+                        break;
+                }
+            }
+            resetSoundFilters() {
+                this.soundFilters = {
+                    pitch: 0,
                 };
             }
             getSound(name) {
@@ -7060,10 +7082,18 @@ var P;
         const TEMPO = util.getInput('TEMPO', 'number');
         util.writeLn(`self.tempoBPM = ${TEMPO};`);
     };
+    statementLibrary['sound_changeeffectby'] = function (util) {
+        const EFFECT = util.sanitizedString(util.getField('EFFECT'));
+        const VALUE = util.getInput('VALUE', 'number');
+        util.writeLn(`S.changeSoundFilter(${EFFECT}, ${VALUE});`);
+    };
     statementLibrary['sound_changevolumeby'] = function (util) {
         const VOLUME = util.getInput('VOLUME', 'number');
         util.writeLn(`S.volume = Math.max(0, Math.min(1, S.volume + ${VOLUME} / 100));`);
         util.writeLn('if (S.node) S.node.gain.value = S.volume;');
+    };
+    statementLibrary['sound_cleareffects'] = function (util) {
+        util.writeLn('S.resetSoundFilters();');
     };
     statementLibrary['sound_play'] = function (util) {
         const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
@@ -7092,6 +7122,11 @@ var P;
             util.writeLn('  restore();');
             util.writeLn('}');
         }
+    };
+    statementLibrary['sound_seteffectto'] = function (util) {
+        const EFFECT = util.sanitizedString(util.getField('EFFECT'));
+        const VALUE = util.getInput('VALUE', 'number');
+        util.writeLn(`S.setSoundFilter(${EFFECT}, ${VALUE});`);
     };
     statementLibrary['sound_setvolumeto'] = function (util) {
         const VOLUME = util.getInput('VOLUME', 'number');

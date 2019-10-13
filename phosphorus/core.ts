@@ -48,6 +48,10 @@ namespace P.core {
     ghost: number;
   }
 
+  export interface SoundFilters {
+    pitch: number;
+  }
+
   export const enum RotationStyle {
     /**
      * Indicates this sprite may rotate in any direction.
@@ -336,6 +340,9 @@ namespace P.core {
       brightness: 0,
       ghost: 0,
     };
+    public soundFilters: SoundFilters = {
+      pitch: 0,
+    };
 
     // Pen data
     public penSize: number = 1;
@@ -460,6 +467,28 @@ namespace P.core {
         mosaic: 0,
         brightness: 0,
         ghost: 0
+      };
+    }
+
+    setSoundFilter(name: string, value: number) {
+      switch (name.toLowerCase()) {
+        case 'pitch':
+          this.soundFilters.pitch = value;
+          break;
+      }
+    }
+
+    changeSoundFilter(name: string, value: number) {
+      switch (name.toLowerCase()) {
+        case 'pitch':
+          this.soundFilters.pitch += value;
+          break;
+      }
+    }
+
+    resetSoundFilters() {
+      this.soundFilters = {
+        pitch: 0,
       };
     }
 
