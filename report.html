@@ -96,6 +96,9 @@
       border-radius: 3px;
       margin: 0 3px 0 3px;
     }
+    .report-button[disabled] {
+      opacity: 0.8;
+    }
     .report-button.github {
       background: rgb(36, 36, 36);
       color: white;
@@ -141,7 +144,7 @@
           <div id="input-project-detection"></div>
         </div>
 
-        <small>If the project is not uploaded to the Scratch website, you can leave this blank.</small>
+        <small>If the project is not uploaded to the Scratch website, you can leave this blank. Unshared projects are acceptable.</small>
       </div>
   
       <div class="input-container">
@@ -319,7 +322,7 @@
         },
       };
 
-      // Abstraction around the Scratch API
+      // Abstraction around the Scratch API and other specifics
       var scratchAPI = {
         getTitle: function(projectId, callback) {
           var xhr = new XMLHttpRequest();
@@ -333,29 +336,41 @@
           xhr.open('GET', 'https://scratch.garbomuffin.com/api/forkphorus/?t=title&p=' + escape(projectId));
           xhr.send();
         },
+        isValidProjectId: function(id) {
+          return !isNaN(+id) && id > 0;
+        },
+        getProjectURL: function(id) {
+          return 'https://scratch.mit.edu/projects/' + id;
+        },
       };
 
       var projectInput = {
         input: querySelector('#input-project'),
         detection: querySelector('#input-project-detection'),
+        lastTitle: '',
         init: function() {
           this.input.addEventListener('change', this.onchange.bind(this));
           this.input.addEventListener('input', this.oninput.bind(this));
         },
-        onchange: function() {
+        setHint: function(el) {
           removeAll(this.detection);
+          this.detection.appendChild(el);
+        },
+        onchange: function() {
           var id = this.input.value;
-          if (isNaN(+id) || +id <= 0) {
+          this.lastTitle = '';
+          if (!scratchAPI.isValidProjectId(id)) {
+            this.setHint(createElement('div', {}, ['Invalid project ID?']));
             return;
           }
           scratchAPI.getTitle(id, function(err, title) {
             if (title === '') {
               title = '(unshared)';
             }
-            var text = title;
-            var link = 'https://scratch.mit.edu/projects/' + id + '/';
-            var element = createElement('a', { href: link, target: '_blank', rel: 'noopener' }, [text]);
-            this.detection.appendChild(element);
+            this.lastTitle = title;
+            var link = scratchAPI.getProjectURL(id);
+            var element = createElement('a', { href: link, target: '_blank', rel: 'noopener' }, [title]);
+            this.setHint(element);
           }.bind(this));
         },
         oninput: function() {
@@ -375,16 +390,48 @@
           var result = {};
 
           result.id = querySelector('input[name=id]').value;
+          result.title = projectInput.lastTitle;
           result.description = querySelector('textarea[name=description]').value;
           result.username = querySelector('input[name=scratch-username]').value;
           result.error = querySelector('textarea[name=error]').value;
-          result.includeUserAgent = !!extraInformation.get('UserAgent');
+          result.userAgent = extraInformation.get('UserAgent');
           result.href = extraInformation.get('Href');
 
           return result;
         },
         submitGithub: function() {
-          console.log(submitter.collect());
+          var form = submitter.collect();
+
+          var title = form.title ? form.title + ' (' + form.id + ')' : form.id;
+          var body = '';
+
+          body += form.description;
+          body += '\n\n';
+          body += '-----\n';
+
+          body += scratchAPI.getProjectURL(form.id) + '\n';
+          if (form.href) {
+            body += form.href + '\n';
+          }
+          body += 'Project ID: ' + form.id + '\n';
+          if (form.userAgent) {
+            body += form.userAgent + '\n';
+          }
+          if (form.username) {
+            body += 'Scratch username: ' + form.username + '\n';
+          }
+          if (form.error) {
+            body += '```\n' + form.error + '\n```\n';
+          }
+          body += '<!-- made through error reporter -->'
+
+          var url = 'https://github.com/forkphorus/forkphorus/issues/new';
+          url += '?title=' + escape(title);
+          url += '&body=' + escape(body);
+          window.open(url);
+
+          submitter.github.disabled = false;
+          submitter.anonymous.disabled = false;
         },
         onclick: function(e) {
           e.preventDefault();
