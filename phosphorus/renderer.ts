@@ -958,7 +958,7 @@ namespace P.renderer {
       const y = -costume.rotationCenterY * objectScale;
       const w = costume.width * objectScale;
       const h = costume.height * objectScale;
-      if (w === 0 || h === 0) {
+      if (w < 1 || h < 1) {
         ctx.restore();
         return;
       }
