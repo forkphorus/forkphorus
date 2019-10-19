@@ -3309,10 +3309,12 @@ var P;
                     IMMEDIATE = procedure.fn;
                 }
                 else {
-                    for (var i = CALLS.length, j = 5; i-- && j--;) {
-                        if (CALLS[i].base === procedure.fn) {
-                            runtime.queue[THREAD] = new Thread(S, BASE, procedure.fn, CALLS);
-                            break;
+                    if (VISUAL) {
+                        for (var i = CALLS.length, j = 5; i-- && j--;) {
+                            if (CALLS[i].base === procedure.fn) {
+                                runtime.queue[THREAD] = new Thread(S, BASE, procedure.fn, CALLS);
+                                return;
+                            }
                         }
                     }
                     IMMEDIATE = procedure.fn;
