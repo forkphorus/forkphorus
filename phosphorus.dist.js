@@ -7175,7 +7175,7 @@ var P;
         util.writeLn('S.penColor.toHSLA();');
         util.writeLn(`S.penColor.z = (S.penColor.z + ${SHADE}) % 200;`);
         util.writeLn('if (S.penColor.z < 0) S.penColor.z += 200;');
-        util.writeLn('S.saturation = 100;');
+        util.writeLn('S.penColor.y = 100;');
     };
     statementLibrary['pen_changePenSizeBy'] = function (util) {
         const SIZE = util.getInput('SIZE', 'number');
