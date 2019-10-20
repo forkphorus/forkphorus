@@ -414,11 +414,10 @@ namespace P.runtime {
         IMMEDIATE = procedure.fn;
       } else {
         if (VISUAL) {
-          // Look through the call stack and determine if we are recursing.
-          // If we are recursive, we'll stop this thread until the next iteration through the queue.
-          // The alternative is halting the runtime for a potentially unlimited amount of time.
-          // See https://scratch.mit.edu/projects/337681947/
-          // 5 is an arbirtary number that works good enough and doesn't impact performance significantly.
+          // Look through the call stack and determine if this procedure has already been called once.
+          // If so, we'll delay this thread until the next iteration instead of setting IMMEDIATE
+          // See https://scratch.mit.edu/projects/337681947/ for an example
+          // 5 is an arbirtary number that works good enough and limits the possible performance impact
           for (var i = CALLS.length, j = 5; i-- && j--;) {
             if (CALLS[i].base === procedure.fn) {
               runtime.queue[THREAD] = new Thread(S, BASE, procedure.fn, CALLS);
