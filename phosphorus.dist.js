@@ -1513,10 +1513,7 @@ var P;
                         this.y = value;
                         break;
                     case 'brightness':
-                        this.z = value % 200;
-                        if (this.z < 0) {
-                            this.z += 200;
-                        }
+                        this.z = P.utils.clamp(value, 0, 100);
                         break;
                     case 'transparency':
                         this.a = 1 - (value / 100);
@@ -1537,10 +1534,7 @@ var P;
                         this.y += value;
                         break;
                     case 'brightness':
-                        this.z = (this.z + value) % 200;
-                        if (this.z < 0) {
-                            this.z += 200;
-                        }
+                        this.z = P.utils.clamp(this.z + value, 0, 100);
                         break;
                     case 'transparency':
                         this.a = Math.max(0, Math.min(1, this.a - value / 100));

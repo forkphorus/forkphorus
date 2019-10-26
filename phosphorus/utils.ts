@@ -90,7 +90,7 @@ namespace P.utils {
   }
 
   /**
-   * @param h Hue in the range 0-1
+   * @param h Hue in the range 0-1 (wrapping)
    * @param s Saturation in the range 0-1
    * @param v Value in the range 0-1
    * @returns RGB, each value in the range 0-255
