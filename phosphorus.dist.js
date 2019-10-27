@@ -1510,7 +1510,7 @@ var P;
                         this.x = value * 360 / 100;
                         break;
                     case 'saturation':
-                        this.y = value;
+                        this.y = P.utils.clamp(value, 0, 100);
                         break;
                     case 'brightness':
                         this.z = P.utils.clamp(value, 0, 100);
@@ -1531,7 +1531,7 @@ var P;
                         this.x += value * 360 / 100;
                         break;
                     case 'saturation':
-                        this.y += value;
+                        this.y = P.utils.clamp(this.y + value, 0, 100);
                         break;
                     case 'brightness':
                         this.z = P.utils.clamp(this.z + value, 0, 100);
