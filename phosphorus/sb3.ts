@@ -2749,9 +2749,9 @@ namespace P.sb3.compiler {
       case 'ceiling':
         return util.numberInput(`Math.ceil(${NUM})`);
       case 'cos':
-        return util.numberInput(`Math.cos(${NUM} * Math.PI / 180)`);
+        return util.numberInput(`(Math.round(Math.cos(${NUM} * Math.PI / 180) * 1e10) / 1e10)`);
       case 'sin':
-        return util.numberInput(`Math.sin(${NUM} * Math.PI / 180)`);
+        return util.numberInput(`(Math.round(Math.sin(${NUM} * Math.PI / 180) * 1e10) / 1e10)`);
       case 'tan':
         return util.numberInput(`Math.tan(${NUM} * Math.PI / 180)`);
       case 'asin':
