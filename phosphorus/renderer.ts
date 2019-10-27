@@ -926,9 +926,15 @@ namespace P.renderer {
 
     protected _reset(ctx: CanvasRenderingContext2D, scale: number) {
       const effectiveScale = scale * P.config.scale;
-      ctx.canvas.width = 480 * effectiveScale;
-      ctx.canvas.height = 360 * effectiveScale;
-      ctx.scale(effectiveScale, effectiveScale);
+      const width = 480 * effectiveScale;
+      const height = 360 * effectiveScale;
+      if (ctx.canvas.width !== width) {
+        ctx.canvas.width = width;
+        ctx.canvas.height = height;
+        ctx.scale(effectiveScale, effectiveScale);
+      } else {
+        ctx.clearRect(0, 0, width, height);
+      }
     }
 
     protected _drawChild(c: P.core.Base, ctx: CanvasRenderingContext2D) {
