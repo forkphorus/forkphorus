@@ -928,7 +928,7 @@ namespace P.renderer {
       const effectiveScale = scale * P.config.scale;
       const width = 480 * effectiveScale;
       const height = 360 * effectiveScale;
-      if (ctx.canvas.width !== width) {
+      if (ctx.canvas.width !== width || ctx.canvas.height !== height) {
         ctx.canvas.width = width;
         ctx.canvas.height = height;
         ctx.scale(effectiveScale, effectiveScale);
