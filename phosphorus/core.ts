@@ -674,12 +674,16 @@ namespace P.core {
      */
     abstract rotatedBounds(): RotatedBounds;
 
+    abstract forward(steps: number): void;
+
+    abstract moveTo(x: number, y: number): void;
+
     /**
      * Create a Watcher for a variable.
      * @param target The sprite that will own the watcher
      * @param variableName The name (or id) of the variable to monitor
      */
-    public createVariableWatcher(target: Base, variableName: string): Watcher | null {
+    createVariableWatcher(target: Base, variableName: string): Watcher | null {
       return null;
     }
 
@@ -688,7 +692,7 @@ namespace P.core {
      * @param target The sprite that will own the watcher
      * @param listName The name (or id) of the variable to monitor
      */
-    public createListWatcher(target: Base, listName: string): Watcher | null {
+    createListWatcher(target: Base, listName: string): Watcher | null {
       return null;
     }
 
@@ -1224,16 +1228,6 @@ namespace P.core {
       }
     }
 
-    // Implement rotatedBounds() to return something.
-    rotatedBounds() {
-      return {
-        top: 0,
-        bottom: 0,
-        left: 0,
-        right: 0,
-      };
-    }
-
     stopAllSounds() {
       for (var children = this.children, i = children.length; i--;) {
         children[i].stopSounds();
@@ -1254,6 +1248,19 @@ namespace P.core {
     moveTo() {
       // do nothing -- stage cannot be moved
     }
+
+    forward() {
+      // do nothing -- stage cannot be moved
+    }
+
+    rotatedBounds() {
+      return {
+        top: 0,
+        bottom: 0,
+        left: 0,
+        right: 0,
+      };
+    }    
 
     submitPrompt() {
       if (this.promptId < this.nextPromptId) {

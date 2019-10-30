@@ -2329,14 +2329,6 @@ var P;
                     this.addExtension(this.microphone);
                 }
             }
-            rotatedBounds() {
-                return {
-                    top: 0,
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                };
-            }
             stopAllSounds() {
                 for (var children = this.children, i = children.length; i--;) {
                     children[i].stopSounds();
@@ -2353,6 +2345,16 @@ var P;
                 }
             }
             moveTo() {
+            }
+            forward() {
+            }
+            rotatedBounds() {
+                return {
+                    top: 0,
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                };
             }
             submitPrompt() {
                 if (this.promptId < this.nextPromptId) {
