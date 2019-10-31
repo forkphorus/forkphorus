@@ -315,24 +315,91 @@ namespace P.sb3 {
     }
   }
 
-  interface ListRow {
-    row: HTMLElement;
-    index: HTMLElement;
-    value: HTMLElement;
+  export class ListWatcherRow {
+    public element: HTMLElement;
+    private indexEl: HTMLElement;
+    private valueEl: HTMLElement;
+    private value: any = '';
+    private index: any = -1;
+    private y: any = 0;
+    private visible: boolean = true;
+
+    constructor() {
+      this.element = document.createElement('div');
+      this.indexEl = document.createElement('div');
+      this.valueEl = document.createElement('div');
+      this.element.className = 's3-list-row';
+      this.indexEl.className = 's3-list-index';
+      this.valueEl.className = 's3-list-value';
+      this.element.appendChild(this.indexEl);
+      this.element.appendChild(this.valueEl);
+    }
+
+    /**
+     * Set the value of this row.
+     */
+    setValue(value: any) {
+      if (value !== this.value) {
+        this.value = value;
+        this.valueEl.textContent = value;
+      }
+    }
+
+    /**
+     * Set the index of this row.
+     * @param index The *JavaScript* index of the row.
+     */
+    setIndex(index: number) {
+      if (index !== this.index) {
+        this.index = index;
+        this.indexEl.textContent = (index + 1).toString();
+      }
+    }
+
+    /**
+     * Set the Y coordinate of this row.
+     */
+    setY(y: number) {
+      if (y !== this.y) {
+        this.y = y;
+        this.element.style.transform = 'translateY(' + y + 'px)';
+      }
+    }
+
+    /**
+     * Set the visibility of this row.
+     */
+    setVisible(visible: boolean) {
+      if (this.visible !== visible) {
+        this.visible = visible;
+        this.element.style.display = visible ? '' : 'none';
+      }
+    }
   }
 
+  const enum ScrollDirection {
+    Up, Down,
+  }
   export class Scratch3ListWatcher extends P.core.Watcher {
-    private firstUpdate: boolean = true;
     private params: any;
     private id: string;
     private width: number;
     private height: number;
     private list: Scratch3List;
-    private domRows: ListRow[] = [];
     private containerEl: HTMLElement;
     private topLabelEl: HTMLElement;
     private bottomLabelEl: HTMLElement;
+    private middleContainerEl: HTMLElement;
+    private endpointEl: HTMLElement;
     private contentEl: HTMLElement;
+    private rows: ListWatcherRow[] = [];
+    private _rowHeight: number = -1;
+    private scrollTop: number = 0;
+    private lastZoomLevel: number = 1;
+    private scrollAhead: number = 8;
+    private scrollBack: number = 3;
+    private scrollDirection: ScrollDirection = ScrollDirection.Down;
+    private _contentHeight: number = -1;
 
     constructor(stage: Scratch3Stage, data: SB3Watcher) {
       super(stage, data.spriteName || '');
@@ -347,48 +414,69 @@ namespace P.sb3 {
     }
 
     update() {
-      // We're not visible, so no changes would be seen. We'd only be wasting CPU cycles.
-      // If the list was modified, we'll find out after we become visible.
       if (!this.visible) {
         return;
       }
 
-      // Silently rest if the list has not been modified to improve performance for static lists.
-      if (!this.list.modified && !this.firstUpdate) {
+      if (!this.list.modified && this.lastZoomLevel === this.stage.zoom) {
         return;
       }
-      this.firstUpdate = false;
+      if (this.lastZoomLevel !== this.stage.zoom) {
+        this.contentEl.scrollTop *= this.stage.zoom / this.lastZoomLevel;
+      }
       this.list.modified = false;
-      this.updateContents();
-    }
+      this.lastZoomLevel = this.stage.zoom;
 
-    updateContents() {
-      const length = this.list.length;
-
-      if (this.domRows.length < length) {
-        while (this.domRows.length < length) {
-          const row = this.createRow();
-          this.domRows.push(row);
-          this.contentEl.appendChild(row.row);
-        }
-      } else if (this.domRows.length > length) {
-        while (this.domRows.length > length) {
-          this.domRows.pop();
-          this.contentEl.removeChild(this.contentEl.lastChild!);
-        }
-      }
-
-      for (var i = 0; i < length; i++) {
-        const { value } = this.domRows[i];
-        const rowText = '' + this.list[i];
-        if (rowText !== value.textContent) {
-          value.textContent = rowText;
-        }
-      }
+      this.updateList();
 
       const bottomLabelText = this.getBottomLabel();
       if (this.bottomLabelEl.textContent !== bottomLabelText) {
         this.bottomLabelEl.textContent = this.getBottomLabel();
+      }
+    }
+
+    updateList() {
+      const height = this.list.length * this.getRowHeight();
+      this.endpointEl.style.transform = 'translateY(' + (height * this.stage.zoom) + 'px)';
+
+      const topVisible = this.scrollTop;
+      const bottomVisible = topVisible + this.getContentHeight();
+
+      let startingIndex = Math.floor(topVisible / this.getRowHeight());
+      let endingIndex = Math.ceil(bottomVisible / this.getRowHeight());
+
+      if (this.scrollDirection === ScrollDirection.Down) {
+        startingIndex -= this.scrollBack;
+        endingIndex += this.scrollAhead;
+      } else {
+        startingIndex -= this.scrollAhead;
+        endingIndex += this.scrollBack;
+      }
+
+      if (startingIndex < 0) startingIndex = 0;
+      if (endingIndex > this.list.length - 1) endingIndex = this.list.length - 1;
+
+      // Sanity checks:
+      // Cap ourselves at 50 rows on screen.
+      if (endingIndex - startingIndex > 50) {
+        endingIndex = startingIndex + 50;
+      }
+
+      const visibleRows = endingIndex - startingIndex;
+      while (this.rows.length <= visibleRows) {
+        this.addRow();
+      }
+
+      for (var listIndex = startingIndex, rowIndex = 0; listIndex <= endingIndex; listIndex++, rowIndex++) {
+        let row = this.rows[rowIndex];
+        row.setIndex(listIndex);
+        row.setValue(this.list[listIndex]);
+        row.setY(listIndex * this._rowHeight * this.stage.zoom);
+        row.setVisible(true);
+      }
+      while (rowIndex < this.rows.length) {
+        this.rows[rowIndex].setVisible(false);
+        rowIndex++;
       }
     }
 
@@ -400,21 +488,46 @@ namespace P.sb3 {
       if (!(listName in this.target.lists)) {
         // Create the list if it doesn't exist.
         // It might be better to mark ourselves as invalid instead, but this works just fine.
-        this.target.lists[listName] = new Scratch3List();
+        this.target.lists[listName] = createList();
       }
       this.list = this.target.lists[listName] as Scratch3List;
       this.target.listWatchers[listName] = this;
       this.updateLayout();
-      if (this.visible) {
-        this.updateContents();
-      }
     }
 
-    getTopLabel() {
-      return this.params.LIST;
+    getTopLabel(): string {
+      if (this.target.isStage) {
+        return this.params.LIST;
+      }
+      return this.target.name + ': ' + this.params.LIST;
     }
-    getBottomLabel() {
+    getBottomLabel(): string {
       return 'length ' + this.list.length;
+    }
+
+    getContentHeight(): number {
+      if (this._contentHeight === -1) {
+        this._contentHeight = this.contentEl.offsetHeight;
+      }
+      return this._contentHeight;
+    }
+
+    getRowHeight(): number {
+      if (this._rowHeight === -1) {
+        // Space between each row, in pixels.
+        const PADDING = 2;
+        const row = this.addRow();
+        const height = row.element.offsetHeight;
+        this._rowHeight = height + PADDING;
+      }
+      return this._rowHeight;
+    }
+
+    addRow(): ListWatcherRow {
+      const row = new ListWatcherRow();
+      this.rows.push(row);
+      this.contentEl.appendChild(row.element);
+      return row;
     }
 
     updateLayout() {
@@ -429,23 +542,11 @@ namespace P.sb3 {
       this.updateLayout();
     }
 
-    createRow(): ListRow {
-      const row = document.createElement('div');
-      const index = document.createElement('div');
-      const value = document.createElement('div');
-      row.classList.add('s3-list-row');
-      index.classList.add('s3-list-index');
-      value.classList.add('s3-list-value');
-      index.textContent = (this.domRows.length + 1).toString();
-      row.appendChild(index);
-      row.appendChild(value);
-      return { row, index, value };
-    }
-
     createLayout() {
       this.containerEl = document.createElement('div');
       this.topLabelEl = document.createElement('div');
       this.bottomLabelEl = document.createElement('div');
+      this.middleContainerEl = document.createElement('div');
       this.contentEl = document.createElement('div');
 
       this.containerEl.style.top = (this.y / 10) + 'em';
@@ -460,10 +561,28 @@ namespace P.sb3 {
       this.bottomLabelEl.textContent = this.getBottomLabel();
       this.bottomLabelEl.classList.add('s3-list-bottom-label');
 
-      this.contentEl.classList.add('s3-list-content');
+      this.middleContainerEl.classList.add('s3-list-content');
 
+      this.contentEl.classList.add('s3-list-rows');
+      this.contentEl.addEventListener('scroll', (e) => {
+        const scrollTop = this.contentEl.scrollTop / this.stage.zoom;
+        const scrollChange = this.scrollTop - scrollTop;
+        if (scrollChange < 0) {
+          this.scrollDirection = ScrollDirection.Down;
+        } else if (scrollChange > 0) {
+          this.scrollDirection = ScrollDirection.Up;
+        }
+        this.scrollTop = scrollTop;
+        this.updateList();
+      });
+
+      this.endpointEl = document.createElement('div');
+      this.endpointEl.className = 's3-list-endpoint';
+      this.contentEl.appendChild(this.endpointEl);
+
+      this.middleContainerEl.appendChild(this.contentEl);
       this.containerEl.appendChild(this.topLabelEl);
-      this.containerEl.appendChild(this.contentEl);
+      this.containerEl.appendChild(this.middleContainerEl);
       this.containerEl.appendChild(this.bottomLabelEl);
       this.stage.ui.appendChild(this.containerEl);
     }
@@ -481,13 +600,14 @@ namespace P.sb3 {
     }
   }
 
-  // An Array usable by the Scratch 3 compiler.
-  // Implements Scratch list blocks and their behavior.
-  export class Scratch3List extends Array {
-    public modified: boolean = false;
+  export interface Scratch3List extends Array<any> {
+    modified: boolean;
+  }
 
-    // Modified toString() that functions like Scratch.
-    toString() {
+  export function createList(): Scratch3List {
+    const list = [] as any as Scratch3List;
+    list.modified = false;
+    list.toString = function() {
       var i = this.length;
       while (i--) {
         if (('' + this[i]).length !== 1) {
@@ -495,79 +615,8 @@ namespace P.sb3 {
         }
       }
       return this.join('');
-    }
-
-    /**
-     * Determines the "real" 0-indexed index of a 1-indexed Scratch index.
-     * @param index A scratch 1-indexed index, or 'random', 'any', 'last'
-     * @returns The 0-indexed index, or -1
-     */
-    scratchIndex(index: number | string): number {
-      if (index === 'random' || index === 'any') {
-        return Math.floor(Math.random() * this.length);
-      }
-      if (index === 'last') {
-        return this.length - 1;
-      }
-      index = Math.floor(+index);
-      if (index < 1 || index > this.length + 1) {
-        return -1;
-      }
-      return index - 1;
-    }
-
-    // Deletes a line from the list.
-    // index is a scratch index.
-    deleteLine(index: number | 'all') {
-      if (index === 'all') {
-        this.modified = true;
-        this.length = 0;
-        return;
-      }
-
-      index = this.scratchIndex(index);
-      if (index === this.length - 1) {
-        this.modified = true;
-        this.pop();
-      } else if (index !== -1) {
-        this.modified = true;
-        this.splice(index, 1);
-      }
-    }
-
-    // Adds an item to the list.
-    push(...items: any[]) {
-      this.modified = true;
-      return super.push(...items);
-    }
-
-    // Inserts an item at a spot in the list.
-    // Index is a Scratch index.
-    insert(index: number, value: any) {
-      // TODO: simplify/refactor
-      if (+index === 1) {
-        this.modified = true;
-        this.unshift(value);
-        return;
-      }
-      index = this.scratchIndex(index);
-      if (index === this.length) {
-        this.modified = true;
-        this.push(value);
-      } else if (index !== -1) {
-        this.modified = true;
-        this.splice(index, 0, value);
-      }
-    }
-
-    // Sets the index of something in the list.
-    set(index: number, value: any) {
-      index = this.scratchIndex(index);
-      if (index !== -1) {
-        this.modified = true;
-        this[index] = value;
-      }
-    }
+    };
+    return list;
   }
 
   /**
@@ -730,7 +779,11 @@ namespace P.sb3 {
         const list = data.lists[id];
         const name = list[0];
         const content = list[1];
-        target.lists[name] = new Scratch3List().concat(content);
+        const scratchList = createList();
+        for (var i = 0; i < content.length; i++) {
+          scratchList[i] = content[i];
+        }
+        target.lists[name] = scratchList;
         target.listIds[id] = name;
       }
 
@@ -767,18 +820,9 @@ namespace P.sb3 {
     }
 
     loadFonts() {
-      const fonts = {
-        'Marker': '/fonts/Knewave-Regular.woff',
-        'Handwriting': '/fonts/Handlee-Regular.woff',
-        'Pixel': '/fonts/Grand9K-Pixel.ttf',
-        'Curly': '/fonts/Griffy-Regular.woff',
-        'Serif': '/fonts/SourceSerifPro-Regular.woff',
-        'Sans Serif': '/fonts/NotoSans-Regular.woff',
-        'Scratch': '/fonts/Scratch.ttf',
-      };
       const promises: Promise<unknown>[] = [];
-      for (const family in fonts) {
-        promises.push(this.promiseTask(P.utils.settled(P.fonts.loadLocalFont(family, fonts[family]))));
+      for (const family in P.fonts.scratch3) {
+        promises.push(this.promiseTask(P.utils.settled(P.fonts.loadLocalFont(family, P.fonts.scratch3[family]))));
       }
       return Promise.all(promises);
     }
@@ -819,15 +863,15 @@ namespace P.sb3 {
             throw new Error('no stage object');
           }
           const sprites = targets.filter((i) => i.isSprite) as Scratch3Sprite[];
-          const watchers = this.projectData.monitors
+          sprites.forEach((sprite) => sprite.stage = stage);
+          stage.children = sprites;
+
+          stage.allWatchers = this.projectData.monitors
             .map((data) => this.loadWatcher(data, stage))
             .filter((i) => i && i.valid);
+          stage.allWatchers.forEach((watcher) => watcher.init());
 
-          sprites.forEach((sprite) => sprite.stage = stage);
           this.compileTargets(targets, stage);
-          stage.children = sprites;
-          stage.allWatchers = watchers;
-          watchers.forEach((watcher) => watcher.init());
 
           return stage;
         });
@@ -1507,7 +1551,7 @@ namespace P.sb3.compiler {
         return 'S';
       } else {
         // Create missing lists in the sprite scope.
-        this.target.lists[name] = new Scratch3List();
+        this.target.lists[name] = createList();
         return 'S';
       }
     }
@@ -1785,7 +1829,7 @@ namespace P.sb3.compiler {
       hatCompiler.handle(util);
 
       if (P.config.debug) {
-        this.log('compiled sb3 script', hat.opcode, script, this.target);
+        this.log(`[${this.target.name}] compiled sb3 script "${hat.opcode}"`, script, this.target);
       }
     }
 
@@ -2016,7 +2060,7 @@ namespace P.sb3.compiler {
   statementLibrary['data_addtolist'] = function(util) {
     const LIST = util.getListReference('LIST');
     const ITEM = util.getInput('ITEM', 'any');
-    util.writeLn(`${LIST}.push(${ITEM});`);
+    util.writeLn(`watchedAppendToList(${LIST}, ${ITEM});`);
   };
   statementLibrary['data_changevariableby'] = function(util) {
     const VARIABLE = util.getVariableReference('VARIABLE');
@@ -2025,12 +2069,12 @@ namespace P.sb3.compiler {
   };
   statementLibrary['data_deletealloflist'] = function(util) {
     const LIST = util.getListReference('LIST');
-    util.writeLn(`${LIST}.deleteLine("all");`);
+    util.writeLn(`${LIST}.length = 0;`);
   };
   statementLibrary['data_deleteoflist'] = function(util) {
     const LIST = util.getListReference('LIST');
     const INDEX = util.getInput('INDEX', 'any');
-    util.writeLn(`${LIST}.deleteLine(${INDEX});`);
+    util.writeLn(`watchedDeleteLineOfList(${LIST}, ${INDEX});`);
   };
   statementLibrary['data_hidelist'] = function(util) {
     const LIST = util.sanitizedString(util.getField('LIST'));
@@ -2044,15 +2088,15 @@ namespace P.sb3.compiler {
   };
   statementLibrary['data_insertatlist'] = function(util) {
     const LIST = util.getListReference('LIST');
-    const ITEM = util.getInput('ITEM', 'any');
     const INDEX = util.getInput('INDEX', 'any');
-    util.writeLn(`${LIST}.insert(${INDEX}, ${ITEM});`);
+    const ITEM = util.getInput('ITEM', 'any');
+    util.writeLn(`watchedInsertInList(${LIST}, ${INDEX}, ${ITEM});`);
   };
   statementLibrary['data_replaceitemoflist'] = function(util) {
     const LIST = util.getListReference('LIST');
     const ITEM = util.getInput('ITEM', 'any');
     const INDEX = util.getInput('INDEX', 'any');
-    util.writeLn(`${LIST}.set(${INDEX}, ${ITEM});`);
+    util.writeLn(`watchedSetLineOfList(${LIST}, ${INDEX}, ${ITEM});`);
   };
   statementLibrary['data_setvariableto'] = function(util) {
     const VARIABLE = util.getVariableReference('VARIABLE');
@@ -2276,7 +2320,7 @@ namespace P.sb3.compiler {
   statementLibrary['motion_pointindirection'] = function(util) {
     const DIRECTION = util.getInput('DIRECTION', 'number');
     util.visual('visible');
-    util.writeLn(`S.direction = ${DIRECTION};`);
+    util.writeLn(`S.setDirection(${DIRECTION});`);
   };
   statementLibrary['motion_pointtowards'] = function(util) {
     const TOWARDS = util.getInput('TOWARDS', 'any');
@@ -2311,10 +2355,18 @@ namespace P.sb3.compiler {
     const TEMPO = util.getInput('TEMPO', 'number');
     util.writeLn(`self.tempoBPM = ${TEMPO};`)
   };
+  statementLibrary['sound_changeeffectby'] = function(util) {
+    const EFFECT = util.sanitizedString(util.getField('EFFECT'));
+    const VALUE = util.getInput('VALUE', 'number');
+    util.writeLn(`S.changeSoundFilter(${EFFECT}, ${VALUE});`);
+  };
   statementLibrary['sound_changevolumeby'] = function(util) {
     const VOLUME = util.getInput('VOLUME', 'number');
     util.writeLn(`S.volume = Math.max(0, Math.min(1, S.volume + ${VOLUME} / 100));`);
     util.writeLn('if (S.node) S.node.gain.value = S.volume;');
+  };
+  statementLibrary['sound_cleareffects'] = function(util) {
+    util.writeLn('S.resetSoundFilters();');
   };
   statementLibrary['sound_play'] = function(util) {
     const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
@@ -2343,6 +2395,11 @@ namespace P.sb3.compiler {
       util.writeLn('  restore();');
       util.writeLn('}');
     }
+  };
+  statementLibrary['sound_seteffectto'] = function(util) {
+    const EFFECT = util.sanitizedString(util.getField('EFFECT'));
+    const VALUE = util.getInput('VALUE', 'number');
+    util.writeLn(`S.setSoundFilter(${EFFECT}, ${VALUE});`);
   };
   statementLibrary['sound_setvolumeto'] = function(util) {
     const VOLUME = util.getInput('VOLUME', 'number');
@@ -2373,21 +2430,21 @@ namespace P.sb3.compiler {
   statementLibrary['pen_changePenColorParamBy'] = function(util) {
     const COLOR_PARAM = util.getInput('COLOR_PARAM', 'string');
     const VALUE = util.getInput('VALUE', 'number');
-    util.writeLn(`S.changePenColorParam(${COLOR_PARAM}, ${VALUE});`);
+    util.writeLn(`S.penColor.changeParam(${COLOR_PARAM}, ${VALUE});`);
   };
   statementLibrary['pen_changePenHueBy'] = function(util) {
     // This is an old pen hue block, which functions differently from the new one.
     const HUE = util.getInput('HUE', 'number');
-    util.writeLn('S.setPenColorHSL();');
-    util.writeLn(`S.penHue += ${HUE} * 360 / 200;`);
-    util.writeLn('S.penSaturation = 100;');
+    util.writeLn('S.penColor.toHSLA();');
+    util.writeLn(`S.penColor.x += ${HUE} * 360 / 200;`);
+    util.writeLn('S.penColor.y = 100;');
   };
   statementLibrary['pen_changePenShadeBy'] = function(util) {
     const SHADE = util.getInput('SHADE', 'number');
-    util.writeLn('S.setPenColorHSL();');
-    util.writeLn(`S.penLightness = (S.penLightness + ${SHADE}) % 200;`);
-    util.writeLn('if (S.penLightness < 0) S.penLightness += 200;');
-    util.writeLn('S.saturation = 100;');
+    util.writeLn('S.penColor.toHSLA();');
+    util.writeLn(`S.penColor.z = (S.penColor.z + ${SHADE}) % 200;`);
+    util.writeLn('if (S.penColor.z < 0) S.penColor.z += 200;');
+    util.writeLn('S.penColor.y = 100;');
   };
   statementLibrary['pen_changePenSizeBy'] = function(util) {
     const SIZE = util.getInput('SIZE', 'number');
@@ -2410,7 +2467,7 @@ namespace P.sb3.compiler {
   statementLibrary['pen_setPenColorParamTo'] = function(util) {
     const COLOR_PARAM = util.getInput('COLOR_PARAM', 'string');
     const VALUE = util.getInput('VALUE', 'number');
-    util.writeLn(`S.setPenColorParam(${COLOR_PARAM}, ${VALUE});`);
+    util.writeLn(`S.penColor.setParam(${COLOR_PARAM}, ${VALUE});`);
   };
   statementLibrary['pen_setPenColorToColor'] = function(util) {
     const COLOR = util.getInput('COLOR', 'any');
@@ -2419,16 +2476,16 @@ namespace P.sb3.compiler {
   statementLibrary['pen_setPenHueToNumber'] = function(util) {
     // This is an old pen hue block, which functions differently from the new one.
     const HUE = util.getInput('HUE', 'number');
-    util.writeLn('S.setPenColorHSL();');
-    util.writeLn(`S.penHue = ${HUE} * 360 / 200;`);
-    util.writeLn('S.penSaturation = 100;');
+    util.writeLn('S.penColor.toHSLA();');
+    util.writeLn(`S.penColor.x = ${HUE} * 360 / 200;`);
+    util.writeLn('S.penColor.y = 100;');
   };
   statementLibrary['pen_setPenShadeToNumber'] = function(util) {
     const SHADE = util.getInput('SHADE', 'number');
-    util.writeLn('S.setPenColorHSL();');
-    util.writeLn(`S.penLightness = ${SHADE} % 200;`);
-    util.writeLn('if (S.penLightness < 0) S.penLightness += 200;');
-    util.writeLn('S.saturation = 100;');
+    util.writeLn('S.penColor.toHSLA();');
+    util.writeLn(`S.penColor.z = ${SHADE} % 200;`);
+    util.writeLn('if (S.penColor.z < 0) S.penColor.z += 200;');
+    util.writeLn('S.penColor.y = 100;');
   };
   statementLibrary['pen_setPenSizeTo'] = function(util) {
     const SIZE = util.getInput('SIZE', 'number');
@@ -2692,9 +2749,9 @@ namespace P.sb3.compiler {
       case 'ceiling':
         return util.numberInput(`Math.ceil(${NUM})`);
       case 'cos':
-        return util.numberInput(`Math.cos(${NUM} * Math.PI / 180)`);
+        return util.numberInput(`(Math.round(Math.cos(${NUM} * Math.PI / 180) * 1e10) / 1e10)`);
       case 'sin':
-        return util.numberInput(`Math.sin(${NUM} * Math.PI / 180)`);
+        return util.numberInput(`(Math.round(Math.sin(${NUM} * Math.PI / 180) * 1e10) / 1e10)`);
       case 'tan':
         return util.numberInput(`Math.tan(${NUM} * Math.PI / 180)`);
       case 'asin':
@@ -2786,16 +2843,17 @@ namespace P.sb3.compiler {
     return util.fieldInput('KEY_OPTION');
   };
   inputLibrary['sensing_keypressed'] = function(util) {
-    const KEY_OPTION = util.getInput('KEY_OPTION', 'any');
+    const KEY_OPTION = util.getInput('KEY_OPTION', 'string');
     // note: sb2 compiler can optimize out getKeyCode calls, but sb3 compiler can't because KEY_OPTION might be dynamic
     return util.booleanInput(`!!self.keys[P.runtime.getKeyCode(${KEY_OPTION})]`);
   };
   inputLibrary['sensing_loud'] = function(util) {
-    // TODO: parenthsis needed?
-    return util.booleanInput('(self.getLoudness() > 10)');
+    util.stage.initLoudness();
+    return util.booleanInput('(self.microphone.getLoudness() > 10)');
   };
   inputLibrary['sensing_loudness'] = function(util) {
-    return util.numberInput('self.getLoudness()');
+    util.stage.initLoudness();
+    return util.numberInput('self.microphone.getLoudness()');
   };
   inputLibrary['sensing_mousedown'] = function(util) {
     return util.booleanInput('self.mousePressed');
@@ -3096,7 +3154,16 @@ namespace P.sb3.compiler {
     }
   };
   watcherLibrary['sensing_loudness'] = {
-    evaluate(watcher) { return watcher.stage.getLoudness(); },
+    init(watcher) {
+      watcher.stage.initLoudness();
+    },
+    evaluate(watcher) {
+      if (watcher.stage.microphone) {
+        return watcher.stage.microphone.getLoudness();
+      } else {
+        return -1;
+      }
+    },
     getLabel() { return 'loudness'; },
   };
   watcherLibrary['sensing_timer'] = {

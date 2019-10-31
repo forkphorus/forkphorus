@@ -22,19 +22,23 @@ namespace P.utils {
   }
 
   /**
-   * Converts an RGB color to an HSL color
-   * @param rgb RGB Color
+   * @param r Red in the range 0-255
+   * @param g Green in the range 0-255
+   * @param b Blue in the range 0-255
+   * @returns HSL, hue in 0-360, saturation and lightness in 0-1
    */
-  export function rgbToHSL(rgb: number): [number, number, number] {
-    var r = (rgb >> 16 & 0xff) / 0xff;
-    var g = (rgb >> 8 & 0xff) / 0xff;
-    var b = (rgb & 0xff) / 0xff;
+  export function rgbToHSL(r: number, g: number, b: number): [number, number, number] {
+    // https://en.wikipedia.org/wiki/HSL_and_HSV
+
+    r /= 255;
+    g /= 255;
+    b /= 255;
 
     var min = Math.min(r, g, b);
     var max = Math.max(r, g, b);
 
     if (min === max) {
-      return [0, 0, r * 100];
+      return [0, 0, r];
     }
 
     var c = max - min;
@@ -49,7 +53,95 @@ namespace P.utils {
     }
     h! *= 60;
 
-    return [h!, s * 100, l * 100];
+    return [h!, s, l];
+  }
+
+  /**
+   * @param r Red in the range 0-255
+   * @param g Green in the range 0-255
+   * @param b Blue in the range 0-255
+   * @returns HSV, hue in 0-360, saturation and value in 0-1
+   */
+  export function rgbToHSV(r: number, g: number, b: number): [number, number, number] {
+    // https://en.wikipedia.org/wiki/HSL_and_HSV
+
+    r /= 255;
+    g /= 255;
+    b /= 255;
+
+    var max = Math.max(r, g, b), min = Math.min(r, g, b);
+    var h: number, s: number, v = max;
+
+    var d = max - min;
+    s = max == 0 ? 0 : d / max;
+
+    if (max == min) {
+      h = 0;
+    } else {
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        case b: h = (r - g) / d + 4; break;
+      }
+      h! /= 6;
+    }
+
+    return [h! * 360, s, v];
+  }
+
+  /**
+   * @param h Hue in the range 0-1 (wrapping)
+   * @param s Saturation in the range 0-1
+   * @param v Value in the range 0-1
+   * @returns RGB, each value in the range 0-255
+   */
+  export function hsvToRGB(h: number, s: number, v: number): [number, number, number] {
+    // https://en.wikipedia.org/wiki/HSL_and_HSV
+
+    var r: number, g: number, b: number;
+  
+    var i = Math.floor(h * 6);
+    var f = h * 6 - i;
+    var p = v * (1 - s);
+    var q = v * (1 - f * s);
+    var t = v * (1 - (1 - f) * s);
+  
+    switch (i % 6) {
+      case 0: r = v, g = t, b = p; break;
+      case 1: r = q, g = v, b = p; break;
+      case 2: r = p, g = v, b = t; break;
+      case 3: r = p, g = q, b = v; break;
+      case 4: r = t, g = p, b = v; break;
+      case 5: r = v, g = p, b = q; break;
+    }
+  
+    return [r! * 255, g! * 255, b! * 255];
+  }
+
+  /**
+   * 
+   * @param h Hue in the range 0-360
+   * @param s Saturation in the range 0-1
+   * @param v Lightness in the range 0-1
+   * @returns HSV, hue in 0-360, saturation and value in 0-1
+   */
+  export function hslToHSV(h: number, s: number, l: number): [number, number, number] {
+    var v = l + s * Math.min(l, 1 - l);
+    var s = v === 0 ? 0 : 2 - 2 * l / v;
+    return [h, s, v];
+  }
+
+  /**
+   * 
+   * @param h Hue in the range 0-360
+   * @param s Saturation in the range 0-1
+   * @param v Value in the range 0-1
+   * @returns HSL, hue in 0-360, saturation and lightness in 0-1
+   */
+  export function hsvToHSL(h: number, s: number, v: number): [number, number, number] {
+    var l = v - v * s / 2;
+    var s = l === 0 ? 0 : (v - l) / Math.min(2 - 2 * l / v);
+    return [h, s, l];
   }
 
   /**

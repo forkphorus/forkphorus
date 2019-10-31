@@ -97,7 +97,13 @@
         P.suite.defaults.repeatCount = 50;
       }
 
-      P.suite.run(P.suite.tests());
+      if (location.search.indexOf('nostart') === -1) {
+        P.suite.run(P.suite.tests());
+      } else {
+        window.runTests = function() {
+          P.suite.run(P.suite.tests());
+        };
+      }
     }());
   </script>
     

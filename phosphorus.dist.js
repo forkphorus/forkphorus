@@ -38,11 +38,9 @@ var P;
         const features = location.search.replace('?', '').split('&');
         config.debug = features.indexOf('debug') > -1;
         config.useWebGL = features.indexOf('webgl') > -1;
-        config.useCrashMonitor = features.indexOf('crashmonitor') > -1;
         config.supportVideoSensing = features.indexOf('video') > -1;
         config.experimentalOptimizations = features.indexOf('opt') > -1;
         config.scale = window.devicePixelRatio || 1;
-        config.hasTouchEvents = 'ontouchstart' in document;
         config.PROJECT_API = 'https://projects.scratch.mit.edu/$id';
     })(config = P.config || (P.config = {}));
 })(P || (P = {}));
@@ -442,11 +440,9 @@ var P;
                         resolve(buffer);
                         return;
                     }
-                    audio.context.decodeAudioData(ab)
-                        .then((buffer) => {
+                    audio.context.decodeAudioData(ab, function (buffer) {
                         resolve(buffer);
-                    })
-                        .catch((err2) => {
+                    }, function (err2) {
                         reject(`Could not decode audio: ${err1} | ${err2}`);
                     });
                 });
@@ -540,7 +536,7 @@ var P;
             const canvas = createCanvas();
             const ctx = canvas.getContext('2d');
             if (!ctx) {
-                throw new Error('Cannot get 2d rendering context');
+                throw new Error('Cannot get 2d rendering context in create2dCanvas');
             }
             ctx.imageSmoothingEnabled = false;
             return { canvas, ctx };
@@ -1045,7 +1041,8 @@ var P;
                     x2 / 240, y2 / 180,
                 ]), this.gl.STATIC_DRAW);
                 shader.attributeBuffer('a_position', buffer);
-                shader.uniform4f('u_color', 0, 1, 0, 1);
+                const parts = color.toParts();
+                shader.uniform4f('u_color', parts[0], parts[1], parts[2], parts[3]);
                 this.gl.drawArrays(this.gl.LINES, 0, 2);
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
             }
@@ -1058,7 +1055,8 @@ var P;
                 P.m3.multiply(matrix, P.m3.translation(240 + x - size / 2 | 0, 180 - y - size / 2 | 0));
                 P.m3.multiply(matrix, P.m3.scaling(size, size));
                 shader.uniformMatrix3('u_matrix', matrix);
-                shader.uniform4f('u_color', 1, 0, 0, 1);
+                const parts = color.toParts();
+                shader.uniform4f('u_color', parts[0], parts[1], parts[2], parts[3]);
                 this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
             }
@@ -1173,9 +1171,16 @@ var P;
             }
             _reset(ctx, scale) {
                 const effectiveScale = scale * P.config.scale;
-                ctx.canvas.width = 480 * effectiveScale;
-                ctx.canvas.height = 360 * effectiveScale;
-                ctx.scale(effectiveScale, effectiveScale);
+                const width = 480 * effectiveScale;
+                const height = 360 * effectiveScale;
+                if (ctx.canvas.width !== width || ctx.canvas.height !== height) {
+                    ctx.canvas.width = width;
+                    ctx.canvas.height = height;
+                    ctx.scale(effectiveScale, effectiveScale);
+                }
+                else {
+                    ctx.clearRect(0, 0, width, height);
+                }
             }
             _drawChild(c, ctx) {
                 const costume = c.costumes[c.currentCostumeIndex];
@@ -1201,6 +1206,11 @@ var P;
                 const y = -costume.rotationCenterY * objectScale;
                 const w = costume.width * objectScale;
                 const h = costume.height * objectScale;
+                if (w < 1 || h < 1) {
+                    ctx.restore();
+                    return;
+                }
+                ctx.imageSmoothingEnabled = false;
                 if (!this.noEffects) {
                     ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
                     if (c.filters.brightness !== 0 || c.filters.color !== 0) {
@@ -1330,7 +1340,11 @@ var P;
                     const cachedCanvas = document.createElement('canvas');
                     cachedCanvas.width = this.penLayer.width;
                     cachedCanvas.height = this.penLayer.height;
-                    cachedCanvas.getContext('2d').drawImage(this.penLayer, 0, 0);
+                    const cachedCanvasCtx = cachedCanvas.getContext('2d');
+                    if (!cachedCanvasCtx) {
+                        throw new Error('cannot get 2d rendering context while resizing pen layer');
+                    }
+                    cachedCanvasCtx.drawImage(this.penLayer, 0, 0);
                     this._reset(this.penContext, zoom);
                     this.penContext.drawImage(cachedCanvas, 0, 0, 480, 360);
                 }
@@ -1353,7 +1367,7 @@ var P;
             }
             penDot(color, size, x, y) {
                 this.penModified = true;
-                this.penContext.fillStyle = color;
+                this.penContext.fillStyle = color.toCSS();
                 this.penContext.beginPath();
                 this.penContext.arc(240 + x, 180 - y, size / 2, 0, 2 * Math.PI, false);
                 this.penContext.fill();
@@ -1369,7 +1383,7 @@ var P;
                         y2 -= .5;
                     }
                 }
-                this.penContext.strokeStyle = color;
+                this.penContext.strokeStyle = color.toCSS();
                 this.penContext.lineWidth = size;
                 this.penContext.beginPath();
                 this.penContext.moveTo(240 + x1, 180 - y1);
@@ -1507,6 +1521,128 @@ var P;
 (function (P) {
     var core;
     (function (core) {
+        ;
+        class PenColor {
+            constructor() {
+                this.x = 0;
+                this.y = 0;
+                this.z = 255;
+                this.a = 1;
+                this.mode = 0;
+                this.css = 'rgba(0, 0, 255, 1)';
+            }
+            setRGBA(rgba) {
+                this.x = rgba >> 16 & 0xff;
+                this.y = rgba >> 8 & 0xff;
+                this.z = rgba & 0xff;
+                this.a = (rgba >> 24 & 0xff) / 0xff || 1;
+                this.css = 'rgba(' + this.x + ', ' + this.y + ', ' + this.z + ', ' + this.a + ')';
+                this.mode = 0;
+            }
+            toHSLA() {
+                switch (this.mode) {
+                    case 0: {
+                        this.mode = 1;
+                        const hsl = P.utils.rgbToHSL(this.x, this.y, this.z);
+                        this.x = hsl[0];
+                        this.y = hsl[1] * 100;
+                        this.z = hsl[2] * 100;
+                        break;
+                    }
+                    case 2: {
+                        this.mode = 1;
+                        const hsl = P.utils.hsvToHSL(this.x, this.y / 100, this.z / 100);
+                        this.x = hsl[0];
+                        this.y = hsl[1] * 100;
+                        this.z = hsl[2] * 100;
+                        break;
+                    }
+                }
+            }
+            toHSVA() {
+                switch (this.mode) {
+                    case 0: {
+                        this.mode = 2;
+                        const hsv = P.utils.rgbToHSV(this.x, this.y, this.z);
+                        this.x = hsv[0];
+                        this.y = hsv[1] * 100;
+                        this.z = hsv[2] * 100;
+                        break;
+                    }
+                    case 1: {
+                        this.mode = 2;
+                        const hsv = P.utils.hslToHSV(this.x, this.y / 100, this.z / 100);
+                        this.x = hsv[0];
+                        this.y = hsv[1] * 100;
+                        this.z = hsv[2] * 100;
+                        break;
+                    }
+                }
+            }
+            toParts() {
+                return [1, 0, 0, 1];
+            }
+            toCSS() {
+                switch (this.mode) {
+                    case 0:
+                        return this.css;
+                    case 1:
+                        return 'hsla(' + this.x + 'deg,' + this.y + '%,' + (this.z > 100 ? 200 - this.z : this.z) + '%, ' + this.a + ')';
+                    case 2: {
+                        const rgb = P.utils.hsvToRGB(this.x / 360, this.y / 100, this.z / 100);
+                        return 'rgba(' + rgb[0] + ', ' + rgb[1] + ', ' + rgb[2] + ', ' + this.a + ')';
+                    }
+                }
+                throw new Error('Unknown pen color mode: ' + this.mode);
+            }
+            setParam(param, value) {
+                this.toHSVA();
+                switch (param) {
+                    case 'color':
+                        this.x = value * 360 / 100;
+                        break;
+                    case 'saturation':
+                        this.y = P.utils.clamp(value, 0, 100);
+                        break;
+                    case 'brightness':
+                        this.z = P.utils.clamp(value, 0, 100);
+                        break;
+                    case 'transparency':
+                        this.a = 1 - (value / 100);
+                        if (this.a > 1)
+                            this.a = 1;
+                        if (this.a < 0)
+                            this.a = 0;
+                        break;
+                }
+            }
+            changeParam(param, value) {
+                this.toHSVA();
+                switch (param) {
+                    case 'color':
+                        this.x += value * 360 / 100;
+                        break;
+                    case 'saturation':
+                        this.y = P.utils.clamp(this.y + value, 0, 100);
+                        break;
+                    case 'brightness':
+                        this.z = P.utils.clamp(this.z + value, 0, 100);
+                        break;
+                    case 'transparency':
+                        this.a = Math.max(0, Math.min(1, this.a - value / 100));
+                        break;
+                }
+            }
+            copy(other) {
+                this.x = other.x;
+                this.y = other.y;
+                this.z = other.z;
+                this.a = other.a;
+                this.css = other.css;
+                this.mode = other.mode;
+            }
+        }
+        core.PenColor = PenColor;
         class Base {
             constructor() {
                 this.isStage = false;
@@ -1551,6 +1687,12 @@ var P;
                     brightness: 0,
                     ghost: 0,
                 };
+                this.soundFilters = {
+                    pitch: 0,
+                };
+                this.penSize = 1;
+                this.penColor = new PenColor();
+                this.isPenDown = false;
                 for (var i = 0; i < 128; i++) {
                     this.listeners.whenKeyPressed.push([]);
                 }
@@ -1663,6 +1805,25 @@ var P;
                     mosaic: 0,
                     brightness: 0,
                     ghost: 0
+                };
+            }
+            setSoundFilter(name, value) {
+                switch (name.toLowerCase()) {
+                    case 'pitch':
+                        this.soundFilters.pitch = value;
+                        break;
+                }
+            }
+            changeSoundFilter(name, value) {
+                switch (name.toLowerCase()) {
+                    case 'pitch':
+                        this.soundFilters.pitch += value;
+                        break;
+                }
+            }
+            resetSoundFilters() {
+                this.soundFilters = {
+                    pitch: 0,
                 };
             }
             getSound(name) {
@@ -1830,6 +1991,26 @@ var P;
             createListWatcher(target, listName) {
                 return null;
             }
+            dotPen() {
+                this.stage.renderer.penDot(this.penColor, this.penSize, this.scratchX, this.scratchY);
+            }
+            stamp() {
+                this.stage.renderer.penStamp(this);
+            }
+            setPenColor(color) {
+                if (typeof color === 'string') {
+                    if (color.startsWith('#')) {
+                        color = parseInt(color.substr(1), 16);
+                    }
+                    else if (color.startsWith('0x')) {
+                        color = parseInt(color.substr(2), 16);
+                    }
+                    else {
+                        color = +color;
+                    }
+                }
+                this.penColor.setRGBA(color);
+            }
         }
         core.Base = Base;
         class Stage extends Base {
@@ -1852,6 +2033,9 @@ var P;
                 this.tempoBPM = 60;
                 this.username = '';
                 this.counter = 0;
+                this.speech2text = null;
+                this.microphone = null;
+                this.extensions = [];
                 this.runtime = new P.runtime.Runtime(this);
                 this.keys = [];
                 this.keys.any = 0;
@@ -1871,104 +2055,6 @@ var P;
                 this.ui.style.pointerEvents = 'none';
                 this.canvas.tabIndex = 0;
                 this.canvas.style.outline = 'none';
-                this.root.addEventListener('keydown', (e) => {
-                    var c = e.keyCode;
-                    if (c >= 128 && e.key.length === 1)
-                        c = P.runtime.getKeyCode(e.key);
-                    if (!this.keys[c])
-                        this.keys.any++;
-                    this.keys[c] = true;
-                    if (e.ctrlKey || e.altKey || e.metaKey || c === 27)
-                        return;
-                    e.stopPropagation();
-                    if (e.target === this.canvas) {
-                        e.preventDefault();
-                        this.runtime.trigger('whenKeyPressed', c);
-                    }
-                });
-                this.root.addEventListener('keyup', (e) => {
-                    var c = e.keyCode;
-                    if (c >= 128)
-                        c = P.runtime.getKeyCode(e.key);
-                    if (this.keys[c])
-                        this.keys.any--;
-                    this.keys[c] = false;
-                    e.stopPropagation();
-                    if (e.target === this.canvas) {
-                        e.preventDefault();
-                    }
-                });
-                this.root.addEventListener('wheel', (e) => {
-                    if (e.deltaY > 0) {
-                        this.runtime.trigger('whenKeyPressed', 40);
-                    }
-                    else if (e.deltaY < 0) {
-                        this.runtime.trigger('whenKeyPressed', 38);
-                    }
-                }, { passive: true });
-                if (P.config.hasTouchEvents) {
-                    document.addEventListener('touchstart', (e) => {
-                        if (!this.runtime.isRunning)
-                            return;
-                        this.mousePressed = true;
-                        const target = e.target;
-                        for (var i = 0; i < e.changedTouches.length; i++) {
-                            const t = e.changedTouches[i];
-                            this.updateMousePosition(t);
-                            if (e.target === this.canvas) {
-                                this.clickMouse();
-                            }
-                            this.ontouch(e, t);
-                        }
-                        if (e.target === this.canvas)
-                            e.preventDefault();
-                    });
-                    document.addEventListener('touchmove', (e) => {
-                        if (!this.runtime.isRunning)
-                            return;
-                        this.updateMousePosition(e.changedTouches[0]);
-                        for (var i = 0; i < e.changedTouches.length; i++) {
-                            const t = e.changedTouches[i];
-                            this.ontouch(e, t);
-                        }
-                    });
-                    document.addEventListener('touchend', (e) => {
-                        if (!this.runtime.isRunning)
-                            return;
-                        this.releaseMouse();
-                        for (var i = 0; i < e.changedTouches.length; i++) {
-                            const t = e.changedTouches[i];
-                            this.ontouch(e, t);
-                        }
-                    });
-                }
-                else {
-                    document.addEventListener('mousedown', (e) => {
-                        if (!this.runtime.isRunning)
-                            return;
-                        this.mousePressed = true;
-                        this.updateMousePosition(e);
-                        if (e.target === this.canvas) {
-                            this.clickMouse();
-                            e.preventDefault();
-                            this.canvas.focus();
-                        }
-                        this.onmousedown(e);
-                    });
-                    document.addEventListener('mousemove', (e) => {
-                        if (!this.runtime.isRunning)
-                            return;
-                        this.updateMousePosition(e);
-                        this.onmousemove(e);
-                    });
-                    document.addEventListener('mouseup', (e) => {
-                        if (!this.runtime.isRunning)
-                            return;
-                        this.updateMousePosition(e);
-                        this.releaseMouse();
-                        this.onmouseup(e);
-                    });
-                }
                 this.prompter = document.createElement('div');
                 this.ui.appendChild(this.prompter);
                 this.prompter.style.zIndex = '1';
@@ -2015,12 +2101,131 @@ var P;
                 this.promptButton.style.bottom = '.4em';
                 this.promptButton.style.background = 'url(icons.svg) -22.8em -0.4em';
                 this.promptButton.style.backgroundSize = '38.4em 6.4em';
+                this.addEventListeners();
+            }
+            addEventListeners() {
+                this._onmousedown = this._onmousedown.bind(this);
+                this._onmouseup = this._onmouseup.bind(this);
+                this._onmousemove = this._onmousemove.bind(this);
+                this._ontouchstart = this._ontouchstart.bind(this);
+                this._ontouchend = this._ontouchend.bind(this);
+                this._ontouchmove = this._ontouchmove.bind(this);
+                document.addEventListener('mousedown', this._onmousedown);
+                document.addEventListener('mouseup', this._onmouseup);
+                document.addEventListener('mousemove', this._onmousemove);
+                document.addEventListener('touchstart', this._ontouchstart, { passive: false });
+                document.addEventListener('touchend', this._ontouchend);
+                document.addEventListener('touchmove', this._ontouchmove);
+                this.root.addEventListener('wheel', this._onwheel.bind(this));
+                this.root.addEventListener('keyup', this._onkeyup.bind(this));
+                this.root.addEventListener('keydown', this._onkeydown.bind(this));
+                this.promptButton.addEventListener('touchstart', this.submitPrompt.bind(this));
+                this.promptButton.addEventListener('mousedown', this.submitPrompt.bind(this));
                 this.prompt.addEventListener('keydown', (e) => {
-                    if (e.keyCode === 13) {
+                    if (e.keyCode === 13)
                         this.submitPrompt();
-                    }
                 });
-                this.promptButton.addEventListener(P.config.hasTouchEvents ? 'touchstart' : 'mousedown', this.submitPrompt.bind(this));
+            }
+            removeEventListeners() {
+                document.removeEventListener('mousedown', this._onmousedown);
+                document.removeEventListener('mouseup', this._onmouseup);
+                document.removeEventListener('mousemove', this._onmousemove);
+                document.removeEventListener('touchstart', this._ontouchstart);
+                document.removeEventListener('touchend', this._ontouchend);
+                document.removeEventListener('touchmove', this._ontouchmove);
+            }
+            _onwheel(e) {
+                if (e.deltaY > 0) {
+                    this.runtime.trigger('whenKeyPressed', 40);
+                }
+                else if (e.deltaY < 0) {
+                    this.runtime.trigger('whenKeyPressed', 38);
+                }
+            }
+            _onkeyup(e) {
+                var c = e.keyCode;
+                if (c >= 128)
+                    c = P.runtime.getKeyCode(e.key);
+                if (this.keys[c])
+                    this.keys.any--;
+                this.keys[c] = false;
+                e.stopPropagation();
+                if (e.target === this.canvas) {
+                    e.preventDefault();
+                }
+            }
+            _onkeydown(e) {
+                var c = e.keyCode;
+                if (c >= 128 && e.key.length === 1)
+                    c = P.runtime.getKeyCode(e.key);
+                if (!this.keys[c])
+                    this.keys.any++;
+                this.keys[c] = true;
+                if (e.ctrlKey || e.altKey || e.metaKey || c === 27)
+                    return;
+                e.stopPropagation();
+                if (e.target === this.canvas) {
+                    e.preventDefault();
+                    this.runtime.trigger('whenKeyPressed', c);
+                }
+            }
+            _onmousedown(e) {
+                if (!this.runtime.isRunning)
+                    return;
+                this.updateMousePosition(e);
+                this.mousePressed = true;
+                if (e.target === this.canvas) {
+                    this.clickMouse();
+                    e.preventDefault();
+                    this.canvas.focus();
+                }
+                this.onmousedown(e);
+            }
+            _onmouseup(e) {
+                if (!this.runtime.isRunning)
+                    return;
+                this.updateMousePosition(e);
+                this.releaseMouse();
+                this.onmouseup(e);
+            }
+            _onmousemove(e) {
+                if (!this.runtime.isRunning)
+                    return;
+                this.updateMousePosition(e);
+                this.onmousemove(e);
+            }
+            _ontouchend(e) {
+                if (!this.runtime.isRunning)
+                    return;
+                this.releaseMouse();
+                for (var i = 0; i < e.changedTouches.length; i++) {
+                    const t = e.changedTouches[i];
+                    this.ontouch(e, t);
+                }
+            }
+            _ontouchstart(e) {
+                if (!this.runtime.isRunning)
+                    return;
+                this.mousePressed = true;
+                for (var i = 0; i < e.changedTouches.length; i++) {
+                    const t = e.changedTouches[i];
+                    this.updateMousePosition(t);
+                    if (e.target === this.canvas) {
+                        this.clickMouse();
+                    }
+                    this.ontouch(e, t);
+                }
+                if (e.target === this.canvas)
+                    e.preventDefault();
+            }
+            _ontouchmove(e) {
+                if (!this.runtime.isRunning)
+                    return;
+                this.updateMousePosition(e.changedTouches[0]);
+                for (var i = 0; i < e.changedTouches.length; i++) {
+                    const t = e.changedTouches[i];
+                    this.ontouch(e, t);
+                }
             }
             ontouch(e, t) { }
             onmousedown(e) { }
@@ -2030,8 +2235,19 @@ var P;
                 this.runtime.stopAll();
                 this.runtime.pause();
                 this.stopAllSounds();
-                if (this.speech2text) {
-                    this.speech2text.destroy();
+                for (const extension of this.extensions) {
+                    extension.destroy();
+                }
+                this.removeEventListeners();
+            }
+            pause() {
+                for (const extension of this.extensions) {
+                    extension.onpause();
+                }
+            }
+            start() {
+                for (const extension of this.extensions) {
+                    extension.onstart();
                 }
             }
             focus() {
@@ -2067,6 +2283,13 @@ var P;
                 this.root.style.height = (360 * zoom | 0) + 'px';
                 this.root.style.fontSize = (zoom * 10) + 'px';
                 this.zoom = zoom;
+                if (!this.runtime.isRunning) {
+                    for (const watcher of this.allWatchers) {
+                        if (watcher instanceof P.sb3.Scratch3ListWatcher) {
+                            watcher.updateList();
+                        }
+                    }
+                }
             }
             clickMouse() {
                 this.mouseSprite = undefined;
@@ -2176,21 +2399,20 @@ var P;
                     }
                 }
             }
-            getLoudness() {
-                return P.microphone.getLoudness();
+            addExtension(extension) {
+                this.extensions.push(extension);
             }
             initSpeech2Text() {
-                if (!this.speech2text && P.speech2text.supported) {
-                    this.speech2text = new P.speech2text.SpeechToTextExtension(this);
+                if (!this.speech2text && P.ext.speech2text.isSupported()) {
+                    this.speech2text = new P.ext.speech2text.SpeechToTextExtension(this);
+                    this.addExtension(this.speech2text);
                 }
             }
-            rotatedBounds() {
-                return {
-                    top: 0,
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                };
+            initLoudness() {
+                if (!this.microphone) {
+                    this.microphone = new P.ext.microphone.MicrophoneExtension(this);
+                    this.addExtension(this.microphone);
+                }
             }
             stopAllSounds() {
                 for (var children = this.children, i = children.length; i--;) {
@@ -2208,6 +2430,16 @@ var P;
                 }
             }
             moveTo() {
+            }
+            forward() {
+            }
+            rotatedBounds() {
+                return {
+                    top: 0,
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                };
             }
             submitPrompt() {
                 if (this.promptId < this.nextPromptId) {
@@ -2233,14 +2465,6 @@ var P;
                 this.isDraggable = false;
                 this.isDragging = false;
                 this.scale = 1;
-                this.penHue = 240;
-                this.penSaturation = 100;
-                this.penLightness = 50;
-                this.penAlpha = 1;
-                this.penCSS = '';
-                this.penSize = 1;
-                this.penColor = 0x000000;
-                this.isPenDown = false;
                 this.dragStartX = 0;
                 this.dragStartY = 0;
                 this.dragOffsetX = 0;
@@ -2323,20 +2547,11 @@ var P;
                 this.scratchX = x;
                 this.scratchY = y;
                 if (this.isPenDown && !this.isDragging) {
-                    this.stage.renderer.penLine(this.getPenCSS(), this.penSize, ox, oy, x, y);
+                    this.stage.renderer.penLine(this.penColor, this.penSize, ox, oy, x, y);
                 }
                 if (this.saying) {
                     this.updateBubble();
                 }
-            }
-            dotPen() {
-                this.stage.renderer.penDot(this.getPenCSS(), this.penSize, this.scratchX, this.scratchY);
-            }
-            stamp() {
-                this.stage.renderer.penStamp(this);
-            }
-            getPenCSS() {
-                return this.penCSS || 'hsla(' + this.penHue + 'deg,' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
             }
             setDirection(degrees) {
                 var d = degrees % 360;
@@ -2383,12 +2598,8 @@ var P;
                 clone.scratchX = this.scratchX;
                 clone.scratchY = this.scratchY;
                 clone.visible = this.visible;
-                clone.penColor = this.penColor;
-                clone.penCSS = this.penCSS;
-                clone.penHue = this.penHue;
-                clone.penSaturation = this.penSaturation;
-                clone.penLightness = this.penLightness;
                 clone.penSize = this.penSize;
+                clone.penColor.copy(this.penColor);
                 clone.isPenDown = this.isPenDown;
                 clone.watchers = this.watchers;
                 clone.listWatchers = this.listWatchers;
@@ -2473,79 +2684,6 @@ var P;
                 this.direction = dx === 0 && dy === 0 ? 90 : Math.atan2(dx, dy) * 180 / Math.PI;
                 if (this.saying)
                     this.updateBubble();
-            }
-            setPenColor(color) {
-                if (typeof color === 'string') {
-                    if (color.startsWith('#')) {
-                        color = parseInt(color.substr(1), 16);
-                    }
-                    else if (color.startsWith('0x')) {
-                        color = parseInt(color.substr(2), 16);
-                    }
-                    else {
-                        color = +color;
-                    }
-                }
-                this.penColor = color;
-                const r = this.penColor >> 16 & 0xff;
-                const g = this.penColor >> 8 & 0xff;
-                const b = this.penColor & 0xff;
-                const a = (this.penColor >> 24 & 0xff) / 0xff || 1;
-                this.penCSS = 'rgba(' + r + ', ' + g + ', ' + b + ', ' + a + ')';
-            }
-            setPenColorHSL() {
-                if (this.penCSS) {
-                    const hsl = P.utils.rgbToHSL(this.penColor);
-                    this.penHue = hsl[0];
-                    this.penSaturation = hsl[1];
-                    this.penLightness = hsl[2];
-                    this.penAlpha = (this.penColor >> 24 & 0xff) / 0xff || 1;
-                    this.penCSS = '';
-                }
-            }
-            setPenColorParam(param, value) {
-                this.setPenColorHSL();
-                switch (param) {
-                    case 'color':
-                        this.penHue = value * 360 / 100;
-                        break;
-                    case 'saturation':
-                        this.penSaturation = value;
-                        break;
-                    case 'brightness':
-                        this.penLightness = value % 200;
-                        if (this.penLightness < 0) {
-                            this.penLightness += 200;
-                        }
-                        break;
-                    case 'transparency':
-                        this.penAlpha -= value / 100;
-                        if (this.penAlpha > 1)
-                            this.penAlpha = 1;
-                        if (this.penAlpha < 0)
-                            this.penAlpha = 0;
-                        break;
-                }
-            }
-            changePenColorParam(param, value) {
-                this.setPenColorHSL();
-                switch (param) {
-                    case 'color':
-                        this.penHue += value * 360 / 100;
-                        break;
-                    case 'saturation':
-                        this.penSaturation += value;
-                        break;
-                    case 'brightness':
-                        this.penLightness = (this.penLightness + value) % 200;
-                        if (this.penLightness < 0) {
-                            this.penLightness += 200;
-                        }
-                        break;
-                    case 'transparency':
-                        this.penAlpha = Math.max(0, Math.min(1, this.penAlpha - value / 100));
-                        break;
-                }
             }
         }
         core.Sprite = Sprite;
@@ -2632,13 +2770,16 @@ var P;
                 canvas.height = Math.max(1, this.height * scale);
                 const ctx = canvas.getContext('2d');
                 if (!ctx) {
-                    throw new Error('cannot get 2d rendering context');
+                    if (this.scales[0]) {
+                        return this.scales[0];
+                    }
+                    throw new Error('cannot get 2d rendering context while rendering VectorCostume ' + this.name + ' at scale ' + scale);
                 }
                 ctx.drawImage(this.source, 0, 0, canvas.width, canvas.height);
                 return new ImageLOD(canvas);
             }
             get(scale) {
-                scale = Math.min(8, Math.ceil(scale));
+                scale = Math.min(VectorCostume.MAX_ZOOM, Math.ceil(scale));
                 const index = scale - 1;
                 if (!this.scales[index]) {
                     this.scales[index] = this.getScale(scale);
@@ -2646,6 +2787,7 @@ var P;
                 return this.scales[index];
             }
         }
+        VectorCostume.MAX_ZOOM = 6;
         core.VectorCostume = VectorCostume;
         class Sound {
             constructor(data) {
@@ -2704,13 +2846,13 @@ var P;
     (function (fonts_1) {
         const fontFamilyCache = {};
         fonts_1.scratch3 = {
-            'Marker': '/fonts/Knewave-Regular.woff',
-            'Handwriting': '/fonts/Handlee-Regular.woff',
-            'Pixel': '/fonts/Grand9K-Pixel.ttf',
-            'Curly': '/fonts/Griffy-Regular.woff',
-            'Serif': '/fonts/SourceSerifPro-Regular.woff',
-            'Sans Serif': '/fonts/NotoSans-Regular.woff',
-            'Scratch': '/fonts/Scratch.ttf',
+            'Marker': 'fonts/Knewave-Regular.woff',
+            'Handwriting': 'fonts/Handlee-Regular.woff',
+            'Pixel': 'fonts/Grand9K-Pixel.ttf',
+            'Curly': 'fonts/Griffy-Regular.woff',
+            'Serif': 'fonts/SourceSerifPro-Regular.woff',
+            'Sans Serif': 'fonts/NotoSans-Regular.woff',
+            'Scratch': 'fonts/Scratch.ttf',
         };
         function loadLocalFont(fontFamily, src) {
             if (fontFamilyCache[fontFamily]) {
@@ -2801,13 +2943,10 @@ var P;
         }
         IO.Request = Request;
         class XHRRequest extends Request {
-            constructor() {
-                super(...arguments);
-                this.xhr = new XMLHttpRequest();
-            }
             _load() {
                 return new Promise((resolve, reject) => {
-                    const xhr = this.xhr;
+                    const xhr = new XMLHttpRequest();
+                    this.xhr = xhr;
                     xhr.addEventListener('load', () => {
                         if (XHRRequest.acceptableResponseCodes.indexOf(xhr.status) !== -1) {
                             resolve(xhr.response);
@@ -2816,11 +2955,11 @@ var P;
                             reject(new Error(`HTTP Error ${xhr.status} while downloading ${this.url}`));
                         }
                     });
-                    xhr.addEventListener('error', () => {
-                        reject(`Error while downloading ${this.url} (onerror) (${xhr.status} ${xhr.statusText})`);
+                    xhr.addEventListener('error', (err) => {
+                        reject(`Error while downloading ${this.url} (error) (${xhr.status})`);
                     });
-                    xhr.addEventListener('abort', () => {
-                        reject(`Error while downloading ${this.url} (onabort) (${xhr.status} ${xhr.statusText})`);
+                    xhr.addEventListener('abort', (err) => {
+                        reject(`Error while downloading ${this.url} (abort) (${xhr.status})`);
                     });
                     xhr.open('GET', this.url);
                     xhr.responseType = this.type;
@@ -2895,82 +3034,6 @@ var P;
             readers.toText = toText;
         })(readers = IO.readers || (IO.readers = {}));
     })(IO = P.IO || (P.IO = {}));
-})(P || (P = {}));
-var P;
-(function (P) {
-    var microphone;
-    (function (microphone_1) {
-        let microphone = null;
-        microphone_1.state = 0;
-        const CACHE_TIME = 1000 / 30;
-        function connect() {
-            if (microphone_1.state !== 0) {
-                return;
-            }
-            if (!P.audio.context) {
-                console.warn('Cannot connect to microphone without audio context.');
-                microphone_1.state = 3;
-                return;
-            }
-            microphone_1.state = 2;
-            navigator.mediaDevices.getUserMedia({ audio: true })
-                .then((mediaStream) => {
-                const source = P.audio.context.createMediaStreamSource(mediaStream);
-                const analyzer = P.audio.context.createAnalyser();
-                source.connect(analyzer);
-                microphone = {
-                    stream: mediaStream,
-                    analyzer,
-                    dataArray: new Float32Array(analyzer.fftSize),
-                    lastValue: -1,
-                    lastCheck: 0,
-                };
-                microphone_1.state = 1;
-            })
-                .catch((err) => {
-                console.warn('Cannot connect to microphone: ' + err);
-                microphone_1.state = 3;
-            });
-        }
-        function getLoudness() {
-            if (microphone === null) {
-                connect();
-                return -1;
-            }
-            if (!microphone.stream.active) {
-                return -1;
-            }
-            if (Date.now() - microphone.lastCheck < CACHE_TIME) {
-                return microphone.lastValue;
-            }
-            `
-    The following lines of source code are from the GitHub project LLK/scratch-audio
-    You can find the license for this code here: https://raw.githubusercontent.com/LLK/scratch-audio/develop/LICENSE
-    (our build tool removes comments so a multiline string is used instead)
-    Copyright (c) 2016, Massachusetts Institute of Technology
-    Modifications copyright (c) 2019 Thomas Weber
-    `;
-            microphone.analyzer.getFloatTimeDomainData(microphone.dataArray);
-            let sum = 0;
-            for (let i = 0; i < microphone.dataArray.length; i++) {
-                sum += Math.pow(microphone.dataArray[i], 2);
-            }
-            let rms = Math.sqrt(sum / microphone.dataArray.length);
-            if (microphone.lastValue !== -1) {
-                rms = Math.max(rms, microphone.lastValue * 0.6);
-            }
-            microphone.lastValue = rms;
-            rms *= 1.63;
-            rms = Math.sqrt(rms);
-            rms = Math.round(rms * 100);
-            rms = Math.min(rms, 100);
-            `
-    End of code from LLK/scratch-audio
-    `;
-            return rms;
-        }
-        microphone_1.getLoudness = getLoudness;
-    })(microphone = P.microphone || (P.microphone = {}));
 })(P || (P = {}));
 var P;
 (function (P) {
@@ -3071,33 +3134,6 @@ var P;
             }
             return Math.random() * (y - x) + x;
         };
-        var rgb2hsl = function (rgb) {
-            var r = (rgb >> 16 & 0xff) / 0xff;
-            var g = (rgb >> 8 & 0xff) / 0xff;
-            var b = (rgb & 0xff) / 0xff;
-            var min = Math.min(r, g, b);
-            var max = Math.max(r, g, b);
-            if (min === max) {
-                return [0, 0, r * 100];
-            }
-            var c = max - min;
-            var l = (min + max) / 2;
-            var s = c / (1 - Math.abs(2 * l - 1));
-            var h;
-            switch (max) {
-                case r:
-                    h = ((g - b) / c + 6) % 6;
-                    break;
-                case g:
-                    h = (b - r) / c + 2;
-                    break;
-                case b:
-                    h = (r - g) / c + 4;
-                    break;
-            }
-            h *= 60;
-            return [h, s * 100, l * 100];
-        };
         var clone = function (name) {
             const parent = name === '_myself_' ? S : self.getObject(name);
             if (!parent) {
@@ -3155,7 +3191,7 @@ var P;
             return false;
         };
         var listIndexOf = function (list, value) {
-            for (var i = list.length; i--;) {
+            for (var i = 0; i < list.length; i++) {
                 if (equal(list[i], value))
                     return i + 1;
             }
@@ -3192,6 +3228,26 @@ var P;
             if (i !== -1) {
                 list[i] = value;
             }
+        };
+        var watchedAppendToList = function (list, value) {
+            appendToList(list, value);
+            if (!list.modified)
+                list.modified = true;
+        };
+        var watchedDeleteLineOfList = function (list, index) {
+            deleteLineOfList(list, index);
+            if (!list.modified)
+                list.modified = true;
+        };
+        var watchedInsertInList = function (list, index, value) {
+            insertInList(list, index, value);
+            if (!list.modified)
+                list.modified = true;
+        };
+        var watchedSetLineOfList = function (list, index, value) {
+            setLineOfList(list, index, value);
+            if (!list.modified)
+                list.modified = true;
         };
         var mathFunc = function (f, x) {
             switch (f) {
@@ -3301,8 +3357,12 @@ var P;
             var playSpan = function (span, key, duration) {
                 P.audio.playSpan(span, key, duration, S.getAudioNode());
             };
+            var applySoundEffects = function (node) {
+                node.playbackRate.value = Math.pow(2, (S.soundFilters.pitch / 10 / 12));
+            };
             var playSound = function (sound) {
                 const node = sound.createSourceNode();
+                applySoundEffects(node);
                 node.connect(S.getAudioNode());
                 return {
                     stopped: false,
@@ -3312,6 +3372,7 @@ var P;
             };
             var startSound = function (sound) {
                 const node = sound.createSourceNode();
+                applySoundEffects(node);
                 node.connect(S.getAudioNode());
             };
         }
@@ -3341,10 +3402,12 @@ var P;
                     IMMEDIATE = procedure.fn;
                 }
                 else {
-                    for (var i = CALLS.length, j = 5; i-- && j--;) {
-                        if (CALLS[i].base === procedure.fn) {
-                            runtime.queue[THREAD] = new Thread(S, BASE, procedure.fn, CALLS);
-                            break;
+                    if (VISUAL) {
+                        for (var i = CALLS.length, j = 5; i-- && j--;) {
+                            if (CALLS[i].base === procedure.fn) {
+                                runtime.queue[THREAD] = new Thread(S, BASE, procedure.fn, CALLS);
+                                return;
+                            }
                         }
                     }
                     IMMEDIATE = procedure.fn;
@@ -3480,6 +3543,7 @@ var P;
                 this.interval = setInterval(this.step, 1000 / this.framerate);
                 if (audioContext)
                     audioContext.resume();
+                this.stage.start();
             }
             pause() {
                 if (this.interval) {
@@ -3489,6 +3553,7 @@ var P;
                     window.removeEventListener('error', this.onError);
                     if (audioContext)
                         audioContext.suspend();
+                    this.stage.pause();
                 }
                 this.isRunning = false;
             }
@@ -3591,58 +3656,6 @@ var P;
             }
         }
         runtime_1.Runtime = Runtime;
-        if (P.config.useCrashMonitor) {
-            Runtime.prototype.step = function () {
-                self = this.stage;
-                runtime = this;
-                VISUAL = false;
-                if (audioContext && audioContext.state === 'suspended') {
-                    audioContext.resume();
-                }
-                const start = Date.now();
-                const queue = this.queue;
-                do {
-                    for (THREAD = 0; THREAD < queue.length; THREAD++) {
-                        const thread = queue[THREAD];
-                        if (thread) {
-                            S = thread.sprite;
-                            IMMEDIATE = thread.fn;
-                            BASE = thread.base;
-                            CALLS = thread.calls;
-                            C = CALLS.pop();
-                            STACK = C.stack;
-                            R = STACK.pop();
-                            queue[THREAD] = undefined;
-                            WARP = 0;
-                            while (IMMEDIATE) {
-                                if (Date.now() - start > 5000) {
-                                    const el = document.createElement('pre');
-                                    el.textContent += 'crash monitor debug:\n';
-                                    el.textContent += `S: ${S.name} (isClone=${S.isClone},isStage=${S.isStage})\n`;
-                                    el.textContent += `IMMEDIATE: ${IMMEDIATE.toString()} // (${S.fns.indexOf(IMMEDIATE)})\n`;
-                                    document.querySelector('#app').appendChild(el);
-                                    alert('forkphorus has crashed. please include the debug information at the bottom of the page.');
-                                    this.pause();
-                                    this.stopAll();
-                                    return;
-                                }
-                                const fn = IMMEDIATE;
-                                IMMEDIATE = null;
-                                fn();
-                            }
-                            STACK.push(R);
-                            CALLS.push(C);
-                        }
-                    }
-                    for (let i = queue.length; i--;) {
-                        if (!queue[i]) {
-                            queue.splice(i, 1);
-                        }
-                    }
-                } while ((this.isTurbo || !VISUAL) && Date.now() - start < 1000 / this.framerate && queue.length);
-                this.stage.draw();
-            };
-        }
         function createContinuation(source) {
             var result = '(function() {\n';
             var brackets = 0;
@@ -3741,14 +3754,14 @@ var P;
             return 0;
         }
         utils.parseRotationStyle = parseRotationStyle;
-        function rgbToHSL(rgb) {
-            var r = (rgb >> 16 & 0xff) / 0xff;
-            var g = (rgb >> 8 & 0xff) / 0xff;
-            var b = (rgb & 0xff) / 0xff;
+        function rgbToHSL(r, g, b) {
+            r /= 255;
+            g /= 255;
+            b /= 255;
             var min = Math.min(r, g, b);
             var max = Math.max(r, g, b);
             if (min === max) {
-                return [0, 0, r * 100];
+                return [0, 0, r];
             }
             var c = max - min;
             var l = (min + max) / 2;
@@ -3766,9 +3779,79 @@ var P;
                     break;
             }
             h *= 60;
-            return [h, s * 100, l * 100];
+            return [h, s, l];
         }
         utils.rgbToHSL = rgbToHSL;
+        function rgbToHSV(r, g, b) {
+            r /= 255;
+            g /= 255;
+            b /= 255;
+            var max = Math.max(r, g, b), min = Math.min(r, g, b);
+            var h, s, v = max;
+            var d = max - min;
+            s = max == 0 ? 0 : d / max;
+            if (max == min) {
+                h = 0;
+            }
+            else {
+                switch (max) {
+                    case r:
+                        h = (g - b) / d + (g < b ? 6 : 0);
+                        break;
+                    case g:
+                        h = (b - r) / d + 2;
+                        break;
+                    case b:
+                        h = (r - g) / d + 4;
+                        break;
+                }
+                h /= 6;
+            }
+            return [h * 360, s, v];
+        }
+        utils.rgbToHSV = rgbToHSV;
+        function hsvToRGB(h, s, v) {
+            var r, g, b;
+            var i = Math.floor(h * 6);
+            var f = h * 6 - i;
+            var p = v * (1 - s);
+            var q = v * (1 - f * s);
+            var t = v * (1 - (1 - f) * s);
+            switch (i % 6) {
+                case 0:
+                    r = v, g = t, b = p;
+                    break;
+                case 1:
+                    r = q, g = v, b = p;
+                    break;
+                case 2:
+                    r = p, g = v, b = t;
+                    break;
+                case 3:
+                    r = p, g = q, b = v;
+                    break;
+                case 4:
+                    r = t, g = p, b = v;
+                    break;
+                case 5:
+                    r = v, g = p, b = q;
+                    break;
+            }
+            return [r * 255, g * 255, b * 255];
+        }
+        utils.hsvToRGB = hsvToRGB;
+        function hslToHSV(h, s, l) {
+            var v = l + s * Math.min(l, 1 - l);
+            var s = v === 0 ? 0 : 2 - 2 * l / v;
+            return [h, s, v];
+        }
+        utils.hslToHSV = hslToHSV;
+        function hsvToHSL(h, s, v) {
+            var l = v - v * s / 2;
+            var s = l === 0 ? 0 : (v - l) / Math.min(2 - 2 * l / v);
+            return [h, s, l];
+        }
+        utils.hsvToHSL = hsvToHSL;
         function clamp(number, min, max) {
             return Math.min(max, Math.max(min, number));
         }
@@ -3911,7 +3994,12 @@ var P;
                     case 'senseVideoMotion':
                         break;
                     case 'soundLevel':
-                        value = this.stage.getLoudness();
+                        if (this.stage.microphone) {
+                            value = this.stage.microphone.getLoudness();
+                        }
+                        else {
+                            value = -1;
+                        }
                         break;
                     case 'tempo':
                         value = this.stage.tempoBPM;
@@ -4261,6 +4349,9 @@ var P;
                 if (layers.length > 1) {
                     image = document.createElement('canvas');
                     const ctx = image.getContext('2d');
+                    if (!ctx) {
+                        throw new Error('Cannot get 2d rendering context loading costume ' + data.costumeName);
+                    }
                     image.width = Math.max(layers[0].width, 1);
                     image.height = Math.max(layers[0].height, 1);
                     for (const layer of layers) {
@@ -4720,7 +4811,7 @@ var P;
                         return 'S.distanceTo(' + val(e[1]) + ')';
                     }
                     else if (e[0] === 'soundLevel') {
-                        return 'self.getLoudness()';
+                        return 'self.microphone.getLoudness()';
                     }
                     else if (e[0] === 'timestamp') {
                         return '((Date.now() - epoch) / 86400000)';
@@ -4844,14 +4935,7 @@ var P;
                     source += '}\n';
                     source += 'restore();\n';
                 };
-                var noRGB = '';
-                noRGB += 'if (S.penCSS) {\n';
-                noRGB += '  var hsl = rgb2hsl(S.penColor & 0xffffff);\n';
-                noRGB += '  S.penHue = hsl[0];\n';
-                noRGB += '  S.penSaturation = hsl[1];\n';
-                noRGB += '  S.penLightness = hsl[2];\n';
-                noRGB += '  S.penCSS = null;';
-                noRGB += '}\n';
+                var toHSLA = 'S.penColor.toHSLA();\n';
                 var visual = 0;
                 var compile = function (block) {
                     if (LOG_PRIMITIVES) {
@@ -5099,32 +5183,29 @@ var P;
                         source += 'S.isPenDown = false;\n';
                     }
                     else if (block[0] === 'penColor:') {
-                        source += 'var c = ' + num(block[1]) + ';\n';
-                        source += 'S.penColor = c;\n';
-                        source += 'var a = (c >> 24 & 0xff) / 0xff;\n';
-                        source += 'S.penCSS = "rgba(" + (c >> 16 & 0xff) + "," + (c >> 8 & 0xff) + "," + (c & 0xff) + ", " + (a || 1) + ")";\n';
+                        source += 'S.setPenColor(' + num(block[1]) + ');\n';
                     }
                     else if (block[0] === 'setPenHueTo:') {
-                        source += noRGB;
-                        source += 'S.penHue = ' + num(block[1]) + ' * 360 / 200;\n';
-                        source += 'S.penSaturation = 100;\n';
+                        source += toHSLA;
+                        source += 'S.penColor.x = ' + num(block[1]) + ' * 360 / 200;\n';
+                        source += 'S.penColor.y = 100;\n';
                     }
                     else if (block[0] === 'changePenHueBy:') {
-                        source += noRGB;
-                        source += 'S.penHue += ' + num(block[1]) + ' * 360 / 200;\n';
-                        source += 'S.penSaturation = 100;\n';
+                        source += toHSLA;
+                        source += 'S.penColor.x += ' + num(block[1]) + ' * 360 / 200;\n';
+                        source += 'S.penColor.y = 100;\n';
                     }
                     else if (block[0] === 'setPenShadeTo:') {
-                        source += noRGB;
-                        source += 'S.penLightness = ' + num(block[1]) + ' % 200;\n';
-                        source += 'if (S.penLightness < 0) S.penLightness += 200;\n';
-                        source += 'S.penSaturation = 100;\n';
+                        source += toHSLA;
+                        source += 'S.penColor.z = ' + num(block[1]) + ' % 200;\n';
+                        source += 'if (S.penColor.z < 0) S.penColor.z += 200;\n';
+                        source += 'S.penColor.y = 100;\n';
                     }
                     else if (block[0] === 'changePenShadeBy:') {
-                        source += noRGB;
-                        source += 'S.penLightness = (S.penLightness + ' + num(block[1]) + ') % 200;\n';
-                        source += 'if (S.penLightness < 0) S.penLightness += 200;\n';
-                        source += 'S.penSaturation = 100;\n';
+                        source += toHSLA;
+                        source += 'S.penColor.z = (S.penColor.z + ' + num(block[1]) + ') % 200;\n';
+                        source += 'if (S.penColor.z < 0) S.penColor.z += 200;\n';
+                        source += 'S.penColor.y = 100;\n';
                     }
                     else if (block[0] === 'penSize:') {
                         source += 'var f = ' + num(block[1]) + ';\n';
@@ -5573,11 +5654,58 @@ var P;
             }
         }
         sb3.Scratch3VariableWatcher = Scratch3VariableWatcher;
+        class ListWatcherRow {
+            constructor() {
+                this.value = '';
+                this.index = -1;
+                this.y = 0;
+                this.visible = true;
+                this.element = document.createElement('div');
+                this.indexEl = document.createElement('div');
+                this.valueEl = document.createElement('div');
+                this.element.className = 's3-list-row';
+                this.indexEl.className = 's3-list-index';
+                this.valueEl.className = 's3-list-value';
+                this.element.appendChild(this.indexEl);
+                this.element.appendChild(this.valueEl);
+            }
+            setValue(value) {
+                if (value !== this.value) {
+                    this.value = value;
+                    this.valueEl.textContent = value;
+                }
+            }
+            setIndex(index) {
+                if (index !== this.index) {
+                    this.index = index;
+                    this.indexEl.textContent = (index + 1).toString();
+                }
+            }
+            setY(y) {
+                if (y !== this.y) {
+                    this.y = y;
+                    this.element.style.transform = 'translateY(' + y + 'px)';
+                }
+            }
+            setVisible(visible) {
+                if (this.visible !== visible) {
+                    this.visible = visible;
+                    this.element.style.display = visible ? '' : 'none';
+                }
+            }
+        }
+        sb3.ListWatcherRow = ListWatcherRow;
         class Scratch3ListWatcher extends P.core.Watcher {
             constructor(stage, data) {
                 super(stage, data.spriteName || '');
-                this.firstUpdate = true;
-                this.domRows = [];
+                this.rows = [];
+                this._rowHeight = -1;
+                this.scrollTop = 0;
+                this.lastZoomLevel = 1;
+                this.scrollAhead = 8;
+                this.scrollBack = 3;
+                this.scrollDirection = 1;
+                this._contentHeight = -1;
                 this.id = data.id;
                 this.params = data.params;
                 this.x = data.x;
@@ -5590,38 +5718,56 @@ var P;
                 if (!this.visible) {
                     return;
                 }
-                if (!this.list.modified && !this.firstUpdate) {
+                if (!this.list.modified && this.lastZoomLevel === this.stage.zoom) {
                     return;
                 }
-                this.firstUpdate = false;
+                if (this.lastZoomLevel !== this.stage.zoom) {
+                    this.contentEl.scrollTop *= this.stage.zoom / this.lastZoomLevel;
+                }
                 this.list.modified = false;
-                this.updateContents();
-            }
-            updateContents() {
-                const length = this.list.length;
-                if (this.domRows.length < length) {
-                    while (this.domRows.length < length) {
-                        const row = this.createRow();
-                        this.domRows.push(row);
-                        this.contentEl.appendChild(row.row);
-                    }
-                }
-                else if (this.domRows.length > length) {
-                    while (this.domRows.length > length) {
-                        this.domRows.pop();
-                        this.contentEl.removeChild(this.contentEl.lastChild);
-                    }
-                }
-                for (var i = 0; i < length; i++) {
-                    const { value } = this.domRows[i];
-                    const rowText = '' + this.list[i];
-                    if (rowText !== value.textContent) {
-                        value.textContent = rowText;
-                    }
-                }
+                this.lastZoomLevel = this.stage.zoom;
+                this.updateList();
                 const bottomLabelText = this.getBottomLabel();
                 if (this.bottomLabelEl.textContent !== bottomLabelText) {
                     this.bottomLabelEl.textContent = this.getBottomLabel();
+                }
+            }
+            updateList() {
+                const height = this.list.length * this.getRowHeight();
+                this.endpointEl.style.transform = 'translateY(' + (height * this.stage.zoom) + 'px)';
+                const topVisible = this.scrollTop;
+                const bottomVisible = topVisible + this.getContentHeight();
+                let startingIndex = Math.floor(topVisible / this.getRowHeight());
+                let endingIndex = Math.ceil(bottomVisible / this.getRowHeight());
+                if (this.scrollDirection === 1) {
+                    startingIndex -= this.scrollBack;
+                    endingIndex += this.scrollAhead;
+                }
+                else {
+                    startingIndex -= this.scrollAhead;
+                    endingIndex += this.scrollBack;
+                }
+                if (startingIndex < 0)
+                    startingIndex = 0;
+                if (endingIndex > this.list.length - 1)
+                    endingIndex = this.list.length - 1;
+                if (endingIndex - startingIndex > 50) {
+                    endingIndex = startingIndex + 50;
+                }
+                const visibleRows = endingIndex - startingIndex;
+                while (this.rows.length <= visibleRows) {
+                    this.addRow();
+                }
+                for (var listIndex = startingIndex, rowIndex = 0; listIndex <= endingIndex; listIndex++, rowIndex++) {
+                    let row = this.rows[rowIndex];
+                    row.setIndex(listIndex);
+                    row.setValue(this.list[listIndex]);
+                    row.setY(listIndex * this._rowHeight * this.stage.zoom);
+                    row.setVisible(true);
+                }
+                while (rowIndex < this.rows.length) {
+                    this.rows[rowIndex].setVisible(false);
+                    rowIndex++;
                 }
             }
             init() {
@@ -5630,20 +5776,41 @@ var P;
                 const listId = this.id;
                 const listName = target.listIds[listId];
                 if (!(listName in this.target.lists)) {
-                    this.target.lists[listName] = new Scratch3List();
+                    this.target.lists[listName] = createList();
                 }
                 this.list = this.target.lists[listName];
                 this.target.listWatchers[listName] = this;
                 this.updateLayout();
-                if (this.visible) {
-                    this.updateContents();
-                }
             }
             getTopLabel() {
-                return this.params.LIST;
+                if (this.target.isStage) {
+                    return this.params.LIST;
+                }
+                return this.target.name + ': ' + this.params.LIST;
             }
             getBottomLabel() {
                 return 'length ' + this.list.length;
+            }
+            getContentHeight() {
+                if (this._contentHeight === -1) {
+                    this._contentHeight = this.contentEl.offsetHeight;
+                }
+                return this._contentHeight;
+            }
+            getRowHeight() {
+                if (this._rowHeight === -1) {
+                    const PADDING = 2;
+                    const row = this.addRow();
+                    const height = row.element.offsetHeight;
+                    this._rowHeight = height + PADDING;
+                }
+                return this._rowHeight;
+            }
+            addRow() {
+                const row = new ListWatcherRow();
+                this.rows.push(row);
+                this.contentEl.appendChild(row.element);
+                return row;
             }
             updateLayout() {
                 if (!this.containerEl) {
@@ -5655,22 +5822,11 @@ var P;
                 super.setVisible(visible);
                 this.updateLayout();
             }
-            createRow() {
-                const row = document.createElement('div');
-                const index = document.createElement('div');
-                const value = document.createElement('div');
-                row.classList.add('s3-list-row');
-                index.classList.add('s3-list-index');
-                value.classList.add('s3-list-value');
-                index.textContent = (this.domRows.length + 1).toString();
-                row.appendChild(index);
-                row.appendChild(value);
-                return { row, index, value };
-            }
             createLayout() {
                 this.containerEl = document.createElement('div');
                 this.topLabelEl = document.createElement('div');
                 this.bottomLabelEl = document.createElement('div');
+                this.middleContainerEl = document.createElement('div');
                 this.contentEl = document.createElement('div');
                 this.containerEl.style.top = (this.y / 10) + 'em';
                 this.containerEl.style.left = (this.x / 10) + 'em';
@@ -5681,9 +5837,26 @@ var P;
                 this.topLabelEl.classList.add('s3-list-top-label');
                 this.bottomLabelEl.textContent = this.getBottomLabel();
                 this.bottomLabelEl.classList.add('s3-list-bottom-label');
-                this.contentEl.classList.add('s3-list-content');
+                this.middleContainerEl.classList.add('s3-list-content');
+                this.contentEl.classList.add('s3-list-rows');
+                this.contentEl.addEventListener('scroll', (e) => {
+                    const scrollTop = this.contentEl.scrollTop / this.stage.zoom;
+                    const scrollChange = this.scrollTop - scrollTop;
+                    if (scrollChange < 0) {
+                        this.scrollDirection = 1;
+                    }
+                    else if (scrollChange > 0) {
+                        this.scrollDirection = 0;
+                    }
+                    this.scrollTop = scrollTop;
+                    this.updateList();
+                });
+                this.endpointEl = document.createElement('div');
+                this.endpointEl.className = 's3-list-endpoint';
+                this.contentEl.appendChild(this.endpointEl);
+                this.middleContainerEl.appendChild(this.contentEl);
                 this.containerEl.appendChild(this.topLabelEl);
-                this.containerEl.appendChild(this.contentEl);
+                this.containerEl.appendChild(this.middleContainerEl);
                 this.containerEl.appendChild(this.bottomLabelEl);
                 this.stage.ui.appendChild(this.containerEl);
             }
@@ -5699,12 +5872,10 @@ var P;
             }
         }
         sb3.Scratch3Procedure = Scratch3Procedure;
-        class Scratch3List extends Array {
-            constructor() {
-                super(...arguments);
-                this.modified = false;
-            }
-            toString() {
+        function createList() {
+            const list = [];
+            list.modified = false;
+            list.toString = function () {
                 var i = this.length;
                 while (i--) {
                     if (('' + this[i]).length !== 1) {
@@ -5712,65 +5883,10 @@ var P;
                     }
                 }
                 return this.join('');
-            }
-            scratchIndex(index) {
-                if (index === 'random' || index === 'any') {
-                    return Math.floor(Math.random() * this.length);
-                }
-                if (index === 'last') {
-                    return this.length - 1;
-                }
-                index = Math.floor(+index);
-                if (index < 1 || index > this.length + 1) {
-                    return -1;
-                }
-                return index - 1;
-            }
-            deleteLine(index) {
-                if (index === 'all') {
-                    this.modified = true;
-                    this.length = 0;
-                    return;
-                }
-                index = this.scratchIndex(index);
-                if (index === this.length - 1) {
-                    this.modified = true;
-                    this.pop();
-                }
-                else if (index !== -1) {
-                    this.modified = true;
-                    this.splice(index, 1);
-                }
-            }
-            push(...items) {
-                this.modified = true;
-                return super.push(...items);
-            }
-            insert(index, value) {
-                if (+index === 1) {
-                    this.modified = true;
-                    this.unshift(value);
-                    return;
-                }
-                index = this.scratchIndex(index);
-                if (index === this.length) {
-                    this.modified = true;
-                    this.push(value);
-                }
-                else if (index !== -1) {
-                    this.modified = true;
-                    this.splice(index, 0, value);
-                }
-            }
-            set(index, value) {
-                index = this.scratchIndex(index);
-                if (index !== -1) {
-                    this.modified = true;
-                    this[index] = value;
-                }
-            }
+            };
+            return list;
         }
-        sb3.Scratch3List = Scratch3List;
+        sb3.createList = createList;
         function patchSVG(svg) {
             if (svg.hasAttribute('viewBox')) {
                 const viewBox = svg.getAttribute('viewBox').split(/ |,/).map((i) => +i);
@@ -5904,7 +6020,11 @@ var P;
                     const list = data.lists[id];
                     const name = list[0];
                     const content = list[1];
-                    target.lists[name] = new Scratch3List().concat(content);
+                    const scratchList = createList();
+                    for (var i = 0; i < content.length; i++) {
+                        scratchList[i] = content[i];
+                    }
+                    target.lists[name] = scratchList;
                     target.listIds[id] = name;
                 }
                 target.name = data.name;
@@ -5934,18 +6054,9 @@ var P;
                 });
             }
             loadFonts() {
-                const fonts = {
-                    'Marker': '/fonts/Knewave-Regular.woff',
-                    'Handwriting': '/fonts/Handlee-Regular.woff',
-                    'Pixel': '/fonts/Grand9K-Pixel.ttf',
-                    'Curly': '/fonts/Griffy-Regular.woff',
-                    'Serif': '/fonts/SourceSerifPro-Regular.woff',
-                    'Sans Serif': '/fonts/NotoSans-Regular.woff',
-                    'Scratch': '/fonts/Scratch.ttf',
-                };
                 const promises = [];
-                for (const family in fonts) {
-                    promises.push(this.promiseTask(P.utils.settled(P.fonts.loadLocalFont(family, fonts[family]))));
+                for (const family in P.fonts.scratch3) {
+                    promises.push(this.promiseTask(P.utils.settled(P.fonts.loadLocalFont(family, P.fonts.scratch3[family]))));
                 }
                 return Promise.all(promises);
             }
@@ -5981,14 +6092,13 @@ var P;
                         throw new Error('no stage object');
                     }
                     const sprites = targets.filter((i) => i.isSprite);
-                    const watchers = this.projectData.monitors
+                    sprites.forEach((sprite) => sprite.stage = stage);
+                    stage.children = sprites;
+                    stage.allWatchers = this.projectData.monitors
                         .map((data) => this.loadWatcher(data, stage))
                         .filter((i) => i && i.valid);
-                    sprites.forEach((sprite) => sprite.stage = stage);
+                    stage.allWatchers.forEach((watcher) => watcher.init());
                     this.compileTargets(targets, stage);
-                    stage.children = sprites;
-                    stage.allWatchers = watchers;
-                    watchers.forEach((watcher) => watcher.init());
                     return stage;
                 });
             }
@@ -6394,7 +6504,7 @@ var P;
                         return 'S';
                     }
                     else {
-                        this.target.lists[name] = new sb3.Scratch3List();
+                        this.target.lists[name] = sb3.createList();
                         return 'S';
                     }
                 }
@@ -6569,7 +6679,7 @@ var P;
                     const util = new HatUtil(this, hat, startingFn);
                     hatCompiler.handle(util);
                     if (P.config.debug) {
-                        this.log('compiled sb3 script', hat.opcode, script, this.target);
+                        this.log(`[${this.target.name}] compiled sb3 script "${hat.opcode}"`, script, this.target);
                     }
                 }
                 parseScript(script) {
@@ -6776,7 +6886,7 @@ var P;
     statementLibrary['data_addtolist'] = function (util) {
         const LIST = util.getListReference('LIST');
         const ITEM = util.getInput('ITEM', 'any');
-        util.writeLn(`${LIST}.push(${ITEM});`);
+        util.writeLn(`watchedAppendToList(${LIST}, ${ITEM});`);
     };
     statementLibrary['data_changevariableby'] = function (util) {
         const VARIABLE = util.getVariableReference('VARIABLE');
@@ -6785,12 +6895,12 @@ var P;
     };
     statementLibrary['data_deletealloflist'] = function (util) {
         const LIST = util.getListReference('LIST');
-        util.writeLn(`${LIST}.deleteLine("all");`);
+        util.writeLn(`${LIST}.length = 0;`);
     };
     statementLibrary['data_deleteoflist'] = function (util) {
         const LIST = util.getListReference('LIST');
         const INDEX = util.getInput('INDEX', 'any');
-        util.writeLn(`${LIST}.deleteLine(${INDEX});`);
+        util.writeLn(`watchedDeleteLineOfList(${LIST}, ${INDEX});`);
     };
     statementLibrary['data_hidelist'] = function (util) {
         const LIST = util.sanitizedString(util.getField('LIST'));
@@ -6804,15 +6914,15 @@ var P;
     };
     statementLibrary['data_insertatlist'] = function (util) {
         const LIST = util.getListReference('LIST');
-        const ITEM = util.getInput('ITEM', 'any');
         const INDEX = util.getInput('INDEX', 'any');
-        util.writeLn(`${LIST}.insert(${INDEX}, ${ITEM});`);
+        const ITEM = util.getInput('ITEM', 'any');
+        util.writeLn(`watchedInsertInList(${LIST}, ${INDEX}, ${ITEM});`);
     };
     statementLibrary['data_replaceitemoflist'] = function (util) {
         const LIST = util.getListReference('LIST');
         const ITEM = util.getInput('ITEM', 'any');
         const INDEX = util.getInput('INDEX', 'any');
-        util.writeLn(`${LIST}.set(${INDEX}, ${ITEM});`);
+        util.writeLn(`watchedSetLineOfList(${LIST}, ${INDEX}, ${ITEM});`);
     };
     statementLibrary['data_setvariableto'] = function (util) {
         const VARIABLE = util.getVariableReference('VARIABLE');
@@ -7037,7 +7147,7 @@ var P;
     statementLibrary['motion_pointindirection'] = function (util) {
         const DIRECTION = util.getInput('DIRECTION', 'number');
         util.visual('visible');
-        util.writeLn(`S.direction = ${DIRECTION};`);
+        util.writeLn(`S.setDirection(${DIRECTION});`);
     };
     statementLibrary['motion_pointtowards'] = function (util) {
         const TOWARDS = util.getInput('TOWARDS', 'any');
@@ -7072,10 +7182,18 @@ var P;
         const TEMPO = util.getInput('TEMPO', 'number');
         util.writeLn(`self.tempoBPM = ${TEMPO};`);
     };
+    statementLibrary['sound_changeeffectby'] = function (util) {
+        const EFFECT = util.sanitizedString(util.getField('EFFECT'));
+        const VALUE = util.getInput('VALUE', 'number');
+        util.writeLn(`S.changeSoundFilter(${EFFECT}, ${VALUE});`);
+    };
     statementLibrary['sound_changevolumeby'] = function (util) {
         const VOLUME = util.getInput('VOLUME', 'number');
         util.writeLn(`S.volume = Math.max(0, Math.min(1, S.volume + ${VOLUME} / 100));`);
         util.writeLn('if (S.node) S.node.gain.value = S.volume;');
+    };
+    statementLibrary['sound_cleareffects'] = function (util) {
+        util.writeLn('S.resetSoundFilters();');
     };
     statementLibrary['sound_play'] = function (util) {
         const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
@@ -7104,6 +7222,11 @@ var P;
             util.writeLn('  restore();');
             util.writeLn('}');
         }
+    };
+    statementLibrary['sound_seteffectto'] = function (util) {
+        const EFFECT = util.sanitizedString(util.getField('EFFECT'));
+        const VALUE = util.getInput('VALUE', 'number');
+        util.writeLn(`S.setSoundFilter(${EFFECT}, ${VALUE});`);
     };
     statementLibrary['sound_setvolumeto'] = function (util) {
         const VOLUME = util.getInput('VOLUME', 'number');
@@ -7134,20 +7257,20 @@ var P;
     statementLibrary['pen_changePenColorParamBy'] = function (util) {
         const COLOR_PARAM = util.getInput('COLOR_PARAM', 'string');
         const VALUE = util.getInput('VALUE', 'number');
-        util.writeLn(`S.changePenColorParam(${COLOR_PARAM}, ${VALUE});`);
+        util.writeLn(`S.penColor.changeParam(${COLOR_PARAM}, ${VALUE});`);
     };
     statementLibrary['pen_changePenHueBy'] = function (util) {
         const HUE = util.getInput('HUE', 'number');
-        util.writeLn('S.setPenColorHSL();');
-        util.writeLn(`S.penHue += ${HUE} * 360 / 200;`);
-        util.writeLn('S.penSaturation = 100;');
+        util.writeLn('S.penColor.toHSLA();');
+        util.writeLn(`S.penColor.x += ${HUE} * 360 / 200;`);
+        util.writeLn('S.penColor.y = 100;');
     };
     statementLibrary['pen_changePenShadeBy'] = function (util) {
         const SHADE = util.getInput('SHADE', 'number');
-        util.writeLn('S.setPenColorHSL();');
-        util.writeLn(`S.penLightness = (S.penLightness + ${SHADE}) % 200;`);
-        util.writeLn('if (S.penLightness < 0) S.penLightness += 200;');
-        util.writeLn('S.saturation = 100;');
+        util.writeLn('S.penColor.toHSLA();');
+        util.writeLn(`S.penColor.z = (S.penColor.z + ${SHADE}) % 200;`);
+        util.writeLn('if (S.penColor.z < 0) S.penColor.z += 200;');
+        util.writeLn('S.penColor.y = 100;');
     };
     statementLibrary['pen_changePenSizeBy'] = function (util) {
         const SIZE = util.getInput('SIZE', 'number');
@@ -7168,7 +7291,7 @@ var P;
     statementLibrary['pen_setPenColorParamTo'] = function (util) {
         const COLOR_PARAM = util.getInput('COLOR_PARAM', 'string');
         const VALUE = util.getInput('VALUE', 'number');
-        util.writeLn(`S.setPenColorParam(${COLOR_PARAM}, ${VALUE});`);
+        util.writeLn(`S.penColor.setParam(${COLOR_PARAM}, ${VALUE});`);
     };
     statementLibrary['pen_setPenColorToColor'] = function (util) {
         const COLOR = util.getInput('COLOR', 'any');
@@ -7176,16 +7299,16 @@ var P;
     };
     statementLibrary['pen_setPenHueToNumber'] = function (util) {
         const HUE = util.getInput('HUE', 'number');
-        util.writeLn('S.setPenColorHSL();');
-        util.writeLn(`S.penHue = ${HUE} * 360 / 200;`);
-        util.writeLn('S.penSaturation = 100;');
+        util.writeLn('S.penColor.toHSLA();');
+        util.writeLn(`S.penColor.x = ${HUE} * 360 / 200;`);
+        util.writeLn('S.penColor.y = 100;');
     };
     statementLibrary['pen_setPenShadeToNumber'] = function (util) {
         const SHADE = util.getInput('SHADE', 'number');
-        util.writeLn('S.setPenColorHSL();');
-        util.writeLn(`S.penLightness = ${SHADE} % 200;`);
-        util.writeLn('if (S.penLightness < 0) S.penLightness += 200;');
-        util.writeLn('S.saturation = 100;');
+        util.writeLn('S.penColor.toHSLA();');
+        util.writeLn(`S.penColor.z = ${SHADE} % 200;`);
+        util.writeLn('if (S.penColor.z < 0) S.penColor.z += 200;');
+        util.writeLn('S.penColor.y = 100;');
     };
     statementLibrary['pen_setPenSizeTo'] = function (util) {
         const SIZE = util.getInput('SIZE', 'number');
@@ -7429,9 +7552,9 @@ var P;
             case 'ceiling':
                 return util.numberInput(`Math.ceil(${NUM})`);
             case 'cos':
-                return util.numberInput(`Math.cos(${NUM} * Math.PI / 180)`);
+                return util.numberInput(`(Math.round(Math.cos(${NUM} * Math.PI / 180) * 1e10) / 1e10)`);
             case 'sin':
-                return util.numberInput(`Math.sin(${NUM} * Math.PI / 180)`);
+                return util.numberInput(`(Math.round(Math.sin(${NUM} * Math.PI / 180) * 1e10) / 1e10)`);
             case 'tan':
                 return util.numberInput(`Math.tan(${NUM} * Math.PI / 180)`);
             case 'asin':
@@ -7523,14 +7646,16 @@ var P;
         return util.fieldInput('KEY_OPTION');
     };
     inputLibrary['sensing_keypressed'] = function (util) {
-        const KEY_OPTION = util.getInput('KEY_OPTION', 'any');
+        const KEY_OPTION = util.getInput('KEY_OPTION', 'string');
         return util.booleanInput(`!!self.keys[P.runtime.getKeyCode(${KEY_OPTION})]`);
     };
     inputLibrary['sensing_loud'] = function (util) {
-        return util.booleanInput('(self.getLoudness() > 10)');
+        util.stage.initLoudness();
+        return util.booleanInput('(self.microphone.getLoudness() > 10)');
     };
     inputLibrary['sensing_loudness'] = function (util) {
-        return util.numberInput('self.getLoudness()');
+        util.stage.initLoudness();
+        return util.numberInput('self.microphone.getLoudness()');
     };
     inputLibrary['sensing_mousedown'] = function (util) {
         return util.booleanInput('self.mousePressed');
@@ -7824,7 +7949,17 @@ var P;
         }
     };
     watcherLibrary['sensing_loudness'] = {
-        evaluate(watcher) { return watcher.stage.getLoudness(); },
+        init(watcher) {
+            watcher.stage.initLoudness();
+        },
+        evaluate(watcher) {
+            if (watcher.stage.microphone) {
+                return watcher.stage.microphone.getLoudness();
+            }
+            else {
+                return -1;
+            }
+        },
         getLabel() { return 'loudness'; },
     };
     watcherLibrary['sensing_timer'] = {
@@ -7856,88 +7991,215 @@ var P;
 }());
 var P;
 (function (P) {
-    var speech2text;
-    (function (speech2text) {
-        var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || window.mozSpeechRecognition || window.msSpeechRecognition;
-        speech2text.supported = typeof SpeechRecognition !== 'undefined';
-        if (!speech2text.supported) {
-            console.warn('Speech to text is not supported in this browser. (https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition)');
-        }
-        class SpeechToTextExtension {
+    var ext;
+    (function (ext) {
+        class Extension {
             constructor(stage) {
                 this.stage = stage;
-                this.speech = '';
-                this.listeners = 0;
-                this.hats = [];
-                this.initRecognition();
-                this.initOverlay();
-            }
-            initRecognition() {
-                this.recognition = new SpeechRecognition();
-                this.recognition.lang = 'en-US';
-                this.recognition.continuous = true;
-                this.recognition.onresult = (event) => this.onresult(event);
-                this.recognition.onerror = (event) => {
-                    if (event.error !== 'aborted') {
-                        console.error('speech2text error', event);
-                    }
-                };
-                this.recognition.start();
-            }
-            initOverlay() {
-                if (this.overlayElement) {
-                    throw new Error('initializing overlay twice');
-                }
-                const container = document.createElement('div');
-                container.className = 'speech2text-container';
-                const indicator = document.createElement('div');
-                indicator.className = 'speech2text-indicator';
-                const animation = document.createElement('div');
-                animation.className = 'speech2text-animation';
-                container.appendChild(animation);
-                container.appendChild(indicator);
-                this.stage.ui.appendChild(container);
-                this.overlayElement = container;
-            }
-            onresult(event) {
-                this.lastResultIndex = event.resultIndex;
-                const lastResult = event.results[event.resultIndex];
-                const message = lastResult[0];
-                const transcript = message.transcript.trim();
-                if (this.listeners !== 0) {
-                    this.speech = transcript;
-                }
-                for (const hat of this.hats) {
-                    const target = hat.target;
-                    const phraseFunction = hat.phraseFunction;
-                    const startingFunction = hat.startingFunction;
-                    const value = this.stage.runtime.evaluateExpression(target, phraseFunction);
-                    if (value === transcript) {
-                        this.stage.runtime.startThread(target, startingFunction);
-                    }
-                }
-            }
-            addHat(hat) {
-                this.hats.push(hat);
-            }
-            startListen() {
-                this.listeners++;
-                this.overlayElement.setAttribute('listening', '');
-            }
-            endListen() {
-                this.listeners--;
-                if (this.listeners === 0) {
-                    this.overlayElement.removeAttribute('listening');
-                }
             }
             destroy() {
-                this.recognition.abort();
             }
-            id() {
-                return this.lastResultIndex;
+            onstart() {
+            }
+            onpause() {
             }
         }
-        speech2text.SpeechToTextExtension = SpeechToTextExtension;
-    })(speech2text = P.speech2text || (P.speech2text = {}));
+        ext.Extension = Extension;
+    })(ext = P.ext || (P.ext = {}));
+})(P || (P = {}));
+/*!
+Parts of this file (microphone.ts) are derived from https://github.com/LLK/scratch-audio/blob/develop/src/Loudness.js
+*/
+var P;
+(function (P) {
+    var ext;
+    (function (ext) {
+        var microphone;
+        (function (microphone_1) {
+            let microphone = null;
+            let state = 0;
+            const CACHE_TIME = 1000 / 30;
+            function connect() {
+                if (state !== 0) {
+                    return;
+                }
+                if (!P.audio.context) {
+                    console.warn('Cannot connect to microphone without audio context.');
+                    state = 3;
+                    return;
+                }
+                state = 2;
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then((mediaStream) => {
+                    const source = P.audio.context.createMediaStreamSource(mediaStream);
+                    const analyzer = P.audio.context.createAnalyser();
+                    source.connect(analyzer);
+                    microphone = {
+                        source: source,
+                        stream: mediaStream,
+                        analyzer,
+                        dataArray: new Float32Array(analyzer.fftSize),
+                        lastValue: -1,
+                        lastCheck: 0,
+                    };
+                    state = 1;
+                })
+                    .catch((err) => {
+                    console.warn('Cannot connect to microphone: ' + err);
+                    state = 3;
+                });
+            }
+            function reinitAnalyser() {
+                if (!microphone) {
+                    throw new Error('Microphone not connected; cannot re-init something that does not exist!');
+                }
+                const analyzer = P.audio.context.createAnalyser();
+                microphone.source.disconnect();
+                microphone.source.connect(analyzer);
+                microphone.analyzer = analyzer;
+                if (microphone.dataArray.length !== analyzer.fftSize) {
+                    microphone.dataArray = new Float32Array(analyzer.fftSize);
+                }
+            }
+            function getLoudness() {
+                if (microphone === null) {
+                    connect();
+                    return -1;
+                }
+                if (!microphone.stream.active) {
+                    return -1;
+                }
+                if (Date.now() - microphone.lastCheck < CACHE_TIME) {
+                    return microphone.lastValue;
+                }
+                microphone.analyzer.getFloatTimeDomainData(microphone.dataArray);
+                let sum = 0;
+                for (let i = 0; i < microphone.dataArray.length; i++) {
+                    sum += Math.pow(microphone.dataArray[i], 2);
+                }
+                let rms = Math.sqrt(sum / microphone.dataArray.length);
+                if (microphone.lastValue !== -1) {
+                    rms = Math.max(rms, microphone.lastValue * 0.6);
+                }
+                microphone.lastValue = rms;
+                rms *= 1.63;
+                rms = Math.sqrt(rms);
+                rms = Math.round(rms * 100);
+                rms = Math.min(rms, 100);
+                return rms;
+            }
+            class MicrophoneExtension extends P.ext.Extension {
+                getLoudness() {
+                    return getLoudness();
+                }
+                onstart() {
+                    if (microphone) {
+                        reinitAnalyser();
+                    }
+                }
+            }
+            microphone_1.MicrophoneExtension = MicrophoneExtension;
+        })(microphone = ext.microphone || (ext.microphone = {}));
+    })(ext = P.ext || (P.ext = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
+    var ext;
+    (function (ext) {
+        var speech2text;
+        (function (speech2text) {
+            var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || window.mozSpeechRecognition || window.msSpeechRecognition;
+            let supported = null;
+            function isSupported() {
+                if (supported === null) {
+                    supported = typeof SpeechRecognition !== 'undefined';
+                    if (!supported) {
+                        console.warn('Speech to text is not supported in this browser. (https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition)');
+                    }
+                }
+                return supported;
+            }
+            speech2text.isSupported = isSupported;
+            class SpeechToTextExtension extends P.ext.Extension {
+                constructor(stage) {
+                    super(stage);
+                    this.speech = '';
+                    this.listeners = 0;
+                    this.hats = [];
+                    this.initRecognition();
+                    this.initOverlay();
+                }
+                initRecognition() {
+                    this.recognition = new SpeechRecognition();
+                    this.recognition.lang = 'en-US';
+                    this.recognition.continuous = true;
+                    this.recognition.onresult = (event) => this.onresult(event);
+                    this.recognition.onerror = (event) => {
+                        if (event.error !== 'aborted') {
+                            console.error('speech2text error', event);
+                        }
+                    };
+                    this.recognition.onend = () => {
+                        console.warn('speech2text disconnected, reconnecting');
+                        this.initRecognition();
+                    };
+                    this.recognition.start();
+                }
+                initOverlay() {
+                    if (this.overlayElement) {
+                        throw new Error('initializing overlay twice');
+                    }
+                    const container = document.createElement('div');
+                    container.className = 'speech2text-container';
+                    const indicator = document.createElement('div');
+                    indicator.className = 'speech2text-indicator';
+                    const animation = document.createElement('div');
+                    animation.className = 'speech2text-animation';
+                    container.appendChild(animation);
+                    container.appendChild(indicator);
+                    this.stage.ui.appendChild(container);
+                    this.overlayElement = container;
+                }
+                onresult(event) {
+                    this.lastResultIndex = event.resultIndex;
+                    const lastResult = event.results[event.resultIndex];
+                    const message = lastResult[0];
+                    const transcript = message.transcript.trim();
+                    if (this.listeners !== 0) {
+                        this.speech = transcript;
+                    }
+                    for (const hat of this.hats) {
+                        const target = hat.target;
+                        const phraseFunction = hat.phraseFunction;
+                        const startingFunction = hat.startingFunction;
+                        const value = this.stage.runtime.evaluateExpression(target, phraseFunction);
+                        if (value === transcript) {
+                            this.stage.runtime.startThread(target, startingFunction);
+                        }
+                    }
+                }
+                addHat(hat) {
+                    this.hats.push(hat);
+                }
+                startListen() {
+                    this.listeners++;
+                    this.overlayElement.setAttribute('listening', '');
+                }
+                endListen() {
+                    this.listeners--;
+                    if (this.listeners === 0) {
+                        this.overlayElement.removeAttribute('listening');
+                    }
+                }
+                destroy() {
+                    this.recognition.abort();
+                }
+                id() {
+                    return this.lastResultIndex;
+                }
+            }
+            speech2text.SpeechToTextExtension = SpeechToTextExtension;
+        })(speech2text = ext.speech2text || (ext.speech2text = {}));
+    })(ext = P.ext || (P.ext = {}));
 })(P || (P = {}));
 //# sourceMappingURL=phosphorus.dist.js.map

@@ -136,34 +136,6 @@ namespace P.runtime {
     return Math.random() * (y - x) + x;
   };
 
-  var rgb2hsl = function(rgb) {
-    // TODO: P.utils.rgb2hsl?
-    var r = (rgb >> 16 & 0xff) / 0xff;
-    var g = (rgb >> 8 & 0xff) / 0xff;
-    var b = (rgb & 0xff) / 0xff;
-
-    var min = Math.min(r, g, b);
-    var max = Math.max(r, g, b);
-
-    if (min === max) {
-      return [0, 0, r * 100];
-    }
-
-    var c = max - min;
-    var l = (min + max) / 2;
-    var s = c / (1 - Math.abs(2 * l - 1));
-
-    var h;
-    switch (max) {
-      case r: h = ((g - b) / c + 6) % 6; break;
-      case g: h = (b - r) / c + 2; break;
-      case b: h = (r - g) / c + 4; break;
-    }
-    h *= 60;
-
-    return [h, s * 100, l * 100];
-  };
-
   // Clone a sprite
   var clone = function(name) {
     const parent = name === '_myself_' ? S : self.getObject(name);
@@ -212,30 +184,25 @@ namespace P.runtime {
     }
     return list.join(isSingle ? '' : ' ');
   };
-
   var getLineOfList = function(list, index) {
     var i = listIndex(list, index, list.length);
     return i !== -1 ? list[i] : '';
   };
-
   var listContains = function(list, value) {
     for (var i = list.length; i--;) {
       if (equal(list[i], value)) return true;
     }
     return false;
   };
-
   var listIndexOf = function(list, value) {
-    for (var i = list.length; i--;) {
+    for (var i = 0; i < list.length; i++) {
       if (equal(list[i], value)) return i + 1;
     }
     return 0;
   };
-
   var appendToList = function(list, value) {
     list.push(value);
   };
-
   var deleteLineOfList = function(list, index) {
     if (index === 'all') {
       list.length = 0;
@@ -248,7 +215,6 @@ namespace P.runtime {
       }
     }
   };
-
   var insertInList = function(list, index, value) {
     var i = listIndex(list, index, list.length + 1);
     if (i === list.length) {
@@ -257,12 +223,29 @@ namespace P.runtime {
       list.splice(i, 0, value);
     }
   };
-
   var setLineOfList = function(list, index, value) {
     var i = listIndex(list, index, list.length);
     if (i !== -1) {
       list[i] = value;
     }
+  };
+
+  // "Watched" variants of the above that set modified=true
+  var watchedAppendToList = function(list, value) {
+    appendToList(list, value);
+    if (!list.modified) list.modified = true;
+  };
+  var watchedDeleteLineOfList = function(list, index) {
+    deleteLineOfList(list, index);
+    if (!list.modified) list.modified = true;
+  };
+  var watchedInsertInList = function(list, index, value) {
+    insertInList(list, index, value);
+    if (!list.modified) list.modified = true;
+  };
+  var watchedSetLineOfList = function(list, index, value) {
+    setLineOfList(list, index, value);
+    if (!list.modified) list.modified = true;
   };
 
   var mathFunc = function(f, x) {
@@ -381,8 +364,13 @@ namespace P.runtime {
       P.audio.playSpan(span, key, duration, S.getAudioNode());
     };
 
+    var applySoundEffects = function(node: AudioBufferSourceNode) {
+      node.playbackRate.value = Math.pow(2, (S.soundFilters.pitch / 10 / 12));
+    };
+
     var playSound = function(sound: P.core.Sound): P.core.ActiveSound {
       const node = sound.createSourceNode();
+      applySoundEffects(node);
       node.connect(S.getAudioNode());
       return {
         stopped: false,
@@ -393,6 +381,7 @@ namespace P.runtime {
 
     var startSound = function(sound: P.core.Sound) {
       const node = sound.createSourceNode();
+      applySoundEffects(node);
       node.connect(S.getAudioNode());
     };
   }
@@ -424,10 +413,16 @@ namespace P.runtime {
         WARP++;
         IMMEDIATE = procedure.fn;
       } else {
-        for (var i = CALLS.length, j = 5; i-- && j--;) {
-          if (CALLS[i].base === procedure.fn) {
-            runtime.queue[THREAD] = new Thread(S, BASE, procedure.fn, CALLS);
-            break;
+        if (VISUAL) {
+          // Look through the call stack and determine if this procedure has already been called once.
+          // If so, we'll delay this thread until the next iteration instead of setting IMMEDIATE
+          // See https://scratch.mit.edu/projects/337681947/ for an example
+          // 5 is an arbirtary number that works good enough and limits the possible performance impact
+          for (var i = CALLS.length, j = 5; i-- && j--;) {
+            if (CALLS[i].base === procedure.fn) {
+              runtime.queue[THREAD] = new Thread(S, BASE, procedure.fn, CALLS);
+              return;
+            }
           }
         }
         IMMEDIATE = procedure.fn;
@@ -588,6 +583,7 @@ namespace P.runtime {
       this.baseTime = Date.now();
       this.interval = setInterval(this.step, 1000 / this.framerate);
       if (audioContext) audioContext.resume();
+      this.stage.start();
     }
 
     /**
@@ -600,6 +596,7 @@ namespace P.runtime {
         this.interval = 0;
         window.removeEventListener('error', this.onError);
         if (audioContext) audioContext.suspend();
+        this.stage.pause();
       }
       this.isRunning = false;
     }
@@ -726,69 +723,6 @@ namespace P.runtime {
     handleError(e) {
       // Default error handler
       console.error(e);
-    }
-  }
-
-  // Very dirty temporary hack to get a crashmonitor installed w/o affecting performance
-  if (P.config.useCrashMonitor) {
-    Runtime.prototype.step = function() {
-      // Reset runtime variables
-      self = this.stage;
-      runtime = this;
-      VISUAL = false;
-
-      if (audioContext && audioContext.state === 'suspended') {
-        audioContext.resume();
-      }
-
-      const start = Date.now();
-      const queue = this.queue;
-      do {
-        for (THREAD = 0; THREAD < queue.length; THREAD++) {
-          const thread = queue[THREAD];
-          if (thread) {
-            // Load thread data
-            S = thread.sprite;
-            IMMEDIATE = thread.fn;
-            BASE = thread.base;
-            CALLS = thread.calls;
-            C = CALLS.pop();
-            STACK = C.stack;
-            R = STACK.pop();
-            queue[THREAD] = undefined;
-            WARP = 0;
-
-            while (IMMEDIATE) {
-              if (Date.now() - start > 5000) {
-                const el = document.createElement('pre');
-                el.textContent += 'crash monitor debug:\n';
-                el.textContent += `S: ${S.name} (isClone=${S.isClone},isStage=${S.isStage})\n`;
-                el.textContent += `IMMEDIATE: ${IMMEDIATE.toString()} // (${S.fns.indexOf(IMMEDIATE)})\n`;
-                document.querySelector('#app')!.appendChild(el);
-                alert('forkphorus has crashed. please include the debug information at the bottom of the page.')
-                this.pause();
-                this.stopAll();
-                return;
-              }
-              const fn = IMMEDIATE;
-              IMMEDIATE = null;
-              fn();
-            }
-
-            STACK.push(R);
-            CALLS.push(C);
-          }
-        }
-
-        // Remove empty elements in the queue list
-        for (let i = queue.length; i--;) {
-          if (!queue[i]) {
-            queue.splice(i, 1);
-          }
-        }
-      } while ((this.isTurbo || !VISUAL) && Date.now() - start < 1000 / this.framerate && queue.length);
-
-      this.stage.draw();
     }
   }
 

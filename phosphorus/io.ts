@@ -65,12 +65,13 @@ namespace P.IO {
   }
 
   export abstract class XHRRequest<T> extends Request<T> {
-    public xhr: XMLHttpRequest = new XMLHttpRequest();
+    public xhr: XMLHttpRequest;
     public static acceptableResponseCodes = [0, 200];
 
     protected _load(): Promise<T> {
       return new Promise((resolve, reject) => {
-        const xhr = this.xhr;
+        const xhr = new XMLHttpRequest();
+        this.xhr = xhr;
         xhr.addEventListener('load', () => {
           if (XHRRequest.acceptableResponseCodes.indexOf(xhr.status) !== -1) {
             resolve(xhr.response);
@@ -78,11 +79,11 @@ namespace P.IO {
             reject(new Error(`HTTP Error ${xhr.status} while downloading ${this.url}`));
           }
         });
-        xhr.addEventListener('error', () => {
-          reject(`Error while downloading ${this.url} (onerror) (${xhr.status} ${xhr.statusText})`);
+        xhr.addEventListener('error', (err) => {
+          reject(`Error while downloading ${this.url} (error) (${xhr.status})`);
         });
-        xhr.addEventListener('abort', () => {
-          reject(`Error while downloading ${this.url} (onabort) (${xhr.status} ${xhr.statusText})`);
+        xhr.addEventListener('abort', (err) => {
+          reject(`Error while downloading ${this.url} (abort) (${xhr.status})`);
         });
         xhr.open('GET', this.url);
         xhr.responseType = this.type as XMLHttpRequestResponseType;

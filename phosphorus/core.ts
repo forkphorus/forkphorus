@@ -48,6 +48,10 @@ namespace P.core {
     ghost: number;
   }
 
+  export interface SoundFilters {
+    pitch: number;
+  }
+
   export const enum RotationStyle {
     /**
      * Indicates this sprite may rotate in any direction.
@@ -68,6 +72,143 @@ namespace P.core {
     Stage = '_stage_',
     Random = '_random_',
     Edge = '_edge_',
+  }
+
+  const enum PenMode { RGBA, HSLA, HSVA };
+
+  export class PenColor {
+    private x: number = 0;
+    private y: number = 0;
+    private z: number = 255;
+    private a: number = 1;
+    private mode: PenMode = PenMode.RGBA;
+    private css: string = 'rgba(0, 0, 255, 1)';
+
+    /**
+     * Set this color to an RGB(A) color, encoded in a single number.
+     */
+    setRGBA(rgba: number) {
+      this.x = rgba >> 16 & 0xff;
+      this.y = rgba >> 8 & 0xff;
+      this.z = rgba & 0xff;
+      this.a = (rgba >> 24 & 0xff) / 0xff || 1;
+      this.css = 'rgba(' + this.x + ', ' + this.y + ', ' + this.z + ', ' + this.a + ')';
+      this.mode = PenMode.RGBA;
+    }
+
+    toHSLA() {
+      switch (this.mode) {
+        case PenMode.RGBA: {
+          this.mode = PenMode.HSLA;
+          const hsl = P.utils.rgbToHSL(this.x, this.y, this.z);
+          this.x = hsl[0];
+          this.y = hsl[1] * 100;
+          this.z = hsl[2] * 100;
+          break;
+        }
+        case PenMode.HSVA: {
+          this.mode = PenMode.HSLA;
+          const hsl = P.utils.hsvToHSL(this.x, this.y / 100, this.z / 100);
+          this.x = hsl[0];
+          this.y = hsl[1] * 100;
+          this.z = hsl[2] * 100;
+          break;
+        }
+      }
+    }
+
+    toHSVA() {
+      switch (this.mode) {
+        case PenMode.RGBA: {
+          this.mode = PenMode.HSVA;
+          const hsv = P.utils.rgbToHSV(this.x, this.y, this.z);
+          this.x = hsv[0];
+          this.y = hsv[1] * 100;
+          this.z = hsv[2] * 100;
+          break;
+        }
+        case PenMode.HSLA: {
+          this.mode = PenMode.HSVA;
+          const hsv = P.utils.hslToHSV(this.x, this.y / 100, this.z / 100);
+          this.x = hsv[0];
+          this.y = hsv[1] * 100;
+          this.z = hsv[2] * 100;
+          break;
+        }
+      }
+    }
+
+    /**
+     * Convert this color to its RGBA parts, each from 0-1
+     */
+    toParts(): [number, number, number, number] {
+      // TODO, not important for now
+      return [1, 0, 0, 1];
+    }
+
+    /**
+     * Convert this color to a CSS color code of some sort.
+     */
+    toCSS(): string {
+      switch (this.mode) {
+        case PenMode.RGBA:
+          return this.css;
+        case PenMode.HSLA:
+          return 'hsla(' + this.x + 'deg,' + this.y + '%,' + (this.z > 100 ? 200 - this.z : this.z) + '%, ' + this.a + ')';
+        case PenMode.HSVA: {
+          const rgb = P.utils.hsvToRGB(this.x / 360, this.y / 100, this.z / 100);
+          return 'rgba(' + rgb[0] + ', ' + rgb[1] + ', ' + rgb[2] + ', ' + this.a + ')';
+        }
+      }
+      throw new Error('Unknown pen color mode: ' + this.mode);
+    }
+
+    setParam(param: string, value: number) {
+      this.toHSVA();
+      switch (param) {
+        case 'color':
+          this.x = value * 360 / 100;
+          break;
+        case 'saturation':
+          this.y = P.utils.clamp(value, 0, 100);
+          break;
+        case 'brightness':
+          this.z = P.utils.clamp(value, 0, 100);
+          break;
+        case 'transparency':
+          this.a = 1 - (value / 100);
+          if (this.a > 1) this.a = 1;
+          if (this.a < 0) this.a = 0;
+          break;
+      }
+    }
+
+    changeParam(param: string, value: number) {
+      this.toHSVA();
+      switch (param) {
+        case 'color':
+          this.x += value * 360 / 100;
+          break;
+        case 'saturation':
+          this.y = P.utils.clamp(this.y + value, 0, 100);
+          break;
+        case 'brightness':
+          this.z = P.utils.clamp(this.z + value, 0, 100);
+          break;
+        case 'transparency':
+          this.a = Math.max(0, Math.min(1, this.a - value / 100));
+          break;
+      }
+    }
+
+    copy(other: PenColor) {
+      this.x = other.x;
+      this.y = other.y;
+      this.z = other.z;
+      this.a = other.a;
+      this.css = other.css;
+      this.mode = other.mode;
+    }
   }
 
   export abstract class Base {
@@ -193,6 +334,14 @@ namespace P.core {
       brightness: 0,
       ghost: 0,
     };
+    public soundFilters: SoundFilters = {
+      pitch: 0,
+    };
+
+    // Pen data
+    public penSize: number = 1;
+    public penColor: PenColor = new PenColor();
+    public isPenDown: boolean = false;
 
     constructor() {
       for (var i = 0; i < 128; i++) {
@@ -312,6 +461,28 @@ namespace P.core {
         mosaic: 0,
         brightness: 0,
         ghost: 0
+      };
+    }
+
+    setSoundFilter(name: string, value: number) {
+      switch (name.toLowerCase()) {
+        case 'pitch':
+          this.soundFilters.pitch = value;
+          break;
+      }
+    }
+
+    changeSoundFilter(name: string, value: number) {
+      switch (name.toLowerCase()) {
+        case 'pitch':
+          this.soundFilters.pitch += value;
+          break;
+      }
+    }
+
+    resetSoundFilters() {
+      this.soundFilters = {
+        pitch: 0,
       };
     }
 
@@ -503,12 +674,16 @@ namespace P.core {
      */
     abstract rotatedBounds(): RotatedBounds;
 
+    abstract forward(steps: number): void;
+
+    abstract moveTo(x: number, y: number): void;
+
     /**
      * Create a Watcher for a variable.
      * @param target The sprite that will own the watcher
      * @param variableName The name (or id) of the variable to monitor
      */
-    public createVariableWatcher(target: Base, variableName: string): Watcher | null {
+    createVariableWatcher(target: Base, variableName: string): Watcher | null {
       return null;
     }
 
@@ -517,8 +692,38 @@ namespace P.core {
      * @param target The sprite that will own the watcher
      * @param listName The name (or id) of the variable to monitor
      */
-    public createListWatcher(target: Base, listName: string): Watcher | null {
+    createListWatcher(target: Base, listName: string): Watcher | null {
       return null;
+    }
+
+    /**
+     * Create a dot on the pen layer at this object's location
+     */
+    dotPen() {
+      this.stage.renderer.penDot(this.penColor, this.penSize, this.scratchX, this.scratchY);
+    }
+
+    /**
+     * Create a stamp of this object, as it currently appears, on the pen layer.
+     */
+    stamp() {
+      this.stage.renderer.penStamp(this);
+    }
+
+    /**
+     * Set the color of the pen.
+     */
+    setPenColor(color: number | string) {
+      if (typeof color === 'string') {
+        if (color.startsWith('#')) {
+          color = parseInt(color.substr(1), 16);
+        } else if (color.startsWith('0x')) {
+          color = parseInt(color.substr(2), 16);
+        } else {
+          color = +color;
+        }
+      }
+      this.penColor.setRGBA(color);
     }
   }
 
@@ -572,7 +777,9 @@ namespace P.core {
     public mouseSprite: Sprite | undefined;
 
     private videoElement: HTMLVideoElement;
-    public speech2text: P.speech2text.SpeechToTextExtension | null;
+    public speech2text: P.ext.speech2text.SpeechToTextExtension | null = null;
+    public microphone: P.ext.microphone.MicrophoneExtension | null = null;
+    private extensions: P.ext.Extension[] = [];
 
     constructor() {
       super();
@@ -600,109 +807,6 @@ namespace P.core {
 
       this.canvas.tabIndex = 0;
       this.canvas.style.outline = 'none';
-
-      this.root.addEventListener('keydown', (e) => {
-        var c = e.keyCode;
-        if (c >= 128 && e.key.length === 1) c = P.runtime.getKeyCode(e.key) as number;
-        if (!this.keys[c]) this.keys.any++;
-        this.keys[c] = true;
-        if (e.ctrlKey || e.altKey || e.metaKey || c === 27) return;
-        e.stopPropagation();
-        if (e.target === this.canvas) {
-          e.preventDefault();
-          this.runtime.trigger('whenKeyPressed', c);
-        }
-      });
-
-      this.root.addEventListener('keyup', (e) => {
-        var c = e.keyCode;
-        if (c >= 128) c = P.runtime.getKeyCode(e.key) as number;
-        if (this.keys[c]) this.keys.any--;
-        this.keys[c] = false;
-        e.stopPropagation();
-        if (e.target === this.canvas) {
-          e.preventDefault();
-        }
-      });
-
-      this.root.addEventListener('wheel', (e) => {
-        // Scroll up/down triggers key listeners for up/down arrows, but without affecting "is key pressed?" blocks
-        if (e.deltaY > 0) {
-          // 40 = down arrow
-          this.runtime.trigger('whenKeyPressed', 40);
-        } else if (e.deltaY < 0) {
-          // 38 = up arrow
-          this.runtime.trigger('whenKeyPressed', 38);
-        }
-      }, { passive: true });
-
-      if (P.config.hasTouchEvents) {
-        document.addEventListener('touchstart', (e: TouchEvent) => {
-          if (!this.runtime.isRunning) return;
-
-          this.mousePressed = true;
-          const target = e.target as HTMLElement;
-
-          for (var i = 0; i < e.changedTouches.length; i++) {
-            const t = e.changedTouches[i];
-            this.updateMousePosition(t);
-            if (e.target === this.canvas) {
-              this.clickMouse();
-            }
-            this.ontouch(e, t);
-          }
-
-          if (e.target === this.canvas) e.preventDefault();
-        });
-
-        document.addEventListener('touchmove', (e: TouchEvent) => {
-          if (!this.runtime.isRunning) return;
-
-          this.updateMousePosition(e.changedTouches[0]);
-          for (var i = 0; i < e.changedTouches.length; i++) {
-            const t = e.changedTouches[i];
-            this.ontouch(e, t);
-          }
-        });
-
-        document.addEventListener('touchend', (e: TouchEvent) => {
-          if (!this.runtime.isRunning) return;
-
-          this.releaseMouse();
-          for (var i = 0; i < e.changedTouches.length; i++) {
-            const t = e.changedTouches[i];
-            this.ontouch(e, t);
-          }
-        });
-      } else {
-        document.addEventListener('mousedown', (e: MouseEvent) => {
-          if (!this.runtime.isRunning) return;
-
-          this.mousePressed = true;
-          this.updateMousePosition(e);
-
-          if (e.target === this.canvas) {
-            this.clickMouse();
-            e.preventDefault();
-            this.canvas.focus();
-          }
-
-          this.onmousedown(e);
-        });
-
-        document.addEventListener('mousemove', (e: MouseEvent) => {
-          if (!this.runtime.isRunning) return;
-          this.updateMousePosition(e);
-          this.onmousemove(e);
-        });
-
-        document.addEventListener('mouseup', (e: MouseEvent) => {
-          if (!this.runtime.isRunning) return;
-          this.updateMousePosition(e);
-          this.releaseMouse();
-          this.onmouseup(e);
-        });
-      }
 
       this.prompter = document.createElement('div');
       this.ui.appendChild(this.prompter);
@@ -754,16 +858,151 @@ namespace P.core {
       this.promptButton.style.background = 'url(icons.svg) -22.8em -0.4em';
       this.promptButton.style.backgroundSize = '38.4em 6.4em';
 
-      this.prompt.addEventListener('keydown', (e) => {
-        if (e.keyCode === 13) {
-          this.submitPrompt();
-        }
-      });
+      this.addEventListeners();
+    }
 
-      this.promptButton.addEventListener(P.config.hasTouchEvents ? 'touchstart' : 'mousedown', this.submitPrompt.bind(this));
+    private addEventListeners() {
+      // Global listeners need to have their methods redefined like this so that we can removeEventListener() later
+      this._onmousedown = this._onmousedown.bind(this);
+      this._onmouseup = this._onmouseup.bind(this);
+      this._onmousemove = this._onmousemove.bind(this);
+      this._ontouchstart = this._ontouchstart.bind(this);
+      this._ontouchend = this._ontouchend.bind(this);
+      this._ontouchmove = this._ontouchmove.bind(this);
+
+      document.addEventListener('mousedown', this._onmousedown);
+      document.addEventListener('mouseup', this._onmouseup);
+      document.addEventListener('mousemove', this._onmousemove);
+
+      document.addEventListener('touchstart', this._ontouchstart, { passive: false });
+      document.addEventListener('touchend', this._ontouchend);
+      document.addEventListener('touchmove', this._ontouchmove);
+
+      this.root.addEventListener('wheel', this._onwheel.bind(this));
+      this.root.addEventListener('keyup', this._onkeyup.bind(this));
+      this.root.addEventListener('keydown', this._onkeydown.bind(this));
+
+      this.promptButton.addEventListener('touchstart', this.submitPrompt.bind(this));
+      this.promptButton.addEventListener('mousedown', this.submitPrompt.bind(this));
+      this.prompt.addEventListener('keydown', (e) => {
+        if (e.keyCode === 13) this.submitPrompt();
+      });
+    }
+
+    private removeEventListeners() {
+      // We only need to remove the global handlers that were attached to document
+      document.removeEventListener('mousedown', this._onmousedown);
+      document.removeEventListener('mouseup', this._onmouseup);
+      document.removeEventListener('mousemove', this._onmousemove);
+      document.removeEventListener('touchstart', this._ontouchstart);
+      document.removeEventListener('touchend', this._ontouchend);
+      document.removeEventListener('touchmove', this._ontouchmove);
+    }
+
+    private _onwheel(e: WheelEvent) {
+      // Scroll up/down triggers key listeners for up/down arrows, but without affecting "is key pressed?" blocks
+      if (e.deltaY > 0) {
+        // 40 = down arrow
+        this.runtime.trigger('whenKeyPressed', 40);
+      } else if (e.deltaY < 0) {
+        // 38 = up arrow
+        this.runtime.trigger('whenKeyPressed', 38);
+      }
+    }
+
+    private _onkeyup(e: KeyboardEvent) {
+      var c = e.keyCode;
+      if (c >= 128) c = P.runtime.getKeyCode(e.key) as number;
+      if (this.keys[c]) this.keys.any--;
+      this.keys[c] = false;
+      e.stopPropagation();
+      if (e.target === this.canvas) {
+        e.preventDefault();
+      }
+    }
+
+    private _onkeydown(e: KeyboardEvent) {
+      var c = e.keyCode;
+      if (c >= 128 && e.key.length === 1) c = P.runtime.getKeyCode(e.key) as number;
+      if (!this.keys[c]) this.keys.any++;
+      this.keys[c] = true;
+      if (e.ctrlKey || e.altKey || e.metaKey || c === 27) return;
+      e.stopPropagation();
+      if (e.target === this.canvas) {
+        e.preventDefault();
+        this.runtime.trigger('whenKeyPressed', c);
+      }
+    }
+
+    private _onmousedown(e: MouseEvent) {
+      if (!this.runtime.isRunning) return;
+
+      this.updateMousePosition(e);
+      this.mousePressed = true;
+
+      if (e.target === this.canvas) {
+        this.clickMouse();
+        e.preventDefault();
+        this.canvas.focus();
+      }
+
+      this.onmousedown(e);
+    }
+
+    private _onmouseup(e: MouseEvent) {
+      if (!this.runtime.isRunning) return;
+
+      this.updateMousePosition(e);
+      this.releaseMouse();
+      this.onmouseup(e);
+    }
+
+    private _onmousemove(e: MouseEvent) {
+      if (!this.runtime.isRunning) return;
+
+      this.updateMousePosition(e);
+      this.onmousemove(e);
+    }
+
+    private _ontouchend(e: TouchEvent) {
+      if (!this.runtime.isRunning) return;
+
+      this.releaseMouse();
+      for (var i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        this.ontouch(e, t);
+      }
+    }
+
+    private _ontouchstart(e: TouchEvent) {
+      if (!this.runtime.isRunning) return;
+
+      this.mousePressed = true;
+
+      for (var i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        this.updateMousePosition(t);
+        if (e.target === this.canvas) {
+          this.clickMouse();
+        }
+        this.ontouch(e, t);
+      }
+
+      if (e.target === this.canvas) e.preventDefault();
+    }
+
+    private _ontouchmove(e: TouchEvent) {
+      if (!this.runtime.isRunning) return;
+
+      this.updateMousePosition(e.changedTouches[0]);
+      for (var i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        this.ontouch(e, t);
+      }
     }
 
     // Event hooks for responding to user actions
+    // These are designed to be used by implementors
     ontouch(e: TouchEvent, t: Touch) {}
     onmousedown(e: MouseEvent) {}
     onmouseup(e: MouseEvent) {}
@@ -776,8 +1015,21 @@ namespace P.core {
       this.runtime.stopAll();
       this.runtime.pause();
       this.stopAllSounds();
-      if (this.speech2text) {
-        this.speech2text.destroy();
+      for (const extension of this.extensions) {
+        extension.destroy();
+      }
+      this.removeEventListeners();
+    }
+
+    pause() {
+      for (const extension of this.extensions) {
+        extension.onpause();
+      }
+    }
+
+    start() {
+      for (const extension of this.extensions) {
+        extension.onstart();
       }
     }
 
@@ -816,6 +1068,14 @@ namespace P.core {
       this.root.style.height = (360 * zoom | 0) + 'px';
       this.root.style.fontSize = (zoom*10) + 'px';
       this.zoom = zoom;
+      // Temporary fix to make Scratch 3 list watchers properly resize when paused
+      if (!this.runtime.isRunning) {
+        for (const watcher of this.allWatchers) {
+          if (watcher instanceof P.sb3.Scratch3ListWatcher) {
+            watcher.updateList();
+          }
+        }
+      }
     }
 
     clickMouse() {
@@ -950,24 +1210,22 @@ namespace P.core {
       }
     }
 
-    getLoudness() {
-      return P.microphone.getLoudness();
+    addExtension(extension: P.ext.Extension) {
+      this.extensions.push(extension);
     }
 
     initSpeech2Text() {
-      if (!this.speech2text && P.speech2text.supported) {
-        this.speech2text = new P.speech2text.SpeechToTextExtension(this);
+      if (!this.speech2text && P.ext.speech2text.isSupported()) {
+        this.speech2text = new P.ext.speech2text.SpeechToTextExtension(this);
+        this.addExtension(this.speech2text);
       }
     }
 
-    // Implement rotatedBounds() to return something.
-    rotatedBounds() {
-      return {
-        top: 0,
-        bottom: 0,
-        left: 0,
-        right: 0,
-      };
+    initLoudness() {
+      if (!this.microphone) {
+        this.microphone = new P.ext.microphone.MicrophoneExtension(this);
+        this.addExtension(this.microphone);
+      }
     }
 
     stopAllSounds() {
@@ -990,6 +1248,19 @@ namespace P.core {
     moveTo() {
       // do nothing -- stage cannot be moved
     }
+
+    forward() {
+      // do nothing -- stage cannot be moved
+    }
+
+    rotatedBounds() {
+      return {
+        top: 0,
+        bottom: 0,
+        left: 0,
+        right: 0,
+      };
+    }    
 
     submitPrompt() {
       if (this.promptId < this.nextPromptId) {
@@ -1035,16 +1306,6 @@ namespace P.core {
      * Sprites are scaled from their costume's center
      */
     public scale: number = 1;
-
-    // Pen data
-    public penHue: number = 240;
-    public penSaturation: number = 100;
-    public penLightness: number = 50;
-    public penAlpha: number = 1;
-    public penCSS: string = '';
-    public penSize: number = 1;
-    public penColor: number = 0x000000;
-    public isPenDown: boolean = false;
 
     // It's related to dragging sprites.
     public dragStartX: number = 0;
@@ -1161,27 +1422,12 @@ namespace P.core {
       this.scratchY = y;
 
       if (this.isPenDown && !this.isDragging) {
-        this.stage.renderer.penLine(this.getPenCSS(), this.penSize, ox, oy, x, y);
+        this.stage.renderer.penLine(this.penColor, this.penSize, ox, oy, x, y);
       }
 
       if (this.saying) {
         this.updateBubble();
       }
-    }
-
-    // Makes a pen dot at the current location.
-    dotPen() {
-      this.stage.renderer.penDot(this.getPenCSS(), this.penSize, this.scratchX, this.scratchY);
-    }
-
-    // Stamps the sprite onto the pen layer.
-    stamp() {
-      this.stage.renderer.penStamp(this);
-    }
-
-    getPenCSS() {
-      // This is only temporary
-      return this.penCSS || 'hsla(' + this.penHue + 'deg,' + this.penSaturation + '%,' + (this.penLightness > 100 ? 200 - this.penLightness : this.penLightness) + '%, ' + this.penAlpha + ')';
     }
 
     // Faces in a direction.
@@ -1236,12 +1482,8 @@ namespace P.core {
       clone.scratchX = this.scratchX;
       clone.scratchY = this.scratchY;
       clone.visible = this.visible;
-      clone.penColor = this.penColor;
-      clone.penCSS = this.penCSS;
-      clone.penHue = this.penHue;
-      clone.penSaturation = this.penSaturation;
-      clone.penLightness = this.penLightness;
       clone.penSize = this.penSize;
+      clone.penColor.copy(this.penColor);
       clone.isPenDown = this.isPenDown;
       clone.watchers = this.watchers;
       clone.listWatchers = this.listWatchers;
@@ -1356,87 +1598,6 @@ namespace P.core {
       this.direction = dx === 0 && dy === 0 ? 90 : Math.atan2(dx, dy) * 180 / Math.PI;
       if (this.saying) this.updateBubble();
     }
-
-    /**
-     * Set the RGB color of the pen.
-     */
-    setPenColor(color: number | string) {
-      if (typeof color === 'string') {
-        if (color.startsWith('#')) {
-          color = parseInt(color.substr(1), 16);
-        } else if (color.startsWith('0x')) {
-          color = parseInt(color.substr(2), 16);
-        } else {
-          color = +color;
-        }
-      }
-      this.penColor = color;
-      const r = this.penColor >> 16 & 0xff;
-      const g = this.penColor >> 8 & 0xff;
-      const b = this.penColor & 0xff;
-      const a = (this.penColor >> 24 & 0xff) / 0xff || 1;
-      this.penCSS = 'rgba(' + r + ', ' + g + ', ' + b + ', ' + a + ')';
-    }
-
-    /**
-     * Convert the pen's color from RGB to HSL
-     */
-    setPenColorHSL() {
-      if (this.penCSS) {
-        const hsl = P.utils.rgbToHSL(this.penColor);
-        this.penHue = hsl[0];
-        this.penSaturation = hsl[1];
-        this.penLightness = hsl[2];
-        this.penAlpha = (this.penColor >> 24 & 0xff) / 0xff || 1;
-        this.penCSS = '';
-      }
-    }
-
-    // Sets a pen color HSL parameter.
-    setPenColorParam(param: string, value: number) {
-      this.setPenColorHSL();
-      switch (param) {
-        case 'color':
-          this.penHue = value * 360 / 100;
-          break;
-        case 'saturation':
-          this.penSaturation = value;
-          break;
-        case 'brightness':
-          this.penLightness = value % 200;
-          if (this.penLightness < 0) {
-            this.penLightness += 200;
-          }
-          break;
-        case 'transparency':
-          this.penAlpha -= value / 100;
-          if (this.penAlpha > 1) this.penAlpha = 1;
-          if (this.penAlpha < 0) this.penAlpha = 0;
-          break;
-      }
-    }
-
-    // Changes a pen color HSL parameter.
-    changePenColorParam(param: string, value: number) {
-      this.setPenColorHSL();
-      switch (param) {
-        case 'color':
-          this.penHue += value * 360 / 100;
-          break;
-        case 'saturation':
-          this.penSaturation += value;
-          break;
-        case 'brightness':
-          this.penLightness = (this.penLightness + value) % 200;
-          if (this.penLightness < 0) {
-            this.penLightness += 200;
-          }
-          break;
-        case 'transparency':
-          this.penAlpha = Math.max(0, Math.min(1, this.penAlpha - value / 100));
-          break;
-      }
-    }
   }
 
   interface CostumeOptions {
@@ -1535,6 +1696,8 @@ namespace P.core {
   }
 
   export class VectorCostume extends Costume {
+    public static MAX_ZOOM: number = 6;
+
     private source: HTMLImageElement;
     private scales: Array<ImageLOD> = [];
 
@@ -1557,14 +1720,18 @@ namespace P.core {
       canvas.height = Math.max(1, this.height * scale);
       const ctx = canvas.getContext('2d');
       if (!ctx) {
-        throw new Error('cannot get 2d rendering context');
+        // If we already have a 1x zoom calculated, it would be best to return that instead of throwing an error.
+        if (this.scales[0]) {
+          return this.scales[0];
+        }
+        throw new Error('cannot get 2d rendering context while rendering VectorCostume ' + this.name + ' at scale ' + scale);
       }
       ctx.drawImage(this.source, 0, 0, canvas.width, canvas.height);
       return new ImageLOD(canvas);
     }
 
     get(scale: number) {
-      scale = Math.min(8, Math.ceil(scale));
+      scale = Math.min(VectorCostume.MAX_ZOOM, Math.ceil(scale));
       const index = scale - 1;
       if (!this.scales[index]) {
         this.scales[index] = this.getScale(scale);

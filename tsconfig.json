@@ -9,9 +9,9 @@
     "alwaysStrict": true,
     "noImplicitThis": true,
     "strictBindCallApply": true,
-    "strictNullChecks": true,
+    "strictNullChecks": true
   },
   "include": [
-    "phosphorus/**/*",
-  ],
+    "phosphorus/**/*"
+  ]
 }

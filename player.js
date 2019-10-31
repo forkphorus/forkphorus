@@ -40,8 +40,10 @@ P.Player = (function() {
 
     this.stage = null;
     this.stageId = 0;
+
     this.projectId = Player.UNKNOWN_ID;
     this.projectLink = Player.UNKNOWN_LINK;
+    this.projectTitle = Player.UNKNOWN_TITLE;
 
     window.addEventListener('resize', this.updateFullscreen.bind(this));
     var fullscreenChange = function(e) {
@@ -63,6 +65,7 @@ P.Player = (function() {
   Player.LARGE_Z_INDEX = '9999999999';
   Player.UNKNOWN_ID = '(no id)';
   Player.UNKNOWN_LINK = '(no link)';
+  Player.UNKNOWN_TITLE = '(no title)';
 
   /**
    * Determines the type of a project.
@@ -138,6 +141,10 @@ P.Player = (function() {
       }.bind(this), 500);
     }.bind(this);
 
+    var preventDefault = /** @param {Event} e */ function(e) {
+      e.preventDefault();
+    };
+
     if (this.controlsEl) {
       throw new Error('This player already has controls.');
     }
@@ -182,28 +189,25 @@ P.Player = (function() {
       this.root.setAttribute('audio-state', P.audio.context.state);
     }
 
-    if (P.config.hasTouchEvents) {
-      function preventDefault(e) { e.preventDefault(); }
-      this.flagButton.addEventListener('touchstart', startTouchFlag);
-      this.flagButton.addEventListener('touchend', clickFlag);
-      this.pauseButton.addEventListener('touchend', clickPause);
-      this.stopButton.addEventListener('touchend', clickStop);
-      this.fullscreenButton.addEventListener('touchend', clickFullscreen);
+    this.stopButton.addEventListener('click', clickStop);
+    this.pauseButton.addEventListener('click', clickPause);
+    this.flagButton.addEventListener('click', clickFlag);
+    this.fullscreenButton.addEventListener('click', clickFullscreen);
 
-      this.flagButton.addEventListener('touchstart', preventDefault);
-      this.pauseButton.addEventListener('touchstart', preventDefault);
-      this.stopButton.addEventListener('touchstart', preventDefault);
-      this.fullscreenButton.addEventListener('touchstart', preventDefault);
+    this.flagButton.addEventListener('touchstart', startTouchFlag);
+    this.flagButton.addEventListener('touchend', clickFlag);
+    this.pauseButton.addEventListener('touchend', clickPause);
+    this.stopButton.addEventListener('touchend', clickStop);
+    this.fullscreenButton.addEventListener('touchend', clickFullscreen);
 
-      this.root.addEventListener('touchmove', function(e) {
-        if (this.fullscreen) e.preventDefault();
-      }.bind(this));
-    } else {
-      this.stopButton.addEventListener('click', clickStop);
-      this.pauseButton.addEventListener('click', clickPause);
-      this.flagButton.addEventListener('click', clickFlag);
-      this.fullscreenButton.addEventListener('click', clickFullscreen);
-    }
+    this.flagButton.addEventListener('touchstart', preventDefault);
+    this.pauseButton.addEventListener('touchstart', preventDefault);
+    this.stopButton.addEventListener('touchstart', preventDefault);
+    this.fullscreenButton.addEventListener('touchstart', preventDefault);
+
+    this.root.addEventListener('touchmove', function(e) {
+      if (this.fullscreen) e.preventDefault();
+    }.bind(this));
 
     this.root.insertBefore(this.controlsEl, this.root.firstChild);
   };
@@ -378,6 +382,10 @@ P.Player = (function() {
   Player.prototype.cleanup = function() {
     this.stageId++;
 
+    this.projectId = Player.UNKNOWN_ID;
+    this.projectLink = Player.UNKNOWN_LINK;
+    this.projectTitle = Player.UNKNOWN_TITLE;
+
     if (this.stage) {
       this.stage.destroy();
       this.stage = null;
@@ -411,6 +419,7 @@ P.Player = (function() {
    * @typedef StageLoadOptions
    * @property {boolean} [start]
    * @property {boolean} [turbo]
+   * @property {number} [fps]
    * @param {StageLoadOptions} [stageOptions]
    */
   Player.prototype.installStage = function(stage, stageOptions) {
@@ -418,12 +427,15 @@ P.Player = (function() {
       throw new Error('Invalid stage.');
     }
     this.stage = stage;
+    stageOptions = stageOptions || {};
     stage.runtime.handleError = this.handleError.bind(this);
+    if (typeof stageOptions.fps !== 'undefined') {
+      stage.runtime.framerate = stageOptions.fps;
+    }
     this.player.appendChild(stage.root);
     stage.focus();
     this.onload.emit(stage);
     this.start();
-    stageOptions = stageOptions || {};
     if (stageOptions.start !== false) {
       stage.runtime.triggerGreenFlag();
     }
@@ -521,7 +533,7 @@ P.Player = (function() {
     this.startLoadingNewProject();
     var stageId = this.getNewStageId();
 
-    this.projectId = id;
+    this.projectId = '' + id;
     this.projectLink = Player.PROJECT_LINK.replace('$id', id);
 
     var blob;
@@ -549,7 +561,7 @@ P.Player = (function() {
           return P.IO.readers.toArrayBuffer(blob)
             .then(function(buffer) {
               if (this.isScratch1Project(buffer)) {
-                throw new Error('Project appears to be a .sb (Scratch 1), which is not supported.');
+                throw new P.Player.ProjectNotSupportedError('.sb / Scratch 1');
               }
               return P.sb2.loadSB2Project(buffer);
             }.bind(this));
@@ -629,6 +641,18 @@ P.Player = (function() {
 
 }());
 
+/**
+ * An error that indicates that this project type is knowingly not supported.
+ * @param {string} type A description of the type of project
+ */
+P.Player.ProjectNotSupportedError = function(type) {
+  this.type = type;
+  this.message = 'Project type (' + type + ') is not supported';
+  this.stack = new Error().stack;
+};
+P.Player.ProjectNotSupportedError.prototype = new Error();
+P.Player.ProjectNotSupportedError.prototype.name = 'ProjectNotSupportedError';
+
 P.Player.ErrorHandler = (function() {
   /**
    * @typedef ErrorHandlerOptions
@@ -677,7 +701,7 @@ P.Player.ErrorHandler = (function() {
   ErrorHandler.prototype.createBugReportLink = function(bodyBefore, bodyAfter) {
     var title = this.getBugReportTitle();
     bodyAfter = bodyAfter || '';
-    var body = bodyBefore + '\n\n\n-----\n' + this.getBugReportMeta() + '\n' + bodyAfter;
+    var body = bodyBefore + '\n\n\n-----\n' + this.getBugReportMetadata() + '\n' + bodyAfter;
     return ErrorHandler.BUG_REPORT_LINK
       .replace('$title', encodeURIComponent(title))
       .replace('$body', encodeURIComponent(body));
@@ -687,13 +711,16 @@ P.Player.ErrorHandler = (function() {
    * Get the title for bug reports.
    */
   ErrorHandler.prototype.getBugReportTitle = function() {
+    if (this.player.projectTitle !== P.Player.UNKNOWN_TITLE) {
+      return this.player.projectTitle + ' (' + this.player.projectId + ')';
+    }
     return this.player.projectLink;
   };
 
   /**
    * Get the metadata to include in bug reports.
    */
-  ErrorHandler.prototype.getBugReportMeta = function() {
+  ErrorHandler.prototype.getBugReportMetadata = function() {
     var meta = 'Project URL: ' + this.player.projectLink + '\n';
     meta += 'Project ID: ' + this.player.projectId + '\n';
     meta += location.href + '\n';
@@ -710,28 +737,51 @@ P.Player.ErrorHandler = (function() {
   };
 
   ErrorHandler.prototype.oncleanup = function() {
-    if (this.errorEl) {
+    if (this.errorEl && this.errorEl.parentNode) {
       this.errorEl.parentNode.removeChild(this.errorEl);
       this.errorEl = null;
     }
   };
 
-  ErrorHandler.prototype.onerror = function(error) {
+  /**
+   * Create an error element indicating that forkphorus has crashed, and where to report the bug.
+   */
+  ErrorHandler.prototype.createErrorElement = function(error) {
     var errorLink = this.createErrorLink(error);
-    var errorEl = document.createElement('div');
+    var el = document.createElement('div');
     var attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
-    errorEl.className = 'player-error';
-    errorEl.innerHTML = P.i18n.translate('report.crash.html').replace('$attrs', attributes);
-    if (this.errorContainer) {
-      this.errorContainer.appendChild(errorEl);
+    el.className = 'player-error';
+    // use of innerHTML intentional
+    el.innerHTML = P.i18n.translate('report.crash.html').replace('$attrs', attributes);
+    return el;
+  };
+
+  /**
+   * Create an error element indicating this project is not supported.
+   */
+  ErrorHandler.prototype.projectNotSupportedError = function(error) {
+    var el = document.createElement('div');
+    el.className = 'player-error';
+    // use of innerHTML intentional
+    el.innerHTML = P.i18n.translate('report.crash.unsupported').replace('$type', error.type);
+    return el;
+  };
+
+  ErrorHandler.prototype.onerror = function(error) {
+    var el;
+    if (error instanceof P.Player.ProjectNotSupportedError) {
+      el = this.projectNotSupportedError(error);
     } else {
-      if (this.player.stage) {
-        this.player.stage.ui.appendChild(errorEl);
-      } else {
-        this.player.player.appendChild(errorEl);
-      }
+      el = this.createErrorElement(error);
     }
-    this.errorEl = errorEl;
+    if (this.errorContainer) {
+      this.errorContainer.appendChild(el);
+    } else if (this.player.stage) {
+      this.player.stage.ui.appendChild(el);
+    } else {
+      this.player.player.appendChild(el);
+    }
+    this.errorEl = el;
   };
 
   return ErrorHandler;

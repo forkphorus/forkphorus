@@ -1,7 +1,10 @@
-/// <reference path="phosphorus.ts" />
-/// <reference path="audio.ts" />
+/// <reference path="extension.ts" />
 
-namespace P.microphone {
+/*!
+Parts of this file (microphone.ts) are derived from https://github.com/LLK/scratch-audio/blob/develop/src/Loudness.js
+*/
+
+namespace P.ext.microphone {
   const enum MicrophoneState {
     Disconnected = 0,
     Connected = 1,
@@ -10,6 +13,7 @@ namespace P.microphone {
   }
 
   interface MicrophoneData {
+    source: MediaStreamAudioSourceNode;
     stream: MediaStream;
     analyzer: AnalyserNode;
     dataArray: Float32Array;
@@ -18,10 +22,15 @@ namespace P.microphone {
   }
 
   let microphone: MicrophoneData | null = null;
-  export let state: MicrophoneState = MicrophoneState.Disconnected;
+  let state: MicrophoneState = MicrophoneState.Disconnected;
+
   // The loudness will be cached for this long, in milliseconds.
+  // getLoudness() has side effects (such as affecting smoothing) so a cache is needed.
   const CACHE_TIME = 1000 / 30;
 
+  /**
+   * Begin the process of connecting to the microphone.
+   */
   function connect() {
     if (state !== MicrophoneState.Disconnected) {
       return;
@@ -39,6 +48,7 @@ namespace P.microphone {
         const analyzer = P.audio.context!.createAnalyser();
         source.connect(analyzer);
         microphone = {
+          source: source,
           stream: mediaStream,
           analyzer,
           dataArray: new Float32Array(analyzer.fftSize),
@@ -54,9 +64,33 @@ namespace P.microphone {
   }
 
   /**
+   * Re-initializes the analyser node.
+   * This is necessary due to (what seems to be) a bug in Chrome.
+   */
+  function reinitAnalyser() {
+    // For some reason, when AudioContext.suspend() is called, all analyser nodes stop working in Chrome.
+    // getFloatTimeDomainData() will always return the same data, which isn't any good.
+    // This will fix that by creating a new analyser when the old one cannot be trusted.
+
+    if (!microphone) {
+      throw new Error('Microphone not connected; cannot re-init something that does not exist!')
+    }
+
+    const analyzer = P.audio.context!.createAnalyser();
+    microphone.source.disconnect();
+    microphone.source.connect(analyzer);
+    microphone.analyzer = analyzer;
+
+    // It's possible fftSize might change with this new analyser
+    if (microphone.dataArray.length !== analyzer.fftSize) {
+      microphone.dataArray = new Float32Array(analyzer.fftSize);
+    }
+  }
+
+  /**
    * @returns The volume level from 0-100 or -1 if the microphone is not active.
    */
-  export function getLoudness(): number {
+  function getLoudness(): number {
     if (microphone === null) {
       connect();
       return -1;
@@ -68,14 +102,6 @@ namespace P.microphone {
     if (Date.now() - microphone.lastCheck < CACHE_TIME) {
       return microphone.lastValue;
     }
-
-    `
-    The following lines of source code are from the GitHub project LLK/scratch-audio
-    You can find the license for this code here: https://raw.githubusercontent.com/LLK/scratch-audio/develop/LICENSE
-    (our build tool removes comments so a multiline string is used instead)
-    Copyright (c) 2016, Massachusetts Institute of Technology
-    Modifications copyright (c) 2019 Thomas Weber
-    `
 
     microphone.analyzer.getFloatTimeDomainData(microphone.dataArray);
     let sum = 0;
@@ -93,10 +119,18 @@ namespace P.microphone {
     rms = Math.round(rms * 100);
     rms = Math.min(rms, 100);
 
-    `
-    End of code from LLK/scratch-audio
-    `
-
     return rms;
+  }
+
+  export class MicrophoneExtension extends P.ext.Extension {
+    getLoudness() {
+      return getLoudness();
+    }
+
+    onstart() {
+      if (microphone) {
+        reinitAnalyser();
+      }
+    }
   }
 }

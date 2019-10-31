@@ -33,3 +33,7 @@ Forkphorus is written in mostly TypeScript, which must be compiled to JavaScript
  * Refresh to observe changes.
 
 If for some reason you don't want to or can't do that, then you could edit phosphorus.dist.js directly instead.
+
+## License
+
+Unless stated otherwise, files in this repository are [MIT Licensed](https://github.com/forkphorus/forkphorus/blob/master/LICENSE).

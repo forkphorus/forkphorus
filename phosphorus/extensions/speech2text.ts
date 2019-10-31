@@ -1,12 +1,18 @@
-/// <reference path="phosphorus.ts" />
+/// <reference path="extension.ts" />
 
-namespace P.speech2text {
+namespace P.ext.speech2text {
   // Currently only Chrome supports SpeechRecognition with the webkit prefix.
   var SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition || (window as any).mozSpeechRecognition || (window as any).msSpeechRecognition;
-  export const supported = typeof SpeechRecognition !== 'undefined';
 
-  if (!supported) {
-    console.warn('Speech to text is not supported in this browser. (https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition)');
+  let supported: null | boolean = null;
+  export function isSupported(): boolean {
+    if (supported === null) {
+      supported = typeof SpeechRecognition !== 'undefined';
+      if (!supported) {
+        console.warn('Speech to text is not supported in this browser. (https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition)');
+      }
+    }
+    return supported;
   }
 
   interface SpeechToTextHat {
@@ -15,15 +21,17 @@ namespace P.speech2text {
     phraseFunction: () => any;
   }
 
-  export class SpeechToTextExtension {
+  export class SpeechToTextExtension extends P.ext.Extension {
     public speech: string = '';
+
     private recognition: SpeechRecognition;
     private lastResultIndex: number;
     private listeners: number = 0;
     private overlayElement: HTMLElement;
     private hats: SpeechToTextHat[] = [];
 
-    constructor(public stage: P.core.Stage) {
+    constructor(stage: P.core.Stage) {
+      super(stage);
       this.initRecognition();
       this.initOverlay();
     }
@@ -37,8 +45,11 @@ namespace P.speech2text {
         // Abort is expected when this extension is destroyed.
         if (event.error !== 'aborted') {
           console.error('speech2text error', event);
-          // TODO: attempt to reconnect?
         }
+      };
+      this.recognition.onend = () => {
+        console.warn('speech2text disconnected, reconnecting');
+        this.initRecognition();
       };
       this.recognition.start();
     }
