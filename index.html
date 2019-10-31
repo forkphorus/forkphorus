@@ -357,7 +357,7 @@
     function updatePackageLink() {
       packageOtherWidth.disabled = packageOtherHeight.disabled = !packageOther.checked;
       if (player.projectId) {
-        var url = location.origin + '/app.html?id=' + player.projectId;
+        var url = location.origin + location.pathname + 'app.html?id=' + player.projectId;
         if (packageTurbo.checked) url += '&turbo';
         if (packageFullScreen.checked) {
           // fullscreen is the default
