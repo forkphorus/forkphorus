@@ -4,7 +4,8 @@
   height: auto;
 }
 .player-stage {
-  position: relative;
+  width: 480px;
+  height: 360px;
 }
 /* Fullscreen */
 .player-root[fullscreen] {
@@ -25,9 +26,10 @@
   font: 500 12px sans-serif;
   box-sizing: border-box;
   padding: 8px;
-  position: absolute;
-  bottom: 0;
+  position: relative;
+  top: 100%;
   left: 0;
+  transform: translateY(-100%);
   width: 100%;
   background-color: rgba(255, 200, 200, 0.9);
   pointer-events: auto;
