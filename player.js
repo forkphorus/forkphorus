@@ -306,8 +306,8 @@ P.Player = (function() {
       if (!this.stage.runtime.isRunning) {
         this.stage.draw();
       }
-    }
     this.stage.focus();
+    }
 
     this.updateFullscreen();
   };
@@ -342,8 +342,8 @@ P.Player = (function() {
     document.body.classList.remove('player-body-fullscreen');
     if (this.stage) {
       this.stage.setZoom(1);
-    }
     this.stage.focus();
+    }
   };
 
   /**
