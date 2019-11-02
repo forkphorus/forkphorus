@@ -306,7 +306,7 @@ P.Player = (function() {
       if (!this.stage.runtime.isRunning) {
         this.stage.draw();
       }
-    this.stage.focus();
+      this.stage.focus();
     }
 
     this.updateFullscreen();
@@ -342,7 +342,7 @@ P.Player = (function() {
     document.body.classList.remove('player-body-fullscreen');
     if (this.stage) {
       this.stage.setZoom(1);
-    this.stage.focus();
+      this.stage.focus();
     }
   };
 
@@ -521,6 +521,17 @@ P.Player = (function() {
     });
   };
 
+  Player.prototype._fetchProject = function(id) {
+    var request = new P.IO.BlobRequest(Player.PROJECT_DATA_API.replace('$id', id), { rejectOnError: false });
+    return request.load()
+      .then(function(response) {
+        if (request.xhr.status === 404) {
+          throw new P.Player.ProjectDoesNotExistError(id);
+        }
+        return response;
+      });
+  };
+
   // The main methods you should use for loading things...
 
   /**
@@ -537,7 +548,7 @@ P.Player = (function() {
     this.projectLink = Player.PROJECT_LINK.replace('$id', id);
 
     var blob;
-    return new P.IO.BlobRequest(Player.PROJECT_DATA_API.replace('$id', id)).load()
+    return this._fetchProject(id)
       .then(function(data) {
         blob = data;
         return P.IO.readers.toText(blob);
@@ -653,6 +664,18 @@ P.Player.ProjectNotSupportedError = function(type) {
 P.Player.ProjectNotSupportedError.prototype = new Error();
 P.Player.ProjectNotSupportedError.prototype.name = 'ProjectNotSupportedError';
 
+/**
+ * An error that indicates that this project does not exist.
+ * @param {string} id The project ID
+ */
+P.Player.ProjectDoesNotExistError = function(id) {
+  this.id = id;
+  this.message = 'Project with ID ' + id + ' does not exist';
+  this.stack = new Error().stack;
+};
+P.Player.ProjectDoesNotExistError.prototype = new Error();
+P.Player.ProjectDoesNotExistError.prototype.name = 'ProjectDoesNotExistError';
+
 P.Player.ErrorHandler = (function() {
   /**
    * @typedef ErrorHandlerOptions
@@ -747,10 +770,9 @@ P.Player.ErrorHandler = (function() {
    * Create an error element indicating that forkphorus has crashed, and where to report the bug.
    */
   ErrorHandler.prototype.createErrorElement = function(error) {
-    var errorLink = this.createErrorLink(error);
     var el = document.createElement('div');
+    var errorLink = this.createErrorLink(error);
     var attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
-    el.className = 'player-error';
     // use of innerHTML intentional
     el.innerHTML = P.i18n.translate('report.crash.html').replace('$attrs', attributes);
     return el;
@@ -761,19 +783,30 @@ P.Player.ErrorHandler = (function() {
    */
   ErrorHandler.prototype.projectNotSupportedError = function(error) {
     var el = document.createElement('div');
-    el.className = 'player-error';
     // use of innerHTML intentional
     el.innerHTML = P.i18n.translate('report.crash.unsupported').replace('$type', error.type);
     return el;
   };
 
+  ErrorHandler.prototype.projectDoesNotExistError = function(error) {
+    var el = document.createElement('div');
+    el.textContent = P.i18n.translate('report.crash.doesnotexist').replace('$id', error.id);
+    return el;
+  };
+
   ErrorHandler.prototype.onerror = function(error) {
-    var el;
+    var el = document.createElement('div');
+    el.className = 'player-error';
+
+    // Special handling for certain errors to provide a better error message
     if (error instanceof P.Player.ProjectNotSupportedError) {
-      el = this.projectNotSupportedError(error);
+      el.appendChild(this.projectNotSupportedError(error));
+    } else if (error instanceof P.Player.ProjectDoesNotExistError) {
+      el.appendChild(this.projectDoesNotExistError(error));
     } else {
-      el = this.createErrorElement(error);
+      el.appendChild(this.createErrorElement(error));
     }
+
     if (this.errorContainer) {
       this.errorContainer.appendChild(el);
     } else if (this.player.stage) {

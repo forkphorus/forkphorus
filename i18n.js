@@ -26,6 +26,7 @@ P.i18n = (function() {
       'report.crash.html': 'An internal error occurred. <a $attrs>Click here</a> to file a bug report.',
       'report.crash.instructions': 'Describe what you were doing to cause this error:',
       'report.crash.unsupported': 'This project type ($type) is not supported. For more information and workarounds, <a href="https://github.com/forkphorus/forkphorus/wiki/On-Scratch-1-Projects" target="_blank" rel="noopener">visit this help page</a>.',
+      'report.crash.doesnotexist': 'There is no project with ID $id (Project was probably deleted, never existed, or you made a typo.)',
       'report.bug.instructions': 'Describe the issue:',
       'index.document.title': 'forkphorus - phosphorus for Scratch 3',
       'index.report': 'Report a problem',

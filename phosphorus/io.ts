@@ -21,10 +21,12 @@ namespace P.IO {
 
   interface RequestOptions {
     local?: boolean;
+    rejectOnError?: boolean;
   }
 
   export abstract class Request<T> {
-    public url: string;
+    public readonly url: string;
+    protected readonly rejectOnError: boolean;
 
     constructor(url: string, options: RequestOptions = {}) {
       if (options.local) {
@@ -32,6 +34,7 @@ namespace P.IO {
           url = config.localPath + url;
         }
       }
+      this.rejectOnError = options.rejectOnError !== false;
       this.url = url;
     }
 
@@ -73,7 +76,7 @@ namespace P.IO {
         const xhr = new XMLHttpRequest();
         this.xhr = xhr;
         xhr.addEventListener('load', () => {
-          if (XHRRequest.acceptableResponseCodes.indexOf(xhr.status) !== -1) {
+          if (XHRRequest.acceptableResponseCodes.indexOf(xhr.status) !== -1 || !this.rejectOnError) {
             resolve(xhr.response);
           } else {
             reject(new Error(`HTTP Error ${xhr.status} while downloading ${this.url}`));

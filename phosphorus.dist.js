@@ -2827,6 +2827,7 @@ var P;
                         url = IO.config.localPath + url;
                     }
                 }
+                this.rejectOnError = options.rejectOnError !== false;
                 this.url = url;
             }
             load() {
@@ -2858,7 +2859,7 @@ var P;
                     const xhr = new XMLHttpRequest();
                     this.xhr = xhr;
                     xhr.addEventListener('load', () => {
-                        if (XHRRequest.acceptableResponseCodes.indexOf(xhr.status) !== -1) {
+                        if (XHRRequest.acceptableResponseCodes.indexOf(xhr.status) !== -1 || !this.rejectOnError) {
                             resolve(xhr.response);
                         }
                         else {

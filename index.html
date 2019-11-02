@@ -191,7 +191,7 @@
     });
     var errorHandler = new P.Player.ErrorHandler(player);
     player.onerror.subscribe(function(err) {
-      if (err instanceof P.Player.ProjectNotSupportedError) {
+      if (err instanceof P.Player.ProjectNotSupportedError || err instanceof P.Player.ProjectDoesNotExistError) {
         return;
       }
       err = '' + err;
