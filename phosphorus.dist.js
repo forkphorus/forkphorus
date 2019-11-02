@@ -1129,7 +1129,7 @@ var P;
                     ctx.scale(effectiveScale, effectiveScale);
                 }
                 else {
-                    ctx.clearRect(0, 0, width, height);
+                    ctx.clearRect(0, 0, 480, 360);
                 }
             }
             _drawChild(c, ctx) {
