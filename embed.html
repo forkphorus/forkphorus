@@ -68,6 +68,9 @@
           case 'w':
             width = Number(parts[1]);
             break;
+          case 'h':
+            // ignored by the embed itself. the scriptlet handles height
+            break;
           default:
             console.warn('unknown search param', parts);
         }
