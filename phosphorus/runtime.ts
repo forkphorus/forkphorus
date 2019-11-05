@@ -110,6 +110,10 @@ namespace P.runtime {
     return (a + '').toLowerCase() === (b + '').toLowerCase();
   };
 
+  var stringContains = function(baseString: string, needle: string) {
+    return baseString.toLowerCase().indexOf(needle.toLowerCase()) > -1;
+  };
+
   var mod = function(x, y) {
     var r = x % y;
     // need special behavior for handling negatives

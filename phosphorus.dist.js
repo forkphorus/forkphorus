@@ -3023,6 +3023,9 @@ var P;
         var strEqual = function (a, b) {
             return (a + '').toLowerCase() === (b + '').toLowerCase();
         };
+        var stringContains = function (baseString, needle) {
+            return baseString.toLowerCase().indexOf(needle.toLowerCase()) > -1;
+        };
         var mod = function (x, y) {
             var r = x % y;
             if (r / y < 0) {
@@ -7403,7 +7406,7 @@ var P;
     inputLibrary['operator_contains'] = function (util) {
         const STRING1 = util.getInput('STRING1', 'string');
         const STRING2 = util.getInput('STRING2', 'string');
-        return util.booleanInput(`${STRING1}.includes(${STRING2})`);
+        return util.booleanInput(`stringContains(${STRING1}, ${STRING2})`);
     };
     inputLibrary['operator_divide'] = function (util) {
         const NUM1 = util.getInput('NUM1', 'number');

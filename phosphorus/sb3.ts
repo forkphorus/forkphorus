@@ -2680,9 +2680,7 @@ namespace P.sb3.compiler {
   inputLibrary['operator_contains'] = function(util) {
     const STRING1 = util.getInput('STRING1', 'string');
     const STRING2 = util.getInput('STRING2', 'string');
-    // TODO: case sensitivity?
-    // TODO: use indexOf?
-    return util.booleanInput(`${STRING1}.includes(${STRING2})`);
+    return util.booleanInput(`stringContains(${STRING1}, ${STRING2})`);
   };
   inputLibrary['operator_divide'] = function(util) {
     const NUM1 = util.getInput('NUM1', 'number');
