@@ -842,10 +842,10 @@ namespace P.sb3 {
 
     load() {
       if (!this.projectData) {
-        throw new Error('invalid project data');
+        throw new Error('Project data is missing or invalid');
       }
       if (!Array.isArray(this.projectData.targets)) {
-        throw new Error('no targets');
+        throw new Error('Invalid project data: missing targets');
       }
 
       const targets = this.projectData.targets;
@@ -860,7 +860,7 @@ namespace P.sb3 {
           }
           const stage = targets.filter((i) => i.isStage)[0] as Scratch3Stage;
           if (!stage) {
-            throw new Error('no stage object');
+            throw new Error('Project does not have a Stage');
           }
           const sprites = targets.filter((i) => i.isSprite) as Scratch3Sprite[];
           sprites.forEach((sprite) => sprite.stage = stage);
@@ -1050,7 +1050,7 @@ namespace P.sb3.compiler {
    * Asserts at compile-time that a value is of the type `never`
    */
   function assertNever(i: never): never {
-    throw new Error('assertion failed');
+    throw new Error('Compile-time assertNever failed.');
   }
 
   // IDs of native types

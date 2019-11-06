@@ -144,7 +144,7 @@ namespace P.runtime {
   var clone = function(name) {
     const parent = name === '_myself_' ? S : self.getObject(name);
     if (!parent) {
-      throw new Error('No parent!');
+      throw new Error('Cannot find object to clone');
     }
     if (!P.core.isSprite(parent)) {
       throw new Error('Cannot clone non-sprite object');
@@ -610,7 +610,7 @@ namespace P.runtime {
      */
     resetInterval() {
       if (!this.isRunning) {
-        throw new Error('cannot restart interval when paused');
+        throw new Error('Cannot restart interval when paused');
       }
       if (this.interval) {
         clearInterval(this.interval);

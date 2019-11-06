@@ -68,14 +68,13 @@ namespace P.ext.microphone {
    * This is necessary due to (what seems to be) a bug in Chrome.
    */
   function reinitAnalyser() {
-    // For some reason, when AudioContext.suspend() is called, all analyser nodes stop working in Chrome.
-    // getFloatTimeDomainData() will always return the same data, which isn't any good.
-    // This will fix that by creating a new analyser when the old one cannot be trusted.
-
     if (!microphone) {
       throw new Error('Microphone not connected; cannot re-init something that does not exist!')
     }
 
+    // For some reason all analyser nodes stop working in Chrome after doing suspend() on the AudioContext
+    // getFloatTimeDomainData() will always return the same data, which isn't any good.
+    // This will fix that by creating a new analyser instead of re-using one.
     const analyzer = P.audio.context!.createAnalyser();
     microphone.source.disconnect();
     microphone.source.connect(analyzer);
