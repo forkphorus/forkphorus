@@ -3051,7 +3051,7 @@ var P;
         var clone = function (name) {
             const parent = name === '_myself_' ? S : self.getObject(name);
             if (!parent) {
-                throw new Error('No parent!');
+                throw new Error('Cannot find object to clone');
             }
             if (!P.core.isSprite(parent)) {
                 throw new Error('Cannot clone non-sprite object');
@@ -3473,7 +3473,7 @@ var P;
             }
             resetInterval() {
                 if (!this.isRunning) {
-                    throw new Error('cannot restart interval when paused');
+                    throw new Error('Cannot restart interval when paused');
                 }
                 if (this.interval) {
                     clearInterval(this.interval);
@@ -4694,15 +4694,15 @@ var P;
                                 case 'tan':
                                     return 'Math.tan(' + num(e[2]) + ' * Math.PI / 180)';
                                 case 'asin':
-                                    return 'Math.asin(' + num(e[2]) + ') * 180 / Math.PI';
+                                    return '(Math.asin(' + num(e[2]) + ') * 180 / Math.PI)';
                                 case 'acos':
-                                    return 'Math.acos(' + num(e[2]) + ') * 180 / Math.PI';
+                                    return '(Math.acos(' + num(e[2]) + ') * 180 / Math.PI)';
                                 case 'atan':
-                                    return 'Math.atan(' + num(e[2]) + ') * 180 / Math.PI';
+                                    return '(Math.atan(' + num(e[2]) + ') * 180 / Math.PI)';
                                 case 'ln':
                                     return 'Math.log(' + num(e[2]) + ')';
                                 case 'log':
-                                    return 'Math.log(' + num(e[2]) + ') / Math.LN10';
+                                    return '(Math.log(' + num(e[2]) + ') / Math.LN10)';
                                 case 'e ^':
                                     return 'Math.exp(' + num(e[2]) + ')';
                                 case '10 ^':
@@ -5988,10 +5988,10 @@ var P;
             }
             load() {
                 if (!this.projectData) {
-                    throw new Error('invalid project data');
+                    throw new Error('Project data is missing or invalid');
                 }
                 if (!Array.isArray(this.projectData.targets)) {
-                    throw new Error('no targets');
+                    throw new Error('Invalid project data: missing targets');
                 }
                 const targets = this.projectData.targets;
                 targets.sort((a, b) => a.layerOrder - b.layerOrder);
@@ -6003,7 +6003,7 @@ var P;
                     }
                     const stage = targets.filter((i) => i.isStage)[0];
                     if (!stage) {
-                        throw new Error('no stage object');
+                        throw new Error('Project does not have a Stage');
                     }
                     const sprites = targets.filter((i) => i.isSprite);
                     sprites.forEach((sprite) => sprite.stage = stage);
@@ -6166,7 +6166,7 @@ var P;
         var compiler;
         (function (compiler_1) {
             function assertNever(i) {
-                throw new Error('assertion failed');
+                throw new Error('Compile-time assertNever failed.');
             }
             class CompiledInput {
                 constructor(source, type) {

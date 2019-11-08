@@ -1023,15 +1023,15 @@ namespace P.sb2.compiler {
             case 'tan':
               return 'Math.tan(' + num(e[2]) + ' * Math.PI / 180)';
             case 'asin':
-              return 'Math.asin(' + num(e[2]) + ') * 180 / Math.PI';
+              return '(Math.asin(' + num(e[2]) + ') * 180 / Math.PI)';
             case 'acos':
-              return 'Math.acos(' + num(e[2]) + ') * 180 / Math.PI';
+              return '(Math.acos(' + num(e[2]) + ') * 180 / Math.PI)';
             case 'atan':
-              return 'Math.atan(' + num(e[2]) + ') * 180 / Math.PI';
+              return '(Math.atan(' + num(e[2]) + ') * 180 / Math.PI)';
             case 'ln':
               return 'Math.log(' + num(e[2]) + ')';
             case 'log':
-              return 'Math.log(' + num(e[2]) + ') / Math.LN10';
+              return '(Math.log(' + num(e[2]) + ') / Math.LN10)';
             case 'e ^':
               return 'Math.exp(' + num(e[2]) + ')';
             case '10 ^':
