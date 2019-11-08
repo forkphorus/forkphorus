@@ -314,14 +314,14 @@ namespace P.audio {
       .then((sound) => soundbank[name] = sound);
   }
 
-  export function playSpan(span: Span, key: number, duration: number, connection: AudioNode) {
+  export function playSpan(span: Span, key: number, duration: number, connection: AudioNode): AudioNode {
     if (!context) {
-      return;
+      throw new Error('Cannot playSpawn without an AudioContext');
     }
 
     const buffer = soundbank[span.name];
     if (!buffer) {
-      return;
+      throw new Error('No soundbank entry named: ' + span.name);
     }
 
     const source = context.createBufferSource();
@@ -361,6 +361,7 @@ namespace P.audio {
 
     source.start(time);
     source.stop(time + duration + 0.02267573696);
+    return source;
   }
 
   /**

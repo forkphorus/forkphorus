@@ -361,11 +361,16 @@ namespace P.runtime {
         span = spans[i];
         if (span.top >= key || span.top === 128) break;
       }
-      P.audio.playSpan(span, key, duration, S.getAudioNode());
+      return playSpan(span, key, duration);
     };
 
     var playSpan = function(span, key, duration) {
-      P.audio.playSpan(span, key, duration, S.getAudioNode());
+      const node = P.audio.playSpan(span, key, duration, S.getAudioNode());
+      return {
+        stopped: false,
+        node,
+        base: BASE,
+      };
     };
 
     var applySoundEffects = function(node: AudioBufferSourceNode) {

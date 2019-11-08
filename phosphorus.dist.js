@@ -291,11 +291,11 @@ var P;
         }
         function playSpan(span, key, duration, connection) {
             if (!audio.context) {
-                return;
+                throw new Error('Cannot playSpawn without an AudioContext');
             }
             const buffer = soundbank[span.name];
             if (!buffer) {
-                return;
+                throw new Error('No soundbank entry named: ' + span.name);
             }
             const source = audio.context.createBufferSource();
             const note = audio.context.createGain();
@@ -332,6 +332,7 @@ var P;
             gain.linearRampToValueAtTime(0, time + duration + 0.02267573696);
             source.start(time);
             source.stop(time + duration + 0.02267573696);
+            return source;
         }
         audio.playSpan = playSpan;
         function connectNode(node) {
@@ -3266,10 +3267,15 @@ var P;
                     if (span.top >= key || span.top === 128)
                         break;
                 }
-                P.audio.playSpan(span, key, duration, S.getAudioNode());
+                return playSpan(span, key, duration);
             };
             var playSpan = function (span, key, duration) {
-                P.audio.playSpan(span, key, duration, S.getAudioNode());
+                const node = P.audio.playSpan(span, key, duration, S.getAudioNode());
+                return {
+                    stopped: false,
+                    node,
+                    base: BASE,
+                };
             };
             var applySoundEffects = function (node) {
                 node.playbackRate.value = Math.pow(2, (S.soundFilters.pitch / 10 / 12));
@@ -4831,10 +4837,13 @@ var P;
                 };
                 var beatTail = function () {
                     var id = label();
-                    source += 'if (runtime.now() - R.start < R.duration * 1000 || first) {\n';
+                    source += 'if (!R.sound) R.sound = { stopped: false };';
+                    source += 'else S.activeSounds.add(R.sound);\n';
+                    source += 'if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {\n';
                     source += '  var first;\n';
                     forceQueue(id);
                     source += '}\n';
+                    source += 'S.activeSounds.delete(R.sound);';
                     source += 'restore();\n';
                 };
                 var wait = function (dur) {
@@ -5058,7 +5067,7 @@ var P;
                     else if (block[0] === 'playDrum') {
                         beatHead(block[2]);
                         if (P.audio.context) {
-                            source += 'playSpan(DRUMS[Math.round(' + num(block[1]) + ') - 1] || DRUMS[2], 60, 10);\n';
+                            source += 'R.sound = playSpan(DRUMS[Math.round(' + num(block[1]) + ') - 1] || DRUMS[2], 60, 10);\n';
                         }
                         beatTail();
                     }
@@ -5069,7 +5078,7 @@ var P;
                     else if (block[0] === 'noteOn:duration:elapsed:from:') {
                         beatHead(block[2]);
                         if (P.audio.context) {
-                            source += 'playNote(' + num(block[1]) + ', R.duration);\n';
+                            source += 'R.sound = playNote(' + num(block[1]) + ', R.duration);\n';
                         }
                         beatTail();
                     }

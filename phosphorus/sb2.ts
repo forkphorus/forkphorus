@@ -1191,11 +1191,13 @@ namespace P.sb2.compiler {
 
     var beatTail = function() {
       var id = label();
-      source += 'if (runtime.now() - R.start < R.duration * 1000 || first) {\n';
+      source += 'if (!R.sound) R.sound = { stopped: false };';
+      source += 'S.activeSounds.add(R.sound);\n'
+      source += 'if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {\n';
       source += '  var first;\n';
       forceQueue(id);
       source += '}\n';
-
+      source += 'S.activeSounds.delete(R.sound);';
       source += 'restore();\n';
     };
 
@@ -1462,7 +1464,7 @@ namespace P.sb2.compiler {
 
         beatHead(block[2]);
         if (P.audio.context) {
-          source += 'playSpan(DRUMS[Math.round(' + num(block[1]) + ') - 1] || DRUMS[2], 60, 10);\n';
+          source += 'R.sound = playSpan(DRUMS[Math.round(' + num(block[1]) + ') - 1] || DRUMS[2], 60, 10);\n';
         }
         beatTail();
 
@@ -1475,7 +1477,7 @@ namespace P.sb2.compiler {
 
         beatHead(block[2]);
         if (P.audio.context) {
-          source += 'playNote(' + num(block[1]) + ', R.duration);\n';
+          source += 'R.sound = playNote(' + num(block[1]) + ', R.duration);\n';
         }
         beatTail();
 
