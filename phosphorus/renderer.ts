@@ -270,7 +270,6 @@ namespace P.renderer {
   export class WebGLSpriteRenderer implements SpriteRenderer {
     public static vertexShader: string = `
     attribute vec2 a_position;
-    attribute vec2 a_texcoord;
 
     uniform mat3 u_matrix;
 
@@ -278,7 +277,7 @@ namespace P.renderer {
 
     void main() {
       gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
-      v_texcoord = a_texcoord;
+      v_texcoord = a_position;
     }
     `;
 
@@ -401,6 +400,7 @@ namespace P.renderer {
     protected quadBuffer: WebGLBuffer;
     protected globalScaleMatrix: P.m3.Matrix3 = P.m3.scaling(1, 1);
     protected renderingShader: ShaderVariant;
+    private boundFramebuffer: WebGLFramebuffer | null = null;
 
     constructor() {
       this.canvas = createCanvas();
@@ -540,6 +540,14 @@ namespace P.renderer {
       return frameBuffer;
     }
 
+    protected bindFramebuffer(buffer: WebGLFramebuffer | null) {
+      if (buffer === this.boundFramebuffer) {
+        return;
+      }
+      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, buffer);
+      this.boundFramebuffer = buffer;
+    }
+
     /**
      * Reset and resize this renderer.
      */
@@ -554,7 +562,7 @@ namespace P.renderer {
      * @param scale Zoom level
      */
     protected resetFramebuffer(scale: number) {
-      this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+      this.gl.viewport(0, 0, 480 * scale, 360 * scale);
       // the first element of the matrix is the x-scale, so we can use that to only recreate the matrix when needed
       if (this.globalScaleMatrix[0] !== scale) {
         this.globalScaleMatrix = P.m3.scaling(scale, scale);
@@ -585,7 +593,6 @@ namespace P.renderer {
       }
       this.gl.bindTexture(this.gl.TEXTURE_2D, costume._glTexture);
 
-      shader.attributeBuffer('a_texcoord', this.quadBuffer);
       shader.attributeBuffer('a_position', this.quadBuffer);
 
       // TODO: do this in the shader if its possible/faster
@@ -644,13 +651,12 @@ namespace P.renderer {
      * Draw a texture covering the entire screen
      * @param texture The texture to draw. Must belong to this renderer.
      */
-    protected drawTexture(texture: WebGLTexture) {
+    protected drawTextureOverlay(texture: WebGLTexture) {
       const shader = this.renderingShader;
       this.gl.useProgram(shader.program);
 
       this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
 
-      shader.attributeBuffer('a_texcoord', this.quadBuffer);
       shader.attributeBuffer('a_position', this.quadBuffer);
 
       const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
@@ -750,9 +756,10 @@ namespace P.renderer {
     }
 
     drawFrame() {
+      this.bindFramebuffer(null);
       this.reset(this.zoom);
       this.drawChild(this.stage);
-      this.drawTexture(this.penTexture);
+      this.drawTextureOverlay(this.penTexture);
       for (var i = 0; i < this.stage.children.length; i++) {
         var child = this.stage.children[i];
         if (!child.visible) {
@@ -771,7 +778,7 @@ namespace P.renderer {
     }
 
     penLine(color: P.core.PenColor, size: number, x: number, y: number, x2: number, y2: number): void {
-      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
+      this.bindFramebuffer(this.penBuffer);
 
       const shader = this.penLineShader;
       this.gl.useProgram(shader.program);
@@ -790,12 +797,10 @@ namespace P.renderer {
       const parts = color.toParts();
       shader.uniform4f('u_color', parts[0], parts[1], parts[2], parts[3]);
       this.gl.drawArrays(this.gl.LINES, 0, 2);
-
-      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
     }
 
     penDot(color: P.core.PenColor, size: number, x: number, y: number): void {
-      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
+      this.bindFramebuffer(this.penBuffer);
 
       const shader = this.penDotShader;
       this.gl.useProgram(shader.program);
@@ -810,21 +815,17 @@ namespace P.renderer {
       shader.uniform4f('u_color', parts[0], parts[1], parts[2], parts[3]);
 
       this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
-      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
     }
 
     penStamp(sprite: P.core.Sprite): void {
-      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
-      this.gl.viewport(0, 0, 480, 360);
+      this.bindFramebuffer(this.penBuffer);
       this.drawChild(sprite);
-      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
     }
 
     penClear(): void {
-      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
+      this.bindFramebuffer(this.penBuffer);
       this.gl.clearColor(255, 255, 255, 0);
       this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
     }
 
     resize(scale: number): void {
@@ -841,7 +842,7 @@ namespace P.renderer {
 
       const texture = this.createTexture();
       const framebuffer = this.createFramebuffer();
-      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, framebuffer);
+      this.bindFramebuffer(framebuffer);
       this.resetFramebuffer(1);
 
       this._drawChild(sprite, this.shaderOnlyShapeFilters);
@@ -851,8 +852,6 @@ namespace P.renderer {
       // Coordinates are in pixels from the lower left corner
       // We only care about 1 pixel, the pixel at the mouse cursor.
       this.gl.readPixels(240 + x | 0, 180 + y | 0, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, result);
-
-      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
 
       // I don't know if it's necessary to delete these
       this.gl.deleteTexture(texture);
