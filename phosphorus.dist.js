@@ -4859,6 +4859,7 @@ var P;
                     source += 'restore();\n';
                 };
                 var toHSLA = 'S.penColor.toHSLA();\n';
+                toHSLA += 'S.penColor.a = 1;\n';
                 var visual = 0;
                 var compile = function (block) {
                     if (LOG_PRIMITIVES) {
