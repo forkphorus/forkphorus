@@ -1576,22 +1576,22 @@ var P;
                 this.volume = 1;
                 this.node = null;
                 this.activeSounds = new Set();
-                this.watchers = {};
-                this.listWatchers = {};
-                this.vars = {};
-                this.lists = {};
+                this.watchers = Object.create(null);
+                this.listWatchers = Object.create(null);
+                this.vars = Object.create(null);
+                this.lists = Object.create(null);
                 this.saying = false;
                 this.thinking = false;
                 this.sayId = 0;
-                this.procedures = {};
+                this.procedures = Object.create(null);
                 this.listeners = {
                     whenClicked: [],
                     whenCloned: [],
                     whenGreenFlag: [],
-                    whenIReceive: {},
+                    whenIReceive: Object.create(null),
                     whenKeyPressed: [],
-                    whenBackdropChanges: {},
-                    whenSceneStarts: {},
+                    whenBackdropChanges: Object.create(null),
+                    whenSceneStarts: Object.create(null),
                 };
                 this.fns = [];
                 this.filters = {
