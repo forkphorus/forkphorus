@@ -393,6 +393,7 @@ namespace P.sb3 {
     private endpointEl: HTMLElement;
     private contentEl: HTMLElement;
     private rows: ListWatcherRow[] = [];
+    private firstUpdateComplete: boolean = false;
     private _rowHeight: number = -1;
     private scrollTop: number = 0;
     private lastZoomLevel: number = 1;
@@ -413,19 +414,24 @@ namespace P.sb3 {
       this.height = data.height || 200;
     }
 
+    shouldUpdate() {
+      if (!this.visible) return false;
+      if (this.lastZoomLevel !== this.stage.zoom) return true;
+      if (!this.firstUpdateComplete) return true;
+      return this.list.modified;
+    }
+
     update() {
-      if (!this.visible) {
+      if (!this.shouldUpdate()) {
         return;
       }
 
-      if (!this.list.modified && this.lastZoomLevel === this.stage.zoom) {
-        return;
-      }
       if (this.lastZoomLevel !== this.stage.zoom) {
         this.contentEl.scrollTop *= this.stage.zoom / this.lastZoomLevel;
       }
       this.list.modified = false;
       this.lastZoomLevel = this.stage.zoom;
+      this.firstUpdateComplete = true;
 
       this.updateList();
 

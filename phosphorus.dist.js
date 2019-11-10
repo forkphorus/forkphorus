@@ -5622,6 +5622,7 @@ var P;
             constructor(stage, data) {
                 super(stage, data.spriteName || '');
                 this.rows = [];
+                this.firstUpdateComplete = false;
                 this._rowHeight = -1;
                 this.scrollTop = 0;
                 this.lastZoomLevel = 1;
@@ -5637,11 +5638,17 @@ var P;
                 this.width = data.width || 100;
                 this.height = data.height || 200;
             }
+            shouldUpdate() {
+                if (!this.visible)
+                    return false;
+                if (this.lastZoomLevel !== this.stage.zoom)
+                    return true;
+                if (!this.firstUpdateComplete)
+                    return true;
+                return this.list.modified;
+            }
             update() {
-                if (!this.visible) {
-                    return;
-                }
-                if (!this.list.modified && this.lastZoomLevel === this.stage.zoom) {
+                if (!this.shouldUpdate()) {
                     return;
                 }
                 if (this.lastZoomLevel !== this.stage.zoom) {
@@ -5649,6 +5656,7 @@ var P;
                 }
                 this.list.modified = false;
                 this.lastZoomLevel = this.stage.zoom;
+                this.firstUpdateComplete = true;
                 this.updateList();
                 const bottomLabelText = this.getBottomLabel();
                 if (this.bottomLabelEl.textContent !== bottomLabelText) {
