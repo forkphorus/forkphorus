@@ -779,6 +779,11 @@ namespace P.sb3 {
         const list = data.lists[id];
         const name = list[0];
         const content = list[1];
+        // There are some cases where projects has multiple lists of the same name, different ID
+        // To avoid issues caused by that, we will give the first definition precedence over later definitions.
+        if (target.lists[name]) {
+          continue;
+        }
         const scratchList = createList();
         for (var i = 0; i < content.length; i++) {
           scratchList[i] = content[i];

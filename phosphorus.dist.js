@@ -4838,7 +4838,7 @@ var P;
                 var beatTail = function () {
                     var id = label();
                     source += 'if (!R.sound) R.sound = { stopped: false };';
-                    source += 'else S.activeSounds.add(R.sound);\n';
+                    source += 'S.activeSounds.add(R.sound);\n';
                     source += 'if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {\n';
                     source += '  var first;\n';
                     forceQueue(id);
@@ -5943,6 +5943,9 @@ var P;
                     const list = data.lists[id];
                     const name = list[0];
                     const content = list[1];
+                    if (target.lists[name]) {
+                        continue;
+                    }
                     const scratchList = createList();
                     for (var i = 0; i < content.length; i++) {
                         scratchList[i] = content[i];
