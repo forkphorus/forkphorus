@@ -137,7 +137,6 @@
   <script src="lib/canvg.min.js"></script>
   <script src="phosphorus.dist.js"></script>
   <script src="i18n.js"></script>
-  <script src="player.js"></script>
   <script src="studioview/studioview.js"></script>
 
   <script>
@@ -183,15 +182,15 @@
     var playerArea = querySelector('#player-area');
     var projectArea = querySelector('#project-area');
 
-    var player = new P.Player();
+    var player = new P.player.Player();
     window.player = player;
     player.addControls();
-    new P.Player.ProgressBar(player, {
+    new P.player.ProgressBar(player, {
       position: querySelector('.url').parentNode,
     });
-    var errorHandler = new P.Player.ErrorHandler(player);
+    var errorHandler = new P.player.ErrorHandler(player);
     player.onerror.subscribe(function(err) {
-      if (err instanceof P.Player.ProjectNotSupportedError || err instanceof P.Player.ProjectDoesNotExistError) {
+      if (err instanceof P.player.ProjectNotSupportedError || err instanceof P.player.ProjectDoesNotExistError) {
         return;
       }
       err = '' + err;
