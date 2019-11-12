@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>forkphorus</title>
   <link rel="stylesheet" href="phosphorus.css">
-  <link rel="stylesheet" href="player.css">
 
   <style>
     body {
@@ -35,8 +34,6 @@
   <script src="lib/rgbcolor.js"></script>
   <script src="lib/canvg.min.js"></script>
   <script src="phosphorus.dist.js"></script>
-  <script src="i18n.js"></script>
-  <script src="player.js"></script>
 
   <script>
   (function() {
@@ -87,15 +84,15 @@
       }
     }
 
-    var player = new P.Player({theme: lightContent ? 'dark' : 'light'});
+    var player = new P.player.Player({theme: lightContent ? 'dark' : 'light'});
 
     if (hasUI) {
       document.body.classList.add('has-ui');
       player.addControls();
-      new P.Player.ProgressBar(player, {position: 'controls'});
+      new P.player.ProgressBar(player, {position: 'controls'});
     }
     // TODO: don't add ErrorHandler if UI is not set to be visible?
-    new P.Player.ErrorHandler(player);
+    new P.player.ErrorHandler(player);
     document.querySelector('.player').appendChild(player.root);
 
     // Implement Parent -> Embed API

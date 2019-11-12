@@ -8,7 +8,6 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <title>forkphorus</title>
   <link rel="stylesheet" href="phosphorus.css">
-  <link rel="stylesheet" href="player.css">
 
   <style>
     body {
@@ -89,8 +88,6 @@
   <script src="lib/rgbcolor.js"></script>
   <script src="lib/canvg.min.js"></script>
   <script src="phosphorus.dist.js"></script>
-  <script src="i18n.js"></script>
-  <script src="player.js"></script>
 
   <script>
   (function () {
@@ -131,8 +128,8 @@
     var progressBar = document.querySelector('.progress');
     var progressBarFill = document.querySelector('.progress-bar');
 
-    var player = new P.Player();
-    var errorHandler = new P.Player.ErrorHandler(player, {
+    var player = new P.player.Player();
+    var errorHandler = new P.player.ErrorHandler(player, {
       container: document.querySelector('.error-report'),
     });
     player.onprogress.subscribe(function(progress) {

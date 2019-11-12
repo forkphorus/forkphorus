@@ -19,7 +19,6 @@
     }());
   </script>
   <link rel="stylesheet" href="phosphorus.css">
-  <link rel="stylesheet" href="player.css">
   <link rel="stylesheet" href="studioview/studioview.css">
   <link rel="stylesheet" href="index.css">
 </head>
@@ -227,7 +226,8 @@
     });
     var errorHandler = new P.player.ErrorHandler(player);
     player.onerror.subscribe(function(err) {
-      if (err instanceof P.player.ProjectNotSupportedError || err instanceof P.player.ProjectDoesNotExistError) {
+      if (err instanceof P.player.PlayerError) {
+        // Handled by the player's ErrorHandler.
         return;
       }
       err = '' + err;
