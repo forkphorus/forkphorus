@@ -3202,6 +3202,7 @@ var P;
                 this.onerror = new P.utils.Slot();
                 this.onstart = new P.utils.Slot();
                 this.onpause = new P.utils.Slot();
+                this.onturbochange = new P.utils.Slot();
                 this.fullscreen = false;
                 this.fullscreenPadding = 8;
                 this.fullscreenMaxWidth = Infinity;
@@ -3212,14 +3213,15 @@ var P;
                 this.flagTouchTimeout = undefined;
                 this.root = document.createElement('div');
                 this.root.className = 'player-root';
-                this.setTheme(options.theme || 'light');
                 this.player = document.createElement('div');
                 this.player.className = 'player-stage';
                 this.root.appendChild(this.player);
+                this.setTheme(options.theme || 'light');
                 window.addEventListener('resize', () => this.updateFullscreen());
                 document.addEventListener('fullscreenchange', () => this.onfullscreenchange());
                 document.addEventListener('mozfullscreenchange', () => this.onfullscreenchange());
                 document.addEventListener('webkitfullscreenchange', () => this.onfullscreenchange());
+                this.handleError = this.handleError.bind(this);
             }
             static getProjectType(data) {
                 if (!data)
@@ -3296,24 +3298,44 @@ var P;
                 };
                 this.controlsEl = document.createElement('div');
                 this.controlsEl.className = 'player-controls';
-                this.stopButton = document.createElement('span');
-                this.stopButton.className = 'player-button player-stop';
-                this.controlsEl.appendChild(this.stopButton);
-                this.pauseButton = document.createElement('span');
-                this.pauseButton.className = 'player-button player-pause';
-                this.controlsEl.appendChild(this.pauseButton);
-                this.flagButton = document.createElement('span');
-                this.flagButton.className = 'player-button player-flag';
-                this.flagButton.title = P.i18n.translate('player.controls.flag.title');
-                this.controlsEl.appendChild(this.flagButton);
-                this.turboText = document.createElement('span');
-                this.turboText.innerText = P.i18n.translate('player.controls.turboIndicator');
-                this.turboText.className = 'player-label player-turbo';
-                this.controlsEl.appendChild(this.turboText);
-                this.fullscreenButton = document.createElement('span');
-                this.fullscreenButton.className = 'player-button player-fullscreen-btn';
-                this.fullscreenButton.title = P.i18n.translate('player.controls.fullscreen.title');
-                this.controlsEl.appendChild(this.fullscreenButton);
+                if (options.enableStop !== false) {
+                    this.stopButton = document.createElement('span');
+                    this.stopButton.className = 'player-button player-stop';
+                    this.controlsEl.appendChild(this.stopButton);
+                    this.stopButton.addEventListener('touchend', clickStop);
+                    this.stopButton.addEventListener('touchstart', preventDefault);
+                }
+                if (options.enablePause !== false) {
+                    this.pauseButton = document.createElement('span');
+                    this.pauseButton.className = 'player-button player-pause';
+                    this.controlsEl.appendChild(this.pauseButton);
+                    this.pauseButton.addEventListener('click', clickPause);
+                    this.pauseButton.addEventListener('touchend', clickPause);
+                }
+                if (options.enableFlag !== false) {
+                    this.flagButton = document.createElement('span');
+                    this.flagButton.className = 'player-button player-flag';
+                    this.flagButton.title = P.i18n.translate('player.controls.flag.title');
+                    this.controlsEl.appendChild(this.flagButton);
+                    this.flagButton.addEventListener('click', clickFlag);
+                    this.flagButton.addEventListener('touchend', clickFlag);
+                    this.flagButton.addEventListener('touchstart', preventDefault);
+                }
+                if (options.enableTurbo !== false) {
+                    this.turboText = document.createElement('span');
+                    this.turboText.innerText = P.i18n.translate('player.controls.turboIndicator');
+                    this.turboText.className = 'player-label player-turbo';
+                    this.controlsEl.appendChild(this.turboText);
+                }
+                if (options.enableFullscreen !== false) {
+                    this.fullscreenButton = document.createElement('span');
+                    this.fullscreenButton.className = 'player-button player-fullscreen-btn';
+                    this.fullscreenButton.title = P.i18n.translate('player.controls.fullscreen.title');
+                    this.controlsEl.appendChild(this.fullscreenButton);
+                    this.fullscreenButton.addEventListener('click', clickFullscreen);
+                    this.fullscreenButton.addEventListener('touchend', clickFullscreen);
+                    this.fullscreenButton.addEventListener('touchstart', preventDefault);
+                }
                 if (options.showMutedIndicator && P.audio.context) {
                     this.mutedText = document.createElement('div');
                     this.mutedText.innerText = P.i18n.translate('player.controls.muted');
@@ -3325,19 +3347,6 @@ var P;
                     });
                     this.root.setAttribute('audio-state', P.audio.context.state);
                 }
-                this.stopButton.addEventListener('click', clickStop);
-                this.pauseButton.addEventListener('click', clickPause);
-                this.flagButton.addEventListener('click', clickFlag);
-                this.fullscreenButton.addEventListener('click', clickFullscreen);
-                this.flagButton.addEventListener('touchstart', startTouchFlag);
-                this.flagButton.addEventListener('touchend', clickFlag);
-                this.pauseButton.addEventListener('touchend', clickPause);
-                this.stopButton.addEventListener('touchend', clickStop);
-                this.fullscreenButton.addEventListener('touchend', clickFullscreen);
-                this.flagButton.addEventListener('touchstart', preventDefault);
-                this.pauseButton.addEventListener('touchstart', preventDefault);
-                this.stopButton.addEventListener('touchstart', preventDefault);
-                this.fullscreenButton.addEventListener('touchstart', preventDefault);
                 this.root.addEventListener('touchmove', (e) => {
                     if (this.fullscreen) {
                         e.preventDefault();
@@ -3362,6 +3371,7 @@ var P;
                         this.flagButton.title = P.i18n.translate('player.controls.flag.title.disabled');
                     }
                 }
+                this.onturbochange.emit(turbo);
             }
             pause() {
                 this.assertStage();
@@ -3500,28 +3510,27 @@ var P;
             }
             installStage(stage, stageOptions = {}) {
                 if (!stage) {
-                    throw new Error('Invalid stage.');
+                    throw new Error('Cannot run an invalid stage');
                 }
                 this.stage = stage;
-                stageOptions = stageOptions || {};
-                stage.runtime.handleError = this.handleError.bind(this);
+                this.stage.runtime.handleError = this.handleError;
+                this.player.appendChild(this.stage.root);
                 if (typeof stageOptions.fps !== 'undefined') {
-                    stage.runtime.framerate = stageOptions.fps;
+                    this.stage.runtime.framerate = stageOptions.fps;
                 }
-                this.player.appendChild(stage.root);
-                stage.focus();
-                this.onload.emit(stage);
-                this.start();
                 if (stageOptions.start !== false) {
-                    stage.runtime.triggerGreenFlag();
+                    this.stage.runtime.triggerGreenFlag();
                 }
                 if (stageOptions.turbo) {
-                    stage.runtime.isTurbo = true;
+                    this.setTurbo(true);
                 }
+                this.stage.focus();
+                this.onload.emit(this.stage);
+                this.start();
             }
             isScratch1Project(buffer) {
-                var MAGIC = 'ScratchV0';
-                var array = new Uint8Array(buffer);
+                const MAGIC = 'ScratchV0';
+                const array = new Uint8Array(buffer);
                 for (var i = 0; i < MAGIC.length; i++) {
                     if (String.fromCharCode(array[i]) !== MAGIC[i]) {
                         return false;
@@ -3747,19 +3756,19 @@ var P;
                     this.errorEl = null;
                 }
             }
-            createErrorElement(error) {
+            handleError(error) {
                 var el = document.createElement('div');
                 var errorLink = this.createErrorLink(error);
                 var attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
                 el.innerHTML = P.i18n.translate('report.crash.html').replace('$attrs', attributes);
                 return el;
             }
-            projectNotSupportedError(error) {
+            handleNotSupportedError(error) {
                 var el = document.createElement('div');
                 el.innerHTML = P.i18n.translate('report.crash.unsupported').replace('$type', error.type);
                 return el;
             }
-            projectDoesNotExistError(error) {
+            handleDoesNotExistError(error) {
                 var el = document.createElement('div');
                 el.textContent = P.i18n.translate('report.crash.doesnotexist').replace('$id', error.id);
                 return el;
@@ -3768,13 +3777,13 @@ var P;
                 var el = document.createElement('div');
                 el.className = 'player-error';
                 if (error instanceof ProjectNotSupportedError) {
-                    el.appendChild(this.projectNotSupportedError(error));
+                    el.appendChild(this.handleNotSupportedError(error));
                 }
                 else if (error instanceof ProjectDoesNotExistError) {
-                    el.appendChild(this.projectDoesNotExistError(error));
+                    el.appendChild(this.handleDoesNotExistError(error));
                 }
                 else {
-                    el.appendChild(this.createErrorElement(error));
+                    el.appendChild(this.handleError(error));
                 }
                 if (this.errorContainer) {
                     this.errorContainer.appendChild(el);
@@ -3798,7 +3807,8 @@ var P;
                 this.bar.className = 'player-progress-fill';
                 this.el.appendChild(this.bar);
                 this.setTheme(player.theme);
-                player.onthemechange.subscribe(this.setTheme.bind(this));
+                player.onthemechange.subscribe((theme) => this.setTheme(theme));
+                player.onprogress.subscribe((progress) => this.setProgress(progress));
                 player.onstartload.subscribe(() => {
                     this.el.setAttribute('state', 'loading');
                     this.setProgress(0);
@@ -3806,7 +3816,6 @@ var P;
                 player.onload.subscribe(() => {
                     this.el.setAttribute('state', 'loaded');
                 });
-                player.onprogress.subscribe((progress) => this.setProgress(progress));
                 player.oncleanup.subscribe(() => {
                     this.el.setAttribute('state', '');
                     this.bar.style.width = '0%';

@@ -21,7 +21,6 @@ interface HTMLElement {
  * Player is an interface and wrapper around the Forkphorus core classes.
  */
 namespace P.player {
-
   export class PlayerError extends Error {
     public readonly handledByPlayer: boolean = true;
   }
@@ -54,6 +53,11 @@ namespace P.player {
 
   interface ControlsOptions {
     showMutedIndicator?: boolean;
+    enableFullscreen?: boolean;
+    enableFlag?: boolean;
+    enableTurbo?: boolean;
+    enablePause?: boolean;
+    enableStop?: boolean;
   }
 
   interface StageLoadOptions {
@@ -62,6 +66,12 @@ namespace P.player {
     fps?: number;
   }
 
+  /**
+   * Project player.
+   * You should ALWAYS use setTurbo, setTheme, etc. instead of directly setting
+   * turbo or theme because it may make the UI go out of sync.
+   * You should also prefer Player.* instead of Player.stage.* for the same reason.
+   */
   export class Player {
     public static readonly PROJECT_DATA_API = 'https://projects.scratch.mit.edu/$id';
     public static readonly PROJECT_LINK = 'https://scratch.mit.edu/projects/$id';
@@ -80,14 +90,25 @@ namespace P.player {
       return null;
     }
 
+    // Event hooks
+    /** Emitted when there has been an update on loading progress. */
     public onprogress = new P.utils.Slot<number>();
+    /** Emitted when a stage has loaded. (but has not yet been started) */
     public onload = new P.utils.Slot<P.core.Stage>();
+    /** Emitted when a stage starts loading. */
     public onstartload = new P.utils.Slot();
+    /** Emitted when the current stage is removed. */
     public oncleanup = new P.utils.Slot();
+    /** Emitted when the theme of the player is changed. */
     public onthemechange = new P.utils.Slot<Theme>();
+    /** Emitted when there is an error. */
     public onerror = new P.utils.Slot<any>();
+    /** Emitted when a stage is started or resumed. */
     public onstart = new P.utils.Slot();
+    /** Emitted when the stage is paused. */
     public onpause = new P.utils.Slot();
+    /** Emitted when the stage enteres or leaves turbo mode. Does not emit when a turbo stage is removed. */
+    public onturbochange = new P.utils.Slot<boolean>();
 
     public root: HTMLElement;
     public player: HTMLElement;
@@ -118,19 +139,24 @@ namespace P.player {
     constructor(options: PlayerOptions = {}) {
       this.root = document.createElement('div');
       this.root.className = 'player-root';
-      this.setTheme(options.theme || 'light');
+
       this.player = document.createElement('div');
       this.player.className = 'player-stage';
       this.root.appendChild(this.player);
 
-      window.addEventListener('resize', () => this.updateFullscreen());
+      this.setTheme(options.theme || 'light');
 
+      window.addEventListener('resize', () => this.updateFullscreen());
       document.addEventListener('fullscreenchange', () => this.onfullscreenchange());
       document.addEventListener('mozfullscreenchange', () => this.onfullscreenchange());
       document.addEventListener('webkitfullscreenchange', () => this.onfullscreenchange());
+
+      this.handleError = this.handleError.bind(this);
     }
 
     onfullscreenchange() {
+      // If the user closes fullscreen through some external method (probably pressing escape),
+      // we will want to cleanup and go back to the normal display mode.
       if (typeof document.fullscreen === 'boolean' && document.fullscreen !== this.fullscreen) {
         this.exitFullscreen();
       } else if (typeof document.webkitIsFullScreen === 'boolean' && document.webkitIsFullScreen !== this.fullscreen) {
@@ -147,6 +173,9 @@ namespace P.player {
       }
     }
 
+    /**
+     * Add controls the Player.
+     */
     addControls(options: ControlsOptions = {}) {
       if (this.controlsEl) {
         throw new Error('This player already has controls.');
@@ -206,28 +235,48 @@ namespace P.player {
       this.controlsEl = document.createElement('div');
       this.controlsEl.className = 'player-controls';
 
-      this.stopButton = document.createElement('span');
-      this.stopButton.className = 'player-button player-stop';
-      this.controlsEl.appendChild(this.stopButton);
+      if (options.enableStop !== false) {
+        this.stopButton = document.createElement('span');
+        this.stopButton.className = 'player-button player-stop';
+        this.controlsEl.appendChild(this.stopButton);
+        this.stopButton.addEventListener('touchend', clickStop);
+        this.stopButton.addEventListener('touchstart', preventDefault);  
+      }
 
-      this.pauseButton = document.createElement('span');
-      this.pauseButton.className = 'player-button player-pause';
-      this.controlsEl.appendChild(this.pauseButton);
+      if (options.enablePause !== false) {
+        this.pauseButton = document.createElement('span');
+        this.pauseButton.className = 'player-button player-pause';
+        this.controlsEl.appendChild(this.pauseButton);
+        this.pauseButton.addEventListener('click', clickPause);
+        this.pauseButton.addEventListener('touchend', clickPause);  
+      }
 
-      this.flagButton = document.createElement('span');
-      this.flagButton.className = 'player-button player-flag';
-      this.flagButton.title = P.i18n.translate('player.controls.flag.title');
-      this.controlsEl.appendChild(this.flagButton);
+      if (options.enableFlag !== false) {
+        this.flagButton = document.createElement('span');
+        this.flagButton.className = 'player-button player-flag';
+        this.flagButton.title = P.i18n.translate('player.controls.flag.title');
+        this.controlsEl.appendChild(this.flagButton);
+        this.flagButton.addEventListener('click', clickFlag);
+        this.flagButton.addEventListener('touchend', clickFlag)
+        this.flagButton.addEventListener('touchstart', preventDefault);  
+      }
 
-      this.turboText = document.createElement('span');
-      this.turboText.innerText = P.i18n.translate('player.controls.turboIndicator');
-      this.turboText.className = 'player-label player-turbo';
-      this.controlsEl.appendChild(this.turboText);
+      if (options.enableTurbo !== false) {
+        this.turboText = document.createElement('span');
+        this.turboText.innerText = P.i18n.translate('player.controls.turboIndicator');
+        this.turboText.className = 'player-label player-turbo';
+        this.controlsEl.appendChild(this.turboText);
+      }
 
-      this.fullscreenButton = document.createElement('span');
-      this.fullscreenButton.className = 'player-button player-fullscreen-btn';
-      this.fullscreenButton.title = P.i18n.translate('player.controls.fullscreen.title');
-      this.controlsEl.appendChild(this.fullscreenButton);
+      if (options.enableFullscreen !== false) {
+        this.fullscreenButton = document.createElement('span');
+        this.fullscreenButton.className = 'player-button player-fullscreen-btn';
+        this.fullscreenButton.title = P.i18n.translate('player.controls.fullscreen.title');
+        this.controlsEl.appendChild(this.fullscreenButton);
+        this.fullscreenButton.addEventListener('click', clickFullscreen);
+        this.fullscreenButton.addEventListener('touchend', clickFullscreen);
+        this.fullscreenButton.addEventListener('touchstart', preventDefault);  
+      }
 
       if (options.showMutedIndicator && P.audio.context) {
         this.mutedText = document.createElement('div');
@@ -241,20 +290,6 @@ namespace P.player {
         this.root.setAttribute('audio-state', P.audio.context.state);
       }
 
-      this.stopButton.addEventListener('click', clickStop);
-      this.pauseButton.addEventListener('click', clickPause);
-      this.flagButton.addEventListener('click', clickFlag);
-      this.fullscreenButton.addEventListener('click', clickFullscreen);
-
-      this.flagButton.addEventListener('touchstart', startTouchFlag);
-      this.flagButton.addEventListener('touchend', clickFlag);
-      this.pauseButton.addEventListener('touchend', clickPause);
-      this.stopButton.addEventListener('touchend', clickStop);
-      this.fullscreenButton.addEventListener('touchend', clickFullscreen);
-      this.flagButton.addEventListener('touchstart', preventDefault);
-      this.pauseButton.addEventListener('touchstart', preventDefault);
-      this.stopButton.addEventListener('touchstart', preventDefault);
-      this.fullscreenButton.addEventListener('touchstart', preventDefault);
       this.root.addEventListener('touchmove', (e) => {
         if (this.fullscreen) {
           e.preventDefault();
@@ -282,10 +317,11 @@ namespace P.player {
           this.flagButton.title = P.i18n.translate('player.controls.flag.title.disabled');
         }
       }
+      this.onturbochange.emit(turbo);
     }
 
     /**
-     * Pause the runtime's event loop.
+     * Pause the stage's runtime.
      */
     pause() {
       this.assertStage();
@@ -295,7 +331,7 @@ namespace P.player {
     }
 
     /**
-     * Start the runtime's event loop.
+     * Start or resume the stage's runtime.
      */
     start() {
       this.assertStage();
@@ -313,12 +349,14 @@ namespace P.player {
         this.pause();
       } else {
         this.start();
+        // TODO: is focus necessary? maybe move to start()
         this.stage.focus();
       }
     }
 
     /**
-     * Change the visual theme.
+     * Change the theme of the player.
+     * Should not affect the project.
      */
     setTheme(theme: Theme) {
       this.theme = theme;
@@ -326,6 +364,10 @@ namespace P.player {
       this.onthemechange.emit(theme);
     }
 
+    /**
+     * Enter fullscreen
+     * TODO: fullscreen mode
+     */
     enterFullscreen(realFullscreen: boolean) {
       // fullscreen requires dark theme
       this.previousTheme = this.root.getAttribute('theme') as Theme;
@@ -360,7 +402,6 @@ namespace P.player {
       this.root.removeAttribute('fullscreen');
       this.fullscreen = false;
       if (document.fullscreenElement === this.root || document.webkitFullscreenElement === this.root) {
-        // fixing typescript errors
         if (document.exitFullscreen) {
           document.exitFullscreen();
         } else if (document.mozCancelFullScreen) {
@@ -385,7 +426,7 @@ namespace P.player {
     }
 
     /**
-     * Update fullscreen handling.
+     * Ensures that the fullscreened project always has proper dimensions.
      */
     updateFullscreen() {
       if (!this.stage) {
@@ -409,7 +450,7 @@ namespace P.player {
     }
 
     /**
-     * Handle errors and allow creating a bug report.
+     * Handle errors
      */
     handleError(error: any) {
       console.error(error);
@@ -442,6 +483,9 @@ namespace P.player {
       this.onstartload.emit();
     }
 
+    /**
+     * Get a new stage ID, and invalidate any old ones.
+     */
     getNewStageId() {
       this.stageId++;
       return this.stageId;
@@ -452,36 +496,37 @@ namespace P.player {
     }
 
     /**
-     * Start a new Stage in this player.
+     * Start a new Stage in this player
      */
     installStage(stage: P.core.Stage, stageOptions: StageLoadOptions = {}) {
       if (!stage) {
-        throw new Error('Invalid stage.');
+        throw new Error('Cannot run an invalid stage');
       }
+
       this.stage = stage;
-      stageOptions = stageOptions || {};
-      stage.runtime.handleError = this.handleError.bind(this);
+      this.stage.runtime.handleError = this.handleError;
+      this.player.appendChild(this.stage.root);
+
       if (typeof stageOptions.fps !== 'undefined') {
-        stage.runtime.framerate = stageOptions.fps;
+        this.stage.runtime.framerate = stageOptions.fps;
       }
-      this.player.appendChild(stage.root);
-      stage.focus();
-      this.onload.emit(stage);
-      this.start();
       if (stageOptions.start !== false) {
-        stage.runtime.triggerGreenFlag();
+        this.stage.runtime.triggerGreenFlag();
       }
       if (stageOptions.turbo) {
-        stage.runtime.isTurbo = true;
+        this.setTurbo(true);
       }
+      this.stage.focus();
+      this.onload.emit(this.stage);
+      this.start();
     }
 
     /**
-     * Determine if a data buffer is a Scratch 1 project.
+     * Determine if a project file is a Scratch 1 project.
      */
     isScratch1Project(buffer: ArrayBuffer) {
-      var MAGIC = 'ScratchV0';
-      var array = new Uint8Array(buffer);
+      const MAGIC = 'ScratchV0';
+      const array = new Uint8Array(buffer);
       for (var i = 0; i < MAGIC.length; i++) {
         if (String.fromCharCode(array[i]) !== MAGIC[i]) {
           return false;
@@ -490,7 +535,7 @@ namespace P.player {
       return true;
     }
 
-    // wrappers around P.sb2 and P.sb3 for loading...
+    // Wrappers around P.sb2 and P.sb3 for loading...
 
     private _handleScratch3Loader(loader: P.sb3.BaseSB3Loader, stageId: number) {
       loader.onprogress.subscribe(progress => {
@@ -664,13 +709,16 @@ namespace P.player {
     container?: HTMLElement;
   }
 
+  /**
+   * Error handler UI for Player
+   */
   export class ErrorHandler {
     public static BUG_REPORT_LINK = 'https://github.com/forkphorus/forkphorus/issues/new?title=$title&body=$body';
 
     private errorEl: HTMLElement | null;
     private errorContainer: HTMLElement | null;
 
-    constructor(public player, options: ErrorHandlerOptions = {}) {
+    constructor(public player: Player, options: ErrorHandlerOptions = {}) {
       this.player = player;
       player.onerror.subscribe(this.onerror.bind(this));
       player.oncleanup.subscribe(this.oncleanup.bind(this));
@@ -736,7 +784,7 @@ namespace P.player {
     /**
      * Get the URL to report an error to.
      */
-    createErrorLink(error) {
+    createErrorLink(error: any) {
       var body = P.i18n.translate('report.crash.instructions');
       return this.createBugReportLink(body, '```\n' + this.stringifyError(error) + '\n```');
     }
@@ -751,7 +799,7 @@ namespace P.player {
     /**
      * Create an error element indicating that forkphorus has crashed, and where to report the bug.
      */
-    createErrorElement(error) {
+    handleError(error: any) {
       var el = document.createElement('div');
       var errorLink = this.createErrorLink(error);
       var attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
@@ -763,29 +811,32 @@ namespace P.player {
     /**
      * Create an error element indicating this project is not supported.
      */
-    projectNotSupportedError(error) {
+    handleNotSupportedError(error: ProjectNotSupportedError) {
       var el = document.createElement('div');
       // use of innerHTML intentional
       el.innerHTML = P.i18n.translate('report.crash.unsupported').replace('$type', error.type);
       return el;
     }
 
-    projectDoesNotExistError(error) {
+    /**
+     * Create an error element indicating this project does not exist.
+     */
+    handleDoesNotExistError(error: ProjectDoesNotExistError) {
       var el = document.createElement('div');
       el.textContent = P.i18n.translate('report.crash.doesnotexist').replace('$id', error.id);
       return el;
     }
 
-    onerror(error) {
+    onerror(error: any) {
       var el = document.createElement('div');
       el.className = 'player-error';
       // Special handling for certain errors to provide a better error message
       if (error instanceof ProjectNotSupportedError) {
-        el.appendChild(this.projectNotSupportedError(error));
+        el.appendChild(this.handleNotSupportedError(error));
       } else if (error instanceof ProjectDoesNotExistError) {
-        el.appendChild(this.projectDoesNotExistError(error));
+        el.appendChild(this.handleDoesNotExistError(error));
       } else {
-        el.appendChild(this.createErrorElement(error));
+        el.appendChild(this.handleError(error));
       }
       if (this.errorContainer) {
         this.errorContainer.appendChild(el);
@@ -802,6 +853,9 @@ namespace P.player {
     position?: 'controls' | HTMLElement;
   }
 
+  /**
+   * Loading progress bar for Player
+   */
   export class ProgressBar {
     private el: HTMLElement;
     private bar: HTMLElement;
@@ -809,11 +863,15 @@ namespace P.player {
     constructor(player: Player, options: ProgressBarOptions = {}) {
       this.el = document.createElement('div');
       this.el.className = 'player-progress';
+
       this.bar = document.createElement('div');
       this.bar.className = 'player-progress-fill';
       this.el.appendChild(this.bar);
+
       this.setTheme(player.theme);
-      player.onthemechange.subscribe(this.setTheme.bind(this));
+
+      player.onthemechange.subscribe((theme) => this.setTheme(theme));
+      player.onprogress.subscribe((progress) => this.setProgress(progress));
       player.onstartload.subscribe(() => {
         this.el.setAttribute('state', 'loading');
         this.setProgress(0);
@@ -821,7 +879,6 @@ namespace P.player {
       player.onload.subscribe(() => {
         this.el.setAttribute('state', 'loaded');
       });
-      player.onprogress.subscribe((progress) => this.setProgress(progress));
       player.oncleanup.subscribe(() => {
         this.el.setAttribute('state', '');
         this.bar.style.width = '0%';
@@ -830,6 +887,7 @@ namespace P.player {
         this.el.setAttribute('state', 'error');
         this.bar.style.width = '100%';
       });
+
       if (options.position === 'controls' || options.position === undefined) {
         if (!player.controlsEl) {
           throw new Error('No controls to put progess bar in.');
@@ -840,7 +898,7 @@ namespace P.player {
       }
     }
 
-    setTheme(theme: Theme) {
+    private setTheme(theme: Theme) {
       this.el.setAttribute('theme', theme);
     }
 
