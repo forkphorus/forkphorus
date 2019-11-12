@@ -1,5 +1,6 @@
 /// <reference path="phosphorus.ts" />
 /// <reference path="utils.ts" />
+/// <reference path="i18n.ts" />
 
 interface Document {
   webkitIsFullScreen?: boolean;
@@ -69,7 +70,7 @@ namespace P.player {
     public fullscreenPadding: number = 8;
     public fullscreenMaxWidth: number = Infinity;
 
-    public stage: P.core.Stage | null = null;
+    public stage: P.core.Stage;
     private stageId: number = 0;
 
     public projectId: string = Player.UNKNOWN_ID;
@@ -205,7 +206,7 @@ namespace P.player {
         this.mutedText.className = 'player-label player-muted';
         this.controlsEl.appendChild(this.mutedText);
         P.audio.context.addEventListener('statechange', () => {
-          this.root.setAttribute('audio-state', P.audio.context.state);
+          this.root.setAttribute('audio-state', P.audio.context!.state);
         });
         this.root.setAttribute('audio-state', P.audio.context.state);
       }
@@ -297,7 +298,7 @@ namespace P.player {
 
     enterFullscreen(realFullscreen: boolean) {
       // fullscreen requires dark theme
-      this.previousTheme = this.root.getAttribute('theme');
+      this.previousTheme = this.root.getAttribute('theme') as Theme;
       this.setTheme('dark');
       if (realFullscreen) {
         var el = /** @type {any} */ (this.root);
@@ -397,7 +398,7 @@ namespace P.player {
       this.projectTitle = Player.UNKNOWN_TITLE;
       if (this.stage) {
         this.stage.destroy();
-        this.stage = null;
+        this.stage = null!;
       }
       while (this.player.firstChild) {
         this.player.removeChild(this.player.firstChild);

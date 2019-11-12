@@ -1,16 +1,27 @@
-// @ts-check
-// @ts-ignore
-var P = P || {};
+/// <reference path="phosphorus.ts" />
 
 /**
- * Translations for forkphorus (the player, the website, everything)
+ * Translation API and core translations.
  */
-P.i18n = (function() {
+namespace P.i18n {
   'use strict';
 
-  var i18n = {};
+  function getLanguage(): string {
+    let language = navigator.language;
+    if (language.indexOf('-') > -1) {
+      // remove a country code, if it has one.
+      language = language.substring(0, language.indexOf('-'));
+    }
+    if (!translations[language]) {
+      // if this language isn't supported then just default back to english
+      language = 'en';
+    }
+    return language;
+  }
 
-  i18n.translations = {
+  export const language = getLanguage();
+
+  export const translations = {
     // Messages that start with "player" affect the project player used in the homepage, embed, packages, etc.
     // Messages that start with "index" affect the homepage
     en: {
@@ -59,28 +70,17 @@ P.i18n = (function() {
     },
   };
 
-  i18n.language = navigator.language;
-  if (i18n.language.indexOf('-') > -1) {
-    // remove a country code, if it has one.
-    i18n.language = i18n.language.substring(0, i18n.language.indexOf('-'));
-  }
-  if (!i18n.translations[i18n.language]) {
-    // if this language isn't supported then just default back to english
-    i18n.language = 'en';
-  }
-
   /**
    * Translate a message ID to the user's language.
-   * @param {string} messageId The ID of the message. See `i18n.translations`
    */
-  i18n.translate = function translate(messageId) {
-    var translations = i18n.translations[i18n.language];
-    if (translations[messageId]) {
-      return translations[messageId];
+  export function translate(messageId: string) {
+    const languageTranslations = translations[language];
+    if (languageTranslations[messageId]) {
+      return languageTranslations[messageId];
     }
     // if the user's language does not have a translation, we default to english
-    if (i18n.translations.en[messageId]) {
-      return i18n.translations.en[messageId];
+    if (languageTranslations.en[messageId]) {
+      return languageTranslations.en[messageId];
     }
     console.warn('Missing translation:', messageId);
     return '## ' + messageId + ' ##';
@@ -89,18 +89,15 @@ P.i18n = (function() {
   /**
    * Translate the children of an element.
    * Any children with `data-i18n` set to a message ID will have its textContent replaced.
-   * @param {HTMLElement} element The element to translate
    */
-  i18n.translateElement = function translateElement(element) {
-    var translatable = element.querySelectorAll('[data-i18n]');
+  export function translateElement(element: HTMLElement) {
+    const translatable = element.querySelectorAll('[data-i18n]');
     for (var i = 0; i < translatable.length; i++) {
-      var el = translatable[i];
-      var messageId = el.getAttribute('data-i18n');
-      var result = i18n.translate(messageId);
-      // TODO: for some of these innerHTML would actually make sense and make things simpler, but has some obvious issues.
+      const el = translatable[i];
+      const messageId = el.getAttribute('data-i18n');
+      if (messageId === null) continue;
+      const result = translate(messageId);
       el.textContent = result;
     }
   };
-
-  return i18n;
-}());
+}
