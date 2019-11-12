@@ -139,6 +139,44 @@
   <script src="studioview/studioview.js"></script>
 
   <script>
+    P.i18n.addTranslations('en', {
+      'studioview.authorAttribution': 'by $author',
+      'studioview.projectHoverText': '$title by $author',
+      'report.crash.html': 'An internal error occurred. <a $attrs>Click here</a> to file a bug report.',
+      'report.crash.instructions': 'Describe what you were doing to cause this error:',
+      'report.crash.unsupported': 'This project type ($type) is not supported. For more information and workarounds, <a href="https://github.com/forkphorus/forkphorus/wiki/On-Scratch-1-Projects" target="_blank" rel="noopener">visit this help page</a>.',
+      'report.crash.doesnotexist': 'There is no project with ID $id (Project was probably deleted, never existed, or you made a typo.)',
+      'report.bug.instructions': 'Describe the issue:',
+      'index.document.title': 'forkphorus - phosphorus for Scratch 3',
+      'index.report': 'Report a problem',
+      'index.embed': 'Embed this project',
+      'index.package': 'Package this project',
+      'index.settings': 'Settings',
+      'index.credits': 'Credits',
+      'index.code': 'Code',
+      'index.studio.view': 'View studio on Scratch.',
+      'index.package.button': 'Package',
+      'index.package.turbo': 'Turbo mode',
+      'index.package.fullscreen': 'Full screen',
+      'index.package.480': '480\u00D7360',
+      'index.package.custom': 'Other:',
+      'index.package.divider': '\u00D7',
+      'index.embed.description': 'Include the forkphorus player in your web site.',
+      'index.embed.autostart': 'Start automatically',
+      'index.embed.lightControls': 'Light controls',
+      'index.embed.hideUI': 'Hide UI',
+    });
+    P.i18n.addTranslations('es', {
+      'studioview.authorAttribution': 'por $author',
+      'studioview.projectHoverText': '$title por $author',
+      'index.report': 'Reportar un problema',
+      'index.settings': 'Configuraciones',
+      'index.credits': 'Créditos',
+      'index.code': 'Código',
+    });
+  </script>
+
+  <script>
 
   if (!window.P || !window.P.IO) {
     document.getElementById('title-area').innerHTML += '<p><b>This browser is not supported.</b> Please upgrade to Mozilla Firefox, Google Chrome, or Microsoft Edge.</p>'

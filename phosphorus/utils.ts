@@ -165,7 +165,7 @@ namespace P.utils {
     });
   }
 
-  type SlotFn<T> = (t?: T) => void;
+  type SlotFn<T> = (t: T) => void;
 
   export class Slot<T> {
     private _listeners: SlotFn<T>[] = [];
@@ -176,7 +176,7 @@ namespace P.utils {
 
     emit(value?: T) {
       for (const listener of this._listeners) {
-        listener(value);
+        listener(value!);
       }
     }
   }

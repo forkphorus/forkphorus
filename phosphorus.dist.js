@@ -2816,76 +2816,32 @@ var P;
     var i18n;
     (function (i18n) {
         'use strict';
+        const SUPPORTED_LANGUAGES = ['en', 'es'];
+        const DEFAULT_LANGUAGE = 'en';
         function getLanguage() {
             let language = navigator.language;
             if (language.indexOf('-') > -1) {
                 language = language.substring(0, language.indexOf('-'));
             }
-            if (!i18n.translations[language]) {
-                language = 'en';
+            if (SUPPORTED_LANGUAGES.indexOf(language) === -1) {
+                language = DEFAULT_LANGUAGE;
             }
             return language;
         }
-        i18n.language = getLanguage();
-        i18n.translations = {
-            en: {
-                'player.controls.turboIndicator': 'Turbo Mode',
-                'player.controls.fullscreen.title': 'Click to fullscreen player, Shift+click to just maximize.',
-                'player.controls.flag.title': 'Shift+click to enable turbo mode.',
-                'player.controls.flag.title.enabled': 'Turbo mode is enabled. Shift+click to disable turbo mode.',
-                'player.controls.flag.title.disabled': 'Turbo mode is disabled. Shift+click to enable turbo mode.',
-                'player.controls.muted': 'Muted',
-                'player.controls.muted.title': 'Your browser isn\'t allowing us to play audio. You may need to interact with the page before audio can be played.',
-                'studioview.authorAttribution': 'by $author',
-                'studioview.projectHoverText': '$title by $author',
-                'report.crash.html': 'An internal error occurred. <a $attrs>Click here</a> to file a bug report.',
-                'report.crash.instructions': 'Describe what you were doing to cause this error:',
-                'report.crash.unsupported': 'This project type ($type) is not supported. For more information and workarounds, <a href="https://github.com/forkphorus/forkphorus/wiki/On-Scratch-1-Projects" target="_blank" rel="noopener">visit this help page</a>.',
-                'report.crash.doesnotexist': 'There is no project with ID $id (Project was probably deleted, never existed, or you made a typo.)',
-                'report.bug.instructions': 'Describe the issue:',
-                'index.document.title': 'forkphorus - phosphorus for Scratch 3',
-                'index.report': 'Report a problem',
-                'index.embed': 'Embed this project',
-                'index.package': 'Package this project',
-                'index.settings': 'Settings',
-                'index.credits': 'Credits',
-                'index.code': 'Code',
-                'index.studio.view': 'View studio on Scratch.',
-                'index.package.button': 'Package',
-                'index.package.turbo': 'Turbo mode',
-                'index.package.fullscreen': 'Full screen',
-                'index.package.480': '480\u00D7360',
-                'index.package.custom': 'Other:',
-                'index.package.divider': '\u00D7',
-                'index.embed.description': 'Include the forkphorus player in your web site.',
-                'index.embed.autostart': 'Start automatically',
-                'index.embed.lightControls': 'Light controls',
-                'index.embed.hideUI': 'Hide UI',
-            },
-            es: {
-                'player.controls.turboIndicator': 'Modo Turbo',
-                'player.controls.muted': 'Silenciado',
-                'studioview.authorAttribution': 'por $author',
-                'studioview.projectHoverText': '$title por $author',
-                'index.report': 'Reportar un problema',
-                'index.settings': 'Configuraciones',
-                'index.credits': 'Créditos',
-                'index.code': 'Código',
-            },
-        };
+        const translations = {};
+        const defaultTranslations = {};
+        const language = getLanguage();
         function translate(messageId) {
-            const languageTranslations = i18n.translations[i18n.language];
-            if (languageTranslations[messageId]) {
-                return languageTranslations[messageId];
+            if (translations[messageId]) {
+                return translations[messageId];
             }
-            if (languageTranslations.en[messageId]) {
-                return languageTranslations.en[messageId];
+            if (defaultTranslations[messageId]) {
+                return defaultTranslations[messageId];
             }
             console.warn('Missing translation:', messageId);
             return '## ' + messageId + ' ##';
         }
         i18n.translate = translate;
-        ;
         function translateElement(element) {
             const translatable = element.querySelectorAll('[data-i18n]');
             for (var i = 0; i < translatable.length; i++) {
@@ -2898,7 +2854,33 @@ var P;
             }
         }
         i18n.translateElement = translateElement;
-        ;
+        function merge(into, source) {
+            for (const key of Object.keys(source)) {
+                into[key] = source[key];
+            }
+        }
+        function addTranslations(importedLanguage, importedTranslations) {
+            if (importedLanguage === language) {
+                merge(translations, importedTranslations);
+            }
+            else if (importedLanguage === DEFAULT_LANGUAGE) {
+                merge(defaultTranslations, importedTranslations);
+            }
+        }
+        i18n.addTranslations = addTranslations;
+        addTranslations('en', {
+            'player.controls.turboIndicator': 'Turbo Mode',
+            'player.controls.fullscreen.title': 'Click to fullscreen player, Shift+click to just maximize.',
+            'player.controls.flag.title': 'Shift+click to enable turbo mode.',
+            'player.controls.flag.title.enabled': 'Turbo mode is enabled. Shift+click to disable turbo mode.',
+            'player.controls.flag.title.disabled': 'Turbo mode is disabled. Shift+click to enable turbo mode.',
+            'player.controls.muted': 'Muted',
+            'player.controls.muted.title': 'Your browser isn\'t allowing us to play audio. You may need to interact with the page before audio can be played.',
+        });
+        addTranslations('es', {
+            'player.controls.turboIndicator': 'Modo Turbo',
+            'player.controls.muted': 'Silenciado',
+        });
     })(i18n = P.i18n || (P.i18n = {}));
 })(P || (P = {}));
 var P;
@@ -3187,7 +3169,14 @@ var P;
 (function (P) {
     var player;
     (function (player_1) {
-        class ProjectNotSupportedError extends Error {
+        class PlayerError extends Error {
+            constructor() {
+                super(...arguments);
+                this.handledByPlayer = true;
+            }
+        }
+        player_1.PlayerError = PlayerError;
+        class ProjectNotSupportedError extends PlayerError {
             constructor(type) {
                 super('Project type (' + type + ') is not supported');
                 this.type = type;
@@ -3195,7 +3184,7 @@ var P;
             }
         }
         player_1.ProjectNotSupportedError = ProjectNotSupportedError;
-        class ProjectDoesNotExistError extends Error {
+        class ProjectDoesNotExistError extends PlayerError {
             constructor(id) {
                 super('Project with ID ' + id + ' does not exist');
                 this.id = id;
@@ -3232,6 +3221,15 @@ var P;
                 document.addEventListener('mozfullscreenchange', () => this.onfullscreenchange());
                 document.addEventListener('webkitfullscreenchange', () => this.onfullscreenchange());
             }
+            static getProjectType(data) {
+                if (!data)
+                    return null;
+                if ('targets' in data)
+                    return 3;
+                if ('objName' in data)
+                    return 2;
+                return null;
+            }
             onfullscreenchange() {
                 if (typeof document.fullscreen === 'boolean' && document.fullscreen !== this.fullscreen) {
                     this.exitFullscreen();
@@ -3245,7 +3243,10 @@ var P;
                     throw new Error('The player does not currently contain a stage to operate on.');
                 }
             }
-            addControls(options) {
+            addControls(options = {}) {
+                if (this.controlsEl) {
+                    throw new Error('This player already has controls.');
+                }
                 const clickStop = (e) => {
                     this.assertStage();
                     this.pause();
@@ -3290,13 +3291,9 @@ var P;
                         this.setTurbo(!this.stage.runtime.isTurbo);
                     }, 500);
                 };
-                const preventDefault = function (e) {
+                const preventDefault = (e) => {
                     e.preventDefault();
                 };
-                if (this.controlsEl) {
-                    throw new Error('This player already has controls.');
-                }
-                options = options || {};
                 this.controlsEl = document.createElement('div');
                 this.controlsEl.className = 'player-controls';
                 this.stopButton = document.createElement('span');
@@ -3397,15 +3394,14 @@ var P;
                 this.previousTheme = this.root.getAttribute('theme');
                 this.setTheme('dark');
                 if (realFullscreen) {
-                    var el = (this.root);
-                    if (el.requestFullScreenWithKeys) {
-                        el.requestFullScreenWithKeys();
+                    if (this.root.requestFullScreenWithKeys) {
+                        this.root.requestFullScreenWithKeys();
                     }
-                    else if (el.webkitRequestFullScreen) {
-                        el.webkitRequestFullScreen(Element.ALLOW_KEYBOARD_INPUT);
+                    else if (this.root.webkitRequestFullScreen) {
+                        this.root.webkitRequestFullScreen(Element.ALLOW_KEYBOARD_INPUT);
                     }
-                    else if (el.requestFullscreen) {
-                        el.requestFullscreen();
+                    else if (this.root.requestFullscreen) {
+                        this.root.requestFullscreen();
                     }
                 }
                 document.body.classList.add('player-body-fullscreen');
@@ -3459,9 +3455,9 @@ var P;
                     window.scrollTo(0, 0);
                     var w = window.innerWidth - this.fullscreenPadding * 2;
                     var h = window.innerHeight - this.fullscreenPadding - controlsHeight;
-                    w = Math.min(w, h / .75);
+                    w = Math.min(w, h / 0.75);
                     w = Math.min(w, this.fullscreenMaxWidth);
-                    h = w * .75 + controlsHeight;
+                    h = w * 0.75 + controlsHeight;
                     if (this.controlsEl) {
                         this.controlsEl.style.width = w + 'px';
                     }
@@ -3502,7 +3498,7 @@ var P;
             isStageActive(id) {
                 return id === this.stageId;
             }
-            installStage(stage, stageOptions) {
+            installStage(stage, stageOptions = {}) {
                 if (!stage) {
                     throw new Error('Invalid stage.');
                 }
@@ -3534,7 +3530,7 @@ var P;
                 return true;
             }
             _handleScratch3Loader(loader, stageId) {
-                loader.onprogress.subscribe((progress) => {
+                loader.onprogress.subscribe(progress => {
                     if (this.isStageActive(stageId)) {
                         this.onprogress.emit(progress);
                     }
@@ -3542,8 +3538,7 @@ var P;
                         loader.abort();
                     }
                 });
-                return loader.load()
-                    .then((stage) => {
+                return loader.load().then(stage => {
                     if (this.isStageActive(stageId))
                         return stage;
                     return null;
@@ -3566,8 +3561,7 @@ var P;
                     finishedTasks++;
                     update();
                 };
-                return load()
-                    .then((stage) => {
+                return load().then((stage) => {
                     if (this.isStageActive(stageId))
                         return stage;
                     return null;
@@ -3593,8 +3587,7 @@ var P;
             }
             _fetchProject(id) {
                 var request = new P.IO.BlobRequest(Player.PROJECT_DATA_API.replace('$id', id), { rejectOnError: false });
-                return request.load()
-                    .then(function (response) {
+                return request.load().then(function (response) {
                     if (request.xhr.status === 404) {
                         throw new ProjectDoesNotExistError(id);
                     }
@@ -3603,16 +3596,16 @@ var P;
             }
             loadProjectId(id, options) {
                 this.startLoadingNewProject();
-                var stageId = this.getNewStageId();
+                const stageId = this.getNewStageId();
                 this.projectId = '' + id;
                 this.projectLink = Player.PROJECT_LINK.replace('$id', id);
-                var blob;
+                let blob;
                 return this._fetchProject(id)
-                    .then((data) => {
+                    .then(data => {
                     blob = data;
                     return P.IO.readers.toText(blob);
                 })
-                    .then((text) => {
+                    .then(text => {
                     if (!this.isStageActive(stageId)) {
                         return null;
                     }
@@ -3630,8 +3623,7 @@ var P;
                         }
                     }
                     catch (e) {
-                        return P.IO.readers.toArrayBuffer(blob)
-                            .then((buffer) => {
+                        return P.IO.readers.toArrayBuffer(blob).then(buffer => {
                             if (this.isScratch1Project(buffer)) {
                                 throw new ProjectNotSupportedError('.sb / Scratch 1');
                             }
@@ -3639,12 +3631,12 @@ var P;
                         });
                     }
                 })
-                    .then((stage) => {
+                    .then(stage => {
                     if (stage) {
                         this.installStage(stage, options);
                     }
                 })
-                    .catch((error) => {
+                    .catch(error => {
                     if (this.isStageActive(stageId)) {
                         this.handleError(error);
                     }
@@ -3652,8 +3644,8 @@ var P;
             }
             loadProjectBuffer(buffer, type, options) {
                 this.startLoadingNewProject();
-                var stageId = this.getNewStageId();
-                var startLoad = () => {
+                const stageId = this.getNewStageId();
+                const startLoad = () => {
                     if (type === 'sb3') {
                         return this._loadScratch3File(stageId, buffer);
                     }
@@ -3677,7 +3669,7 @@ var P;
                 });
             }
             loadProjectFile(file, options) {
-                var extension = file.name.split('.').pop();
+                var extension = file.name.split('.').pop() || '';
                 if (['sb2', 'sb3'].indexOf(extension) === -1) {
                     throw new Error('Unrecognized file extension: ' + extension);
                 }
@@ -3685,19 +3677,9 @@ var P;
                 this.getNewStageId();
                 this.projectId = file.name;
                 this.projectLink = file.name + '#local';
-                return P.IO.readers.toArrayBuffer(file)
-                    .then((buffer) => {
+                return P.IO.readers.toArrayBuffer(file).then(buffer => {
                     return this.loadProjectBuffer(buffer, extension, options);
                 });
-            }
-            static getProjectType(data) {
-                if (!data)
-                    return null;
-                if ('targets' in data)
-                    return 3;
-                if ('objName' in data)
-                    return 2;
-                return null;
             }
         }
         Player.PROJECT_DATA_API = 'https://projects.scratch.mit.edu/$id';
@@ -3708,9 +3690,8 @@ var P;
         Player.UNKNOWN_TITLE = '(no title)';
         player_1.Player = Player;
         class ErrorHandler {
-            constructor(player, options) {
+            constructor(player, options = {}) {
                 this.player = player;
-                options = options || {};
                 this.player = player;
                 player.onerror.subscribe(this.onerror.bind(this));
                 player.oncleanup.subscribe(this.oncleanup.bind(this));
@@ -3734,7 +3715,11 @@ var P;
             createBugReportLink(bodyBefore, bodyAfter) {
                 var title = this.getBugReportTitle();
                 bodyAfter = bodyAfter || '';
-                var body = bodyBefore + '\n\n\n-----\n' + this.getBugReportMetadata() + '\n' + bodyAfter;
+                var body = bodyBefore +
+                    '\n\n\n-----\n' +
+                    this.getBugReportMetadata() +
+                    '\n' +
+                    bodyAfter;
                 return ErrorHandler.BUG_REPORT_LINK
                     .replace('$title', encodeURIComponent(title))
                     .replace('$body', encodeURIComponent(body));
@@ -3806,9 +3791,7 @@ var P;
         ErrorHandler.BUG_REPORT_LINK = 'https://github.com/forkphorus/forkphorus/issues/new?title=$title&body=$body';
         player_1.ErrorHandler = ErrorHandler;
         class ProgressBar {
-            constructor(player, options) {
-                options = options || {};
-                options.position = options.position || 'controls';
+            constructor(player, options = {}) {
                 this.el = document.createElement('div');
                 this.el.className = 'player-progress';
                 this.bar = document.createElement('div');
@@ -3832,7 +3815,7 @@ var P;
                     this.el.setAttribute('state', 'error');
                     this.bar.style.width = '100%';
                 });
-                if (options.position === 'controls') {
+                if (options.position === 'controls' || options.position === undefined) {
                     if (!player.controlsEl) {
                         throw new Error('No controls to put progess bar in.');
                     }
@@ -3846,7 +3829,7 @@ var P;
                 this.el.setAttribute('theme', theme);
             }
             setProgress(progress) {
-                this.bar.style.width = (10 + progress * 90) + '%';
+                this.bar.style.width = 10 + progress * 90 + '%';
             }
         }
         player_1.ProgressBar = ProgressBar;

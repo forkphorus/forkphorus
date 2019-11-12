@@ -2,6 +2,8 @@
 /// <reference path="utils.ts" />
 /// <reference path="i18n.ts" />
 
+// We need to add some declarations for old browser APIs that we use.
+
 interface Document {
   webkitIsFullScreen?: boolean;
   webkitFullscreenElement?: HTMLElement;
@@ -11,7 +13,7 @@ interface Document {
 }
 
 interface HTMLElement {
-  webkitRequestFullScreen?(): void;
+  webkitRequestFullScreen?(e: any): void;
   requestFullScreenWithKeys?(): void;
 }
 
@@ -20,10 +22,14 @@ interface HTMLElement {
  */
 namespace P.player {
 
+  export class PlayerError extends Error {
+    public readonly handledByPlayer: boolean = true;
+  }
+
   /**
    * An error that indicates that this project type is knowingly not supported.
    */
-  export class ProjectNotSupportedError extends Error {
+  export class ProjectNotSupportedError extends PlayerError {
     constructor(public type: string) {
       super('Project type (' + type + ') is not supported');
       this.name = 'ProjectNotSupportedError';
@@ -33,7 +39,7 @@ namespace P.player {
   /**
    * An error that indicates that this project does not exist.
    */
-  export class ProjectDoesNotExistError extends Error {
+  export class ProjectDoesNotExistError extends PlayerError {
     constructor(public id: string) {
       super('Project with ID ' + id + ' does not exist');
       this.name = 'ProjectDoesNotExistError';
@@ -43,7 +49,17 @@ namespace P.player {
   type Theme = 'light' | 'dark';
 
   interface PlayerOptions {
-    theme?: Theme,
+    theme?: Theme;
+  }
+
+  interface ControlsOptions {
+    showMutedIndicator?: boolean;
+  }
+
+  interface StageLoadOptions {
+    start?: boolean;
+    turbo?: boolean;
+    fps?: number;
   }
 
   export class Player {
@@ -54,12 +70,22 @@ namespace P.player {
     public static readonly UNKNOWN_LINK = '(no link)';
     public static readonly UNKNOWN_TITLE = '(no title)';
 
-    public onprogress = new P.utils.Slot();
-    public onload = new P.utils.Slot();
+    /**
+     * Determines the type of a project.
+     */
+    static getProjectType(data: any): 2 | 3 | null {
+      if (!data) return null;
+      if ('targets' in data) return 3;
+      if ('objName' in data) return 2;
+      return null;
+    }
+
+    public onprogress = new P.utils.Slot<number>();
+    public onload = new P.utils.Slot<P.core.Stage>();
     public onstartload = new P.utils.Slot();
     public oncleanup = new P.utils.Slot();
-    public onthemechange = new P.utils.Slot();
-    public onerror = new P.utils.Slot();
+    public onthemechange = new P.utils.Slot<Theme>();
+    public onerror = new P.utils.Slot<any>();
     public onstart = new P.utils.Slot();
     public onpause = new P.utils.Slot();
 
@@ -78,7 +104,7 @@ namespace P.player {
     public projectTitle: string = Player.UNKNOWN_TITLE;
 
     private flagTouchTimeout: number | null | undefined = undefined;
-    private controlsEl: HTMLElement;
+    public controlsEl: HTMLElement;
     private mutedText: HTMLElement;
     private turboText: HTMLElement;
     private stopButton: HTMLElement;
@@ -86,8 +112,8 @@ namespace P.player {
     private flagButton: HTMLElement;
     private fullscreenButton: HTMLElement;
 
-    private previousTheme: Theme | null;
-    private theme: Theme;
+    private previousTheme: Theme;
+    public theme: Theme;
 
     constructor(options: PlayerOptions = {}) {
       this.root = document.createElement('div');
@@ -121,13 +147,11 @@ namespace P.player {
       }
     }
 
-    /**
-     * Add controls to the player.
-     * @typedef ControlOptions
-     * @property {boolean} [showMutedIndicator]
-     * @param {ControlOptions} [options]
-     */
-    addControls(options) {
+    addControls(options: ControlsOptions = {}) {
+      if (this.controlsEl) {
+        throw new Error('This player already has controls.');
+      }
+
       const clickStop = (e: MouseEvent) => {
         this.assertStage();
         this.pause();
@@ -135,18 +159,20 @@ namespace P.player {
         this.stage.draw();
         e.preventDefault();
       };
+
       const clickPause = (e: MouseEvent) => {
         this.toggleRunning();
       };
+
       const clickFullscreen = (e: MouseEvent) => {
         this.assertStage();
         if (this.fullscreen) {
           this.exitFullscreen();
-        }
-        else {
+        } else {
           this.enterFullscreen(!e.shiftKey);
         }
       };
+
       const clickFlag = (e: MouseEvent) => {
         if (this.flagTouchTimeout === null) {
           return;
@@ -157,8 +183,7 @@ namespace P.player {
         this.assertStage();
         if (e.shiftKey) {
           this.setTurbo(!this.stage.runtime.isTurbo);
-        }
-        else {
+        } else {
           this.start();
           this.stage.runtime.stopAll();
           this.stage.runtime.triggerGreenFlag();
@@ -166,39 +191,44 @@ namespace P.player {
         this.stage.focus();
         e.preventDefault();
       };
+
       const startTouchFlag = (e: MouseEvent) => {
         this.flagTouchTimeout = setTimeout(() => {
           this.flagTouchTimeout = null;
           this.setTurbo(!this.stage.runtime.isTurbo);
         }, 500);
       };
-      const preventDefault = function (e: Event) {
+
+      const preventDefault = (e: Event) => {
         e.preventDefault();
       };
-      if (this.controlsEl) {
-        throw new Error('This player already has controls.');
-      }
-      options = options || {};
+
       this.controlsEl = document.createElement('div');
       this.controlsEl.className = 'player-controls';
+
       this.stopButton = document.createElement('span');
       this.stopButton.className = 'player-button player-stop';
       this.controlsEl.appendChild(this.stopButton);
+
       this.pauseButton = document.createElement('span');
       this.pauseButton.className = 'player-button player-pause';
       this.controlsEl.appendChild(this.pauseButton);
+
       this.flagButton = document.createElement('span');
       this.flagButton.className = 'player-button player-flag';
       this.flagButton.title = P.i18n.translate('player.controls.flag.title');
       this.controlsEl.appendChild(this.flagButton);
+
       this.turboText = document.createElement('span');
       this.turboText.innerText = P.i18n.translate('player.controls.turboIndicator');
       this.turboText.className = 'player-label player-turbo';
       this.controlsEl.appendChild(this.turboText);
+
       this.fullscreenButton = document.createElement('span');
       this.fullscreenButton.className = 'player-button player-fullscreen-btn';
       this.fullscreenButton.title = P.i18n.translate('player.controls.fullscreen.title');
       this.controlsEl.appendChild(this.fullscreenButton);
+
       if (options.showMutedIndicator && P.audio.context) {
         this.mutedText = document.createElement('div');
         this.mutedText.innerText = P.i18n.translate('player.controls.muted');
@@ -210,10 +240,12 @@ namespace P.player {
         });
         this.root.setAttribute('audio-state', P.audio.context.state);
       }
+
       this.stopButton.addEventListener('click', clickStop);
       this.pauseButton.addEventListener('click', clickPause);
       this.flagButton.addEventListener('click', clickFlag);
       this.fullscreenButton.addEventListener('click', clickFullscreen);
+
       this.flagButton.addEventListener('touchstart', startTouchFlag);
       this.flagButton.addEventListener('touchend', clickFlag);
       this.pauseButton.addEventListener('touchend', clickPause);
@@ -228,27 +260,25 @@ namespace P.player {
           e.preventDefault();
         }
       });
+
       this.root.insertBefore(this.controlsEl, this.root.firstChild);
     }
 
     /**
-     * Changes the turbo state of the stage.
-     * @param {boolean} turbo
+     * Change the turbo state of the stage.
      */
-    setTurbo(turbo) {
+    setTurbo(turbo: boolean) {
       this.assertStage();
       this.stage.runtime.isTurbo = turbo;
       if (turbo) {
         this.root.setAttribute('turbo', '');
-      }
-      else {
+      } else {
         this.root.removeAttribute('turbo');
       }
       if (this.flagButton) {
         if (turbo) {
           this.flagButton.title = P.i18n.translate('player.controls.flag.title.enabled');
-        }
-        else {
+        } else {
           this.flagButton.title = P.i18n.translate('player.controls.flag.title.disabled');
         }
       }
@@ -290,7 +320,7 @@ namespace P.player {
     /**
      * Change the visual theme.
      */
-    setTheme(theme) {
+    setTheme(theme: Theme) {
       this.theme = theme;
       this.root.setAttribute('theme', theme);
       this.onthemechange.emit(theme);
@@ -301,14 +331,12 @@ namespace P.player {
       this.previousTheme = this.root.getAttribute('theme') as Theme;
       this.setTheme('dark');
       if (realFullscreen) {
-        var el = /** @type {any} */ (this.root);
-        if (el.requestFullScreenWithKeys) {
-          el.requestFullScreenWithKeys();
-        } else if (el.webkitRequestFullScreen) {
-          // @ts-ignore
-          el.webkitRequestFullScreen(Element.ALLOW_KEYBOARD_INPUT);
-        } else if (el.requestFullscreen) {
-          el.requestFullscreen();
+        if (this.root.requestFullScreenWithKeys) {
+          this.root.requestFullScreenWithKeys();
+        } else if (this.root.webkitRequestFullScreen) {
+          this.root.webkitRequestFullScreen((Element as any).ALLOW_KEYBOARD_INPUT);
+        } else if (this.root.requestFullscreen) {
+          this.root.requestFullscreen();
         }
       }
       document.body.classList.add('player-body-fullscreen');
@@ -368,9 +396,9 @@ namespace P.player {
         window.scrollTo(0, 0);
         var w = window.innerWidth - this.fullscreenPadding * 2;
         var h = window.innerHeight - this.fullscreenPadding - controlsHeight;
-        w = Math.min(w, h / .75);
+        w = Math.min(w, h / 0.75);
         w = Math.min(w, this.fullscreenMaxWidth);
-        h = w * .75 + controlsHeight;
+        h = w * 0.75 + controlsHeight;
         if (this.controlsEl) {
           this.controlsEl.style.width = w + 'px';
         }
@@ -383,7 +411,7 @@ namespace P.player {
     /**
      * Handle errors and allow creating a bug report.
      */
-    handleError(error) {
+    handleError(error: any) {
       console.error(error);
       this.onerror.emit(error);
     }
@@ -419,19 +447,14 @@ namespace P.player {
       return this.stageId;
     }
 
-    isStageActive(id) {
+    isStageActive(id: number) {
       return id === this.stageId;
     }
 
     /**
      * Start a new Stage in this player.
-     * @typedef StageLoadOptions
-     * @property {boolean} [start]
-     * @property {boolean} [turbo]
-     * @property {number} [fps]
-     * @param {StageLoadOptions} [stageOptions]
      */
-    installStage(stage, stageOptions) {
+    installStage(stage: P.core.Stage, stageOptions: StageLoadOptions = {}) {
       if (!stage) {
         throw new Error('Invalid stage.');
       }
@@ -454,9 +477,9 @@ namespace P.player {
     }
 
     /**
-     * @param {ArrayBuffer} buffer
+     * Determine if a data buffer is a Scratch 1 project.
      */
-    isScratch1Project(buffer) {
+    isScratch1Project(buffer: ArrayBuffer) {
       var MAGIC = 'ScratchV0';
       var array = new Uint8Array(buffer);
       for (var i = 0; i < MAGIC.length; i++) {
@@ -468,24 +491,22 @@ namespace P.player {
     }
 
     // wrappers around P.sb2 and P.sb3 for loading...
-    _handleScratch3Loader(loader, stageId) {
-      loader.onprogress.subscribe((progress) => {
+
+    private _handleScratch3Loader(loader: P.sb3.BaseSB3Loader, stageId: number) {
+      loader.onprogress.subscribe(progress => {
         if (this.isStageActive(stageId)) {
           this.onprogress.emit(progress);
-        }
-        else if (!loader.aborted) {
+        } else if (!loader.aborted) {
           loader.abort();
         }
       });
-      return loader.load()
-        .then((stage) => {
-          if (this.isStageActive(stageId))
-            return stage;
-          return null;
-        });
+      return loader.load().then(stage => {
+        if (this.isStageActive(stageId)) return stage;
+        return null;
+      });
     }
 
-    _handleScratch2Loader(stageId, load) {
+    private _handleScratch2Loader(stageId: number, load: () => Promise<P.core.Stage>) {
       var totalTasks = 0;
       var finishedTasks = 0;
       const update = () => {
@@ -494,75 +515,69 @@ namespace P.player {
           this.onprogress.emit(progress);
         }
       };
-      P.sb2.hooks.newTask = function () {
+      P.sb2.hooks.newTask = function() {
         totalTasks++;
         update();
       };
-      P.sb2.hooks.endTask = function () {
+      P.sb2.hooks.endTask = function() {
         finishedTasks++;
         update();
       };
-      return load()
-        .then((stage) => {
-          if (this.isStageActive(stageId))
-            return stage;
-          return null;
-        });
+      return load().then((stage) => {
+        if (this.isStageActive(stageId)) return stage;
+        return null;
+      });
     }
 
-    _loadScratch3(stageId, data) {
+    private _loadScratch3(stageId: number, data: any) {
       var loader = new P.sb3.Scratch3Loader(data);
       return this._handleScratch3Loader(loader, stageId);
     }
 
-    _loadScratch3File(stageId, buffer) {
+    private _loadScratch3File(stageId: number, buffer: any) {
       var loader = new P.sb3.SB3FileLoader(buffer);
       return this._handleScratch3Loader(loader, stageId);
     }
 
-    _loadScratch2(stageId, data) {
-      return this._handleScratch2Loader(stageId, function () {
+    private _loadScratch2(stageId: number, data: any) {
+      return this._handleScratch2Loader(stageId, function() {
         return P.sb2.loadProject(data);
       });
     }
 
-    _loadScratch2File(stageId, data) {
-      return this._handleScratch2Loader(stageId, function () {
+    private _loadScratch2File(stageId: number, data: any) {
+      return this._handleScratch2Loader(stageId, function() {
         return P.sb2.loadSB2Project(data);
       });
     }
 
-    _fetchProject(id) {
+    private _fetchProject(id: string) {
       var request = new P.IO.BlobRequest(Player.PROJECT_DATA_API.replace('$id', id), { rejectOnError: false });
-      return request.load()
-        .then(function (response) {
-          if (request.xhr.status === 404) {
-            throw new ProjectDoesNotExistError(id);
-          }
-          return response;
-        });
+      return request.load().then(function(response) {
+        if (request.xhr.status === 404) {
+          throw new ProjectDoesNotExistError(id);
+        }
+        return response;
+      });
     }
 
     // The main methods you should use for loading things...
 
     /**
      * Load a remote project from its ID
-     * @param {string} id
-     * @param {StageLoadOptions} options
-     * @returns {Promise}
      */
-    loadProjectId(id, options) {
+    loadProjectId(id: string, options: StageLoadOptions) {
       this.startLoadingNewProject();
-      var stageId = this.getNewStageId();
+      const stageId = this.getNewStageId();
       this.projectId = '' + id;
       this.projectLink = Player.PROJECT_LINK.replace('$id', id);
-      var blob;
+      let blob: Blob;
       return this._fetchProject(id)
-        .then((data) => {
+        .then(data => {
           blob = data;
           return P.IO.readers.toText(blob);
         })
-        .then((text) => {
+        .then(text => {
           if (!this.isStageActive(stageId)) {
             return null;
           }
@@ -571,31 +586,27 @@ namespace P.player {
             var type = Player.getProjectType(json);
             if (type === 3) {
               return this._loadScratch3(stageId, json);
-            }
-            else if (type === 2) {
+            } else if (type === 2) {
               return this._loadScratch2(stageId, json);
-            }
-            else {
+            } else {
               throw new Error('Project is valid JSON but of unknown type');
             }
-          }
-          catch (e) {
+          } catch (e) {
             // not json, but could be a zipped sb2
-            return P.IO.readers.toArrayBuffer(blob)
-              .then((buffer) => {
-                if (this.isScratch1Project(buffer)) {
-                  throw new ProjectNotSupportedError('.sb / Scratch 1');
-                }
-                return P.sb2.loadSB2Project(buffer);
-              });
+            return P.IO.readers.toArrayBuffer(blob).then(buffer => {
+              if (this.isScratch1Project(buffer)) {
+                throw new ProjectNotSupportedError('.sb / Scratch 1');
+              }
+              return P.sb2.loadSB2Project(buffer);
+            });
           }
         })
-        .then((stage) => {
+        .then(stage => {
           if (stage) {
             this.installStage(stage, options);
           }
         })
-        .catch((error) => {
+        .catch(error => {
           if (this.isStageActive(stageId)) {
             this.handleError(error);
           }
@@ -603,22 +614,17 @@ namespace P.player {
     }
 
     /**
-     * Load a project from an ArrayBuffer of the compressed project.
-     * @param {ArrayBuffer} buffer
-     * @param {'sb2'|'sb3'} type
-     * @param {StageLoadOptions} options
+     * Load a project from an ArrayBuffer of the project file.
      */
-    loadProjectBuffer(buffer, type, options) {
+    loadProjectBuffer(buffer: ArrayBuffer, type: 'sb2' | 'sb3', options: StageLoadOptions) {
       this.startLoadingNewProject();
-      var stageId = this.getNewStageId();
-      var startLoad = () => {
+      const stageId = this.getNewStageId();
+      const startLoad = () => {
         if (type === 'sb3') {
           return this._loadScratch3File(stageId, buffer);
-        }
-        else if (type === 'sb2') {
+        } else if (type === 'sb2') {
           return this._loadScratch2File(stageId, buffer);
-        }
-        else {
+        } else {
           throw new Error('Unknown type: ' + type);
         }
       };
@@ -636,13 +642,10 @@ namespace P.player {
     }
 
     /**
-     * Load a project from a File or Blob of the compressed project.
-     * @param {File} file
-     * @param {StageLoadOptions} options
-     * @returns {Promise}
+     * Load a project from a File or Blob of the project file.
      */
-    loadProjectFile(file, options) {
-      var extension = file.name.split('.').pop();
+    loadProjectFile(file: File, options: StageLoadOptions) {
+      var extension = file.name.split('.').pop() || '';
       if (['sb2', 'sb3'].indexOf(extension) === -1) {
         throw new Error('Unrecognized file extension: ' + extension);
       }
@@ -651,26 +654,14 @@ namespace P.player {
       this.getNewStageId();
       this.projectId = file.name;
       this.projectLink = file.name + '#local';
-      return P.IO.readers.toArrayBuffer(file)
-        .then((buffer) => {
-          return this.loadProjectBuffer(buffer, extension, options);
-        });
+      return P.IO.readers.toArrayBuffer(file).then(buffer => {
+        return this.loadProjectBuffer(buffer, extension as any, options);
+      });
     }
+  }
 
-    /**
-     * Determines the type of a project.
-     * @param {any} data
-     * @returns {2|3|null} 2 for sb2, 3 for sb3, null for unknown
-     */
-    static getProjectType(data) {
-      if (!data)
-        return null;
-      if ('targets' in data)
-        return 3;
-      if ('objName' in data)
-        return 2;
-      return null;
-    }
+  interface ErrorHandlerOptions {
+    container?: HTMLElement;
   }
 
   export class ErrorHandler {
@@ -679,23 +670,22 @@ namespace P.player {
     private errorEl: HTMLElement | null;
     private errorContainer: HTMLElement | null;
 
-    constructor(public player, options) {
-      options = options || {};
+    constructor(public player, options: ErrorHandlerOptions = {}) {
       this.player = player;
       player.onerror.subscribe(this.onerror.bind(this));
       player.oncleanup.subscribe(this.oncleanup.bind(this));
       this.errorEl = null;
       if (options.container) {
         this.errorContainer = options.container;
-      }
-      else {
+      } else {
         this.errorContainer = null;
       }
     }
+
     /**
-       * Create a string representation of an error.
-       */
-    stringifyError(error) {
+     * Create a string representation of an error.
+     */
+    stringifyError(error: any) {
       if (!error) {
         return 'unknown error';
       }
@@ -704,31 +694,37 @@ namespace P.player {
       }
       return error.toString();
     }
+
     /**
-       * Generate the link to report a bug to, including title and metadata.
-       * @param {string} bodyBefore Text to appear before metadata
-       * @param {string} bodyAfter Text to appear after metadata
-       */
-    createBugReportLink(bodyBefore, bodyAfter) {
+     * Generate the link to report a bug to, including title and metadata.
+     */
+    createBugReportLink(bodyBefore: string, bodyAfter: string) {
       var title = this.getBugReportTitle();
       bodyAfter = bodyAfter || '';
-      var body = bodyBefore + '\n\n\n-----\n' + this.getBugReportMetadata() + '\n' + bodyAfter;
+      var body =
+        bodyBefore +
+        '\n\n\n-----\n' +
+        this.getBugReportMetadata() +
+        '\n' +
+        bodyAfter;
       return ErrorHandler.BUG_REPORT_LINK
         .replace('$title', encodeURIComponent(title))
         .replace('$body', encodeURIComponent(body));
     }
+
     /**
-       * Get the title for bug reports.
-       */
+     * Get the title for bug reports.
+     */
     getBugReportTitle() {
       if (this.player.projectTitle !== Player.UNKNOWN_TITLE) {
         return this.player.projectTitle + ' (' + this.player.projectId + ')';
       }
       return this.player.projectLink;
     }
+
     /**
-       * Get the metadata to include in bug reports.
-       */
+     * Get the metadata to include in bug reports.
+     */
     getBugReportMetadata() {
       var meta = 'Project URL: ' + this.player.projectLink + '\n';
       meta += 'Project ID: ' + this.player.projectId + '\n';
@@ -736,22 +732,25 @@ namespace P.player {
       meta += navigator.userAgent;
       return meta;
     }
+
     /**
-       * Get the URL to report an error to.
-       */
+     * Get the URL to report an error to.
+     */
     createErrorLink(error) {
       var body = P.i18n.translate('report.crash.instructions');
       return this.createBugReportLink(body, '```\n' + this.stringifyError(error) + '\n```');
     }
+
     oncleanup() {
       if (this.errorEl && this.errorEl.parentNode) {
         this.errorEl.parentNode.removeChild(this.errorEl);
         this.errorEl = null;
       }
     }
+
     /**
-       * Create an error element indicating that forkphorus has crashed, and where to report the bug.
-       */
+     * Create an error element indicating that forkphorus has crashed, and where to report the bug.
+     */
     createErrorElement(error) {
       var el = document.createElement('div');
       var errorLink = this.createErrorLink(error);
@@ -760,62 +759,54 @@ namespace P.player {
       el.innerHTML = P.i18n.translate('report.crash.html').replace('$attrs', attributes);
       return el;
     }
+
     /**
-       * Create an error element indicating this project is not supported.
-       */
+     * Create an error element indicating this project is not supported.
+     */
     projectNotSupportedError(error) {
       var el = document.createElement('div');
       // use of innerHTML intentional
       el.innerHTML = P.i18n.translate('report.crash.unsupported').replace('$type', error.type);
       return el;
     }
+
     projectDoesNotExistError(error) {
       var el = document.createElement('div');
       el.textContent = P.i18n.translate('report.crash.doesnotexist').replace('$id', error.id);
       return el;
     }
+
     onerror(error) {
       var el = document.createElement('div');
       el.className = 'player-error';
       // Special handling for certain errors to provide a better error message
       if (error instanceof ProjectNotSupportedError) {
         el.appendChild(this.projectNotSupportedError(error));
-      }
-      else if (error instanceof ProjectDoesNotExistError) {
+      } else if (error instanceof ProjectDoesNotExistError) {
         el.appendChild(this.projectDoesNotExistError(error));
-      }
-      else {
+      } else {
         el.appendChild(this.createErrorElement(error));
       }
       if (this.errorContainer) {
         this.errorContainer.appendChild(el);
-      }
-      else if (this.player.stage) {
+      } else if (this.player.stage) {
         this.player.stage.ui.appendChild(el);
-      }
-      else {
+      } else {
         this.player.player.appendChild(el);
       }
       this.errorEl = el;
     }
   }
 
-  /**
-   * @typedef ProgressBarOptions
-   * @property {'controls'|HTMLElement} [position]
-   */
+  interface ProgressBarOptions {
+    position?: 'controls' | HTMLElement;
+  }
 
-  /**
-   * @class
-   * @param {ProgressBarOptions} options
-   */
   export class ProgressBar {
     private el: HTMLElement;
     private bar: HTMLElement;
 
-    constructor(player, options) {
-      options = options || {};
-      options.position = options.position || 'controls';
+    constructor(player: Player, options: ProgressBarOptions = {}) {
       this.el = document.createElement('div');
       this.el.className = 'player-progress';
       this.bar = document.createElement('div');
@@ -839,21 +830,22 @@ namespace P.player {
         this.el.setAttribute('state', 'error');
         this.bar.style.width = '100%';
       });
-      if (options.position === 'controls') {
+      if (options.position === 'controls' || options.position === undefined) {
         if (!player.controlsEl) {
           throw new Error('No controls to put progess bar in.');
         }
         player.controlsEl.appendChild(this.el);
-      }
-      else {
+      } else {
         options.position.appendChild(this.el);
       }
     }
-    setTheme(theme) {
+
+    setTheme(theme: Theme) {
       this.el.setAttribute('theme', theme);
     }
-    setProgress(progress) {
-      this.bar.style.width = (10 + progress * 90) + '%';
+
+    setProgress(progress: number) {
+      this.bar.style.width = 10 + progress * 90 + '%';
     }
   }
 }
