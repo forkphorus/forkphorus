@@ -776,9 +776,9 @@ namespace P.core {
     public promptButton: HTMLElement;
     public mouseSprite: Sprite | undefined;
 
-    private videoElement: HTMLVideoElement;
     public speech2text: P.ext.speech2text.SpeechToTextExtension | null = null;
     public microphone: P.ext.microphone.MicrophoneExtension | null = null;
+    public videosensing: P.ext.video.VideoExtension | null = null;
     private extensions: P.ext.Extension[] = [];
 
     constructor() {
@@ -1189,25 +1189,10 @@ namespace P.core {
     }
 
     showVideo(visible: boolean) {
-      if (P.config.supportVideoSensing) {
-        if (visible) {
-          if (!this.videoElement) {
-            this.videoElement = document.createElement('video');
-            this.videoElement.onloadedmetadata = () => {
-              this.videoElement.play();
-            };
-            this.videoElement.style.opacity = '0.5';
-            this.root.insertBefore(this.videoElement, this.canvas);
-            navigator.mediaDevices.getUserMedia({video: true, audio: false})
-              .then((stream) => this.videoElement.srcObject = stream);
-          }
-          this.videoElement.style.display = 'block';
-        } else {
-          if (this.videoElement) {
-            this.videoElement.style.display = 'none';
-          }
-        }
+      if (!this.videosensing) {
+        return;
       }
+      this.videosensing.showVideo(visible);
     }
 
     addExtension(extension: P.ext.Extension) {
@@ -1225,6 +1210,13 @@ namespace P.core {
       if (!this.microphone) {
         this.microphone = new P.ext.microphone.MicrophoneExtension(this);
         this.addExtension(this.microphone);
+      }
+    }
+
+    initVideo() {
+      if (!this.videosensing) {
+        this.videosensing = new P.ext.video.VideoExtension(this);
+        this.addExtension(this.videosensing);
       }
     }
 

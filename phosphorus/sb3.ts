@@ -2572,6 +2572,7 @@ namespace P.sb3.compiler {
   };
   statementLibrary['videoSensing_videoToggle'] = function(util) {
     const VIDEO_STATE = util.getInput('VIDEO_STATE', 'string');
+    util.stage.initVideo();
     util.writeLn(`switch (${VIDEO_STATE}) {`);
     util.writeLn('  case "off": self.showVideo(false); break;');
     util.writeLn('  case "on": self.showVideo(true); break;');

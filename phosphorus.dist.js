@@ -38,7 +38,6 @@ var P;
         const features = location.search.replace('?', '').split('&');
         config.debug = features.indexOf('debug') > -1;
         config.useWebGL = features.indexOf('webgl') > -1;
-        config.supportVideoSensing = features.indexOf('video') > -1;
         config.experimentalOptimizations = features.indexOf('opt') > -1;
         config.scale = window.devicePixelRatio || 1;
         config.PROJECT_API = 'https://projects.scratch.mit.edu/$id';
@@ -1951,6 +1950,7 @@ var P;
                 this.counter = 0;
                 this.speech2text = null;
                 this.microphone = null;
+                this.videosensing = null;
                 this.extensions = [];
                 this.runtime = new P.runtime.Runtime(this);
                 this.keys = [];
@@ -2294,26 +2294,10 @@ var P;
                 }
             }
             showVideo(visible) {
-                if (P.config.supportVideoSensing) {
-                    if (visible) {
-                        if (!this.videoElement) {
-                            this.videoElement = document.createElement('video');
-                            this.videoElement.onloadedmetadata = () => {
-                                this.videoElement.play();
-                            };
-                            this.videoElement.style.opacity = '0.5';
-                            this.root.insertBefore(this.videoElement, this.canvas);
-                            navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-                                .then((stream) => this.videoElement.srcObject = stream);
-                        }
-                        this.videoElement.style.display = 'block';
-                    }
-                    else {
-                        if (this.videoElement) {
-                            this.videoElement.style.display = 'none';
-                        }
-                    }
+                if (!this.videosensing) {
+                    return;
                 }
+                this.videosensing.showVideo(visible);
             }
             addExtension(extension) {
                 this.extensions.push(extension);
@@ -2328,6 +2312,12 @@ var P;
                 if (!this.microphone) {
                     this.microphone = new P.ext.microphone.MicrophoneExtension(this);
                     this.addExtension(this.microphone);
+                }
+            }
+            initVideo() {
+                if (!this.videosensing) {
+                    this.videosensing = new P.ext.video.VideoExtension(this);
+                    this.addExtension(this.videosensing);
                 }
             }
             stopAllSounds() {
@@ -7312,6 +7302,7 @@ var P;
     };
     statementLibrary['videoSensing_videoToggle'] = function (util) {
         const VIDEO_STATE = util.getInput('VIDEO_STATE', 'string');
+        util.stage.initVideo();
         util.writeLn(`switch (${VIDEO_STATE}) {`);
         util.writeLn('  case "off": self.showVideo(false); break;');
         util.writeLn('  case "on": self.showVideo(true); break;');
@@ -8135,6 +8126,58 @@ var P;
             }
             speech2text.SpeechToTextExtension = SpeechToTextExtension;
         })(speech2text = ext.speech2text || (ext.speech2text = {}));
+    })(ext = P.ext || (P.ext = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
+    var ext;
+    (function (ext) {
+        var video;
+        (function (video) {
+            class VideoExtension extends P.ext.Extension {
+                constructor(stage) {
+                    super(stage);
+                    this.opacity = 0.5;
+                    this.error = false;
+                }
+                createVideoStream() {
+                    if (!navigator.mediaDevices) {
+                        throw new Error('Cannot get video stream: mediaDevices is not defined');
+                    }
+                    const element = document.createElement('video');
+                    element.onloadedmetadata = () => element.play();
+                    element.style.opacity = this.opacity.toString();
+                    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+                        .then((stream) => this.video.srcObject = stream);
+                    return element;
+                }
+                showVideo(visible) {
+                    if (this.error) {
+                        return;
+                    }
+                    if (visible) {
+                        if (!this.video) {
+                            try {
+                                this.video = this.createVideoStream();
+                                this.stage.root.insertBefore(this.video, this.stage.canvas);
+                            }
+                            catch (e) {
+                                console.error(e);
+                                this.error = true;
+                                return;
+                            }
+                        }
+                        this.video.style.display = 'block';
+                    }
+                    else {
+                        if (this.video) {
+                            this.video.style.display = 'none';
+                        }
+                    }
+                }
+            }
+            video.VideoExtension = VideoExtension;
+        })(video = ext.video || (ext.video = {}));
     })(ext = P.ext || (P.ext = {}));
 })(P || (P = {}));
 //# sourceMappingURL=phosphorus.dist.js.map
