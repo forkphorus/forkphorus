@@ -3627,11 +3627,11 @@ var P;
                 this.projectLink = Player.PROJECT_LINK.replace('$id', id);
                 let blob;
                 return this._fetchProject(id)
-                    .then(data => {
+                    .then((data) => {
                     blob = data;
                     return P.IO.readers.toText(blob);
                 })
-                    .then(text => {
+                    .then((text) => {
                     if (!this.isStageActive(stageId)) {
                         return null;
                     }
@@ -3649,7 +3649,7 @@ var P;
                         }
                     }
                     catch (e) {
-                        return P.IO.readers.toArrayBuffer(blob).then(buffer => {
+                        return P.IO.readers.toArrayBuffer(blob).then((buffer) => {
                             if (this.isScratch1Project(buffer)) {
                                 throw new ProjectNotSupportedError('.sb / Scratch 1');
                             }
@@ -3657,12 +3657,13 @@ var P;
                         });
                     }
                 })
-                    .then(stage => {
+                    .then((stage) => {
                     if (stage) {
                         this.installStage(stage, options);
+                        this.addCloudVariables(stage, id);
                     }
                 })
-                    .catch(error => {
+                    .catch((error) => {
                     if (this.isStageActive(stageId)) {
                         this.handleError(error);
                     }
@@ -3710,6 +3711,34 @@ var P;
             getProjectTitle(id) {
                 return new P.IO.TextRequest(Player.TITLE_API.replace('$id', id)).load();
             }
+            getCloudVariables(id) {
+                return new P.IO.JSONRequest(Player.CLOUD_API.replace('$id', id)).load()
+                    .then((data) => {
+                    const variables = Object.create(null);
+                    for (const entry of data.reverse()) {
+                        const { verb, name, value } = entry;
+                        switch (verb) {
+                            case 'set_var':
+                                variables[name] = value;
+                                break;
+                        }
+                    }
+                    return variables;
+                });
+            }
+            addCloudVariables(stage, id) {
+                const isCloudVariable = (variable) => variable.startsWith('☁');
+                const variables = Object.keys(stage.vars);
+                const hasCloudVariables = variables.some(isCloudVariable);
+                if (!hasCloudVariables) {
+                    return;
+                }
+                this.getCloudVariables(id).then((variables) => {
+                    for (const name of Object.keys(variables)) {
+                        stage.vars[name] = variables[name];
+                    }
+                });
+            }
         }
         Player.PROJECT_DATA_API = 'https://projects.scratch.mit.edu/$id';
         Player.PROJECT_LINK = 'https://scratch.mit.edu/projects/$id';
@@ -3718,6 +3747,7 @@ var P;
         Player.UNKNOWN_LINK = '(no link)';
         Player.UNKNOWN_TITLE = '(no title)';
         Player.TITLE_API = 'https://scratch.garbomuffin.com/api/forkphorus/?t=title&p=$id';
+        Player.CLOUD_API = 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100';
         player_1.Player = Player;
         class ErrorHandler {
             constructor(player, options = {}) {

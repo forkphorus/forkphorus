@@ -80,6 +80,7 @@ namespace P.player {
     public static readonly UNKNOWN_LINK = '(no link)';
     public static readonly UNKNOWN_TITLE = '(no title)';
     public static readonly TITLE_API = 'https://scratch.garbomuffin.com/api/forkphorus/?t=title&p=$id';
+    public static readonly CLOUD_API = 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100';
 
     /**
      * Determines the type of a project.
@@ -470,7 +471,7 @@ namespace P.player {
       }
     }
 
-    onfullscreenchange() {
+    private onfullscreenchange() {
       // If the user closes fullscreen through some external method (probably pressing escape),
       // we will want to cleanup and go back to the normal display mode.
       if (typeof document.fullscreen === 'boolean' && document.fullscreen !== this.fullscreen) {
@@ -483,7 +484,7 @@ namespace P.player {
     /**
      * Handle errors
      */
-    handleError(error: any) {
+    private handleError(error: any) {
       console.error(error);
       this.onerror.emit(error);
     }
@@ -509,7 +510,7 @@ namespace P.player {
       this.oncleanup.emit();
     }
 
-    startLoadingNewProject() {
+    private startLoadingNewProject() {
       this.cleanup();
       this.onstartload.emit();
     }
@@ -517,19 +518,19 @@ namespace P.player {
     /**
      * Get a new stage ID, and invalidate any old ones.
      */
-    getNewStageId() {
+    private getNewStageId() {
       this.stageId++;
       return this.stageId;
     }
 
-    isStageActive(id: number) {
+    private isStageActive(id: number) {
       return id === this.stageId;
     }
 
     /**
      * Start a new Stage in this player
      */
-    installStage(stage: P.core.Stage, stageOptions: StageLoadOptions = {}) {
+    private installStage(stage: P.core.Stage, stageOptions: StageLoadOptions = {}) {
       if (!stage) {
         throw new Error('Cannot run an invalid stage');
       }
@@ -555,7 +556,7 @@ namespace P.player {
     /**
      * Determine if a project file is a Scratch 1 project.
      */
-    isScratch1Project(buffer: ArrayBuffer) {
+    private isScratch1Project(buffer: ArrayBuffer) {
       const MAGIC = 'ScratchV0';
       const array = new Uint8Array(buffer);
       for (var i = 0; i < MAGIC.length; i++) {
@@ -649,11 +650,11 @@ namespace P.player {
       this.projectLink = Player.PROJECT_LINK.replace('$id', id);
       let blob: Blob;
       return this._fetchProject(id)
-        .then(data => {
+        .then((data) => {
           blob = data;
           return P.IO.readers.toText(blob);
         })
-        .then(text => {
+        .then((text) => {
           if (!this.isStageActive(stageId)) {
             return null;
           }
@@ -669,7 +670,7 @@ namespace P.player {
             }
           } catch (e) {
             // not json, but could be a zipped sb2
-            return P.IO.readers.toArrayBuffer(blob).then(buffer => {
+            return P.IO.readers.toArrayBuffer(blob).then((buffer) => {
               if (this.isScratch1Project(buffer)) {
                 throw new ProjectNotSupportedError('.sb / Scratch 1');
               }
@@ -677,12 +678,13 @@ namespace P.player {
             });
           }
         })
-        .then(stage => {
+        .then((stage) => {
           if (stage) {
             this.installStage(stage, options);
+            this.addCloudVariables(stage, id);
           }
         })
-        .catch(error => {
+        .catch((error) => {
           if (this.isStageActive(stageId)) {
             this.handleError(error);
           }
@@ -740,6 +742,36 @@ namespace P.player {
      */
     getProjectTitle(id: string): Promise<string> {
       return new P.IO.TextRequest(Player.TITLE_API.replace('$id', id)).load();
+    }
+
+    getCloudVariables(id: string) {
+      return new P.IO.JSONRequest(Player.CLOUD_API.replace('$id', id)).load()
+        .then((data) => {
+          const variables = Object.create(null);
+          for (const entry of data.reverse()) {
+            const { verb, name, value } = entry;
+            switch (verb) {
+              case 'set_var':
+                variables[name] = value;
+                break;
+            }
+          }
+          return variables;
+        });
+    }
+
+    private addCloudVariables(stage: P.core.Stage, id: string) {
+      const isCloudVariable = (variable: string) => variable.startsWith('☁');
+      const variables = Object.keys(stage.vars);
+      const hasCloudVariables = variables.some(isCloudVariable);
+      if (!hasCloudVariables) {
+        return;
+      }
+      this.getCloudVariables(id).then((variables) => {
+        for (const name of Object.keys(variables)) {
+          stage.vars[name] = variables[name];
+        }
+      });
     }
   }
 
