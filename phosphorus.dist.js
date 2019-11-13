@@ -3232,14 +3232,6 @@ var P;
                     return 2;
                 return null;
             }
-            onfullscreenchange() {
-                if (typeof document.fullscreen === 'boolean' && document.fullscreen !== this.fullscreen) {
-                    this.exitFullscreen();
-                }
-                else if (typeof document.webkitIsFullScreen === 'boolean' && document.webkitIsFullScreen !== this.fullscreen) {
-                    this.exitFullscreen();
-                }
-            }
             assertStage() {
                 if (!this.stage) {
                     throw new Error('The player does not currently contain a stage to operate on.');
@@ -3493,6 +3485,14 @@ var P;
                     this.stage.setZoom(w / 480);
                 }
             }
+            onfullscreenchange() {
+                if (typeof document.fullscreen === 'boolean' && document.fullscreen !== this.fullscreen) {
+                    this.exitFullscreen();
+                }
+                else if (typeof document.webkitIsFullScreen === 'boolean' && document.webkitIsFullScreen !== this.fullscreen) {
+                    this.exitFullscreen();
+                }
+            }
             handleError(error) {
                 console.error(error);
                 this.onerror.emit(error);
@@ -3705,6 +3705,9 @@ var P;
                     return this.loadProjectBuffer(buffer, extension, options);
                 });
             }
+            getProjectTitle(id) {
+                return new P.IO.TextRequest(Player.TITLE_API.replace('$id', id)).load();
+            }
         }
         Player.PROJECT_DATA_API = 'https://projects.scratch.mit.edu/$id';
         Player.PROJECT_LINK = 'https://scratch.mit.edu/projects/$id';
@@ -3712,6 +3715,7 @@ var P;
         Player.UNKNOWN_ID = '(no id)';
         Player.UNKNOWN_LINK = '(no link)';
         Player.UNKNOWN_TITLE = '(no title)';
+        Player.TITLE_API = 'https://scratch.garbomuffin.com/api/forkphorus/?t=title&p=$id';
         player_1.Player = Player;
         class ErrorHandler {
             constructor(player, options = {}) {

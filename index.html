@@ -356,7 +356,7 @@
       if (cachedTitles[id]) {
         document.title = cachedTitles[id] + ' - forkphorus';
       } else {
-        new P.IO.TextRequest('https://scratch.garbomuffin.com/api/forkphorus/?t=title&p=' + id).load()
+        player.getProjectTitle(id)
           .then(function(title) {
             if (player.stageId === stageId) {
               if (title) {

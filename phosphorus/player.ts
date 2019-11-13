@@ -79,6 +79,7 @@ namespace P.player {
     public static readonly UNKNOWN_ID = '(no id)';
     public static readonly UNKNOWN_LINK = '(no link)';
     public static readonly UNKNOWN_TITLE = '(no title)';
+    public static readonly TITLE_API = 'https://scratch.garbomuffin.com/api/forkphorus/?t=title&p=$id';
 
     /**
      * Determines the type of a project.
@@ -152,16 +153,6 @@ namespace P.player {
       document.addEventListener('webkitfullscreenchange', () => this.onfullscreenchange());
 
       this.handleError = this.handleError.bind(this);
-    }
-
-    onfullscreenchange() {
-      // If the user closes fullscreen through some external method (probably pressing escape),
-      // we will want to cleanup and go back to the normal display mode.
-      if (typeof document.fullscreen === 'boolean' && document.fullscreen !== this.fullscreen) {
-        this.exitFullscreen();
-      } else if (typeof document.webkitIsFullScreen === 'boolean' && document.webkitIsFullScreen !== this.fullscreen) {
-        this.exitFullscreen();
-      }
     }
 
     /**
@@ -479,6 +470,16 @@ namespace P.player {
       }
     }
 
+    onfullscreenchange() {
+      // If the user closes fullscreen through some external method (probably pressing escape),
+      // we will want to cleanup and go back to the normal display mode.
+      if (typeof document.fullscreen === 'boolean' && document.fullscreen !== this.fullscreen) {
+        this.exitFullscreen();
+      } else if (typeof document.webkitIsFullScreen === 'boolean' && document.webkitIsFullScreen !== this.fullscreen) {
+        this.exitFullscreen();
+      }
+    }
+
     /**
      * Handle errors
      */
@@ -730,6 +731,13 @@ namespace P.player {
       return P.IO.readers.toArrayBuffer(file).then(buffer => {
         return this.loadProjectBuffer(buffer, extension as any, options);
       });
+    }
+
+    /**
+     * Get the title of a project.
+     */
+    getProjectTitle(id: string): Promise<string> {
+      return new P.IO.TextRequest(Player.TITLE_API.replace('$id', id)).load();
     }
   }
 

@@ -152,6 +152,12 @@
         player.enterFullscreen(false);
         splash.style.display = 'none';
       });
+    
+    player.getProjectTitle(projectId).then(function(title) {
+      if (title) {
+        document.title = title;
+      }
+    });
   }());
 
   </script>
