@@ -3531,17 +3531,19 @@ var P;
                 }
                 this.stage = stage;
                 this.stage.runtime.handleError = this.handleError;
-                this.player.appendChild(this.stage.root);
-                this.setTurbo(!!stageOptions.turbo);
                 if (typeof stageOptions.fps !== 'undefined') {
-                    this.stage.runtime.framerate = stageOptions.fps;
+                    stage.runtime.framerate = stageOptions.fps;
                 }
-                if (stageOptions.start !== false) {
-                    this.triggerGreenFlag();
-                }
-                this.stage.focus();
-                this.onload.emit(this.stage);
+                this.onload.emit(stage);
                 this.start();
+                if (stageOptions.start !== false) {
+                    stage.runtime.triggerGreenFlag();
+                }
+                if (stageOptions.turbo) {
+                    stage.runtime.isTurbo = true;
+                }
+                this.player.appendChild(stage.root);
+                stage.focus();
             }
             isScratch1Project(buffer) {
                 const MAGIC = 'ScratchV0';
