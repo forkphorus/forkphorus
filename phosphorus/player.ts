@@ -183,8 +183,7 @@ namespace P.player {
 
       const clickStop = (e: MouseEvent) => {
         this.assertStage();
-        this.pause();
-        this.stage.runtime.stopAll();
+        this.stopAll();
         this.stage.draw();
         e.preventDefault();
       };
@@ -214,6 +213,7 @@ namespace P.player {
           this.setTurbo(!this.stage.runtime.isTurbo);
         } else {
           this.start();
+          // Use of runtime's stopAll is intentional as it won't pause the runtime.
           this.stage.runtime.stopAll();
           this.stage.runtime.triggerGreenFlag();
         }
@@ -239,16 +239,18 @@ namespace P.player {
         this.stopButton = document.createElement('span');
         this.stopButton.className = 'player-button player-stop';
         this.controlsEl.appendChild(this.stopButton);
+        this.stopButton.addEventListener('click', clickStop);
         this.stopButton.addEventListener('touchend', clickStop);
         this.stopButton.addEventListener('touchstart', preventDefault);  
       }
-
+      
       if (options.enablePause !== false) {
         this.pauseButton = document.createElement('span');
         this.pauseButton.className = 'player-button player-pause';
         this.controlsEl.appendChild(this.pauseButton);
         this.pauseButton.addEventListener('click', clickPause);
         this.pauseButton.addEventListener('touchend', clickPause);  
+        this.pauseButton.addEventListener('touchstart', preventDefault);  
       }
 
       if (options.enableFlag !== false) {
@@ -258,6 +260,7 @@ namespace P.player {
         this.controlsEl.appendChild(this.flagButton);
         this.flagButton.addEventListener('click', clickFlag);
         this.flagButton.addEventListener('touchend', clickFlag)
+        this.flagButton.addEventListener('touchstart', startTouchFlag);  
         this.flagButton.addEventListener('touchstart', preventDefault);  
       }
 
@@ -341,11 +344,38 @@ namespace P.player {
     }
 
     /**
+     * Active scripts triggered by the green flag.
+     */
+    triggerGreenFlag() {
+      this.assertStage();
+      this.stage.runtime.triggerGreenFlag();
+    }
+
+    /**
+     * Stop all scripts in the runtime, and stop the runtime.
+     */
+    stopAll() {
+      this.assertStage();
+      this.pause();
+      this.stage.runtime.stopAll();
+    }
+
+    /**
+     * Whether the project is running.
+     */
+    isRunning() {
+      if (!this.stage) {
+        return false;
+      }
+      return this.stage.runtime.isRunning;
+    }
+
+    /**
      * Toggles the project between paused and running.
      */
     toggleRunning() {
       this.assertStage();
-      if (this.stage.runtime.isRunning) {
+      if (this.isRunning()) {
         this.pause();
       } else {
         this.start();
@@ -386,7 +416,7 @@ namespace P.player {
       this.root.setAttribute('fullscreen', '');
       this.fullscreen = true;
       if (this.stage) {
-        if (!this.stage.runtime.isRunning) {
+        if (!this.isRunning()) {
           this.stage.draw();
         }
         this.stage.focus();
@@ -507,14 +537,12 @@ namespace P.player {
       this.stage.runtime.handleError = this.handleError;
       this.player.appendChild(this.stage.root);
 
+      this.setTurbo(!!stageOptions.turbo);
       if (typeof stageOptions.fps !== 'undefined') {
         this.stage.runtime.framerate = stageOptions.fps;
       }
       if (stageOptions.start !== false) {
-        this.stage.runtime.triggerGreenFlag();
-      }
-      if (stageOptions.turbo) {
-        this.setTurbo(true);
+        this.triggerGreenFlag();
       }
       this.stage.focus();
       this.onload.emit(this.stage);

@@ -2156,12 +2156,12 @@ var P;
                 }
                 this.removeEventListeners();
             }
-            pause() {
+            pauseExtensions() {
                 for (const extension of this.extensions) {
                     extension.onpause();
                 }
             }
-            start() {
+            startExtensions() {
                 for (const extension of this.extensions) {
                     extension.onstart();
                 }
@@ -3251,8 +3251,7 @@ var P;
                 }
                 const clickStop = (e) => {
                     this.assertStage();
-                    this.pause();
-                    this.stage.runtime.stopAll();
+                    this.stopAll();
                     this.stage.draw();
                     e.preventDefault();
                 };
@@ -3302,6 +3301,7 @@ var P;
                     this.stopButton = document.createElement('span');
                     this.stopButton.className = 'player-button player-stop';
                     this.controlsEl.appendChild(this.stopButton);
+                    this.stopButton.addEventListener('click', clickStop);
                     this.stopButton.addEventListener('touchend', clickStop);
                     this.stopButton.addEventListener('touchstart', preventDefault);
                 }
@@ -3311,6 +3311,7 @@ var P;
                     this.controlsEl.appendChild(this.pauseButton);
                     this.pauseButton.addEventListener('click', clickPause);
                     this.pauseButton.addEventListener('touchend', clickPause);
+                    this.pauseButton.addEventListener('touchstart', preventDefault);
                 }
                 if (options.enableFlag !== false) {
                     this.flagButton = document.createElement('span');
@@ -3319,6 +3320,7 @@ var P;
                     this.controlsEl.appendChild(this.flagButton);
                     this.flagButton.addEventListener('click', clickFlag);
                     this.flagButton.addEventListener('touchend', clickFlag);
+                    this.flagButton.addEventListener('touchstart', startTouchFlag);
                     this.flagButton.addEventListener('touchstart', preventDefault);
                 }
                 if (options.enableTurbo !== false) {
@@ -3385,9 +3387,24 @@ var P;
                 this.root.setAttribute('running', '');
                 this.onstart.emit();
             }
+            triggerGreenFlag() {
+                this.assertStage();
+                this.stage.runtime.triggerGreenFlag();
+            }
+            stopAll() {
+                this.assertStage();
+                this.pause();
+                this.stage.runtime.stopAll();
+            }
+            isRunning() {
+                if (!this.stage) {
+                    return false;
+                }
+                return this.stage.runtime.isRunning;
+            }
             toggleRunning() {
                 this.assertStage();
-                if (this.stage.runtime.isRunning) {
+                if (this.isRunning()) {
                     this.pause();
                 }
                 else {
@@ -3419,7 +3436,7 @@ var P;
                 this.root.setAttribute('fullscreen', '');
                 this.fullscreen = true;
                 if (this.stage) {
-                    if (!this.stage.runtime.isRunning) {
+                    if (!this.isRunning()) {
                         this.stage.draw();
                     }
                     this.stage.focus();
@@ -3515,14 +3532,12 @@ var P;
                 this.stage = stage;
                 this.stage.runtime.handleError = this.handleError;
                 this.player.appendChild(this.stage.root);
+                this.setTurbo(!!stageOptions.turbo);
                 if (typeof stageOptions.fps !== 'undefined') {
                     this.stage.runtime.framerate = stageOptions.fps;
                 }
                 if (stageOptions.start !== false) {
-                    this.stage.runtime.triggerGreenFlag();
-                }
-                if (stageOptions.turbo) {
-                    this.setTurbo(true);
+                    this.triggerGreenFlag();
                 }
                 this.stage.focus();
                 this.onload.emit(this.stage);
@@ -4360,7 +4375,7 @@ var P;
                 this.interval = setInterval(this.step, 1000 / this.framerate);
                 if (audioContext)
                     audioContext.resume();
-                this.stage.start();
+                this.stage.startExtensions();
             }
             pause() {
                 if (this.interval) {
@@ -4370,7 +4385,7 @@ var P;
                     window.removeEventListener('error', this.onError);
                     if (audioContext)
                         audioContext.suspend();
-                    this.stage.pause();
+                    this.stage.pauseExtensions();
                 }
                 this.isRunning = false;
             }

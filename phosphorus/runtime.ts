@@ -592,7 +592,7 @@ namespace P.runtime {
       this.baseTime = Date.now();
       this.interval = setInterval(this.step, 1000 / this.framerate);
       if (audioContext) audioContext.resume();
-      this.stage.start();
+      this.stage.startExtensions();
     }
 
     /**
@@ -605,7 +605,7 @@ namespace P.runtime {
         this.interval = 0;
         window.removeEventListener('error', this.onError);
         if (audioContext) audioContext.suspend();
-        this.stage.pause();
+        this.stage.pauseExtensions();
       }
       this.isRunning = false;
     }
@@ -623,6 +623,13 @@ namespace P.runtime {
       this.interval = setInterval(this.step, 1000 / this.framerate);
     }
 
+    /**
+     * Stops this runtime.
+     * - stops all scripts
+     * - removes all clones
+     * - resets filters, speech bubbles, sounds
+     * - Does *NOT* stop the event loop. Use pause() for that.
+     */
     stopAll() {
       this.stage.hidePrompt = false;
       this.stage.prompter.style.display = 'none';
