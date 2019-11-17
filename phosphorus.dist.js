@@ -4597,7 +4597,7 @@ var P;
                 };
                 var val = function (e, usenum, usebool) {
                     var v;
-                    if (typeof e === 'number' || typeof e === 'boolean') {
+                    if (typeof e === 'number' || typeof e === 'boolean' || e === null) {
                         return '' + e;
                     }
                     else if (typeof e === 'string') {
