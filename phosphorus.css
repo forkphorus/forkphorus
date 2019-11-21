@@ -183,6 +183,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   user-select: text;
+  white-space: nowrap;
 }
 .s3-list-top-label, .s3-list-bottom-label {
   padding: 3px;
