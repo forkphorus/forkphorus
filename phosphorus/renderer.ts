@@ -1068,7 +1068,7 @@ namespace P.renderer {
      */
     drawAllExcept(renderer: SpriteRenderer2D, skip: P.core.Base) {
       renderer.drawChild(this.stage);
-      renderer.ctx.drawImage(this.penLayer, 0, 0, this.canvas.width, this.canvas.height);
+      renderer.ctx.drawImage(this.penLayer, 0, 0, 480, 360);
       for (var i = 0; i < this.stage.children.length; i++) {
         var child = this.stage.children[i];
         if (!child.visible || child === skip) {
@@ -1246,7 +1246,9 @@ namespace P.renderer {
 
       this.drawAllExcept(workingRenderer, sprite);
       workingRenderer.ctx.globalCompositeOperation = 'destination-in';
+      workingRenderer.noEffects = true;
       workingRenderer.drawChild(sprite);
+      workingRenderer.noEffects = false;
 
       workingRenderer.ctx.restore();
 

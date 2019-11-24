@@ -1236,7 +1236,7 @@ var P;
             }
             drawAllExcept(renderer, skip) {
                 renderer.drawChild(this.stage);
-                renderer.ctx.drawImage(this.penLayer, 0, 0, this.canvas.width, this.canvas.height);
+                renderer.ctx.drawImage(this.penLayer, 0, 0, 480, 360);
                 for (var i = 0; i < this.stage.children.length; i++) {
                     var child = this.stage.children[i];
                     if (!child.visible || child === skip) {
@@ -1386,7 +1386,9 @@ var P;
                 workingRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
                 this.drawAllExcept(workingRenderer, sprite);
                 workingRenderer.ctx.globalCompositeOperation = 'destination-in';
+                workingRenderer.noEffects = true;
                 workingRenderer.drawChild(sprite);
+                workingRenderer.noEffects = false;
                 workingRenderer.ctx.restore();
                 const data = workingRenderer.ctx.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
                 color = color & 0xffffff;
