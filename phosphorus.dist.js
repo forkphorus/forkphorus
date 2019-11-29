@@ -3053,11 +3053,8 @@ var P;
         };
         var clone = function (name) {
             const parent = name === '_myself_' ? S : self.getObject(name);
-            if (!parent) {
-                throw new Error('Cannot find object to clone');
-            }
-            if (!P.core.isSprite(parent)) {
-                throw new Error('Cannot clone non-sprite object');
+            if (!parent || !P.core.isSprite(parent)) {
+                return;
             }
             const c = parent.clone();
             self.children.splice(self.children.indexOf(parent), 0, c);
