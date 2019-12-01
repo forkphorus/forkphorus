@@ -402,7 +402,7 @@ namespace P.core {
       return this.costumes[this.currentCostumeIndex] ? this.costumes[this.currentCostumeIndex].name : '';
     }
 
-    setCostume(costume) {
+    setCostume(costume: any) {
       if (typeof costume !== 'number') {
         costume = '' + costume;
         for (var i = 0; i < this.costumes.length; i++) {
@@ -420,7 +420,7 @@ namespace P.core {
           this.showPreviousCostume();
           return;
         }
-        if (!isFinite(costume)) {
+        if (!isFinite(costume) || !/\d/.test(costume)) {
           return;
         }
       }

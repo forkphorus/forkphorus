@@ -1678,7 +1678,7 @@ var P;
                         this.showPreviousCostume();
                         return;
                     }
-                    if (!isFinite(costume)) {
+                    if (!isFinite(costume) || !/\d/.test(costume)) {
                         return;
                     }
                 }
