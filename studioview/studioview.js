@@ -239,7 +239,9 @@
 
     var xhr = new XMLHttpRequest();
     xhr.onload = function() {
-      var doc = xhr.response;
+      // We cannot just set xhr.responseType="document" because the proxy returns text/plain
+      var docSource = xhr.response;
+      var doc = new DOMParser().parseFromString(docSource, 'text/html');
 
       var projects = [];
       var projectElements = doc.querySelectorAll('.project');
@@ -298,7 +300,6 @@
       .replace('$id', this.studioId)
       .replace('$page', this.page);
     xhr.open('GET', url);
-    xhr.responseType = 'document';
     xhr.send();
   };
 
@@ -346,9 +347,8 @@
 
   // This can be any URL that is a proxy for https://scratch.mit.edu/site-api/projects/in/5235006/1/
   // Understandably scratch does not set CORS headers on this URL, but a proxy can set it manually.
-  // I setup a proxy @ scratch.garbomuffin.com that does this.
   // $id will be replaced with the studio ID, and $page with the page.
-  StudioView.STUDIO_API = 'https://scratch.garbomuffin.com/api/site-api/projects/in/$id/$page/';
+  StudioView.STUDIO_API = 'https://scratch.garbomuffin.com/site-proxy/projects/in/$id/$page/';
 
   // The URL to download thumbnails from.
   // $id is replaced with the project's ID.
