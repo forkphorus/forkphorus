@@ -3713,7 +3713,8 @@ var P;
                 });
             }
             getProjectTitle(id) {
-                return new P.IO.TextRequest(Player.TITLE_API.replace('$id', id)).load();
+                return new P.IO.JSONRequest(Player.PROJECT_API.replace('$id', id), { rejectOnError: false }).load()
+                    .then((data) => data.title || '');
             }
             getCloudVariables(id) {
                 return new P.IO.JSONRequest(Player.CLOUD_API.replace('$id', id)).load()
@@ -3768,7 +3769,7 @@ var P;
         Player.UNKNOWN_ID = '(no id)';
         Player.UNKNOWN_LINK = '(no link)';
         Player.UNKNOWN_TITLE = '(no title)';
-        Player.TITLE_API = 'https://scratch.garbomuffin.com/api/forkphorus/?t=title&p=$id';
+        Player.PROJECT_API = 'https://scratch.garbomuffin.com/proxy/projects/$id';
         Player.CLOUD_API = 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100';
         player_1.Player = Player;
         class ErrorHandler {

@@ -79,7 +79,7 @@ namespace P.player {
     public static readonly UNKNOWN_ID = '(no id)';
     public static readonly UNKNOWN_LINK = '(no link)';
     public static readonly UNKNOWN_TITLE = '(no title)';
-    public static readonly TITLE_API = 'https://scratch.garbomuffin.com/api/forkphorus/?t=title&p=$id';
+    public static readonly PROJECT_API = 'https://scratch.garbomuffin.com/proxy/projects/$id';
     public static readonly CLOUD_API = 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100';
 
     /**
@@ -745,7 +745,8 @@ namespace P.player {
      * Get the title of a project.
      */
     getProjectTitle(id: string): Promise<string> {
-      return new P.IO.TextRequest(Player.TITLE_API.replace('$id', id)).load();
+      return new P.IO.JSONRequest(Player.PROJECT_API.replace('$id', id), { rejectOnError: false }).load()
+        .then((data) => data.title || '');
     }
 
     getCloudVariables(id: string) {
