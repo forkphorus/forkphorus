@@ -3721,10 +3721,24 @@ var P;
                     const variables = Object.create(null);
                     for (const entry of data.reverse()) {
                         const { verb, name, value } = entry;
+                        if (!Player.isCloudVariable(name)) {
+                            console.warn('cloud variable logs affecting non-cloud variables; aborting');
+                            return {};
+                        }
                         switch (verb) {
+                            case 'create_var':
                             case 'set_var':
                                 variables[name] = value;
                                 break;
+                            case 'del_var':
+                                delete variables[name];
+                                break;
+                            case 'rename_var':
+                                variables[value] = variables[name];
+                                delete variables[name];
+                                break;
+                            default:
+                                console.warn('unknown cloud variable log verb:', verb);
                         }
                     }
                     return variables;
@@ -3738,7 +3752,12 @@ var P;
                 }
                 this.getCloudVariables(id).then((variables) => {
                     for (const name of Object.keys(variables)) {
-                        stage.vars[name] = variables[name];
+                        if (name in stage.vars) {
+                            stage.vars[name] = variables[name];
+                        }
+                        else {
+                            console.warn('not applying unknown cloud variable:', name);
+                        }
                     }
                 });
             }

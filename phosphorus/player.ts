@@ -749,15 +749,32 @@ namespace P.player {
     }
 
     getCloudVariables(id: string) {
+      // To get the cloud variables of a project, we will fetch the history logs and essentially replay the latest changes.
+      // This is primarily designed so that highscores in projects can remain up-to-date, and nothing more than that.
       return new P.IO.JSONRequest(Player.CLOUD_API.replace('$id', id)).load()
         .then((data) => {
           const variables = Object.create(null);
           for (const entry of data.reverse()) {
             const { verb, name, value } = entry;
+            // Make sure that the cloud logs are only affecting cloud variables and not regular variables
+            if (!Player.isCloudVariable(name)) {
+              console.warn('cloud variable logs affecting non-cloud variables; aborting');
+              return {};
+            }
             switch (verb) {
+              case 'create_var':
               case 'set_var':
                 variables[name] = value;
                 break;
+              case 'del_var':
+                delete variables[name];
+                break;
+              case 'rename_var':
+                variables[value] = variables[name];
+                delete variables[name];
+                break;
+              default:
+                console.warn('unknown cloud variable log verb:', verb);
             }
           }
           return variables;
@@ -772,7 +789,12 @@ namespace P.player {
       }
       this.getCloudVariables(id).then((variables) => {
         for (const name of Object.keys(variables)) {
-          stage.vars[name] = variables[name];
+          // Ensure that the variables we are setting are known to the stage before setting them.
+          if (name in stage.vars) {
+            stage.vars[name] = variables[name];
+          } else {
+            console.warn('not applying unknown cloud variable:', name);
+          }
         }
       });
     }
