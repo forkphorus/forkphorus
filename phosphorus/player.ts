@@ -67,10 +67,9 @@ namespace P.player {
   }
 
   /**
-   * Project player.
-   * You should ALWAYS use setTurbo, setTheme, etc. instead of directly setting
-   * turbo or theme because it may make the UI go out of sync.
-   * You should also prefer Player.* instead of Player.stage.* for the same reason.
+   * Project player that makes using the forkphorus API less miserable.
+   * You MUST ALWAYS use Player.* instead of Player.stage.* when possible to avoid UI desyncs and other weird behavior.
+   * For controls and error handling, see the other moduels in P.player.
    */
   export class Player {
     public static readonly PROJECT_DATA_API = 'https://projects.scratch.mit.edu/$id';
@@ -759,8 +758,8 @@ namespace P.player {
             const { verb, name, value } = entry;
             // Make sure that the cloud logs are only affecting cloud variables and not regular variables
             if (!Player.isCloudVariable(name)) {
-              console.warn('cloud variable logs affecting non-cloud variables; aborting');
-              return {};
+              console.warn('cloud variable logs affecting non-cloud variable, skipping', name);
+              continue;
             }
             switch (verb) {
               case 'create_var':
@@ -775,7 +774,7 @@ namespace P.player {
                 delete variables[name];
                 break;
               default:
-                console.warn('unknown cloud variable log verb:', verb);
+                console.warn('unknown cloud variable log verb', verb);
             }
           }
           return variables;

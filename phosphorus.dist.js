@@ -3723,8 +3723,8 @@ var P;
                     for (const entry of data.reverse()) {
                         const { verb, name, value } = entry;
                         if (!Player.isCloudVariable(name)) {
-                            console.warn('cloud variable logs affecting non-cloud variables; aborting');
-                            return {};
+                            console.warn('cloud variable logs affecting non-cloud variable, skipping', name);
+                            continue;
                         }
                         switch (verb) {
                             case 'create_var':
@@ -3739,7 +3739,7 @@ var P;
                                 delete variables[name];
                                 break;
                             default:
-                                console.warn('unknown cloud variable log verb:', verb);
+                                console.warn('unknown cloud variable log verb', verb);
                         }
                     }
                     return variables;
