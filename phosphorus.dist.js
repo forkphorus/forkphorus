@@ -3232,6 +3232,10 @@ var P;
                     return 2;
                 return null;
             }
+            static isCloudVariable(variableName) {
+                return variableName.startsWith('☁');
+            }
+            ;
             assertStage() {
                 if (!this.stage) {
                     throw new Error('The player does not currently contain a stage to operate on.');
@@ -3727,9 +3731,8 @@ var P;
                 });
             }
             addCloudVariables(stage, id) {
-                const isCloudVariable = (variable) => variable.startsWith('☁');
                 const variables = Object.keys(stage.vars);
-                const hasCloudVariables = variables.some(isCloudVariable);
+                const hasCloudVariables = variables.some(Player.isCloudVariable);
                 if (!hasCloudVariables) {
                     return;
                 }

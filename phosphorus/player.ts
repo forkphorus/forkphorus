@@ -92,6 +92,10 @@ namespace P.player {
       return null;
     }
 
+    static isCloudVariable(variableName: string): boolean {
+      return variableName.startsWith('☁');
+    };
+
     // Event hooks
     /** Emitted when there has been an update on loading progress. */
     public onprogress = new P.utils.Slot<number>();
@@ -761,9 +765,8 @@ namespace P.player {
     }
 
     private addCloudVariables(stage: P.core.Stage, id: string) {
-      const isCloudVariable = (variable: string) => variable.startsWith('☁');
       const variables = Object.keys(stage.vars);
-      const hasCloudVariables = variables.some(isCloudVariable);
+      const hasCloudVariables = variables.some(Player.isCloudVariable);
       if (!hasCloudVariables) {
         return;
       }
