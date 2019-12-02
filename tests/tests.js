@@ -19,6 +19,7 @@
     'regressions/66-insert.sb3',
     'regressions/70.sb3',
     'regressions/105-contains.sb3',
+    'regressions/112.sb3',
   ];
 
   /**
