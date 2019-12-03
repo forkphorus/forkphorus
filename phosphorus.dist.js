@@ -2845,6 +2845,9 @@ var P;
                         });
                     };
                     attempt((err) => {
+                        if (!(err + '').includes('abort')) {
+                            return;
+                        }
                         console.warn(`First attempt to download ${this.url} failed, trying again (${err})`);
                         setTimeout(function () {
                             attempt((err) => {
