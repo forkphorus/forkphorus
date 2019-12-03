@@ -701,6 +701,12 @@ namespace P.runtime {
             WARP = 0;
 
             while (IMMEDIATE) {
+              // DEBUG: Monitor for too long frames
+              if (Date.now() > start + 3000) this._debugCrash();
+
+              // DEBUG: Log previous functions
+              this._debugLogImmediate(IMMEDIATE);
+
               const fn = IMMEDIATE;
               IMMEDIATE = null;
               fn();
@@ -709,6 +715,8 @@ namespace P.runtime {
             STACK.push(R);
             CALLS.push(C);
           }
+          // DEBUG: Reset history after thread switch
+          this._debugHistory = [];
         }
 
         // Remove empty elements in the queue list
@@ -720,6 +728,23 @@ namespace P.runtime {
       } while ((this.isTurbo || !VISUAL) && Date.now() - start < 1000 / this.framerate && queue.length);
 
       this.stage.draw();
+    }
+
+    // DEBUG: Method for logging previous functions.
+    private _debugHistory: Fn[] = [];
+    _debugLogImmediate(immediate: Fn) {
+      this._debugHistory.push(immediate);
+      if (this._debugHistory.length > 10) this._debugHistory.shift();
+    }
+
+    // DEBUG: Method for causing a debug intended crash.
+    _debugCrash() {
+      console.log('Current Stage: ', self);
+      console.log('Current Sprite: ', S);
+      console.log('Next IMMEDIATE: ', IMMEDIATE, '' + IMMEDIATE);
+      console.log('Previous IMMEDIATES: ', this._debugHistory.map((i) => i.toString() + '\n\n'));
+      console.log('CALL Stack: ', CALLS);
+      throw new Error('Debug crash. See console for more information.');
     }
 
     onError(e) {

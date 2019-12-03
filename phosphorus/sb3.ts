@@ -3050,7 +3050,7 @@ namespace P.sb3.compiler {
       const mutation = compiler.blocks[customBlockId].mutation;
       const warp = typeof mutation.warp === 'string' ? mutation.warp === 'true' : mutation.warp;
       if (warp) {
-        compiler.state.isWarp = true;
+        // compiler.state.isWarp = true;
       }
     },
   };

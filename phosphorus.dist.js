@@ -36,7 +36,7 @@ var P;
     var config;
     (function (config) {
         const features = location.search.replace('?', '').split('&');
-        config.debug = features.indexOf('debug') > -1;
+        config.debug = features.indexOf('debug') > -1 || true;
         config.useWebGL = features.indexOf('webgl') > -1;
         config.supportVideoSensing = features.indexOf('video') > -1;
         config.experimentalOptimizations = features.indexOf('opt') > -1;
@@ -3391,6 +3391,7 @@ var P;
                 this.baseNow = 0;
                 this.isTurbo = false;
                 this.framerate = 30;
+                this._debugHistory = [];
                 this.onError = this.onError.bind(this);
                 this.step = this.step.bind(this);
             }
@@ -3550,6 +3551,9 @@ var P;
                             queue[THREAD] = undefined;
                             WARP = 0;
                             while (IMMEDIATE) {
+                                if (Date.now() > start + 3000)
+                                    this._debugCrash();
+                                this._debugLogImmediate(IMMEDIATE);
                                 const fn = IMMEDIATE;
                                 IMMEDIATE = null;
                                 fn();
@@ -3557,6 +3561,7 @@ var P;
                             STACK.push(R);
                             CALLS.push(C);
                         }
+                        this._debugHistory = [];
                     }
                     for (let i = queue.length; i--;) {
                         if (!queue[i]) {
@@ -3565,6 +3570,19 @@ var P;
                     }
                 } while ((this.isTurbo || !VISUAL) && Date.now() - start < 1000 / this.framerate && queue.length);
                 this.stage.draw();
+            }
+            _debugLogImmediate(immediate) {
+                this._debugHistory.push(immediate);
+                if (this._debugHistory.length > 10)
+                    this._debugHistory.shift();
+            }
+            _debugCrash() {
+                console.log('Current Stage: ', self);
+                console.log('Current Sprite: ', S);
+                console.log('Next IMMEDIATE: ', IMMEDIATE, '' + IMMEDIATE);
+                console.log('Previous IMMEDIATES: ', this._debugHistory.map((i) => i.toString() + '\n\n'));
+                console.log('CALL Stack: ', CALLS);
+                throw new Error('Debug crash. See console for more information.');
             }
             onError(e) {
                 clearInterval(this.interval);
@@ -7771,7 +7789,6 @@ var P;
             const mutation = compiler.blocks[customBlockId].mutation;
             const warp = typeof mutation.warp === 'string' ? mutation.warp === 'true' : mutation.warp;
             if (warp) {
-                compiler.state.isWarp = true;
             }
         },
     };
