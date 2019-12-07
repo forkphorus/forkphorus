@@ -2278,7 +2278,7 @@ namespace P.sb3.compiler {
     util.writeLn(`R.deltaY = ${Y} - S.scratchY;`);
     const label = util.addLabel();
     util.writeLn('var f = (runtime.now() - R.start) / (R.duration * 1000);');
-    util.writeLn('if (f > 1) f = 1;');
+    util.writeLn('if (f > 1 || isNaN(f)) f = 1;');
     util.writeLn('S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
     util.writeLn('if (f < 1) {');
     util.forceQueue(label);
