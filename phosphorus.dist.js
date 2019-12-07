@@ -1505,7 +1505,7 @@ var P;
                     case 0:
                         return this.css;
                     case 1:
-                        return 'hsla(' + this.x + 'deg,' + this.y + '%,' + (this.z > 100 ? 200 - this.z : this.z) + '%, ' + this.a + ')';
+                        return 'hsla(' + this.x + ',' + this.y + '%,' + (this.z > 100 ? 200 - this.z : this.z) + '%,' + this.a + ')';
                     case 2: {
                         const rgb = P.utils.hsvToRGB(this.x / 360, this.y / 100, this.z / 100);
                         return 'rgba(' + rgb[0] + ', ' + rgb[1] + ', ' + rgb[2] + ', ' + this.a + ')';
