@@ -143,11 +143,9 @@ namespace P.runtime {
   // Clone a sprite
   var clone = function(name) {
     const parent = name === '_myself_' ? S : self.getObject(name);
-    if (!parent) {
-      throw new Error('Cannot find object to clone');
-    }
-    if (!P.core.isSprite(parent)) {
-      throw new Error('Cannot clone non-sprite object');
+    if (!parent || !P.core.isSprite(parent)) {
+      // sprites that do not exist and stages cannot be cloned
+      return;
     }
     const c = parent.clone();
     self.children.splice(self.children.indexOf(parent), 0, c);

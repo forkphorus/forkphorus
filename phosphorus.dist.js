@@ -1386,7 +1386,9 @@ var P;
                 workingRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
                 this.drawAllExcept(workingRenderer, sprite);
                 workingRenderer.ctx.globalCompositeOperation = 'destination-in';
+                workingRenderer.noEffects = true;
                 workingRenderer.drawChild(sprite);
+                workingRenderer.noEffects = false;
                 workingRenderer.ctx.restore();
                 const data = workingRenderer.ctx.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
                 color = color & 0xffffff;
@@ -1676,7 +1678,7 @@ var P;
                         this.showPreviousCostume();
                         return;
                     }
-                    if (!isFinite(costume)) {
+                    if (!isFinite(costume) || !/\d/.test(costume)) {
                         return;
                     }
                 }
@@ -2915,6 +2917,9 @@ var P;
                         });
                     };
                     attempt((err) => {
+                        if (!(err + '').includes('abort')) {
+                            return;
+                        }
                         console.warn(`First attempt to download ${this.url} failed, trying again (${err})`);
                         setTimeout(function () {
                             attempt((err) => {
@@ -4022,11 +4027,8 @@ var P;
         };
         var clone = function (name) {
             const parent = name === '_myself_' ? S : self.getObject(name);
-            if (!parent) {
-                throw new Error('Cannot find object to clone');
-            }
-            if (!P.core.isSprite(parent)) {
-                throw new Error('Cannot clone non-sprite object');
+            if (!parent || !P.core.isSprite(parent)) {
+                return;
             }
             const c = parent.clone();
             self.children.splice(self.children.indexOf(parent), 0, c);
@@ -5422,7 +5424,7 @@ var P;
                 };
                 var val = function (e, usenum, usebool) {
                     var v;
-                    if (typeof e === 'number' || typeof e === 'boolean') {
+                    if (typeof e === 'number' || typeof e === 'boolean' || e === null) {
                         return '' + e;
                     }
                     else if (typeof e === 'string') {
@@ -7855,7 +7857,7 @@ var P;
         util.writeLn(`R.deltaY = ${Y} - S.scratchY;`);
         const label = util.addLabel();
         util.writeLn('var f = (runtime.now() - R.start) / (R.duration * 1000);');
-        util.writeLn('if (f > 1) f = 1;');
+        util.writeLn('if (f > 1 || isNaN(f)) f = 1;');
         util.writeLn('S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
         util.writeLn('if (f < 1) {');
         util.forceQueue(label);

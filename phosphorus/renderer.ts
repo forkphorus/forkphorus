@@ -1246,7 +1246,9 @@ namespace P.renderer {
 
       this.drawAllExcept(workingRenderer, sprite);
       workingRenderer.ctx.globalCompositeOperation = 'destination-in';
+      workingRenderer.noEffects = true;
       workingRenderer.drawChild(sprite);
+      workingRenderer.noEffects = false;
 
       workingRenderer.ctx.restore();
 
