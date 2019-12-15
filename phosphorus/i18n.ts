@@ -78,12 +78,9 @@ namespace P.i18n {
     'player.controls.flag.title': 'Shift+click to enable turbo mode.',
     'player.controls.flag.title.enabled': 'Turbo mode is enabled. Shift+click to disable turbo mode.',
     'player.controls.flag.title.disabled': 'Turbo mode is disabled. Shift+click to enable turbo mode.',
-    'player.controls.muted': 'Muted',
-    'player.controls.muted.title': 'Your browser isn\'t allowing us to play audio. You may need to interact with the page before audio can be played.',
   });
 
   addTranslations('es', {
     'player.controls.turboIndicator': 'Modo Turbo',
-    'player.controls.muted': 'Silenciado',
   });
 }

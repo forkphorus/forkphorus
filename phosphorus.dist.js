@@ -2876,12 +2876,9 @@ var P;
             'player.controls.flag.title': 'Shift+click to enable turbo mode.',
             'player.controls.flag.title.enabled': 'Turbo mode is enabled. Shift+click to disable turbo mode.',
             'player.controls.flag.title.disabled': 'Turbo mode is disabled. Shift+click to enable turbo mode.',
-            'player.controls.muted': 'Muted',
-            'player.controls.muted.title': 'Your browser isn\'t allowing us to play audio. You may need to interact with the page before audio can be played.',
         });
         addTranslations('es', {
             'player.controls.turboIndicator': 'Modo Turbo',
-            'player.controls.muted': 'Silenciado',
         });
     })(i18n = P.i18n || (P.i18n = {}));
 })(P || (P = {}));
@@ -3338,17 +3335,6 @@ var P;
                     this.fullscreenButton.addEventListener('click', clickFullscreen);
                     this.fullscreenButton.addEventListener('touchend', clickFullscreen);
                     this.fullscreenButton.addEventListener('touchstart', preventDefault);
-                }
-                if (options.showMutedIndicator && P.audio.context) {
-                    this.mutedText = document.createElement('div');
-                    this.mutedText.innerText = P.i18n.translate('player.controls.muted');
-                    this.mutedText.title = P.i18n.translate('player.controls.muted.title');
-                    this.mutedText.className = 'player-label player-muted';
-                    this.controlsEl.appendChild(this.mutedText);
-                    P.audio.context.addEventListener('statechange', () => {
-                        this.root.setAttribute('audio-state', P.audio.context.state);
-                    });
-                    this.root.setAttribute('audio-state', P.audio.context.state);
                 }
                 this.root.addEventListener('touchmove', (e) => {
                     if (this.fullscreen) {

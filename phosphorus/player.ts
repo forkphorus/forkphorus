@@ -52,7 +52,6 @@ namespace P.player {
   }
 
   interface ControlsOptions {
-    showMutedIndicator?: boolean;
     enableFullscreen?: boolean;
     enableFlag?: boolean;
     enableTurbo?: boolean;
@@ -131,7 +130,6 @@ namespace P.player {
 
     private flagTouchTimeout: number | null | undefined = undefined;
     public controlsEl: HTMLElement;
-    private mutedText: HTMLElement;
     private turboText: HTMLElement;
     private stopButton: HTMLElement;
     private pauseButton: HTMLElement;
@@ -274,18 +272,6 @@ namespace P.player {
         this.fullscreenButton.addEventListener('click', clickFullscreen);
         this.fullscreenButton.addEventListener('touchend', clickFullscreen);
         this.fullscreenButton.addEventListener('touchstart', preventDefault);  
-      }
-
-      if (options.showMutedIndicator && P.audio.context) {
-        this.mutedText = document.createElement('div');
-        this.mutedText.innerText = P.i18n.translate('player.controls.muted');
-        this.mutedText.title = P.i18n.translate('player.controls.muted.title');
-        this.mutedText.className = 'player-label player-muted';
-        this.controlsEl.appendChild(this.mutedText);
-        P.audio.context.addEventListener('statechange', () => {
-          this.root.setAttribute('audio-state', P.audio.context!.state);
-        });
-        this.root.setAttribute('audio-state', P.audio.context.state);
       }
 
       this.root.addEventListener('touchmove', (e) => {
