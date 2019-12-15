@@ -8069,9 +8069,15 @@ var P;
     statementLibrary['procedures_call'] = function (util) {
         const mutation = util.block.mutation;
         const name = mutation.proccode;
-        if (P.config.debug && name === 'forkphorus:debugger;') {
-            util.writeLn('/* forkphorus debugger */ debugger;');
-            return;
+        if (P.config.debug) {
+            if (name === 'forkphorus:debugger;') {
+                util.writeLn('/* forkphorus */ debugger;');
+                return;
+            }
+            else if (name === 'forkphorus:throw;') {
+                util.writeLn('/* forkphorus */ throw new Error("Debug intended crash");');
+                return;
+            }
         }
         const label = util.claimNextLabel();
         util.write(`call(S.procedures[${util.sanitizedString(name)}], ${label}, [`);
