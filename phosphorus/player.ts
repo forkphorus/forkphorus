@@ -866,7 +866,7 @@ namespace P.player {
      * Get the URL to report an error to.
      */
     createErrorLink(error: any) {
-      var body = P.i18n.translate('report.crash.instructions');
+      var body = P.i18n.translate('player.errorhandler.instructions');
       return this.createBugReportLink(body, '```\n' + this.stringifyError(error) + '\n```');
     }
 
@@ -885,7 +885,7 @@ namespace P.player {
       var errorLink = this.createErrorLink(error);
       var attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
       // use of innerHTML intentional
-      el.innerHTML = P.i18n.translate('report.crash.html').replace('$attrs', attributes);
+      el.innerHTML = P.i18n.translate('player.errorhandler.error').replace('$attrs', attributes);
       return el;
     }
 
@@ -895,7 +895,7 @@ namespace P.player {
     handleNotSupportedError(error: ProjectNotSupportedError) {
       var el = document.createElement('div');
       // use of innerHTML intentional
-      el.innerHTML = P.i18n.translate('report.crash.unsupported').replace('$type', error.type);
+      el.innerHTML = P.i18n.translate('player.errorhandler.error.unsupported').replace('$type', error.type);
       return el;
     }
 
@@ -904,7 +904,7 @@ namespace P.player {
      */
     handleDoesNotExistError(error: ProjectDoesNotExistError) {
       var el = document.createElement('div');
-      el.textContent = P.i18n.translate('report.crash.doesnotexist').replace('$id', error.id);
+      el.textContent = P.i18n.translate('player.errorhandler.error.doesnotexist').replace('$id', error.id);
       return el;
     }
 
