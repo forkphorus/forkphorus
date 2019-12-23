@@ -137,7 +137,7 @@
    */
   StudioView.prototype.addErrorElement = function() {
     var el = document.createElement('div');
-    el.innerText = 'There was an error loading the next page of projects.';
+    el.innerText = StudioView.LOAD_ERROR;
     el.className = 'studioview-error';
     this.projectList.appendChild(el);
   };
@@ -369,6 +369,9 @@
   // The text to appear when hovering over a project.
   // $title becomes the project's title, $author becomes the author's name.
   StudioView.PROJECT_HOVER_TEXT = '$title by $author';
+
+  // Displayed when the next page of projects could not be loaded.
+  StudioView.LOAD_ERROR = 'There was an error loading the next page of projects.';
 
   // The amount of "placeholders" to insert before the next page loads.
   StudioView.PLACEHOLDER_COUNT = 9;
