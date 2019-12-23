@@ -262,8 +262,8 @@
       for (var i = 0; i < projectElements.length; i++) {
         var project = projectElements[i];
         var id = project.getAttribute('data-id');
-        var title = project.querySelector('.title').innerText.trim();
-        var author = project.querySelector('.owner a').innerText.trim();
+        var title = project.querySelector('.title').textContent.trim();
+        var author = project.querySelector('.owner a').textContent.trim();
         projects.push({
           id: id,
           title: title,
