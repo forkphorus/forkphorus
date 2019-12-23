@@ -125,7 +125,7 @@
       postMessage('startload');
     });
     player.onerror.subscribe(function(error) {
-      postMessage('error', { error: error });
+      postMessage('error');
     });
     player.onstart.subscribe(function(error) {
       postMessage('start');
