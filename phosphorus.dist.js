@@ -7217,10 +7217,6 @@ var P;
                     return stringInput(this.sanitizedString(string));
                 }
                 sanitizedString(string) {
-                    if (typeof string !== 'string') {
-                        console.warn('sanitizedString got a non-string object', string);
-                        string = string + '';
-                    }
                     string = string
                         .replace(/\\/g, '\\\\')
                         .replace(/'/g, '\\\'')
@@ -7279,7 +7275,7 @@ var P;
                         case 8: {
                             const number = +native[1];
                             if (isNaN(number) || desiredType === 'string') {
-                                return this.sanitizedInput(native[1]);
+                                return this.sanitizedInput('' + native[1]);
                             }
                             else {
                                 return numberInput(number.toString());

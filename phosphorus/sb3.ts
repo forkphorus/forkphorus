@@ -1509,11 +1509,6 @@ namespace P.sb3.compiler {
      * Sanitize a string for use in the runtime.
      */
     sanitizedString(string: string): string {
-      // Sometimes weird things happen and non-strings get passed around to here.
-      if (typeof string !== 'string') {
-        console.warn('sanitizedString got a non-string object', string);
-        string = string + '';
-      }
       string = string
         .replace(/\\/g, '\\\\')
         .replace(/'/g, '\\\'')
@@ -1596,7 +1591,7 @@ namespace P.sb3.compiler {
     compileNativeInput(native: any[], desiredType: InputType): CompiledInput {
       const type = native[0];
       switch (type) {
-        // These all function as numbers. I believe they are only differentiated so the editor can be more helpful.
+        // These are all just types of numbers.
         case NativeTypes.MATH_NUM:
         case NativeTypes.POSITIVE_NUM:
         case NativeTypes.WHOLE_NUM:
@@ -1605,10 +1600,10 @@ namespace P.sb3.compiler {
           // [type, value]
           const number = +native[1];
           if (isNaN(number) || desiredType === 'string') {
-            return this.sanitizedInput(native[1]);
+            return this.sanitizedInput('' + native[1]);
           } else {
-            // It's important that we use number.toString() instead of native[1] to avoid invalid syntax
-            // For example the input "0123" represents the number "123", but including "0123" in JS will throw SyntaxErrors.
+            // Using number.toString() instead of native[1] fixes syntax errors
+            // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Deprecated_octal
             return numberInput(number.toString());
           }
         }
