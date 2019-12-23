@@ -191,8 +191,6 @@
         getFile('../lib/rgbcolor.js'),
         getFile('../lib/canvg.min.js'),
         getFile('../phosphorus.dist.js'),
-        getFile('../i18n.js'),
-        getFile('../player.js'),
       ]).then((sources) => {
         return inlineURLs(sources.join('\n'), [
           'fonts/Knewave-Regular.woff',
@@ -210,7 +208,6 @@
     if (!fileCache.css) {
       promises.push(Promise.all([
         getFile('../phosphorus.css'),
-        getFile('../player.css'),
       ]).then((sources) => {
         return inlineURLs(sources.join('\n'), [
           'fonts/DonegalOne-Regular.woff',
@@ -509,8 +506,8 @@
     var progressBar = document.querySelector('.progress');
     var progressBarFill = document.querySelector('.progress-bar');
 
-    var player = new P.Player();
-    var errorHandler = new P.Player.ErrorHandler(player, {
+    var player = new P.player.Player();
+    var errorHandler = new P.player.ErrorHandler(player, {
       container: document.querySelector('.error-report'),
     });
     player.onprogress.subscribe(function(progress) {

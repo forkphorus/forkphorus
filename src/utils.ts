@@ -174,9 +174,9 @@ namespace P.utils {
       this._listeners.push(fn);
     }
 
-    emit(value: T) {
+    emit(value?: T) {
       for (const listener of this._listeners) {
-        listener(value);
+        listener(value!);
       }
     }
   }

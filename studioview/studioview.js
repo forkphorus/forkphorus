@@ -137,7 +137,7 @@
    */
   StudioView.prototype.addErrorElement = function() {
     var el = document.createElement('div');
-    el.innerText = 'There was an error loading the next page of projects.';
+    el.innerText = StudioView.LOAD_ERROR;
     el.className = 'studioview-error';
     this.projectList.appendChild(el);
   };
@@ -239,7 +239,9 @@
 
     var xhr = new XMLHttpRequest();
     xhr.onload = function() {
-      var doc = xhr.response;
+      // We cannot just set xhr.responseType="document" because the proxy returns text/plain
+      var docSource = xhr.response;
+      var doc = new DOMParser().parseFromString(docSource, 'text/html');
 
       var projects = [];
       var projectElements = doc.querySelectorAll('.project');
@@ -260,8 +262,8 @@
       for (var i = 0; i < projectElements.length; i++) {
         var project = projectElements[i];
         var id = project.getAttribute('data-id');
-        var title = project.querySelector('.title').innerText.trim();
-        var author = project.querySelector('.owner a').innerText.trim();
+        var title = project.querySelector('.title').textContent.trim();
+        var author = project.querySelector('.owner a').textContent.trim();
         projects.push({
           id: id,
           title: title,
@@ -296,9 +298,8 @@
 
     var url = StudioView.STUDIO_API
       .replace('$id', this.studioId)
-      .replace('$page', this.page);
+      .replace('$page', '' + this.page);
     xhr.open('GET', url);
-    xhr.responseType = 'document';
     xhr.send();
   };
 
@@ -346,9 +347,8 @@
 
   // This can be any URL that is a proxy for https://scratch.mit.edu/site-api/projects/in/5235006/1/
   // Understandably scratch does not set CORS headers on this URL, but a proxy can set it manually.
-  // I setup a proxy @ scratch.garbomuffin.com that does this.
   // $id will be replaced with the studio ID, and $page with the page.
-  StudioView.STUDIO_API = 'https://scratch.garbomuffin.com/api/site-api/projects/in/$id/$page/';
+  StudioView.STUDIO_API = 'https://scratch.garbomuffin.com/site-proxy/projects/in/$id/$page/';
 
   // The URL to download thumbnails from.
   // $id is replaced with the project's ID.
@@ -369,6 +369,9 @@
   // The text to appear when hovering over a project.
   // $title becomes the project's title, $author becomes the author's name.
   StudioView.PROJECT_HOVER_TEXT = '$title by $author';
+
+  // Displayed when the next page of projects could not be loaded.
+  StudioView.LOAD_ERROR = 'There was an error loading the next page of projects.';
 
   // The amount of "placeholders" to insert before the next page loads.
   StudioView.PLACEHOLDER_COUNT = 9;

@@ -1021,13 +1021,13 @@ namespace P.core {
       this.removeEventListeners();
     }
 
-    pause() {
+    pauseExtensions() {
       for (const extension of this.extensions) {
         extension.onpause();
       }
     }
 
-    start() {
+    startExtensions() {
       for (const extension of this.extensions) {
         extension.onstart();
       }

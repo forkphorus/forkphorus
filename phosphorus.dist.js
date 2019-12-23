@@ -2158,12 +2158,12 @@ var P;
                 }
                 this.removeEventListeners();
             }
-            pause() {
+            pauseExtensions() {
                 for (const extension of this.extensions) {
                     extension.onpause();
                 }
             }
-            start() {
+            startExtensions() {
                 for (const extension of this.extensions) {
                     extension.onstart();
                 }
@@ -2815,6 +2815,79 @@ var P;
 })(P || (P = {}));
 var P;
 (function (P) {
+    var i18n;
+    (function (i18n) {
+        'use strict';
+        const SUPPORTED_LANGUAGES = ['en', 'es'];
+        const DEFAULT_LANGUAGE = 'en';
+        function getLanguage() {
+            let language = navigator.language;
+            if (language.indexOf('-') > -1) {
+                language = language.substring(0, language.indexOf('-'));
+            }
+            if (SUPPORTED_LANGUAGES.indexOf(language) === -1) {
+                language = DEFAULT_LANGUAGE;
+            }
+            return language;
+        }
+        const translations = {};
+        const defaultTranslations = {};
+        const language = getLanguage();
+        function translate(messageId) {
+            if (translations[messageId]) {
+                return translations[messageId];
+            }
+            if (defaultTranslations[messageId]) {
+                return defaultTranslations[messageId];
+            }
+            console.warn('Missing translation:', messageId);
+            return '## ' + messageId + ' ##';
+        }
+        i18n.translate = translate;
+        function translateElement(element) {
+            const translatable = element.querySelectorAll('[data-i18n]');
+            for (var i = 0; i < translatable.length; i++) {
+                const el = translatable[i];
+                const messageId = el.getAttribute('data-i18n');
+                if (messageId === null)
+                    continue;
+                const result = translate(messageId);
+                el.textContent = result;
+            }
+        }
+        i18n.translateElement = translateElement;
+        function merge(into, source) {
+            for (const key of Object.keys(source)) {
+                into[key] = source[key];
+            }
+        }
+        function addTranslations(importedLanguage, importedTranslations) {
+            if (importedLanguage === language) {
+                merge(translations, importedTranslations);
+            }
+            else if (importedLanguage === DEFAULT_LANGUAGE) {
+                merge(defaultTranslations, importedTranslations);
+            }
+        }
+        i18n.addTranslations = addTranslations;
+        addTranslations('en', {
+            'player.controls.turboIndicator': 'Turbo Mode',
+            'player.controls.fullscreen.title': 'Click to fullscreen player, Shift+click to just maximize.',
+            'player.controls.flag.title': 'Shift+click to enable turbo mode.',
+            'player.controls.flag.title.enabled': 'Turbo mode is enabled. Shift+click to disable turbo mode.',
+            'player.controls.flag.title.disabled': 'Turbo mode is disabled. Shift+click to enable turbo mode.',
+            'player.errorhandler.error': 'An internal error occurred. <a $attrs>Click here</a> to file a bug report.',
+            'player.errorhandler.error.unsupported': 'This project type ($type) is not supported. For more information and workarounds, <a href="https://github.com/forkphorus/forkphorus/wiki/On-Scratch-1-Projects" target="_blank" rel="noopener">visit this help page</a>.',
+            'player.errorhandler.error.doesnotexist': 'There is no project with ID $id (Project was probably deleted, never existed, or you made a typo.)',
+            'player.errorhandler.instructions': 'Describe what you were doing to cause this error:',
+        });
+        addTranslations('es', {
+            'player.controls.turboIndicator': 'Modo Turbo',
+        });
+    })(i18n = P.i18n || (P.i18n = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
     var IO;
     (function (IO) {
         IO.config = {
@@ -2951,6 +3024,894 @@ var P;
             readers.toText = toText;
         })(readers = IO.readers || (IO.readers = {}));
     })(IO = P.IO || (P.IO = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
+    var utils;
+    (function (utils) {
+        function parseRotationStyle(style) {
+            switch (style) {
+                case 'leftRight':
+                case 'left-right':
+                    return 1;
+                case 'none':
+                case 'don\'t rotate':
+                    return 2;
+                case 'normal':
+                case 'all around':
+                    return 0;
+            }
+            console.warn('unknown rotation style', style);
+            return 0;
+        }
+        utils.parseRotationStyle = parseRotationStyle;
+        function rgbToHSL(r, g, b) {
+            r /= 255;
+            g /= 255;
+            b /= 255;
+            var min = Math.min(r, g, b);
+            var max = Math.max(r, g, b);
+            if (min === max) {
+                return [0, 0, r];
+            }
+            var c = max - min;
+            var l = (min + max) / 2;
+            var s = c / (1 - Math.abs(2 * l - 1));
+            var h;
+            switch (max) {
+                case r:
+                    h = ((g - b) / c + 6) % 6;
+                    break;
+                case g:
+                    h = (b - r) / c + 2;
+                    break;
+                case b:
+                    h = (r - g) / c + 4;
+                    break;
+            }
+            h *= 60;
+            return [h, s, l];
+        }
+        utils.rgbToHSL = rgbToHSL;
+        function rgbToHSV(r, g, b) {
+            r /= 255;
+            g /= 255;
+            b /= 255;
+            var max = Math.max(r, g, b), min = Math.min(r, g, b);
+            var h, s, v = max;
+            var d = max - min;
+            s = max == 0 ? 0 : d / max;
+            if (max == min) {
+                h = 0;
+            }
+            else {
+                switch (max) {
+                    case r:
+                        h = (g - b) / d + (g < b ? 6 : 0);
+                        break;
+                    case g:
+                        h = (b - r) / d + 2;
+                        break;
+                    case b:
+                        h = (r - g) / d + 4;
+                        break;
+                }
+                h /= 6;
+            }
+            return [h * 360, s, v];
+        }
+        utils.rgbToHSV = rgbToHSV;
+        function hsvToRGB(h, s, v) {
+            var r, g, b;
+            var i = Math.floor(h * 6);
+            var f = h * 6 - i;
+            var p = v * (1 - s);
+            var q = v * (1 - f * s);
+            var t = v * (1 - (1 - f) * s);
+            switch (i % 6) {
+                case 0:
+                    r = v, g = t, b = p;
+                    break;
+                case 1:
+                    r = q, g = v, b = p;
+                    break;
+                case 2:
+                    r = p, g = v, b = t;
+                    break;
+                case 3:
+                    r = p, g = q, b = v;
+                    break;
+                case 4:
+                    r = t, g = p, b = v;
+                    break;
+                case 5:
+                    r = v, g = p, b = q;
+                    break;
+            }
+            return [r * 255, g * 255, b * 255];
+        }
+        utils.hsvToRGB = hsvToRGB;
+        function hslToHSV(h, s, l) {
+            var v = l + s * Math.min(l, 1 - l);
+            var s = v === 0 ? 0 : 2 - 2 * l / v;
+            return [h, s, v];
+        }
+        utils.hslToHSV = hslToHSV;
+        function hsvToHSL(h, s, v) {
+            var l = v - v * s / 2;
+            var s = l === 0 ? 0 : (v - l) / Math.min(2 - 2 * l / v);
+            return [h, s, l];
+        }
+        utils.hsvToHSL = hsvToHSL;
+        function clamp(number, min, max) {
+            return Math.min(max, Math.max(min, number));
+        }
+        utils.clamp = clamp;
+        function settled(promise) {
+            return new Promise((resolve, _reject) => {
+                promise
+                    .then(() => resolve())
+                    .catch(() => resolve());
+            });
+        }
+        utils.settled = settled;
+        class Slot {
+            constructor() {
+                this._listeners = [];
+            }
+            subscribe(fn) {
+                this._listeners.push(fn);
+            }
+            emit(value) {
+                for (const listener of this._listeners) {
+                    listener(value);
+                }
+            }
+        }
+        utils.Slot = Slot;
+    })(utils = P.utils || (P.utils = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
+    var player;
+    (function (player_1) {
+        class PlayerError extends Error {
+            constructor() {
+                super(...arguments);
+                this.handledByPlayer = true;
+            }
+        }
+        player_1.PlayerError = PlayerError;
+        class ProjectNotSupportedError extends PlayerError {
+            constructor(type) {
+                super('Project type (' + type + ') is not supported');
+                this.type = type;
+                this.name = 'ProjectNotSupportedError';
+            }
+        }
+        player_1.ProjectNotSupportedError = ProjectNotSupportedError;
+        class ProjectDoesNotExistError extends PlayerError {
+            constructor(id) {
+                super('Project with ID ' + id + ' does not exist');
+                this.id = id;
+                this.name = 'ProjectDoesNotExistError';
+            }
+        }
+        player_1.ProjectDoesNotExistError = ProjectDoesNotExistError;
+        class Player {
+            constructor(options = {}) {
+                this.onprogress = new P.utils.Slot();
+                this.onload = new P.utils.Slot();
+                this.onstartload = new P.utils.Slot();
+                this.oncleanup = new P.utils.Slot();
+                this.onthemechange = new P.utils.Slot();
+                this.onerror = new P.utils.Slot();
+                this.onstart = new P.utils.Slot();
+                this.onpause = new P.utils.Slot();
+                this.onturbochange = new P.utils.Slot();
+                this.fullscreen = false;
+                this.fullscreenPadding = 8;
+                this.fullscreenMaxWidth = Infinity;
+                this.stageId = 0;
+                this.projectId = Player.UNKNOWN_ID;
+                this.projectLink = Player.UNKNOWN_LINK;
+                this.projectTitle = Player.UNKNOWN_TITLE;
+                this.flagTouchTimeout = undefined;
+                this.root = document.createElement('div');
+                this.root.className = 'player-root';
+                this.player = document.createElement('div');
+                this.player.className = 'player-stage';
+                this.root.appendChild(this.player);
+                this.setTheme(options.theme || 'light');
+                window.addEventListener('resize', () => this.updateFullscreen());
+                document.addEventListener('fullscreenchange', () => this.onfullscreenchange());
+                document.addEventListener('mozfullscreenchange', () => this.onfullscreenchange());
+                document.addEventListener('webkitfullscreenchange', () => this.onfullscreenchange());
+                this.handleError = this.handleError.bind(this);
+            }
+            static getProjectType(data) {
+                if (!data)
+                    return null;
+                if ('targets' in data)
+                    return 3;
+                if ('objName' in data)
+                    return 2;
+                return null;
+            }
+            static isCloudVariable(variableName) {
+                return variableName.startsWith('☁');
+            }
+            ;
+            assertStage() {
+                if (!this.stage) {
+                    throw new Error('The player does not currently contain a stage to operate on.');
+                }
+            }
+            addControls(options = {}) {
+                if (this.controlsEl) {
+                    throw new Error('This player already has controls.');
+                }
+                const clickStop = (e) => {
+                    this.assertStage();
+                    this.stopAll();
+                    this.stage.draw();
+                    e.preventDefault();
+                };
+                const clickPause = (e) => {
+                    this.toggleRunning();
+                };
+                const clickFullscreen = (e) => {
+                    this.assertStage();
+                    if (this.fullscreen) {
+                        this.exitFullscreen();
+                    }
+                    else {
+                        this.enterFullscreen(!e.shiftKey);
+                    }
+                };
+                const clickFlag = (e) => {
+                    if (this.flagTouchTimeout === null) {
+                        return;
+                    }
+                    if (this.flagTouchTimeout) {
+                        clearTimeout(this.flagTouchTimeout);
+                    }
+                    this.assertStage();
+                    if (e.shiftKey) {
+                        this.setTurbo(!this.stage.runtime.isTurbo);
+                    }
+                    else {
+                        this.start();
+                        this.stage.runtime.stopAll();
+                        this.stage.runtime.triggerGreenFlag();
+                    }
+                    this.stage.focus();
+                    e.preventDefault();
+                };
+                const startTouchFlag = (e) => {
+                    this.flagTouchTimeout = setTimeout(() => {
+                        this.flagTouchTimeout = null;
+                        this.setTurbo(!this.stage.runtime.isTurbo);
+                    }, 500);
+                };
+                const preventDefault = (e) => {
+                    e.preventDefault();
+                };
+                this.controlsEl = document.createElement('div');
+                this.controlsEl.className = 'player-controls';
+                if (options.enableStop !== false) {
+                    this.stopButton = document.createElement('span');
+                    this.stopButton.className = 'player-button player-stop';
+                    this.controlsEl.appendChild(this.stopButton);
+                    this.stopButton.addEventListener('click', clickStop);
+                    this.stopButton.addEventListener('touchend', clickStop);
+                    this.stopButton.addEventListener('touchstart', preventDefault);
+                }
+                if (options.enablePause !== false) {
+                    this.pauseButton = document.createElement('span');
+                    this.pauseButton.className = 'player-button player-pause';
+                    this.controlsEl.appendChild(this.pauseButton);
+                    this.pauseButton.addEventListener('click', clickPause);
+                    this.pauseButton.addEventListener('touchend', clickPause);
+                    this.pauseButton.addEventListener('touchstart', preventDefault);
+                }
+                if (options.enableFlag !== false) {
+                    this.flagButton = document.createElement('span');
+                    this.flagButton.className = 'player-button player-flag';
+                    this.flagButton.title = P.i18n.translate('player.controls.flag.title');
+                    this.controlsEl.appendChild(this.flagButton);
+                    this.flagButton.addEventListener('click', clickFlag);
+                    this.flagButton.addEventListener('touchend', clickFlag);
+                    this.flagButton.addEventListener('touchstart', startTouchFlag);
+                    this.flagButton.addEventListener('touchstart', preventDefault);
+                }
+                if (options.enableTurbo !== false) {
+                    this.turboText = document.createElement('span');
+                    this.turboText.innerText = P.i18n.translate('player.controls.turboIndicator');
+                    this.turboText.className = 'player-label player-turbo';
+                    this.controlsEl.appendChild(this.turboText);
+                }
+                if (options.enableFullscreen !== false) {
+                    this.fullscreenButton = document.createElement('span');
+                    this.fullscreenButton.className = 'player-button player-fullscreen-btn';
+                    this.fullscreenButton.title = P.i18n.translate('player.controls.fullscreen.title');
+                    this.controlsEl.appendChild(this.fullscreenButton);
+                    this.fullscreenButton.addEventListener('click', clickFullscreen);
+                    this.fullscreenButton.addEventListener('touchend', clickFullscreen);
+                    this.fullscreenButton.addEventListener('touchstart', preventDefault);
+                }
+                this.root.addEventListener('touchmove', (e) => {
+                    if (this.fullscreen) {
+                        e.preventDefault();
+                    }
+                });
+                this.root.insertBefore(this.controlsEl, this.root.firstChild);
+            }
+            setTurbo(turbo) {
+                this.assertStage();
+                this.stage.runtime.isTurbo = turbo;
+                if (turbo) {
+                    this.root.setAttribute('turbo', '');
+                }
+                else {
+                    this.root.removeAttribute('turbo');
+                }
+                if (this.flagButton) {
+                    if (turbo) {
+                        this.flagButton.title = P.i18n.translate('player.controls.flag.title.enabled');
+                    }
+                    else {
+                        this.flagButton.title = P.i18n.translate('player.controls.flag.title.disabled');
+                    }
+                }
+                this.onturbochange.emit(turbo);
+            }
+            pause() {
+                this.assertStage();
+                this.stage.runtime.pause();
+                this.root.removeAttribute('running');
+                this.onpause.emit();
+            }
+            start() {
+                this.assertStage();
+                this.stage.runtime.start();
+                this.root.setAttribute('running', '');
+                this.onstart.emit();
+            }
+            triggerGreenFlag() {
+                this.assertStage();
+                this.stage.runtime.triggerGreenFlag();
+            }
+            stopAll() {
+                this.assertStage();
+                this.pause();
+                this.stage.runtime.stopAll();
+            }
+            isRunning() {
+                if (!this.stage) {
+                    return false;
+                }
+                return this.stage.runtime.isRunning;
+            }
+            toggleRunning() {
+                this.assertStage();
+                if (this.isRunning()) {
+                    this.pause();
+                }
+                else {
+                    this.start();
+                    this.stage.focus();
+                }
+            }
+            setTheme(theme) {
+                this.theme = theme;
+                this.root.setAttribute('theme', theme);
+                this.onthemechange.emit(theme);
+            }
+            enterFullscreen(realFullscreen) {
+                this.previousTheme = this.root.getAttribute('theme');
+                this.setTheme('dark');
+                if (realFullscreen) {
+                    if (this.root.requestFullScreenWithKeys) {
+                        this.root.requestFullScreenWithKeys();
+                    }
+                    else if (this.root.webkitRequestFullScreen) {
+                        this.root.webkitRequestFullScreen(Element.ALLOW_KEYBOARD_INPUT);
+                    }
+                    else if (this.root.requestFullscreen) {
+                        this.root.requestFullscreen();
+                    }
+                }
+                document.body.classList.add('player-body-fullscreen');
+                this.root.style.zIndex = Player.LARGE_Z_INDEX;
+                this.root.setAttribute('fullscreen', '');
+                this.fullscreen = true;
+                if (this.stage) {
+                    if (!this.isRunning()) {
+                        this.stage.draw();
+                    }
+                    this.stage.focus();
+                }
+                this.updateFullscreen();
+            }
+            exitFullscreen() {
+                this.setTheme(this.previousTheme);
+                this.root.removeAttribute('fullscreen');
+                this.fullscreen = false;
+                if (document.fullscreenElement === this.root || document.webkitFullscreenElement === this.root) {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    }
+                    else if (document.mozCancelFullScreen) {
+                        document.mozCancelFullScreen();
+                    }
+                    else if (document.webkitCancelFullScreen) {
+                        document.webkitCancelFullScreen();
+                    }
+                    else if (document.webkitExitFullscreen) {
+                        document.webkitExitFullscreen();
+                    }
+                }
+                this.root.style.paddingLeft = '';
+                this.root.style.paddingTop = '';
+                this.root.style.zIndex = '';
+                if (this.controlsEl) {
+                    this.controlsEl.style.width = '';
+                }
+                document.body.classList.remove('player-body-fullscreen');
+                if (this.stage) {
+                    this.stage.setZoom(1);
+                    this.stage.focus();
+                }
+            }
+            updateFullscreen() {
+                if (!this.stage) {
+                    return;
+                }
+                if (this.fullscreen) {
+                    var controlsHeight = this.controlsEl ? this.controlsEl.offsetHeight : 0;
+                    window.scrollTo(0, 0);
+                    var w = window.innerWidth - this.fullscreenPadding * 2;
+                    var h = window.innerHeight - this.fullscreenPadding - controlsHeight;
+                    w = Math.min(w, h / 0.75);
+                    w = Math.min(w, this.fullscreenMaxWidth);
+                    h = w * 0.75 + controlsHeight;
+                    if (this.controlsEl) {
+                        this.controlsEl.style.width = w + 'px';
+                    }
+                    this.root.style.paddingLeft = (window.innerWidth - w) / 2 + 'px';
+                    this.root.style.paddingTop = (window.innerHeight - h - this.fullscreenPadding) / 2 + 'px';
+                    this.stage.setZoom(w / 480);
+                }
+            }
+            onfullscreenchange() {
+                if (typeof document.fullscreen === 'boolean' && document.fullscreen !== this.fullscreen) {
+                    this.exitFullscreen();
+                }
+                else if (typeof document.webkitIsFullScreen === 'boolean' && document.webkitIsFullScreen !== this.fullscreen) {
+                    this.exitFullscreen();
+                }
+            }
+            handleError(error) {
+                console.error(error);
+                this.onerror.emit(error);
+            }
+            cleanup() {
+                this.stageId++;
+                this.projectId = Player.UNKNOWN_ID;
+                this.projectLink = Player.UNKNOWN_LINK;
+                this.projectTitle = Player.UNKNOWN_TITLE;
+                if (this.stage) {
+                    this.stage.destroy();
+                    this.stage = null;
+                }
+                while (this.player.firstChild) {
+                    this.player.removeChild(this.player.firstChild);
+                }
+                if (this.fullscreen) {
+                    this.exitFullscreen();
+                }
+                this.oncleanup.emit();
+            }
+            startLoadingNewProject() {
+                this.cleanup();
+                this.onstartload.emit();
+            }
+            getNewStageId() {
+                this.stageId++;
+                return this.stageId;
+            }
+            isStageActive(id) {
+                return id === this.stageId;
+            }
+            installStage(stage, stageOptions = {}) {
+                if (!stage) {
+                    throw new Error('Cannot run an invalid stage');
+                }
+                this.stage = stage;
+                this.stage.runtime.handleError = this.handleError;
+                if (typeof stageOptions.fps !== 'undefined') {
+                    stage.runtime.framerate = stageOptions.fps;
+                }
+                this.onload.emit(stage);
+                this.start();
+                if (stageOptions.start !== false) {
+                    stage.runtime.triggerGreenFlag();
+                }
+                if (stageOptions.turbo) {
+                    stage.runtime.isTurbo = true;
+                }
+                this.player.appendChild(stage.root);
+                stage.focus();
+            }
+            isScratch1Project(buffer) {
+                const MAGIC = 'ScratchV0';
+                const array = new Uint8Array(buffer);
+                for (var i = 0; i < MAGIC.length; i++) {
+                    if (String.fromCharCode(array[i]) !== MAGIC[i]) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            _handleScratch3Loader(loader, stageId) {
+                loader.onprogress.subscribe(progress => {
+                    if (this.isStageActive(stageId)) {
+                        this.onprogress.emit(progress);
+                    }
+                    else if (!loader.aborted) {
+                        loader.abort();
+                    }
+                });
+                return loader.load().then(stage => {
+                    if (this.isStageActive(stageId))
+                        return stage;
+                    return null;
+                });
+            }
+            _handleScratch2Loader(stageId, load) {
+                var totalTasks = 0;
+                var finishedTasks = 0;
+                const update = () => {
+                    if (this.isStageActive(stageId)) {
+                        var progress = finishedTasks / totalTasks || 0;
+                        this.onprogress.emit(progress);
+                    }
+                };
+                P.sb2.hooks.newTask = function () {
+                    totalTasks++;
+                    update();
+                };
+                P.sb2.hooks.endTask = function () {
+                    finishedTasks++;
+                    update();
+                };
+                return load().then((stage) => {
+                    if (this.isStageActive(stageId))
+                        return stage;
+                    return null;
+                });
+            }
+            _loadScratch3(stageId, data) {
+                var loader = new P.sb3.Scratch3Loader(data);
+                return this._handleScratch3Loader(loader, stageId);
+            }
+            _loadScratch3File(stageId, buffer) {
+                var loader = new P.sb3.SB3FileLoader(buffer);
+                return this._handleScratch3Loader(loader, stageId);
+            }
+            _loadScratch2(stageId, data) {
+                return this._handleScratch2Loader(stageId, function () {
+                    return P.sb2.loadProject(data);
+                });
+            }
+            _loadScratch2File(stageId, data) {
+                return this._handleScratch2Loader(stageId, function () {
+                    return P.sb2.loadSB2Project(data);
+                });
+            }
+            _fetchProject(id) {
+                var request = new P.IO.BlobRequest(Player.PROJECT_DATA_API.replace('$id', id), { rejectOnError: false });
+                return request.load().then(function (response) {
+                    if (request.xhr.status === 404) {
+                        throw new ProjectDoesNotExistError(id);
+                    }
+                    return response;
+                });
+            }
+            loadProjectId(id, options) {
+                this.startLoadingNewProject();
+                const stageId = this.getNewStageId();
+                this.projectId = '' + id;
+                this.projectLink = Player.PROJECT_LINK.replace('$id', id);
+                let blob;
+                return this._fetchProject(id)
+                    .then((data) => {
+                    blob = data;
+                    return P.IO.readers.toText(blob);
+                })
+                    .then((text) => {
+                    if (!this.isStageActive(stageId)) {
+                        return null;
+                    }
+                    try {
+                        var json = JSON.parse(text);
+                        var type = Player.getProjectType(json);
+                        if (type === 3) {
+                            return this._loadScratch3(stageId, json);
+                        }
+                        else if (type === 2) {
+                            return this._loadScratch2(stageId, json);
+                        }
+                        else {
+                            throw new Error('Project is valid JSON but of unknown type');
+                        }
+                    }
+                    catch (e) {
+                        return P.IO.readers.toArrayBuffer(blob).then((buffer) => {
+                            if (this.isScratch1Project(buffer)) {
+                                throw new ProjectNotSupportedError('.sb / Scratch 1');
+                            }
+                            return P.sb2.loadSB2Project(buffer);
+                        });
+                    }
+                })
+                    .then((stage) => {
+                    if (stage) {
+                        this.installStage(stage, options);
+                        this.addCloudVariables(stage, id);
+                    }
+                })
+                    .catch((error) => {
+                    if (this.isStageActive(stageId)) {
+                        this.handleError(error);
+                    }
+                });
+            }
+            loadProjectBuffer(buffer, type, options) {
+                this.startLoadingNewProject();
+                const stageId = this.getNewStageId();
+                const startLoad = () => {
+                    if (type === 'sb3') {
+                        return this._loadScratch3File(stageId, buffer);
+                    }
+                    else if (type === 'sb2') {
+                        return this._loadScratch2File(stageId, buffer);
+                    }
+                    else {
+                        throw new Error('Unknown type: ' + type);
+                    }
+                };
+                return startLoad()
+                    .then((stage) => {
+                    if (stage) {
+                        this.installStage(stage, options);
+                    }
+                })
+                    .catch((error) => {
+                    if (this.isStageActive(stageId)) {
+                        this.handleError(error);
+                    }
+                });
+            }
+            loadProjectFile(file, options) {
+                var extension = file.name.split('.').pop() || '';
+                if (['sb2', 'sb3'].indexOf(extension) === -1) {
+                    throw new Error('Unrecognized file extension: ' + extension);
+                }
+                this.startLoadingNewProject();
+                this.getNewStageId();
+                this.projectId = file.name;
+                this.projectLink = file.name + '#local';
+                return P.IO.readers.toArrayBuffer(file).then(buffer => {
+                    return this.loadProjectBuffer(buffer, extension, options);
+                });
+            }
+            getProjectTitle(id) {
+                return new P.IO.JSONRequest(Player.PROJECT_API.replace('$id', id), { rejectOnError: false }).load()
+                    .then((data) => data.title || '');
+            }
+            getCloudVariables(id) {
+                return new P.IO.JSONRequest(Player.CLOUD_API.replace('$id', id)).load()
+                    .then((data) => {
+                    const variables = Object.create(null);
+                    for (const entry of data.reverse()) {
+                        const { verb, name, value } = entry;
+                        if (!Player.isCloudVariable(name)) {
+                            console.warn('cloud variable logs affecting non-cloud variable, skipping', name);
+                            continue;
+                        }
+                        switch (verb) {
+                            case 'create_var':
+                            case 'set_var':
+                                variables[name] = value;
+                                break;
+                            case 'del_var':
+                                delete variables[name];
+                                break;
+                            case 'rename_var':
+                                variables[value] = variables[name];
+                                delete variables[name];
+                                break;
+                            default:
+                                console.warn('unknown cloud variable log verb', verb);
+                        }
+                    }
+                    return variables;
+                });
+            }
+            addCloudVariables(stage, id) {
+                const variables = Object.keys(stage.vars);
+                const hasCloudVariables = variables.some(Player.isCloudVariable);
+                if (!hasCloudVariables) {
+                    return;
+                }
+                this.getCloudVariables(id).then((variables) => {
+                    for (const name of Object.keys(variables)) {
+                        if (name in stage.vars) {
+                            stage.vars[name] = variables[name];
+                        }
+                        else {
+                            console.warn('not applying unknown cloud variable:', name);
+                        }
+                    }
+                });
+            }
+        }
+        Player.PROJECT_DATA_API = 'https://projects.scratch.mit.edu/$id';
+        Player.PROJECT_LINK = 'https://scratch.mit.edu/projects/$id';
+        Player.LARGE_Z_INDEX = '9999999999';
+        Player.UNKNOWN_ID = '(no id)';
+        Player.UNKNOWN_LINK = '(no link)';
+        Player.UNKNOWN_TITLE = '(no title)';
+        Player.PROJECT_API = 'https://scratch.garbomuffin.com/proxy/projects/$id';
+        Player.CLOUD_API = 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100';
+        player_1.Player = Player;
+        class ErrorHandler {
+            constructor(player, options = {}) {
+                this.player = player;
+                this.player = player;
+                player.onerror.subscribe(this.onerror.bind(this));
+                player.oncleanup.subscribe(this.oncleanup.bind(this));
+                this.errorEl = null;
+                if (options.container) {
+                    this.errorContainer = options.container;
+                }
+                else {
+                    this.errorContainer = null;
+                }
+            }
+            stringifyError(error) {
+                if (!error) {
+                    return 'unknown error';
+                }
+                if (error.stack) {
+                    return 'Message: ' + error.message + '\nStack:\n' + error.stack;
+                }
+                return error.toString();
+            }
+            createBugReportLink(bodyBefore, bodyAfter) {
+                var title = this.getBugReportTitle();
+                bodyAfter = bodyAfter || '';
+                var body = bodyBefore +
+                    '\n\n\n-----\n' +
+                    this.getBugReportMetadata() +
+                    '\n' +
+                    bodyAfter;
+                return ErrorHandler.BUG_REPORT_LINK
+                    .replace('$title', encodeURIComponent(title))
+                    .replace('$body', encodeURIComponent(body));
+            }
+            getBugReportTitle() {
+                if (this.player.projectTitle !== Player.UNKNOWN_TITLE) {
+                    return this.player.projectTitle + ' (' + this.player.projectId + ')';
+                }
+                return this.player.projectLink;
+            }
+            getBugReportMetadata() {
+                var meta = 'Project URL: ' + this.player.projectLink + '\n';
+                meta += 'Project ID: ' + this.player.projectId + '\n';
+                meta += location.href + '\n';
+                meta += navigator.userAgent;
+                return meta;
+            }
+            createErrorLink(error) {
+                var body = P.i18n.translate('player.errorhandler.instructions');
+                return this.createBugReportLink(body, '```\n' + this.stringifyError(error) + '\n```');
+            }
+            oncleanup() {
+                if (this.errorEl && this.errorEl.parentNode) {
+                    this.errorEl.parentNode.removeChild(this.errorEl);
+                    this.errorEl = null;
+                }
+            }
+            handleError(error) {
+                var el = document.createElement('div');
+                var errorLink = this.createErrorLink(error);
+                var attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
+                el.innerHTML = P.i18n.translate('player.errorhandler.error').replace('$attrs', attributes);
+                return el;
+            }
+            handleNotSupportedError(error) {
+                var el = document.createElement('div');
+                el.innerHTML = P.i18n.translate('player.errorhandler.error.unsupported').replace('$type', error.type);
+                return el;
+            }
+            handleDoesNotExistError(error) {
+                var el = document.createElement('div');
+                el.textContent = P.i18n.translate('player.errorhandler.error.doesnotexist').replace('$id', error.id);
+                return el;
+            }
+            onerror(error) {
+                var el = document.createElement('div');
+                el.className = 'player-error';
+                if (error instanceof ProjectNotSupportedError) {
+                    el.appendChild(this.handleNotSupportedError(error));
+                }
+                else if (error instanceof ProjectDoesNotExistError) {
+                    el.appendChild(this.handleDoesNotExistError(error));
+                }
+                else {
+                    el.appendChild(this.handleError(error));
+                }
+                if (this.errorContainer) {
+                    this.errorContainer.appendChild(el);
+                }
+                else if (this.player.stage) {
+                    this.player.stage.ui.appendChild(el);
+                }
+                else {
+                    this.player.player.appendChild(el);
+                }
+                this.errorEl = el;
+            }
+        }
+        ErrorHandler.BUG_REPORT_LINK = 'https://github.com/forkphorus/forkphorus/issues/new?title=$title&body=$body';
+        player_1.ErrorHandler = ErrorHandler;
+        class ProgressBar {
+            constructor(player, options = {}) {
+                this.el = document.createElement('div');
+                this.el.className = 'player-progress';
+                this.bar = document.createElement('div');
+                this.bar.className = 'player-progress-fill';
+                this.el.appendChild(this.bar);
+                this.setTheme(player.theme);
+                player.onthemechange.subscribe((theme) => this.setTheme(theme));
+                player.onprogress.subscribe((progress) => this.setProgress(progress));
+                player.onstartload.subscribe(() => {
+                    this.el.setAttribute('state', 'loading');
+                    this.setProgress(0);
+                });
+                player.onload.subscribe(() => {
+                    this.el.setAttribute('state', 'loaded');
+                });
+                player.oncleanup.subscribe(() => {
+                    this.el.setAttribute('state', '');
+                    this.bar.style.width = '0%';
+                });
+                player.onerror.subscribe(() => {
+                    this.el.setAttribute('state', 'error');
+                    this.bar.style.width = '100%';
+                });
+                if (options.position === 'controls' || options.position === undefined) {
+                    if (!player.controlsEl) {
+                        throw new Error('No controls to put progess bar in.');
+                    }
+                    player.controlsEl.appendChild(this.el);
+                }
+                else {
+                    options.position.appendChild(this.el);
+                }
+            }
+            setTheme(theme) {
+                this.el.setAttribute('theme', theme);
+            }
+            setProgress(progress) {
+                this.bar.style.width = 10 + progress * 90 + '%';
+            }
+        }
+        player_1.ProgressBar = ProgressBar;
+    })(player = P.player || (P.player = {}));
 })(P || (P = {}));
 var P;
 (function (P) {
@@ -3477,7 +4438,7 @@ var P;
                 this.interval = setInterval(this.step, 1000 / this.framerate);
                 if (audioContext)
                     audioContext.resume();
-                this.stage.start();
+                this.stage.startExtensions();
             }
             pause() {
                 if (this.interval) {
@@ -3487,7 +4448,7 @@ var P;
                     window.removeEventListener('error', this.onError);
                     if (audioContext)
                         audioContext.suspend();
-                    this.stage.pause();
+                    this.stage.pauseExtensions();
                 }
                 this.isRunning = false;
             }
@@ -3667,152 +4628,6 @@ var P;
         }
         runtime_1.scopedEval = scopedEval;
     })(runtime = P.runtime || (P.runtime = {}));
-})(P || (P = {}));
-var P;
-(function (P) {
-    var utils;
-    (function (utils) {
-        function parseRotationStyle(style) {
-            switch (style) {
-                case 'leftRight':
-                case 'left-right':
-                    return 1;
-                case 'none':
-                case 'don\'t rotate':
-                    return 2;
-                case 'normal':
-                case 'all around':
-                    return 0;
-            }
-            console.warn('unknown rotation style', style);
-            return 0;
-        }
-        utils.parseRotationStyle = parseRotationStyle;
-        function rgbToHSL(r, g, b) {
-            r /= 255;
-            g /= 255;
-            b /= 255;
-            var min = Math.min(r, g, b);
-            var max = Math.max(r, g, b);
-            if (min === max) {
-                return [0, 0, r];
-            }
-            var c = max - min;
-            var l = (min + max) / 2;
-            var s = c / (1 - Math.abs(2 * l - 1));
-            var h;
-            switch (max) {
-                case r:
-                    h = ((g - b) / c + 6) % 6;
-                    break;
-                case g:
-                    h = (b - r) / c + 2;
-                    break;
-                case b:
-                    h = (r - g) / c + 4;
-                    break;
-            }
-            h *= 60;
-            return [h, s, l];
-        }
-        utils.rgbToHSL = rgbToHSL;
-        function rgbToHSV(r, g, b) {
-            r /= 255;
-            g /= 255;
-            b /= 255;
-            var max = Math.max(r, g, b), min = Math.min(r, g, b);
-            var h, s, v = max;
-            var d = max - min;
-            s = max == 0 ? 0 : d / max;
-            if (max == min) {
-                h = 0;
-            }
-            else {
-                switch (max) {
-                    case r:
-                        h = (g - b) / d + (g < b ? 6 : 0);
-                        break;
-                    case g:
-                        h = (b - r) / d + 2;
-                        break;
-                    case b:
-                        h = (r - g) / d + 4;
-                        break;
-                }
-                h /= 6;
-            }
-            return [h * 360, s, v];
-        }
-        utils.rgbToHSV = rgbToHSV;
-        function hsvToRGB(h, s, v) {
-            var r, g, b;
-            var i = Math.floor(h * 6);
-            var f = h * 6 - i;
-            var p = v * (1 - s);
-            var q = v * (1 - f * s);
-            var t = v * (1 - (1 - f) * s);
-            switch (i % 6) {
-                case 0:
-                    r = v, g = t, b = p;
-                    break;
-                case 1:
-                    r = q, g = v, b = p;
-                    break;
-                case 2:
-                    r = p, g = v, b = t;
-                    break;
-                case 3:
-                    r = p, g = q, b = v;
-                    break;
-                case 4:
-                    r = t, g = p, b = v;
-                    break;
-                case 5:
-                    r = v, g = p, b = q;
-                    break;
-            }
-            return [r * 255, g * 255, b * 255];
-        }
-        utils.hsvToRGB = hsvToRGB;
-        function hslToHSV(h, s, l) {
-            var v = l + s * Math.min(l, 1 - l);
-            var s = v === 0 ? 0 : 2 - 2 * l / v;
-            return [h, s, v];
-        }
-        utils.hslToHSV = hslToHSV;
-        function hsvToHSL(h, s, v) {
-            var l = v - v * s / 2;
-            var s = l === 0 ? 0 : (v - l) / Math.min(2 - 2 * l / v);
-            return [h, s, l];
-        }
-        utils.hsvToHSL = hsvToHSL;
-        function clamp(number, min, max) {
-            return Math.min(max, Math.max(min, number));
-        }
-        utils.clamp = clamp;
-        function settled(promise) {
-            return new Promise((resolve, _reject) => {
-                promise
-                    .then(() => resolve())
-                    .catch(() => resolve());
-            });
-        }
-        utils.settled = settled;
-        class Slot {
-            constructor() {
-                this._listeners = [];
-            }
-            subscribe(fn) {
-                this._listeners.push(fn);
-            }
-            emit(value) {
-                for (const listener of this._listeners) {
-                    listener(value);
-                }
-            }
-        }
-        utils.Slot = Slot;
-    })(utils = P.utils || (P.utils = {}));
 })(P || (P = {}));
 var P;
 (function (P) {
@@ -6414,10 +7229,6 @@ var P;
                     return stringInput(this.sanitizedString(string));
                 }
                 sanitizedString(string) {
-                    if (typeof string !== 'string') {
-                        console.warn('sanitizedString got a non-string object', string);
-                        string = string + '';
-                    }
                     string = string
                         .replace(/\\/g, '\\\\')
                         .replace(/'/g, '\\\'')
@@ -6476,7 +7287,7 @@ var P;
                         case 8: {
                             const number = +native[1];
                             if (isNaN(number) || desiredType === 'string') {
-                                return this.sanitizedInput(native[1]);
+                                return this.sanitizedInput('' + native[1]);
                             }
                             else {
                                 return numberInput(number.toString());
@@ -7270,9 +8081,15 @@ var P;
     statementLibrary['procedures_call'] = function (util) {
         const mutation = util.block.mutation;
         const name = mutation.proccode;
-        if (P.config.debug && name === 'forkphorus:debugger;') {
-            util.writeLn('/* forkphorus debugger */ debugger;');
-            return;
+        if (P.config.debug) {
+            if (name === 'forkphorus:debugger;') {
+                util.writeLn('/* forkphorus */ debugger;');
+                return;
+            }
+            else if (name === 'forkphorus:throw;') {
+                util.writeLn('/* forkphorus */ throw new Error("Debug intended crash");');
+                return;
+            }
         }
         const label = util.claimNextLabel();
         util.write(`call(S.procedures[${util.sanitizedString(name)}], ${label}, [`);

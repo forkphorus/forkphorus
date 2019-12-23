@@ -208,11 +208,11 @@ window.SBDL = (function() {
 
     function addFile(data) {
       progressHooks.newTask();
-      const path = data.md5ext;
+      const path = data.md5ext || data.assetId + '.' + data.dataFormat;
       return fetch(ASSETS_API.replace('$path', path))
         .then((request) => request.arrayBuffer())
         .then((buffer) => {
-          result.files.push({path: data.md5ext, data: buffer});
+          result.files.push({path: path, data: buffer});
           progressHooks.finishTask();
         });
     }
