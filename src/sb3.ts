@@ -2853,8 +2853,9 @@ namespace P.sb3.compiler {
   };
   inputLibrary['sensing_keypressed'] = function(util) {
     const KEY_OPTION = util.getInput('KEY_OPTION', 'string');
-    // note: sb2 compiler can optimize out getKeyCode calls, but sb3 compiler can't because KEY_OPTION might be dynamic
-    return util.booleanInput(`!!self.keys[P.runtime.getKeyCode(${KEY_OPTION})]`);
+    // in scratch 3, the input can be dynamic so the getKeyCode call cannot be easily removed
+    // we also have to use getKeyCode3 because of some changes made in Scratch 3
+    return util.booleanInput(`!!self.keys[getKeyCode3(${KEY_OPTION})]`);
   };
   inputLibrary['sensing_loud'] = function(util) {
     util.stage.initLoudness();

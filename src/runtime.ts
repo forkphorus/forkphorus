@@ -345,9 +345,22 @@ namespace P.runtime {
       case 'down arrow': return 40;
       case 'any': return 'any';
     }
-
     return keyName.toUpperCase().charCodeAt(0);
   }
+
+  var getKeyCode3 = function(keyName: string): number | 'any' {
+    // Scratch 3 added support for 'enter'
+    switch (keyName.toLowerCase()) {
+      case 'space': return 32;
+      case 'left arrow': return 37;
+      case 'up arrow': return 38;
+      case 'right arrow': return 39;
+      case 'down arrow': return 40;
+      case 'enter': return 13;
+      case 'any': return 'any';
+    }
+    return keyName.toUpperCase().charCodeAt(0);
+  };
 
   // Load audio methods if audio is supported
   const audioContext = P.audio.context;
