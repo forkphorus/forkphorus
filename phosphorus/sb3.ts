@@ -1617,7 +1617,7 @@ namespace P.sb3.compiler {
           // [type, value]
           const value = native[1];
           // Do not attempt any conversions if the desired type is string or if the value does not appear to be number-like
-          if (desiredType !== 'string' && /\d/.test(value)) {
+          if (desiredType !== 'string' && /\d|Infinity/.test(value)) {
             const number = +value;
             // If the stringification of the number is not the same as the original value, do not convert.
             // This fixes issues where the stringification is used instead of the number itself.

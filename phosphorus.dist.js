@@ -6472,7 +6472,7 @@ var P;
                         }
                         case 10: {
                             const value = native[1];
-                            if (desiredType !== 'string' && /\d/.test(value)) {
+                            if (desiredType !== 'string' && /\d|Infinity/.test(value)) {
                                 const number = +value;
                                 if (number.toString() === value) {
                                     if (!isNaN(number)) {
