@@ -298,7 +298,7 @@
 
     var url = StudioView.STUDIO_API
       .replace('$id', this.studioId)
-      .replace('$page', this.page);
+      .replace('$page', '' + this.page);
     xhr.open('GET', url);
     xhr.send();
   };
