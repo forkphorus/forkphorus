@@ -2456,6 +2456,24 @@ var P;
                 const d = (90 - this.direction) * Math.PI / 180;
                 this.moveTo(this.scratchX + steps * Math.cos(d), this.scratchY + steps * Math.sin(d));
             }
+            keepInView() {
+                const rb = this.rotatedBounds();
+                const width = rb.right - rb.left;
+                const height = rb.top - rb.bottom;
+                const bounds = Math.min(15, Math.floor(Math.min(width, height) / 2));
+                if (rb.right - bounds < -240) {
+                    this.scratchX -= rb.right - bounds + 240;
+                }
+                if (rb.left + bounds > 240) {
+                    this.scratchX -= rb.left + bounds - 240;
+                }
+                if (rb.bottom + bounds > 180) {
+                    this.scratchY -= rb.bottom + bounds - 180;
+                }
+                if (rb.top - bounds < -180) {
+                    this.scratchY -= rb.top - bounds + 180;
+                }
+            }
             moveTo(x, y) {
                 var ox = this.scratchX;
                 var oy = this.scratchY;
@@ -2464,6 +2482,7 @@ var P;
                 }
                 this.scratchX = x;
                 this.scratchY = y;
+                this.keepInView();
                 if (this.isPenDown && !this.isDragging) {
                     this.stage.renderer.penLine(this.penColor, this.penSize, ox, oy, x, y);
                 }
