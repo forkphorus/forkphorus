@@ -389,7 +389,7 @@
     function updatePackageLink() {
       packageOtherWidth.disabled = packageOtherHeight.disabled = !packageOther.checked;
       if (player.projectId) {
-        var url = location.origin + '/app.html?id=' + player.projectId;
+        var url = location.origin + location.pathname + 'app.html?id=' + player.projectId;
         if (packageTurbo.checked) url += '&turbo';
         if (packageFullScreen.checked) {
           // fullscreen is the default
@@ -432,7 +432,7 @@
       embedOtherWidth.disabled = embedOtherHeight.disabled = !embedOther.checked;
 
       if (player.projectId) {
-        var source = location.protocol + '//' + location.host + '/embed.js?id=' + player.projectId;
+        var source = location.protocol + '//' + location.host + location.pathname + 'embed.js?id=' + player.projectId;
         if (embedHideControls.checked) {
           source += '&ui=false';
         } else {
