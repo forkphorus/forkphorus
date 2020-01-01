@@ -45,6 +45,7 @@
     var hasUI = true;
     var id = Math.random().toString().substr(2, 5) + '-' + projectId + '-' + Date.now();
     var width = 480;
+    var fps = 30;
 
     location.search.substr(1).split('&').forEach(function(p) {
       const parts = p.split('=');
@@ -67,6 +68,9 @@
             break;
           case 'h':
             // ignored by the embed itself. the scriptlet handles height
+            break;
+          case 'fps':
+            fps = Number(parts[1]);
             break;
           default:
             console.warn('unknown search param', parts);
@@ -135,7 +139,7 @@
     });
     postMessage('hello', { version: 1 });
 
-    player.loadProjectId(projectId, { start: autoStart })
+    player.loadProjectId(projectId, { start: autoStart, fps: fps })
       .then(function() {
         player.stage.setZoom(width / 480);
       });
