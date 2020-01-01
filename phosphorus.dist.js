@@ -1517,7 +1517,9 @@ var P;
                 this.toHSVA();
                 switch (param) {
                     case 'color':
-                        this.x = value * 360 / 100;
+                        this.x = (value * 360 / 100) % 360;
+                        if (this.x < 0)
+                            this.x += 360;
                         break;
                     case 'saturation':
                         this.y = P.utils.clamp(value, 0, 100);
@@ -1538,7 +1540,9 @@ var P;
                 this.toHSVA();
                 switch (param) {
                     case 'color':
-                        this.x += value * 360 / 100;
+                        this.x = (this.x + value * 360 / 100) % 360;
+                        if (this.x < 0)
+                            this.x += 360;
                         break;
                     case 'saturation':
                         this.y = P.utils.clamp(this.y + value, 0, 100);
