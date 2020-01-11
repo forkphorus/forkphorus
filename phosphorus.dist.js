@@ -548,6 +548,56 @@ var P;
                 filters.pixelate !== 0 ||
                 filters.whirl !== 0;
         }
+        function rgb2hsv(r, g, b) {
+            var max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min, h, s = (max === 0 ? 0 : d / max), v = max / 255;
+            switch (max) {
+                case min:
+                    h = 0;
+                    break;
+                case r:
+                    h = (g - b) + d * (g < b ? 6 : 0);
+                    h /= 6 * d;
+                    break;
+                case g:
+                    h = (b - r) + d * 2;
+                    h /= 6 * d;
+                    break;
+                case b:
+                    h = (r - g) + d * 4;
+                    h /= 6 * d;
+                    break;
+            }
+            return [h, s, v];
+        }
+        function hsv2rgb(h, s, v) {
+            var r, g, b, i, f, p, q, t;
+            i = Math.floor(h * 6);
+            f = h * 6 - i;
+            p = v * (1 - s);
+            q = v * (1 - f * s);
+            t = v * (1 - (1 - f) * s);
+            switch (i % 6) {
+                case 0:
+                    r = v, g = t, b = p;
+                    break;
+                case 1:
+                    r = q, g = v, b = p;
+                    break;
+                case 2:
+                    r = p, g = v, b = t;
+                    break;
+                case 3:
+                    r = p, g = q, b = v;
+                    break;
+                case 4:
+                    r = t, g = p, b = v;
+                    break;
+                case 5:
+                    r = v, g = p, b = q;
+                    break;
+            }
+            return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+        }
         const horizontalInvertMatrix = P.m3.scaling(-1, 1);
         class ShaderVariant {
             constructor(gl, program) {
@@ -745,11 +795,12 @@ var P;
             _drawChild(child, shader) {
                 this.gl.useProgram(shader.program);
                 const costume = child.costumes[child.currentCostumeIndex];
-                if (!this.costumeTextures.has(costume)) {
-                    const texture = this.convertToTexture(costume.get(1));
-                    this.costumeTextures.set(costume, texture);
+                const lod = costume.get(1);
+                if (!this.costumeTextures.has(lod)) {
+                    const texture = this.convertToTexture(lod.image);
+                    this.costumeTextures.set(lod, texture);
                 }
-                this.gl.bindTexture(this.gl.TEXTURE_2D, this.costumeTextures.get(costume));
+                this.gl.bindTexture(this.gl.TEXTURE_2D, this.costumeTextures.get(lod));
                 shader.attributeBuffer('a_position', this.quadBuffer);
                 const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
                 P.m3.multiply(matrix, this.globalScaleMatrix);
@@ -963,6 +1014,11 @@ var P;
       }
       #endif
 
+      // apply brightness effect
+      #ifndef ONLY_SHAPE_FILTERS
+        color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
+      #endif
+
       gl_FragColor = color;
     }
     `;
@@ -1169,7 +1225,8 @@ var P;
                     }
                     objectScale *= c.scale;
                 }
-                const image = costume.get(objectScale * c.stage.zoom);
+                const lod = costume.get(objectScale * c.stage.zoom);
+                ctx.imageSmoothingEnabled = false;
                 const x = -costume.rotationCenterX * objectScale;
                 const y = -costume.rotationCenterY * objectScale;
                 const w = costume.width * objectScale;
@@ -1180,31 +1237,71 @@ var P;
                 }
                 ctx.imageSmoothingEnabled = false;
                 if (!this.noEffects) {
-                    if (c.filters.brightness === 100) {
-                        workingRenderer.canvas.width = w;
-                        workingRenderer.canvas.height = h;
-                        workingRenderer.ctx.save();
-                        workingRenderer.ctx.translate(0, 0);
-                        workingRenderer.ctx.drawImage(image, 0, 0, w, h);
-                        workingRenderer.ctx.globalCompositeOperation = 'source-in';
-                        workingRenderer.ctx.fillStyle = 'white';
-                        workingRenderer.ctx.fillRect(0, 0, 480, 360);
-                        ctx.drawImage(workingRenderer.canvas, x, y);
-                        workingRenderer.ctx.restore();
+                    ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
+                    if (c.filters.brightness !== 0 || c.filters.color !== 0) {
+                        let sourceImage = lod.getImageData();
+                        let destImage = ctx.createImageData(sourceImage.width, sourceImage.height);
+                        if (c.filters.color !== 0) {
+                            this.applyColorEffect(sourceImage, destImage, c.filters.color / 200);
+                            sourceImage = destImage;
+                        }
+                        if (c.filters.brightness !== 0) {
+                            this.applyBrightnessEffect(sourceImage, destImage, c.filters.brightness / 100 * 255);
+                        }
+                        workingRenderer.canvas.width = sourceImage.width;
+                        workingRenderer.canvas.height = sourceImage.height;
+                        workingRenderer.ctx.putImageData(destImage, 0, 0);
+                        ctx.drawImage(workingRenderer.canvas, x, y, w, h);
                     }
                     else {
-                        ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
-                        const filter = getCSSFilter(c.filters);
-                        if (filter !== '') {
-                            ctx.filter = filter;
-                        }
-                        ctx.drawImage(image, x, y, w, h);
+                        ctx.drawImage(lod.image, x, y, w, h);
                     }
                 }
                 else {
-                    ctx.drawImage(image, x, y, w, h);
+                    ctx.drawImage(lod.image, x, y, w, h);
                 }
                 ctx.restore();
+            }
+            applyColorEffect(sourceImage, destImage, hueShift) {
+                const MIN_VALUE = 0.11 / 2;
+                const MIN_SATURATION = 0.09;
+                const colorCache = {};
+                for (var i = 0; i < sourceImage.data.length; i += 4) {
+                    const r = sourceImage.data[i];
+                    const g = sourceImage.data[i + 1];
+                    const b = sourceImage.data[i + 2];
+                    destImage.data[i + 3] = sourceImage.data[i + 3];
+                    const rgbHash = (r << 16) + (g << 8) + b;
+                    const cachedColor = colorCache[rgbHash];
+                    if (cachedColor !== undefined) {
+                        destImage.data[i] = (0xff0000 & cachedColor) >> 16;
+                        destImage.data[i + 1] = (0x00ff00 & cachedColor) >> 8;
+                        destImage.data[i + 2] = (0x0000ff & cachedColor);
+                        continue;
+                    }
+                    let hsv = rgb2hsv(r, g, b);
+                    if (hsv[2] < MIN_VALUE)
+                        hsv = [0, 1, MIN_VALUE];
+                    else if (hsv[1] < MIN_SATURATION)
+                        hsv = [0, MIN_SATURATION, hsv[2]];
+                    hsv[0] = hsv[0] + hueShift - Math.floor(hsv[0] + hueShift);
+                    if (hsv[0] < 0)
+                        hsv[0] += 1;
+                    const rgb = hsv2rgb(hsv[0], hsv[1], hsv[2]);
+                    colorCache[rgbHash] = (rgb[0] << 16) + (rgb[1] << 8) + rgb[2];
+                    destImage.data[i] = rgb[0];
+                    destImage.data[i + 1] = rgb[1];
+                    destImage.data[i + 2] = rgb[2];
+                }
+            }
+            applyBrightnessEffect(sourceImage, destImage, brightness) {
+                const length = sourceImage.data.length;
+                for (var i = 0; i < length; i += 4) {
+                    destImage.data[i] = sourceImage.data[i] + brightness;
+                    destImage.data[i + 1] = sourceImage.data[i + 1] + brightness;
+                    destImage.data[i + 2] = sourceImage.data[i + 2] + brightness;
+                    destImage.data[i + 3] = sourceImage.data[i + 3];
+                }
             }
         }
         renderer_1.SpriteRenderer2D = SpriteRenderer2D;
@@ -1227,17 +1324,11 @@ var P;
                 this.penLayer = penLayer;
             }
             onStageFiltersChanged() {
-                const filter = getCSSFilter(this.stage.filters);
-                if (this.stageLayer.style.filter !== filter) {
-                    this.stageLayer.style.filter = filter;
-                }
-                this.stageLayer.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
+                this.renderStageCostume(this.zoom);
             }
             renderStageCostume(scale) {
-                this._reset(this.stageContext, scale);
-                this.noEffects = true;
+                this._reset(this.stageContext, scale * P.config.scale);
                 this._drawChild(this.stage, this.stageContext);
-                this.noEffects = false;
             }
             init(root) {
                 root.appendChild(this.stageLayer);
@@ -2627,6 +2718,46 @@ var P;
             }
         }
         core.Sprite = Sprite;
+        class ImageLOD {
+            constructor(image) {
+                this.imageData = null;
+                this.image = image;
+                if (image.tagName === 'CANVAS') {
+                    const ctx = image.getContext('2d');
+                    if (!ctx) {
+                        throw new Error('Cannot get 2d rendering context of costume image');
+                    }
+                    this.context = ctx;
+                }
+                else {
+                    this.context = null;
+                }
+                this.width = image.width;
+                this.height = image.height;
+            }
+            getContext() {
+                if (this.context)
+                    return this.context;
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    throw new Error('cannot get 2d rendering context');
+                }
+                canvas.width = this.width;
+                canvas.height = this.height;
+                ctx.drawImage(this.image, 0, 0);
+                this.context = ctx;
+                return ctx;
+            }
+            getImageData() {
+                if (this.imageData)
+                    return this.imageData;
+                const context = this.getContext();
+                this.imageData = context.getImageData(0, 0, context.canvas.width, context.canvas.height);
+                return this.imageData;
+            }
+        }
+        core.ImageLOD = ImageLOD;
         class Costume {
             constructor(costumeData) {
                 this.bitmapResolution = costumeData.bitmapResolution;
@@ -2635,41 +2766,20 @@ var P;
                 this.rotationCenterX = costumeData.rotationCenterX;
                 this.rotationCenterY = costumeData.rotationCenterY;
             }
+            getContext() {
+                return this.get(1).getContext();
+            }
         }
         core.Costume = Costume;
         class BitmapCostume extends Costume {
             constructor(source, options) {
                 super(options);
-                this.source = source;
-                if (source.tagName === 'CANVAS') {
-                    const ctx = source.getContext('2d');
-                    if (!ctx) {
-                        throw new Error('Cannot get 2d rendering context of costume source');
-                    }
-                    this._context = ctx;
-                }
-                else {
-                    this._context = null;
-                }
+                this.source = new ImageLOD(source);
                 this.width = source.width;
                 this.height = source.height;
             }
             get(scale) {
                 return this.source;
-            }
-            getContext() {
-                if (this._context)
-                    return this._context;
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                    throw new Error('cannot get 2d rendering context for BitmapCustome ' + this.name);
-                }
-                canvas.width = this.width;
-                canvas.height = this.height;
-                ctx.drawImage(this.source, 0, 0);
-                this._context = ctx;
-                return ctx;
             }
         }
         core.BitmapCostume = BitmapCostume;
@@ -2697,7 +2807,7 @@ var P;
                     throw new Error('cannot get 2d rendering context while rendering VectorCostume ' + this.name + ' at scale ' + scale);
                 }
                 ctx.drawImage(this.source, 0, 0, canvas.width, canvas.height);
-                return canvas;
+                return new ImageLOD(canvas);
             }
             get(scale) {
                 scale = Math.min(VectorCostume.MAX_ZOOM, Math.ceil(scale));
@@ -2706,20 +2816,6 @@ var P;
                     this.scales[index] = this.getScale(scale);
                 }
                 return this.scales[index];
-            }
-            getContext() {
-                if (this._context)
-                    return this._context;
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                    throw new Error('cannot get 2d rendering context for VectorCostume ' + this.name);
-                }
-                canvas.width = this.width;
-                canvas.height = this.height;
-                ctx.drawImage(this.source, 0, 0);
-                this._context = ctx;
-                return ctx;
             }
         }
         VectorCostume.MAX_ZOOM = 6;

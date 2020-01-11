@@ -127,6 +127,40 @@ namespace P.renderer {
       filters.whirl !== 0;
   }
 
+  function rgb2hsv(r: number, g: number, b: number): [number, number, number] {
+    var max = Math.max(r, g, b), min = Math.min(r, g, b),
+      d = max - min,
+      h,
+      s = (max === 0 ? 0 : d / max),
+      v = max / 255;
+    switch (max) {
+      case min: h = 0; break;
+      case r: h = (g - b) + d * (g < b ? 6: 0); h /= 6 * d; break;
+      case g: h = (b - r) + d * 2; h /= 6 * d; break;
+      case b: h = (r - g) + d * 4; h /= 6 * d; break;
+    }
+    return [h, s, v];
+  }
+
+  function hsv2rgb(h: number, s: number, v: number): [number, number, number] {
+    // https://stackoverflow.com/a/17243070
+    var r, g, b, i, f, p, q, t;
+    i = Math.floor(h * 6);
+    f = h * 6 - i;
+    p = v * (1 - s);
+    q = v * (1 - f * s);
+    t = v * (1 - (1 - f) * s);
+    switch (i % 6) {
+      case 0: r = v, g = t, b = p; break;
+      case 1: r = q, g = v, b = p; break;
+      case 2: r = p, g = v, b = t; break;
+      case 3: r = p, g = q, b = v; break;
+      case 4: r = t, g = p, b = v; break;
+      case 5: r = v, g = p, b = q; break;
+    }
+    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+  }
+
   // WEBGL
 
   // Used in the WebGL renderer for inverting sprites.
@@ -398,6 +432,11 @@ namespace P.renderer {
       }
       #endif
 
+      // apply brightness effect
+      #ifndef ONLY_SHAPE_FILTERS
+        color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
+      #endif
+
       gl_FragColor = color;
     }
     `;
@@ -410,7 +449,7 @@ namespace P.renderer {
     protected renderingShader: ShaderVariant;
     private boundFramebuffer: WebGLFramebuffer | null = null;
 
-    private costumeTextures: WeakMap<P.core.Costume, WebGLTexture> = new WeakMap();
+    private costumeTextures: WeakMap<P.core.ImageLOD, WebGLTexture> = new WeakMap();
 
     constructor() {
       this.canvas = createCanvas();
@@ -601,12 +640,13 @@ namespace P.renderer {
       // Create the texture if it doesn't already exist.
       // We'll create a texture only once for performance.
       const costume = child.costumes[child.currentCostumeIndex];
-      if (!this.costumeTextures.has(costume)) {
+      const lod = costume.get(1);
+      if (!this.costumeTextures.has(lod)) {
         // TODO: scaling
-        const texture = this.convertToTexture(costume.get(1));
-        this.costumeTextures.set(costume, texture);
+        const texture = this.convertToTexture(lod.image);
+        this.costumeTextures.set(lod, texture);
       }
-      this.gl.bindTexture(this.gl.TEXTURE_2D, this.costumeTextures.get(costume)!);
+      this.gl.bindTexture(this.gl.TEXTURE_2D, this.costumeTextures.get(lod)!);
 
       shader.attributeBuffer('a_position', this.quadBuffer);
 
@@ -910,7 +950,7 @@ namespace P.renderer {
     public ctx: CanvasRenderingContext2D;
     public canvas: HTMLCanvasElement;
     /**
-     * Disables rendering filters on the 
+     * Disables rendering filters on this renderer
      */
     public noEffects: boolean = false;
 
@@ -963,7 +1003,6 @@ namespace P.renderer {
       ctx.translate(((c.scratchX + 240) * globalScale | 0) / globalScale, ((180 - c.scratchY) * globalScale | 0) / globalScale);
 
       let objectScale = costume.scale;
-      // Direction transforms are only applied to Sprites because Stages cannot be rotated.
       if (P.core.isSprite(c)) {
         if (c.rotationStyle === RotationStyle.Normal) {
           ctx.rotate((c.direction - 90) * Math.PI / 180);
@@ -973,7 +1012,8 @@ namespace P.renderer {
         objectScale *= c.scale;
       }
 
-      const image = costume.get(objectScale * c.stage.zoom);
+      const lod = costume.get(objectScale * c.stage.zoom);
+      ctx.imageSmoothingEnabled = false;
       const x = -costume.rotationCenterX * objectScale;
       const y = -costume.rotationCenterY * objectScale;
       const w = costume.width * objectScale;
@@ -985,33 +1025,82 @@ namespace P.renderer {
       ctx.imageSmoothingEnabled = false;
 
       if (!this.noEffects) {
-        if (c.filters.brightness === 100) {
-          workingRenderer.canvas.width = w;
-          workingRenderer.canvas.height = h;
-          workingRenderer.ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
 
-          workingRenderer.ctx.translate(0, 0);
-          workingRenderer.ctx.drawImage(image, 0, 0, w, h);
-          workingRenderer.ctx.globalCompositeOperation = 'source-in';
-          workingRenderer.ctx.fillStyle = 'white';
-          workingRenderer.ctx.fillRect(0, 0, 480, 360);
-          ctx.drawImage(workingRenderer.canvas, x, y);
+        if (c.filters.brightness !== 0 || c.filters.color !== 0) {
+          let sourceImage = lod.getImageData();
+          // we cannot modify imageData directly as it would ruin the cached ImageData object for the costume
+          // instead we create a new ImageData and copy values into it
+          let destImage = ctx.createImageData(sourceImage.width, sourceImage.height);
 
-          workingRenderer.ctx.restore();
-        } else {
-          ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
-          const filter = getCSSFilter(c.filters);
-          // Only apply a filter when needed because of a Firefox performance bug
-          if (filter !== '') {
-            ctx.filter = filter;
+          if (c.filters.color !== 0) {
+            this.applyColorEffect(sourceImage, destImage, c.filters.color / 200);
+            sourceImage = destImage;
           }
-          ctx.drawImage(image, x, y, w, h);
+
+          if (c.filters.brightness !== 0) {
+            this.applyBrightnessEffect(sourceImage, destImage, c.filters.brightness / 100 * 255);
+          }
+
+          // putImageData() doesn't respect canvas transforms so we need to draw to another canvas and then drawImage() that
+          workingRenderer.canvas.width = sourceImage.width;
+          workingRenderer.canvas.height = sourceImage.height;
+          workingRenderer.ctx.putImageData(destImage, 0, 0);
+          ctx.drawImage(workingRenderer.canvas, x, y, w, h);
+        } else {
+          ctx.drawImage(lod.image, x, y, w, h);
         }
       } else {
-        ctx.drawImage(image, x, y, w, h);
+        ctx.drawImage(lod.image, x, y, w, h);
       }
 
       ctx.restore();
+    }
+
+    private applyColorEffect(sourceImage: ImageData, destImage: ImageData, hueShift: number) {
+      const MIN_VALUE = 0.11 / 2;
+      const MIN_SATURATION = 0.09;
+      const colorCache: { [s: number]: number; } = {};
+
+      for (var i = 0; i < sourceImage.data.length; i += 4) {
+        const r = sourceImage.data[i];
+        const g = sourceImage.data[i + 1];
+        const b = sourceImage.data[i + 2];
+        destImage.data[i + 3] = sourceImage.data[i + 3];
+
+        const rgbHash = (r << 16) + (g << 8) + b;
+        const cachedColor = colorCache[rgbHash];
+        if (cachedColor !== undefined) {
+          destImage.data[i] =     (0xff0000 & cachedColor) >> 16;
+          destImage.data[i + 1] = (0x00ff00 & cachedColor) >> 8;
+          destImage.data[i + 2] = (0x0000ff & cachedColor);
+          continue;
+        }
+
+        let hsv = rgb2hsv(r, g, b);
+        if (hsv[2] < MIN_VALUE) hsv = [0, 1, MIN_VALUE];
+        else if (hsv[1] < MIN_SATURATION) hsv = [0, MIN_SATURATION, hsv[2]];
+
+        // hue + hueShift modulo 1
+        hsv[0] = hsv[0] + hueShift - Math.floor(hsv[0] + hueShift);
+        if (hsv[0] < 0) hsv[0] += 1;
+
+        const rgb = hsv2rgb(hsv[0], hsv[1], hsv[2]);
+        colorCache[rgbHash] = (rgb[0] << 16) + (rgb[1] << 8) + rgb[2];
+        destImage.data[i] = rgb[0];
+        destImage.data[i + 1] = rgb[1];
+        destImage.data[i + 2] = rgb[2];
+      }
+    }
+
+    private applyBrightnessEffect(sourceImage: ImageData, destImage: ImageData, brightness: number) {
+      const length = sourceImage.data.length;
+      for (var i = 0; i < length; i += 4) {
+        destImage.data[i] = sourceImage.data[i] + brightness;
+        destImage.data[i + 1] = sourceImage.data[i + 1] + brightness;
+        destImage.data[i + 2] = sourceImage.data[i + 2] + brightness;
+        destImage.data[i + 3] = sourceImage.data[i + 3];
+      }
     }
   }
 
@@ -1044,22 +1133,12 @@ namespace P.renderer {
     }
 
     onStageFiltersChanged() {
-      const filter = getCSSFilter(this.stage.filters);
-      // Only reapply a CSS filter if it has changed for performance, specifically in firefox.
-      // Might not be necessary here.
-      if (this.stageLayer.style.filter !== filter) {
-        this.stageLayer.style.filter = filter;
-      }
-
-      // cssFilter does not include ghost
-      this.stageLayer.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
+      this.renderStageCostume(this.zoom);
     }
 
     renderStageCostume(scale: number) {
-      this._reset(this.stageContext, scale);
-      this.noEffects = true;
+      this._reset(this.stageContext, scale * P.config.scale);
       this._drawChild(this.stage, this.stageContext);
-      this.noEffects = false;
     }
 
     init(root: HTMLCanvasElement) {
