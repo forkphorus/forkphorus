@@ -264,10 +264,6 @@ namespace P.renderer.webgl {
         color.a *= u_opacity;
       #endif
 
-      #ifdef ENABLE_BRIGHTNESS
-        color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
-      #endif
-
       #ifdef ENABLE_COLOR
       if (u_color != 0.0) {
         vec3 hsv = rgb2hsv(color.rgb);
@@ -287,8 +283,7 @@ namespace P.renderer.webgl {
       }
       #endif
 
-      // apply brightness effect
-      #ifndef ONLY_SHAPE_FILTERS
+      #ifdef ENABLE_BRIGHTNESS
         color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
       #endif
 
