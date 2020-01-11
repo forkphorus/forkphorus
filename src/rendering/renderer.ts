@@ -1,4 +1,4 @@
-/// <reference path="phosphorus.ts" />
+/// <reference path="../phosphorus.ts" />
 /// <reference path="matrix.ts" />
 
 namespace P.renderer {
