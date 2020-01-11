@@ -1,6 +1,6 @@
 /// <reference path="phosphorus.ts" />
 /// <reference path="config.ts" />
-/// <reference path="renderer.ts" />
+/// <reference path="rendering/renderer.ts" />
 
 // Phosphorus base classes
 // Implements most functionality while leaving some specifics to implementations (P.sb2, P.sb3)
@@ -797,7 +797,7 @@ namespace P.core {
       if (P.config.useWebGL) {
         this.renderer = new P.renderer.WebGLProjectRenderer(this);
       } else {
-        this.renderer = new P.renderer.ProjectRenderer2D(this);
+        this.renderer = new P.renderer.canvas2d.ProjectRenderer2D(this);
       }
       this.renderer.resize(1);
       this.renderer.init(this.root);
