@@ -93,7 +93,7 @@ namespace P.renderer {
   // HELPERS
 
   /**
-   * Create an HTML canvas with any type of context.
+   * Create an HTML canvas
    */
   function createCanvas() {
     const canvas = document.createElement('canvas');
@@ -131,11 +131,6 @@ namespace P.renderer {
 
   // Used in the WebGL renderer for inverting sprites.
   const horizontalInvertMatrix = P.m3.scaling(-1, 1);
-
-  // Extension of Costume to store the webgl textures
-  interface WebGLCostume extends P.core.Costume {
-    _glTexture: WebGLTexture;
-  }
 
   class ShaderVariant {
     protected uniformLocations: {[name: string]: WebGLUniformLocation} = {};
@@ -287,16 +282,29 @@ namespace P.renderer {
     varying vec2 v_texcoord;
 
     uniform sampler2D u_texture;
-    #ifndef ONLY_SHAPE_FILTERS
+
+    #ifdef ENABLE_BRIGHTNESS
       uniform float u_brightness;
+    #endif
+    #ifdef ENABLE_COLOR
       uniform float u_color;
     #endif
-    uniform float u_opacity;
-    uniform float u_mosaic;
-    uniform float u_whirl;
-    uniform float u_fisheye;
-    uniform float u_pixelate;
-    uniform vec2 u_size;
+    #ifdef ENABLE_GHOST
+      uniform float u_opacity;
+    #endif
+    #ifdef ENABLE_MOSAIC
+      uniform float u_mosaic;
+    #endif
+    #ifdef ENABLE_WHIRL
+      uniform float u_whirl;
+    #endif
+    #ifdef ENABLE_FISHEYE
+      uniform float u_fisheye;
+    #endif
+    #ifdef ENABLE_PIXELATE
+      uniform float u_pixelate;
+      uniform vec2 u_size;
+    #endif
 
     const float minimumAlpha = 1.0 / 250.0;
     const vec2 vecCenter = vec2(0.5, 0.5);
@@ -320,18 +328,18 @@ namespace P.renderer {
       // varyings cannot be modified
       vec2 texcoord = v_texcoord;
 
-      // apply mosaic
-      {
+      #ifdef ENABLE_MOSAIC
         texcoord = fract(u_mosaic * v_texcoord);
-      }
+      #endif
 
-      // apply pixelate
+      #ifdef ENABLE_PIXELATE
       if (u_pixelate != 0.0) {
         vec2 texelSize = u_size / u_pixelate;
         texcoord = (floor(texcoord * texelSize) + vecCenter) / texelSize;
       }
+      #endif
 
-      // apply whirl
+      #ifdef ENABLE_WHIRL
       {
         const float radius = 0.5;
         vec2 offset = texcoord - vecCenter;
@@ -346,8 +354,9 @@ namespace P.renderer {
         );
         texcoord = rotationMatrix * offset + vecCenter;
       }
+      #endif
 
-      // apply fisheye
+      #ifdef ENABLE_FISHEYE
       {
         vec2 vec = (texcoord - vecCenter) / vecCenter;
         float vecLength = length(vec);
@@ -355,23 +364,22 @@ namespace P.renderer {
         vec2 unit = vec / vecLength;
         texcoord = vecCenter + r * unit * vecCenter;
       }
+      #endif
 
       vec4 color = texture2D(u_texture, texcoord);
       if (color.a < minimumAlpha) {
         discard;
       }
 
-      // apply ghost effect
-      color.a *= u_opacity;
+      #ifdef ENABLE_GHOST
+        color.a *= u_opacity;
+      #endif
 
-      // apply brightness effect
-      #ifndef ONLY_SHAPE_FILTERS
+      #ifdef ENABLE_BRIGHTNESS
         color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
       #endif
 
-      // The color effect is rather complicated. See:
-      // https://github.com/LLK/scratch-render/blob/008dc5b15b30961301e6b9a08628a063b967a001/src/shaders/sprite.frag#L175-L189
-      #ifndef ONLY_SHAPE_FILTERS
+      #ifdef ENABLE_COLOR
       if (u_color != 0.0) {
         vec3 hsv = rgb2hsv(color.rgb);
         // hsv.x = hue
@@ -402,6 +410,8 @@ namespace P.renderer {
     protected renderingShader: ShaderVariant;
     private boundFramebuffer: WebGLFramebuffer | null = null;
 
+    private costumeTextures: WeakMap<P.core.Costume, WebGLTexture> = new WeakMap();
+
     constructor() {
       this.canvas = createCanvas();
       const gl = this.canvas.getContext('webgl', {
@@ -413,7 +423,14 @@ namespace P.renderer {
       }
       this.gl = gl;
 
-      this.renderingShader = this.compileVariant([]);
+      this.renderingShader = this.compileVariant([
+        'ENABLE_BRIGHTNESS',
+        'ENABLE_COLOR',
+        'ENABLE_GHOST',
+        'ENABLE_FISHEYE',
+        'ENABLE_MOSAIC',
+        'ENABLE_PIXELATE',
+      ]);
 
       // Enable blending
       this.gl.enable(this.gl.BLEND);
@@ -439,12 +456,9 @@ namespace P.renderer {
      * @param definitions Flags to define in the shader source.
      */
     protected compileShader(type: number, source: string, definitions?: string[]): WebGLShader {
-      const addDefinition = (def: string) => {
-        source = '#define ' + def + '\n' + source;
-      }
       if (definitions) {
         for (const def of definitions) {
-          addDefinition(def);
+          source = '#define ' + def + '\n' + source;
         }
       }
 
@@ -586,16 +600,17 @@ namespace P.renderer {
 
       // Create the texture if it doesn't already exist.
       // We'll create a texture only once for performance.
-      const costume = child.costumes[child.currentCostumeIndex] as WebGLCostume;
-      if (!costume._glTexture) {
+      const costume = child.costumes[child.currentCostumeIndex];
+      if (!this.costumeTextures.has(costume)) {
+        // TODO: scaling
         const texture = this.convertToTexture(costume.get(1));
-        costume._glTexture = texture;
+        this.costumeTextures.set(costume, texture);
       }
-      this.gl.bindTexture(this.gl.TEXTURE_2D, costume._glTexture);
+      this.gl.bindTexture(this.gl.TEXTURE_2D, this.costumeTextures.get(costume)!);
 
       shader.attributeBuffer('a_position', this.quadBuffer);
 
-      // TODO: do this in the shader if its possible/faster
+      // TODO: optimize
       const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
       P.m3.multiply(matrix, this.globalScaleMatrix);
       P.m3.multiply(matrix, P.m3.translation(240 + child.scratchX | 0, 180 - child.scratchY | 0));

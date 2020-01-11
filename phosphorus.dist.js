@@ -625,6 +625,7 @@ var P;
             constructor() {
                 this.globalScaleMatrix = P.m3.scaling(1, 1);
                 this.boundFramebuffer = null;
+                this.costumeTextures = new WeakMap();
                 this.canvas = createCanvas();
                 const gl = this.canvas.getContext('webgl', {
                     alpha: false,
@@ -634,7 +635,14 @@ var P;
                     throw new Error('cannot get webgl rendering context');
                 }
                 this.gl = gl;
-                this.renderingShader = this.compileVariant([]);
+                this.renderingShader = this.compileVariant([
+                    'ENABLE_BRIGHTNESS',
+                    'ENABLE_COLOR',
+                    'ENABLE_GHOST',
+                    'ENABLE_FISHEYE',
+                    'ENABLE_MOSAIC',
+                    'ENABLE_PIXELATE',
+                ]);
                 this.gl.enable(this.gl.BLEND);
                 this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
                 this.quadBuffer = this.gl.createBuffer();
@@ -649,12 +657,9 @@ var P;
                 ]), this.gl.STATIC_DRAW);
             }
             compileShader(type, source, definitions) {
-                const addDefinition = (def) => {
-                    source = '#define ' + def + '\n' + source;
-                };
                 if (definitions) {
                     for (const def of definitions) {
-                        addDefinition(def);
+                        source = '#define ' + def + '\n' + source;
                     }
                 }
                 const shader = this.gl.createShader(type);
@@ -740,11 +745,11 @@ var P;
             _drawChild(child, shader) {
                 this.gl.useProgram(shader.program);
                 const costume = child.costumes[child.currentCostumeIndex];
-                if (!costume._glTexture) {
+                if (!this.costumeTextures.has(costume)) {
                     const texture = this.convertToTexture(costume.get(1));
-                    costume._glTexture = texture;
+                    this.costumeTextures.set(costume, texture);
                 }
-                this.gl.bindTexture(this.gl.TEXTURE_2D, costume._glTexture);
+                this.gl.bindTexture(this.gl.TEXTURE_2D, this.costumeTextures.get(costume));
                 shader.attributeBuffer('a_position', this.quadBuffer);
                 const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
                 P.m3.multiply(matrix, this.globalScaleMatrix);
@@ -842,16 +847,29 @@ var P;
     varying vec2 v_texcoord;
 
     uniform sampler2D u_texture;
-    #ifndef ONLY_SHAPE_FILTERS
+
+    #ifdef ENABLE_BRIGHTNESS
       uniform float u_brightness;
+    #endif
+    #ifdef ENABLE_COLOR
       uniform float u_color;
     #endif
-    uniform float u_opacity;
-    uniform float u_mosaic;
-    uniform float u_whirl;
-    uniform float u_fisheye;
-    uniform float u_pixelate;
-    uniform vec2 u_size;
+    #ifdef ENABLE_GHOST
+      uniform float u_opacity;
+    #endif
+    #ifdef ENABLE_MOSAIC
+      uniform float u_mosaic;
+    #endif
+    #ifdef ENABLE_WHIRL
+      uniform float u_whirl;
+    #endif
+    #ifdef ENABLE_FISHEYE
+      uniform float u_fisheye;
+    #endif
+    #ifdef ENABLE_PIXELATE
+      uniform float u_pixelate;
+      uniform vec2 u_size;
+    #endif
 
     const float minimumAlpha = 1.0 / 250.0;
     const vec2 vecCenter = vec2(0.5, 0.5);
@@ -875,18 +893,18 @@ var P;
       // varyings cannot be modified
       vec2 texcoord = v_texcoord;
 
-      // apply mosaic
-      {
+      #ifdef ENABLE_MOSAIC
         texcoord = fract(u_mosaic * v_texcoord);
-      }
+      #endif
 
-      // apply pixelate
+      #ifdef ENABLE_PIXELATE
       if (u_pixelate != 0.0) {
         vec2 texelSize = u_size / u_pixelate;
         texcoord = (floor(texcoord * texelSize) + vecCenter) / texelSize;
       }
+      #endif
 
-      // apply whirl
+      #ifdef ENABLE_WHIRL
       {
         const float radius = 0.5;
         vec2 offset = texcoord - vecCenter;
@@ -901,8 +919,9 @@ var P;
         );
         texcoord = rotationMatrix * offset + vecCenter;
       }
+      #endif
 
-      // apply fisheye
+      #ifdef ENABLE_FISHEYE
       {
         vec2 vec = (texcoord - vecCenter) / vecCenter;
         float vecLength = length(vec);
@@ -910,23 +929,22 @@ var P;
         vec2 unit = vec / vecLength;
         texcoord = vecCenter + r * unit * vecCenter;
       }
+      #endif
 
       vec4 color = texture2D(u_texture, texcoord);
       if (color.a < minimumAlpha) {
         discard;
       }
 
-      // apply ghost effect
-      color.a *= u_opacity;
+      #ifdef ENABLE_GHOST
+        color.a *= u_opacity;
+      #endif
 
-      // apply brightness effect
-      #ifndef ONLY_SHAPE_FILTERS
+      #ifdef ENABLE_BRIGHTNESS
         color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
       #endif
 
-      // The color effect is rather complicated. See:
-      // https://github.com/LLK/scratch-render/blob/008dc5b15b30961301e6b9a08628a063b967a001/src/shaders/sprite.frag#L175-L189
-      #ifndef ONLY_SHAPE_FILTERS
+      #ifdef ENABLE_COLOR
       if (u_color != 0.0) {
         vec3 hsv = rgb2hsv(color.rgb);
         // hsv.x = hue
