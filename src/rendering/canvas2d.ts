@@ -177,7 +177,11 @@ namespace P.renderer.canvas2d {
             ctx.drawImage(lod.image, x, y, w, h);
           }
         } else {
-          ctx.filter = getCSSFilter(c.filters);
+          const filter = getCSSFilter(c.filters);
+          if (filter !== '') {
+            ctx.filter = getCSSFilter(c.filters);
+          }
+          ctx.drawImage(lod.image, x, y, w, h);
         }
       } else {
         ctx.drawImage(lod.image, x, y, w, h);

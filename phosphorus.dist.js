@@ -8812,7 +8812,11 @@ var P;
                             }
                         }
                         else {
-                            ctx.filter = getCSSFilter(c.filters);
+                            const filter = getCSSFilter(c.filters);
+                            if (filter !== '') {
+                                ctx.filter = getCSSFilter(c.filters);
+                            }
+                            ctx.drawImage(lod.image, x, y, w, h);
                         }
                     }
                     else {
