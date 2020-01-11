@@ -8620,7 +8620,7 @@ var P;
                 constructor() {
                     this.globalScaleMatrix = P.m3.scaling(1, 1);
                     this.boundFramebuffer = null;
-                    this.costumeTextures = new WeakMap();
+                    this.costumeTextures = new Map();
                     this.canvas = createCanvas();
                     const gl = this.canvas.getContext('webgl', {
                         alpha: false,

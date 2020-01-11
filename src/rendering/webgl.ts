@@ -303,7 +303,7 @@ namespace P.renderer.webgl {
 
     private boundFramebuffer: WebGLFramebuffer | null = null;
 
-    private costumeTextures: WeakMap<P.core.ImageLOD, WebGLTexture> = new WeakMap();
+    private costumeTextures: Map<P.core.ImageLOD, WebGLTexture> = new Map();
 
     constructor() {
       this.canvas = createCanvas();
