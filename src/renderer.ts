@@ -640,9 +640,8 @@ namespace P.renderer {
       // Create the texture if it doesn't already exist.
       // We'll create a texture only once for performance.
       const costume = child.costumes[child.currentCostumeIndex];
-      const lod = costume.get(1);
+      const lod = costume.get(P.core.isSprite(child) ? child.scale : 1);
       if (!this.costumeTextures.has(lod)) {
-        // TODO: scaling
         const texture = this.convertToTexture(lod.image);
         this.costumeTextures.set(lod, texture);
       }

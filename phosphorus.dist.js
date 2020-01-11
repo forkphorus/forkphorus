@@ -796,7 +796,7 @@ var P;
             _drawChild(child, shader) {
                 this.gl.useProgram(shader.program);
                 const costume = child.costumes[child.currentCostumeIndex];
-                const lod = costume.get(1);
+                const lod = costume.get(P.core.isSprite(child) ? child.scale : 1);
                 if (!this.costumeTextures.has(lod)) {
                     const texture = this.convertToTexture(lod.image);
                     this.costumeTextures.set(lod, texture);
