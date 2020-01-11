@@ -8630,7 +8630,8 @@ var P;
                         throw new Error('cannot get webgl rendering context');
                     }
                     this.gl = gl;
-                    this.renderingShader = this.compileVariant([
+                    this.noFiltersShader = this.compileVariant([]);
+                    this.allFiltersShader = this.compileVariant([
                         'ENABLE_BRIGHTNESS',
                         'ENABLE_COLOR',
                         'ENABLE_GHOST',
@@ -8735,7 +8736,7 @@ var P;
                     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
                 }
                 drawChild(child) {
-                    this._drawChild(child, this.renderingShader);
+                    this._drawChild(child, this.allFiltersShader);
                 }
                 _drawChild(child, shader) {
                     this.gl.useProgram(shader.program);
@@ -8795,7 +8796,7 @@ var P;
                     this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
                 }
                 drawTextureOverlay(texture) {
-                    const shader = this.renderingShader;
+                    const shader = this.noFiltersShader;
                     this.gl.useProgram(shader.program);
                     this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
                     shader.attributeBuffer('a_position', this.quadBuffer);
@@ -8806,22 +8807,6 @@ var P;
                     P.m3.multiply(matrix, P.m3.translation(-240, -180));
                     P.m3.multiply(matrix, P.m3.scaling(480, 360));
                     shader.uniformMatrix3('u_matrix', matrix);
-                    if (shader.hasUniform('u_opacity'))
-                        shader.uniform1f('u_opacity', 1);
-                    if (shader.hasUniform('u_brightness'))
-                        shader.uniform1f('u_brightness', 0);
-                    if (shader.hasUniform('u_color'))
-                        shader.uniform1f('u_color', 0);
-                    if (shader.hasUniform('u_mosaic'))
-                        shader.uniform1f('u_mosaic', 1);
-                    if (shader.hasUniform('u_whirl'))
-                        shader.uniform1f('u_whirl', 0);
-                    if (shader.hasUniform('u_fisheye'))
-                        shader.uniform1f('u_fisheye', 1);
-                    if (shader.hasUniform('u_pixelate'))
-                        shader.uniform1f('u_pixelate', 0);
-                    if (shader.hasUniform('u_size'))
-                        shader.uniform2f('u_size', this.canvas.width, this.canvas.height);
                     this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
                 }
             }

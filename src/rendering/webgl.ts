@@ -295,8 +295,12 @@ namespace P.renderer.webgl {
     public gl: WebGLRenderingContext;
 
     protected quadBuffer: WebGLBuffer;
+
     protected globalScaleMatrix: P.m3.Matrix3 = P.m3.scaling(1, 1);
-    protected renderingShader: ShaderVariant;
+
+    protected allFiltersShader: ShaderVariant;
+    protected noFiltersShader: ShaderVariant;
+
     private boundFramebuffer: WebGLFramebuffer | null = null;
 
     private costumeTextures: WeakMap<P.core.ImageLOD, WebGLTexture> = new WeakMap();
@@ -312,7 +316,9 @@ namespace P.renderer.webgl {
       }
       this.gl = gl;
 
-      this.renderingShader = this.compileVariant([
+      this.noFiltersShader = this.compileVariant([]);
+
+      this.allFiltersShader = this.compileVariant([
         'ENABLE_BRIGHTNESS',
         'ENABLE_COLOR',
         'ENABLE_GHOST',
@@ -477,7 +483,7 @@ namespace P.renderer.webgl {
     }
 
     drawChild(child: P.core.Base) {
-      this._drawChild(child, this.renderingShader);
+      this._drawChild(child, this.allFiltersShader);
     }
 
     /**
@@ -556,7 +562,7 @@ namespace P.renderer.webgl {
      * @param texture The texture to draw. Must belong to this renderer.
      */
     protected drawTextureOverlay(texture: WebGLTexture) {
-      const shader = this.renderingShader;
+      const shader = this.noFiltersShader;
       this.gl.useProgram(shader.program);
 
       this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
@@ -571,16 +577,6 @@ namespace P.renderer.webgl {
       P.m3.multiply(matrix, P.m3.scaling(480, 360));
 
       shader.uniformMatrix3('u_matrix', matrix);
-
-      // Apply empty effect values
-      if (shader.hasUniform('u_opacity')) shader.uniform1f('u_opacity', 1);
-      if (shader.hasUniform('u_brightness')) shader.uniform1f('u_brightness', 0);
-      if (shader.hasUniform('u_color')) shader.uniform1f('u_color', 0);
-      if (shader.hasUniform('u_mosaic')) shader.uniform1f('u_mosaic', 1);
-      if (shader.hasUniform('u_whirl')) shader.uniform1f('u_whirl', 0);
-      if (shader.hasUniform('u_fisheye')) shader.uniform1f('u_fisheye', 1);
-      if (shader.hasUniform('u_pixelate')) shader.uniform1f('u_pixelate', 0);
-      if (shader.hasUniform('u_size')) shader.uniform2f('u_size', this.canvas.width, this.canvas.height);
 
       this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
     }
