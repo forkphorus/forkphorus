@@ -4,11 +4,6 @@
 namespace P.renderer.canvas2d {
   import RotationStyle = P.core.RotationStyle;
 
-  /**
-   * Creates the CSS filter for a Filter object.
-   * The filter is generally an estimation of the actual effect.
-   * Includes brightness and color. (does not include ghost)
-   */
   function getCSSFilter(filters: P.core.Filters) {
     let filter = '';
     if (filters.brightness) {
@@ -21,10 +16,6 @@ namespace P.renderer.canvas2d {
     return filter;
   }
 
-  /**
-   * Create an HTML canvas with a 2d context.
-   * Throws an error if a context cannot be obtained.
-   */
   function create2dCanvas(): { canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D } {
     const canvas = document.createElement('canvas');
     canvas.width = 480;

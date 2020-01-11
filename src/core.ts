@@ -795,7 +795,7 @@ namespace P.core {
       this.root.classList.add('forkphorus-root');
 
       if (P.config.useWebGL) {
-        this.renderer = new P.renderer.WebGLProjectRenderer(this);
+        this.renderer = new P.renderer.webgl.WebGLProjectRenderer(this);
       } else {
         this.renderer = new P.renderer.canvas2d.ProjectRenderer2D(this);
       }
