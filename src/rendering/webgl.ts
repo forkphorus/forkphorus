@@ -697,6 +697,8 @@ namespace P.renderer.webgl {
       const parts = color.toParts();
       shader.uniform4f('u_color', parts[0], parts[1], parts[2], parts[3]);
       this.gl.drawArrays(this.gl.LINES, 0, 2);
+
+      this.gl.deleteBuffer(buffer);
     }
 
     penDot(color: P.core.PenColor, size: number, x: number, y: number): void {
