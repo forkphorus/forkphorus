@@ -40,6 +40,7 @@ var P;
         config.useWebGL = features.indexOf('webgl') > -1;
         config.supportVideoSensing = features.indexOf('video') > -1;
         config.experimentalOptimizations = features.indexOf('opt') > -1;
+        config.accurateFilters = features.indexOf('filters') > -1;
         config.scale = window.devicePixelRatio || 1;
         config.PROJECT_API = 'https://projects.scratch.mit.edu/$id';
     })(config = P.config || (P.config = {}));
@@ -1238,23 +1239,28 @@ var P;
                 ctx.imageSmoothingEnabled = false;
                 if (!this.noEffects) {
                     ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
-                    if (c.filters.brightness !== 0 || c.filters.color !== 0) {
-                        let sourceImage = lod.getImageData();
-                        let destImage = ctx.createImageData(sourceImage.width, sourceImage.height);
-                        if (c.filters.color !== 0) {
-                            this.applyColorEffect(sourceImage, destImage, c.filters.color / 200);
-                            sourceImage = destImage;
+                    if (P.config.accurateFilters) {
+                        if (c.filters.brightness !== 0 || c.filters.color !== 0) {
+                            let sourceImage = lod.getImageData();
+                            let destImage = ctx.createImageData(sourceImage.width, sourceImage.height);
+                            if (c.filters.color !== 0) {
+                                this.applyColorEffect(sourceImage, destImage, c.filters.color / 200);
+                                sourceImage = destImage;
+                            }
+                            if (c.filters.brightness !== 0) {
+                                this.applyBrightnessEffect(sourceImage, destImage, c.filters.brightness / 100 * 255);
+                            }
+                            workingRenderer.canvas.width = sourceImage.width;
+                            workingRenderer.canvas.height = sourceImage.height;
+                            workingRenderer.ctx.putImageData(destImage, 0, 0);
+                            ctx.drawImage(workingRenderer.canvas, x, y, w, h);
                         }
-                        if (c.filters.brightness !== 0) {
-                            this.applyBrightnessEffect(sourceImage, destImage, c.filters.brightness / 100 * 255);
+                        else {
+                            ctx.drawImage(lod.image, x, y, w, h);
                         }
-                        workingRenderer.canvas.width = sourceImage.width;
-                        workingRenderer.canvas.height = sourceImage.height;
-                        workingRenderer.ctx.putImageData(destImage, 0, 0);
-                        ctx.drawImage(workingRenderer.canvas, x, y, w, h);
                     }
                     else {
-                        ctx.drawImage(lod.image, x, y, w, h);
+                        ctx.filter = getCSSFilter(c.filters);
                     }
                 }
                 else {

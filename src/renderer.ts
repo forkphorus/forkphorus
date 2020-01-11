@@ -1027,28 +1027,32 @@ namespace P.renderer {
       if (!this.noEffects) {
         ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
 
-        if (c.filters.brightness !== 0 || c.filters.color !== 0) {
-          let sourceImage = lod.getImageData();
-          // we cannot modify imageData directly as it would ruin the cached ImageData object for the costume
-          // instead we create a new ImageData and copy values into it
-          let destImage = ctx.createImageData(sourceImage.width, sourceImage.height);
-
-          if (c.filters.color !== 0) {
-            this.applyColorEffect(sourceImage, destImage, c.filters.color / 200);
-            sourceImage = destImage;
+        if (P.config.accurateFilters) {
+          if (c.filters.brightness !== 0 || c.filters.color !== 0) {
+            let sourceImage = lod.getImageData();
+            // we cannot modify imageData directly as it would ruin the cached ImageData object for the costume
+            // instead we create a new ImageData and copy values into it
+            let destImage = ctx.createImageData(sourceImage.width, sourceImage.height);
+  
+            if (c.filters.color !== 0) {
+              this.applyColorEffect(sourceImage, destImage, c.filters.color / 200);
+              sourceImage = destImage;
+            }
+  
+            if (c.filters.brightness !== 0) {
+              this.applyBrightnessEffect(sourceImage, destImage, c.filters.brightness / 100 * 255);
+            }
+  
+            // putImageData() doesn't respect canvas transforms so we need to draw to another canvas and then drawImage() that
+            workingRenderer.canvas.width = sourceImage.width;
+            workingRenderer.canvas.height = sourceImage.height;
+            workingRenderer.ctx.putImageData(destImage, 0, 0);
+            ctx.drawImage(workingRenderer.canvas, x, y, w, h);
+          } else {
+            ctx.drawImage(lod.image, x, y, w, h);
           }
-
-          if (c.filters.brightness !== 0) {
-            this.applyBrightnessEffect(sourceImage, destImage, c.filters.brightness / 100 * 255);
-          }
-
-          // putImageData() doesn't respect canvas transforms so we need to draw to another canvas and then drawImage() that
-          workingRenderer.canvas.width = sourceImage.width;
-          workingRenderer.canvas.height = sourceImage.height;
-          workingRenderer.ctx.putImageData(destImage, 0, 0);
-          ctx.drawImage(workingRenderer.canvas, x, y, w, h);
         } else {
-          ctx.drawImage(lod.image, x, y, w, h);
+          ctx.filter = getCSSFilter(c.filters);
         }
       } else {
         ctx.drawImage(lod.image, x, y, w, h);
