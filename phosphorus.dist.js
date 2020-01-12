@@ -8271,16 +8271,11 @@ var P;
                 resizePen(zoom) {
                     if (zoom > this.penZoom) {
                         this.penZoom = zoom;
-                        const cachedCanvas = document.createElement('canvas');
-                        cachedCanvas.width = this.penLayer.width;
-                        cachedCanvas.height = this.penLayer.height;
-                        const cachedCanvasCtx = cachedCanvas.getContext('2d');
-                        if (!cachedCanvasCtx) {
-                            throw new Error('cannot get 2d rendering context while resizing pen layer');
-                        }
-                        cachedCanvasCtx.drawImage(this.penLayer, 0, 0);
+                        workingRenderer.canvas.width = this.penLayer.width;
+                        workingRenderer.canvas.height = this.penLayer.height;
+                        workingRenderer.ctx.drawImage(this.penLayer, 0, 0);
                         this._reset(this.penContext, zoom);
-                        this.penContext.drawImage(cachedCanvas, 0, 0, 480, 360);
+                        this.penContext.drawImage(workingRenderer.canvas, 0, 0, 480, 360);
                     }
                     else if (!this.penModified) {
                         this.penZoom = zoom;
