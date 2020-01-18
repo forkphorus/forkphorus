@@ -1,100 +1,10 @@
-/// <reference path="phosphorus.ts" />
+/// <reference path="../phosphorus.ts" />
+/// <reference path="renderer.ts" />
 /// <reference path="matrix.ts" />
 
-namespace P.renderer {
-  // Import aliases
+namespace P.renderer.webgl {
   import RotationStyle = P.core.RotationStyle;
 
-  export interface SpriteRenderer {
-    canvas: HTMLCanvasElement;
-    /**
-     * Draws a Sprite or Stage on this renderer
-     */
-    drawChild(child: P.core.Base): void;
-  }
-
-  export interface ProjectRenderer extends SpriteRenderer {
-    /**
-     * The stage that this renderer is used by.
-     * This renderer must only be used by this stage and with sprites within this stage.
-     */
-    stage: P.core.Stage;
-    /**
-     * Reset and draw a new frame.
-     */
-    drawFrame(): void;
-    /**
-     * Initialize this renderer and append its canvas(es) to a given root node.
-     */
-    init(root: HTMLElement): void;
-    /**
-     * Called when the filters on the stage have changed.
-     */
-    onStageFiltersChanged(): void;
-    /**
-     * Asks this renderer to resize itself.
-     * Renderer may choose what to resize and when.
-     */
-    resize(scale: number): void;
-    /**
-     * Draws a line on the pen canvas
-     * @param color Color of the line
-     * @param size Width of the line
-     * @param x Starting X coordinate in the Scratch coordinate grid
-     * @param y Starting Y coordinate in the Scratch coordinate grid
-     * @param x2 Ending X coordinate in the Scratch coordinate grid
-     * @param y2 Starting Y coordinate in the Scratch coordinate grid
-     */
-    penLine(color: P.core.PenColor, size: number, x: number, y: number, x2: number, y2: number): void;
-    /**
-     * Draws a circular dot on the pen layer
-     * @param color Color of the dot
-     * @param size Diameter of the circle
-     * @param x Central X coordinate in the Scratch coordinate grid
-     * @param y Central Y coordinate in the Scratch coordinate grid
-     */
-    penDot(color: P.core.PenColor, size: number, x: number, y: number): void;
-    /**
-     * Stamp a Sprite on the pen layer
-     */
-    penStamp(sprite: P.core.Base): void;
-    /**
-     * Clear the pen layer
-     */
-    penClear(): void;
-    /**
-     * Determines if a Sprite is intersecting a point
-     * @param sprite The sprite
-     * @param x X coordinate in the Scratch coordinate grid
-     * @param y Y coordinate in the Scratch coordinate grid
-     */
-    spriteTouchesPoint(sprite: P.core.Sprite, x: number, y: number): boolean;
-    /**
-     * Determines if a Sprite is touching another Sprite
-     * @param spriteA The first sprite
-     * @param spriteB Other sprites to test for collision
-     */
-    spritesIntersect(spriteA: P.core.Base, otherSprites: P.core.Base[]): boolean;
-    /**
-     * Determines if a Sprite is touching a color
-     * @param sprite The sprite
-     * @param color The RGB color, in number form.
-     */
-    spriteTouchesColor(sprite: P.core.Base, color: number): boolean;
-    /**
-     * Determines if a color from one object is touching a color
-     * @param sprite The sprite
-     * @param spriteColor The color on the Sprite
-     * @param otherColor The color on the rest of the stage
-     */
-    spriteColorTouchesColor(sprite: P.core.Base, spriteColor: number, otherColor: number): boolean;
-  }
-
-  // HELPERS
-
-  /**
-   * Create an HTML canvas with any type of context.
-   */
   function createCanvas() {
     const canvas = document.createElement('canvas');
     canvas.width = 480;
@@ -102,24 +12,6 @@ namespace P.renderer {
     return canvas;
   }
 
-  /**
-   * Create an HTML canvas with a 2d context.
-   * Throws an error if a context cannot be obtained.
-   */
-  function create2dCanvas(): { canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D } {
-    const canvas = createCanvas();
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      throw new Error('Cannot get 2d rendering context in create2dCanvas');
-    }
-    ctx.imageSmoothingEnabled = false;
-    return { canvas, ctx };
-  }
-
-  /**
-   * Determines if a Sprite's filters will change its shape.
-   * @param filters The Sprite's filters
-   */
   function filtersAffectShape(filters: P.core.Filters): boolean {
     return filters.fisheye !== 0 ||
       filters.mosaic !== 0 ||
@@ -127,15 +19,7 @@ namespace P.renderer {
       filters.whirl !== 0;
   }
 
-  // WEBGL
-
-  // Used in the WebGL renderer for inverting sprites.
   const horizontalInvertMatrix = P.m3.scaling(-1, 1);
-
-  // Extension of Costume to store the webgl textures
-  interface WebGLCostume extends P.core.Costume {
-    _glTexture: WebGLTexture;
-  }
 
   class ShaderVariant {
     protected uniformLocations: {[name: string]: WebGLUniformLocation} = {};
@@ -287,16 +171,29 @@ namespace P.renderer {
     varying vec2 v_texcoord;
 
     uniform sampler2D u_texture;
-    #ifndef ONLY_SHAPE_FILTERS
+
+    #ifdef ENABLE_BRIGHTNESS
       uniform float u_brightness;
+    #endif
+    #ifdef ENABLE_COLOR
       uniform float u_color;
     #endif
-    uniform float u_opacity;
-    uniform float u_mosaic;
-    uniform float u_whirl;
-    uniform float u_fisheye;
-    uniform float u_pixelate;
-    uniform vec2 u_size;
+    #ifdef ENABLE_GHOST
+      uniform float u_opacity;
+    #endif
+    #ifdef ENABLE_MOSAIC
+      uniform float u_mosaic;
+    #endif
+    #ifdef ENABLE_WHIRL
+      uniform float u_whirl;
+    #endif
+    #ifdef ENABLE_FISHEYE
+      uniform float u_fisheye;
+    #endif
+    #ifdef ENABLE_PIXELATE
+      uniform float u_pixelate;
+      uniform vec2 u_size;
+    #endif
 
     const float minimumAlpha = 1.0 / 250.0;
     const vec2 vecCenter = vec2(0.5, 0.5);
@@ -320,18 +217,18 @@ namespace P.renderer {
       // varyings cannot be modified
       vec2 texcoord = v_texcoord;
 
-      // apply mosaic
-      {
+      #ifdef ENABLE_MOSAIC
         texcoord = fract(u_mosaic * v_texcoord);
-      }
+      #endif
 
-      // apply pixelate
+      #ifdef ENABLE_PIXELATE
       if (u_pixelate != 0.0) {
         vec2 texelSize = u_size / u_pixelate;
         texcoord = (floor(texcoord * texelSize) + vecCenter) / texelSize;
       }
+      #endif
 
-      // apply whirl
+      #ifdef ENABLE_WHIRL
       {
         const float radius = 0.5;
         vec2 offset = texcoord - vecCenter;
@@ -346,8 +243,9 @@ namespace P.renderer {
         );
         texcoord = rotationMatrix * offset + vecCenter;
       }
+      #endif
 
-      // apply fisheye
+      #ifdef ENABLE_FISHEYE
       {
         vec2 vec = (texcoord - vecCenter) / vecCenter;
         float vecLength = length(vec);
@@ -355,23 +253,18 @@ namespace P.renderer {
         vec2 unit = vec / vecLength;
         texcoord = vecCenter + r * unit * vecCenter;
       }
+      #endif
 
       vec4 color = texture2D(u_texture, texcoord);
       if (color.a < minimumAlpha) {
         discard;
       }
 
-      // apply ghost effect
-      color.a *= u_opacity;
-
-      // apply brightness effect
-      #ifndef ONLY_SHAPE_FILTERS
-        color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
+      #ifdef ENABLE_GHOST
+        color.a *= u_opacity;
       #endif
 
-      // The color effect is rather complicated. See:
-      // https://github.com/LLK/scratch-render/blob/008dc5b15b30961301e6b9a08628a063b967a001/src/shaders/sprite.frag#L175-L189
-      #ifndef ONLY_SHAPE_FILTERS
+      #ifdef ENABLE_COLOR
       if (u_color != 0.0) {
         vec3 hsv = rgb2hsv(color.rgb);
         // hsv.x = hue
@@ -390,6 +283,10 @@ namespace P.renderer {
       }
       #endif
 
+      #ifdef ENABLE_BRIGHTNESS
+        color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
+      #endif
+
       gl_FragColor = color;
     }
     `;
@@ -398,9 +295,15 @@ namespace P.renderer {
     public gl: WebGLRenderingContext;
 
     protected quadBuffer: WebGLBuffer;
+
     protected globalScaleMatrix: P.m3.Matrix3 = P.m3.scaling(1, 1);
-    protected renderingShader: ShaderVariant;
+
+    protected allFiltersShader: ShaderVariant;
+    protected noFiltersShader: ShaderVariant;
+
     private boundFramebuffer: WebGLFramebuffer | null = null;
+
+    private costumeTextures: Map<P.core.ImageLOD, WebGLTexture> = new Map();
 
     constructor() {
       this.canvas = createCanvas();
@@ -413,7 +316,16 @@ namespace P.renderer {
       }
       this.gl = gl;
 
-      this.renderingShader = this.compileVariant([]);
+      this.noFiltersShader = this.compileVariant([]);
+
+      this.allFiltersShader = this.compileVariant([
+        'ENABLE_BRIGHTNESS',
+        'ENABLE_COLOR',
+        'ENABLE_GHOST',
+        'ENABLE_FISHEYE',
+        'ENABLE_MOSAIC',
+        'ENABLE_PIXELATE',
+      ]);
 
       // Enable blending
       this.gl.enable(this.gl.BLEND);
@@ -439,12 +351,9 @@ namespace P.renderer {
      * @param definitions Flags to define in the shader source.
      */
     protected compileShader(type: number, source: string, definitions?: string[]): WebGLShader {
-      const addDefinition = (def: string) => {
-        source = '#define ' + def + '\n' + source;
-      }
       if (definitions) {
         for (const def of definitions) {
-          addDefinition(def);
+          source = '#define ' + def + '\n' + source;
         }
       }
 
@@ -574,7 +483,7 @@ namespace P.renderer {
     }
 
     drawChild(child: P.core.Base) {
-      this._drawChild(child, this.renderingShader);
+      this._drawChild(child, this.allFiltersShader);
     }
 
     /**
@@ -586,16 +495,17 @@ namespace P.renderer {
 
       // Create the texture if it doesn't already exist.
       // We'll create a texture only once for performance.
-      const costume = child.costumes[child.currentCostumeIndex] as WebGLCostume;
-      if (!costume._glTexture) {
-        const texture = this.convertToTexture(costume.get(1));
-        costume._glTexture = texture;
+      const costume = child.costumes[child.currentCostumeIndex];
+      const lod = costume.get(P.core.isSprite(child) ? child.scale : 1);
+      if (!this.costumeTextures.has(lod)) {
+        const texture = this.convertToTexture(lod.image);
+        this.costumeTextures.set(lod, texture);
       }
-      this.gl.bindTexture(this.gl.TEXTURE_2D, costume._glTexture);
+      this.gl.bindTexture(this.gl.TEXTURE_2D, this.costumeTextures.get(lod)!);
 
       shader.attributeBuffer('a_position', this.quadBuffer);
 
-      // TODO: do this in the shader if its possible/faster
+      // TODO: optimize
       const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
       P.m3.multiply(matrix, this.globalScaleMatrix);
       P.m3.multiply(matrix, P.m3.translation(240 + child.scratchX | 0, 180 - child.scratchY | 0));
@@ -652,7 +562,7 @@ namespace P.renderer {
      * @param texture The texture to draw. Must belong to this renderer.
      */
     protected drawTextureOverlay(texture: WebGLTexture) {
-      const shader = this.renderingShader;
+      const shader = this.noFiltersShader;
       this.gl.useProgram(shader.program);
 
       this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
@@ -667,16 +577,6 @@ namespace P.renderer {
       P.m3.multiply(matrix, P.m3.scaling(480, 360));
 
       shader.uniformMatrix3('u_matrix', matrix);
-
-      // Apply empty effect values
-      if (shader.hasUniform('u_opacity')) shader.uniform1f('u_opacity', 1);
-      if (shader.hasUniform('u_brightness')) shader.uniform1f('u_brightness', 0);
-      if (shader.hasUniform('u_color')) shader.uniform1f('u_color', 0);
-      if (shader.hasUniform('u_mosaic')) shader.uniform1f('u_mosaic', 1);
-      if (shader.hasUniform('u_whirl')) shader.uniform1f('u_whirl', 0);
-      if (shader.hasUniform('u_fisheye')) shader.uniform1f('u_fisheye', 1);
-      if (shader.hasUniform('u_pixelate')) shader.uniform1f('u_pixelate', 0);
-      if (shader.hasUniform('u_size')) shader.uniform2f('u_size', this.canvas.width, this.canvas.height);
 
       this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
     }
@@ -734,7 +634,7 @@ namespace P.renderer {
     constructor(public stage: P.core.Stage) {
       super();
 
-      this.fallbackRenderer = new ProjectRenderer2D(stage);
+      this.fallbackRenderer = new P.renderer.canvas2d.ProjectRenderer2D(stage);
 
       this.penTexture = this.createTexture();
       this.penBuffer = this.createFramebuffer();
@@ -797,6 +697,8 @@ namespace P.renderer {
       const parts = color.toParts();
       shader.uniform4f('u_color', parts[0], parts[1], parts[2], parts[3]);
       this.gl.drawArrays(this.gl.LINES, 0, 2);
+
+      this.gl.deleteBuffer(buffer);
     }
 
     penDot(color: P.core.PenColor, size: number, x: number, y: number): void {
@@ -871,439 +773,6 @@ namespace P.renderer {
 
     spriteColorTouchesColor(sprite: core.Base, spriteColor: number, otherColor: number): boolean {
       return this.fallbackRenderer.spriteColorTouchesColor(sprite, spriteColor, otherColor);
-    }
-  }
-
-  /**
-   * Creates the CSS filter for a Filter object.
-   * The filter is generally an estimation of the actual effect.
-   * Includes brightness and color. (does not include ghost)
-   */
-  function getCSSFilter(filters: P.core.Filters) {
-    let filter = '';
-    if (filters.brightness) {
-      filter += 'brightness(' + (100 + filters.brightness) + '%) ';
-    }
-    if (filters.color) {
-      filter += 'hue-rotate(' + (filters.color / 200 * 360) + 'deg) ';
-    }
-    // ghost could be supported through opacity(), however that effect is applied with the opacity property because more browsers support it
-    return filter;
-  }
-
-  export class SpriteRenderer2D implements SpriteRenderer {
-    public ctx: CanvasRenderingContext2D;
-    public canvas: HTMLCanvasElement;
-    /**
-     * Disables rendering filters on the 
-     */
-    public noEffects: boolean = false;
-
-    constructor() {
-      const { canvas, ctx } = create2dCanvas();
-      this.canvas = canvas;
-      this.ctx = ctx;
-    }
-
-    reset(scale: number) {
-      this._reset(this.ctx, scale);
-    }
-
-    drawChild(c: P.core.Base) {
-      this._drawChild(c, this.ctx);
-    }
-
-    drawObjects(children: P.core.Base[]) {
-      for (var i = 0; i < children.length; i++) {
-        var child = children[i];
-        if (!child.visible) {
-          continue;
-        }
-        this.drawChild(child);
-      }
-    }
-
-    protected _reset(ctx: CanvasRenderingContext2D, scale: number) {
-      const effectiveScale = scale * P.config.scale;
-      const width = 480 * effectiveScale;
-      const height = 360 * effectiveScale;
-      if (ctx.canvas.width !== width || ctx.canvas.height !== height) {
-        ctx.canvas.width = width;
-        ctx.canvas.height = height;
-        ctx.scale(effectiveScale, effectiveScale);
-      } else {
-        ctx.clearRect(0, 0, 480, 360);
-      }
-    }
-
-    protected _drawChild(c: P.core.Base, ctx: CanvasRenderingContext2D) {
-      const costume = c.costumes[c.currentCostumeIndex];
-      if (!costume) {
-        return;
-      }
-
-      ctx.save();
-
-      const globalScale = c.stage.zoom * P.config.scale;
-      ctx.translate(((c.scratchX + 240) * globalScale | 0) / globalScale, ((180 - c.scratchY) * globalScale | 0) / globalScale);
-
-      let objectScale = costume.scale;
-      // Direction transforms are only applied to Sprites because Stages cannot be rotated.
-      if (P.core.isSprite(c)) {
-        if (c.rotationStyle === RotationStyle.Normal) {
-          ctx.rotate((c.direction - 90) * Math.PI / 180);
-        } else if (c.rotationStyle === RotationStyle.LeftRight && c.direction < 0) {
-          ctx.scale(-1, 1);
-        }
-        objectScale *= c.scale;
-      }
-
-      const image = costume.get(objectScale * c.stage.zoom);
-      const x = -costume.rotationCenterX * objectScale;
-      const y = -costume.rotationCenterY * objectScale;
-      const w = costume.width * objectScale;
-      const h = costume.height * objectScale;
-      if (w < 1 || h < 1) {
-        ctx.restore();
-        return;
-      }
-      ctx.imageSmoothingEnabled = false;
-
-      if (!this.noEffects) {
-        if (c.filters.brightness === 100) {
-          workingRenderer.canvas.width = w;
-          workingRenderer.canvas.height = h;
-          workingRenderer.ctx.save();
-
-          workingRenderer.ctx.translate(0, 0);
-          workingRenderer.ctx.drawImage(image, 0, 0, w, h);
-          workingRenderer.ctx.globalCompositeOperation = 'source-in';
-          workingRenderer.ctx.fillStyle = 'white';
-          workingRenderer.ctx.fillRect(0, 0, 480, 360);
-          ctx.drawImage(workingRenderer.canvas, x, y);
-
-          workingRenderer.ctx.restore();
-        } else {
-          ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
-          const filter = getCSSFilter(c.filters);
-          // Only apply a filter when needed because of a Firefox performance bug
-          if (filter !== '') {
-            ctx.filter = filter;
-          }
-          ctx.drawImage(image, x, y, w, h);
-        }
-      } else {
-        ctx.drawImage(image, x, y, w, h);
-      }
-
-      ctx.restore();
-    }
-  }
-
-  // Renderers used for some features such as collision detection
-  const workingRenderer = new SpriteRenderer2D();
-  const workingRenderer2 = new SpriteRenderer2D();
-
-  export class ProjectRenderer2D extends SpriteRenderer2D implements ProjectRenderer {
-    public stageLayer: HTMLCanvasElement;
-    public stageContext: CanvasRenderingContext2D;
-    public penLayer: HTMLCanvasElement;
-    public penContext: CanvasRenderingContext2D;
-    public zoom: number = 1;
-
-    private penModified: boolean = false;
-    private penTargetZoom: number = -1;
-    private penZoom: number = 1;
-
-    private stageCostumeIndex: number = -1;
-
-    constructor(public stage: P.core.Stage) {
-      super();
-      const { ctx: stageContext, canvas: stageLayer } = create2dCanvas();
-      this.stageContext = stageContext;
-      this.stageLayer = stageLayer;
-
-      const { ctx: penContext, canvas: penLayer } = create2dCanvas();
-      this.penContext = penContext;
-      this.penLayer = penLayer;
-    }
-
-    onStageFiltersChanged() {
-      const filter = getCSSFilter(this.stage.filters);
-      // Only reapply a CSS filter if it has changed for performance, specifically in firefox.
-      // Might not be necessary here.
-      if (this.stageLayer.style.filter !== filter) {
-        this.stageLayer.style.filter = filter;
-      }
-
-      // cssFilter does not include ghost
-      this.stageLayer.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
-    }
-
-    renderStageCostume(scale: number) {
-      this._reset(this.stageContext, scale);
-      this.noEffects = true;
-      this._drawChild(this.stage, this.stageContext);
-      this.noEffects = false;
-    }
-
-    init(root: HTMLCanvasElement) {
-      root.appendChild(this.stageLayer);
-      root.appendChild(this.penLayer);
-      root.appendChild(this.canvas);
-    }
-
-    drawFrame() {
-      this.reset(this.zoom);
-      this.drawObjects(this.stage.children);
-      if (this.stage.currentCostumeIndex !== this.stageCostumeIndex) {
-        this.stageCostumeIndex = this.stage.currentCostumeIndex;
-        this.renderStageCostume(this.zoom);
-      }
-    }
-
-    /**
-     * Draw everything from this renderer onto another 2d renderer, skipping a single item.
-     * "Everything" includes stage, pen, and all visible children.
-     */
-    drawAllExcept(renderer: SpriteRenderer2D, skip: P.core.Base) {
-      renderer.drawChild(this.stage);
-      renderer.ctx.drawImage(this.penLayer, 0, 0, this.canvas.width, this.canvas.height);
-      for (var i = 0; i < this.stage.children.length; i++) {
-        var child = this.stage.children[i];
-        if (!child.visible || child === skip) {
-          continue;
-        }
-        renderer.drawChild(child);
-      }
-    }
-
-    resize(zoom: number) {
-      this.zoom = zoom;
-      this.resizePen(zoom);
-      this.renderStageCostume(this.zoom);
-    }
-
-    resizePen(zoom: number) {
-      if (zoom > this.penZoom) {
-        this.penZoom = zoom;
-        const cachedCanvas = document.createElement('canvas');
-        cachedCanvas.width = this.penLayer.width;
-        cachedCanvas.height = this.penLayer.height;
-        const cachedCanvasCtx = cachedCanvas.getContext('2d');
-        if (!cachedCanvasCtx) {
-          throw new Error('cannot get 2d rendering context while resizing pen layer');
-        }
-        cachedCanvasCtx.drawImage(this.penLayer, 0, 0);
-        this._reset(this.penContext, zoom);
-        this.penContext.drawImage(cachedCanvas, 0, 0, 480, 360);
-      } else if (!this.penModified) {
-        // Immediately scale down if no changes have been made
-        this.penZoom = zoom;
-        this._reset(this.penContext, zoom);
-      } else {
-        // We'll resize on the next clear, as resizing now would result in a loss of detail.
-        this.penTargetZoom = zoom;
-      }
-    }
-
-    penClear() {
-      this.penModified = false;
-      if (this.penTargetZoom !== -1) {
-        this._reset(this.penContext, this.penTargetZoom);
-        this.penZoom = this.penTargetZoom;
-        this.penTargetZoom = -1;
-      }
-      this.penContext.clearRect(0, 0, 480, 360);
-    }
-
-    penDot(color: P.core.PenColor, size: number, x: number, y: number) {
-      this.penModified = true;
-      this.penContext.fillStyle = color.toCSS();
-      this.penContext.beginPath();
-      this.penContext.arc(240 + x, 180 - y, size / 2, 0, 2 * Math.PI, false);
-      this.penContext.fill();
-    }
-
-    penLine(color: P.core.PenColor, size: number, x1: number, y1: number, x2: number, y2: number) {
-      this.penModified = true;
-      this.penContext.lineCap = 'round';
-      if (this.penZoom === 1) {
-        if (size % 2 > .5 && size % 2 < 1.5) {
-          x1 -= .5;
-          y1 -= .5;
-          x2 -= .5;
-          y2 -= .5;
-        }
-      }
-      this.penContext.strokeStyle = color.toCSS();
-      this.penContext.lineWidth = size;
-      this.penContext.beginPath();
-      this.penContext.moveTo(240 + x1, 180 - y1);
-      this.penContext.lineTo(240 + x2, 180 - y2);
-      this.penContext.stroke();
-    }
-
-    penStamp(sprite: P.core.Sprite) {
-      this.penModified = true;
-      this._drawChild(sprite, this.penContext);
-    }
-
-    spriteTouchesPoint(sprite: P.core.Sprite, x: number, y: number) {
-      const bounds = sprite.rotatedBounds();
-      if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top) {
-        return false;
-      }
-
-      const costume = sprite.costumes[sprite.currentCostumeIndex];
-      var cx = (x - sprite.scratchX) / sprite.scale;
-      var cy = (sprite.scratchY - y) / sprite.scale;
-      if (sprite.rotationStyle === RotationStyle.Normal && sprite.direction !== 90) {
-        const d = (90 - sprite.direction) * Math.PI / 180;
-        const ox = cx;
-        const s = Math.sin(d), c = Math.cos(d);
-        cx = c * ox - s * cy;
-        cy = s * ox + c * cy;
-      } else if (sprite.rotationStyle === RotationStyle.LeftRight && sprite.direction < 0) {
-        cx = -cx;
-      }
-
-      const positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
-      const positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
-      const data = costume.getContext().getImageData(positionX, positionY, 1, 1).data;
-      return data[3] !== 0;
-    }
-
-    spritesIntersect(spriteA: core.Base, otherSprites: core.Base[]) {
-      const mb = spriteA.rotatedBounds();
-
-      for (var i = 0; i < otherSprites.length; i++) {
-        const spriteB = otherSprites[i];
-        if (!spriteB.visible) {
-          continue;
-        }
-
-        const ob = spriteB.rotatedBounds();
-
-        if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
-          continue;
-        }
-
-        const left = Math.max(mb.left, ob.left);
-        const top = Math.min(mb.top, ob.top);
-        const right = Math.min(mb.right, ob.right);
-        const bottom = Math.max(mb.bottom, ob.bottom);
-
-        const width = right - left;
-        const height = top - bottom;
-
-        // dimensions that are less than 1 or are NaN will throw when we try to get image data
-        if (width < 1 || height < 1 || width !== width || height !== height) {
-          continue;
-        }
-
-        workingRenderer.canvas.width = width;
-        workingRenderer.canvas.height = height;
-
-        workingRenderer.ctx.save();
-        workingRenderer.noEffects = true;
-
-        workingRenderer.ctx.translate(-(left + 240), -(180 - top));
-        workingRenderer.drawChild(spriteA);
-        workingRenderer.ctx.globalCompositeOperation = 'source-in';
-        workingRenderer.drawChild(spriteB);
-
-        workingRenderer.noEffects = false;
-        workingRenderer.ctx.restore();
-
-        const data = workingRenderer.ctx.getImageData(0, 0, width, height).data;
-        const length = data.length;
-
-        for (var j = 0; j < length; j += 4) {
-          // check for the opacity byte being a non-zero number
-          if (data[j + 3]) {
-            return true;
-          }
-        }
-      }
-      return false;
-    }
-
-    spriteTouchesColor(sprite: P.core.Base, color: number) {
-      const b = sprite.rotatedBounds();
-
-      const width = b.right - b.left;
-      const height = b.top - b.bottom;
-      if (width < 1 || height < 1 || width !== width || height !== height) {
-        return false;
-      }
-
-      workingRenderer.canvas.width = width;
-      workingRenderer.canvas.height = height;
-
-      workingRenderer.ctx.save();
-      workingRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
-
-      this.drawAllExcept(workingRenderer, sprite);
-      workingRenderer.ctx.globalCompositeOperation = 'destination-in';
-      workingRenderer.noEffects = true;
-      workingRenderer.drawChild(sprite);
-      workingRenderer.noEffects = false;
-
-      workingRenderer.ctx.restore();
-
-      const data = workingRenderer.ctx.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
-
-      color = color & 0xffffff;
-      const length = (b.right - b.left) * (b.top - b.bottom) * 4;
-      for (var i = 0; i < length; i += 4) {
-        if ((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) === color && data[i + 3]) {
-          return true;
-        }
-      }
-
-      return false;
-    }
-
-    spriteColorTouchesColor(sprite: P.core.Base, spriteColor: number, otherColor: number) {
-      var rb = sprite.rotatedBounds();
-
-      const width = rb.right - rb.left;
-      const height = rb.top - rb.bottom;
-      if (width < 1 || height < 1 || width !== width || height !== height) {
-        return false;
-      }
-
-      workingRenderer.canvas.width = workingRenderer2.canvas.width = width;
-      workingRenderer.canvas.height = workingRenderer2.canvas.height = height;
-
-      workingRenderer.ctx.save();
-      workingRenderer2.ctx.save();
-      workingRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
-      workingRenderer2.ctx.translate(-(240 + rb.left), -(180 - rb.top));
-
-      this.drawAllExcept(workingRenderer, sprite);
-      workingRenderer2.drawChild(sprite);
-
-      workingRenderer.ctx.restore();
-      workingRenderer2.ctx.restore();
-
-      var dataA = workingRenderer.ctx.getImageData(0, 0, width, height).data;
-      var dataB = workingRenderer2.ctx.getImageData(0, 0, width, height).data;
-
-      spriteColor = spriteColor & 0xffffff;
-      otherColor = otherColor & 0xffffff;
-
-      var length = dataA.length;
-      for (var i = 0; i < length; i += 4) {
-        var touchesSource = (dataB[i] << 16 | dataB[i + 1] << 8 | dataB[i + 2]) === spriteColor && dataB[i + 3];
-        var touchesOther = (dataA[i] << 16 | dataA[i + 1] << 8 | dataA[i + 2]) === otherColor && dataA[i + 3];
-        if (touchesSource && touchesOther) {
-          return true;
-        }
-      }
-
-      return false;
     }
   }
 }

@@ -19,7 +19,6 @@
     }());
   </script>
   <link rel="stylesheet" href="phosphorus.css">
-  <link rel="stylesheet" href="player.css">
   <link rel="stylesheet" href="studioview/studioview.css">
   <link rel="stylesheet" href="index.css">
 </head>
@@ -136,9 +135,41 @@
   <script src="lib/rgbcolor.js"></script>
   <script src="lib/canvg.min.js"></script>
   <script src="phosphorus.dist.js"></script>
-  <script src="i18n.js"></script>
-  <script src="player.js"></script>
   <script src="studioview/studioview.js"></script>
+
+  <script>
+    P.i18n.addTranslations('en', {
+      'studioview.authorAttribution': 'by $author',
+      'studioview.projectHoverText': '$title by $author',
+      'index.report.instructions': 'Describe the issue:',
+      'index.document.title': 'forkphorus - phosphorus for Scratch 3',
+      'index.report': 'Report a problem',
+      'index.embed': 'Embed this project',
+      'index.package': 'Package this project',
+      'index.settings': 'Settings',
+      'index.credits': 'Credits',
+      'index.code': 'Code',
+      'index.studio.view': 'View studio on Scratch.',
+      'index.package.button': 'Package',
+      'index.package.turbo': 'Turbo mode',
+      'index.package.fullscreen': 'Full screen',
+      'index.package.480': '480\u00D7360',
+      'index.package.custom': 'Other:',
+      'index.package.divider': '\u00D7',
+      'index.embed.description': 'Include the forkphorus player in your web site.',
+      'index.embed.autostart': 'Start automatically',
+      'index.embed.lightControls': 'Light controls',
+      'index.embed.hideUI': 'Hide UI',
+    });
+    P.i18n.addTranslations('es', {
+      'studioview.authorAttribution': 'por $author',
+      'studioview.projectHoverText': '$title por $author',
+      'index.report': 'Reportar un problema',
+      'index.settings': 'Configuraciones',
+      'index.credits': 'Créditos',
+      'index.code': 'Código',
+    });
+  </script>
 
   <script>
 
@@ -183,15 +214,16 @@
     var playerArea = querySelector('#player-area');
     var projectArea = querySelector('#project-area');
 
-    var player = new P.Player();
+    var player = new P.player.Player();
     window.player = player;
     player.addControls();
-    new P.Player.ProgressBar(player, {
+    new P.player.ProgressBar(player, {
       position: querySelector('.url').parentNode,
     });
-    var errorHandler = new P.Player.ErrorHandler(player);
+    var errorHandler = new P.player.ErrorHandler(player);
     player.onerror.subscribe(function(err) {
-      if (err instanceof P.Player.ProjectNotSupportedError || err instanceof P.Player.ProjectDoesNotExistError) {
+      if (err instanceof P.player.PlayerError) {
+        // Handled by the player's ErrorHandler.
         return;
       }
       err = '' + err;
@@ -306,7 +338,7 @@
     }
     function updateLinks() {
       projectLink.href = player.projectLink;
-      bugLink.href = errorHandler.createBugReportLink(P.i18n.translate('report.bug.instructions'));
+      bugLink.href = errorHandler.createBugReportLink(P.i18n.translate('index.report.instructions'));
       updatePackageLink();
       updateEmbedCode();
     }
@@ -320,7 +352,7 @@
       if (cachedTitles[id]) {
         document.title = cachedTitles[id] + ' - forkphorus';
       } else {
-        new P.IO.TextRequest('https://scratch.garbomuffin.com/api/forkphorus/?t=title&p=' + id).load()
+        player.getProjectTitle(id)
           .then(function(title) {
             if (player.stageId === stageId) {
               if (title) {
@@ -357,7 +389,7 @@
     function updatePackageLink() {
       packageOtherWidth.disabled = packageOtherHeight.disabled = !packageOther.checked;
       if (player.projectId) {
-        var url = location.origin + '/app.html?id=' + player.projectId;
+        var url = location.origin + location.pathname + 'app.html?id=' + player.projectId;
         if (packageTurbo.checked) url += '&turbo';
         if (packageFullScreen.checked) {
           // fullscreen is the default
@@ -400,7 +432,7 @@
       embedOtherWidth.disabled = embedOtherHeight.disabled = !embedOther.checked;
 
       if (player.projectId) {
-        var source = location.protocol + '//' + location.host + '/embed.js?id=' + player.projectId;
+        var source = location.protocol + '//' + location.host + location.pathname + 'embed.js?id=' + player.projectId;
         if (embedHideControls.checked) {
           source += '&ui=false';
         } else {

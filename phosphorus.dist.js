@@ -40,6 +40,7 @@ var P;
         config.useWebGL = features.indexOf('webgl') > -1;
         config.supportVideoSensing = features.indexOf('video') > -1;
         config.experimentalOptimizations = features.indexOf('opt') > -1;
+        config.accurateFilters = features.indexOf('filters') > -1;
         config.scale = window.devicePixelRatio || 1;
         config.PROJECT_API = 'https://projects.scratch.mit.edu/$id';
     })(config = P.config || (P.config = {}));
@@ -454,989 +455,6 @@ var P;
 })(P || (P = {}));
 var P;
 (function (P) {
-    var m3;
-    (function (m3) {
-        function multiply(out, other) {
-            const a0 = out[0];
-            const a1 = out[1];
-            const a2 = out[2];
-            const a3 = out[3];
-            const a4 = out[4];
-            const a5 = out[5];
-            const a6 = out[6];
-            const a7 = out[7];
-            const a8 = out[8];
-            const b0 = other[0];
-            const b1 = other[1];
-            const b2 = other[2];
-            const b3 = other[3];
-            const b4 = other[4];
-            const b5 = other[5];
-            const b6 = other[6];
-            const b7 = other[7];
-            const b8 = other[8];
-            out[0] = b0 * a0 + b1 * a3 + b2 * a6;
-            out[1] = b0 * a1 + b1 * a4 + b2 * a7;
-            out[2] = b0 * a2 + b1 * a5 + b2 * a8;
-            out[3] = b3 * a0 + b4 * a3 + b5 * a6;
-            out[4] = b3 * a1 + b4 * a4 + b5 * a7;
-            out[5] = b3 * a2 + b4 * a5 + b5 * a8;
-            out[6] = b6 * a0 + b7 * a3 + b8 * a6;
-            out[7] = b6 * a1 + b7 * a4 + b8 * a7;
-            out[8] = b6 * a2 + b7 * a5 + b8 * a8;
-        }
-        m3.multiply = multiply;
-        function translation(x, y) {
-            return [
-                1, 0, 0,
-                0, 1, 0,
-                x, y, 1,
-            ];
-        }
-        m3.translation = translation;
-        function rotation(degrees) {
-            const radians = degrees * Math.PI / 180;
-            const cos = Math.cos(radians);
-            const sin = Math.sin(radians);
-            return [
-                cos, -sin, 0,
-                sin, cos, 0,
-                0, 0, 1,
-            ];
-        }
-        m3.rotation = rotation;
-        function scaling(x, y) {
-            return [
-                x, 0, 0,
-                0, y, 0,
-                0, 0, 1,
-            ];
-        }
-        m3.scaling = scaling;
-        function projection(width, height) {
-            return [
-                2 / width, 0, 0,
-                0, -2 / height, 0,
-                -1, 1, 1,
-            ];
-        }
-        m3.projection = projection;
-    })(m3 = P.m3 || (P.m3 = {}));
-})(P || (P = {}));
-var P;
-(function (P) {
-    var renderer;
-    (function (renderer_1) {
-        function createCanvas() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 480;
-            canvas.height = 360;
-            return canvas;
-        }
-        function create2dCanvas() {
-            const canvas = createCanvas();
-            const ctx = canvas.getContext('2d');
-            if (!ctx) {
-                throw new Error('Cannot get 2d rendering context in create2dCanvas');
-            }
-            ctx.imageSmoothingEnabled = false;
-            return { canvas, ctx };
-        }
-        function filtersAffectShape(filters) {
-            return filters.fisheye !== 0 ||
-                filters.mosaic !== 0 ||
-                filters.pixelate !== 0 ||
-                filters.whirl !== 0;
-        }
-        const horizontalInvertMatrix = P.m3.scaling(-1, 1);
-        class ShaderVariant {
-            constructor(gl, program) {
-                this.gl = gl;
-                this.program = program;
-                this.uniformLocations = {};
-                this.attributeLocations = {};
-                const activeUniforms = gl.getProgramParameter(program, this.gl.ACTIVE_UNIFORMS);
-                for (let index = 0; index < activeUniforms; index++) {
-                    const info = gl.getActiveUniform(program, index);
-                    if (!info) {
-                        throw new Error('uniform at index ' + index + ' does not exist');
-                    }
-                    const name = info.name;
-                    const location = gl.getUniformLocation(program, name);
-                    if (!location) {
-                        throw new Error('uniform named ' + name + ' does not exist');
-                    }
-                    this.uniformLocations[name] = location;
-                }
-                const activeAttributes = gl.getProgramParameter(program, this.gl.ACTIVE_ATTRIBUTES);
-                for (let index = 0; index < activeAttributes; index++) {
-                    const info = gl.getActiveAttrib(program, index);
-                    if (!info) {
-                        throw new Error('attribute at index ' + index + ' does not exist');
-                    }
-                    this.attributeLocations[info.name] = index;
-                }
-            }
-            uniform1f(name, value) {
-                const location = this.getUniform(name);
-                this.gl.uniform1f(location, value);
-            }
-            uniform2f(name, a, b) {
-                const location = this.getUniform(name);
-                this.gl.uniform2f(location, a, b);
-            }
-            uniform4f(name, a, b, c, d) {
-                const location = this.getUniform(name);
-                this.gl.uniform4f(location, a, b, c, d);
-            }
-            uniformMatrix3(name, value) {
-                const location = this.getUniform(name);
-                this.gl.uniformMatrix3fv(location, false, value);
-            }
-            hasUniform(name) {
-                return this.uniformLocations.hasOwnProperty(name);
-            }
-            getUniform(name) {
-                if (!this.hasUniform(name)) {
-                    throw new Error('uniform of name ' + name + ' does not exist');
-                }
-                return this.uniformLocations[name];
-            }
-            attributeBuffer(name, value) {
-                if (!this.hasAttribute(name)) {
-                    throw new Error('attribute of name ' + name + ' does not exist');
-                }
-                const location = this.attributeLocations[name];
-                this.gl.enableVertexAttribArray(location);
-                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, value);
-                this.gl.vertexAttribPointer(location, 2, this.gl.FLOAT, false, 0, 0);
-            }
-            hasAttribute(name) {
-                return this.attributeLocations.hasOwnProperty(name);
-            }
-            getAttribute(name) {
-                if (!this.hasAttribute(name)) {
-                    throw new Error('attribute of name ' + name + ' does not exist');
-                }
-                return this.attributeLocations[name];
-            }
-        }
-        class WebGLSpriteRenderer {
-            constructor() {
-                this.globalScaleMatrix = P.m3.scaling(1, 1);
-                this.boundFramebuffer = null;
-                this.canvas = createCanvas();
-                const gl = this.canvas.getContext('webgl', {
-                    alpha: false,
-                    antialias: false,
-                });
-                if (!gl) {
-                    throw new Error('cannot get webgl rendering context');
-                }
-                this.gl = gl;
-                this.renderingShader = this.compileVariant([]);
-                this.gl.enable(this.gl.BLEND);
-                this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
-                this.quadBuffer = this.gl.createBuffer();
-                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
-                this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
-                    0, 0,
-                    0, 1,
-                    1, 0,
-                    1, 0,
-                    0, 1,
-                    1, 1,
-                ]), this.gl.STATIC_DRAW);
-            }
-            compileShader(type, source, definitions) {
-                const addDefinition = (def) => {
-                    source = '#define ' + def + '\n' + source;
-                };
-                if (definitions) {
-                    for (const def of definitions) {
-                        addDefinition(def);
-                    }
-                }
-                const shader = this.gl.createShader(type);
-                if (!shader) {
-                    throw new Error('Cannot create shader');
-                }
-                this.gl.shaderSource(shader, source);
-                this.gl.compileShader(shader);
-                if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
-                    const error = this.gl.getShaderInfoLog(shader);
-                    this.gl.deleteShader(shader);
-                    throw new Error('Shader compilation error: ' + error);
-                }
-                return shader;
-            }
-            compileProgram(vs, fs, definitions) {
-                const vertexShader = this.compileShader(this.gl.VERTEX_SHADER, vs, definitions);
-                const fragmentShader = this.compileShader(this.gl.FRAGMENT_SHADER, fs, definitions);
-                const program = this.gl.createProgram();
-                if (!program) {
-                    throw new Error('Cannot create program');
-                }
-                this.gl.attachShader(program, vertexShader);
-                this.gl.attachShader(program, fragmentShader);
-                this.gl.linkProgram(program);
-                if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
-                    const error = this.gl.getProgramInfoLog(program);
-                    this.gl.deleteProgram(program);
-                    throw new Error('Program compilation error: ' + error);
-                }
-                return program;
-            }
-            compileVariant(definitions) {
-                const program = this.compileProgram(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, definitions);
-                return new ShaderVariant(this.gl, program);
-            }
-            createTexture() {
-                const texture = this.gl.createTexture();
-                if (!texture) {
-                    throw new Error('Cannot create texture');
-                }
-                this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
-                this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
-                this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
-                this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
-                return texture;
-            }
-            convertToTexture(canvas) {
-                const texture = this.createTexture();
-                this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
-                return texture;
-            }
-            createFramebuffer() {
-                const frameBuffer = this.gl.createFramebuffer();
-                if (!frameBuffer) {
-                    throw new Error('cannot create frame buffer');
-                }
-                return frameBuffer;
-            }
-            bindFramebuffer(buffer) {
-                if (buffer === this.boundFramebuffer) {
-                    return;
-                }
-                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, buffer);
-                this.boundFramebuffer = buffer;
-            }
-            reset(scale) {
-                this.canvas.width = scale * P.config.scale * 480;
-                this.canvas.height = scale * P.config.scale * 360;
-                this.resetFramebuffer(scale);
-            }
-            resetFramebuffer(scale) {
-                this.gl.viewport(0, 0, 480 * scale, 360 * scale);
-                if (this.globalScaleMatrix[0] !== scale) {
-                    this.globalScaleMatrix = P.m3.scaling(scale, scale);
-                }
-                this.gl.clearColor(255, 255, 255, 0);
-                this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-            }
-            drawChild(child) {
-                this._drawChild(child, this.renderingShader);
-            }
-            _drawChild(child, shader) {
-                this.gl.useProgram(shader.program);
-                const costume = child.costumes[child.currentCostumeIndex];
-                if (!costume._glTexture) {
-                    const texture = this.convertToTexture(costume.get(1));
-                    costume._glTexture = texture;
-                }
-                this.gl.bindTexture(this.gl.TEXTURE_2D, costume._glTexture);
-                shader.attributeBuffer('a_position', this.quadBuffer);
-                const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
-                P.m3.multiply(matrix, this.globalScaleMatrix);
-                P.m3.multiply(matrix, P.m3.translation(240 + child.scratchX | 0, 180 - child.scratchY | 0));
-                if (P.core.isSprite(child)) {
-                    if (child.rotationStyle === 0 && child.direction !== 90) {
-                        P.m3.multiply(matrix, P.m3.rotation(90 - child.direction));
-                    }
-                    else if (child.rotationStyle === 1 && child.direction < 0) {
-                        P.m3.multiply(matrix, horizontalInvertMatrix);
-                    }
-                    if (child.scale !== 1) {
-                        P.m3.multiply(matrix, P.m3.scaling(child.scale, child.scale));
-                    }
-                }
-                if (costume.scale !== 1) {
-                    P.m3.multiply(matrix, P.m3.scaling(costume.scale, costume.scale));
-                }
-                P.m3.multiply(matrix, P.m3.translation(-costume.rotationCenterX, -costume.rotationCenterY));
-                P.m3.multiply(matrix, P.m3.scaling(costume.width, costume.height));
-                shader.uniformMatrix3('u_matrix', matrix);
-                if (shader.hasUniform('u_opacity')) {
-                    shader.uniform1f('u_opacity', 1 - child.filters.ghost / 100);
-                }
-                if (shader.hasUniform('u_brightness')) {
-                    shader.uniform1f('u_brightness', child.filters.brightness / 100);
-                }
-                if (shader.hasUniform('u_color')) {
-                    shader.uniform1f('u_color', child.filters.color / 200);
-                }
-                if (shader.hasUniform('u_mosaic')) {
-                    const mosaic = Math.round((Math.abs(child.filters.mosaic) + 10) / 10);
-                    shader.uniform1f('u_mosaic', P.utils.clamp(mosaic, 1, 512));
-                }
-                if (shader.hasUniform('u_whirl')) {
-                    shader.uniform1f('u_whirl', child.filters.whirl * Math.PI / -180);
-                }
-                if (shader.hasUniform('u_fisheye')) {
-                    shader.uniform1f('u_fisheye', Math.max(0, (child.filters.fisheye + 100) / 100));
-                }
-                if (shader.hasUniform('u_pixelate')) {
-                    shader.uniform1f('u_pixelate', Math.abs(child.filters.pixelate) / 10);
-                }
-                if (shader.hasUniform('u_size')) {
-                    shader.uniform2f('u_size', costume.width, costume.height);
-                }
-                this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
-            }
-            drawTextureOverlay(texture) {
-                const shader = this.renderingShader;
-                this.gl.useProgram(shader.program);
-                this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
-                shader.attributeBuffer('a_position', this.quadBuffer);
-                const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
-                P.m3.multiply(matrix, this.globalScaleMatrix);
-                P.m3.multiply(matrix, P.m3.translation(240, 180));
-                P.m3.multiply(matrix, P.m3.scaling(1, -1));
-                P.m3.multiply(matrix, P.m3.translation(-240, -180));
-                P.m3.multiply(matrix, P.m3.scaling(480, 360));
-                shader.uniformMatrix3('u_matrix', matrix);
-                if (shader.hasUniform('u_opacity'))
-                    shader.uniform1f('u_opacity', 1);
-                if (shader.hasUniform('u_brightness'))
-                    shader.uniform1f('u_brightness', 0);
-                if (shader.hasUniform('u_color'))
-                    shader.uniform1f('u_color', 0);
-                if (shader.hasUniform('u_mosaic'))
-                    shader.uniform1f('u_mosaic', 1);
-                if (shader.hasUniform('u_whirl'))
-                    shader.uniform1f('u_whirl', 0);
-                if (shader.hasUniform('u_fisheye'))
-                    shader.uniform1f('u_fisheye', 1);
-                if (shader.hasUniform('u_pixelate'))
-                    shader.uniform1f('u_pixelate', 0);
-                if (shader.hasUniform('u_size'))
-                    shader.uniform2f('u_size', this.canvas.width, this.canvas.height);
-                this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
-            }
-        }
-        WebGLSpriteRenderer.vertexShader = `
-    attribute vec2 a_position;
-
-    uniform mat3 u_matrix;
-
-    varying vec2 v_texcoord;
-
-    void main() {
-      gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
-      v_texcoord = a_position;
-    }
-    `;
-        WebGLSpriteRenderer.fragmentShader = `
-    precision mediump float;
-
-    varying vec2 v_texcoord;
-
-    uniform sampler2D u_texture;
-    #ifndef ONLY_SHAPE_FILTERS
-      uniform float u_brightness;
-      uniform float u_color;
-    #endif
-    uniform float u_opacity;
-    uniform float u_mosaic;
-    uniform float u_whirl;
-    uniform float u_fisheye;
-    uniform float u_pixelate;
-    uniform vec2 u_size;
-
-    const float minimumAlpha = 1.0 / 250.0;
-    const vec2 vecCenter = vec2(0.5, 0.5);
-
-    // http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl
-    vec3 rgb2hsv(vec3 c) {
-      vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
-      vec4 p = c.g < c.b ? vec4(c.bg, K.wz) : vec4(c.gb, K.xy);
-      vec4 q = c.r < p.x ? vec4(p.xyw, c.r) : vec4(c.r, p.yzx);
-      float d = q.x - min(q.w, q.y);
-      float e = 1.0e-10;
-      return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
-    }
-    vec3 hsv2rgb(vec3 c) {
-      vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-      vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-      return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
-    }
-
-    void main() {
-      // varyings cannot be modified
-      vec2 texcoord = v_texcoord;
-
-      // apply mosaic
-      {
-        texcoord = fract(u_mosaic * v_texcoord);
-      }
-
-      // apply pixelate
-      if (u_pixelate != 0.0) {
-        vec2 texelSize = u_size / u_pixelate;
-        texcoord = (floor(texcoord * texelSize) + vecCenter) / texelSize;
-      }
-
-      // apply whirl
-      {
-        const float radius = 0.5;
-        vec2 offset = texcoord - vecCenter;
-        float offsetMagnitude = length(offset);
-        float whirlFactor = max(1.0 - (offsetMagnitude / radius), 0.0);
-        float whirlActual = u_whirl * whirlFactor * whirlFactor;
-        float sinWhirl = sin(whirlActual);
-        float cosWhirl = cos(whirlActual);
-        mat2 rotationMatrix = mat2(
-          cosWhirl, -sinWhirl,
-          sinWhirl, cosWhirl
-        );
-        texcoord = rotationMatrix * offset + vecCenter;
-      }
-
-      // apply fisheye
-      {
-        vec2 vec = (texcoord - vecCenter) / vecCenter;
-        float vecLength = length(vec);
-        float r = pow(min(vecLength, 1.0), u_fisheye) * max(1.0, vecLength);
-        vec2 unit = vec / vecLength;
-        texcoord = vecCenter + r * unit * vecCenter;
-      }
-
-      vec4 color = texture2D(u_texture, texcoord);
-      if (color.a < minimumAlpha) {
-        discard;
-      }
-
-      // apply ghost effect
-      color.a *= u_opacity;
-
-      // apply brightness effect
-      #ifndef ONLY_SHAPE_FILTERS
-        color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
-      #endif
-
-      // The color effect is rather complicated. See:
-      // https://github.com/LLK/scratch-render/blob/008dc5b15b30961301e6b9a08628a063b967a001/src/shaders/sprite.frag#L175-L189
-      #ifndef ONLY_SHAPE_FILTERS
-      if (u_color != 0.0) {
-        vec3 hsv = rgb2hsv(color.rgb);
-        // hsv.x = hue
-        // hsv.y = saturation
-        // hsv.z = value
-
-        // scratch forces all colors to have some minimal amount saturation so there is a visual change
-        const float minValue = 0.11 / 2.0;
-        const float minSaturation = 0.09;
-        if (hsv.z < minValue) hsv = vec3(0.0, 1.0, minValue);
-        else if (hsv.y < minSaturation) hsv = vec3(0.0, minSaturation, hsv.z);
-
-        hsv.x = mod(hsv.x + u_color, 1.0);
-        if (hsv.x < 0.0) hsv.x += 1.0;
-        color = vec4(hsv2rgb(hsv), color.a);
-      }
-      #endif
-
-      gl_FragColor = color;
-    }
-    `;
-        renderer_1.WebGLSpriteRenderer = WebGLSpriteRenderer;
-        class WebGLProjectRenderer extends WebGLSpriteRenderer {
-            constructor(stage) {
-                super();
-                this.stage = stage;
-                this.zoom = 1;
-                this.shaderOnlyShapeFilters = this.compileVariant(['ONLY_SHAPE_FILTERS']);
-                this.fallbackRenderer = new ProjectRenderer2D(stage);
-                this.penTexture = this.createTexture();
-                this.penBuffer = this.createFramebuffer();
-                this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 480, 360, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
-                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
-                this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.penTexture, 0);
-                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
-                this.penDotShader = new ShaderVariant(this.gl, this.compileProgram(WebGLProjectRenderer.PEN_DOT_VERTEX_SHADER, WebGLProjectRenderer.PEN_DOT_FRAGMENT_SHADER));
-                this.penLineShader = new ShaderVariant(this.gl, this.compileProgram(WebGLProjectRenderer.PEN_LINE_VERTEX_SHADER, WebGLProjectRenderer.PEN_LINE_FRAGMENT_SHADER));
-                this.reset(1);
-            }
-            drawFrame() {
-                this.bindFramebuffer(null);
-                this.reset(this.zoom);
-                this.drawChild(this.stage);
-                this.drawTextureOverlay(this.penTexture);
-                for (var i = 0; i < this.stage.children.length; i++) {
-                    var child = this.stage.children[i];
-                    if (!child.visible) {
-                        continue;
-                    }
-                    this.drawChild(child);
-                }
-            }
-            init(root) {
-                root.appendChild(this.canvas);
-            }
-            onStageFiltersChanged() {
-            }
-            penLine(color, size, x, y, x2, y2) {
-                this.bindFramebuffer(this.penBuffer);
-                const shader = this.penLineShader;
-                this.gl.useProgram(shader.program);
-                const buffer = this.gl.createBuffer();
-                if (buffer === null) {
-                    throw new Error('buffer is null');
-                }
-                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
-                this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
-                    x / 240, y / 180,
-                    x2 / 240, y2 / 180,
-                ]), this.gl.STATIC_DRAW);
-                shader.attributeBuffer('a_position', buffer);
-                const parts = color.toParts();
-                shader.uniform4f('u_color', parts[0], parts[1], parts[2], parts[3]);
-                this.gl.drawArrays(this.gl.LINES, 0, 2);
-            }
-            penDot(color, size, x, y) {
-                this.bindFramebuffer(this.penBuffer);
-                const shader = this.penDotShader;
-                this.gl.useProgram(shader.program);
-                shader.attributeBuffer('a_position', this.quadBuffer);
-                const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
-                P.m3.multiply(matrix, P.m3.translation(240 + x - size / 2 | 0, 180 - y - size / 2 | 0));
-                P.m3.multiply(matrix, P.m3.scaling(size, size));
-                shader.uniformMatrix3('u_matrix', matrix);
-                const parts = color.toParts();
-                shader.uniform4f('u_color', parts[0], parts[1], parts[2], parts[3]);
-                this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
-            }
-            penStamp(sprite) {
-                this.bindFramebuffer(this.penBuffer);
-                this.drawChild(sprite);
-            }
-            penClear() {
-                this.bindFramebuffer(this.penBuffer);
-                this.gl.clearColor(255, 255, 255, 0);
-                this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-            }
-            resize(scale) {
-                this.zoom = scale;
-            }
-            spriteTouchesPoint(sprite, x, y) {
-                if (!filtersAffectShape(sprite.filters)) {
-                    return this.fallbackRenderer.spriteTouchesPoint(sprite, x, y);
-                }
-                const texture = this.createTexture();
-                const framebuffer = this.createFramebuffer();
-                this.bindFramebuffer(framebuffer);
-                this.resetFramebuffer(1);
-                this._drawChild(sprite, this.shaderOnlyShapeFilters);
-                const result = new Uint8Array(4);
-                this.gl.readPixels(240 + x | 0, 180 + y | 0, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, result);
-                this.gl.deleteTexture(texture);
-                this.gl.deleteFramebuffer(framebuffer);
-                return result[3] !== 0;
-            }
-            spritesIntersect(spriteA, otherSprites) {
-                return this.fallbackRenderer.spritesIntersect(spriteA, otherSprites);
-            }
-            spriteTouchesColor(sprite, color) {
-                return this.fallbackRenderer.spriteTouchesColor(sprite, color);
-            }
-            spriteColorTouchesColor(sprite, spriteColor, otherColor) {
-                return this.fallbackRenderer.spriteColorTouchesColor(sprite, spriteColor, otherColor);
-            }
-        }
-        WebGLProjectRenderer.PEN_DOT_VERTEX_SHADER = `
-    attribute vec2 a_position;
-    varying vec2 v_position;
-    uniform mat3 u_matrix;
-    void main() {
-      gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
-      v_position = a_position;
-    }
-    `;
-        WebGLProjectRenderer.PEN_DOT_FRAGMENT_SHADER = `
-    precision mediump float;
-    uniform vec4 u_color;
-    varying vec2 v_position;
-    void main() {
-      float x = (v_position.x - 0.5) * 2.0;
-      float y = (v_position.y - 0.5) * 2.0;
-      if (sqrt(x * x + y * y) >= 1.0) {
-        discard;
-      }
-      gl_FragColor = u_color;
-    }
-    `;
-        WebGLProjectRenderer.PEN_LINE_VERTEX_SHADER = `
-    attribute vec2 a_position;
-    void main() {
-      gl_Position = vec4(a_position, 0, 1);
-    }
-    `;
-        WebGLProjectRenderer.PEN_LINE_FRAGMENT_SHADER = `
-    precision mediump float;
-    uniform vec4 u_color;
-    void main() {
-      gl_FragColor = u_color;
-    }
-    `;
-        renderer_1.WebGLProjectRenderer = WebGLProjectRenderer;
-        function getCSSFilter(filters) {
-            let filter = '';
-            if (filters.brightness) {
-                filter += 'brightness(' + (100 + filters.brightness) + '%) ';
-            }
-            if (filters.color) {
-                filter += 'hue-rotate(' + (filters.color / 200 * 360) + 'deg) ';
-            }
-            return filter;
-        }
-        class SpriteRenderer2D {
-            constructor() {
-                this.noEffects = false;
-                const { canvas, ctx } = create2dCanvas();
-                this.canvas = canvas;
-                this.ctx = ctx;
-            }
-            reset(scale) {
-                this._reset(this.ctx, scale);
-            }
-            drawChild(c) {
-                this._drawChild(c, this.ctx);
-            }
-            drawObjects(children) {
-                for (var i = 0; i < children.length; i++) {
-                    var child = children[i];
-                    if (!child.visible) {
-                        continue;
-                    }
-                    this.drawChild(child);
-                }
-            }
-            _reset(ctx, scale) {
-                const effectiveScale = scale * P.config.scale;
-                const width = 480 * effectiveScale;
-                const height = 360 * effectiveScale;
-                if (ctx.canvas.width !== width || ctx.canvas.height !== height) {
-                    ctx.canvas.width = width;
-                    ctx.canvas.height = height;
-                    ctx.scale(effectiveScale, effectiveScale);
-                }
-                else {
-                    ctx.clearRect(0, 0, 480, 360);
-                }
-            }
-            _drawChild(c, ctx) {
-                const costume = c.costumes[c.currentCostumeIndex];
-                if (!costume) {
-                    return;
-                }
-                ctx.save();
-                const globalScale = c.stage.zoom * P.config.scale;
-                ctx.translate(((c.scratchX + 240) * globalScale | 0) / globalScale, ((180 - c.scratchY) * globalScale | 0) / globalScale);
-                let objectScale = costume.scale;
-                if (P.core.isSprite(c)) {
-                    if (c.rotationStyle === 0) {
-                        ctx.rotate((c.direction - 90) * Math.PI / 180);
-                    }
-                    else if (c.rotationStyle === 1 && c.direction < 0) {
-                        ctx.scale(-1, 1);
-                    }
-                    objectScale *= c.scale;
-                }
-                const image = costume.get(objectScale * c.stage.zoom);
-                const x = -costume.rotationCenterX * objectScale;
-                const y = -costume.rotationCenterY * objectScale;
-                const w = costume.width * objectScale;
-                const h = costume.height * objectScale;
-                if (w < 1 || h < 1) {
-                    ctx.restore();
-                    return;
-                }
-                ctx.imageSmoothingEnabled = false;
-                if (!this.noEffects) {
-                    if (c.filters.brightness === 100) {
-                        workingRenderer.canvas.width = w;
-                        workingRenderer.canvas.height = h;
-                        workingRenderer.ctx.save();
-                        workingRenderer.ctx.translate(0, 0);
-                        workingRenderer.ctx.drawImage(image, 0, 0, w, h);
-                        workingRenderer.ctx.globalCompositeOperation = 'source-in';
-                        workingRenderer.ctx.fillStyle = 'white';
-                        workingRenderer.ctx.fillRect(0, 0, 480, 360);
-                        ctx.drawImage(workingRenderer.canvas, x, y);
-                        workingRenderer.ctx.restore();
-                    }
-                    else {
-                        ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
-                        const filter = getCSSFilter(c.filters);
-                        if (filter !== '') {
-                            ctx.filter = filter;
-                        }
-                        ctx.drawImage(image, x, y, w, h);
-                    }
-                }
-                else {
-                    ctx.drawImage(image, x, y, w, h);
-                }
-                ctx.restore();
-            }
-        }
-        renderer_1.SpriteRenderer2D = SpriteRenderer2D;
-        const workingRenderer = new SpriteRenderer2D();
-        const workingRenderer2 = new SpriteRenderer2D();
-        class ProjectRenderer2D extends SpriteRenderer2D {
-            constructor(stage) {
-                super();
-                this.stage = stage;
-                this.zoom = 1;
-                this.penModified = false;
-                this.penTargetZoom = -1;
-                this.penZoom = 1;
-                this.stageCostumeIndex = -1;
-                const { ctx: stageContext, canvas: stageLayer } = create2dCanvas();
-                this.stageContext = stageContext;
-                this.stageLayer = stageLayer;
-                const { ctx: penContext, canvas: penLayer } = create2dCanvas();
-                this.penContext = penContext;
-                this.penLayer = penLayer;
-            }
-            onStageFiltersChanged() {
-                const filter = getCSSFilter(this.stage.filters);
-                if (this.stageLayer.style.filter !== filter) {
-                    this.stageLayer.style.filter = filter;
-                }
-                this.stageLayer.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
-            }
-            renderStageCostume(scale) {
-                this._reset(this.stageContext, scale);
-                this.noEffects = true;
-                this._drawChild(this.stage, this.stageContext);
-                this.noEffects = false;
-            }
-            init(root) {
-                root.appendChild(this.stageLayer);
-                root.appendChild(this.penLayer);
-                root.appendChild(this.canvas);
-            }
-            drawFrame() {
-                this.reset(this.zoom);
-                this.drawObjects(this.stage.children);
-                if (this.stage.currentCostumeIndex !== this.stageCostumeIndex) {
-                    this.stageCostumeIndex = this.stage.currentCostumeIndex;
-                    this.renderStageCostume(this.zoom);
-                }
-            }
-            drawAllExcept(renderer, skip) {
-                renderer.drawChild(this.stage);
-                renderer.ctx.drawImage(this.penLayer, 0, 0, this.canvas.width, this.canvas.height);
-                for (var i = 0; i < this.stage.children.length; i++) {
-                    var child = this.stage.children[i];
-                    if (!child.visible || child === skip) {
-                        continue;
-                    }
-                    renderer.drawChild(child);
-                }
-            }
-            resize(zoom) {
-                this.zoom = zoom;
-                this.resizePen(zoom);
-                this.renderStageCostume(this.zoom);
-            }
-            resizePen(zoom) {
-                if (zoom > this.penZoom) {
-                    this.penZoom = zoom;
-                    const cachedCanvas = document.createElement('canvas');
-                    cachedCanvas.width = this.penLayer.width;
-                    cachedCanvas.height = this.penLayer.height;
-                    const cachedCanvasCtx = cachedCanvas.getContext('2d');
-                    if (!cachedCanvasCtx) {
-                        throw new Error('cannot get 2d rendering context while resizing pen layer');
-                    }
-                    cachedCanvasCtx.drawImage(this.penLayer, 0, 0);
-                    this._reset(this.penContext, zoom);
-                    this.penContext.drawImage(cachedCanvas, 0, 0, 480, 360);
-                }
-                else if (!this.penModified) {
-                    this.penZoom = zoom;
-                    this._reset(this.penContext, zoom);
-                }
-                else {
-                    this.penTargetZoom = zoom;
-                }
-            }
-            penClear() {
-                this.penModified = false;
-                if (this.penTargetZoom !== -1) {
-                    this._reset(this.penContext, this.penTargetZoom);
-                    this.penZoom = this.penTargetZoom;
-                    this.penTargetZoom = -1;
-                }
-                this.penContext.clearRect(0, 0, 480, 360);
-            }
-            penDot(color, size, x, y) {
-                this.penModified = true;
-                this.penContext.fillStyle = color.toCSS();
-                this.penContext.beginPath();
-                this.penContext.arc(240 + x, 180 - y, size / 2, 0, 2 * Math.PI, false);
-                this.penContext.fill();
-            }
-            penLine(color, size, x1, y1, x2, y2) {
-                this.penModified = true;
-                this.penContext.lineCap = 'round';
-                if (this.penZoom === 1) {
-                    if (size % 2 > .5 && size % 2 < 1.5) {
-                        x1 -= .5;
-                        y1 -= .5;
-                        x2 -= .5;
-                        y2 -= .5;
-                    }
-                }
-                this.penContext.strokeStyle = color.toCSS();
-                this.penContext.lineWidth = size;
-                this.penContext.beginPath();
-                this.penContext.moveTo(240 + x1, 180 - y1);
-                this.penContext.lineTo(240 + x2, 180 - y2);
-                this.penContext.stroke();
-            }
-            penStamp(sprite) {
-                this.penModified = true;
-                this._drawChild(sprite, this.penContext);
-            }
-            spriteTouchesPoint(sprite, x, y) {
-                const bounds = sprite.rotatedBounds();
-                if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top) {
-                    return false;
-                }
-                const costume = sprite.costumes[sprite.currentCostumeIndex];
-                var cx = (x - sprite.scratchX) / sprite.scale;
-                var cy = (sprite.scratchY - y) / sprite.scale;
-                if (sprite.rotationStyle === 0 && sprite.direction !== 90) {
-                    const d = (90 - sprite.direction) * Math.PI / 180;
-                    const ox = cx;
-                    const s = Math.sin(d), c = Math.cos(d);
-                    cx = c * ox - s * cy;
-                    cy = s * ox + c * cy;
-                }
-                else if (sprite.rotationStyle === 1 && sprite.direction < 0) {
-                    cx = -cx;
-                }
-                const positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
-                const positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
-                const data = costume.getContext().getImageData(positionX, positionY, 1, 1).data;
-                return data[3] !== 0;
-            }
-            spritesIntersect(spriteA, otherSprites) {
-                const mb = spriteA.rotatedBounds();
-                for (var i = 0; i < otherSprites.length; i++) {
-                    const spriteB = otherSprites[i];
-                    if (!spriteB.visible) {
-                        continue;
-                    }
-                    const ob = spriteB.rotatedBounds();
-                    if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
-                        continue;
-                    }
-                    const left = Math.max(mb.left, ob.left);
-                    const top = Math.min(mb.top, ob.top);
-                    const right = Math.min(mb.right, ob.right);
-                    const bottom = Math.max(mb.bottom, ob.bottom);
-                    const width = right - left;
-                    const height = top - bottom;
-                    if (width < 1 || height < 1 || width !== width || height !== height) {
-                        continue;
-                    }
-                    workingRenderer.canvas.width = width;
-                    workingRenderer.canvas.height = height;
-                    workingRenderer.ctx.save();
-                    workingRenderer.noEffects = true;
-                    workingRenderer.ctx.translate(-(left + 240), -(180 - top));
-                    workingRenderer.drawChild(spriteA);
-                    workingRenderer.ctx.globalCompositeOperation = 'source-in';
-                    workingRenderer.drawChild(spriteB);
-                    workingRenderer.noEffects = false;
-                    workingRenderer.ctx.restore();
-                    const data = workingRenderer.ctx.getImageData(0, 0, width, height).data;
-                    const length = data.length;
-                    for (var j = 0; j < length; j += 4) {
-                        if (data[j + 3]) {
-                            return true;
-                        }
-                    }
-                }
-                return false;
-            }
-            spriteTouchesColor(sprite, color) {
-                const b = sprite.rotatedBounds();
-                const width = b.right - b.left;
-                const height = b.top - b.bottom;
-                if (width < 1 || height < 1 || width !== width || height !== height) {
-                    return false;
-                }
-                workingRenderer.canvas.width = width;
-                workingRenderer.canvas.height = height;
-                workingRenderer.ctx.save();
-                workingRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
-                this.drawAllExcept(workingRenderer, sprite);
-                workingRenderer.ctx.globalCompositeOperation = 'destination-in';
-                workingRenderer.noEffects = true;
-                workingRenderer.drawChild(sprite);
-                workingRenderer.noEffects = false;
-                workingRenderer.ctx.restore();
-                const data = workingRenderer.ctx.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
-                color = color & 0xffffff;
-                const length = (b.right - b.left) * (b.top - b.bottom) * 4;
-                for (var i = 0; i < length; i += 4) {
-                    if ((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) === color && data[i + 3]) {
-                        return true;
-                    }
-                }
-                return false;
-            }
-            spriteColorTouchesColor(sprite, spriteColor, otherColor) {
-                var rb = sprite.rotatedBounds();
-                const width = rb.right - rb.left;
-                const height = rb.top - rb.bottom;
-                if (width < 1 || height < 1 || width !== width || height !== height) {
-                    return false;
-                }
-                workingRenderer.canvas.width = workingRenderer2.canvas.width = width;
-                workingRenderer.canvas.height = workingRenderer2.canvas.height = height;
-                workingRenderer.ctx.save();
-                workingRenderer2.ctx.save();
-                workingRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
-                workingRenderer2.ctx.translate(-(240 + rb.left), -(180 - rb.top));
-                this.drawAllExcept(workingRenderer, sprite);
-                workingRenderer2.drawChild(sprite);
-                workingRenderer.ctx.restore();
-                workingRenderer2.ctx.restore();
-                var dataA = workingRenderer.ctx.getImageData(0, 0, width, height).data;
-                var dataB = workingRenderer2.ctx.getImageData(0, 0, width, height).data;
-                spriteColor = spriteColor & 0xffffff;
-                otherColor = otherColor & 0xffffff;
-                var length = dataA.length;
-                for (var i = 0; i < length; i += 4) {
-                    var touchesSource = (dataB[i] << 16 | dataB[i + 1] << 8 | dataB[i + 2]) === spriteColor && dataB[i + 3];
-                    var touchesOther = (dataA[i] << 16 | dataA[i + 1] << 8 | dataA[i + 2]) === otherColor && dataA[i + 3];
-                    if (touchesSource && touchesOther) {
-                        return true;
-                    }
-                }
-                return false;
-            }
-        }
-        renderer_1.ProjectRenderer2D = ProjectRenderer2D;
-    })(renderer = P.renderer || (P.renderer = {}));
-})(P || (P = {}));
-var P;
-(function (P) {
     var core;
     (function (core) {
         ;
@@ -1505,7 +523,7 @@ var P;
                     case 0:
                         return this.css;
                     case 1:
-                        return 'hsla(' + this.x + 'deg,' + this.y + '%,' + (this.z > 100 ? 200 - this.z : this.z) + '%, ' + this.a + ')';
+                        return 'hsla(' + this.x + ',' + this.y + '%,' + (this.z > 100 ? 200 - this.z : this.z) + '%,' + this.a + ')';
                     case 2: {
                         const rgb = P.utils.hsvToRGB(this.x / 360, this.y / 100, this.z / 100);
                         return 'rgba(' + rgb[0] + ', ' + rgb[1] + ', ' + rgb[2] + ', ' + this.a + ')';
@@ -1517,7 +535,9 @@ var P;
                 this.toHSVA();
                 switch (param) {
                     case 'color':
-                        this.x = value * 360 / 100;
+                        this.x = (value * 360 / 100) % 360;
+                        if (this.x < 0)
+                            this.x += 360;
                         break;
                     case 'saturation':
                         this.y = P.utils.clamp(value, 0, 100);
@@ -1538,7 +558,9 @@ var P;
                 this.toHSVA();
                 switch (param) {
                     case 'color':
-                        this.x += value * 360 / 100;
+                        this.x = (this.x + value * 360 / 100) % 360;
+                        if (this.x < 0)
+                            this.x += 360;
                         break;
                     case 'saturation':
                         this.y = P.utils.clamp(this.y + value, 0, 100);
@@ -1960,10 +982,10 @@ var P;
                 this.root = document.createElement('div');
                 this.root.classList.add('forkphorus-root');
                 if (P.config.useWebGL) {
-                    this.renderer = new P.renderer.WebGLProjectRenderer(this);
+                    this.renderer = new P.renderer.webgl.WebGLProjectRenderer(this);
                 }
                 else {
-                    this.renderer = new P.renderer.ProjectRenderer2D(this);
+                    this.renderer = new P.renderer.canvas2d.ProjectRenderer2D(this);
                 }
                 this.renderer.resize(1);
                 this.renderer.init(this.root);
@@ -2158,12 +1180,12 @@ var P;
                 }
                 this.removeEventListeners();
             }
-            pause() {
+            pauseExtensions() {
                 for (const extension of this.extensions) {
                     extension.onpause();
                 }
             }
-            start() {
+            startExtensions() {
                 for (const extension of this.extensions) {
                     extension.onstart();
                 }
@@ -2605,6 +1627,46 @@ var P;
             }
         }
         core.Sprite = Sprite;
+        class ImageLOD {
+            constructor(image) {
+                this.imageData = null;
+                this.image = image;
+                if (image.tagName === 'CANVAS') {
+                    const ctx = image.getContext('2d');
+                    if (!ctx) {
+                        throw new Error('Cannot get 2d rendering context of costume image');
+                    }
+                    this.context = ctx;
+                }
+                else {
+                    this.context = null;
+                }
+                this.width = image.width;
+                this.height = image.height;
+            }
+            getContext() {
+                if (this.context)
+                    return this.context;
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    throw new Error('cannot get 2d rendering context');
+                }
+                canvas.width = this.width;
+                canvas.height = this.height;
+                ctx.drawImage(this.image, 0, 0);
+                this.context = ctx;
+                return ctx;
+            }
+            getImageData() {
+                if (this.imageData)
+                    return this.imageData;
+                const context = this.getContext();
+                this.imageData = context.getImageData(0, 0, context.canvas.width, context.canvas.height);
+                return this.imageData;
+            }
+        }
+        core.ImageLOD = ImageLOD;
         class Costume {
             constructor(costumeData) {
                 this.bitmapResolution = costumeData.bitmapResolution;
@@ -2613,41 +1675,20 @@ var P;
                 this.rotationCenterX = costumeData.rotationCenterX;
                 this.rotationCenterY = costumeData.rotationCenterY;
             }
+            getContext() {
+                return this.get(1).getContext();
+            }
         }
         core.Costume = Costume;
         class BitmapCostume extends Costume {
             constructor(source, options) {
                 super(options);
-                this.source = source;
-                if (source.tagName === 'CANVAS') {
-                    const ctx = source.getContext('2d');
-                    if (!ctx) {
-                        throw new Error('Cannot get 2d rendering context of costume source');
-                    }
-                    this._context = ctx;
-                }
-                else {
-                    this._context = null;
-                }
+                this.source = new ImageLOD(source);
                 this.width = source.width;
                 this.height = source.height;
             }
             get(scale) {
                 return this.source;
-            }
-            getContext() {
-                if (this._context)
-                    return this._context;
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                    throw new Error('cannot get 2d rendering context for BitmapCustome ' + this.name);
-                }
-                canvas.width = this.width;
-                canvas.height = this.height;
-                ctx.drawImage(this.source, 0, 0);
-                this._context = ctx;
-                return ctx;
             }
         }
         core.BitmapCostume = BitmapCostume;
@@ -2675,7 +1716,7 @@ var P;
                     throw new Error('cannot get 2d rendering context while rendering VectorCostume ' + this.name + ' at scale ' + scale);
                 }
                 ctx.drawImage(this.source, 0, 0, canvas.width, canvas.height);
-                return canvas;
+                return new ImageLOD(canvas);
             }
             get(scale) {
                 scale = Math.min(VectorCostume.MAX_ZOOM, Math.ceil(scale));
@@ -2684,20 +1725,6 @@ var P;
                     this.scales[index] = this.getScale(scale);
                 }
                 return this.scales[index];
-            }
-            getContext() {
-                if (this._context)
-                    return this._context;
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                    throw new Error('cannot get 2d rendering context for VectorCostume ' + this.name);
-                }
-                canvas.width = this.width;
-                canvas.height = this.height;
-                ctx.drawImage(this.source, 0, 0);
-                this._context = ctx;
-                return ctx;
             }
         }
         VectorCostume.MAX_ZOOM = 6;
@@ -2815,6 +1842,79 @@ var P;
 })(P || (P = {}));
 var P;
 (function (P) {
+    var i18n;
+    (function (i18n) {
+        'use strict';
+        const SUPPORTED_LANGUAGES = ['en', 'es'];
+        const DEFAULT_LANGUAGE = 'en';
+        function getLanguage() {
+            let language = navigator.language;
+            if (language.indexOf('-') > -1) {
+                language = language.substring(0, language.indexOf('-'));
+            }
+            if (SUPPORTED_LANGUAGES.indexOf(language) === -1) {
+                language = DEFAULT_LANGUAGE;
+            }
+            return language;
+        }
+        const translations = {};
+        const defaultTranslations = {};
+        const language = getLanguage();
+        function translate(messageId) {
+            if (translations[messageId]) {
+                return translations[messageId];
+            }
+            if (defaultTranslations[messageId]) {
+                return defaultTranslations[messageId];
+            }
+            console.warn('Missing translation:', messageId);
+            return '## ' + messageId + ' ##';
+        }
+        i18n.translate = translate;
+        function translateElement(element) {
+            const translatable = element.querySelectorAll('[data-i18n]');
+            for (var i = 0; i < translatable.length; i++) {
+                const el = translatable[i];
+                const messageId = el.getAttribute('data-i18n');
+                if (messageId === null)
+                    continue;
+                const result = translate(messageId);
+                el.textContent = result;
+            }
+        }
+        i18n.translateElement = translateElement;
+        function merge(into, source) {
+            for (const key of Object.keys(source)) {
+                into[key] = source[key];
+            }
+        }
+        function addTranslations(importedLanguage, importedTranslations) {
+            if (importedLanguage === language) {
+                merge(translations, importedTranslations);
+            }
+            else if (importedLanguage === DEFAULT_LANGUAGE) {
+                merge(defaultTranslations, importedTranslations);
+            }
+        }
+        i18n.addTranslations = addTranslations;
+        addTranslations('en', {
+            'player.controls.turboIndicator': 'Turbo Mode',
+            'player.controls.fullscreen.title': 'Click to fullscreen player, Shift+click to just maximize.',
+            'player.controls.flag.title': 'Shift+click to enable turbo mode.',
+            'player.controls.flag.title.enabled': 'Turbo mode is enabled. Shift+click to disable turbo mode.',
+            'player.controls.flag.title.disabled': 'Turbo mode is disabled. Shift+click to enable turbo mode.',
+            'player.errorhandler.error': 'An internal error occurred. <a $attrs>Click here</a> to file a bug report.',
+            'player.errorhandler.error.unsupported': 'This project type ($type) is not supported. For more information and workarounds, <a href="https://github.com/forkphorus/forkphorus/wiki/On-Scratch-1-Projects" target="_blank" rel="noopener">visit this help page</a>.',
+            'player.errorhandler.error.doesnotexist': 'There is no project with ID $id (Project was probably deleted, never existed, or you made a typo.)',
+            'player.errorhandler.instructions': 'Describe what you were doing to cause this error:',
+        });
+        addTranslations('es', {
+            'player.controls.turboIndicator': 'Modo Turbo',
+        });
+    })(i18n = P.i18n || (P.i18n = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
     var IO;
     (function (IO) {
         IO.config = {
@@ -2845,6 +1945,9 @@ var P;
                         });
                     };
                     attempt((err) => {
+                        if (!(err + '').includes('abort')) {
+                            return;
+                        }
                         console.warn(`First attempt to download ${this.url} failed, trying again (${err})`);
                         setTimeout(function () {
                             attempt((err) => {
@@ -2948,6 +2051,894 @@ var P;
             readers.toText = toText;
         })(readers = IO.readers || (IO.readers = {}));
     })(IO = P.IO || (P.IO = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
+    var utils;
+    (function (utils) {
+        function parseRotationStyle(style) {
+            switch (style) {
+                case 'leftRight':
+                case 'left-right':
+                    return 1;
+                case 'none':
+                case 'don\'t rotate':
+                    return 2;
+                case 'normal':
+                case 'all around':
+                    return 0;
+            }
+            console.warn('unknown rotation style', style);
+            return 0;
+        }
+        utils.parseRotationStyle = parseRotationStyle;
+        function rgbToHSL(r, g, b) {
+            r /= 255;
+            g /= 255;
+            b /= 255;
+            var min = Math.min(r, g, b);
+            var max = Math.max(r, g, b);
+            if (min === max) {
+                return [0, 0, r];
+            }
+            var c = max - min;
+            var l = (min + max) / 2;
+            var s = c / (1 - Math.abs(2 * l - 1));
+            var h;
+            switch (max) {
+                case r:
+                    h = ((g - b) / c + 6) % 6;
+                    break;
+                case g:
+                    h = (b - r) / c + 2;
+                    break;
+                case b:
+                    h = (r - g) / c + 4;
+                    break;
+            }
+            h *= 60;
+            return [h, s, l];
+        }
+        utils.rgbToHSL = rgbToHSL;
+        function rgbToHSV(r, g, b) {
+            r /= 255;
+            g /= 255;
+            b /= 255;
+            var max = Math.max(r, g, b), min = Math.min(r, g, b);
+            var h, s, v = max;
+            var d = max - min;
+            s = max == 0 ? 0 : d / max;
+            if (max == min) {
+                h = 0;
+            }
+            else {
+                switch (max) {
+                    case r:
+                        h = (g - b) / d + (g < b ? 6 : 0);
+                        break;
+                    case g:
+                        h = (b - r) / d + 2;
+                        break;
+                    case b:
+                        h = (r - g) / d + 4;
+                        break;
+                }
+                h /= 6;
+            }
+            return [h * 360, s, v];
+        }
+        utils.rgbToHSV = rgbToHSV;
+        function hsvToRGB(h, s, v) {
+            var r, g, b;
+            var i = Math.floor(h * 6);
+            var f = h * 6 - i;
+            var p = v * (1 - s);
+            var q = v * (1 - f * s);
+            var t = v * (1 - (1 - f) * s);
+            switch (i % 6) {
+                case 0:
+                    r = v, g = t, b = p;
+                    break;
+                case 1:
+                    r = q, g = v, b = p;
+                    break;
+                case 2:
+                    r = p, g = v, b = t;
+                    break;
+                case 3:
+                    r = p, g = q, b = v;
+                    break;
+                case 4:
+                    r = t, g = p, b = v;
+                    break;
+                case 5:
+                    r = v, g = p, b = q;
+                    break;
+            }
+            return [r * 255, g * 255, b * 255];
+        }
+        utils.hsvToRGB = hsvToRGB;
+        function hslToHSV(h, s, l) {
+            var v = l + s * Math.min(l, 1 - l);
+            var s = v === 0 ? 0 : 2 - 2 * l / v;
+            return [h, s, v];
+        }
+        utils.hslToHSV = hslToHSV;
+        function hsvToHSL(h, s, v) {
+            var l = v - v * s / 2;
+            var s = l === 0 ? 0 : (v - l) / Math.min(2 - 2 * l / v);
+            return [h, s, l];
+        }
+        utils.hsvToHSL = hsvToHSL;
+        function clamp(number, min, max) {
+            return Math.min(max, Math.max(min, number));
+        }
+        utils.clamp = clamp;
+        function settled(promise) {
+            return new Promise((resolve, _reject) => {
+                promise
+                    .then(() => resolve())
+                    .catch(() => resolve());
+            });
+        }
+        utils.settled = settled;
+        class Slot {
+            constructor() {
+                this._listeners = [];
+            }
+            subscribe(fn) {
+                this._listeners.push(fn);
+            }
+            emit(value) {
+                for (const listener of this._listeners) {
+                    listener(value);
+                }
+            }
+        }
+        utils.Slot = Slot;
+    })(utils = P.utils || (P.utils = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
+    var player;
+    (function (player_1) {
+        class PlayerError extends Error {
+            constructor() {
+                super(...arguments);
+                this.handledByPlayer = true;
+            }
+        }
+        player_1.PlayerError = PlayerError;
+        class ProjectNotSupportedError extends PlayerError {
+            constructor(type) {
+                super('Project type (' + type + ') is not supported');
+                this.type = type;
+                this.name = 'ProjectNotSupportedError';
+            }
+        }
+        player_1.ProjectNotSupportedError = ProjectNotSupportedError;
+        class ProjectDoesNotExistError extends PlayerError {
+            constructor(id) {
+                super('Project with ID ' + id + ' does not exist');
+                this.id = id;
+                this.name = 'ProjectDoesNotExistError';
+            }
+        }
+        player_1.ProjectDoesNotExistError = ProjectDoesNotExistError;
+        class Player {
+            constructor(options = {}) {
+                this.onprogress = new P.utils.Slot();
+                this.onload = new P.utils.Slot();
+                this.onstartload = new P.utils.Slot();
+                this.oncleanup = new P.utils.Slot();
+                this.onthemechange = new P.utils.Slot();
+                this.onerror = new P.utils.Slot();
+                this.onstart = new P.utils.Slot();
+                this.onpause = new P.utils.Slot();
+                this.onturbochange = new P.utils.Slot();
+                this.fullscreen = false;
+                this.fullscreenPadding = 8;
+                this.fullscreenMaxWidth = Infinity;
+                this.stageId = 0;
+                this.projectId = Player.UNKNOWN_ID;
+                this.projectLink = Player.UNKNOWN_LINK;
+                this.projectTitle = Player.UNKNOWN_TITLE;
+                this.flagTouchTimeout = undefined;
+                this.root = document.createElement('div');
+                this.root.className = 'player-root';
+                this.player = document.createElement('div');
+                this.player.className = 'player-stage';
+                this.root.appendChild(this.player);
+                this.setTheme(options.theme || 'light');
+                window.addEventListener('resize', () => this.updateFullscreen());
+                document.addEventListener('fullscreenchange', () => this.onfullscreenchange());
+                document.addEventListener('mozfullscreenchange', () => this.onfullscreenchange());
+                document.addEventListener('webkitfullscreenchange', () => this.onfullscreenchange());
+                this.handleError = this.handleError.bind(this);
+            }
+            static getProjectType(data) {
+                if (!data)
+                    return null;
+                if ('targets' in data)
+                    return 3;
+                if ('objName' in data)
+                    return 2;
+                return null;
+            }
+            static isCloudVariable(variableName) {
+                return variableName.startsWith('☁');
+            }
+            ;
+            assertStage() {
+                if (!this.stage) {
+                    throw new Error('The player does not currently contain a stage to operate on.');
+                }
+            }
+            addControls(options = {}) {
+                if (this.controlsEl) {
+                    throw new Error('This player already has controls.');
+                }
+                const clickStop = (e) => {
+                    this.assertStage();
+                    this.stopAll();
+                    this.stage.draw();
+                    e.preventDefault();
+                };
+                const clickPause = (e) => {
+                    this.toggleRunning();
+                };
+                const clickFullscreen = (e) => {
+                    this.assertStage();
+                    if (this.fullscreen) {
+                        this.exitFullscreen();
+                    }
+                    else {
+                        this.enterFullscreen(!e.shiftKey);
+                    }
+                };
+                const clickFlag = (e) => {
+                    if (this.flagTouchTimeout === null) {
+                        return;
+                    }
+                    if (this.flagTouchTimeout) {
+                        clearTimeout(this.flagTouchTimeout);
+                    }
+                    this.assertStage();
+                    if (e.shiftKey) {
+                        this.setTurbo(!this.stage.runtime.isTurbo);
+                    }
+                    else {
+                        this.start();
+                        this.stage.runtime.stopAll();
+                        this.stage.runtime.triggerGreenFlag();
+                    }
+                    this.stage.focus();
+                    e.preventDefault();
+                };
+                const startTouchFlag = (e) => {
+                    this.flagTouchTimeout = setTimeout(() => {
+                        this.flagTouchTimeout = null;
+                        this.setTurbo(!this.stage.runtime.isTurbo);
+                    }, 500);
+                };
+                const preventDefault = (e) => {
+                    e.preventDefault();
+                };
+                this.controlsEl = document.createElement('div');
+                this.controlsEl.className = 'player-controls';
+                if (options.enableStop !== false) {
+                    this.stopButton = document.createElement('span');
+                    this.stopButton.className = 'player-button player-stop';
+                    this.controlsEl.appendChild(this.stopButton);
+                    this.stopButton.addEventListener('click', clickStop);
+                    this.stopButton.addEventListener('touchend', clickStop);
+                    this.stopButton.addEventListener('touchstart', preventDefault);
+                }
+                if (options.enablePause !== false) {
+                    this.pauseButton = document.createElement('span');
+                    this.pauseButton.className = 'player-button player-pause';
+                    this.controlsEl.appendChild(this.pauseButton);
+                    this.pauseButton.addEventListener('click', clickPause);
+                    this.pauseButton.addEventListener('touchend', clickPause);
+                    this.pauseButton.addEventListener('touchstart', preventDefault);
+                }
+                if (options.enableFlag !== false) {
+                    this.flagButton = document.createElement('span');
+                    this.flagButton.className = 'player-button player-flag';
+                    this.flagButton.title = P.i18n.translate('player.controls.flag.title');
+                    this.controlsEl.appendChild(this.flagButton);
+                    this.flagButton.addEventListener('click', clickFlag);
+                    this.flagButton.addEventListener('touchend', clickFlag);
+                    this.flagButton.addEventListener('touchstart', startTouchFlag);
+                    this.flagButton.addEventListener('touchstart', preventDefault);
+                }
+                if (options.enableTurbo !== false) {
+                    this.turboText = document.createElement('span');
+                    this.turboText.innerText = P.i18n.translate('player.controls.turboIndicator');
+                    this.turboText.className = 'player-label player-turbo';
+                    this.controlsEl.appendChild(this.turboText);
+                }
+                if (options.enableFullscreen !== false) {
+                    this.fullscreenButton = document.createElement('span');
+                    this.fullscreenButton.className = 'player-button player-fullscreen-btn';
+                    this.fullscreenButton.title = P.i18n.translate('player.controls.fullscreen.title');
+                    this.controlsEl.appendChild(this.fullscreenButton);
+                    this.fullscreenButton.addEventListener('click', clickFullscreen);
+                    this.fullscreenButton.addEventListener('touchend', clickFullscreen);
+                    this.fullscreenButton.addEventListener('touchstart', preventDefault);
+                }
+                this.root.addEventListener('touchmove', (e) => {
+                    if (this.fullscreen) {
+                        e.preventDefault();
+                    }
+                });
+                this.root.insertBefore(this.controlsEl, this.root.firstChild);
+            }
+            setTurbo(turbo) {
+                this.assertStage();
+                this.stage.runtime.isTurbo = turbo;
+                if (turbo) {
+                    this.root.setAttribute('turbo', '');
+                }
+                else {
+                    this.root.removeAttribute('turbo');
+                }
+                if (this.flagButton) {
+                    if (turbo) {
+                        this.flagButton.title = P.i18n.translate('player.controls.flag.title.enabled');
+                    }
+                    else {
+                        this.flagButton.title = P.i18n.translate('player.controls.flag.title.disabled');
+                    }
+                }
+                this.onturbochange.emit(turbo);
+            }
+            pause() {
+                this.assertStage();
+                this.stage.runtime.pause();
+                this.root.removeAttribute('running');
+                this.onpause.emit();
+            }
+            start() {
+                this.assertStage();
+                this.stage.runtime.start();
+                this.root.setAttribute('running', '');
+                this.onstart.emit();
+            }
+            triggerGreenFlag() {
+                this.assertStage();
+                this.stage.runtime.triggerGreenFlag();
+            }
+            stopAll() {
+                this.assertStage();
+                this.pause();
+                this.stage.runtime.stopAll();
+            }
+            isRunning() {
+                if (!this.stage) {
+                    return false;
+                }
+                return this.stage.runtime.isRunning;
+            }
+            toggleRunning() {
+                this.assertStage();
+                if (this.isRunning()) {
+                    this.pause();
+                }
+                else {
+                    this.start();
+                    this.stage.focus();
+                }
+            }
+            setTheme(theme) {
+                this.theme = theme;
+                this.root.setAttribute('theme', theme);
+                this.onthemechange.emit(theme);
+            }
+            enterFullscreen(realFullscreen) {
+                this.previousTheme = this.root.getAttribute('theme');
+                this.setTheme('dark');
+                if (realFullscreen) {
+                    if (this.root.requestFullScreenWithKeys) {
+                        this.root.requestFullScreenWithKeys();
+                    }
+                    else if (this.root.webkitRequestFullScreen) {
+                        this.root.webkitRequestFullScreen(Element.ALLOW_KEYBOARD_INPUT);
+                    }
+                    else if (this.root.requestFullscreen) {
+                        this.root.requestFullscreen();
+                    }
+                }
+                document.body.classList.add('player-body-fullscreen');
+                this.root.style.zIndex = Player.LARGE_Z_INDEX;
+                this.root.setAttribute('fullscreen', '');
+                this.fullscreen = true;
+                if (this.stage) {
+                    if (!this.isRunning()) {
+                        this.stage.draw();
+                    }
+                    this.stage.focus();
+                }
+                this.updateFullscreen();
+            }
+            exitFullscreen() {
+                this.setTheme(this.previousTheme);
+                this.root.removeAttribute('fullscreen');
+                this.fullscreen = false;
+                if (document.fullscreenElement === this.root || document.webkitFullscreenElement === this.root) {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    }
+                    else if (document.mozCancelFullScreen) {
+                        document.mozCancelFullScreen();
+                    }
+                    else if (document.webkitCancelFullScreen) {
+                        document.webkitCancelFullScreen();
+                    }
+                    else if (document.webkitExitFullscreen) {
+                        document.webkitExitFullscreen();
+                    }
+                }
+                this.root.style.paddingLeft = '';
+                this.root.style.paddingTop = '';
+                this.root.style.zIndex = '';
+                if (this.controlsEl) {
+                    this.controlsEl.style.width = '';
+                }
+                document.body.classList.remove('player-body-fullscreen');
+                if (this.stage) {
+                    this.stage.setZoom(1);
+                    this.stage.focus();
+                }
+            }
+            updateFullscreen() {
+                if (!this.stage) {
+                    return;
+                }
+                if (this.fullscreen) {
+                    var controlsHeight = this.controlsEl ? this.controlsEl.offsetHeight : 0;
+                    window.scrollTo(0, 0);
+                    var w = window.innerWidth - this.fullscreenPadding * 2;
+                    var h = window.innerHeight - this.fullscreenPadding - controlsHeight;
+                    w = Math.min(w, h / 0.75);
+                    w = Math.min(w, this.fullscreenMaxWidth);
+                    h = w * 0.75 + controlsHeight;
+                    if (this.controlsEl) {
+                        this.controlsEl.style.width = w + 'px';
+                    }
+                    this.root.style.paddingLeft = (window.innerWidth - w) / 2 + 'px';
+                    this.root.style.paddingTop = (window.innerHeight - h - this.fullscreenPadding) / 2 + 'px';
+                    this.stage.setZoom(w / 480);
+                }
+            }
+            onfullscreenchange() {
+                if (typeof document.fullscreen === 'boolean' && document.fullscreen !== this.fullscreen) {
+                    this.exitFullscreen();
+                }
+                else if (typeof document.webkitIsFullScreen === 'boolean' && document.webkitIsFullScreen !== this.fullscreen) {
+                    this.exitFullscreen();
+                }
+            }
+            handleError(error) {
+                console.error(error);
+                this.onerror.emit(error);
+            }
+            cleanup() {
+                this.stageId++;
+                this.projectId = Player.UNKNOWN_ID;
+                this.projectLink = Player.UNKNOWN_LINK;
+                this.projectTitle = Player.UNKNOWN_TITLE;
+                if (this.stage) {
+                    this.stage.destroy();
+                    this.stage = null;
+                }
+                while (this.player.firstChild) {
+                    this.player.removeChild(this.player.firstChild);
+                }
+                if (this.fullscreen) {
+                    this.exitFullscreen();
+                }
+                this.oncleanup.emit();
+            }
+            startLoadingNewProject() {
+                this.cleanup();
+                this.onstartload.emit();
+            }
+            getNewStageId() {
+                this.stageId++;
+                return this.stageId;
+            }
+            isStageActive(id) {
+                return id === this.stageId;
+            }
+            installStage(stage, stageOptions = {}) {
+                if (!stage) {
+                    throw new Error('Cannot run an invalid stage');
+                }
+                this.stage = stage;
+                this.stage.runtime.handleError = this.handleError;
+                if (typeof stageOptions.fps !== 'undefined') {
+                    stage.runtime.framerate = stageOptions.fps;
+                }
+                this.onload.emit(stage);
+                this.start();
+                if (stageOptions.start !== false) {
+                    stage.runtime.triggerGreenFlag();
+                }
+                if (stageOptions.turbo) {
+                    stage.runtime.isTurbo = true;
+                }
+                this.player.appendChild(stage.root);
+                stage.focus();
+            }
+            isScratch1Project(buffer) {
+                const MAGIC = 'ScratchV0';
+                const array = new Uint8Array(buffer);
+                for (var i = 0; i < MAGIC.length; i++) {
+                    if (String.fromCharCode(array[i]) !== MAGIC[i]) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            _handleScratch3Loader(loader, stageId) {
+                loader.onprogress.subscribe(progress => {
+                    if (this.isStageActive(stageId)) {
+                        this.onprogress.emit(progress);
+                    }
+                    else if (!loader.aborted) {
+                        loader.abort();
+                    }
+                });
+                return loader.load().then(stage => {
+                    if (this.isStageActive(stageId))
+                        return stage;
+                    return null;
+                });
+            }
+            _handleScratch2Loader(stageId, load) {
+                var totalTasks = 0;
+                var finishedTasks = 0;
+                const update = () => {
+                    if (this.isStageActive(stageId)) {
+                        var progress = finishedTasks / totalTasks || 0;
+                        this.onprogress.emit(progress);
+                    }
+                };
+                P.sb2.hooks.newTask = function () {
+                    totalTasks++;
+                    update();
+                };
+                P.sb2.hooks.endTask = function () {
+                    finishedTasks++;
+                    update();
+                };
+                return load().then((stage) => {
+                    if (this.isStageActive(stageId))
+                        return stage;
+                    return null;
+                });
+            }
+            _loadScratch3(stageId, data) {
+                var loader = new P.sb3.Scratch3Loader(data);
+                return this._handleScratch3Loader(loader, stageId);
+            }
+            _loadScratch3File(stageId, buffer) {
+                var loader = new P.sb3.SB3FileLoader(buffer);
+                return this._handleScratch3Loader(loader, stageId);
+            }
+            _loadScratch2(stageId, data) {
+                return this._handleScratch2Loader(stageId, function () {
+                    return P.sb2.loadProject(data);
+                });
+            }
+            _loadScratch2File(stageId, data) {
+                return this._handleScratch2Loader(stageId, function () {
+                    return P.sb2.loadSB2Project(data);
+                });
+            }
+            _fetchProject(id) {
+                var request = new P.IO.BlobRequest(Player.PROJECT_DATA_API.replace('$id', id), { rejectOnError: false });
+                return request.load().then(function (response) {
+                    if (request.xhr.status === 404) {
+                        throw new ProjectDoesNotExistError(id);
+                    }
+                    return response;
+                });
+            }
+            loadProjectId(id, options) {
+                this.startLoadingNewProject();
+                const stageId = this.getNewStageId();
+                this.projectId = '' + id;
+                this.projectLink = Player.PROJECT_LINK.replace('$id', id);
+                let blob;
+                return this._fetchProject(id)
+                    .then((data) => {
+                    blob = data;
+                    return P.IO.readers.toText(blob);
+                })
+                    .then((text) => {
+                    if (!this.isStageActive(stageId)) {
+                        return null;
+                    }
+                    try {
+                        var json = JSON.parse(text);
+                        var type = Player.getProjectType(json);
+                        if (type === 3) {
+                            return this._loadScratch3(stageId, json);
+                        }
+                        else if (type === 2) {
+                            return this._loadScratch2(stageId, json);
+                        }
+                        else {
+                            throw new Error('Project is valid JSON but of unknown type');
+                        }
+                    }
+                    catch (e) {
+                        return P.IO.readers.toArrayBuffer(blob).then((buffer) => {
+                            if (this.isScratch1Project(buffer)) {
+                                throw new ProjectNotSupportedError('.sb / Scratch 1');
+                            }
+                            return P.sb2.loadSB2Project(buffer);
+                        });
+                    }
+                })
+                    .then((stage) => {
+                    if (stage) {
+                        this.installStage(stage, options);
+                        this.addCloudVariables(stage, id);
+                    }
+                })
+                    .catch((error) => {
+                    if (this.isStageActive(stageId)) {
+                        this.handleError(error);
+                    }
+                });
+            }
+            loadProjectBuffer(buffer, type, options) {
+                this.startLoadingNewProject();
+                const stageId = this.getNewStageId();
+                const startLoad = () => {
+                    if (type === 'sb3') {
+                        return this._loadScratch3File(stageId, buffer);
+                    }
+                    else if (type === 'sb2') {
+                        return this._loadScratch2File(stageId, buffer);
+                    }
+                    else {
+                        throw new Error('Unknown type: ' + type);
+                    }
+                };
+                return startLoad()
+                    .then((stage) => {
+                    if (stage) {
+                        this.installStage(stage, options);
+                    }
+                })
+                    .catch((error) => {
+                    if (this.isStageActive(stageId)) {
+                        this.handleError(error);
+                    }
+                });
+            }
+            loadProjectFile(file, options) {
+                var extension = file.name.split('.').pop() || '';
+                if (['sb2', 'sb3'].indexOf(extension) === -1) {
+                    throw new Error('Unrecognized file extension: ' + extension);
+                }
+                this.startLoadingNewProject();
+                this.getNewStageId();
+                this.projectId = file.name;
+                this.projectLink = file.name + '#local';
+                return P.IO.readers.toArrayBuffer(file).then(buffer => {
+                    return this.loadProjectBuffer(buffer, extension, options);
+                });
+            }
+            getProjectTitle(id) {
+                return new P.IO.JSONRequest(Player.PROJECT_API.replace('$id', id), { rejectOnError: false }).load()
+                    .then((data) => data.title || '');
+            }
+            getCloudVariables(id) {
+                return new P.IO.JSONRequest(Player.CLOUD_API.replace('$id', id)).load()
+                    .then((data) => {
+                    const variables = Object.create(null);
+                    for (const entry of data.reverse()) {
+                        const { verb, name, value } = entry;
+                        if (!Player.isCloudVariable(name)) {
+                            console.warn('cloud variable logs affecting non-cloud variable, skipping', name);
+                            continue;
+                        }
+                        switch (verb) {
+                            case 'create_var':
+                            case 'set_var':
+                                variables[name] = value;
+                                break;
+                            case 'del_var':
+                                delete variables[name];
+                                break;
+                            case 'rename_var':
+                                variables[value] = variables[name];
+                                delete variables[name];
+                                break;
+                            default:
+                                console.warn('unknown cloud variable log verb', verb);
+                        }
+                    }
+                    return variables;
+                });
+            }
+            addCloudVariables(stage, id) {
+                const variables = Object.keys(stage.vars);
+                const hasCloudVariables = variables.some(Player.isCloudVariable);
+                if (!hasCloudVariables) {
+                    return;
+                }
+                this.getCloudVariables(id).then((variables) => {
+                    for (const name of Object.keys(variables)) {
+                        if (name in stage.vars) {
+                            stage.vars[name] = variables[name];
+                        }
+                        else {
+                            console.warn('not applying unknown cloud variable:', name);
+                        }
+                    }
+                });
+            }
+        }
+        Player.PROJECT_DATA_API = 'https://projects.scratch.mit.edu/$id';
+        Player.PROJECT_LINK = 'https://scratch.mit.edu/projects/$id';
+        Player.LARGE_Z_INDEX = '9999999999';
+        Player.UNKNOWN_ID = '(no id)';
+        Player.UNKNOWN_LINK = '(no link)';
+        Player.UNKNOWN_TITLE = '(no title)';
+        Player.PROJECT_API = 'https://scratch.garbomuffin.com/proxy/projects/$id';
+        Player.CLOUD_API = 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100';
+        player_1.Player = Player;
+        class ErrorHandler {
+            constructor(player, options = {}) {
+                this.player = player;
+                this.player = player;
+                player.onerror.subscribe(this.onerror.bind(this));
+                player.oncleanup.subscribe(this.oncleanup.bind(this));
+                this.errorEl = null;
+                if (options.container) {
+                    this.errorContainer = options.container;
+                }
+                else {
+                    this.errorContainer = null;
+                }
+            }
+            stringifyError(error) {
+                if (!error) {
+                    return 'unknown error';
+                }
+                if (error.stack) {
+                    return 'Message: ' + error.message + '\nStack:\n' + error.stack;
+                }
+                return error.toString();
+            }
+            createBugReportLink(bodyBefore, bodyAfter) {
+                var title = this.getBugReportTitle();
+                bodyAfter = bodyAfter || '';
+                var body = bodyBefore +
+                    '\n\n\n-----\n' +
+                    this.getBugReportMetadata() +
+                    '\n' +
+                    bodyAfter;
+                return ErrorHandler.BUG_REPORT_LINK
+                    .replace('$title', encodeURIComponent(title))
+                    .replace('$body', encodeURIComponent(body));
+            }
+            getBugReportTitle() {
+                if (this.player.projectTitle !== Player.UNKNOWN_TITLE) {
+                    return this.player.projectTitle + ' (' + this.player.projectId + ')';
+                }
+                return this.player.projectLink;
+            }
+            getBugReportMetadata() {
+                var meta = 'Project URL: ' + this.player.projectLink + '\n';
+                meta += 'Project ID: ' + this.player.projectId + '\n';
+                meta += location.href + '\n';
+                meta += navigator.userAgent;
+                return meta;
+            }
+            createErrorLink(error) {
+                var body = P.i18n.translate('player.errorhandler.instructions');
+                return this.createBugReportLink(body, '```\n' + this.stringifyError(error) + '\n```');
+            }
+            oncleanup() {
+                if (this.errorEl && this.errorEl.parentNode) {
+                    this.errorEl.parentNode.removeChild(this.errorEl);
+                    this.errorEl = null;
+                }
+            }
+            handleError(error) {
+                var el = document.createElement('div');
+                var errorLink = this.createErrorLink(error);
+                var attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
+                el.innerHTML = P.i18n.translate('player.errorhandler.error').replace('$attrs', attributes);
+                return el;
+            }
+            handleNotSupportedError(error) {
+                var el = document.createElement('div');
+                el.innerHTML = P.i18n.translate('player.errorhandler.error.unsupported').replace('$type', error.type);
+                return el;
+            }
+            handleDoesNotExistError(error) {
+                var el = document.createElement('div');
+                el.textContent = P.i18n.translate('player.errorhandler.error.doesnotexist').replace('$id', error.id);
+                return el;
+            }
+            onerror(error) {
+                var el = document.createElement('div');
+                el.className = 'player-error';
+                if (error instanceof ProjectNotSupportedError) {
+                    el.appendChild(this.handleNotSupportedError(error));
+                }
+                else if (error instanceof ProjectDoesNotExistError) {
+                    el.appendChild(this.handleDoesNotExistError(error));
+                }
+                else {
+                    el.appendChild(this.handleError(error));
+                }
+                if (this.errorContainer) {
+                    this.errorContainer.appendChild(el);
+                }
+                else if (this.player.stage) {
+                    this.player.stage.ui.appendChild(el);
+                }
+                else {
+                    this.player.player.appendChild(el);
+                }
+                this.errorEl = el;
+            }
+        }
+        ErrorHandler.BUG_REPORT_LINK = 'https://github.com/forkphorus/forkphorus/issues/new?title=$title&body=$body';
+        player_1.ErrorHandler = ErrorHandler;
+        class ProgressBar {
+            constructor(player, options = {}) {
+                this.el = document.createElement('div');
+                this.el.className = 'player-progress';
+                this.bar = document.createElement('div');
+                this.bar.className = 'player-progress-fill';
+                this.el.appendChild(this.bar);
+                this.setTheme(player.theme);
+                player.onthemechange.subscribe((theme) => this.setTheme(theme));
+                player.onprogress.subscribe((progress) => this.setProgress(progress));
+                player.onstartload.subscribe(() => {
+                    this.el.setAttribute('state', 'loading');
+                    this.setProgress(0);
+                });
+                player.onload.subscribe(() => {
+                    this.el.setAttribute('state', 'loaded');
+                });
+                player.oncleanup.subscribe(() => {
+                    this.el.setAttribute('state', '');
+                    this.bar.style.width = '0%';
+                });
+                player.onerror.subscribe(() => {
+                    this.el.setAttribute('state', 'error');
+                    this.bar.style.width = '100%';
+                });
+                if (options.position === 'controls' || options.position === undefined) {
+                    if (!player.controlsEl) {
+                        throw new Error('No controls to put progess bar in.');
+                    }
+                    player.controlsEl.appendChild(this.el);
+                }
+                else {
+                    options.position.appendChild(this.el);
+                }
+            }
+            setTheme(theme) {
+                this.el.setAttribute('theme', theme);
+            }
+            setProgress(progress) {
+                this.bar.style.width = 10 + progress * 90 + '%';
+            }
+        }
+        player_1.ProgressBar = ProgressBar;
+    })(player = P.player || (P.player = {}));
 })(P || (P = {}));
 var P;
 (function (P) {
@@ -3256,6 +3247,18 @@ var P;
             return keyName.toUpperCase().charCodeAt(0);
         }
         runtime_1.getKeyCode = getKeyCode;
+        var getKeyCode3 = function (keyName) {
+            switch (keyName.toLowerCase()) {
+                case 'space': return 32;
+                case 'left arrow': return 37;
+                case 'up arrow': return 38;
+                case 'right arrow': return 39;
+                case 'down arrow': return 40;
+                case 'enter': return 13;
+                case 'any': return 'any';
+            }
+            return keyName.toUpperCase().charCodeAt(0);
+        };
         const audioContext = P.audio.context;
         if (audioContext) {
             var playNote = function (key, duration) {
@@ -3463,7 +3466,7 @@ var P;
                 this.interval = setInterval(this.step, 1000 / this.framerate);
                 if (audioContext)
                     audioContext.resume();
-                this.stage.start();
+                this.stage.startExtensions();
             }
             pause() {
                 if (this.interval) {
@@ -3473,7 +3476,7 @@ var P;
                     window.removeEventListener('error', this.onError);
                     if (audioContext)
                         audioContext.suspend();
-                    this.stage.pause();
+                    this.stage.pauseExtensions();
                 }
                 this.isRunning = false;
             }
@@ -3670,152 +3673,6 @@ var P;
         }
         runtime_1.scopedEval = scopedEval;
     })(runtime = P.runtime || (P.runtime = {}));
-})(P || (P = {}));
-var P;
-(function (P) {
-    var utils;
-    (function (utils) {
-        function parseRotationStyle(style) {
-            switch (style) {
-                case 'leftRight':
-                case 'left-right':
-                    return 1;
-                case 'none':
-                case 'don\'t rotate':
-                    return 2;
-                case 'normal':
-                case 'all around':
-                    return 0;
-            }
-            console.warn('unknown rotation style', style);
-            return 0;
-        }
-        utils.parseRotationStyle = parseRotationStyle;
-        function rgbToHSL(r, g, b) {
-            r /= 255;
-            g /= 255;
-            b /= 255;
-            var min = Math.min(r, g, b);
-            var max = Math.max(r, g, b);
-            if (min === max) {
-                return [0, 0, r];
-            }
-            var c = max - min;
-            var l = (min + max) / 2;
-            var s = c / (1 - Math.abs(2 * l - 1));
-            var h;
-            switch (max) {
-                case r:
-                    h = ((g - b) / c + 6) % 6;
-                    break;
-                case g:
-                    h = (b - r) / c + 2;
-                    break;
-                case b:
-                    h = (r - g) / c + 4;
-                    break;
-            }
-            h *= 60;
-            return [h, s, l];
-        }
-        utils.rgbToHSL = rgbToHSL;
-        function rgbToHSV(r, g, b) {
-            r /= 255;
-            g /= 255;
-            b /= 255;
-            var max = Math.max(r, g, b), min = Math.min(r, g, b);
-            var h, s, v = max;
-            var d = max - min;
-            s = max == 0 ? 0 : d / max;
-            if (max == min) {
-                h = 0;
-            }
-            else {
-                switch (max) {
-                    case r:
-                        h = (g - b) / d + (g < b ? 6 : 0);
-                        break;
-                    case g:
-                        h = (b - r) / d + 2;
-                        break;
-                    case b:
-                        h = (r - g) / d + 4;
-                        break;
-                }
-                h /= 6;
-            }
-            return [h * 360, s, v];
-        }
-        utils.rgbToHSV = rgbToHSV;
-        function hsvToRGB(h, s, v) {
-            var r, g, b;
-            var i = Math.floor(h * 6);
-            var f = h * 6 - i;
-            var p = v * (1 - s);
-            var q = v * (1 - f * s);
-            var t = v * (1 - (1 - f) * s);
-            switch (i % 6) {
-                case 0:
-                    r = v, g = t, b = p;
-                    break;
-                case 1:
-                    r = q, g = v, b = p;
-                    break;
-                case 2:
-                    r = p, g = v, b = t;
-                    break;
-                case 3:
-                    r = p, g = q, b = v;
-                    break;
-                case 4:
-                    r = t, g = p, b = v;
-                    break;
-                case 5:
-                    r = v, g = p, b = q;
-                    break;
-            }
-            return [r * 255, g * 255, b * 255];
-        }
-        utils.hsvToRGB = hsvToRGB;
-        function hslToHSV(h, s, l) {
-            var v = l + s * Math.min(l, 1 - l);
-            var s = v === 0 ? 0 : 2 - 2 * l / v;
-            return [h, s, v];
-        }
-        utils.hslToHSV = hslToHSV;
-        function hsvToHSL(h, s, v) {
-            var l = v - v * s / 2;
-            var s = l === 0 ? 0 : (v - l) / Math.min(2 - 2 * l / v);
-            return [h, s, l];
-        }
-        utils.hsvToHSL = hsvToHSL;
-        function clamp(number, min, max) {
-            return Math.min(max, Math.max(min, number));
-        }
-        utils.clamp = clamp;
-        function settled(promise) {
-            return new Promise((resolve, _reject) => {
-                promise
-                    .then(() => resolve())
-                    .catch(() => resolve());
-            });
-        }
-        utils.settled = settled;
-        class Slot {
-            constructor() {
-                this._listeners = [];
-            }
-            subscribe(fn) {
-                this._listeners.push(fn);
-            }
-            emit(value) {
-                for (const listener of this._listeners) {
-                    listener(value);
-                }
-            }
-        }
-        utils.Slot = Slot;
-    })(utils = P.utils || (P.utils = {}));
 })(P || (P = {}));
 var P;
 (function (P) {
@@ -6417,10 +6274,6 @@ var P;
                     return stringInput(this.sanitizedString(string));
                 }
                 sanitizedString(string) {
-                    if (typeof string !== 'string') {
-                        console.warn('sanitizedString got a non-string object', string);
-                        string = string + '';
-                    }
                     string = string
                         .replace(/\\/g, '\\\\')
                         .replace(/'/g, '\\\'')
@@ -6479,7 +6332,7 @@ var P;
                         case 8: {
                             const number = +native[1];
                             if (isNaN(number) || desiredType === 'string') {
-                                return this.sanitizedInput(native[1]);
+                                return this.sanitizedInput('' + native[1]);
                             }
                             else {
                                 return numberInput(number.toString());
@@ -6487,7 +6340,7 @@ var P;
                         }
                         case 10: {
                             const value = native[1];
-                            if (desiredType !== 'string' && /\d/.test(value)) {
+                            if (desiredType !== 'string' && /\d|Infinity/.test(value)) {
                                 const number = +value;
                                 if (number.toString() === value) {
                                     if (!isNaN(number)) {
@@ -7047,7 +6900,7 @@ var P;
         util.writeLn(`R.deltaY = ${Y} - S.scratchY;`);
         const label = util.addLabel();
         util.writeLn('var f = (runtime.now() - R.start) / (R.duration * 1000);');
-        util.writeLn('if (f > 1) f = 1;');
+        util.writeLn('if (f > 1 || isNaN(f)) f = 1;');
         util.writeLn('S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
         util.writeLn('if (f < 1) {');
         util.forceQueue(label);
@@ -7273,9 +7126,15 @@ var P;
     statementLibrary['procedures_call'] = function (util) {
         const mutation = util.block.mutation;
         const name = mutation.proccode;
-        if (P.config.debug && name === 'forkphorus:debugger;') {
-            util.writeLn('/* forkphorus debugger */ debugger;');
-            return;
+        if (P.config.debug) {
+            if (name === 'forkphorus:debugger;') {
+                util.writeLn('/* forkphorus */ debugger;');
+                return;
+            }
+            else if (name === 'forkphorus:throw;') {
+                util.writeLn('/* forkphorus */ throw new Error("Debug intended crash");');
+                return;
+            }
         }
         const label = util.claimNextLabel();
         util.write(`call(S.procedures[${util.sanitizedString(name)}], ${label}, [`);
@@ -7599,7 +7458,7 @@ var P;
     };
     inputLibrary['sensing_keypressed'] = function (util) {
         const KEY_OPTION = util.getInput('KEY_OPTION', 'string');
-        return util.booleanInput(`!!self.keys[P.runtime.getKeyCode(${KEY_OPTION})]`);
+        return util.booleanInput(`!!self.keys[getKeyCode3(${KEY_OPTION})]`);
     };
     inputLibrary['sensing_loud'] = function (util) {
         util.stage.initLoudness();
@@ -8152,5 +8011,1096 @@ var P;
             speech2text.SpeechToTextExtension = SpeechToTextExtension;
         })(speech2text = ext.speech2text || (ext.speech2text = {}));
     })(ext = P.ext || (P.ext = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
+    var renderer;
+    (function (renderer_1) {
+        var canvas2d;
+        (function (canvas2d) {
+            function getCSSFilter(filters) {
+                let filter = '';
+                if (filters.brightness) {
+                    filter += 'brightness(' + (100 + filters.brightness) + '%) ';
+                }
+                if (filters.color) {
+                    filter += 'hue-rotate(' + (filters.color / 200 * 360) + 'deg) ';
+                }
+                return filter;
+            }
+            function create2dCanvas() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 480;
+                canvas.height = 360;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    throw new Error('Cannot get 2d rendering context in create2dCanvas');
+                }
+                ctx.imageSmoothingEnabled = false;
+                return { canvas, ctx };
+            }
+            function rgb2hsv(r, g, b) {
+                var max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min, h, s = (max === 0 ? 0 : d / max), v = max / 255;
+                switch (max) {
+                    case min:
+                        h = 0;
+                        break;
+                    case r:
+                        h = (g - b) + d * (g < b ? 6 : 0);
+                        h /= 6 * d;
+                        break;
+                    case g:
+                        h = (b - r) + d * 2;
+                        h /= 6 * d;
+                        break;
+                    case b:
+                        h = (r - g) + d * 4;
+                        h /= 6 * d;
+                        break;
+                }
+                return [h, s, v];
+            }
+            function hsv2rgb(h, s, v) {
+                var r, g, b, i, f, p, q, t;
+                i = Math.floor(h * 6);
+                f = h * 6 - i;
+                p = v * (1 - s);
+                q = v * (1 - f * s);
+                t = v * (1 - (1 - f) * s);
+                switch (i % 6) {
+                    case 0:
+                        r = v, g = t, b = p;
+                        break;
+                    case 1:
+                        r = q, g = v, b = p;
+                        break;
+                    case 2:
+                        r = p, g = v, b = t;
+                        break;
+                    case 3:
+                        r = p, g = q, b = v;
+                        break;
+                    case 4:
+                        r = t, g = p, b = v;
+                        break;
+                    case 5:
+                        r = v, g = p, b = q;
+                        break;
+                }
+                return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+            }
+            class SpriteRenderer2D {
+                constructor() {
+                    this.noEffects = false;
+                    const { canvas, ctx } = create2dCanvas();
+                    this.canvas = canvas;
+                    this.ctx = ctx;
+                }
+                reset(scale) {
+                    this._reset(this.ctx, scale);
+                }
+                drawChild(c) {
+                    this._drawChild(c, this.ctx);
+                }
+                drawObjects(children) {
+                    for (var i = 0; i < children.length; i++) {
+                        var child = children[i];
+                        if (!child.visible) {
+                            continue;
+                        }
+                        this.drawChild(child);
+                    }
+                }
+                _reset(ctx, scale) {
+                    const effectiveScale = scale * P.config.scale;
+                    const width = 480 * effectiveScale;
+                    const height = 360 * effectiveScale;
+                    if (ctx.canvas.width !== width || ctx.canvas.height !== height) {
+                        ctx.canvas.width = width;
+                        ctx.canvas.height = height;
+                        ctx.scale(effectiveScale, effectiveScale);
+                    }
+                    else {
+                        ctx.clearRect(0, 0, 480, 360);
+                    }
+                }
+                _drawChild(c, ctx) {
+                    const costume = c.costumes[c.currentCostumeIndex];
+                    if (!costume) {
+                        return;
+                    }
+                    ctx.save();
+                    const globalScale = c.stage.zoom * P.config.scale;
+                    ctx.translate(((c.scratchX + 240) * globalScale | 0) / globalScale, ((180 - c.scratchY) * globalScale | 0) / globalScale);
+                    let objectScale = costume.scale;
+                    if (P.core.isSprite(c)) {
+                        if (c.rotationStyle === 0) {
+                            ctx.rotate((c.direction - 90) * Math.PI / 180);
+                        }
+                        else if (c.rotationStyle === 1 && c.direction < 0) {
+                            ctx.scale(-1, 1);
+                        }
+                        objectScale *= c.scale;
+                    }
+                    const lod = costume.get(objectScale * c.stage.zoom);
+                    ctx.imageSmoothingEnabled = false;
+                    const x = -costume.rotationCenterX * objectScale;
+                    const y = -costume.rotationCenterY * objectScale;
+                    const w = costume.width * objectScale;
+                    const h = costume.height * objectScale;
+                    if (w < 1 || h < 1) {
+                        ctx.restore();
+                        return;
+                    }
+                    ctx.imageSmoothingEnabled = false;
+                    if (!this.noEffects) {
+                        ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
+                        if (P.config.accurateFilters) {
+                            if (c.filters.brightness !== 0 || c.filters.color !== 0) {
+                                let sourceImage = lod.getImageData();
+                                let destImage = ctx.createImageData(sourceImage.width, sourceImage.height);
+                                if (c.filters.color !== 0) {
+                                    this.applyColorEffect(sourceImage, destImage, c.filters.color / 200);
+                                    sourceImage = destImage;
+                                }
+                                if (c.filters.brightness !== 0) {
+                                    this.applyBrightnessEffect(sourceImage, destImage, c.filters.brightness / 100 * 255);
+                                }
+                                workingRenderer.canvas.width = sourceImage.width;
+                                workingRenderer.canvas.height = sourceImage.height;
+                                workingRenderer.ctx.putImageData(destImage, 0, 0);
+                                ctx.drawImage(workingRenderer.canvas, x, y, w, h);
+                            }
+                            else {
+                                ctx.drawImage(lod.image, x, y, w, h);
+                            }
+                        }
+                        else {
+                            const filter = getCSSFilter(c.filters);
+                            if (filter !== '') {
+                                ctx.filter = getCSSFilter(c.filters);
+                            }
+                            ctx.drawImage(lod.image, x, y, w, h);
+                        }
+                    }
+                    else {
+                        ctx.drawImage(lod.image, x, y, w, h);
+                    }
+                    ctx.restore();
+                }
+                applyColorEffect(sourceImage, destImage, hueShift) {
+                    const MIN_VALUE = 0.11 / 2;
+                    const MIN_SATURATION = 0.09;
+                    const colorCache = {};
+                    for (var i = 0; i < sourceImage.data.length; i += 4) {
+                        const r = sourceImage.data[i];
+                        const g = sourceImage.data[i + 1];
+                        const b = sourceImage.data[i + 2];
+                        destImage.data[i + 3] = sourceImage.data[i + 3];
+                        const rgbHash = (r << 16) + (g << 8) + b;
+                        const cachedColor = colorCache[rgbHash];
+                        if (cachedColor !== undefined) {
+                            destImage.data[i] = (0xff0000 & cachedColor) >> 16;
+                            destImage.data[i + 1] = (0x00ff00 & cachedColor) >> 8;
+                            destImage.data[i + 2] = (0x0000ff & cachedColor);
+                            continue;
+                        }
+                        let hsv = rgb2hsv(r, g, b);
+                        if (hsv[2] < MIN_VALUE)
+                            hsv = [0, 1, MIN_VALUE];
+                        else if (hsv[1] < MIN_SATURATION)
+                            hsv = [0, MIN_SATURATION, hsv[2]];
+                        hsv[0] = hsv[0] + hueShift - Math.floor(hsv[0] + hueShift);
+                        if (hsv[0] < 0)
+                            hsv[0] += 1;
+                        const rgb = hsv2rgb(hsv[0], hsv[1], hsv[2]);
+                        colorCache[rgbHash] = (rgb[0] << 16) + (rgb[1] << 8) + rgb[2];
+                        destImage.data[i] = rgb[0];
+                        destImage.data[i + 1] = rgb[1];
+                        destImage.data[i + 2] = rgb[2];
+                    }
+                }
+                applyBrightnessEffect(sourceImage, destImage, brightness) {
+                    const length = sourceImage.data.length;
+                    for (var i = 0; i < length; i += 4) {
+                        destImage.data[i] = sourceImage.data[i] + brightness;
+                        destImage.data[i + 1] = sourceImage.data[i + 1] + brightness;
+                        destImage.data[i + 2] = sourceImage.data[i + 2] + brightness;
+                        destImage.data[i + 3] = sourceImage.data[i + 3];
+                    }
+                }
+            }
+            canvas2d.SpriteRenderer2D = SpriteRenderer2D;
+            const workingRenderer = new SpriteRenderer2D();
+            const workingRenderer2 = new SpriteRenderer2D();
+            class ProjectRenderer2D extends SpriteRenderer2D {
+                constructor(stage) {
+                    super();
+                    this.stage = stage;
+                    this.zoom = 1;
+                    this.penModified = false;
+                    this.penTargetZoom = -1;
+                    this.penZoom = 1;
+                    this.stageCostumeIndex = -1;
+                    const { ctx: stageContext, canvas: stageLayer } = create2dCanvas();
+                    this.stageContext = stageContext;
+                    this.stageLayer = stageLayer;
+                    const { ctx: penContext, canvas: penLayer } = create2dCanvas();
+                    this.penContext = penContext;
+                    this.penLayer = penLayer;
+                }
+                onStageFiltersChanged() {
+                    this.renderStageCostume(this.zoom);
+                }
+                renderStageCostume(scale) {
+                    this._reset(this.stageContext, scale * P.config.scale);
+                    this._drawChild(this.stage, this.stageContext);
+                }
+                init(root) {
+                    root.appendChild(this.stageLayer);
+                    root.appendChild(this.penLayer);
+                    root.appendChild(this.canvas);
+                }
+                drawFrame() {
+                    this.reset(this.zoom);
+                    this.drawObjects(this.stage.children);
+                    if (this.stage.currentCostumeIndex !== this.stageCostumeIndex) {
+                        this.stageCostumeIndex = this.stage.currentCostumeIndex;
+                        this.renderStageCostume(this.zoom);
+                    }
+                }
+                drawAllExcept(renderer, skip) {
+                    renderer.drawChild(this.stage);
+                    renderer.ctx.drawImage(this.penLayer, 0, 0, this.canvas.width, this.canvas.height);
+                    for (var i = 0; i < this.stage.children.length; i++) {
+                        var child = this.stage.children[i];
+                        if (!child.visible || child === skip) {
+                            continue;
+                        }
+                        renderer.drawChild(child);
+                    }
+                }
+                resize(zoom) {
+                    this.zoom = zoom;
+                    this.resizePen(zoom);
+                    this.renderStageCostume(this.zoom);
+                }
+                resizePen(zoom) {
+                    if (zoom > this.penZoom) {
+                        this.penZoom = zoom;
+                        workingRenderer.canvas.width = this.penLayer.width;
+                        workingRenderer.canvas.height = this.penLayer.height;
+                        workingRenderer.ctx.drawImage(this.penLayer, 0, 0);
+                        this._reset(this.penContext, zoom);
+                        this.penContext.drawImage(workingRenderer.canvas, 0, 0, 480, 360);
+                    }
+                    else if (!this.penModified) {
+                        this.penZoom = zoom;
+                        this._reset(this.penContext, zoom);
+                    }
+                    else {
+                        this.penTargetZoom = zoom;
+                    }
+                }
+                penClear() {
+                    this.penModified = false;
+                    if (this.penTargetZoom !== -1) {
+                        this._reset(this.penContext, this.penTargetZoom);
+                        this.penZoom = this.penTargetZoom;
+                        this.penTargetZoom = -1;
+                    }
+                    this.penContext.clearRect(0, 0, 480, 360);
+                }
+                penDot(color, size, x, y) {
+                    this.penModified = true;
+                    this.penContext.fillStyle = color.toCSS();
+                    this.penContext.beginPath();
+                    this.penContext.arc(240 + x, 180 - y, size / 2, 0, 2 * Math.PI, false);
+                    this.penContext.fill();
+                }
+                penLine(color, size, x1, y1, x2, y2) {
+                    this.penModified = true;
+                    this.penContext.lineCap = 'round';
+                    if (this.penZoom === 1) {
+                        if (size % 2 > .5 && size % 2 < 1.5) {
+                            x1 -= .5;
+                            y1 -= .5;
+                            x2 -= .5;
+                            y2 -= .5;
+                        }
+                    }
+                    this.penContext.strokeStyle = color.toCSS();
+                    this.penContext.lineWidth = size;
+                    this.penContext.beginPath();
+                    this.penContext.moveTo(240 + x1, 180 - y1);
+                    this.penContext.lineTo(240 + x2, 180 - y2);
+                    this.penContext.stroke();
+                }
+                penStamp(sprite) {
+                    this.penModified = true;
+                    this._drawChild(sprite, this.penContext);
+                }
+                spriteTouchesPoint(sprite, x, y) {
+                    const bounds = sprite.rotatedBounds();
+                    if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top) {
+                        return false;
+                    }
+                    const costume = sprite.costumes[sprite.currentCostumeIndex];
+                    var cx = (x - sprite.scratchX) / sprite.scale;
+                    var cy = (sprite.scratchY - y) / sprite.scale;
+                    if (sprite.rotationStyle === 0 && sprite.direction !== 90) {
+                        const d = (90 - sprite.direction) * Math.PI / 180;
+                        const ox = cx;
+                        const s = Math.sin(d), c = Math.cos(d);
+                        cx = c * ox - s * cy;
+                        cy = s * ox + c * cy;
+                    }
+                    else if (sprite.rotationStyle === 1 && sprite.direction < 0) {
+                        cx = -cx;
+                    }
+                    const positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
+                    const positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
+                    const data = costume.getContext().getImageData(positionX, positionY, 1, 1).data;
+                    return data[3] !== 0;
+                }
+                spritesIntersect(spriteA, otherSprites) {
+                    const mb = spriteA.rotatedBounds();
+                    for (var i = 0; i < otherSprites.length; i++) {
+                        const spriteB = otherSprites[i];
+                        if (!spriteB.visible) {
+                            continue;
+                        }
+                        const ob = spriteB.rotatedBounds();
+                        if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
+                            continue;
+                        }
+                        const left = Math.max(mb.left, ob.left);
+                        const top = Math.min(mb.top, ob.top);
+                        const right = Math.min(mb.right, ob.right);
+                        const bottom = Math.max(mb.bottom, ob.bottom);
+                        const width = right - left;
+                        const height = top - bottom;
+                        if (width < 1 || height < 1 || width !== width || height !== height) {
+                            continue;
+                        }
+                        workingRenderer.canvas.width = width;
+                        workingRenderer.canvas.height = height;
+                        workingRenderer.ctx.save();
+                        workingRenderer.noEffects = true;
+                        workingRenderer.ctx.translate(-(left + 240), -(180 - top));
+                        workingRenderer.drawChild(spriteA);
+                        workingRenderer.ctx.globalCompositeOperation = 'source-in';
+                        workingRenderer.drawChild(spriteB);
+                        workingRenderer.noEffects = false;
+                        workingRenderer.ctx.restore();
+                        const data = workingRenderer.ctx.getImageData(0, 0, width, height).data;
+                        const length = data.length;
+                        for (var j = 0; j < length; j += 4) {
+                            if (data[j + 3]) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                }
+                spriteTouchesColor(sprite, color) {
+                    const b = sprite.rotatedBounds();
+                    const width = b.right - b.left;
+                    const height = b.top - b.bottom;
+                    if (width < 1 || height < 1 || width !== width || height !== height) {
+                        return false;
+                    }
+                    workingRenderer.canvas.width = width;
+                    workingRenderer.canvas.height = height;
+                    workingRenderer.ctx.save();
+                    workingRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
+                    this.drawAllExcept(workingRenderer, sprite);
+                    workingRenderer.ctx.globalCompositeOperation = 'destination-in';
+                    workingRenderer.noEffects = true;
+                    workingRenderer.drawChild(sprite);
+                    workingRenderer.noEffects = false;
+                    workingRenderer.ctx.restore();
+                    const data = workingRenderer.ctx.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
+                    color = color & 0xffffff;
+                    const length = (b.right - b.left) * (b.top - b.bottom) * 4;
+                    for (var i = 0; i < length; i += 4) {
+                        if ((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) === color && data[i + 3]) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+                spriteColorTouchesColor(sprite, spriteColor, otherColor) {
+                    var rb = sprite.rotatedBounds();
+                    const width = rb.right - rb.left;
+                    const height = rb.top - rb.bottom;
+                    if (width < 1 || height < 1 || width !== width || height !== height) {
+                        return false;
+                    }
+                    workingRenderer.canvas.width = workingRenderer2.canvas.width = width;
+                    workingRenderer.canvas.height = workingRenderer2.canvas.height = height;
+                    workingRenderer.ctx.save();
+                    workingRenderer2.ctx.save();
+                    workingRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
+                    workingRenderer2.ctx.translate(-(240 + rb.left), -(180 - rb.top));
+                    this.drawAllExcept(workingRenderer, sprite);
+                    workingRenderer2.drawChild(sprite);
+                    workingRenderer.ctx.restore();
+                    workingRenderer2.ctx.restore();
+                    var dataA = workingRenderer.ctx.getImageData(0, 0, width, height).data;
+                    var dataB = workingRenderer2.ctx.getImageData(0, 0, width, height).data;
+                    spriteColor = spriteColor & 0xffffff;
+                    otherColor = otherColor & 0xffffff;
+                    var length = dataA.length;
+                    for (var i = 0; i < length; i += 4) {
+                        var touchesSource = (dataB[i] << 16 | dataB[i + 1] << 8 | dataB[i + 2]) === spriteColor && dataB[i + 3];
+                        var touchesOther = (dataA[i] << 16 | dataA[i + 1] << 8 | dataA[i + 2]) === otherColor && dataA[i + 3];
+                        if (touchesSource && touchesOther) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            }
+            canvas2d.ProjectRenderer2D = ProjectRenderer2D;
+        })(canvas2d = renderer_1.canvas2d || (renderer_1.canvas2d = {}));
+    })(renderer = P.renderer || (P.renderer = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
+    var m3;
+    (function (m3) {
+        function multiply(out, other) {
+            const a0 = out[0];
+            const a1 = out[1];
+            const a2 = out[2];
+            const a3 = out[3];
+            const a4 = out[4];
+            const a5 = out[5];
+            const a6 = out[6];
+            const a7 = out[7];
+            const a8 = out[8];
+            const b0 = other[0];
+            const b1 = other[1];
+            const b2 = other[2];
+            const b3 = other[3];
+            const b4 = other[4];
+            const b5 = other[5];
+            const b6 = other[6];
+            const b7 = other[7];
+            const b8 = other[8];
+            out[0] = b0 * a0 + b1 * a3 + b2 * a6;
+            out[1] = b0 * a1 + b1 * a4 + b2 * a7;
+            out[2] = b0 * a2 + b1 * a5 + b2 * a8;
+            out[3] = b3 * a0 + b4 * a3 + b5 * a6;
+            out[4] = b3 * a1 + b4 * a4 + b5 * a7;
+            out[5] = b3 * a2 + b4 * a5 + b5 * a8;
+            out[6] = b6 * a0 + b7 * a3 + b8 * a6;
+            out[7] = b6 * a1 + b7 * a4 + b8 * a7;
+            out[8] = b6 * a2 + b7 * a5 + b8 * a8;
+        }
+        m3.multiply = multiply;
+        function translation(x, y) {
+            return [
+                1, 0, 0,
+                0, 1, 0,
+                x, y, 1,
+            ];
+        }
+        m3.translation = translation;
+        function rotation(degrees) {
+            const radians = degrees * Math.PI / 180;
+            const cos = Math.cos(radians);
+            const sin = Math.sin(radians);
+            return [
+                cos, -sin, 0,
+                sin, cos, 0,
+                0, 0, 1,
+            ];
+        }
+        m3.rotation = rotation;
+        function scaling(x, y) {
+            return [
+                x, 0, 0,
+                0, y, 0,
+                0, 0, 1,
+            ];
+        }
+        m3.scaling = scaling;
+        function projection(width, height) {
+            return [
+                2 / width, 0, 0,
+                0, -2 / height, 0,
+                -1, 1, 1,
+            ];
+        }
+        m3.projection = projection;
+    })(m3 = P.m3 || (P.m3 = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
+    var renderer;
+    (function (renderer) {
+        var webgl;
+        (function (webgl) {
+            function createCanvas() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 480;
+                canvas.height = 360;
+                return canvas;
+            }
+            function filtersAffectShape(filters) {
+                return filters.fisheye !== 0 ||
+                    filters.mosaic !== 0 ||
+                    filters.pixelate !== 0 ||
+                    filters.whirl !== 0;
+            }
+            const horizontalInvertMatrix = P.m3.scaling(-1, 1);
+            class ShaderVariant {
+                constructor(gl, program) {
+                    this.gl = gl;
+                    this.program = program;
+                    this.uniformLocations = {};
+                    this.attributeLocations = {};
+                    const activeUniforms = gl.getProgramParameter(program, this.gl.ACTIVE_UNIFORMS);
+                    for (let index = 0; index < activeUniforms; index++) {
+                        const info = gl.getActiveUniform(program, index);
+                        if (!info) {
+                            throw new Error('uniform at index ' + index + ' does not exist');
+                        }
+                        const name = info.name;
+                        const location = gl.getUniformLocation(program, name);
+                        if (!location) {
+                            throw new Error('uniform named ' + name + ' does not exist');
+                        }
+                        this.uniformLocations[name] = location;
+                    }
+                    const activeAttributes = gl.getProgramParameter(program, this.gl.ACTIVE_ATTRIBUTES);
+                    for (let index = 0; index < activeAttributes; index++) {
+                        const info = gl.getActiveAttrib(program, index);
+                        if (!info) {
+                            throw new Error('attribute at index ' + index + ' does not exist');
+                        }
+                        this.attributeLocations[info.name] = index;
+                    }
+                }
+                uniform1f(name, value) {
+                    const location = this.getUniform(name);
+                    this.gl.uniform1f(location, value);
+                }
+                uniform2f(name, a, b) {
+                    const location = this.getUniform(name);
+                    this.gl.uniform2f(location, a, b);
+                }
+                uniform4f(name, a, b, c, d) {
+                    const location = this.getUniform(name);
+                    this.gl.uniform4f(location, a, b, c, d);
+                }
+                uniformMatrix3(name, value) {
+                    const location = this.getUniform(name);
+                    this.gl.uniformMatrix3fv(location, false, value);
+                }
+                hasUniform(name) {
+                    return this.uniformLocations.hasOwnProperty(name);
+                }
+                getUniform(name) {
+                    if (!this.hasUniform(name)) {
+                        throw new Error('uniform of name ' + name + ' does not exist');
+                    }
+                    return this.uniformLocations[name];
+                }
+                attributeBuffer(name, value) {
+                    if (!this.hasAttribute(name)) {
+                        throw new Error('attribute of name ' + name + ' does not exist');
+                    }
+                    const location = this.attributeLocations[name];
+                    this.gl.enableVertexAttribArray(location);
+                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, value);
+                    this.gl.vertexAttribPointer(location, 2, this.gl.FLOAT, false, 0, 0);
+                }
+                hasAttribute(name) {
+                    return this.attributeLocations.hasOwnProperty(name);
+                }
+                getAttribute(name) {
+                    if (!this.hasAttribute(name)) {
+                        throw new Error('attribute of name ' + name + ' does not exist');
+                    }
+                    return this.attributeLocations[name];
+                }
+            }
+            class WebGLSpriteRenderer {
+                constructor() {
+                    this.globalScaleMatrix = P.m3.scaling(1, 1);
+                    this.boundFramebuffer = null;
+                    this.costumeTextures = new Map();
+                    this.canvas = createCanvas();
+                    const gl = this.canvas.getContext('webgl', {
+                        alpha: false,
+                        antialias: false,
+                    });
+                    if (!gl) {
+                        throw new Error('cannot get webgl rendering context');
+                    }
+                    this.gl = gl;
+                    this.noFiltersShader = this.compileVariant([]);
+                    this.allFiltersShader = this.compileVariant([
+                        'ENABLE_BRIGHTNESS',
+                        'ENABLE_COLOR',
+                        'ENABLE_GHOST',
+                        'ENABLE_FISHEYE',
+                        'ENABLE_MOSAIC',
+                        'ENABLE_PIXELATE',
+                    ]);
+                    this.gl.enable(this.gl.BLEND);
+                    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+                    this.quadBuffer = this.gl.createBuffer();
+                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
+                    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
+                        0, 0,
+                        0, 1,
+                        1, 0,
+                        1, 0,
+                        0, 1,
+                        1, 1,
+                    ]), this.gl.STATIC_DRAW);
+                }
+                compileShader(type, source, definitions) {
+                    if (definitions) {
+                        for (const def of definitions) {
+                            source = '#define ' + def + '\n' + source;
+                        }
+                    }
+                    const shader = this.gl.createShader(type);
+                    if (!shader) {
+                        throw new Error('Cannot create shader');
+                    }
+                    this.gl.shaderSource(shader, source);
+                    this.gl.compileShader(shader);
+                    if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
+                        const error = this.gl.getShaderInfoLog(shader);
+                        this.gl.deleteShader(shader);
+                        throw new Error('Shader compilation error: ' + error);
+                    }
+                    return shader;
+                }
+                compileProgram(vs, fs, definitions) {
+                    const vertexShader = this.compileShader(this.gl.VERTEX_SHADER, vs, definitions);
+                    const fragmentShader = this.compileShader(this.gl.FRAGMENT_SHADER, fs, definitions);
+                    const program = this.gl.createProgram();
+                    if (!program) {
+                        throw new Error('Cannot create program');
+                    }
+                    this.gl.attachShader(program, vertexShader);
+                    this.gl.attachShader(program, fragmentShader);
+                    this.gl.linkProgram(program);
+                    if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
+                        const error = this.gl.getProgramInfoLog(program);
+                        this.gl.deleteProgram(program);
+                        throw new Error('Program compilation error: ' + error);
+                    }
+                    return program;
+                }
+                compileVariant(definitions) {
+                    const program = this.compileProgram(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, definitions);
+                    return new ShaderVariant(this.gl, program);
+                }
+                createTexture() {
+                    const texture = this.gl.createTexture();
+                    if (!texture) {
+                        throw new Error('Cannot create texture');
+                    }
+                    this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+                    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+                    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+                    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+                    return texture;
+                }
+                convertToTexture(canvas) {
+                    const texture = this.createTexture();
+                    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
+                    return texture;
+                }
+                createFramebuffer() {
+                    const frameBuffer = this.gl.createFramebuffer();
+                    if (!frameBuffer) {
+                        throw new Error('cannot create frame buffer');
+                    }
+                    return frameBuffer;
+                }
+                bindFramebuffer(buffer) {
+                    if (buffer === this.boundFramebuffer) {
+                        return;
+                    }
+                    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, buffer);
+                    this.boundFramebuffer = buffer;
+                }
+                reset(scale) {
+                    this.canvas.width = scale * P.config.scale * 480;
+                    this.canvas.height = scale * P.config.scale * 360;
+                    this.resetFramebuffer(scale);
+                }
+                resetFramebuffer(scale) {
+                    this.gl.viewport(0, 0, 480 * scale, 360 * scale);
+                    if (this.globalScaleMatrix[0] !== scale) {
+                        this.globalScaleMatrix = P.m3.scaling(scale, scale);
+                    }
+                    this.gl.clearColor(255, 255, 255, 0);
+                    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                }
+                drawChild(child) {
+                    this._drawChild(child, this.allFiltersShader);
+                }
+                _drawChild(child, shader) {
+                    this.gl.useProgram(shader.program);
+                    const costume = child.costumes[child.currentCostumeIndex];
+                    const lod = costume.get(P.core.isSprite(child) ? child.scale : 1);
+                    if (!this.costumeTextures.has(lod)) {
+                        const texture = this.convertToTexture(lod.image);
+                        this.costumeTextures.set(lod, texture);
+                    }
+                    this.gl.bindTexture(this.gl.TEXTURE_2D, this.costumeTextures.get(lod));
+                    shader.attributeBuffer('a_position', this.quadBuffer);
+                    const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
+                    P.m3.multiply(matrix, this.globalScaleMatrix);
+                    P.m3.multiply(matrix, P.m3.translation(240 + child.scratchX | 0, 180 - child.scratchY | 0));
+                    if (P.core.isSprite(child)) {
+                        if (child.rotationStyle === 0 && child.direction !== 90) {
+                            P.m3.multiply(matrix, P.m3.rotation(90 - child.direction));
+                        }
+                        else if (child.rotationStyle === 1 && child.direction < 0) {
+                            P.m3.multiply(matrix, horizontalInvertMatrix);
+                        }
+                        if (child.scale !== 1) {
+                            P.m3.multiply(matrix, P.m3.scaling(child.scale, child.scale));
+                        }
+                    }
+                    if (costume.scale !== 1) {
+                        P.m3.multiply(matrix, P.m3.scaling(costume.scale, costume.scale));
+                    }
+                    P.m3.multiply(matrix, P.m3.translation(-costume.rotationCenterX, -costume.rotationCenterY));
+                    P.m3.multiply(matrix, P.m3.scaling(costume.width, costume.height));
+                    shader.uniformMatrix3('u_matrix', matrix);
+                    if (shader.hasUniform('u_opacity')) {
+                        shader.uniform1f('u_opacity', 1 - child.filters.ghost / 100);
+                    }
+                    if (shader.hasUniform('u_brightness')) {
+                        shader.uniform1f('u_brightness', child.filters.brightness / 100);
+                    }
+                    if (shader.hasUniform('u_color')) {
+                        shader.uniform1f('u_color', child.filters.color / 200);
+                    }
+                    if (shader.hasUniform('u_mosaic')) {
+                        const mosaic = Math.round((Math.abs(child.filters.mosaic) + 10) / 10);
+                        shader.uniform1f('u_mosaic', P.utils.clamp(mosaic, 1, 512));
+                    }
+                    if (shader.hasUniform('u_whirl')) {
+                        shader.uniform1f('u_whirl', child.filters.whirl * Math.PI / -180);
+                    }
+                    if (shader.hasUniform('u_fisheye')) {
+                        shader.uniform1f('u_fisheye', Math.max(0, (child.filters.fisheye + 100) / 100));
+                    }
+                    if (shader.hasUniform('u_pixelate')) {
+                        shader.uniform1f('u_pixelate', Math.abs(child.filters.pixelate) / 10);
+                    }
+                    if (shader.hasUniform('u_size')) {
+                        shader.uniform2f('u_size', costume.width, costume.height);
+                    }
+                    this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+                }
+                drawTextureOverlay(texture) {
+                    const shader = this.noFiltersShader;
+                    this.gl.useProgram(shader.program);
+                    this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+                    shader.attributeBuffer('a_position', this.quadBuffer);
+                    const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
+                    P.m3.multiply(matrix, this.globalScaleMatrix);
+                    P.m3.multiply(matrix, P.m3.translation(240, 180));
+                    P.m3.multiply(matrix, P.m3.scaling(1, -1));
+                    P.m3.multiply(matrix, P.m3.translation(-240, -180));
+                    P.m3.multiply(matrix, P.m3.scaling(480, 360));
+                    shader.uniformMatrix3('u_matrix', matrix);
+                    this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+                }
+            }
+            WebGLSpriteRenderer.vertexShader = `
+    attribute vec2 a_position;
+
+    uniform mat3 u_matrix;
+
+    varying vec2 v_texcoord;
+
+    void main() {
+      gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
+      v_texcoord = a_position;
+    }
+    `;
+            WebGLSpriteRenderer.fragmentShader = `
+    precision mediump float;
+
+    varying vec2 v_texcoord;
+
+    uniform sampler2D u_texture;
+
+    #ifdef ENABLE_BRIGHTNESS
+      uniform float u_brightness;
+    #endif
+    #ifdef ENABLE_COLOR
+      uniform float u_color;
+    #endif
+    #ifdef ENABLE_GHOST
+      uniform float u_opacity;
+    #endif
+    #ifdef ENABLE_MOSAIC
+      uniform float u_mosaic;
+    #endif
+    #ifdef ENABLE_WHIRL
+      uniform float u_whirl;
+    #endif
+    #ifdef ENABLE_FISHEYE
+      uniform float u_fisheye;
+    #endif
+    #ifdef ENABLE_PIXELATE
+      uniform float u_pixelate;
+      uniform vec2 u_size;
+    #endif
+
+    const float minimumAlpha = 1.0 / 250.0;
+    const vec2 vecCenter = vec2(0.5, 0.5);
+
+    // http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl
+    vec3 rgb2hsv(vec3 c) {
+      vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+      vec4 p = c.g < c.b ? vec4(c.bg, K.wz) : vec4(c.gb, K.xy);
+      vec4 q = c.r < p.x ? vec4(p.xyw, c.r) : vec4(c.r, p.yzx);
+      float d = q.x - min(q.w, q.y);
+      float e = 1.0e-10;
+      return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+    }
+    vec3 hsv2rgb(vec3 c) {
+      vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+      vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+      return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+    }
+
+    void main() {
+      // varyings cannot be modified
+      vec2 texcoord = v_texcoord;
+
+      #ifdef ENABLE_MOSAIC
+        texcoord = fract(u_mosaic * v_texcoord);
+      #endif
+
+      #ifdef ENABLE_PIXELATE
+      if (u_pixelate != 0.0) {
+        vec2 texelSize = u_size / u_pixelate;
+        texcoord = (floor(texcoord * texelSize) + vecCenter) / texelSize;
+      }
+      #endif
+
+      #ifdef ENABLE_WHIRL
+      {
+        const float radius = 0.5;
+        vec2 offset = texcoord - vecCenter;
+        float offsetMagnitude = length(offset);
+        float whirlFactor = max(1.0 - (offsetMagnitude / radius), 0.0);
+        float whirlActual = u_whirl * whirlFactor * whirlFactor;
+        float sinWhirl = sin(whirlActual);
+        float cosWhirl = cos(whirlActual);
+        mat2 rotationMatrix = mat2(
+          cosWhirl, -sinWhirl,
+          sinWhirl, cosWhirl
+        );
+        texcoord = rotationMatrix * offset + vecCenter;
+      }
+      #endif
+
+      #ifdef ENABLE_FISHEYE
+      {
+        vec2 vec = (texcoord - vecCenter) / vecCenter;
+        float vecLength = length(vec);
+        float r = pow(min(vecLength, 1.0), u_fisheye) * max(1.0, vecLength);
+        vec2 unit = vec / vecLength;
+        texcoord = vecCenter + r * unit * vecCenter;
+      }
+      #endif
+
+      vec4 color = texture2D(u_texture, texcoord);
+      if (color.a < minimumAlpha) {
+        discard;
+      }
+
+      #ifdef ENABLE_GHOST
+        color.a *= u_opacity;
+      #endif
+
+      #ifdef ENABLE_COLOR
+      if (u_color != 0.0) {
+        vec3 hsv = rgb2hsv(color.rgb);
+        // hsv.x = hue
+        // hsv.y = saturation
+        // hsv.z = value
+
+        // scratch forces all colors to have some minimal amount saturation so there is a visual change
+        const float minValue = 0.11 / 2.0;
+        const float minSaturation = 0.09;
+        if (hsv.z < minValue) hsv = vec3(0.0, 1.0, minValue);
+        else if (hsv.y < minSaturation) hsv = vec3(0.0, minSaturation, hsv.z);
+
+        hsv.x = mod(hsv.x + u_color, 1.0);
+        if (hsv.x < 0.0) hsv.x += 1.0;
+        color = vec4(hsv2rgb(hsv), color.a);
+      }
+      #endif
+
+      #ifdef ENABLE_BRIGHTNESS
+        color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
+      #endif
+
+      gl_FragColor = color;
+    }
+    `;
+            webgl.WebGLSpriteRenderer = WebGLSpriteRenderer;
+            class WebGLProjectRenderer extends WebGLSpriteRenderer {
+                constructor(stage) {
+                    super();
+                    this.stage = stage;
+                    this.zoom = 1;
+                    this.shaderOnlyShapeFilters = this.compileVariant(['ONLY_SHAPE_FILTERS']);
+                    this.fallbackRenderer = new P.renderer.canvas2d.ProjectRenderer2D(stage);
+                    this.penTexture = this.createTexture();
+                    this.penBuffer = this.createFramebuffer();
+                    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 480, 360, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
+                    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
+                    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.penTexture, 0);
+                    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+                    this.penDotShader = new ShaderVariant(this.gl, this.compileProgram(WebGLProjectRenderer.PEN_DOT_VERTEX_SHADER, WebGLProjectRenderer.PEN_DOT_FRAGMENT_SHADER));
+                    this.penLineShader = new ShaderVariant(this.gl, this.compileProgram(WebGLProjectRenderer.PEN_LINE_VERTEX_SHADER, WebGLProjectRenderer.PEN_LINE_FRAGMENT_SHADER));
+                    this.reset(1);
+                }
+                drawFrame() {
+                    this.bindFramebuffer(null);
+                    this.reset(this.zoom);
+                    this.drawChild(this.stage);
+                    this.drawTextureOverlay(this.penTexture);
+                    for (var i = 0; i < this.stage.children.length; i++) {
+                        var child = this.stage.children[i];
+                        if (!child.visible) {
+                            continue;
+                        }
+                        this.drawChild(child);
+                    }
+                }
+                init(root) {
+                    root.appendChild(this.canvas);
+                }
+                onStageFiltersChanged() {
+                }
+                penLine(color, size, x, y, x2, y2) {
+                    this.bindFramebuffer(this.penBuffer);
+                    const shader = this.penLineShader;
+                    this.gl.useProgram(shader.program);
+                    const buffer = this.gl.createBuffer();
+                    if (buffer === null) {
+                        throw new Error('buffer is null');
+                    }
+                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
+                    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
+                        x / 240, y / 180,
+                        x2 / 240, y2 / 180,
+                    ]), this.gl.STATIC_DRAW);
+                    shader.attributeBuffer('a_position', buffer);
+                    const parts = color.toParts();
+                    shader.uniform4f('u_color', parts[0], parts[1], parts[2], parts[3]);
+                    this.gl.drawArrays(this.gl.LINES, 0, 2);
+                    this.gl.deleteBuffer(buffer);
+                }
+                penDot(color, size, x, y) {
+                    this.bindFramebuffer(this.penBuffer);
+                    const shader = this.penDotShader;
+                    this.gl.useProgram(shader.program);
+                    shader.attributeBuffer('a_position', this.quadBuffer);
+                    const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
+                    P.m3.multiply(matrix, P.m3.translation(240 + x - size / 2 | 0, 180 - y - size / 2 | 0));
+                    P.m3.multiply(matrix, P.m3.scaling(size, size));
+                    shader.uniformMatrix3('u_matrix', matrix);
+                    const parts = color.toParts();
+                    shader.uniform4f('u_color', parts[0], parts[1], parts[2], parts[3]);
+                    this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+                }
+                penStamp(sprite) {
+                    this.bindFramebuffer(this.penBuffer);
+                    this.drawChild(sprite);
+                }
+                penClear() {
+                    this.bindFramebuffer(this.penBuffer);
+                    this.gl.clearColor(255, 255, 255, 0);
+                    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                }
+                resize(scale) {
+                    this.zoom = scale;
+                }
+                spriteTouchesPoint(sprite, x, y) {
+                    if (!filtersAffectShape(sprite.filters)) {
+                        return this.fallbackRenderer.spriteTouchesPoint(sprite, x, y);
+                    }
+                    const texture = this.createTexture();
+                    const framebuffer = this.createFramebuffer();
+                    this.bindFramebuffer(framebuffer);
+                    this.resetFramebuffer(1);
+                    this._drawChild(sprite, this.shaderOnlyShapeFilters);
+                    const result = new Uint8Array(4);
+                    this.gl.readPixels(240 + x | 0, 180 + y | 0, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, result);
+                    this.gl.deleteTexture(texture);
+                    this.gl.deleteFramebuffer(framebuffer);
+                    return result[3] !== 0;
+                }
+                spritesIntersect(spriteA, otherSprites) {
+                    return this.fallbackRenderer.spritesIntersect(spriteA, otherSprites);
+                }
+                spriteTouchesColor(sprite, color) {
+                    return this.fallbackRenderer.spriteTouchesColor(sprite, color);
+                }
+                spriteColorTouchesColor(sprite, spriteColor, otherColor) {
+                    return this.fallbackRenderer.spriteColorTouchesColor(sprite, spriteColor, otherColor);
+                }
+            }
+            WebGLProjectRenderer.PEN_DOT_VERTEX_SHADER = `
+    attribute vec2 a_position;
+    varying vec2 v_position;
+    uniform mat3 u_matrix;
+    void main() {
+      gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
+      v_position = a_position;
+    }
+    `;
+            WebGLProjectRenderer.PEN_DOT_FRAGMENT_SHADER = `
+    precision mediump float;
+    uniform vec4 u_color;
+    varying vec2 v_position;
+    void main() {
+      float x = (v_position.x - 0.5) * 2.0;
+      float y = (v_position.y - 0.5) * 2.0;
+      if (sqrt(x * x + y * y) >= 1.0) {
+        discard;
+      }
+      gl_FragColor = u_color;
+    }
+    `;
+            WebGLProjectRenderer.PEN_LINE_VERTEX_SHADER = `
+    attribute vec2 a_position;
+    void main() {
+      gl_Position = vec4(a_position, 0, 1);
+    }
+    `;
+            WebGLProjectRenderer.PEN_LINE_FRAGMENT_SHADER = `
+    precision mediump float;
+    uniform vec4 u_color;
+    void main() {
+      gl_FragColor = u_color;
+    }
+    `;
+            webgl.WebGLProjectRenderer = WebGLProjectRenderer;
+        })(webgl = renderer.webgl || (renderer.webgl = {}));
+    })(renderer = P.renderer || (P.renderer = {}));
 })(P || (P = {}));
 //# sourceMappingURL=phosphorus.dist.js.map

@@ -1509,11 +1509,6 @@ namespace P.sb3.compiler {
      * Sanitize a string for use in the runtime.
      */
     sanitizedString(string: string): string {
-      // Sometimes weird things happen and non-strings get passed around to here.
-      if (typeof string !== 'string') {
-        console.warn('sanitizedString got a non-string object', string);
-        string = string + '';
-      }
       string = string
         .replace(/\\/g, '\\\\')
         .replace(/'/g, '\\\'')
@@ -1596,7 +1591,7 @@ namespace P.sb3.compiler {
     compileNativeInput(native: any[], desiredType: InputType): CompiledInput {
       const type = native[0];
       switch (type) {
-        // These all function as numbers. I believe they are only differentiated so the editor can be more helpful.
+        // These are all just types of numbers.
         case NativeTypes.MATH_NUM:
         case NativeTypes.POSITIVE_NUM:
         case NativeTypes.WHOLE_NUM:
@@ -1605,10 +1600,10 @@ namespace P.sb3.compiler {
           // [type, value]
           const number = +native[1];
           if (isNaN(number) || desiredType === 'string') {
-            return this.sanitizedInput(native[1]);
+            return this.sanitizedInput('' + native[1]);
           } else {
-            // It's important that we use number.toString() instead of native[1] to avoid invalid syntax
-            // For example the input "0123" represents the number "123", but including "0123" in JS will throw SyntaxErrors.
+            // Using number.toString() instead of native[1] fixes syntax errors
+            // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Deprecated_octal
             return numberInput(number.toString());
           }
         }
@@ -1617,7 +1612,7 @@ namespace P.sb3.compiler {
           // [type, value]
           const value = native[1];
           // Do not attempt any conversions if the desired type is string or if the value does not appear to be number-like
-          if (desiredType !== 'string' && /\d/.test(value)) {
+          if (desiredType !== 'string' && /\d|Infinity/.test(value)) {
             const number = +value;
             // If the stringification of the number is not the same as the original value, do not convert.
             // This fixes issues where the stringification is used instead of the number itself.
@@ -2278,7 +2273,7 @@ namespace P.sb3.compiler {
     util.writeLn(`R.deltaY = ${Y} - S.scratchY;`);
     const label = util.addLabel();
     util.writeLn('var f = (runtime.now() - R.start) / (R.duration * 1000);');
-    util.writeLn('if (f > 1) f = 1;');
+    util.writeLn('if (f > 1 || isNaN(f)) f = 1;');
     util.writeLn('S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
     util.writeLn('if (f < 1) {');
     util.forceQueue(label);
@@ -2510,9 +2505,14 @@ namespace P.sb3.compiler {
     const mutation = util.block.mutation;
     const name = mutation.proccode;
 
-    if (P.config.debug && name === 'forkphorus:debugger;') {
-      util.writeLn('/* forkphorus debugger */ debugger;');
-      return;
+    if (P.config.debug) {
+      if (name === 'forkphorus:debugger;') {
+        util.writeLn('/* forkphorus */ debugger;');
+        return;
+      } else if (name === 'forkphorus:throw;') {
+        util.writeLn('/* forkphorus */ throw new Error("Debug intended crash");');
+        return;
+      }
     }
 
     const label = util.claimNextLabel();
@@ -2853,8 +2853,9 @@ namespace P.sb3.compiler {
   };
   inputLibrary['sensing_keypressed'] = function(util) {
     const KEY_OPTION = util.getInput('KEY_OPTION', 'string');
-    // note: sb2 compiler can optimize out getKeyCode calls, but sb3 compiler can't because KEY_OPTION might be dynamic
-    return util.booleanInput(`!!self.keys[P.runtime.getKeyCode(${KEY_OPTION})]`);
+    // in scratch 3, the input can be dynamic so the getKeyCode call cannot be easily removed
+    // we also have to use getKeyCode3 because of some changes made in Scratch 3
+    return util.booleanInput(`!!self.keys[getKeyCode3(${KEY_OPTION})]`);
   };
   inputLibrary['sensing_loud'] = function(util) {
     util.stage.initLoudness();

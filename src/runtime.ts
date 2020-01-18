@@ -345,9 +345,22 @@ namespace P.runtime {
       case 'down arrow': return 40;
       case 'any': return 'any';
     }
-
     return keyName.toUpperCase().charCodeAt(0);
   }
+
+  var getKeyCode3 = function(keyName: string): number | 'any' {
+    // Scratch 3 added support for 'enter'
+    switch (keyName.toLowerCase()) {
+      case 'space': return 32;
+      case 'left arrow': return 37;
+      case 'up arrow': return 38;
+      case 'right arrow': return 39;
+      case 'down arrow': return 40;
+      case 'enter': return 13;
+      case 'any': return 'any';
+    }
+    return keyName.toUpperCase().charCodeAt(0);
+  };
 
   // Load audio methods if audio is supported
   const audioContext = P.audio.context;
@@ -590,7 +603,7 @@ namespace P.runtime {
       this.baseTime = Date.now();
       this.interval = setInterval(this.step, 1000 / this.framerate);
       if (audioContext) audioContext.resume();
-      this.stage.start();
+      this.stage.startExtensions();
     }
 
     /**
@@ -603,7 +616,7 @@ namespace P.runtime {
         this.interval = 0;
         window.removeEventListener('error', this.onError);
         if (audioContext) audioContext.suspend();
-        this.stage.pause();
+        this.stage.pauseExtensions();
       }
       this.isRunning = false;
     }
@@ -621,6 +634,13 @@ namespace P.runtime {
       this.interval = setInterval(this.step, 1000 / this.framerate);
     }
 
+    /**
+     * Stops this runtime.
+     * - stops all scripts
+     * - removes all clones
+     * - resets filters, speech bubbles, sounds
+     * - Does *NOT* stop the event loop. Use pause() for that.
+     */
     stopAll() {
       this.stage.hidePrompt = false;
       this.stage.prompter.style.display = 'none';

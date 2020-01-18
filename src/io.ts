@@ -53,6 +53,10 @@ namespace P.IO {
             });
         };
         attempt((err) => {
+          if (!(err + '').includes('abort')) {
+            // do not retry after abort
+            return;
+          }
           // try once more after a short delay
           console.warn(`First attempt to download ${this.url} failed, trying again (${err})`);
           setTimeout(function() {

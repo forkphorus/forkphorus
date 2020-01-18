@@ -2,6 +2,8 @@
 
 <html>
   <head>
+    <meta charset="utf-8">
+    <meta name="robots" content="noindex">
     <style>
       body {
         font-family: sans-serif;
@@ -62,7 +64,7 @@
         }
 
         if (type === 'error') {
-          console.log(id, 'has encountered an error', data.error);
+          console.log(id, 'has encountered an error');
         }
       });
     </script>
@@ -86,6 +88,10 @@
     <h2>autostart, 480x360</h2>
     <script src="/embed.js?id=280227362&auto-start=true&light-content=false"></script>
     <input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=true&light-content=false">&lt;/script>'>
+
+    <h2>autostart, 480x360, 60 fps</h2>
+    <script src="/embed.js?id=280227362&auto-start=true&light-content=false&fps=60"></script>
+    <input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=true&light-content=false&fps=60">&lt;/script>'>
 
     <h2>Light controls (for dark themes)</h2>
     <p>(black background not set by the embed, the embed is transparent so set background-color on the parent)</p>

@@ -1,4 +1,4 @@
-/// <reference path="phosphorus.ts" />
+/// <reference path="../phosphorus.ts" />
 
 namespace P.m3 {
   // Most of this is heavily based on:
