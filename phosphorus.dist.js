@@ -8254,7 +8254,7 @@ var P;
                 }
                 drawAllExcept(renderer, skip) {
                     renderer.drawChild(this.stage);
-                    renderer.ctx.drawImage(this.penLayer, 0, 0, this.canvas.width, this.canvas.height);
+                    renderer.ctx.drawImage(this.penLayer, 0, 0, 480, 360);
                     for (var i = 0; i < this.stage.children.length; i++) {
                         var child = this.stage.children[i];
                         if (!child.visible || child === skip) {
