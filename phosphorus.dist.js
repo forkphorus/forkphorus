@@ -6390,7 +6390,7 @@ var P;
                         this.warn('missing field', fieldName);
                         return '';
                     }
-                    return value[0];
+                    return '' + value[0];
                 }
                 compileSubstackInput(block, substackName) {
                     if (!block.inputs[substackName]) {

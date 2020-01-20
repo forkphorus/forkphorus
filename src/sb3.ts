@@ -1716,7 +1716,7 @@ namespace P.sb3.compiler {
         this.warn('missing field', fieldName);
         return '';
       }
-      return value[0];
+      return '' + value[0];
     }
 
     /**
