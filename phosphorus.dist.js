@@ -8235,7 +8235,7 @@ var P;
                     this.renderStageCostume(this.zoom);
                 }
                 renderStageCostume(scale) {
-                    this._reset(this.stageContext, scale * P.config.scale);
+                    this._reset(this.stageContext, scale);
                     this._drawChild(this.stage, this.stageContext);
                 }
                 init(root) {

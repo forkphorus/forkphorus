@@ -261,7 +261,7 @@ namespace P.renderer.canvas2d {
     }
 
     renderStageCostume(scale: number) {
-      this._reset(this.stageContext, scale * P.config.scale);
+      this._reset(this.stageContext, scale);
       this._drawChild(this.stage, this.stageContext);
     }
 
