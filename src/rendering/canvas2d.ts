@@ -239,6 +239,7 @@ namespace P.renderer.canvas2d {
     public penContext: CanvasRenderingContext2D;
     public zoom: number = 1;
 
+    public penScalingEnabled: boolean = true;
     private penModified: boolean = false;
     private penTargetZoom: number = -1;
     private penZoom: number = 1;
@@ -303,6 +304,9 @@ namespace P.renderer.canvas2d {
     }
 
     resizePen(zoom: number) {
+      if (!this.penScalingEnabled) {
+        return;
+      }
       if (zoom > this.penZoom) {
         this.penZoom = zoom;
         workingRenderer.canvas.width = this.penLayer.width;

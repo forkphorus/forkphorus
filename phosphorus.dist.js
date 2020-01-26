@@ -8220,6 +8220,7 @@ var P;
                     super();
                     this.stage = stage;
                     this.zoom = 1;
+                    this.penScalingEnabled = true;
                     this.penModified = false;
                     this.penTargetZoom = -1;
                     this.penZoom = 1;
@@ -8268,6 +8269,9 @@ var P;
                     this.renderStageCostume(this.zoom);
                 }
                 resizePen(zoom) {
+                    if (!this.penScalingEnabled) {
+                        return;
+                    }
                     if (zoom > this.penZoom) {
                         this.penZoom = zoom;
                         workingRenderer.canvas.width = this.penLayer.width;
