@@ -2361,6 +2361,10 @@ namespace P.sb3.compiler {
     const TEMPO = util.getInput('TEMPO', 'number');
     util.writeLn(`self.tempoBPM = ${TEMPO};`)
   };
+  statementLibrary['music_setInstrument'] = function(util) {
+    const INSTRUMENT = util.getInput('INSTRUMENT', 'number');
+    util.writeLn(`S.instrument = Math.max(0, Math.min(INSTRUMENTS.length - 1, ${INSTRUMENT} - 1)) | 0;`);
+  };
   statementLibrary['sound_changeeffectby'] = function(util) {
     const EFFECT = util.sanitizedString(util.getField('EFFECT'));
     const VALUE = util.getInput('VALUE', 'number');
@@ -2677,6 +2681,9 @@ namespace P.sb3.compiler {
   };
   inputLibrary['music_getTempo'] = function(util) {
     return util.numberInput('self.tempoBPM');
+  };
+  inputLibrary['music_menu_INSTRUMENT'] = function(util) {
+    return util.fieldInput('INSTRUMENT');
   };
   inputLibrary['operator_add'] = function(util) {
     const NUM1 = util.getInput('NUM1', 'number');
