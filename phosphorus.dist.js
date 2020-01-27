@@ -6998,6 +6998,19 @@ var P;
         util.writeLn('S.activeSounds.delete(R.sound);');
         util.writeLn('restore();');
     };
+    statementLibrary['music_restForBeats'] = function (util) {
+        const BEATS = util.getInput('BEATS', 'number');
+        util.writeLn('save();');
+        util.writeLn('R.start = runtime.now();');
+        util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
+        util.writeLn(`var first = true;`);
+        const id = util.addLabel();
+        util.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
+        util.writeLn('  var first;');
+        util.forceQueue(id);
+        util.writeLn('}');
+        util.writeLn('restore();');
+    };
     statementLibrary['music_setTempo'] = function (util) {
         const TEMPO = util.getInput('TEMPO', 'number');
         util.writeLn(`self.tempoBPM = ${TEMPO};`);
