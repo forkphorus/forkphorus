@@ -2372,6 +2372,30 @@ namespace P.sb3.compiler {
     const TEMPO = util.getInput('TEMPO', 'number');
     util.writeLn(`self.tempoBPM += ${TEMPO};`)
   };
+  statementLibrary['music_playDrumForBeats'] = function(util) {
+    const BEATS = util.getInput('BEATS', 'any');
+    const DRUM = util.getInput('DRUM', 'any');
+
+    util.writeLn('save();');
+    util.writeLn('R.start = runtime.now();');
+    util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
+    util.writeLn(`var first = true;`);
+
+    if (P.audio.context) {
+      util.writeLn(`R.sound = playSpan(DRUMS[Math.round(${DRUM}) - 1] || DRUMS[2], 60, 10);`);
+    } else {
+      util.writeLn('R.sound = { stopped: false };');
+    }
+
+    const id = util.addLabel();
+    util.writeLn('S.activeSounds.add(R.sound);')
+    util.writeLn('if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
+    util.writeLn('  var first;');
+    util.forceQueue(id);
+    util.writeLn('}');
+    util.writeLn('S.activeSounds.delete(R.sound);');
+    util.writeLn('restore();');
+  };
   statementLibrary['music_playNoteForBeats'] = function(util) {
     const BEATS = util.getInput('BEATS', 'any');
     const NOTE = util.getInput('NOTE', 'any');
@@ -2733,6 +2757,9 @@ namespace P.sb3.compiler {
   };
   inputLibrary['music_getTempo'] = function(util) {
     return util.numberInput('self.tempoBPM');
+  };
+  inputLibrary['music_menu_DRUM'] = function(util) {
+    return util.fieldInput('DRUM');
   };
   inputLibrary['music_menu_INSTRUMENT'] = function(util) {
     return util.fieldInput('INSTRUMENT');
