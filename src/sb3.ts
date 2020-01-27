@@ -830,6 +830,21 @@ namespace P.sb3 {
         });
     }
 
+    loadAssets() {
+      return Promise.all([
+        this.loadSoundbank(),
+        this.loadFonts(),
+      ]);
+    }
+
+    loadSoundbank() {
+      return P.audio.loadSB2Soundbank({
+        // TODO: progress monitoring
+        endTask() {},
+        newTask() {},
+      });
+    }
+
     loadFonts() {
       const promises: Promise<unknown>[] = [];
       for (const family in P.fonts.scratch3) {
@@ -863,7 +878,7 @@ namespace P.sb3 {
       // sort targets by their layerOrder to match how they will display
       targets.sort((a, b) => a.layerOrder - b.layerOrder);
 
-      return this.loadFonts()
+      return this.loadAssets()
         .then(() => Promise.all(targets.map((data) => this.loadTarget(data))))
         .then((targets: any) => {
           if (this.aborted) {
@@ -2357,6 +2372,30 @@ namespace P.sb3.compiler {
     const TEMPO = util.getInput('TEMPO', 'number');
     util.writeLn(`self.tempoBPM += ${TEMPO};`)
   };
+  statementLibrary['music_playNoteForBeats'] = function(util) {
+    const BEATS = util.getInput('BEATS', 'any');
+    const NOTE = util.getInput('NOTE', 'any');
+    
+    util.writeLn('save();');
+    util.writeLn('R.start = runtime.now();');
+    util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
+    util.writeLn(`var first = true;`);
+
+    if (P.audio.context) {
+      util.writeLn(`R.sound = playNote(${NOTE}, R.duration);`);
+    } else {
+      util.writeLn('R.sound = { stopped: false };');
+    }
+
+    const id = util.addLabel();
+    util.writeLn('S.activeSounds.add(R.sound);')
+    util.writeLn('if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
+    util.writeLn('  var first;');
+    util.forceQueue(id);
+    util.writeLn('}');
+    util.writeLn('S.activeSounds.delete(R.sound);');
+    util.writeLn('restore();');
+  };
   statementLibrary['music_setTempo'] = function(util) {
     const TEMPO = util.getInput('TEMPO', 'number');
     util.writeLn(`self.tempoBPM = ${TEMPO};`)
@@ -2684,6 +2723,9 @@ namespace P.sb3.compiler {
   };
   inputLibrary['music_menu_INSTRUMENT'] = function(util) {
     return util.fieldInput('INSTRUMENT');
+  };
+  inputLibrary['note'] = function(util) {
+    return util.fieldInput('NOTE');
   };
   inputLibrary['operator_add'] = function(util) {
     const NUM1 = util.getInput('NUM1', 'number');
