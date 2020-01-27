@@ -111,8 +111,11 @@
         </tr>
         <tr>
           <td class="name" title="The value of the &quot;username&quot; block. Changing this may cause issues in some projects."><label for="settings-username">Username</label></td>
-          <!-- scratch has some restrictions on usernames that we don't care about -->
           <td class="value"><input id="settings-username" value="" type="text" placeholder="(nothing)"></td>
+        </tr>
+        <tr>
+          <td class="name"><label for="settings-pen-scale">Pen Scaling</label></td>
+          <td class="value"><input id="settings-pen-scale" value="" type="checkbox" placeholder="(nothing)"></td>
         </tr>
       </table>
       <p>Changes are applied automatically.</p>
@@ -583,10 +586,12 @@
     /** Settings Menu **/
     var optionFramerate = querySelector('#settings-framerate');
     var optionUsername = querySelector('#settings-username');
+    var optionPenScale = querySelector('#settings-pen-scale');
     var settingsMenu = querySelector('#settings');
     var defaultOptions = {
       username: '',
       framerate: 30,
+      penScale: true,
     };
     var previousOptions = shallowClone(defaultOptions);
 
@@ -594,6 +599,7 @@
     function setSelectedOptions(options) {
       optionFramerate.value = options.framerate;
       optionUsername.value = options.username;
+      optionPenScale.checked = options.penScale;
     }
     // Get the current options from the DOM
     function getSelectedOptions() {
@@ -606,6 +612,8 @@
 
       // doesn't really matter if username is "invalid"
       options.username = optionUsername.value;
+
+      options.penScale = optionPenScale.checked;
 
       return options;
     }
@@ -622,6 +630,8 @@
       }
 
       stage.username = options.username;
+
+      stage.renderer.penScalingEnabled = options.penScale;
 
       previousOptions = options;
     }
