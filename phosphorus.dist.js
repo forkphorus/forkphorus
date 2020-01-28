@@ -3235,6 +3235,7 @@ var P;
             return 0;
         };
         function getKeyCode(keyName) {
+            keyName = keyName + '';
             switch (keyName.toLowerCase()) {
                 case 'space': return 32;
                 case 'left arrow': return 37;
