@@ -268,7 +268,7 @@ var P;
             'WoodBlock': 'drums/WoodBlock(1)_22k.wav'
         };
         const soundbank = {};
-        function loadSB2Soundbank(hooks) {
+        function loadSoundbank(hooks) {
             if (!audio.context)
                 return Promise.resolve();
             const promises = [];
@@ -283,7 +283,7 @@ var P;
             }
             return Promise.all(promises);
         }
-        audio.loadSB2Soundbank = loadSB2Soundbank;
+        audio.loadSoundbank = loadSoundbank;
         function loadSoundbankBuffer(name) {
             return new P.IO.ArrayBufferRequest(SOUNDBANK_URL + SOUNDBANK_FILES[name], { local: true }).load()
                 .then((buffer) => P.audio.decodeAudio(buffer))
@@ -4013,7 +4013,7 @@ var P;
             var stage;
             return loadFonts()
                 .then(() => Promise.all([
-                P.audio.loadSB2Soundbank(sb2.hooks),
+                P.audio.loadSoundbank(sb2.hooks),
                 loadArray(data.children, loadObject).then((c) => children = c),
                 loadBase(data, true).then((s) => stage = s),
             ]))
@@ -5844,6 +5844,18 @@ var P;
                     return target;
                 });
             }
+            loadAssets() {
+                return Promise.all([
+                    this.loadSoundbank(),
+                    this.loadFonts(),
+                ]);
+            }
+            loadSoundbank() {
+                return P.audio.loadSoundbank({
+                    endTask() { },
+                    newTask() { },
+                });
+            }
             loadFonts() {
                 const promises = [];
                 for (const family in P.fonts.scratch3) {
@@ -5872,7 +5884,7 @@ var P;
                 }
                 const targets = this.projectData.targets;
                 targets.sort((a, b) => a.layerOrder - b.layerOrder);
-                return this.loadFonts()
+                return this.loadAssets()
                     .then(() => Promise.all(targets.map((data) => this.loadTarget(data))))
                     .then((targets) => {
                     if (this.aborted) {
@@ -6965,9 +6977,70 @@ var P;
         const TEMPO = util.getInput('TEMPO', 'number');
         util.writeLn(`self.tempoBPM += ${TEMPO};`);
     };
+    statementLibrary['music_playDrumForBeats'] = function (util) {
+        const BEATS = util.getInput('BEATS', 'any');
+        const DRUM = util.getInput('DRUM', 'any');
+        util.writeLn('save();');
+        util.writeLn('R.start = runtime.now();');
+        util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
+        util.writeLn(`var first = true;`);
+        if (P.audio.context) {
+            util.writeLn(`R.sound = playSpan(DRUMS[Math.round(${DRUM}) - 1] || DRUMS[2], 60, 10);`);
+        }
+        else {
+            util.writeLn('R.sound = { stopped: false };');
+        }
+        const id = util.addLabel();
+        util.writeLn('S.activeSounds.add(R.sound);');
+        util.writeLn('if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
+        util.writeLn('  var first;');
+        util.forceQueue(id);
+        util.writeLn('}');
+        util.writeLn('S.activeSounds.delete(R.sound);');
+        util.writeLn('restore();');
+    };
+    statementLibrary['music_playNoteForBeats'] = function (util) {
+        const BEATS = util.getInput('BEATS', 'any');
+        const NOTE = util.getInput('NOTE', 'any');
+        util.writeLn('save();');
+        util.writeLn('R.start = runtime.now();');
+        util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
+        util.writeLn(`var first = true;`);
+        if (P.audio.context) {
+            util.writeLn(`R.sound = playNote(${NOTE}, R.duration);`);
+        }
+        else {
+            util.writeLn('R.sound = { stopped: false };');
+        }
+        const id = util.addLabel();
+        util.writeLn('S.activeSounds.add(R.sound);');
+        util.writeLn('if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
+        util.writeLn('  var first;');
+        util.forceQueue(id);
+        util.writeLn('}');
+        util.writeLn('S.activeSounds.delete(R.sound);');
+        util.writeLn('restore();');
+    };
+    statementLibrary['music_restForBeats'] = function (util) {
+        const BEATS = util.getInput('BEATS', 'number');
+        util.writeLn('save();');
+        util.writeLn('R.start = runtime.now();');
+        util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
+        util.writeLn(`var first = true;`);
+        const id = util.addLabel();
+        util.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
+        util.writeLn('  var first;');
+        util.forceQueue(id);
+        util.writeLn('}');
+        util.writeLn('restore();');
+    };
     statementLibrary['music_setTempo'] = function (util) {
         const TEMPO = util.getInput('TEMPO', 'number');
         util.writeLn(`self.tempoBPM = ${TEMPO};`);
+    };
+    statementLibrary['music_setInstrument'] = function (util) {
+        const INSTRUMENT = util.getInput('INSTRUMENT', 'number');
+        util.writeLn(`S.instrument = Math.max(0, Math.min(INSTRUMENTS.length - 1, ${INSTRUMENT} - 1)) | 0;`);
     };
     statementLibrary['sound_changeeffectby'] = function (util) {
         const EFFECT = util.sanitizedString(util.getField('EFFECT'));
@@ -7271,6 +7344,15 @@ var P;
     };
     inputLibrary['music_getTempo'] = function (util) {
         return util.numberInput('self.tempoBPM');
+    };
+    inputLibrary['music_menu_DRUM'] = function (util) {
+        return util.fieldInput('DRUM');
+    };
+    inputLibrary['music_menu_INSTRUMENT'] = function (util) {
+        return util.fieldInput('INSTRUMENT');
+    };
+    inputLibrary['note'] = function (util) {
+        return util.fieldInput('NOTE');
     };
     inputLibrary['operator_add'] = function (util) {
         const NUM1 = util.getInput('NUM1', 'number');
