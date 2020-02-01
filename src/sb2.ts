@@ -412,7 +412,7 @@ namespace P.sb2 {
 
     return loadFonts()
       .then(() => Promise.all<any>([
-        P.audio.loadSB2Soundbank(hooks),
+        P.audio.loadSoundbank(hooks),
         loadArray(data.children, loadObject).then((c) => children = c),
         loadBase(data, true).then((s) => stage = s),
       ]))

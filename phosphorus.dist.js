@@ -268,7 +268,7 @@ var P;
             'WoodBlock': 'drums/WoodBlock(1)_22k.wav'
         };
         const soundbank = {};
-        function loadSB2Soundbank(hooks) {
+        function loadSoundbank(hooks) {
             if (!audio.context)
                 return Promise.resolve();
             const promises = [];
@@ -283,7 +283,7 @@ var P;
             }
             return Promise.all(promises);
         }
-        audio.loadSB2Soundbank = loadSB2Soundbank;
+        audio.loadSoundbank = loadSoundbank;
         function loadSoundbankBuffer(name) {
             return new P.IO.ArrayBufferRequest(SOUNDBANK_URL + SOUNDBANK_FILES[name], { local: true }).load()
                 .then((buffer) => P.audio.decodeAudio(buffer))
@@ -4012,7 +4012,7 @@ var P;
             var stage;
             return loadFonts()
                 .then(() => Promise.all([
-                P.audio.loadSB2Soundbank(sb2.hooks),
+                P.audio.loadSoundbank(sb2.hooks),
                 loadArray(data.children, loadObject).then((c) => children = c),
                 loadBase(data, true).then((s) => stage = s),
             ]))
@@ -5850,7 +5850,7 @@ var P;
                 ]);
             }
             loadSoundbank() {
-                return P.audio.loadSB2Soundbank({
+                return P.audio.loadSoundbank({
                     endTask() { },
                     newTask() { },
                 });

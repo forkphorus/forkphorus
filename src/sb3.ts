@@ -838,7 +838,7 @@ namespace P.sb3 {
     }
 
     loadSoundbank() {
-      return P.audio.loadSB2Soundbank({
+      return P.audio.loadSoundbank({
         // TODO: progress monitoring
         endTask() {},
         newTask() {},
