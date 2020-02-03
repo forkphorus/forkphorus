@@ -3661,7 +3661,7 @@ var P;
     var sb2;
     (function (sb2) {
         const ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
-        let zipArchive;
+        let zipArchive = null;
         sb2.hooks = {
             newTask() { },
             endTask() { },
@@ -4011,6 +4011,7 @@ var P;
         function loadProject(data) {
             var children;
             var stage;
+            zipArchive = null;
             return loadFonts()
                 .then(() => Promise.all([
                 P.audio.loadSoundbank(sb2.hooks),

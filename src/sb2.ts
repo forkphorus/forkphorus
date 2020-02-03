@@ -6,7 +6,7 @@
 
 namespace P.sb2 {
   const ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
-  let zipArchive: JSZip.Zip;
+  let zipArchive: JSZip.Zip | null = null;
 
   export interface Hooks {
     newTask(): void;
@@ -409,6 +409,7 @@ namespace P.sb2 {
   export function loadProject(data) {
     var children;
     var stage;
+    zipArchive = null;
 
     return loadFonts()
       .then(() => Promise.all<any>([
