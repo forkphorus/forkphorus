@@ -201,7 +201,7 @@
           'fonts/NotoSans-Regular.woff',
           'fonts/Scratch.ttf',
         ]).then((source) => {
-          fileCache.js = source;
+          fileCache.js = source.replace(/P\.audio.loadSoundbank/g, 'Promise.resolve');
         });
       }));
     }
