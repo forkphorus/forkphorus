@@ -4,21 +4,9 @@ Test suite for forkphorus. Automatically runs a few Scratch projects and validat
 
 To visit the test suite: [https://forkphorus.github.io/tests/suite.html](https://forkphorus.github.io/tests/suite.html)
 
-To visit the test suite in benchmark mode: [https://forkphorus.github.io/tests/suite.html?benchmark](https://forkphorus.github.io/tests/suite.html?benchmark) (runs each test 50 times)
-
-## Tests
-
-| Test | Description |
-| ---- | ----------- |
-| `sb2/sb2-template.sb2` | Example sb2 test. |
-| `sb3/sb3-template.sb3` | Example sb3 test. |
-| `sb3/operators.sb3` | Tests operator blocks. |
-| `sb3/quicksort.sb3` | Implements quicksort and insertion sort. Based on https://scratch.mit.edu/projects/142449228/ |
-| `sb3/befunge-eratosthenes.sb3` | A Befunge 93 interpreter running the Sieve of Eratosthenes. Based on https://scratch.mit.edu/projects/237437817/ using the code from https://esolangs.org/wiki/Befunge#Sieve_of_Eratosthenes |
-| `sb3/string-functions.sb3` | Tests some algorithms related to strings. Based on https://scratch.mit.edu/projects/167183861/ |
-| `regressions/*` | Tests fixes for bugs. The filename is the GitHub issue it is a test for, along with a short description of the thing being tested. |
-
 All project files are [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/) licensed because that's what Scratch uses.
+
+Files that start with numbers are referring to GitHub issues.
 
 ## Writing Tests
 
