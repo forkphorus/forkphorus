@@ -8483,8 +8483,6 @@ var P;
                     workingRenderer.canvas.width = width;
                     workingRenderer.canvas.height = height;
                     workingRenderer.ctx.save();
-                    workingRenderer.ctx.fillStyle = 'white';
-                    workingRenderer.ctx.fillRect(0, 0, width, height);
                     workingRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
                     this.drawAllExcept(workingRenderer, sprite);
                     workingRenderer.ctx.globalCompositeOperation = 'destination-in';
