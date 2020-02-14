@@ -1728,6 +1728,9 @@ var P;
         }
         VectorCostume.MAX_ZOOM = 6;
         core.VectorCostume = VectorCostume;
+        if (/iPhone/.test(navigator.userAgent) || /iPad/.test(navigator.userAgent)) {
+            VectorCostume.MAX_ZOOM = 1;
+        }
         class Sound {
             constructor(data) {
                 this.source = null;

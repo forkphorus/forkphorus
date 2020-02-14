@@ -1742,6 +1742,12 @@ namespace P.core {
     }
   }
 
+  // TEMPORARY INTERVENTION:
+  // Disable Vector scaling on iPhone, iPad due to various bugs.
+  if (/iPhone/.test(navigator.userAgent) || /iPad/.test(navigator.userAgent)) {
+    VectorCostume.MAX_ZOOM = 1;
+  }
+
   interface SoundOptions {
     buffer: AudioBuffer;
     name: string;
