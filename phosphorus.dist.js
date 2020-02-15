@@ -1701,7 +1701,6 @@ var P;
                 this.width = svg.width;
                 this.height = svg.height;
                 this.source = svg;
-                this.scales[0] = this.getScale(1);
             }
             getScale(scale) {
                 const canvas = document.createElement('canvas');

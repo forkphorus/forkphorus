@@ -1711,9 +1711,6 @@ namespace P.core {
       this.width = svg.width;
       this.height = svg.height;
       this.source = svg;
-      // calculate the 1x zoom before load because it'll most likely be used.
-      // TODO: maybe don't do this?
-      this.scales[0] = this.getScale(1);
     }
 
     private getScale(scale: number) {
