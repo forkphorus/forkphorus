@@ -29,8 +29,8 @@ namespace P.fonts {
     if (fontFamilyCache[fontFamily]) {
       return Promise.resolve(fontFamilyCache[fontFamily]);
     }
-    return new P.IO.BlobRequest(src, {local: true}).load()
-      .then((blob) => P.IO.readers.toDataURL(blob))
+    return P.io.getIOManager().loadBlob(src)
+      .then((blob) => P.io.readers.toDataURL(blob))
       .then((url) => {
         fontFamilyCache[fontFamily] = url;
         return url;

@@ -559,37 +559,28 @@ namespace P.player {
     // Wrappers around P.sb2 and P.sb3 for loading...
 
     private _handleScratch3Loader(loader: P.sb3.BaseSB3Loader, stageId: number) {
-      loader.onprogress.subscribe(progress => {
+      loader.onprogress = (progress) => {
         if (this.isStageActive(stageId)) {
           this.onprogress.emit(progress);
         } else if (!loader.aborted) {
           loader.abort();
         }
-      });
+      };
       return loader.load().then(stage => {
         if (this.isStageActive(stageId)) return stage;
         return null;
       });
     }
 
-    private _handleScratch2Loader(stageId: number, load: () => Promise<P.core.Stage>) {
-      var totalTasks = 0;
-      var finishedTasks = 0;
-      const update = () => {
+    private _handleScratch2Loader(loader: P.sb2.BaseSB2Loader, stageId: number) {
+      loader.onprogress = (progress) => {
         if (this.isStageActive(stageId)) {
-          var progress = finishedTasks / totalTasks || 0;
           this.onprogress.emit(progress);
+        } else if (!loader.aborted) {
+          loader.abort();
         }
       };
-      P.sb2.hooks.newTask = function() {
-        totalTasks++;
-        update();
-      };
-      P.sb2.hooks.endTask = function() {
-        finishedTasks++;
-        update();
-      };
-      return load().then((stage) => {
+      return loader.load().then(stage => {
         if (this.isStageActive(stageId)) return stage;
         return null;
       });
@@ -606,25 +597,26 @@ namespace P.player {
     }
 
     private _loadScratch2(stageId: number, data: any) {
-      return this._handleScratch2Loader(stageId, function() {
-        return P.sb2.loadProject(data);
-      });
+      var loader = new P.sb2.Scratch2Loader(data);
+      return this._handleScratch2Loader(loader, stageId);
     }
 
     private _loadScratch2File(stageId: number, data: any) {
-      return this._handleScratch2Loader(stageId, function() {
-        return P.sb2.loadSB2Project(data);
-      });
+      var loader = new P.sb2.SB2FileLoader(data);
+      return this._handleScratch2Loader(loader, stageId);
     }
 
     private _fetchProject(id: string) {
-      var request = new P.IO.BlobRequest(Player.PROJECT_DATA_API.replace('$id', id), { rejectOnError: false });
-      return request.load().then(function(response) {
-        if (request.xhr.status === 404) {
-          throw new ProjectDoesNotExistError(id);
-        }
-        return response;
-      });
+      const request = new P.io.Request(Player.PROJECT_DATA_API.replace('$id', id));
+      return request
+        .ignoreErrors()
+        .load('blob')
+        .then(function(response) {
+          if (request.getStatus() === 404) {
+            throw new ProjectDoesNotExistError(id);
+          }
+          return response;
+        });
     }
 
     // The main methods you should use for loading things...
@@ -641,7 +633,7 @@ namespace P.player {
       return this._fetchProject(id)
         .then((data) => {
           blob = data;
-          return P.IO.readers.toText(blob);
+          return P.io.readers.toText(blob);
         })
         .then((text) => {
           if (!this.isStageActive(stageId)) {
@@ -658,12 +650,14 @@ namespace P.player {
               throw new Error('Project is valid JSON but of unknown type');
             }
           } catch (e) {
+            console.warn('Attempt to load project as JSON failed, trying to load as zip.', e);
             // not json, but could be a zipped sb2
-            return P.IO.readers.toArrayBuffer(blob).then((buffer) => {
+            // an example of this is https://scratch.mit.edu/projects/250740608/
+            return P.io.readers.toArrayBuffer(blob).then((buffer) => {
               if (this.isScratch1Project(buffer)) {
                 throw new ProjectNotSupportedError('.sb / Scratch 1');
               }
-              return P.sb2.loadSB2Project(buffer);
+              return this._loadScratch2File(stageId, buffer);
             });
           }
         })
@@ -721,7 +715,7 @@ namespace P.player {
       this.getNewStageId();
       this.projectId = file.name;
       this.projectLink = file.name + '#local';
-      return P.IO.readers.toArrayBuffer(file).then(buffer => {
+      return P.io.readers.toArrayBuffer(file).then(buffer => {
         return this.loadProjectBuffer(buffer, extension as any, options);
       });
     }
@@ -730,14 +724,17 @@ namespace P.player {
      * Get the title of a project.
      */
     getProjectTitle(id: string): Promise<string> {
-      return new P.IO.JSONRequest(Player.PROJECT_API.replace('$id', id), { rejectOnError: false }).load()
+      return new P.io.Request(Player.PROJECT_API.replace('$id', id))
+        .ignoreErrors()
+        .load('json')
         .then((data) => data.title || '');
     }
 
     getCloudVariables(id: string) {
       // To get the cloud variables of a project, we will fetch the history logs and essentially replay the latest changes.
       // This is primarily designed so that highscores in projects can remain up-to-date, and nothing more than that.
-      return new P.IO.JSONRequest(Player.CLOUD_API.replace('$id', id)).load()
+      return new P.io.Request(Player.CLOUD_API.replace('$id', id))
+        .load('json')
         .then((data) => {
           const variables = Object.create(null);
           for (const entry of data.reverse()) {

@@ -288,17 +288,17 @@ namespace P.audio {
   /**
    * Loads missing soundbank files, if any.
    */
-  export function loadSoundbank(hooks: P.sb2.Hooks): Promise<any> {
+  export function loadSoundbank(loader?: P.io.Loader): Promise<any> {
     if (!context) return Promise.resolve();
 
-    const promises: any[] = [];
+    const promises: Promise<unknown>[] = [];
     for (const name in SOUNDBANK_FILES) {
       if (!soundbank[name]) {
-        hooks.newTask();
-        promises.push(loadSoundbankBuffer(name).then((v) => {
-          hooks.endTask();
-          return v;
-        }));
+        const promise = loadSoundbankBuffer(name);
+        promises.push(promise);
+        if (loader) {
+          loader.addTask(new P.io.PromiseTask(promise));
+        }
       }
     }
 
@@ -309,7 +309,7 @@ namespace P.audio {
    * Loads a soundbank file
    */
   function loadSoundbankBuffer(name: string): Promise<AudioBuffer> {
-    return new P.IO.ArrayBufferRequest(SOUNDBANK_URL + SOUNDBANK_FILES[name], {local: true}).load()
+    return P.io.getIOManager().loadArrayBuffer(SOUNDBANK_URL + SOUNDBANK_FILES[name])
       .then((buffer) => P.audio.decodeAudio(buffer))
       .then((sound) => soundbank[name] = sound);
   }

@@ -268,24 +268,24 @@ var P;
             'WoodBlock': 'drums/WoodBlock(1)_22k.wav'
         };
         const soundbank = {};
-        function loadSoundbank(hooks) {
+        function loadSoundbank(loader) {
             if (!audio.context)
                 return Promise.resolve();
             const promises = [];
             for (const name in SOUNDBANK_FILES) {
                 if (!soundbank[name]) {
-                    hooks.newTask();
-                    promises.push(loadSoundbankBuffer(name).then((v) => {
-                        hooks.endTask();
-                        return v;
-                    }));
+                    const promise = loadSoundbankBuffer(name);
+                    promises.push(promise);
+                    if (loader) {
+                        loader.addTask(new P.io.PromiseTask(promise));
+                    }
                 }
             }
             return Promise.all(promises);
         }
         audio.loadSoundbank = loadSoundbank;
         function loadSoundbankBuffer(name) {
-            return new P.IO.ArrayBufferRequest(SOUNDBANK_URL + SOUNDBANK_FILES[name], { local: true }).load()
+            return P.io.getIOManager().loadArrayBuffer(SOUNDBANK_URL + SOUNDBANK_FILES[name])
                 .then((buffer) => P.audio.decodeAudio(buffer))
                 .then((sound) => soundbank[name] = sound);
         }
@@ -1802,8 +1802,8 @@ var P;
             if (fontFamilyCache[fontFamily]) {
                 return Promise.resolve(fontFamilyCache[fontFamily]);
             }
-            return new P.IO.BlobRequest(src, { local: true }).load()
-                .then((blob) => P.IO.readers.toDataURL(blob))
+            return P.io.getIOManager().loadBlob(src)
+                .then((blob) => P.io.readers.toDataURL(blob))
                 .then((url) => {
                 fontFamilyCache[fontFamily] = url;
                 return url;
@@ -1919,93 +1919,14 @@ var P;
 })(P || (P = {}));
 var P;
 (function (P) {
-    var IO;
-    (function (IO) {
-        IO.config = {
+    var io;
+    (function (io) {
+        io.config = {
             localPath: '',
         };
         if (['http:', 'https:'].indexOf(location.protocol) === -1) {
-            IO.config.localPath = 'https://forkphorus.github.io';
+            io.config.localPath = 'https://forkphorus.github.io';
         }
-        class Request {
-            constructor(url, options = {}) {
-                if (options.local) {
-                    if (url.indexOf('data:') !== 0) {
-                        url = IO.config.localPath + url;
-                    }
-                }
-                this.rejectOnError = options.rejectOnError !== false;
-                this.url = url;
-            }
-            load() {
-                return new Promise((resolve, reject) => {
-                    const attempt = (errorCallback) => {
-                        this._load()
-                            .then((response) => {
-                            resolve(response);
-                        })
-                            .catch((err) => {
-                            errorCallback(err);
-                        });
-                    };
-                    attempt((err) => {
-                        if (!(err + '').includes('abort')) {
-                            return;
-                        }
-                        console.warn(`First attempt to download ${this.url} failed, trying again (${err})`);
-                        setTimeout(function () {
-                            attempt((err) => {
-                                reject(err);
-                            });
-                        }, 250);
-                    });
-                });
-            }
-        }
-        IO.Request = Request;
-        class XHRRequest extends Request {
-            _load() {
-                return new Promise((resolve, reject) => {
-                    const xhr = new XMLHttpRequest();
-                    this.xhr = xhr;
-                    xhr.addEventListener('load', () => {
-                        if (XHRRequest.acceptableResponseCodes.indexOf(xhr.status) !== -1 || !this.rejectOnError) {
-                            resolve(xhr.response);
-                        }
-                        else {
-                            reject(new Error(`HTTP Error ${xhr.status} while downloading ${this.url}`));
-                        }
-                    });
-                    xhr.addEventListener('error', (err) => {
-                        reject(`Error while downloading ${this.url} (error) (${xhr.status})`);
-                    });
-                    xhr.addEventListener('abort', (err) => {
-                        reject(`Error while downloading ${this.url} (abort) (${xhr.status})`);
-                    });
-                    xhr.open('GET', this.url);
-                    xhr.responseType = this.type;
-                    setTimeout(xhr.send.bind(xhr));
-                });
-            }
-        }
-        XHRRequest.acceptableResponseCodes = [0, 200];
-        IO.XHRRequest = XHRRequest;
-        class ArrayBufferRequest extends XHRRequest {
-            get type() { return 'arraybuffer'; }
-        }
-        IO.ArrayBufferRequest = ArrayBufferRequest;
-        class BlobRequest extends XHRRequest {
-            get type() { return 'blob'; }
-        }
-        IO.BlobRequest = BlobRequest;
-        class TextRequest extends XHRRequest {
-            get type() { return 'text'; }
-        }
-        IO.TextRequest = TextRequest;
-        class JSONRequest extends XHRRequest {
-            get type() { return 'json'; }
-        }
-        IO.JSONRequest = JSONRequest;
         let readers;
         (function (readers) {
             function toArrayBuffer(object) {
@@ -2053,8 +1974,221 @@ var P;
                 });
             }
             readers.toText = toText;
-        })(readers = IO.readers || (IO.readers = {}));
-    })(IO = P.IO || (P.IO = {}));
+        })(readers = io.readers || (io.readers = {}));
+        class FetchingIOManager {
+            loadArrayBuffer(src) {
+                return new Request(io.config.localPath + src).load('arraybuffer');
+            }
+            loadBlob(src) {
+                return new Request(io.config.localPath + src).load('blob');
+            }
+        }
+        var globalIOManager = new FetchingIOManager();
+        function getIOManager() {
+            return globalIOManager;
+        }
+        io.getIOManager = getIOManager;
+        function setIOManager(newManager) {
+            globalIOManager = newManager;
+        }
+        io.setIOManager = setIOManager;
+        class AbstractTask {
+            setLoader(loader) {
+                this.loader = loader;
+            }
+            updateLoaderProgress() {
+                if (this.loader) {
+                    this.loader.updateProgress();
+                }
+            }
+        }
+        io.AbstractTask = AbstractTask;
+        class Request extends AbstractTask {
+            constructor(url) {
+                super();
+                this.url = url;
+                this.shouldIgnoreErrors = false;
+                this.workComputable = false;
+                this.totalWork = 0;
+                this.completedWork = 0;
+                this.complete = false;
+                this.status = 0;
+            }
+            isComplete() {
+                return this.complete;
+            }
+            isWorkComputable() {
+                return this.workComputable;
+            }
+            getTotalWork() {
+                return this.totalWork;
+            }
+            getCompletedWork() {
+                return this.completedWork;
+            }
+            abort() {
+            }
+            ignoreErrors() {
+                this.shouldIgnoreErrors = true;
+                return this;
+            }
+            getStatus() {
+                return this.status;
+            }
+            updateProgress(event) {
+                this.workComputable = event.lengthComputable;
+                this.totalWork = event.total;
+                this.completedWork = event.loaded;
+                this.updateLoaderProgress();
+            }
+            load(type) {
+                return new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.addEventListener('load', () => {
+                        this.status = xhr.status;
+                        if (Request.acceptableResponseCodes.indexOf(xhr.status) !== -1 || this.shouldIgnoreErrors) {
+                            resolve(xhr.response);
+                        }
+                        else {
+                            reject(new Error(`HTTP Error ${xhr.status} while downloading ${this.url}`));
+                        }
+                    });
+                    xhr.addEventListener('progress', (e) => {
+                        this.updateProgress(e);
+                    });
+                    xhr.addEventListener('loadstart', (e) => {
+                        this.updateProgress(e);
+                    });
+                    xhr.addEventListener('loadend', (e) => {
+                        this.complete = true;
+                        this.updateProgress(e);
+                    });
+                    xhr.addEventListener('error', (err) => {
+                        reject(`Error while downloading ${this.url} (error) (${xhr.status})`);
+                    });
+                    xhr.addEventListener('abort', (err) => {
+                        reject(`Error while downloading ${this.url} (abort) (${xhr.status})`);
+                    });
+                    xhr.open('GET', this.url);
+                    xhr.responseType = type;
+                    setTimeout(xhr.send.bind(xhr));
+                });
+            }
+        }
+        Request.acceptableResponseCodes = [0, 200];
+        io.Request = Request;
+        class Manual extends AbstractTask {
+            constructor() {
+                super(...arguments);
+                this.complete = false;
+                this.aborted = false;
+            }
+            markComplete() {
+                this.complete = true;
+                this.updateLoaderProgress();
+            }
+            isComplete() {
+                return this.complete;
+            }
+            isWorkComputable() {
+                return false;
+            }
+            getTotalWork() {
+                return 0;
+            }
+            getCompletedWork() {
+                return 0;
+            }
+            abort() {
+                this.aborted = true;
+            }
+        }
+        io.Manual = Manual;
+        class PromiseTask extends Manual {
+            constructor(promise) {
+                super();
+                promise.then(() => this.markComplete());
+            }
+        }
+        io.PromiseTask = PromiseTask;
+        class Loader {
+            constructor() {
+                this._tasks = [];
+                this.aborted = false;
+                this.error = false;
+            }
+            calculateProgress() {
+                if (this.aborted) {
+                    return 1;
+                }
+                const totalTasks = this._tasks.length;
+                if (totalTasks === 0) {
+                    return 0;
+                }
+                let totalWork = 0;
+                let completedWork = 0;
+                let finishedTasks = 0;
+                let uncomputable = 0;
+                for (const task of this._tasks) {
+                    if (task.isComplete()) {
+                        finishedTasks++;
+                    }
+                    if (task.isWorkComputable()) {
+                        completedWork += task.getCompletedWork();
+                        totalWork += task.getTotalWork();
+                    }
+                    else {
+                        uncomputable++;
+                    }
+                }
+                if (totalWork === 0) {
+                    return finishedTasks / totalTasks;
+                }
+                if (uncomputable > 0) {
+                    const averageWork = totalWork / (totalTasks - uncomputable) * uncomputable;
+                    totalWork = 0;
+                    completedWork = 0;
+                    for (const task of this._tasks) {
+                        if (task.isWorkComputable()) {
+                            completedWork += task.getCompletedWork();
+                            totalWork += task.getTotalWork();
+                        }
+                        else {
+                            totalWork += averageWork;
+                            if (task.isComplete())
+                                completedWork += averageWork;
+                        }
+                    }
+                }
+                return completedWork / totalWork;
+            }
+            updateProgress() {
+                if (this.error) {
+                    return;
+                }
+                const progress = this.calculateProgress();
+                this.onprogress(progress);
+            }
+            onprogress(progress) {
+            }
+            resetTasks() {
+                this._tasks = [];
+                this.updateProgress();
+            }
+            addTask(task) {
+                this._tasks.push(task);
+                task.setLoader(this);
+                return task;
+            }
+            abort() {
+                this.aborted = true;
+                for (const task of this._tasks) {
+                    task.abort();
+                }
+            }
+        }
+        io.Loader = Loader;
+    })(io = P.io || (P.io = {}));
 })(P || (P = {}));
 var P;
 (function (P) {
@@ -2586,38 +2720,30 @@ var P;
                 return true;
             }
             _handleScratch3Loader(loader, stageId) {
-                loader.onprogress.subscribe(progress => {
+                loader.onprogress = (progress) => {
                     if (this.isStageActive(stageId)) {
                         this.onprogress.emit(progress);
                     }
                     else if (!loader.aborted) {
                         loader.abort();
                     }
-                });
+                };
                 return loader.load().then(stage => {
                     if (this.isStageActive(stageId))
                         return stage;
                     return null;
                 });
             }
-            _handleScratch2Loader(stageId, load) {
-                var totalTasks = 0;
-                var finishedTasks = 0;
-                const update = () => {
+            _handleScratch2Loader(loader, stageId) {
+                loader.onprogress = (progress) => {
                     if (this.isStageActive(stageId)) {
-                        var progress = finishedTasks / totalTasks || 0;
                         this.onprogress.emit(progress);
                     }
+                    else if (!loader.aborted) {
+                        loader.abort();
+                    }
                 };
-                P.sb2.hooks.newTask = function () {
-                    totalTasks++;
-                    update();
-                };
-                P.sb2.hooks.endTask = function () {
-                    finishedTasks++;
-                    update();
-                };
-                return load().then((stage) => {
+                return loader.load().then(stage => {
                     if (this.isStageActive(stageId))
                         return stage;
                     return null;
@@ -2632,19 +2758,20 @@ var P;
                 return this._handleScratch3Loader(loader, stageId);
             }
             _loadScratch2(stageId, data) {
-                return this._handleScratch2Loader(stageId, function () {
-                    return P.sb2.loadProject(data);
-                });
+                var loader = new P.sb2.Scratch2Loader(data);
+                return this._handleScratch2Loader(loader, stageId);
             }
             _loadScratch2File(stageId, data) {
-                return this._handleScratch2Loader(stageId, function () {
-                    return P.sb2.loadSB2Project(data);
-                });
+                var loader = new P.sb2.SB2FileLoader(data);
+                return this._handleScratch2Loader(loader, stageId);
             }
             _fetchProject(id) {
-                var request = new P.IO.BlobRequest(Player.PROJECT_DATA_API.replace('$id', id), { rejectOnError: false });
-                return request.load().then(function (response) {
-                    if (request.xhr.status === 404) {
+                const request = new P.io.Request(Player.PROJECT_DATA_API.replace('$id', id));
+                return request
+                    .ignoreErrors()
+                    .load('blob')
+                    .then(function (response) {
+                    if (request.getStatus() === 404) {
                         throw new ProjectDoesNotExistError(id);
                     }
                     return response;
@@ -2659,7 +2786,7 @@ var P;
                 return this._fetchProject(id)
                     .then((data) => {
                     blob = data;
-                    return P.IO.readers.toText(blob);
+                    return P.io.readers.toText(blob);
                 })
                     .then((text) => {
                     if (!this.isStageActive(stageId)) {
@@ -2679,11 +2806,12 @@ var P;
                         }
                     }
                     catch (e) {
-                        return P.IO.readers.toArrayBuffer(blob).then((buffer) => {
+                        console.warn('Attempt to load project as JSON failed, trying to load as zip.', e);
+                        return P.io.readers.toArrayBuffer(blob).then((buffer) => {
                             if (this.isScratch1Project(buffer)) {
                                 throw new ProjectNotSupportedError('.sb / Scratch 1');
                             }
-                            return P.sb2.loadSB2Project(buffer);
+                            return this._loadScratch2File(stageId, buffer);
                         });
                     }
                 })
@@ -2734,16 +2862,19 @@ var P;
                 this.getNewStageId();
                 this.projectId = file.name;
                 this.projectLink = file.name + '#local';
-                return P.IO.readers.toArrayBuffer(file).then(buffer => {
+                return P.io.readers.toArrayBuffer(file).then(buffer => {
                     return this.loadProjectBuffer(buffer, extension, options);
                 });
             }
             getProjectTitle(id) {
-                return new P.IO.JSONRequest(Player.PROJECT_API.replace('$id', id), { rejectOnError: false }).load()
+                return new P.io.Request(Player.PROJECT_API.replace('$id', id))
+                    .ignoreErrors()
+                    .load('json')
                     .then((data) => data.title || '');
             }
             getCloudVariables(id) {
-                return new P.IO.JSONRequest(Player.CLOUD_API.replace('$id', id)).load()
+                return new P.io.Request(Player.CLOUD_API.replace('$id', id))
+                    .load('json')
                     .then((data) => {
                     const variables = Object.create(null);
                     for (const entry of data.reverse()) {
@@ -3666,18 +3797,6 @@ var P;
     var sb2;
     (function (sb2) {
         const ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
-        let zipArchive = null;
-        sb2.hooks = {
-            newTask() { },
-            endTask() { },
-        };
-        function promiseTask(pr) {
-            sb2.hooks.newTask();
-            return pr.then((v) => {
-                sb2.hooks.endTask();
-                return v;
-            });
-        }
         class Scratch2VariableWatcher extends P.core.Watcher {
             constructor(stage, targetName, data) {
                 super(stage, targetName);
@@ -3985,189 +4104,293 @@ var P;
             }
         }
         sb2.Scratch2Sprite = Scratch2Sprite;
-        function loadImage(url) {
-            sb2.hooks.newTask();
-            var image = new Image();
-            image.crossOrigin = 'anonymous';
-            return new Promise((resolve, reject) => {
-                image.onload = function () {
-                    sb2.hooks.endTask();
-                    resolve(image);
-                };
-                image.onerror = function (err) {
-                    reject('Failed to load image: ' + image.src);
-                };
-                image.src = url;
-            });
-        }
-        sb2.loadImage = loadImage;
-        function loadSB2Project(arrayBuffer) {
-            return JSZip.loadAsync(arrayBuffer)
-                .then((zip) => {
-                zipArchive = zip;
-                return zip.file('project.json').async('text');
-            })
-                .then((text) => {
-                const project = JSON.parse(text);
-                return loadProject(project);
-            });
-        }
-        sb2.loadSB2Project = loadSB2Project;
-        function loadProject(data) {
-            var children;
-            var stage;
-            zipArchive = null;
-            return loadFonts()
-                .then(() => Promise.all([
-                P.audio.loadSoundbank(sb2.hooks),
-                loadArray(data.children, loadObject).then((c) => children = c),
-                loadBase(data, true).then((s) => stage = s),
-            ]))
-                .then(() => {
-                children = children.filter((i) => i);
-                children.forEach((c) => c.stage = stage);
-                var sprites = children.filter((i) => i instanceof Scratch2Sprite);
-                var watchers = children.filter((i) => i instanceof Scratch2VariableWatcher);
-                stage.children = sprites;
-                stage.allWatchers = watchers;
-                stage.allWatchers.forEach((w) => w.init());
-                P.sb2.compiler.compile(stage);
-                return stage;
-            });
-        }
-        sb2.loadProject = loadProject;
-        function loadBase(data, isStage = false) {
-            var costumes;
-            var sounds;
-            return Promise.all([
-                loadArray(data.costumes, loadCostume).then((c) => costumes = c),
-                loadArray(data.sounds, loadSound).then((s) => sounds = s),
-            ]).then(() => {
-                const variables = {};
-                if (data.variables) {
-                    for (const variable of data.variables) {
-                        if (variable.isPeristent) {
-                            throw new Error('Cloud variables are not supported');
-                        }
-                        variables[variable.name] = variable.value;
-                    }
-                }
-                const lists = {};
-                if (data.lists) {
-                    for (const list of data.lists) {
-                        if (list.isPeristent) {
-                            throw new Error('Cloud lists are not supported');
-                        }
-                        lists[list.listName] = list.contents;
-                    }
-                }
-                const object = new (isStage ? Scratch2Stage : Scratch2Sprite)(null);
-                object.name = data.objName;
-                object.vars = variables;
-                object.lists = lists;
-                object.costumes = costumes;
-                object.currentCostumeIndex = data.currentCostumeIndex;
-                sounds.forEach((sound) => sound && object.addSound(sound));
-                if (isStage) {
-                }
-                else {
-                    const sprite = object;
-                    sprite.scratchX = data.scratchX;
-                    sprite.scratchY = data.scratchY;
-                    sprite.direction = data.direction;
-                    sprite.isDraggable = data.isDraggable;
-                    sprite.rotationStyle = P.utils.parseRotationStyle(data.rotationStyle);
-                    sprite.scale = data.scale;
-                    sprite.visible = data.visible;
-                }
-                object.scripts = data.scripts || [];
-                return object;
-            });
-        }
-        sb2.loadBase = loadBase;
-        function loadArray(data, process) {
-            return Promise.all((data || []).map((i, ind) => process(i, ind)));
-        }
-        sb2.loadArray = loadArray;
-        function loadFonts() {
-            return Promise.all([
-                promiseTask(P.utils.settled(P.fonts.loadWebFont('Donegal One'))),
-                promiseTask(P.utils.settled(P.fonts.loadWebFont('Gloria Hallelujah'))),
-                promiseTask(P.utils.settled(P.fonts.loadWebFont('Mystery Quest'))),
-                promiseTask(P.utils.settled(P.fonts.loadWebFont('Permanent Marker'))),
-                promiseTask(P.utils.settled(P.fonts.loadWebFont('Scratch'))),
-            ]).then(() => undefined);
-        }
-        sb2.loadFonts = loadFonts;
-        function loadObject(data) {
-            if (data.cmd) {
-                return loadVariableWatcher(data);
-            }
-            else if (data.listName) {
-            }
-            else {
-                return loadBase(data);
-            }
-        }
-        sb2.loadObject = loadObject;
-        function loadVariableWatcher(data) {
-            const targetName = data.target;
-            const watcher = new Scratch2VariableWatcher(null, targetName, data);
-            return watcher;
-        }
-        sb2.loadVariableWatcher = loadVariableWatcher;
-        function loadCostume(data, index) {
-            const promises = [
-                loadMD5(data.baseLayerMD5, data.baseLayerID)
-                    .then((asset) => data.$image = asset)
-            ];
-            if (data.textLayerMD5) {
-                promises.push(loadMD5(data.textLayerMD5, data.textLayerID)
-                    .then((asset) => data.$text = asset));
-            }
-            return Promise.all(promises)
-                .then((layers) => {
-                var image;
-                if (layers.length > 1) {
-                    image = document.createElement('canvas');
-                    const ctx = image.getContext('2d');
-                    if (!ctx) {
-                        throw new Error('Cannot get 2d rendering context loading costume ' + data.costumeName);
-                    }
-                    image.width = Math.max(layers[0].width, 1);
-                    image.height = Math.max(layers[0].height, 1);
-                    for (const layer of layers) {
-                        ctx.drawImage(layer, 0, 0);
-                    }
-                }
-                else {
-                    image = layers[0];
-                }
-                return new P.core.BitmapCostume(image, {
-                    name: data.costumeName,
-                    bitmapResolution: data.bitmapResolution,
-                    rotationCenterX: data.rotationCenterX,
-                    rotationCenterY: data.rotationCenterY,
+        class BaseSB2Loader extends P.io.Loader {
+            loadImage(url) {
+                const manual = this.addTask(new P.io.Manual());
+                var image = new Image();
+                image.crossOrigin = 'anonymous';
+                return new Promise((resolve, reject) => {
+                    image.onload = function () {
+                        manual.markComplete();
+                        resolve(image);
+                    };
+                    image.onerror = function (err) {
+                        reject('Failed to load image: ' + image.src);
+                    };
+                    image.src = url;
                 });
-            });
+            }
+            loadFonts() {
+                return Promise.all([
+                    this.addTask(new P.io.PromiseTask((P.utils.settled(P.fonts.loadWebFont('Donegal One'))))),
+                    this.addTask(new P.io.PromiseTask((P.utils.settled(P.fonts.loadWebFont('Gloria Hallelujah'))))),
+                    this.addTask(new P.io.PromiseTask((P.utils.settled(P.fonts.loadWebFont('Mystery Quest'))))),
+                    this.addTask(new P.io.PromiseTask((P.utils.settled(P.fonts.loadWebFont('Permanent Marker'))))),
+                    this.addTask(new P.io.PromiseTask((P.utils.settled(P.fonts.loadWebFont('Scratch'))))),
+                ]).then(() => undefined);
+            }
+            loadBase(data, isStage) {
+                var costumes;
+                var sounds;
+                return Promise.all([
+                    this.loadArray(data.costumes, this.loadCostume.bind(this)).then((c) => costumes = c),
+                    this.loadArray(data.sounds, this.loadSound.bind(this)).then((s) => sounds = s),
+                ]).then(() => {
+                    const variables = {};
+                    if (data.variables) {
+                        for (const variable of data.variables) {
+                            if (variable.isPeristent) {
+                                throw new Error('Cloud variables are not supported');
+                            }
+                            variables[variable.name] = variable.value;
+                        }
+                    }
+                    const lists = {};
+                    if (data.lists) {
+                        for (const list of data.lists) {
+                            if (list.isPeristent) {
+                                throw new Error('Cloud lists are not supported');
+                            }
+                            lists[list.listName] = list.contents;
+                        }
+                    }
+                    const object = new (isStage ? Scratch2Stage : Scratch2Sprite)(null);
+                    object.name = data.objName;
+                    object.vars = variables;
+                    object.lists = lists;
+                    object.costumes = costumes;
+                    object.currentCostumeIndex = data.currentCostumeIndex;
+                    sounds.forEach((sound) => sound && object.addSound(sound));
+                    if (isStage) {
+                    }
+                    else {
+                        const sprite = object;
+                        sprite.scratchX = data.scratchX;
+                        sprite.scratchY = data.scratchY;
+                        sprite.direction = data.direction;
+                        sprite.isDraggable = data.isDraggable;
+                        sprite.rotationStyle = P.utils.parseRotationStyle(data.rotationStyle);
+                        sprite.scale = data.scale;
+                        sprite.visible = data.visible;
+                    }
+                    object.scripts = data.scripts || [];
+                    return object;
+                });
+            }
+            loadArray(data, process) {
+                return Promise.all((data || []).map((i, ind) => process(i, ind)));
+            }
+            loadObject(data) {
+                if (data.cmd) {
+                    return this.loadVariableWatcher(data);
+                }
+                else if (data.listName) {
+                }
+                else {
+                    return this.loadBase(data, false);
+                }
+            }
+            loadVariableWatcher(data) {
+                const targetName = data.target;
+                const watcher = new Scratch2VariableWatcher(null, targetName, data);
+                return watcher;
+            }
+            loadCostume(data) {
+                const promises = [
+                    this.loadMD5(data.baseLayerMD5, data.baseLayerID)
+                        .then((asset) => data.$image = asset)
+                ];
+                if (data.textLayerMD5) {
+                    promises.push(this.loadMD5(data.textLayerMD5, data.textLayerID)
+                        .then((asset) => data.$text = asset));
+                }
+                return Promise.all(promises)
+                    .then((layers) => {
+                    var image;
+                    if (layers.length > 1) {
+                        image = document.createElement('canvas');
+                        const ctx = image.getContext('2d');
+                        if (!ctx) {
+                            throw new Error('Cannot get 2d rendering context loading costume ' + data.costumeName);
+                        }
+                        image.width = Math.max(layers[0].width, 1);
+                        image.height = Math.max(layers[0].height, 1);
+                        for (const layer of layers) {
+                            ctx.drawImage(layer, 0, 0);
+                        }
+                    }
+                    else {
+                        image = layers[0];
+                    }
+                    return new P.core.BitmapCostume(image, {
+                        name: data.costumeName,
+                        bitmapResolution: data.bitmapResolution,
+                        rotationCenterX: data.rotationCenterX,
+                        rotationCenterY: data.rotationCenterY,
+                    });
+                });
+            }
+            loadSound(data) {
+                return new Promise((resolve, reject) => {
+                    this.loadMD5(data.md5, data.soundID, true)
+                        .then((buffer) => {
+                        resolve(new P.core.Sound({
+                            name: data.soundName,
+                            buffer,
+                        }));
+                    })
+                        .catch((err) => {
+                        resolve(null);
+                        console.warn('Could not load sound: ' + err);
+                    });
+                });
+            }
+            loadSVG(source) {
+                const parser = new DOMParser();
+                var doc = parser.parseFromString(source, 'image/svg+xml');
+                var svg = doc.documentElement;
+                if (!svg.style) {
+                    doc = parser.parseFromString('<body>' + source, 'text/html');
+                    svg = doc.querySelector('svg');
+                }
+                svg.style.visibility = 'hidden';
+                svg.style.position = 'absolute';
+                svg.style.left = '-10000px';
+                svg.style.top = '-10000px';
+                document.body.appendChild(svg);
+                const viewBox = svg.viewBox.baseVal;
+                if (viewBox && (viewBox.x || viewBox.y)) {
+                    svg.width.baseVal.value = viewBox.width - viewBox.x;
+                    svg.height.baseVal.value = viewBox.height - viewBox.y;
+                    viewBox.x = 0;
+                    viewBox.y = 0;
+                    viewBox.width = 0;
+                    viewBox.height = 0;
+                }
+                patchSVG(svg, svg);
+                document.body.removeChild(svg);
+                svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
+                return new Promise((resolve, reject) => {
+                    const canvas = document.createElement('canvas');
+                    canvg(canvas, new XMLSerializer().serializeToString(svg), {
+                        ignoreMouse: true,
+                        ignoreAnimation: true,
+                        ignoreClear: true,
+                        renderCallback: function () {
+                            if (canvas.width === 0 || canvas.height === 0) {
+                                resolve(new Image());
+                                return;
+                            }
+                            resolve(canvas);
+                        }
+                    });
+                });
+            }
+            load() {
+                var children;
+                var stage;
+                return this.loadFonts()
+                    .then(() => Promise.all([
+                    P.audio.loadSoundbank(this),
+                    this.loadArray(this.projectData.children, this.loadObject.bind(this)).then((c) => children = c),
+                    this.loadBase(this.projectData, true).then((s) => stage = s),
+                ]))
+                    .then(() => {
+                    children = children.filter((i) => i);
+                    children.forEach((c) => c.stage = stage);
+                    const sprites = children.filter((i) => i instanceof Scratch2Sprite);
+                    const watchers = children.filter((i) => i instanceof Scratch2VariableWatcher);
+                    stage.children = sprites;
+                    stage.allWatchers = watchers;
+                    stage.allWatchers.forEach((w) => w.init());
+                    P.sb2.compiler.compile(stage);
+                    return stage;
+                });
+            }
         }
-        sb2.loadCostume = loadCostume;
-        function loadSound(data) {
-            return new Promise((resolve, reject) => {
-                loadMD5(data.md5, data.soundID, true)
-                    .then((buffer) => {
-                    resolve(new P.core.Sound({
-                        name: data.soundName,
-                        buffer,
-                    }));
+        sb2.BaseSB2Loader = BaseSB2Loader;
+        class SB2FileLoader extends BaseSB2Loader {
+            constructor(buffer) {
+                super();
+                this.buffer = buffer;
+            }
+            loadMD5(hash, id, isAudio = false) {
+                const f = isAudio ? this.zip.file(id + '.wav') : this.zip.file(id + '.gif') || this.zip.file(id + '.png') || this.zip.file(id + '.jpg') || this.zip.file(id + '.svg');
+                hash = f.name;
+                const ext = hash.split('.').pop();
+                if (ext === 'svg') {
+                    return f.async('text')
+                        .then((text) => this.loadSVG(text));
+                }
+                else if (ext === 'wav') {
+                    return f.async('arrayBuffer')
+                        .then((buffer) => P.audio.decodeAudio(buffer));
+                }
+                else {
+                    return new Promise((resolve, reject) => {
+                        var image = new Image();
+                        image.onload = function () {
+                            resolve(image);
+                        };
+                        f.async('binarystring')
+                            .then((data) => {
+                            image.src = 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(data);
+                        });
+                    });
+                }
+            }
+            load() {
+                return JSZip.loadAsync(this.buffer)
+                    .then((data) => {
+                    this.zip = data;
+                    return this.zip.file('project.json').async('text');
                 })
-                    .catch((err) => {
-                    resolve(null);
-                    console.warn('Could not load sound: ' + err);
-                });
-            });
+                    .then((project) => {
+                    this.projectData = JSON.parse(project);
+                })
+                    .then(() => super.load());
+            }
         }
-        sb2.loadSound = loadSound;
+        sb2.SB2FileLoader = SB2FileLoader;
+        class Scratch2Loader extends BaseSB2Loader {
+            constructor(idOrData) {
+                super();
+                if (typeof idOrData === 'object') {
+                    this.projectData = idOrData;
+                    this.projectId = null;
+                }
+                else {
+                    this.projectId = idOrData;
+                }
+            }
+            loadMD5(hash, id, isAudio = false) {
+                const ext = hash.split('.').pop();
+                if (ext === 'svg') {
+                    return this.addTask(new P.io.Request(ASSET_URL + hash + '/get/')).load('text')
+                        .then((text) => this.loadSVG(text));
+                }
+                else if (ext === 'wav') {
+                    return this.addTask(new P.io.Request(ASSET_URL + hash + '/get/')).load('arraybuffer')
+                        .then((buffer) => P.audio.decodeAudio(buffer));
+                }
+                else {
+                    return this.loadImage(ASSET_URL + hash + '/get/');
+                }
+            }
+            load() {
+                if (this.projectId) {
+                    return this.addTask(new P.io.Request(P.config.PROJECT_API.replace('$id', '' + this.projectId))).load('json')
+                        .then((data) => {
+                        this.projectData = data;
+                        return super.load();
+                    });
+                }
+                else {
+                    return super.load();
+                }
+            }
+        }
+        sb2.Scratch2Loader = Scratch2Loader;
         function patchSVG(svg, element) {
             const FONTS = {
                 '': 'Helvetica',
@@ -4221,94 +4444,6 @@ var P;
             }
             [].forEach.call(element.childNodes, patchSVG.bind(null, svg));
         }
-        sb2.patchSVG = patchSVG;
-        function loadSVG(source) {
-            const parser = new DOMParser();
-            var doc = parser.parseFromString(source, 'image/svg+xml');
-            var svg = doc.documentElement;
-            if (!svg.style) {
-                doc = parser.parseFromString('<body>' + source, 'text/html');
-                svg = doc.querySelector('svg');
-            }
-            svg.style.visibility = 'hidden';
-            svg.style.position = 'absolute';
-            svg.style.left = '-10000px';
-            svg.style.top = '-10000px';
-            document.body.appendChild(svg);
-            const viewBox = svg.viewBox.baseVal;
-            if (viewBox && (viewBox.x || viewBox.y)) {
-                svg.width.baseVal.value = viewBox.width - viewBox.x;
-                svg.height.baseVal.value = viewBox.height - viewBox.y;
-                viewBox.x = 0;
-                viewBox.y = 0;
-                viewBox.width = 0;
-                viewBox.height = 0;
-            }
-            patchSVG(svg, svg);
-            document.body.removeChild(svg);
-            svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
-            return new Promise((resolve, reject) => {
-                const canvas = document.createElement('canvas');
-                canvg(canvas, new XMLSerializer().serializeToString(svg), {
-                    ignoreMouse: true,
-                    ignoreAnimation: true,
-                    ignoreClear: true,
-                    renderCallback: function () {
-                        if (canvas.width === 0 || canvas.height === 0) {
-                            resolve(new Image());
-                            return;
-                        }
-                        resolve(canvas);
-                    }
-                });
-            });
-        }
-        sb2.loadSVG = loadSVG;
-        function loadMD5(hash, id, isAudio = false) {
-            if (zipArchive) {
-                var f = isAudio ? zipArchive.file(id + '.wav') : zipArchive.file(id + '.gif') || zipArchive.file(id + '.png') || zipArchive.file(id + '.jpg') || zipArchive.file(id + '.svg');
-                hash = f.name;
-            }
-            const ext = hash.split('.').pop();
-            if (ext === 'svg') {
-                if (zipArchive) {
-                    return f.async('text')
-                        .then((text) => loadSVG(text));
-                }
-                else {
-                    return promiseTask(new P.IO.TextRequest(ASSET_URL + hash + '/get/').load())
-                        .then((text) => loadSVG(text));
-                }
-            }
-            else if (ext === 'wav') {
-                if (zipArchive) {
-                    return f.async('arrayBuffer')
-                        .then((buffer) => P.audio.decodeAudio(buffer));
-                }
-                else {
-                    return promiseTask(new P.IO.ArrayBufferRequest(ASSET_URL + hash + '/get/').load())
-                        .then((buffer) => P.audio.decodeAudio(buffer));
-                }
-            }
-            else {
-                if (zipArchive) {
-                    return new Promise((resolve, reject) => {
-                        var image = new Image();
-                        image.onload = function () {
-                            resolve(image);
-                        };
-                        f.async('binarystring')
-                            .then((data) => {
-                            image.src = 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(data);
-                        });
-                    });
-                }
-                else {
-                    return loadImage(ASSET_URL + hash + '/get/');
-                }
-            }
-        }
-        sb2.loadMD5 = loadMD5;
     })(sb2 = P.sb2 || (P.sb2 = {}));
 })(P || (P = {}));
 (function (P) {
@@ -5727,14 +5862,7 @@ var P;
             }
             P.fonts.addFontRules(svg, usedFonts);
         }
-        class BaseSB3Loader {
-            constructor() {
-                this.totalTasks = 0;
-                this.finishedTasks = 0;
-                this.requests = [];
-                this.aborted = false;
-                this.onprogress = new P.utils.Slot();
-            }
+        class BaseSB3Loader extends P.io.Loader {
             getSVG(path) {
                 return this.getAsText(path)
                     .then((source) => {
@@ -5857,15 +5985,14 @@ var P;
                 ]);
             }
             loadSoundbank() {
-                return P.audio.loadSoundbank({
-                    endTask() { },
-                    newTask() { },
-                });
+                return P.audio.loadSoundbank(this);
             }
             loadFonts() {
                 const promises = [];
                 for (const family in P.fonts.scratch3) {
-                    promises.push(this.promiseTask(P.utils.settled(P.fonts.loadLocalFont(family, P.fonts.scratch3[family]))));
+                    const promise = P.utils.settled(P.fonts.loadLocalFont(family, P.fonts.scratch3[family]));
+                    promises.push(promise);
+                    this.addTask(new P.io.PromiseTask(promise));
                 }
                 return Promise.all(promises);
             }
@@ -5891,7 +6018,10 @@ var P;
                 const targets = this.projectData.targets;
                 targets.sort((a, b) => a.layerOrder - b.layerOrder);
                 return this.loadAssets()
-                    .then(() => Promise.all(targets.map((data) => this.loadTarget(data))))
+                    .then(() => {
+                    this.resetTasks();
+                    return Promise.all(targets.map((data) => this.loadTarget(data)));
+                })
                     .then((targets) => {
                     if (this.aborted) {
                         throw new Error('Loading aborting.');
@@ -5911,41 +6041,6 @@ var P;
                     return stage;
                 });
             }
-            abort() {
-                this.aborted = true;
-                for (const request of this.requests) {
-                    request.abort();
-                }
-            }
-            newTask() {
-                if (this.aborted) {
-                    throw new Error('Loading aborted.');
-                }
-                this.totalTasks++;
-                this.onprogress.emit(this.progress);
-            }
-            endTask() {
-                if (this.aborted) {
-                    throw new Error('Loading aborted.');
-                }
-                this.finishedTasks++;
-                this.onprogress.emit(this.progress);
-            }
-            requestTask(request) {
-                this.requests.push(request.xhr);
-                return this.promiseTask(request.load());
-            }
-            promiseTask(promise) {
-                this.newTask();
-                return promise
-                    .then((value) => {
-                    this.endTask();
-                    return value;
-                });
-            }
-            get progress() {
-                return this.finishedTasks / this.totalTasks || 0;
-            }
         }
         sb3.BaseSB3Loader = BaseSB3Loader;
         class SB3FileLoader extends BaseSB3Loader {
@@ -5954,37 +6049,37 @@ var P;
                 this.buffer = buffer;
             }
             getAsText(path) {
-                this.newTask();
+                const task = this.addTask(new P.io.Manual());
                 return this.zip.file(path).async('text')
                     .then((response) => {
-                    this.endTask();
+                    task.markComplete();
                     return response;
                 });
             }
             getAsArrayBuffer(path) {
-                this.newTask();
+                const task = this.addTask(new P.io.Manual());
                 return this.zip.file(path).async('arrayBuffer')
                     .then((response) => {
-                    this.endTask();
+                    task.markComplete();
                     return response;
                 });
             }
             getAsBase64(path) {
-                this.newTask();
+                const task = this.addTask(new P.io.Manual());
                 return this.zip.file(path).async('base64')
                     .then((response) => {
-                    this.endTask();
+                    task.markComplete();
                     return response;
                 });
             }
             getAsImage(path, format) {
-                this.newTask();
+                const task = this.addTask(new P.io.Manual());
                 return this.getAsBase64(path)
                     .then((imageData) => {
                     return new Promise((resolve, reject) => {
                         const image = new Image();
                         image.onload = () => {
-                            this.endTask();
+                            task.markComplete();
                             resolve(image);
                         };
                         image.onerror = (error) => {
@@ -6019,17 +6114,17 @@ var P;
                 }
             }
             getAsText(path) {
-                return this.requestTask(new P.IO.TextRequest(sb3.ASSETS_API.replace('$md5ext', path)));
+                return this.addTask(new P.io.Request(sb3.ASSETS_API.replace('$md5ext', path))).load('text');
             }
             getAsArrayBuffer(path) {
-                return this.requestTask(new P.IO.ArrayBufferRequest(sb3.ASSETS_API.replace('$md5ext', path)));
+                return this.addTask(new P.io.Request(sb3.ASSETS_API.replace('$md5ext', path))).load('arraybuffer');
             }
             getAsImage(path) {
-                this.newTask();
+                const task = this.addTask(new P.io.Manual());
                 return new Promise((resolve, reject) => {
                     const image = new Image();
                     image.onload = () => {
-                        this.endTask();
+                        task.markComplete();
                         resolve(image);
                     };
                     image.onerror = (err) => {
@@ -6041,7 +6136,7 @@ var P;
             }
             load() {
                 if (this.projectId) {
-                    return this.requestTask(new P.IO.JSONRequest(P.config.PROJECT_API.replace('$id', '' + this.projectId)))
+                    return this.addTask(new P.io.Request(P.config.PROJECT_API.replace('$id', '' + this.projectId))).load('json')
                         .then((data) => {
                         this.projectData = data;
                         return super.load();
