@@ -10,7 +10,11 @@ namespace P.renderer.canvas2d {
       filter += 'brightness(' + (100 + filters.brightness) + '%) ';
     }
     if (filters.color) {
-      filter += 'hue-rotate(' + (filters.color / 200 * 360) + 'deg) ';
+      if (filters.color === Infinity) {
+        filter += 'grayscale(100%) ';
+      } else {
+        filter += 'hue-rotate(' + (filters.color / 200 * 360) + 'deg) ';
+      }
     }
     // ghost could be supported through opacity(), however that effect is applied with the opacity property because more browsers support it
     return filter;

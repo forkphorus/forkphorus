@@ -8095,7 +8095,12 @@ var P;
                     filter += 'brightness(' + (100 + filters.brightness) + '%) ';
                 }
                 if (filters.color) {
-                    filter += 'hue-rotate(' + (filters.color / 200 * 360) + 'deg) ';
+                    if (filters.color === Infinity) {
+                        filter += 'grayscale(100%) ';
+                    }
+                    else {
+                        filter += 'hue-rotate(' + (filters.color / 200 * 360) + 'deg) ';
+                    }
                 }
                 return filter;
             }
