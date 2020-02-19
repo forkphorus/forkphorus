@@ -443,6 +443,9 @@ namespace P.core {
           if (value > 100) value = 100;
           break;
         case 'color':
+          if (value === Infinity) {
+            break;
+          }
           value = value % 200;
           if (value < 0) value += 200;
           break;
