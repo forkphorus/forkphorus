@@ -88,6 +88,13 @@ window.Packager = (function() {
     { src: 'soundbank/drums/Triangle(1)_22k.wav', },
     { src: 'soundbank/drums/Vibraslap(1)_22k.wav', },
     { src: 'soundbank/drums/WoodBlock(1)_22k.wav', },
+    { src: 'fonts/Knewave-Regular.woff', },
+    { src: 'fonts/Handlee-Regular.woff', },
+    { src: 'fonts/Grand9K-Pixel.ttf', },
+    { src: 'fonts/Griffy-Regular.woff', },
+    { src: 'fonts/SourceSerifPro-Regular.woff', },
+    { src: 'fonts/NotoSans-Regular.woff', },
+    { src: 'fonts/Scratch.ttf', },
   ];
 
   function readAsURL(blob) {
@@ -500,8 +507,8 @@ ${scripts}
       return this.fetch('soundbank/' + src).then(function(e) { return e.arrayBuffer(); });
     }
 
-    loadFont() {
-      return Promise.resolve();
+    loadFont(src) {
+      return this.fetch(src).then(function(e) { return e.blob(); });
     }
 
     fetch(u) {

@@ -232,7 +232,11 @@ player.stage.runtime.framerate = 30;</textarea></td>
       // const projectType = (document.querySelector('input[name=project-type]:checked')).value;
       Packager.run({
         project: document.getElementById('project-id-input').value,
-      })
+      }).then(() => {
+        // done
+      }).catch((err) => {
+        alert('Error! ' + err);
+      });
     }
   </script>
 
