@@ -29,7 +29,7 @@ namespace P.fonts {
     if (fontFamilyCache[fontFamily]) {
       return Promise.resolve(fontFamilyCache[fontFamily]);
     }
-    return P.io.getAssetManager().loadBlob(src)
+    return P.io.getAssetManager().loadFont(src)
       .then((blob) => P.io.readers.toDataURL(blob))
       .then((url) => {
         fontFamilyCache[fontFamily] = url;

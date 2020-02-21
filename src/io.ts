@@ -79,8 +79,7 @@ namespace P.io {
    * It is responsible for downloading certain assets.
    */
   interface AssetManager {
-    loadArrayBuffer(src: string): Promise<ArrayBuffer>;
-    loadBlob(src: string): Promise<Blob>;
+    loadFont(src: string): Promise<Blob>;
     loadSoundbankFile(src: string): Promise<ArrayBuffer>;
   }
 
@@ -89,6 +88,10 @@ namespace P.io {
 
     loadSoundbankFile(src: string) {
       return this.loadArrayBuffer(this.soundbankSource + src);
+    }
+
+    loadFont(src: string) {
+      return this.loadBlob(src);
     }
 
     loadArrayBuffer(src: string) {

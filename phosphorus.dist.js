@@ -1802,7 +1802,7 @@ var P;
             if (fontFamilyCache[fontFamily]) {
                 return Promise.resolve(fontFamilyCache[fontFamily]);
             }
-            return P.io.getAssetManager().loadBlob(src)
+            return P.io.getAssetManager().loadFont(src)
                 .then((blob) => P.io.readers.toDataURL(blob))
                 .then((url) => {
                 fontFamilyCache[fontFamily] = url;
@@ -1981,6 +1981,9 @@ var P;
             }
             loadSoundbankFile(src) {
                 return this.loadArrayBuffer(this.soundbankSource + src);
+            }
+            loadFont(src) {
+                return this.loadBlob(src);
             }
             loadArrayBuffer(src) {
                 return new Request(io.config.localPath + src).load('arraybuffer');
