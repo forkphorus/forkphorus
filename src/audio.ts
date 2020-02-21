@@ -309,7 +309,7 @@ namespace P.audio {
    * Loads a soundbank file
    */
   function loadSoundbankBuffer(name: string): Promise<AudioBuffer> {
-    return P.io.getIOManager().loadArrayBuffer(SOUNDBANK_URL + SOUNDBANK_FILES[name])
+    return P.io.getAssetManager().loadArrayBuffer(SOUNDBANK_URL + SOUNDBANK_FILES[name])
       .then((buffer) => P.audio.decodeAudio(buffer))
       .then((sound) => soundbank[name] = sound);
   }

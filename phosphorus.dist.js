@@ -285,7 +285,7 @@ var P;
         }
         audio.loadSoundbank = loadSoundbank;
         function loadSoundbankBuffer(name) {
-            return P.io.getIOManager().loadArrayBuffer(SOUNDBANK_URL + SOUNDBANK_FILES[name])
+            return P.io.getAssetManager().loadArrayBuffer(SOUNDBANK_URL + SOUNDBANK_FILES[name])
                 .then((buffer) => P.audio.decodeAudio(buffer))
                 .then((sound) => soundbank[name] = sound);
         }
@@ -1802,7 +1802,7 @@ var P;
             if (fontFamilyCache[fontFamily]) {
                 return Promise.resolve(fontFamilyCache[fontFamily]);
             }
-            return P.io.getIOManager().loadBlob(src)
+            return P.io.getAssetManager().loadBlob(src)
                 .then((blob) => P.io.readers.toDataURL(blob))
                 .then((url) => {
                 fontFamilyCache[fontFamily] = url;
@@ -1975,7 +1975,7 @@ var P;
             }
             readers.toText = toText;
         })(readers = io.readers || (io.readers = {}));
-        class FetchingIOManager {
+        class FetchingAssetManager {
             loadArrayBuffer(src) {
                 return new Request(io.config.localPath + src).load('arraybuffer');
             }
@@ -1983,15 +1983,15 @@ var P;
                 return new Request(io.config.localPath + src).load('blob');
             }
         }
-        var globalIOManager = new FetchingIOManager();
-        function getIOManager() {
-            return globalIOManager;
+        var globalAssetManager = new FetchingAssetManager();
+        function getAssetManager() {
+            return globalAssetManager;
         }
-        io.getIOManager = getIOManager;
-        function setIOManager(newManager) {
-            globalIOManager = newManager;
+        io.getAssetManager = getAssetManager;
+        function setAssetManager(newManager) {
+            globalAssetManager = newManager;
         }
-        io.setIOManager = setIOManager;
+        io.setAssetManager = setAssetManager;
         class AbstractTask {
             setLoader(loader) {
                 this.loader = loader;

@@ -74,12 +74,12 @@ namespace P.io {
     }
   }
 
-  interface IOManager {
+  interface AssetManager {
     loadArrayBuffer(src: string): Promise<ArrayBuffer>;
     loadBlob(src: string): Promise<Blob>;
   }
 
-  class FetchingIOManager implements IOManager {
+  class FetchingAssetManager implements AssetManager {
     loadArrayBuffer(src: string) {
       return new Request(config.localPath + src).load('arraybuffer');
     }
@@ -90,12 +90,12 @@ namespace P.io {
   }
 
   // This is the intended way to get the IO manager.
-  var globalIOManager = new FetchingIOManager();
-  export function getIOManager() {
-    return globalIOManager;
+  var globalAssetManager = new FetchingAssetManager();
+  export function getAssetManager() {
+    return globalAssetManager;
   }
-  export function setIOManager(newManager: IOManager) {
-    globalIOManager = newManager;
+  export function setAssetManager(newManager: AssetManager) {
+    globalAssetManager = newManager;
   }
 
   interface Task {
