@@ -221,6 +221,17 @@ player.stage.runtime.framerate = 30;</textarea></td>
   <script src="../lib/jszip.min.js"></script>
   <script src="loader.js"></script>
   <script src="packager.js"></script>
+  <script>
+    function querySelector(e) {
+      const el = document.querySelector(e);
+      if (!el) throw new Error('Selector returned null: ' + e);
+      return el;
+    }
+
+    querySelector('#package-html').onclick = function() {
+      Packager.run();
+    }
+  </script>
 
 </body>
 
