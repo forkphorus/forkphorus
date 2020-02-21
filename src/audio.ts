@@ -309,14 +309,14 @@ namespace P.audio {
    * Loads a soundbank file
    */
   function loadSoundbankBuffer(name: string): Promise<AudioBuffer> {
-    return P.io.getAssetManager().loadArrayBuffer(SOUNDBANK_URL + SOUNDBANK_FILES[name])
+    return P.io.getAssetManager().loadSoundbankFile(SOUNDBANK_FILES[name])
       .then((buffer) => P.audio.decodeAudio(buffer))
       .then((sound) => soundbank[name] = sound);
   }
 
   export function playSpan(span: Span, key: number, duration: number, connection: AudioNode): AudioNode {
     if (!context) {
-      throw new Error('Cannot playSpawn without an AudioContext');
+      throw new Error('Cannot playSpan without an AudioContext');
     }
 
     const buffer = soundbank[span.name];

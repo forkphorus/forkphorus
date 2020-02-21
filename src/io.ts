@@ -74,12 +74,23 @@ namespace P.io {
     }
   }
 
+  /**
+   * An AssetManager manages the global assets of forkphorus.
+   * It is responsible for downloading certain assets.
+   */
   interface AssetManager {
     loadArrayBuffer(src: string): Promise<ArrayBuffer>;
     loadBlob(src: string): Promise<Blob>;
+    loadSoundbankFile(src: string): Promise<ArrayBuffer>;
   }
 
   class FetchingAssetManager implements AssetManager {
+    private soundbankSource: string = 'soundbank/';
+
+    loadSoundbankFile(src: string) {
+      return this.loadArrayBuffer(this.soundbankSource + src);
+    }
+
     loadArrayBuffer(src: string) {
       return new Request(config.localPath + src).load('arraybuffer');
     }
@@ -89,9 +100,8 @@ namespace P.io {
     }
   }
 
-  // This is the intended way to get the IO manager.
-  var globalAssetManager = new FetchingAssetManager();
-  export function getAssetManager() {
+  var globalAssetManager: AssetManager = new FetchingAssetManager();
+  export function getAssetManager(): AssetManager {
     return globalAssetManager;
   }
   export function setAssetManager(newManager: AssetManager) {

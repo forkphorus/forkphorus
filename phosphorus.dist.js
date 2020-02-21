@@ -285,13 +285,13 @@ var P;
         }
         audio.loadSoundbank = loadSoundbank;
         function loadSoundbankBuffer(name) {
-            return P.io.getAssetManager().loadArrayBuffer(SOUNDBANK_URL + SOUNDBANK_FILES[name])
+            return P.io.getAssetManager().loadSoundbankFile(SOUNDBANK_FILES[name])
                 .then((buffer) => P.audio.decodeAudio(buffer))
                 .then((sound) => soundbank[name] = sound);
         }
         function playSpan(span, key, duration, connection) {
             if (!audio.context) {
-                throw new Error('Cannot playSpawn without an AudioContext');
+                throw new Error('Cannot playSpan without an AudioContext');
             }
             const buffer = soundbank[span.name];
             if (!buffer) {
@@ -1976,6 +1976,12 @@ var P;
             readers.toText = toText;
         })(readers = io.readers || (io.readers = {}));
         class FetchingAssetManager {
+            constructor() {
+                this.soundbankSource = 'soundbank/';
+            }
+            loadSoundbankFile(src) {
+                return this.loadArrayBuffer(this.soundbankSource + src);
+            }
             loadArrayBuffer(src) {
                 return new Request(io.config.localPath + src).load('arraybuffer');
             }
