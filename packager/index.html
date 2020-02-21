@@ -78,7 +78,7 @@
 <body>
   <h1>HTML Packager</h1>
 
-  <p>The HTML packager allows you to generate an HTML file for a Scratch project. Some icons and <span class="clarification" title="Note blocks only includes 'play note' and 'play drum' blocks. Sound blocks will still work.">note blocks</span> will not work.</p>
+  <p>The HTML packager allows you to generate an HTML file for a Scratch project.</p>
 
   <ul>
     <li>Guide: <a href="guide.html">Packaging to .EXE</a> (Windows/Mac OS/Linux)</li>
@@ -92,7 +92,7 @@
         <td class="label">Project Source</td>
         <td>
           <label><input type="radio" name="project-type" value="id" checked> Project ID</label>
-          <label><input type="radio" name="project-type" value="file"> Project File</label>
+          <!-- <label><input type="radio" name="project-type" value="file"> Project File</label> -->
         </td>
       </tr>
       <tr id="project-id-section">
@@ -103,12 +103,12 @@
         <td class="label"><label for="project-file-input">Project File</label></td>
         <td><input type="file" id="project-file-input" accept=".sb2,.sb3"></td>
       </tr>
-      <tr>
+      <!-- <tr>
         <td colspan="2" class="desc">You can select a project from the scratch.mit.edu website, or choose a project file. Scratch 2 (sb2) and Scratch 3 (sb3) projects are supported.</td>
-      </tr>
+      </tr> -->
     </table>
 
-    <table class="option">
+    <!-- <table class="option">
       <tr>
         <td class="label"><label for="loading-text-input">Loading Text</label></td>
         <td><input id="loading-text-input" type="text" value="forkphorus"></td>
@@ -116,9 +116,9 @@
       <tr>
         <td colspan="2" class="desc"><a href="https://user-images.githubusercontent.com/17209175/58766078-219f4d00-8540-11e9-93f0-b04088efb0a8.png" target="_blank">Displayed while the project is loading.</a> Set to empty to display only a loading bar. <span title="Using HTML is definitely a feature and not just me being lazy.">You can use HTML if you're careful.</span></td>
       </tr>
-    </table>
+    </table> -->
 
-    <table class="option">
+    <!-- <table class="option">
       <tr>
         <td class="label"><label for="turbo-input">Turbo Mode?</label></td>
         <td><input id="turbo-input" type="checkbox"></td>
@@ -126,9 +126,9 @@
       <tr>
         <td colspan="2" class="desc">Enable Turbo Mode? This option will be in effect for the entire project, and cannot be changed while it is running.</td>
       </tr>
-    </table>
+    </table> -->
 
-    <details>
+    <!-- <details>
       <summary id="advanced-summary">Show Advanced options</summary>
 
       <table class="option">
@@ -162,9 +162,9 @@ player.stage.runtime.framerate = 30;</textarea></td>
           <td colspan="2" class="desc">Customize the look of the player. The example shows how you can change the color of the progress bar.</td>
         </tr>
       </table>
-    </details>
+    </details> -->
 
-    <details id="phonegap-container">
+    <!-- <details id="phonegap-container">
       <summary>Show PhoneGap options</summary>
 
       <table class="option phonegap-always-visible">
@@ -208,7 +208,7 @@ player.stage.runtime.framerate = 30;</textarea></td>
           <td colspan="2" class="desc">(Optional) The icon that PhoneGap will use. If you do not select an icon, <a href="defaultIcon.png" target="_blank">this</a> will be used instead.</td>
         </tr>
       </table>
-    </details>
+    </details> -->
   </div>
 
   <p>
@@ -229,7 +229,10 @@ player.stage.runtime.framerate = 30;</textarea></td>
     }
 
     querySelector('#package-html').onclick = function() {
-      Packager.run();
+      // const projectType = (document.querySelector('input[name=project-type]:checked')).value;
+      Packager.run({
+        project: document.getElementById('project-id-input').value,
+      })
     }
   </script>
 

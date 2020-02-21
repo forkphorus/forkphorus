@@ -364,9 +364,16 @@ window.Packager = (function() {
     };
   }
 
+  async function getProject(project) {
+    if (project instanceof Blob) {
+      throw new Error('File upload not yet supported -- come back later');
+    }
+    return await getProjectById(project);
+  }
+
   async function run(options) {
     const { scripts, styles, assets } = await loadAllAssets();
-    const project = await getProjectById(370117148);
+    const project = await getProject(options.project);
 
     const generateAssetManagerData = () => {
       return '{' + assets.map((asset) => `"${asset.src}": "${asset.data}"`).join(', ') + '}';
