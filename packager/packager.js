@@ -522,7 +522,7 @@ ${scripts}
 
   fetch(project)
     .then((request) => request.arrayBuffer())
-    .then((buffer) => player.loadProjectBuffer(buffer, type))
+    .then((buffer) => player.loadProjectBuffer(buffer, type, { turbo: ${options.turbo} }))
     .then(function() {
       player.fullscreenPadding = 0;
       player.enterFullscreen(false);

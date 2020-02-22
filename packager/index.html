@@ -118,7 +118,7 @@
       </tr>
     </table> -->
 
-    <!-- <table class="option">
+    <table class="option">
       <tr>
         <td class="label"><label for="turbo-input">Turbo Mode?</label></td>
         <td><input id="turbo-input" type="checkbox"></td>
@@ -126,7 +126,7 @@
       <tr>
         <td colspan="2" class="desc">Enable Turbo Mode? This option will be in effect for the entire project, and cannot be changed while it is running.</td>
       </tr>
-    </table> -->
+    </table>
 
     <!-- <details>
       <summary id="advanced-summary">Show Advanced options</summary>
@@ -232,6 +232,7 @@ player.stage.runtime.framerate = 30;</textarea></td>
       // const projectType = (document.querySelector('input[name=project-type]:checked')).value;
       Packager.run({
         project: document.getElementById('project-id-input').value,
+        turbo: document.getElementById('turbo-input').checked,
       }).then(() => {
         // done
       }).catch((err) => {
