@@ -212,8 +212,7 @@ namespace P.audio {
     ]
   ];
 
-  const SOUNDBANK_URL = '/soundbank/';
-  const SOUNDBANK_FILES = {
+  const SB2_SOUNDBANK_FILES = {
     'AcousticGuitar_F3': 'sb2/instruments/AcousticGuitar_F3_22k.wav',
     'AcousticPiano_As3': 'sb2/instruments/AcousticPiano(5)_A%233_22k.wav',
     'AcousticPiano_C4': 'sb2/instruments/AcousticPiano(5)_C4_22k.wav',
@@ -288,11 +287,11 @@ namespace P.audio {
   /**
    * Loads missing soundbank files, if any.
    */
-  export function loadSoundbank(loader?: P.io.Loader): Promise<any> {
+  export function loadSoundbankSB2(loader?: P.io.Loader): Promise<any> {
     if (!context) return Promise.resolve();
 
     const promises: Promise<unknown>[] = [];
-    for (const name in SOUNDBANK_FILES) {
+    for (const name in SB2_SOUNDBANK_FILES) {
       if (!soundbank[name]) {
         const promise = loadSoundbankBuffer(name);
         promises.push(promise);
@@ -309,7 +308,7 @@ namespace P.audio {
    * Loads a soundbank file
    */
   function loadSoundbankBuffer(name: string): Promise<AudioBuffer> {
-    return P.io.getAssetManager().loadSoundbankFile(SOUNDBANK_FILES[name])
+    return P.io.getAssetManager().loadSoundbankFile(SB2_SOUNDBANK_FILES[name])
       .then((buffer) => P.audio.decodeAudio(buffer))
       .then((sound) => soundbank[name] = sound);
   }

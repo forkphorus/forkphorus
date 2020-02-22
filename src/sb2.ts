@@ -576,7 +576,7 @@ namespace P.sb2 {
 
       return this.loadFonts()
         .then(() => Promise.all<any>([
-          P.audio.loadSoundbank(this),
+          P.audio.loadSoundbankSB2(this),
           this.loadArray(this.projectData.children, this.loadObject.bind(this)).then((c) => children = c),
           this.loadBase(this.projectData, true).then((s) => stage = s as P.core.Stage),
         ]))

@@ -836,7 +836,7 @@ namespace P.sb3 {
     }
 
     loadSoundbank() {
-      return P.audio.loadSoundbank(this);
+      return P.audio.loadSoundbankSB2(this);
     }
 
     loadFonts() {
