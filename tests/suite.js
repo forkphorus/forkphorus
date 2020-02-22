@@ -43,7 +43,7 @@ P.suite = (function() {
   const finalResultsEl = document.getElementById('suite-final-results');
 
   // Configure IO to fetch files from the right place.
-  P.IO.config.localPath = '../';
+  P.io.config.localPath = '../';
 
   /**
    * Removes all children of an HTML element
@@ -75,7 +75,7 @@ P.suite = (function() {
    * @returns {Promise<ArrayBuffer>} The ArrayBuffer representing the fetched content
    */
   function fetchAsArrayBuffer(path) {
-    return new P.IO.ArrayBufferRequest(path).load();
+    return new P.io.Request(path).load('arraybuffer');
   }
 
   /**
@@ -100,7 +100,8 @@ P.suite = (function() {
    */
   function loadProjectBuffer(buffer, type) {
     if (type === 2) {
-      return P.sb2.loadSB2Project(buffer);
+      const loader = new P.sb2.SB2FileLoader(buffer);
+      return loader.load();
     } else if (type === 3) {
       const loader = new P.sb3.SB3FileLoader(buffer);
       return loader.load();
