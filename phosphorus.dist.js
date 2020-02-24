@@ -4593,6 +4593,7 @@ var P;
                         return 'S.distanceTo(' + val(e[1]) + ')';
                     }
                     else if (e[0] === 'soundLevel') {
+                        object.stage.initLoudness();
                         return 'self.microphone.getLoudness()';
                     }
                     else if (e[0] === 'timestamp') {
