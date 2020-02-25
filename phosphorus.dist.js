@@ -1,4 +1,13 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 /*!
 === NOTE ===
 This file is generated from source files in https://github.com/forkphorus/forkphorus
@@ -2328,20 +2337,6 @@ var P;
             });
         }
         utils.settled = settled;
-        class Slot {
-            constructor() {
-                this._listeners = [];
-            }
-            subscribe(fn) {
-                this._listeners.push(fn);
-            }
-            emit(value) {
-                for (const listener of this._listeners) {
-                    listener(value);
-                }
-            }
-        }
-        utils.Slot = Slot;
     })(utils = P.utils || (P.utils = {}));
 })(P || (P = {}));
 var P;
@@ -2371,61 +2366,107 @@ var P;
             }
         }
         player_1.ProjectDoesNotExistError = ProjectDoesNotExistError;
+        class LoaderIdentifier {
+            constructor() {
+                this.active = true;
+                this.loader = null;
+            }
+            cancel() {
+                if (!this.active) {
+                    throw new Error('cannot cancel: already cancelled');
+                }
+                this.active = false;
+                if (this.loader) {
+                    this.loader.abort();
+                }
+            }
+            setLoader(loader) {
+                if (!this.active) {
+                    throw new Error('Loading aborted');
+                }
+                this.loader = loader;
+            }
+            isActive() {
+                return this.active;
+            }
+        }
+        class Slot {
+            constructor() {
+                this._listeners = [];
+            }
+            subscribe(fn) {
+                this._listeners.push(fn);
+            }
+            emit(value) {
+                for (const listener of this._listeners) {
+                    listener(value);
+                }
+            }
+        }
         class Player {
             constructor(options = {}) {
-                this.onprogress = new P.utils.Slot();
-                this.onload = new P.utils.Slot();
-                this.onstartload = new P.utils.Slot();
-                this.oncleanup = new P.utils.Slot();
-                this.onthemechange = new P.utils.Slot();
-                this.onerror = new P.utils.Slot();
-                this.onstart = new P.utils.Slot();
-                this.onpause = new P.utils.Slot();
-                this.onturbochange = new P.utils.Slot();
-                this.fullscreen = false;
-                this.fullscreenPadding = 8;
-                this.fullscreenMaxWidth = Infinity;
-                this.stageId = 0;
-                this.projectId = Player.UNKNOWN_ID;
-                this.projectLink = Player.UNKNOWN_LINK;
-                this.projectTitle = Player.UNKNOWN_TITLE;
-                this.flagTouchTimeout = undefined;
+                this.onprogress = new Slot();
+                this.onload = new Slot();
+                this.onstartload = new Slot();
+                this.oncleanup = new Slot();
+                this.onthemechange = new Slot();
+                this.onerror = new Slot();
+                this.onresume = new Slot();
+                this.onpause = new Slot();
+                this.onoptionschange = new Slot();
+                this.currentLoader = null;
+                this.fullscreenEnabled = false;
+                this.projectId = '';
                 this.root = document.createElement('div');
                 this.root.className = 'player-root';
-                this.player = document.createElement('div');
-                this.player.className = 'player-stage';
-                this.root.appendChild(this.player);
-                this.setTheme(options.theme || 'light');
+                this.playerContainer = document.createElement('div');
+                this.playerContainer.className = 'player-stage';
+                this.root.appendChild(this.playerContainer);
+                this.setOptions(Object.assign(Object.assign({}, options), Player.DEFAULT_OPTIONS));
                 window.addEventListener('resize', () => this.updateFullscreen());
                 document.addEventListener('fullscreenchange', () => this.onfullscreenchange());
                 document.addEventListener('mozfullscreenchange', () => this.onfullscreenchange());
                 document.addEventListener('webkitfullscreenchange', () => this.onfullscreenchange());
                 this.handleError = this.handleError.bind(this);
             }
-            static getProjectType(data) {
-                if (!data)
-                    return null;
-                if ('targets' in data)
-                    return 3;
-                if ('objName' in data)
-                    return 2;
-                return null;
+            enableAttribute(name) {
+                this.root.setAttribute(name, '');
             }
-            static isCloudVariable(variableName) {
-                return variableName.startsWith('☁');
+            disableAttribute(name) {
+                this.root.removeAttribute(name);
             }
-            ;
-            assertStage() {
-                if (!this.stage) {
-                    throw new Error('The player does not currently contain a stage to operate on.');
+            setAttribute(name, enabled) {
+                if (enabled) {
+                    this.enableAttribute(name);
                 }
+                else {
+                    this.disableAttribute(name);
+                }
+            }
+            setOptions(changedOptions) {
+                this.options = Object.assign(Object.assign({}, this.options), changedOptions);
+                if (typeof changedOptions.turbo !== 'undefined') {
+                    this.setAttribute('turbo', changedOptions.turbo);
+                }
+                if (typeof changedOptions.theme !== 'undefined') {
+                    this.root.setAttribute('theme', changedOptions.theme);
+                    this.onthemechange.emit(changedOptions.theme);
+                }
+                if (this.hasStage()) {
+                    this.applyOptionsToStage();
+                }
+                this.onoptionschange.emit(changedOptions);
+            }
+            getOptions() {
+                return this.options;
             }
             addControls(options = {}) {
-                if (this.controlsEl) {
+                if (this.controlsContainer) {
                     throw new Error('This player already has controls.');
                 }
+                let flagTouchTimeout = undefined;
                 const clickStop = (e) => {
-                    this.assertStage();
+                    this.throwWithoutStage();
                     this.stopAll();
                     this.stage.draw();
                     e.preventDefault();
@@ -2434,157 +2475,203 @@ var P;
                     this.toggleRunning();
                 };
                 const clickFullscreen = (e) => {
-                    this.assertStage();
-                    if (this.fullscreen) {
+                    this.throwWithoutStage();
+                    this.setOptions({ fullscreenMode: e.shiftKey ? 'window' : 'full' });
+                    if (this.fullscreenEnabled) {
                         this.exitFullscreen();
                     }
                     else {
-                        this.enterFullscreen(!e.shiftKey);
+                        this.enterFullscreen();
                     }
                 };
                 const clickFlag = (e) => {
-                    if (this.flagTouchTimeout === null) {
+                    if (flagTouchTimeout === null) {
                         return;
                     }
-                    if (this.flagTouchTimeout) {
-                        clearTimeout(this.flagTouchTimeout);
+                    if (flagTouchTimeout) {
+                        clearTimeout(flagTouchTimeout);
                     }
-                    this.assertStage();
+                    this.throwWithoutStage();
                     if (e.shiftKey) {
-                        this.setTurbo(!this.stage.runtime.isTurbo);
+                        this.setOptions({ turbo: !this.options.turbo });
                     }
                     else {
-                        this.start();
-                        this.stage.runtime.stopAll();
-                        this.stage.runtime.triggerGreenFlag();
+                        this.triggerGreenFlag();
                     }
-                    this.stage.focus();
+                    this.focus();
                     e.preventDefault();
                 };
                 const startTouchFlag = (e) => {
-                    this.flagTouchTimeout = setTimeout(() => {
-                        this.flagTouchTimeout = null;
-                        this.setTurbo(!this.stage.runtime.isTurbo);
+                    flagTouchTimeout = setTimeout(() => {
+                        flagTouchTimeout = null;
+                        this.setOptions({ turbo: !this.options.turbo });
                     }, 500);
                 };
                 const preventDefault = (e) => {
                     e.preventDefault();
                 };
-                this.controlsEl = document.createElement('div');
-                this.controlsEl.className = 'player-controls';
+                this.controlsContainer = document.createElement('div');
+                this.controlsContainer.className = 'player-controls';
                 if (options.enableStop !== false) {
-                    this.stopButton = document.createElement('span');
-                    this.stopButton.className = 'player-button player-stop';
-                    this.controlsEl.appendChild(this.stopButton);
-                    this.stopButton.addEventListener('click', clickStop);
-                    this.stopButton.addEventListener('touchend', clickStop);
-                    this.stopButton.addEventListener('touchstart', preventDefault);
+                    var stopButton = document.createElement('span');
+                    stopButton.className = 'player-button player-stop';
+                    this.controlsContainer.appendChild(stopButton);
+                    stopButton.addEventListener('click', clickStop);
+                    stopButton.addEventListener('touchend', clickStop);
+                    stopButton.addEventListener('touchstart', preventDefault);
                 }
                 if (options.enablePause !== false) {
-                    this.pauseButton = document.createElement('span');
-                    this.pauseButton.className = 'player-button player-pause';
-                    this.controlsEl.appendChild(this.pauseButton);
-                    this.pauseButton.addEventListener('click', clickPause);
-                    this.pauseButton.addEventListener('touchend', clickPause);
-                    this.pauseButton.addEventListener('touchstart', preventDefault);
+                    var pauseButton = document.createElement('span');
+                    pauseButton.className = 'player-button player-pause';
+                    this.controlsContainer.appendChild(pauseButton);
+                    pauseButton.addEventListener('click', clickPause);
+                    pauseButton.addEventListener('touchend', clickPause);
+                    pauseButton.addEventListener('touchstart', preventDefault);
                 }
                 if (options.enableFlag !== false) {
-                    this.flagButton = document.createElement('span');
-                    this.flagButton.className = 'player-button player-flag';
-                    this.flagButton.title = P.i18n.translate('player.controls.flag.title');
-                    this.controlsEl.appendChild(this.flagButton);
-                    this.flagButton.addEventListener('click', clickFlag);
-                    this.flagButton.addEventListener('touchend', clickFlag);
-                    this.flagButton.addEventListener('touchstart', startTouchFlag);
-                    this.flagButton.addEventListener('touchstart', preventDefault);
+                    var flagButton = document.createElement('span');
+                    flagButton.className = 'player-button player-flag';
+                    flagButton.title = P.i18n.translate('player.controls.flag.title');
+                    this.controlsContainer.appendChild(flagButton);
+                    flagButton.addEventListener('click', clickFlag);
+                    flagButton.addEventListener('touchend', clickFlag);
+                    flagButton.addEventListener('touchstart', startTouchFlag);
+                    flagButton.addEventListener('touchstart', preventDefault);
                 }
                 if (options.enableTurbo !== false) {
-                    this.turboText = document.createElement('span');
-                    this.turboText.innerText = P.i18n.translate('player.controls.turboIndicator');
-                    this.turboText.className = 'player-label player-turbo';
-                    this.controlsEl.appendChild(this.turboText);
+                    var turboText = document.createElement('span');
+                    turboText.innerText = P.i18n.translate('player.controls.turboIndicator');
+                    turboText.className = 'player-label player-turbo';
+                    this.controlsContainer.appendChild(turboText);
+                    this.onoptionschange.subscribe((options) => {
+                        if (flagButton && typeof options.turbo === 'boolean') {
+                            if (options.turbo) {
+                                flagButton.title = P.i18n.translate('player.controls.flag.title.enabled');
+                            }
+                            else {
+                                flagButton.title = P.i18n.translate('player.controls.flag.title.disabled');
+                            }
+                        }
+                    });
                 }
                 if (options.enableFullscreen !== false) {
-                    this.fullscreenButton = document.createElement('span');
-                    this.fullscreenButton.className = 'player-button player-fullscreen-btn';
-                    this.fullscreenButton.title = P.i18n.translate('player.controls.fullscreen.title');
-                    this.controlsEl.appendChild(this.fullscreenButton);
-                    this.fullscreenButton.addEventListener('click', clickFullscreen);
-                    this.fullscreenButton.addEventListener('touchend', clickFullscreen);
-                    this.fullscreenButton.addEventListener('touchstart', preventDefault);
+                    var fullscreenButton = document.createElement('span');
+                    fullscreenButton.className = 'player-button player-fullscreen-btn';
+                    fullscreenButton.title = P.i18n.translate('player.controls.fullscreen.title');
+                    this.controlsContainer.appendChild(fullscreenButton);
+                    fullscreenButton.addEventListener('click', clickFullscreen);
+                    fullscreenButton.addEventListener('touchend', clickFullscreen);
+                    fullscreenButton.addEventListener('touchstart', preventDefault);
                 }
                 this.root.addEventListener('touchmove', (e) => {
-                    if (this.fullscreen) {
+                    if (this.fullscreenEnabled) {
                         e.preventDefault();
                     }
                 });
-                this.root.insertBefore(this.controlsEl, this.root.firstChild);
+                this.root.insertBefore(this.controlsContainer, this.root.firstChild);
             }
-            setTurbo(turbo) {
-                this.assertStage();
-                this.stage.runtime.isTurbo = turbo;
-                if (turbo) {
-                    this.root.setAttribute('turbo', '');
-                }
-                else {
-                    this.root.removeAttribute('turbo');
-                }
-                if (this.flagButton) {
-                    if (turbo) {
-                        this.flagButton.title = P.i18n.translate('player.controls.flag.title.enabled');
-                    }
-                    else {
-                        this.flagButton.title = P.i18n.translate('player.controls.flag.title.disabled');
+            applyOptionsToStage() {
+                if (this.stage.runtime.framerate !== this.options.fps) {
+                    this.stage.runtime.framerate = this.options.fps;
+                    if (this.isRunning()) {
+                        this.stage.runtime.resetInterval();
                     }
                 }
-                this.onturbochange.emit(turbo);
+                this.stage.username = this.options.username;
+                this.stage.runtime.isTurbo = this.options.turbo;
+            }
+            throwWithoutStage() {
+                if (!this.stage) {
+                    throw new Error('Missing stage.');
+                }
+            }
+            resume() {
+                this.throwWithoutStage();
+                if (this.isRunning()) {
+                    throw new Error('cannot resume: project is already running');
+                }
+                this.stage.runtime.start();
+                this.enableAttribute('running');
+                this.onresume.emit();
             }
             pause() {
-                this.assertStage();
+                this.throwWithoutStage();
+                if (!this.isRunning()) {
+                    throw new Error('cannot pause: project is already paused');
+                }
                 this.stage.runtime.pause();
-                this.root.removeAttribute('running');
+                this.disableAttribute('running');
                 this.onpause.emit();
             }
-            start() {
-                this.assertStage();
-                this.stage.runtime.start();
-                this.root.setAttribute('running', '');
-                this.onstart.emit();
-            }
-            triggerGreenFlag() {
-                this.assertStage();
-                this.stage.runtime.triggerGreenFlag();
-            }
-            stopAll() {
-                this.assertStage();
-                this.pause();
-                this.stage.runtime.stopAll();
-            }
             isRunning() {
-                if (!this.stage) {
+                if (!this.hasStage()) {
                     return false;
                 }
                 return this.stage.runtime.isRunning;
             }
             toggleRunning() {
-                this.assertStage();
-                if (this.isRunning()) {
+                this.throwWithoutStage();
+                if (this.stage.runtime.isRunning) {
                     this.pause();
                 }
                 else {
-                    this.start();
-                    this.stage.focus();
+                    this.resume();
                 }
             }
-            setTheme(theme) {
-                this.theme = theme;
-                this.root.setAttribute('theme', theme);
-                this.onthemechange.emit(theme);
+            stopAll() {
+                this.throwWithoutStage();
+                this.pause();
+                this.stage.runtime.stopAll();
             }
-            enterFullscreen(realFullscreen) {
-                this.previousTheme = this.root.getAttribute('theme');
-                this.setTheme('dark');
-                if (realFullscreen) {
+            triggerGreenFlag() {
+                this.throwWithoutStage();
+                if (!this.isRunning()) {
+                    this.resume();
+                }
+                this.stage.runtime.triggerGreenFlag();
+            }
+            cleanup() {
+                if (this.currentLoader) {
+                    this.currentLoader.cancel();
+                    this.currentLoader = null;
+                }
+                if (this.stage) {
+                    this.stage.destroy();
+                    this.stage = null;
+                }
+                this.projectId = '';
+                while (this.playerContainer.firstChild) {
+                    this.playerContainer.removeChild(this.playerContainer.firstChild);
+                }
+                this.oncleanup.emit();
+            }
+            focus() {
+                this.stage.focus();
+            }
+            hasStage() {
+                return !!this.stage;
+            }
+            getStage() {
+                this.throwWithoutStage();
+                return this.stage;
+            }
+            getProjectTitle() {
+                return new P.io.Request('https://scratch.garbomuffin.com/proxy/projects/$id'.replace('$id', this.projectId))
+                    .ignoreErrors()
+                    .load('json')
+                    .then((data) => data.title || '');
+            }
+            getProjectId() {
+                return this.projectId;
+            }
+            handleError(error) {
+                console.error(error);
+                this.onerror.emit(error);
+            }
+            enterFullscreen() {
+                this.savedTheme = this.root.getAttribute('theme');
+                this.setOptions({ theme: 'dark' });
+                if (this.options.fullscreenMode === 'full') {
                     if (this.root.requestFullScreenWithKeys) {
                         this.root.requestFullScreenWithKeys();
                     }
@@ -2596,21 +2683,21 @@ var P;
                     }
                 }
                 document.body.classList.add('player-body-fullscreen');
-                this.root.style.zIndex = Player.LARGE_Z_INDEX;
-                this.root.setAttribute('fullscreen', '');
-                this.fullscreen = true;
-                if (this.stage) {
+                this.root.style.zIndex = '9999999999';
+                this.enableAttribute('fullscreen');
+                this.fullscreenEnabled = true;
+                if (this.hasStage()) {
                     if (!this.isRunning()) {
                         this.stage.draw();
                     }
-                    this.stage.focus();
+                    this.focus();
                 }
                 this.updateFullscreen();
             }
             exitFullscreen() {
-                this.setTheme(this.previousTheme);
-                this.root.removeAttribute('fullscreen');
-                this.fullscreen = false;
+                this.setOptions({ theme: this.savedTheme });
+                this.disableAttribute('fullscreen');
+                this.fullscreenEnabled = false;
                 if (document.fullscreenElement === this.root || document.webkitFullscreenElement === this.root) {
                     if (document.exitFullscreen) {
                         document.exitFullscreen();
@@ -2628,266 +2715,52 @@ var P;
                 this.root.style.paddingLeft = '';
                 this.root.style.paddingTop = '';
                 this.root.style.zIndex = '';
-                if (this.controlsEl) {
-                    this.controlsEl.style.width = '';
+                if (this.controlsContainer) {
+                    this.controlsContainer.style.width = '';
                 }
                 document.body.classList.remove('player-body-fullscreen');
                 if (this.stage) {
                     this.stage.setZoom(1);
-                    this.stage.focus();
+                    this.focus();
                 }
             }
             updateFullscreen() {
-                if (!this.stage) {
+                this.throwWithoutStage();
+                if (!this.fullscreenEnabled) {
                     return;
                 }
-                if (this.fullscreen) {
-                    var controlsHeight = this.controlsEl ? this.controlsEl.offsetHeight : 0;
-                    window.scrollTo(0, 0);
-                    var w = window.innerWidth - this.fullscreenPadding * 2;
-                    var h = window.innerHeight - this.fullscreenPadding - controlsHeight;
-                    w = Math.min(w, h / 0.75);
-                    w = Math.min(w, this.fullscreenMaxWidth);
-                    h = w * 0.75 + controlsHeight;
-                    if (this.controlsEl) {
-                        this.controlsEl.style.width = w + 'px';
-                    }
-                    this.root.style.paddingLeft = (window.innerWidth - w) / 2 + 'px';
-                    this.root.style.paddingTop = (window.innerHeight - h - this.fullscreenPadding) / 2 + 'px';
-                    this.stage.setZoom(w / 480);
+                const controlsHeight = this.controlsContainer ? this.controlsContainer.offsetHeight : 0;
+                window.scrollTo(0, 0);
+                let w = window.innerWidth - this.options.fullscreenPadding * 2;
+                let h = window.innerHeight - this.options.fullscreenPadding - controlsHeight;
+                w = Math.min(w, h / 0.75);
+                w = Math.min(w, this.options.fullscreenMaxWidth);
+                h = w * 0.75 + controlsHeight;
+                if (this.controlsContainer) {
+                    this.controlsContainer.style.width = w + 'px';
                 }
+                this.root.style.paddingLeft = (window.innerWidth - w) / 2 + 'px';
+                this.root.style.paddingTop = (window.innerHeight - h - this.options.fullscreenPadding) / 2 + 'px';
+                this.stage.setZoom(w / 480);
             }
             onfullscreenchange() {
-                if (typeof document.fullscreen === 'boolean' && document.fullscreen !== this.fullscreen) {
+                if (typeof document.fullscreen === 'boolean' && document.fullscreen !== this.fullscreenEnabled) {
                     this.exitFullscreen();
                 }
-                else if (typeof document.webkitIsFullScreen === 'boolean' && document.webkitIsFullScreen !== this.fullscreen) {
+                else if (typeof document.webkitIsFullScreen === 'boolean' && document.webkitIsFullScreen !== this.fullscreenEnabled) {
                     this.exitFullscreen();
                 }
             }
-            handleError(error) {
-                console.error(error);
-                this.onerror.emit(error);
-            }
-            cleanup() {
-                this.stageId++;
-                this.projectId = Player.UNKNOWN_ID;
-                this.projectLink = Player.UNKNOWN_LINK;
-                this.projectTitle = Player.UNKNOWN_TITLE;
-                if (this.stage) {
-                    this.stage.destroy();
-                    this.stage = null;
-                }
-                while (this.player.firstChild) {
-                    this.player.removeChild(this.player.firstChild);
-                }
-                if (this.fullscreen) {
-                    this.exitFullscreen();
-                }
-                this.oncleanup.emit();
-            }
-            startLoadingNewProject() {
-                this.cleanup();
-                this.onstartload.emit();
-            }
-            getNewStageId() {
-                this.stageId++;
-                return this.stageId;
-            }
-            isStageActive(id) {
-                return id === this.stageId;
-            }
-            installStage(stage, stageOptions = {}) {
-                if (!stage) {
-                    throw new Error('Cannot run an invalid stage');
-                }
-                this.stage = stage;
-                this.stage.runtime.handleError = this.handleError;
-                if (typeof stageOptions.fps !== 'undefined') {
-                    stage.runtime.framerate = stageOptions.fps;
-                }
-                this.onload.emit(stage);
-                this.start();
-                if (stageOptions.start !== false) {
-                    stage.runtime.triggerGreenFlag();
-                }
-                if (stageOptions.turbo) {
-                    stage.runtime.isTurbo = true;
-                }
-                this.player.appendChild(stage.root);
-                stage.focus();
-            }
-            isScratch1Project(buffer) {
-                const MAGIC = 'ScratchV0';
-                const array = new Uint8Array(buffer);
-                for (var i = 0; i < MAGIC.length; i++) {
-                    if (String.fromCharCode(array[i]) !== MAGIC[i]) {
-                        return false;
-                    }
-                }
-                return true;
-            }
-            _handleScratch3Loader(loader, stageId) {
-                loader.onprogress = (progress) => {
-                    if (this.isStageActive(stageId)) {
-                        this.onprogress.emit(progress);
-                    }
-                    else if (!loader.aborted) {
-                        loader.abort();
-                    }
-                };
-                return loader.load().then(stage => {
-                    if (this.isStageActive(stageId))
-                        return stage;
-                    return null;
-                });
-            }
-            _handleScratch2Loader(loader, stageId) {
-                loader.onprogress = (progress) => {
-                    if (this.isStageActive(stageId)) {
-                        this.onprogress.emit(progress);
-                    }
-                    else if (!loader.aborted) {
-                        loader.abort();
-                    }
-                };
-                return loader.load().then(stage => {
-                    if (this.isStageActive(stageId))
-                        return stage;
-                    return null;
-                });
-            }
-            _loadScratch3(stageId, data) {
-                var loader = new P.sb3.Scratch3Loader(data);
-                return this._handleScratch3Loader(loader, stageId);
-            }
-            _loadScratch3File(stageId, buffer) {
-                var loader = new P.sb3.SB3FileLoader(buffer);
-                return this._handleScratch3Loader(loader, stageId);
-            }
-            _loadScratch2(stageId, data) {
-                var loader = new P.sb2.Scratch2Loader(data);
-                return this._handleScratch2Loader(loader, stageId);
-            }
-            _loadScratch2File(stageId, data) {
-                var loader = new P.sb2.SB2FileLoader(data);
-                return this._handleScratch2Loader(loader, stageId);
-            }
-            _fetchProject(id) {
-                const request = new P.io.Request(Player.PROJECT_DATA_API.replace('$id', id));
-                return request
-                    .ignoreErrors()
-                    .load('blob')
-                    .then(function (response) {
-                    if (request.getStatus() === 404) {
-                        throw new ProjectDoesNotExistError(id);
-                    }
-                    return response;
-                });
-            }
-            loadProjectId(id, options) {
-                this.startLoadingNewProject();
-                const stageId = this.getNewStageId();
-                this.projectId = '' + id;
-                this.projectLink = Player.PROJECT_LINK.replace('$id', id);
-                let blob;
-                return this._fetchProject(id)
-                    .then((data) => {
-                    blob = data;
-                    return P.io.readers.toText(blob);
-                })
-                    .then((text) => {
-                    if (!this.isStageActive(stageId)) {
-                        return null;
-                    }
-                    try {
-                        var json = JSON.parse(text);
-                        var type = Player.getProjectType(json);
-                        if (type === 3) {
-                            return this._loadScratch3(stageId, json);
-                        }
-                        else if (type === 2) {
-                            return this._loadScratch2(stageId, json);
-                        }
-                        else {
-                            throw new Error('Project is valid JSON but of unknown type');
-                        }
-                    }
-                    catch (e) {
-                        console.warn('Attempt to load project as JSON failed, trying to load as zip.', e);
-                        return P.io.readers.toArrayBuffer(blob).then((buffer) => {
-                            if (this.isScratch1Project(buffer)) {
-                                throw new ProjectNotSupportedError('.sb / Scratch 1');
-                            }
-                            return this._loadScratch2File(stageId, buffer);
-                        });
-                    }
-                })
-                    .then((stage) => {
-                    if (stage) {
-                        this.installStage(stage, options);
-                        this.addCloudVariables(stage, id);
-                    }
-                })
-                    .catch((error) => {
-                    if (this.isStageActive(stageId)) {
-                        this.handleError(error);
-                    }
-                });
-            }
-            loadProjectBuffer(buffer, type, options) {
-                this.startLoadingNewProject();
-                const stageId = this.getNewStageId();
-                const startLoad = () => {
-                    if (type === 'sb3') {
-                        return this._loadScratch3File(stageId, buffer);
-                    }
-                    else if (type === 'sb2') {
-                        return this._loadScratch2File(stageId, buffer);
-                    }
-                    else {
-                        throw new Error('Unknown type: ' + type);
-                    }
-                };
-                return startLoad()
-                    .then((stage) => {
-                    if (stage) {
-                        this.installStage(stage, options);
-                    }
-                })
-                    .catch((error) => {
-                    if (this.isStageActive(stageId)) {
-                        this.handleError(error);
-                    }
-                });
-            }
-            loadProjectFile(file, options) {
-                var extension = file.name.split('.').pop() || '';
-                if (['sb2', 'sb3'].indexOf(extension) === -1) {
-                    throw new Error('Unrecognized file extension: ' + extension);
-                }
-                this.startLoadingNewProject();
-                this.getNewStageId();
-                this.projectId = file.name;
-                this.projectLink = file.name + '#local';
-                return P.io.readers.toArrayBuffer(file).then(buffer => {
-                    return this.loadProjectBuffer(buffer, extension, options);
-                });
-            }
-            getProjectTitle(id) {
-                return new P.io.Request(Player.PROJECT_API.replace('$id', id))
-                    .ignoreErrors()
-                    .load('json')
-                    .then((data) => data.title || '');
+            isCloudVariable(variableName) {
+                return variableName.startsWith('☁');
             }
             getCloudVariables(id) {
-                return new P.io.Request(Player.CLOUD_API.replace('$id', id))
-                    .load('json')
-                    .then((data) => {
+                return __awaiter(this, void 0, void 0, function* () {
+                    const data = yield new P.io.Request('https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100'.replace('$id', id)).load('json');
                     const variables = Object.create(null);
                     for (const entry of data.reverse()) {
                         const { verb, name, value } = entry;
-                        if (!Player.isCloudVariable(name)) {
+                        if (!this.isCloudVariable(name)) {
                             console.warn('cloud variable logs affecting non-cloud variable, skipping', name);
                             continue;
                         }
@@ -2912,7 +2785,7 @@ var P;
             }
             addCloudVariables(stage, id) {
                 const variables = Object.keys(stage.vars);
-                const hasCloudVariables = variables.some(Player.isCloudVariable);
+                const hasCloudVariables = variables.some(this.isCloudVariable);
                 if (!hasCloudVariables) {
                     return;
                 }
@@ -2927,15 +2800,161 @@ var P;
                     }
                 });
             }
+            beginLoadingProject() {
+                this.cleanup();
+                this.onstartload.emit();
+                const loaderId = new LoaderIdentifier();
+                this.currentLoader = loaderId;
+                return { loaderId };
+            }
+            determineProjectType(data) {
+                if ('objName' in data)
+                    return 'sb2';
+                if ('targets' in data)
+                    return 'sb3';
+                throw new Error('Unknown project type');
+            }
+            isScratch1Project(buffer) {
+                const MAGIC = 'ScratchV0';
+                const array = new Uint8Array(buffer);
+                for (var i = 0; i < MAGIC.length; i++) {
+                    if (String.fromCharCode(array[i]) !== MAGIC[i]) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            fetchProject(id) {
+                const request = new P.io.Request('https://projects.scratch.mit.edu/$id'.replace('$id', id));
+                return request
+                    .ignoreErrors()
+                    .load('blob')
+                    .then(function (response) {
+                    if (request.getStatus() === 404) {
+                        throw new ProjectDoesNotExistError(id);
+                    }
+                    return response;
+                });
+            }
+            setStage(stage) {
+                this.stage = stage;
+                this.stage.runtime.handleError = this.handleError;
+                this.applyOptionsToStage();
+                this.playerContainer.appendChild(stage.root);
+                stage.focus();
+                stage.draw();
+                this.onload.emit(stage);
+                if (this.options.autoplayPolicy === 'always') {
+                    this.triggerGreenFlag();
+                }
+            }
+            loadLoader(loaderId, loader) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    loaderId.setLoader(loader);
+                    loader.onprogress = (progress) => {
+                        if (loaderId.isActive()) {
+                            this.onprogress.emit(progress);
+                        }
+                    };
+                    const stage = yield loader.load();
+                    this.setStage(stage);
+                    return stage;
+                });
+            }
+            loadProjectFromBufferWithType(loaderId, buffer, type) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    let loader;
+                    switch (type) {
+                        case 'sb2':
+                            loader = new P.sb2.SB2FileLoader(buffer);
+                            break;
+                        case 'sb3':
+                            loader = new P.sb3.SB3FileLoader(buffer);
+                            break;
+                        default: throw new Error('Unknown type: ' + type);
+                    }
+                    yield this.loadLoader(loaderId, loader);
+                });
+            }
+            loadProjectById(id) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    const { loaderId } = this.beginLoadingProject();
+                    const getLoader = (blob) => __awaiter(this, void 0, void 0, function* () {
+                        const projectText = yield P.io.readers.toText(blob);
+                        try {
+                            const projectJson = JSON.parse(projectText);
+                            switch (this.determineProjectType(projectJson)) {
+                                case 'sb2': return new P.sb2.Scratch2Loader(projectJson);
+                                case 'sb3': return new P.sb3.Scratch3Loader(projectJson);
+                            }
+                        }
+                        catch (e) {
+                            const buffer = yield P.io.readers.toArrayBuffer(blob);
+                            if (this.isScratch1Project(buffer)) {
+                                throw new ProjectNotSupportedError('Scratch 1');
+                            }
+                            return new P.sb2.SB2FileLoader(buffer);
+                        }
+                    });
+                    try {
+                        this.projectId = id;
+                        const blob = yield this.fetchProject(id);
+                        const loader = yield getLoader(blob);
+                        const stage = yield this.loadLoader(loaderId, loader);
+                        this.addCloudVariables(stage, this.projectId);
+                    }
+                    catch (e) {
+                        if (loaderId.isActive()) {
+                            this.handleError(e);
+                        }
+                    }
+                });
+            }
+            loadProjectFromFile(file) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    const { loaderId } = this.beginLoadingProject();
+                    try {
+                        this.projectId = file.name;
+                        const extension = file.name.split('.').pop() || '';
+                        const buffer = yield P.io.readers.toArrayBuffer(file);
+                        switch (extension) {
+                            case 'sb2': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb2');
+                            case 'sb3': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb3');
+                            default: throw new Error('Unrecognized file extension: ' + extension);
+                        }
+                    }
+                    catch (e) {
+                        if (loaderId.isActive()) {
+                            this.handleError(e);
+                        }
+                    }
+                });
+            }
+            loadProjectFromBuffer(buffer, type) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    const { loaderId } = this.beginLoadingProject();
+                    try {
+                        return yield this.loadProjectFromBufferWithType(loaderId, buffer, type);
+                    }
+                    catch (e) {
+                        if (loaderId.isActive()) {
+                            this.handleError(e);
+                        }
+                    }
+                });
+            }
         }
-        Player.PROJECT_DATA_API = 'https://projects.scratch.mit.edu/$id';
-        Player.PROJECT_LINK = 'https://scratch.mit.edu/projects/$id';
-        Player.LARGE_Z_INDEX = '9999999999';
-        Player.UNKNOWN_ID = '(no id)';
-        Player.UNKNOWN_LINK = '(no link)';
-        Player.UNKNOWN_TITLE = '(no title)';
-        Player.PROJECT_API = 'https://scratch.garbomuffin.com/proxy/projects/$id';
-        Player.CLOUD_API = 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100';
+        Player.DEFAULT_OPTIONS = {
+            autoplayPolicy: 'always',
+            cloudVariables: 'once',
+            fps: 30,
+            theme: 'light',
+            turbo: false,
+            username: '',
+            fullscreenMode: 'full',
+            fullscreenPadding: 8,
+            fullscreenMaxWidth: Infinity,
+        };
         player_1.Player = Player;
         class ErrorHandler {
             constructor(player, options = {}) {
@@ -2973,14 +2992,11 @@ var P;
                     .replace('$body', encodeURIComponent(body));
             }
             getBugReportTitle() {
-                if (this.player.projectTitle !== Player.UNKNOWN_TITLE) {
-                    return this.player.projectTitle + ' (' + this.player.projectId + ')';
-                }
-                return this.player.projectLink;
+                return this.player.getProjectId();
             }
             getBugReportMetadata() {
-                var meta = 'Project URL: ' + this.player.projectLink + '\n';
-                meta += 'Project ID: ' + this.player.projectId + '\n';
+                var meta = '';
+                meta += 'Project ID: ' + this.player.getProjectId() + '\n';
                 meta += location.href + '\n';
                 meta += navigator.userAgent;
                 return meta;
@@ -3027,11 +3043,11 @@ var P;
                 if (this.errorContainer) {
                     this.errorContainer.appendChild(el);
                 }
-                else if (this.player.stage) {
-                    this.player.stage.ui.appendChild(el);
+                else if (this.player.hasStage()) {
+                    this.player.getStage().ui.appendChild(el);
                 }
                 else {
-                    this.player.player.appendChild(el);
+                    this.player.playerContainer.appendChild(el);
                 }
                 this.errorEl = el;
             }
@@ -3045,7 +3061,6 @@ var P;
                 this.bar = document.createElement('div');
                 this.bar.className = 'player-progress-fill';
                 this.el.appendChild(this.bar);
-                this.setTheme(player.theme);
                 player.onthemechange.subscribe((theme) => this.setTheme(theme));
                 player.onprogress.subscribe((progress) => this.setProgress(progress));
                 player.onstartload.subscribe(() => {
@@ -3064,10 +3079,10 @@ var P;
                     this.bar.style.width = '100%';
                 });
                 if (options.position === 'controls' || options.position === undefined) {
-                    if (!player.controlsEl) {
+                    if (!player.controlsContainer) {
                         throw new Error('No controls to put progess bar in.');
                     }
-                    player.controlsEl.appendChild(this.el);
+                    player.controlsContainer.appendChild(this.el);
                 }
                 else {
                     options.position.appendChild(this.el);
@@ -4304,6 +4319,9 @@ var P;
                     this.loadBase(this.projectData, true).then((s) => stage = s),
                 ]))
                     .then(() => {
+                    if (this.aborted) {
+                        throw new Error('Loading aborting.');
+                    }
                     children = children.filter((i) => i);
                     children.forEach((c) => c.stage = stage);
                     const sprites = children.filter((i) => i instanceof Scratch2Sprite);

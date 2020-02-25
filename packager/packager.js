@@ -500,6 +500,7 @@ ${scripts}
 
   P.io.setAssetManager(new class {
     constructor() {
+      // Assets...
       this.data = ${generateAssetManagerData()};
     }
 
@@ -517,16 +518,24 @@ ${scripts}
   });
 
   // Project data...
-  var type = "${project.type}";
-  var project = "${project.url}";
+  var type = '${project.type}';
+  var project = '${project.url}';
+
+  player.setOptions({
+    fullscreenPadding: 0,
+    fullscreenMode: 'window',
+    turbo: ${options.turbo},
+  });
 
   fetch(project)
-    .then((request) => request.arrayBuffer())
-    .then((buffer) => player.loadProjectBuffer(buffer, type, { turbo: ${options.turbo} }))
+    .then(function(request) { return request.arrayBuffer(); })
+    .then(function(buffer) { return player.loadProjectFromBuffer(buffer, type); })
     .then(function() {
-      player.fullscreenPadding = 0;
-      player.enterFullscreen(false);
+      player.enterFullscreen();
       splash.style.display = 'none';
+    })
+    .catch(function(e) {
+      player.handleError(e);
     });
 }());
     </script>

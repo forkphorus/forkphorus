@@ -291,7 +291,7 @@ namespace P.io {
     }
   }
 
-  export class Loader {
+  export abstract class Loader<T = unknown> {
     private _tasks: Task[] = [];
     public aborted: boolean = false;
     public error: boolean = false;
@@ -383,5 +383,7 @@ namespace P.io {
         task.abort();
       }
     }
+
+    abstract load(): Promise<T>;
   }
 }

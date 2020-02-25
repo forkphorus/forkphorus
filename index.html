@@ -107,12 +107,12 @@
       <table id="settings">
         <tr>
           <td class="name" title="Forkphorus will **attempt** to run at this framerate."><label for="settings-framerate">Framerate (FPS)</label></td>
-          <td class="value"><input id="settings-framerate" value="30" placeholder="30" type="number" step="any" min="0" required></td>
+          <td class="value"><input id="settings-framerate" value="30" placeholder="30" type="number" step="any" min="0" required autocomplete="off"></td>
         </tr>
         <tr>
           <td class="name" title="The value of the &quot;username&quot; block. Changing this may cause issues in some projects."><label for="settings-username">Username</label></td>
           <!-- scratch has some restrictions on usernames that we don't care about -->
-          <td class="value"><input id="settings-username" value="" type="text" placeholder="(nothing)"></td>
+          <td class="value"><input id="settings-username" value="" type="text" placeholder="(nothing)" autocomplete="off"></td>
         </tr>
       </table>
       <p>Changes are applied automatically.</p>
@@ -229,7 +229,7 @@
       }
       err = '' + err;
       var el = document.createElement('div');
-      el.innerHTML = `Alternatively, <a href="https://scratch.mit.edu/projects/366001364/" target="_blank">post a Scratch comment</a> and include: "<span style="font-family: monospace; user-select: all">${err.replace(/<>/g, '')} (${player.projectId})</span>"`;
+      el.innerHTML = `Alternatively, <a href="https://scratch.mit.edu/projects/366001364/" target="_blank">post a Scratch comment</a> and include: "<span style="font-family: monospace; user-select: all">${err.replace(/<>/g, '')} (${player.getProjectId()})</span>"`;
       errorHandler.errorEl.appendChild(el);
     });
     playerArea.appendChild(player.root);
@@ -258,14 +258,15 @@
       var se = urlInput.selectionEnd;
       var url = urlInput.value;
       var id = url.match(/\d+/g) || [''];
-      while (id.length > 1 && id.indexOf(player.projectId) > -1) {
-        id.splice(id.indexOf(player.projectId), 1);
+      var pid = player.getProjectId();
+      while (id.length > 1 && id.indexOf(pid) > -1) {
+        id.splice(id.indexOf(pid), 1);
       }
       id = id[0];
       urlInput.value = url = PROJECT_PREFIX + id;
       urlInput.selectionStart = urlInput.selectionEnd = Math.max(PROJECT_PREFIX.length, ss);
       clearTimeout(timeout);
-      if (player.projectId !== id) {
+      if (pid !== id) {
         timeout = setTimeout(function() {
           location.hash = '#' + id;
         }, 300);
@@ -322,7 +323,7 @@
     }
     function loadProjectId(id) {
       showPlayerArea();
-      player.loadProjectId(id);
+      player.loadProjectById(id);
       updateLinks();
       setTitleToProjectTitle(id);
     }
@@ -333,7 +334,7 @@
       }
       silentChangeHash('#' + file.name);
       showPlayerArea();
-      player.loadProjectFile(file);
+      player.loadProjectFromFile(file);
       updateLinks();
       resetTitle();
     }
@@ -389,8 +390,8 @@
     }
     function updatePackageLink() {
       packageOtherWidth.disabled = packageOtherHeight.disabled = !packageOther.checked;
-      if (player.projectId) {
-        var url = location.origin + location.pathname + 'app.html?id=' + player.projectId;
+      if (player.getProjectId()) {
+        var url = location.origin + location.pathname + 'app.html?id=' + player.getProjectId();
         if (packageTurbo.checked) url += '&turbo';
         if (packageFullScreen.checked) {
           // fullscreen is the default
@@ -432,8 +433,8 @@
       }
       embedOtherWidth.disabled = embedOtherHeight.disabled = !embedOther.checked;
 
-      if (player.projectId) {
-        var source = location.protocol + '//' + location.host + location.pathname + 'embed.js?id=' + player.projectId;
+      if (player.getProjectId()) {
+        var source = location.protocol + '//' + location.host + location.pathname + 'embed.js?id=' + player.getProjectId();
         if (embedHideControls.checked) {
           source += '&ui=false';
         } else {
@@ -562,7 +563,7 @@
       } else {
         document.documentElement.classList.remove('dark');
       }
-      player.setTheme(dark ? 'dark' : 'light');
+      player.setOptions({ theme: dark ? 'dark' : 'light' });
       if (studioView) {
         studioView.setTheme(dark ? 'dark' : 'light');
       }
@@ -583,58 +584,15 @@
     /** Settings Menu **/
     var optionFramerate = querySelector('#settings-framerate');
     var optionUsername = querySelector('#settings-username');
-    var settingsMenu = querySelector('#settings');
-    var defaultOptions = {
-      username: '',
-      framerate: 30,
-    };
-    var previousOptions = shallowClone(defaultOptions);
 
-    // Set the DOM to match the options
-    function setSelectedOptions(options) {
-      optionFramerate.value = options.framerate;
-      optionUsername.value = options.username;
-    }
-    // Get the current options from the DOM
-    function getSelectedOptions() {
-      var options = shallowClone(previousOptions);
-
-      // do not apply invalid framerate values because things break
+    optionFramerate.addEventListener('input', (e) => {
       if (optionFramerate.checkValidity()) {
-        options.framerate = +optionFramerate.value;
+        player.setOptions({ fps: +optionFramerate.value });
       }
-
-      // doesn't really matter if username is "invalid"
-      options.username = optionUsername.value;
-
-      return options;
-    }
-    // Apply options to the stage.
-    function applyOptions(options) {
-      var stage = player.stage;
-
-      // Applying framerate involves restarting the event loop, which we shouldn't do if not necessary
-      if (options.framerate !== stage.runtime.framerate) {
-        stage.runtime.framerate = options.framerate;
-        if (stage.runtime.isRunning) {
-          stage.runtime.resetInterval();
-        }
-      }
-
-      stage.username = options.username;
-
-      previousOptions = options;
-    }
-    // Gets the currently selected options, and applies them.
-    function applySelectedOptions() {
-      var options = getSelectedOptions();
-      applyOptions(options);
-    }
-
-    setSelectedOptions(defaultOptions);
-    optionFramerate.addEventListener('input', applySelectedOptions);
-    optionUsername.addEventListener('input', applySelectedOptions);
-    player.onload.subscribe(applySelectedOptions);
+    });
+    optionUsername.addEventListener('input', (e) => {
+      player.setOptions({ username: optionUsername.value });
+    });
 
     if (initialId) {
       loadProjectId(initialId);

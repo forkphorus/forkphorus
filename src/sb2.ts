@@ -359,7 +359,7 @@ namespace P.sb2 {
   type SB2Costume = any;
   type SB2Sound = any;
 
-  export abstract class BaseSB2Loader extends P.io.Loader {
+  export abstract class BaseSB2Loader extends P.io.Loader<P.core.Stage> {
     protected projectData: SB2Project;
 
     loadImage(url: string): Promise<HTMLImageElement> {
@@ -581,6 +581,10 @@ namespace P.sb2 {
           this.loadBase(this.projectData, true).then((s) => stage = s as P.core.Stage),
         ]))
         .then(() => {
+          if (this.aborted) {
+            throw new Error('Loading aborting.');
+          }
+
           children = children.filter((i) => i);
           children.forEach((c) => c.stage = stage);
           const sprites: Scratch2Sprite[] = children.filter((i) => i instanceof Scratch2Sprite);

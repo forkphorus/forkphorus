@@ -684,7 +684,7 @@ namespace P.sb3 {
   // Implements base SB3 loading logic.
   // Needs to be extended to add file loading methods.
   // Implementations are expected to set `this.projectData` to something before calling super.load()
-  export abstract class BaseSB3Loader extends P.io.Loader {
+  export abstract class BaseSB3Loader extends P.io.Loader<P.core.Stage> {
     protected projectData: SB3Project;
     // private totalTasks: number = 0;
     // private finishedTasks: number = 0;
