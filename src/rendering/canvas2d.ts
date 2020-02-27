@@ -400,7 +400,9 @@ namespace P.renderer.canvas2d {
 
       for (var i = 0; i < otherSprites.length; i++) {
         const spriteB = otherSprites[i];
-        if (!spriteB.visible) {
+        // Invisible sprites are ignored.
+        // Sprites cannot intersect with themselves.
+        if (!spriteB.visible || spriteA === spriteB) {
           continue;
         }
 

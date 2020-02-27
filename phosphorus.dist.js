@@ -8448,7 +8448,7 @@ var P;
                     const mb = spriteA.rotatedBounds();
                     for (var i = 0; i < otherSprites.length; i++) {
                         const spriteB = otherSprites[i];
-                        if (!spriteB.visible) {
+                        if (!spriteB.visible || spriteA === spriteB) {
                             continue;
                         }
                         const ob = spriteB.rotatedBounds();
