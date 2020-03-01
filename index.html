@@ -216,6 +216,9 @@
     var projectArea = querySelector('#project-area');
 
     var player = new P.player.Player();
+    player.setOptions({
+      autoplayPolicy: 'if-audio-playable',
+    });
     window.player = player;
     player.addControls();
     new P.player.ProgressBar(player, {

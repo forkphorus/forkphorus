@@ -111,14 +111,17 @@ namespace P.player {
   }
 
   type Theme = 'light' | 'dark';
+  type AutoplayPolicy = 'always' | 'if-audio-playable' | 'never';
+  type CloudVariables = 'once' | 'off';
+  type FullscreenMode = 'full' | 'window';
   interface PlayerOptions {
     theme: Theme;
-    autoplayPolicy: 'always' | 'never';
+    autoplayPolicy: AutoplayPolicy;
     turbo: boolean;
     fps: number;
-    cloudVariables: 'once' | 'off';
+    cloudVariables: CloudVariables;
     username: string;
-    fullscreenMode: 'full' | 'window';
+    fullscreenMode: FullscreenMode;
     fullscreenPadding: number;
     fullscreenMaxWidth: number;
   }
@@ -208,6 +211,7 @@ namespace P.player {
     private currentLoader: LoaderIdentifier | null = null;
     private fullscreenEnabled: boolean = false;
     private savedTheme: Theme;
+    private clickToPlayContainer: HTMLElement | null = null;
 
     private projectId: string = '';
 
@@ -468,6 +472,9 @@ namespace P.player {
         this.resume();
       }
       this.stage.runtime.triggerGreenFlag();
+      if (this.clickToPlayContainer) {
+        this.removeClickToPlayContainer();
+      }
     }
 
     cleanup() {
@@ -481,12 +488,14 @@ namespace P.player {
         this.stage.destroy();
         this.stage = null!;
       }
+      if (this.fullscreenEnabled) {
+        this.exitFullscreen();
+      }
       // Clear some additional data
       this.projectId = '';
       while (this.playerContainer.firstChild) {
         this.playerContainer.removeChild(this.playerContainer.firstChild);
       }
-      // TODO: exit fullscreen
       this.oncleanup.emit();
     }
 
@@ -677,6 +686,58 @@ namespace P.player {
       });
     }
 
+    // AUTOPLAY POLICY
+
+    /**
+     * Apply an autoplay policy to the current stage.
+     */
+    private enactAutoplayPolicy(policy: AutoplayPolicy) {
+      switch (policy) {
+        case 'always': {
+          this.triggerGreenFlag();
+          break;
+        }
+        case 'if-audio-playable': {
+          if (!P.audio.context || P.audio.context.state === 'running') {
+            this.triggerGreenFlag();
+          } else {
+            this.showClickToPlayContainer();
+          }
+          break;
+        }
+        case 'never': {
+          this.showClickToPlayContainer();
+          break;
+        }
+      }
+    }
+
+    private showClickToPlayContainer() {
+      if (this.clickToPlayContainer) {
+        throw new Error('cannot show click-to-play interface: already shwon');
+      }
+      this.clickToPlayContainer = document.createElement('div');
+      this.clickToPlayContainer.className = 'player-click-to-play-container';
+      this.clickToPlayContainer.onclick = () => {
+        this.removeClickToPlayContainer();
+        this.triggerGreenFlag();
+      };
+
+      const content = document.createElement('div');
+      content.className = 'player-click-to-play-icon';
+      this.clickToPlayContainer.appendChild(content);
+
+      this.stage.ui.appendChild(this.clickToPlayContainer);
+    }
+
+    private removeClickToPlayContainer() {
+      if (this.clickToPlayContainer === null) {
+        throw new Error('cannot hide click-to-play interface: already hidden');
+      }
+      this.stage.ui.removeChild(this.clickToPlayContainer);
+      this.clickToPlayContainer = null;
+    }
+
     // PROJECT LOADERS & HELPERS
 
     /**
@@ -746,10 +807,7 @@ namespace P.player {
       stage.draw();
       this.onload.emit(stage);
 
-      if (this.options.autoplayPolicy === 'always') {
-        this.triggerGreenFlag();
-      }
-      // TODO: cloud variables
+      this.enactAutoplayPolicy(this.options.autoplayPolicy);
     }
 
     /**
@@ -1016,7 +1074,7 @@ namespace P.player {
       this.bar.className = 'player-progress-fill';
       this.el.appendChild(this.bar);
 
-      // this.setTheme(player.theme);
+      this.setTheme(player.getOptions().theme);
 
       player.onthemechange.subscribe((theme) => this.setTheme(theme));
       player.onprogress.subscribe((progress) => this.setProgress(progress));

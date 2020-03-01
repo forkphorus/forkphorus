@@ -2416,6 +2416,7 @@ var P;
                 this.onoptionschange = new Slot();
                 this.currentLoader = null;
                 this.fullscreenEnabled = false;
+                this.clickToPlayContainer = null;
                 this.projectId = '';
                 this.root = document.createElement('div');
                 this.root.className = 'player-root';
@@ -2629,6 +2630,9 @@ var P;
                     this.resume();
                 }
                 this.stage.runtime.triggerGreenFlag();
+                if (this.clickToPlayContainer) {
+                    this.removeClickToPlayContainer();
+                }
             }
             cleanup() {
                 if (this.currentLoader) {
@@ -2638,6 +2642,9 @@ var P;
                 if (this.stage) {
                     this.stage.destroy();
                     this.stage = null;
+                }
+                if (this.fullscreenEnabled) {
+                    this.exitFullscreen();
                 }
                 this.projectId = '';
                 while (this.playerContainer.firstChild) {
@@ -2800,6 +2807,49 @@ var P;
                     }
                 });
             }
+            enactAutoplayPolicy(policy) {
+                switch (policy) {
+                    case 'always': {
+                        this.triggerGreenFlag();
+                        break;
+                    }
+                    case 'if-audio-playable': {
+                        if (!P.audio.context || P.audio.context.state === 'running') {
+                            this.triggerGreenFlag();
+                        }
+                        else {
+                            this.showClickToPlayContainer();
+                        }
+                        break;
+                    }
+                    case 'never': {
+                        this.showClickToPlayContainer();
+                        break;
+                    }
+                }
+            }
+            showClickToPlayContainer() {
+                if (this.clickToPlayContainer) {
+                    throw new Error('cannot show click-to-play interface: already shwon');
+                }
+                this.clickToPlayContainer = document.createElement('div');
+                this.clickToPlayContainer.className = 'player-click-to-play-container';
+                this.clickToPlayContainer.onclick = () => {
+                    this.removeClickToPlayContainer();
+                    this.triggerGreenFlag();
+                };
+                const content = document.createElement('div');
+                content.className = 'player-click-to-play-icon';
+                this.clickToPlayContainer.appendChild(content);
+                this.stage.ui.appendChild(this.clickToPlayContainer);
+            }
+            removeClickToPlayContainer() {
+                if (this.clickToPlayContainer === null) {
+                    throw new Error('cannot hide click-to-play interface: already hidden');
+                }
+                this.stage.ui.removeChild(this.clickToPlayContainer);
+                this.clickToPlayContainer = null;
+            }
             beginLoadingProject() {
                 this.cleanup();
                 this.onstartload.emit();
@@ -2844,9 +2894,7 @@ var P;
                 stage.focus();
                 stage.draw();
                 this.onload.emit(stage);
-                if (this.options.autoplayPolicy === 'always') {
-                    this.triggerGreenFlag();
-                }
+                this.enactAutoplayPolicy(this.options.autoplayPolicy);
             }
             loadLoader(loaderId, loader) {
                 return __awaiter(this, void 0, void 0, function* () {
@@ -3061,6 +3109,7 @@ var P;
                 this.bar = document.createElement('div');
                 this.bar.className = 'player-progress-fill';
                 this.el.appendChild(this.bar);
+                this.setTheme(player.getOptions().theme);
                 player.onthemechange.subscribe((theme) => this.setTheme(theme));
                 player.onprogress.subscribe((progress) => this.setProgress(progress));
                 player.onstartload.subscribe(() => {
