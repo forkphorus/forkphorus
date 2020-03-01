@@ -441,8 +441,7 @@ namespace P.sb2 {
           sprite.visible = data.visible;
         }
 
-        // We store the scripts on the Sprite so the compiler can find them easier
-        // TODO: to something different?
+        // Store the scripts on the Sprite so the compiler can access them
         object.scripts = data.scripts || [];
 
         return object;
@@ -548,7 +547,6 @@ namespace P.sb2 {
       document.body.removeChild(svg);
       svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
 
-      // TODO: use native renderer
       return new Promise<HTMLCanvasElement | HTMLImageElement>((resolve, reject) => {
         const canvas = document.createElement('canvas');
         canvg(canvas, new XMLSerializer().serializeToString(svg), {

@@ -1789,7 +1789,6 @@ namespace P.sb3.compiler {
       script += this.compileStack(startingBlock);
 
       // If a block wants to do some changes to the script after script generation but before compilation, let it.
-      // TODO: should this happen after parseResult?
       if (hatCompiler.postcompile) {
         script = hatCompiler.postcompile(this, script, hat);
       }
