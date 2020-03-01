@@ -232,7 +232,7 @@
       }
       err = '' + err;
       var el = document.createElement('div');
-      el.innerHTML = `Alternatively, <a href="https://scratch.mit.edu/projects/366001364/" target="_blank">post a Scratch comment</a> and include: "<span style="font-family: monospace; user-select: all">${err.replace(/<>/g, '')} (${player.getProjectId()})</span>"`;
+      el.innerHTML = `Alternatively, <a href="https://scratch.mit.edu/projects/366001364/" target="_blank">post a Scratch comment</a> and include: "<span style="font-family: monospace; user-select: all">${err.replace(/<>/g, '')} (${player.getProjectMeta().getId()})</span>"`;
       errorHandler.errorEl.appendChild(el);
     });
     playerArea.appendChild(player.root);
@@ -261,7 +261,7 @@
       var se = urlInput.selectionEnd;
       var url = urlInput.value;
       var id = url.match(/\d+/g) || [''];
-      var pid = player.getProjectId();
+      var pid = player.getProjectMeta().getId();
       while (id.length > 1 && id.indexOf(pid) > -1) {
         id.splice(id.indexOf(pid), 1);
       }
@@ -328,7 +328,7 @@
       showPlayerArea();
       player.loadProjectById(id);
       updateLinks();
-      setTitleToProjectTitle(id);
+      setTitleToProjectTitle();
     }
     function loadProjectFile(file) {
       var extension = file.name.split('.').pop();
@@ -347,30 +347,25 @@
       updatePackageLink();
       updateEmbedCode();
     }
-    var cachedTitles = {};
     var initialTitle = document.title;
     function resetTitle() {
       document.title = initialTitle;
     }
-    function setTitleToProjectTitle(id) {
+    function setTitleToProjectTitle() {
       var stageId = player.stageId;
-      if (cachedTitles[id]) {
-        document.title = cachedTitles[id] + ' - forkphorus';
-      } else {
-        player.getProjectTitle(id)
-          .then(function(title) {
-            if (player.stageId === stageId) {
-              if (title) {
-                cachedTitles[id] = title;
-                player.projectTitle = title;
-                document.title = title + ' - forkphorus';
-                updateLinks();
-              } else {
-                resetTitle();
-              }
+      player.getProjectMeta().load()
+        .then(function(meta) {
+          var title = meta.getTitle();
+          if (player.stageId === stageId) {
+            if (title) {
+              player.projectTitle = title;
+              document.title = title + ' - forkphorus';
+              updateLinks();
+            } else {
+              resetTitle();
             }
-          });
-      }
+          }
+        });
     }
 
     /** Packaging **/
@@ -393,8 +388,8 @@
     }
     function updatePackageLink() {
       packageOtherWidth.disabled = packageOtherHeight.disabled = !packageOther.checked;
-      if (player.getProjectId()) {
-        var url = location.origin + location.pathname + 'app.html?id=' + player.getProjectId();
+      if (player.getProjectMeta().getId()) {
+        var url = location.origin + location.pathname + 'app.html?id=' + player.getProjectMeta().getId();
         if (packageTurbo.checked) url += '&turbo';
         if (packageFullScreen.checked) {
           // fullscreen is the default
@@ -436,8 +431,8 @@
       }
       embedOtherWidth.disabled = embedOtherHeight.disabled = !embedOther.checked;
 
-      if (player.getProjectId()) {
-        var source = location.protocol + '//' + location.host + location.pathname + 'embed.js?id=' + player.getProjectId();
+      if (player.getProjectMeta().getId()) {
+        var source = location.protocol + '//' + location.host + location.pathname + 'embed.js?id=' + player.getProjectMeta().getId();
         if (embedHideControls.checked) {
           source += '&ui=false';
         } else {

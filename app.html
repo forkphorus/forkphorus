@@ -149,12 +149,11 @@
         splash.style.display = 'none';
       });
 
-    // TODO: title
-    // player.getProjectTitle(projectId).then(function(title) {
-    //   if (title) {
-    //     document.title = title;
-    //   }
-    // });
+    player.getProjectMeta().load().then((meta) => {
+      if (meta.getTitle()) {
+        document.title = meta.getTitle();
+      }
+    });
   }());
 
   </script>

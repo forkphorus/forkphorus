@@ -103,11 +103,10 @@ namespace P.player {
 
     focus(): void;
 
-    getProjectId(): string;
-    getProjectTitle(): Promise<string>;
-
     enterFullscreen(): void;
     exitFullscreen(): void;
+
+    getProjectMeta(): ProjectMeta;
   }
 
   type Theme = 'light' | 'dark';
@@ -132,6 +131,22 @@ namespace P.player {
     enableTurbo?: boolean;
     enablePause?: boolean;
     enableStop?: boolean;
+  }
+
+  interface ProjectMeta {
+    /**
+     * Load the metadata. This may involve network requests, so the result is not immediately available.
+     */
+    load(): Promise<this>;
+    /**
+     * Returns the cached title loaded by loadMetadata(), if any
+     */
+    getTitle(): string | null;
+    /**
+     * Returns the project ID, if any.
+     * ID, in this context, refers to project IDs of scratch.mit.edu
+     */
+    getId(): string | null;
   }
 
   class LoaderIdentifier {
@@ -175,6 +190,50 @@ namespace P.player {
     }
   }
 
+  class LocalProjectMeta implements ProjectMeta {
+    constructor(private filename: string) {
+
+    }
+
+    load() {
+      return Promise.resolve(this);
+    }
+
+    getTitle() {
+      return this.filename;
+    }
+
+    getId() {
+      return null;
+    }
+  }
+
+  class RemoteProjectMeta implements ProjectMeta {
+    private title: string | null = null;
+    constructor(private id: string) {
+
+    }
+
+    load() {
+      return new P.io.Request('https://scratch.garbomuffin.com/proxy/projects/$id'.replace('$id', this.id))
+        .load('json')
+        .then((data) => {
+          if (data.title) {
+            this.title = data.title;
+          }
+          return this;
+        });
+    }
+
+    getTitle() {
+      return this.title;
+    }
+
+    getId() {
+      return this.id;
+    }
+  }
+
   /**
    * Project player that makes using the forkphorus API less miserable.
    * You MUST ALWAYS use Player.* instead of Player.stage.* when possible to avoid UI desyncs and other weird behavior.
@@ -208,12 +267,11 @@ namespace P.player {
 
     private options: Readonly<PlayerOptions>;
     private stage: P.core.Stage;
+    private projectMeta: ProjectMeta | null = null;
     private currentLoader: LoaderIdentifier | null = null;
     private fullscreenEnabled: boolean = false;
     private savedTheme: Theme;
     private clickToPlayContainer: HTMLElement | null = null;
-
-    private projectId: string = '';
 
     constructor(options: Partial<PlayerOptions> = {}) {
       this.root = document.createElement('div');
@@ -492,7 +550,7 @@ namespace P.player {
         this.exitFullscreen();
       }
       // Clear some additional data
-      this.projectId = '';
+      this.projectMeta = null;
       while (this.playerContainer.firstChild) {
         this.playerContainer.removeChild(this.playerContainer.firstChild);
       }
@@ -512,15 +570,11 @@ namespace P.player {
       return this.stage;
     }
 
-    getProjectTitle(): Promise<string> {
-      return new P.io.Request('https://scratch.garbomuffin.com/proxy/projects/$id'.replace('$id', this.projectId))
-        .ignoreErrors()
-        .load('json')
-        .then((data) => data.title || '');
-    }
-
-    getProjectId(): string {
-      return this.projectId;
+    getProjectMeta() {
+      if (!this.projectMeta) {
+        throw new Error('no project meta');
+      }
+      return this.projectMeta;
     }
 
     handleError(error: any) {
@@ -868,11 +922,11 @@ namespace P.player {
       };
 
       try {
-        this.projectId = id;
+        this.projectMeta = new RemoteProjectMeta(id);
         const blob = await this.fetchProject(id);
         const loader = await getLoader(blob);
         const stage = await this.loadLoader(loaderId, loader);
-        this.addCloudVariables(stage, this.projectId);
+        this.addCloudVariables(stage, id);
       } catch (e) {
         if (loaderId.isActive()) {
           this.handleError(e);
@@ -884,7 +938,7 @@ namespace P.player {
       const { loaderId } = this.beginLoadingProject();
 
       try {
-        this.projectId = file.name;
+        this.projectMeta = new LocalProjectMeta(file.name);
         const extension = file.name.split('.').pop() || '';
         const buffer = await P.io.readers.toArrayBuffer(file);
 
@@ -972,8 +1026,16 @@ namespace P.player {
      * Get the title for bug reports.
      */
     getBugReportTitle(): string {
-      // TODO: fix title
-      return this.player.getProjectId();
+      const meta = this.player.getProjectMeta();
+      const title = meta.getTitle();
+      const id = meta.getId();
+      if (title) {
+        return title;
+      }
+      if (id) {
+        return id;
+      }
+      return 'Unknown Project';
     }
 
     /**
@@ -981,7 +1043,7 @@ namespace P.player {
      */
     getBugReportMetadata(): string {
       var meta = '';
-      meta += 'Project ID: ' + this.player.getProjectId() + '\n';
+      meta += 'Project ID: ' + this.player.getProjectMeta().getId() + '\n';
       meta += location.href + '\n';
       meta += navigator.userAgent;
       return meta;

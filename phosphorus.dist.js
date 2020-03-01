@@ -2403,6 +2403,42 @@ var P;
                 }
             }
         }
+        class LocalProjectMeta {
+            constructor(filename) {
+                this.filename = filename;
+            }
+            load() {
+                return Promise.resolve(this);
+            }
+            getTitle() {
+                return this.filename;
+            }
+            getId() {
+                return null;
+            }
+        }
+        class RemoteProjectMeta {
+            constructor(id) {
+                this.id = id;
+                this.title = null;
+            }
+            load() {
+                return new P.io.Request('https://scratch.garbomuffin.com/proxy/projects/$id'.replace('$id', this.id))
+                    .load('json')
+                    .then((data) => {
+                    if (data.title) {
+                        this.title = data.title;
+                    }
+                    return this;
+                });
+            }
+            getTitle() {
+                return this.title;
+            }
+            getId() {
+                return this.id;
+            }
+        }
         class Player {
             constructor(options = {}) {
                 this.onprogress = new Slot();
@@ -2414,10 +2450,10 @@ var P;
                 this.onresume = new Slot();
                 this.onpause = new Slot();
                 this.onoptionschange = new Slot();
+                this.projectMeta = null;
                 this.currentLoader = null;
                 this.fullscreenEnabled = false;
                 this.clickToPlayContainer = null;
-                this.projectId = '';
                 this.root = document.createElement('div');
                 this.root.className = 'player-root';
                 this.playerContainer = document.createElement('div');
@@ -2646,7 +2682,7 @@ var P;
                 if (this.fullscreenEnabled) {
                     this.exitFullscreen();
                 }
-                this.projectId = '';
+                this.projectMeta = null;
                 while (this.playerContainer.firstChild) {
                     this.playerContainer.removeChild(this.playerContainer.firstChild);
                 }
@@ -2662,14 +2698,11 @@ var P;
                 this.throwWithoutStage();
                 return this.stage;
             }
-            getProjectTitle() {
-                return new P.io.Request('https://scratch.garbomuffin.com/proxy/projects/$id'.replace('$id', this.projectId))
-                    .ignoreErrors()
-                    .load('json')
-                    .then((data) => data.title || '');
-            }
-            getProjectId() {
-                return this.projectId;
+            getProjectMeta() {
+                if (!this.projectMeta) {
+                    throw new Error('no project meta');
+                }
+                return this.projectMeta;
             }
             handleError(error) {
                 console.error(error);
@@ -2945,11 +2978,11 @@ var P;
                         }
                     });
                     try {
-                        this.projectId = id;
+                        this.projectMeta = new RemoteProjectMeta(id);
                         const blob = yield this.fetchProject(id);
                         const loader = yield getLoader(blob);
                         const stage = yield this.loadLoader(loaderId, loader);
-                        this.addCloudVariables(stage, this.projectId);
+                        this.addCloudVariables(stage, id);
                     }
                     catch (e) {
                         if (loaderId.isActive()) {
@@ -2962,7 +2995,7 @@ var P;
                 return __awaiter(this, void 0, void 0, function* () {
                     const { loaderId } = this.beginLoadingProject();
                     try {
-                        this.projectId = file.name;
+                        this.projectMeta = new LocalProjectMeta(file.name);
                         const extension = file.name.split('.').pop() || '';
                         const buffer = yield P.io.readers.toArrayBuffer(file);
                         switch (extension) {
@@ -3040,11 +3073,20 @@ var P;
                     .replace('$body', encodeURIComponent(body));
             }
             getBugReportTitle() {
-                return this.player.getProjectId();
+                const meta = this.player.getProjectMeta();
+                const title = meta.getTitle();
+                const id = meta.getId();
+                if (title) {
+                    return title;
+                }
+                if (id) {
+                    return id;
+                }
+                return 'Unknown Project';
             }
             getBugReportMetadata() {
                 var meta = '';
-                meta += 'Project ID: ' + this.player.getProjectId() + '\n';
+                meta += 'Project ID: ' + this.player.getProjectMeta().getId() + '\n';
                 meta += location.href + '\n';
                 meta += navigator.userAgent;
                 return meta;
