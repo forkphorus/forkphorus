@@ -36,60 +36,10 @@
       width: 100%;
     }
 
-    /* table:first-child {
-      border-top: 1px solid #aaa;
+    .progress-label {
+      padding-left: 5px;
+      font-style: italic;
     }
-    textarea, input[type=text], input[type=number], input[type=checkbox] {
-      box-sizing: border-box;
-      width: 100%;
-    }
-    .label {
-      width: 140px;
-      text-align: center;
-      font-weight: bold;
-    }
-    .desc {
-      font-size: smaller;
-    }
-    summary {
-      cursor: pointer;
-    }
-    #options:hover .option {
-      opacity: 0.6;
-    }
-    #options:hover .option:hover,
-    summary:hover ~ .option {
-      opacity: 1 !important;
-    } */
-    /* .clarification {
-      text-decoration: underline dotted;
-      cursor: help;
-    } */
-    /* @media (prefers-color-scheme: dark) {
-      body {
-        background-color: #111;
-        color: #ddd;
-      }
-      a {
-        color: #4af;
-      }
-      a:visited {
-        color: #b381ef;
-      }
-      a:active {
-        color: #58f;
-      }
-      table.option {
-        border-color: #444;
-      }
-    } */
-
-    /* #phonegap-config {
-      height: 100px;
-    }
-    #phonegap-container[data-enabled=false] .option:not(.phonegap-always-visible) {
-      display: none;
-    } */
   </style>
   <title>HTML Packager - forkphorus</title>
 </head>
@@ -105,13 +55,17 @@
     <li>Get Help: Create an issue on <a href="https://github.com/forkphorus/forkphorus/issues">GitHub</a></li>
   </ul>
 
-  <div id="opts"></div>
+  <div id="opts">
+    <!-- JS injects options into here -->
+  </div>
 
-  <p>
+  <section>
     <button id="package-html">Package Project</button>
-  </p>
+  </section>
 
-  <section id="loading-section"></section>
+  <section id="loading-section">
+    <!-- used for progress -->
+  </section>
 
   <script src="../lib/details-element-polyfill.js"></script>
   <script src="../lib/jszip.min.js"></script>
@@ -119,7 +73,8 @@
   <script src="packer.js"></script>
 
   <script>
-    // init file loader & assets
+    // File Loader & Assets
+
     const fileLoader = new Packer.FileLoader();
 
     fileLoader.files = [
@@ -212,7 +167,9 @@
   </script>
 
   <script>
-    var optionsContainer = document.querySelector('#opts');
+    // Options
+
+    const optionsContainer = document.querySelector('#opts');
 
     class Option {
       constructor(options) {
@@ -232,9 +189,10 @@
         this.root.appendChild(row);
 
         // Init data
-        this.value = null;
+        this._value = null;
       }
 
+      // Add a label to this Option.
       label(label) {
         this.labelText = document.createElement('label');
         this.labelText.textContent = label;
@@ -242,6 +200,7 @@
         return this;
       }
 
+      // Add a radio input (multiple choice)
       radio(id, choices) {
         for (const i of choices) {
           const el = document.createElement('label');
@@ -251,11 +210,11 @@
           radio.value = i.value;
 
           radio.onclick = () => {
-            this.value = i.value;
+            this.setValue(radio.value);
           };
           if (i.checked) {
             radio.checked = true;
-            this.value = i.value;
+            this.setValue(radio.value);
           }
 
           el.appendChild(radio);
@@ -265,10 +224,11 @@
         return this;
       }
 
+      // Add a text, checkbox, or number input
       input(options = {}) {
         const input = document.createElement('input');
-        input.type = options.type || 'text';
 
+        input.type = options.type || 'text';
         if (options.pattern) input.pattern = options.pattern;
         if (options.value) input.value = options.value;
 
@@ -283,14 +243,15 @@
         };
 
         input.onchange = () => {
-          this.value = getValue();
+          this.setValue(getValue());
         };
-        this.value = getValue();
+        this.setValue(getValue());
 
         this.inputContainer.appendChild(input);
         return this;
       }
 
+      // Add a dropdown input
       select(options) {
         const el = document.createElement('select');
 
@@ -301,11 +262,11 @@
 
           if (i.selected) {
             opt.selected = true;
-            this.value = i.value;
+            this.setValue(opt.value);
           }
 
           opt.onclick = () => {
-            this.value = opt.value;
+            this.setValue(opt.value);
           };
 
           el.appendChild(opt);
@@ -315,6 +276,7 @@
         return this;
       }
 
+      // Add a description
       description(content) {
         const row = document.createElement('tr');
         row.className = 'description';
@@ -328,54 +290,158 @@
         return this;
       }
 
+      setValue(v) {
+        this._value = v;
+        this.onchange(v);
+      }
+
+      get value() {
+        return this._value;
+      }
+
+      // Show this option
+      show() {
+        this.root.hidden = false;
+        return this;
+      }
+
+      // Hide this option
+      hide() {
+        this.root.hidden = true;
+        return this;
+      }
+
+      onchange(value) {
+
+      }
+
       add() {
         optionsContainer.appendChild(this.root);
         return this;
       }
     }
 
-    // var projectSource = new Option()
-    //   .label('Project Source')
-    //   .radio('select-project-type', [
-    //     { value: 'id', label: 'Project ID', checked: true },
-    //     { value: 'file', label: 'Project File', checked: false },
-    //   ])
-    //   .add();
+    const projectSource = new Option()
+      .label('Project Source')
+      .radio('select-project-type', [
+        { value: 'id', label: 'Project ID', checked: true },
+        { value: 'file', label: 'Project File', checked: false },
+      ])
+      .add();
 
-    var projectId = new Option()
+    const projectId = new Option()
       .label('Project ID')
       .input({ pattern: '[0-9]+', value: location.hash ? location.hash.substr(1) : '' })
       .add();
 
-    var turbo = new Option()
+    const projectFile = new Option()
+      .label('File input not supported yet')
+      .hide()
+      .add();
+
+    projectSource.onchange = (value) => {
+      projectId.hide();
+      projectFile.hide();
+      if (value === 'id') projectId.show();
+      if (value === 'file') projectFile.show();
+    };
+
+    const turbo = new Option()
       .label('Turbo Mode')
       .input({ type: 'checkbox' })
       .description('Enables Turbo Mode')
       .add();
 
-    var username = new Option()
+    const username = new Option()
       .label('Username')
       .input()
+      .description('The value of the "username" block.')
       .add();
 
-    var autoplay = new Option()
+    const autoplay = new Option()
       .label('Autoplay')
       .select([
         { value: 'always', label: 'Always', selected: true },
         { value: 'never', label: 'Never' },
         { value: 'if-audio-playable', label: 'If audio can be played' },
       ])
+      .description('Controls whether the project automatically begins.')
       .add();
-    
-    var controls = new Option()
+
+    const controls = new Option()
       .label('Controls')
       .input({ type: 'checkbox' })
+      .description('Broken')
       .add();
-    
-    var fps = new Option()
+
+    const fps = new Option()
       .label('Framerate')
       .input({ type: 'number', value: 30 })
+      .description('Framerate in frames per second.')
       .add();
+
+  </script>
+
+  <script>
+    // Interface
+
+    const loadingSection = document.getElementById('loading-section');
+    let progressBar = null;
+
+    function resetProgress() {
+      while (loadingSection.firstChild) {
+        loadingSection.removeChild(loadingSection.firstChild);
+      }
+    }
+
+    function setProgress(p) {
+      progressBar.progressElement.value = p;
+    }
+
+    function updateProgress() {
+      setProgress(progressBar.finishedTasks / progressBar.totalTasks || 0);
+    }
+
+    function setAction(action) {
+      if (progressBar) {
+        setProgress(1);
+      }
+
+      const el = document.createElement('div');
+      const progress = document.createElement('progress');
+      progress.className = 'progress-bar';
+      const label = document.createElement('span');
+      label.className = 'progress-label';
+      label.textContent = action;
+      el.appendChild(progress);
+      el.appendChild(label);
+      loadingSection.appendChild(el);
+
+      progressBar = {
+        name: action,
+        progressElement: progress,
+        totalTasks: 0,
+        finishedTasks: 0,
+      };
+    }
+
+    function newTask() {
+      progressBar.totalTasks++;
+      updateProgress();
+    }
+
+    function endTask() {
+      progressBar.finishedTasks++;
+      updateProgress();
+    }
+
+    SBDL.progressHooks.start = () => setAction('Loading project files');
+    SBDL.progressHooks.newTask = () => newTask();
+    SBDL.progressHooks.finishTask = () => endTask();
+
+    fileLoader.progress.start = () => setAction('Loading internal files');
+    fileLoader.progress.newTask = () => newTask();
+    fileLoader.progress.endTask = () => endTask();
 
     function addDownloadLink(content, fileName) {
       function getBlob() {
@@ -401,18 +467,23 @@
       link.href = URL.createObjectURL(blob);
       link.textContent = `Download ${fileName} (${size.toFixed(2)} MiB)`;
       link.download = fileName;
-      document.body.appendChild(link);
+      loadingSection.appendChild(link);
       link.click();
     }
 
     document.querySelector('#package-html').onclick = async function() {
+      resetProgress();
+
       const packager = new Packer.Packager({ fileLoader });
+
+      packager.archiveProgress.start = () => setAction('Creating archive');
+      packager.archiveProgress.setProgress = (progress) => setProgress(progress);
 
       packager.playerOptions.turbo = turbo.value;
       packager.playerOptions.autoplayPolicy = autoplay.value;
       packager.playerOptions.username = username.value;
       packager.playerOptions.fps = fps.value;
-      
+
       if (controls.value) {
         packager.controlsOptions = {
           enableFullscreen: false,
@@ -420,6 +491,7 @@
       }
 
       try {
+        setAction('Loading project data');
         await packager.loadProjectById(projectId.value);
         const result = await packager.run();
         addDownloadLink(result, 'project.html');
@@ -427,6 +499,8 @@
         console.error(e);
         alert('Error: ' + e);
       }
+
+      progressBar = null;
     }
   </script>
 

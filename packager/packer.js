@@ -24,6 +24,7 @@ window.Packer = (function() {
 
   class FileLoader {
     constructor() {
+      this.progress = new Progress();
       this.files = [];
       this.assets = [];
     }
@@ -48,16 +49,43 @@ window.Packer = (function() {
     }
 
     async loadMissingAssets() {
-      await Promise.all([
-        ...this.files.filter((i) => !i.loaded).map((i) => this.loadFile(i)),
-        ...this.assets.filter((i) => !i.loaded).map((i) => this.loadAsset(i)),
-      ]);
+      const missingFiles = this.files.filter((i) => !i.loaded);
+      const missingAssets = this.assets.filter((i) => !i.loaded);
+
+      if (missingFiles.length > 0 || missingAssets.length > 0) {
+        this.progress.start();
+        await Promise.all([
+          ...missingFiles.map((i) => this.loadFile(i)),
+          ...missingAssets.map((i) => this.loadAsset(i)),
+        ]);
+      }
 
       return {
         scripts: this.files.filter((i) => i.type === 'script').map((i) => i.content).join('\n'),
         styles: this.files.filter((i) => i.type === 'style').map((i) => i.content).join('\n'),
         assets: this.assets,
       };
+    }
+  }
+
+  class Progress {
+    newTask() {
+    }
+
+    endTask() {
+
+    }
+
+    setProgress(progress) {
+
+    }
+
+    setCaption(text) {
+
+    }
+
+    start() {
+
     }
   }
 
@@ -71,9 +99,11 @@ window.Packer = (function() {
       this.projectType = null;
       this.projectData = null;
       this.controlsOptions = null;
+      this.archiveProgress = new Progress();
     }
 
     createArchive(files) {
+      this.archiveProgress.start();
       const zip = new JSZip();
       for (const file of files) {
         const path = file.path;
@@ -83,6 +113,9 @@ window.Packer = (function() {
       return zip.generateAsync({
         type: 'blob',
         compression: 'DEFLATE',
+      }, (metadata) => {
+        this.archiveProgress.setProgress(metadata.percent);
+        this.archiveProgress.setCaption(metadata.currentFile);
       });
     }
 
@@ -264,7 +297,7 @@ ${scripts}
   var project = '${this.projectData}';
 
   // Options...
-  player.setOptions(${JSON.stringify(this.playerOptions)});  
+  player.setOptions(${JSON.stringify(this.playerOptions)});
   var controlsOptions = ${JSON.stringify(this.controlsOptions)};
   if (controlsOptions) {
     player.addControls(controlsOptions);
