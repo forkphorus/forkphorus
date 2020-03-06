@@ -82,7 +82,7 @@
 
       <section class=package>
         <h1 data-i18n="index.package">Package this project</h1>
-        <p>Get a link to a web page that automatically runs your project. To package to HTML, EXE, APK, or other formats, use the <a href="packager/">HTML packager</a>.</p>
+        <p>Get a link to a web page that automatically runs your project. To package to HTML, EXE, APK, or other formats, use the <a href="packager/" id="html-packager">HTML packager</a>.</p>
         <p class="package-options">
           <a href="#" target="_blank" id="package-link" data-i18n="index.package.button">Package</a>
           <input type="checkbox" id="package-turbo">
@@ -254,6 +254,7 @@
 
     var projectLink = querySelector('.project-link');
     var bugLink = querySelector('#bug-link');
+    var htmlPackagerLink = querySelector('#html-packager');
 
     var timeout;
     urlInput.addEventListener('input', function() {
@@ -344,6 +345,7 @@
     function updateLinks() {
       projectLink.href = player.projectLink;
       bugLink.href = errorHandler.createBugReportLink(P.i18n.translate('index.report.instructions'));
+      htmlPackagerLink.href = 'packager/#' + player.getProjectMeta().getId();
       updatePackageLink();
       updateEmbedCode();
     }

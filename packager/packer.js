@@ -70,6 +70,7 @@ window.Packer = (function() {
       };
       this.projectType = null;
       this.projectData = null;
+      this.controlsOptions = null;
     }
 
     createArchive(files) {
@@ -222,6 +223,7 @@ ${scripts}
   var progressBarFill = document.querySelector('.progress-bar');
 
   var player = new P.player.Player();
+  player.setOptions({ theme: 'dark' });
   var errorHandler = new P.player.ErrorHandler(player, {
     container: document.querySelector('.error-report'),
   });
@@ -261,7 +263,12 @@ ${scripts}
   var type = '${this.projectType}';
   var project = '${this.projectData}';
 
-  player.setOptions(${JSON.stringify(this.playerOptions)});
+  // Options...
+  player.setOptions(${JSON.stringify(this.playerOptions)});  
+  var controlsOptions = ${JSON.stringify(this.controlsOptions)};
+  if (controlsOptions) {
+    player.addControls(controlsOptions);
+  }
 
   fetch(project)
     .then(function(request) { return request.arrayBuffer(); })

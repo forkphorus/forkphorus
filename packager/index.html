@@ -32,7 +32,7 @@
       font-size: smaller;
     }
 
-    input[type=text], input[type=checkbox], select {
+    input[type=text], input[type=number], input[type=checkbox], select {
       width: 100%;
     }
 
@@ -268,15 +268,19 @@
       input(options = {}) {
         const input = document.createElement('input');
         input.type = options.type || 'text';
+
         if (options.pattern) input.pattern = options.pattern;
+        if (options.value) input.value = options.value;
 
         const getValue = () => {
           if (options.type === 'checkbox') {
             return input.checked;
+          } else if (options.type === 'number') {
+            return +input.value;
           } else {
             return input.value;
-          };
-        }
+          }
+        };
 
         input.onchange = () => {
           this.value = getValue();
@@ -340,7 +344,7 @@
 
     var projectId = new Option()
       .label('Project ID')
-      .input({ pattern: '[0-9]+' })
+      .input({ pattern: '[0-9]+', value: location.hash ? location.hash.substr(1) : '' })
       .add();
 
     var turbo = new Option()
@@ -361,6 +365,16 @@
         { value: 'never', label: 'Never' },
         { value: 'if-audio-playable', label: 'If audio can be played' },
       ])
+      .add();
+    
+    var controls = new Option()
+      .label('Controls')
+      .input({ type: 'checkbox' })
+      .add();
+    
+    var fps = new Option()
+      .label('Framerate')
+      .input({ type: 'number', value: 30 })
       .add();
 
     function addDownloadLink(content, fileName) {
@@ -397,6 +411,13 @@
       packager.playerOptions.turbo = turbo.value;
       packager.playerOptions.autoplayPolicy = autoplay.value;
       packager.playerOptions.username = username.value;
+      packager.playerOptions.fps = fps.value;
+      
+      if (controls.value) {
+        packager.controlsOptions = {
+          enableFullscreen: false,
+        };
+      }
 
       try {
         await packager.loadProjectById(projectId.value);
