@@ -510,7 +510,6 @@
       studioView = new StudioView(STUDIO);
       studioView.visible = false;
       studioView.onselect = function(id, el) {
-        cachedTitles[id] = el.dataset.title;
         location.hash = '#' + id;
       };
       studioView.loadNextPage();
