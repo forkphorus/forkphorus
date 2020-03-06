@@ -5749,7 +5749,7 @@ var P;
                             resolve(image);
                         };
                         image.onerror = (e) => {
-                            reject(e);
+                            reject('Failed to load SVG: ' + path);
                         };
                         image.src = 'data:image/svg+xml,' + encodeURIComponent(svg.outerHTML);
                     });
