@@ -69,24 +69,11 @@ window.Packer = (function() {
   }
 
   class Progress {
-    newTask() {
-    }
-
-    endTask() {
-
-    }
-
-    setProgress(progress) {
-
-    }
-
-    setCaption(text) {
-
-    }
-
-    start() {
-
-    }
+    newTask() {}
+    endTask() {}
+    setProgress(progress) {}
+    setCaption(text) {}
+    start() {}
   }
 
   class Packager {
