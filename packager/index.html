@@ -368,12 +368,6 @@
       .description('Controls whether the project automatically begins.')
       .add();
 
-    const controls = new Option()
-      .label('Controls')
-      .input({ type: 'checkbox' })
-      .description('Broken')
-      .add();
-
     const fps = new Option()
       .label('Framerate')
       .input({ type: 'number', value: 30 })
@@ -483,12 +477,6 @@
       packager.playerOptions.autoplayPolicy = autoplay.value;
       packager.playerOptions.username = username.value;
       packager.playerOptions.fps = fps.value;
-
-      if (controls.value) {
-        packager.controlsOptions = {
-          enableFullscreen: false,
-        };
-      }
 
       try {
         setAction('Loading project data');
