@@ -251,6 +251,23 @@
         return this;
       }
 
+      // Add a file input
+      file(options = {}) {
+        const input = document.createElement('input');
+        input.type = 'file';
+
+        if (options.accept) {
+          input.accept = options.accept;
+        }
+
+        input.onchange = () => {
+          this.setValue(input.files[0]);
+        };
+
+        this.inputContainer.appendChild(input);
+        return this;
+      }
+
       // Add a dropdown input
       select(options) {
         const el = document.createElement('select');
@@ -335,7 +352,8 @@
       .add();
 
     const projectFile = new Option()
-      .label('File input not supported yet')
+      .label('Project File')
+      .file({ accept: '.sb3,.sb2' })
       .hide()
       .add();
 
@@ -480,7 +498,13 @@
 
       try {
         setAction('Loading project data');
-        await packager.loadProjectById(projectId.value);
+
+        if (projectSource.value === 'id') {
+          await packager.loadProjectById(projectId.value);
+        } else if (projectSource.value === 'file') {
+          await packager.loadProjectFromFile(projectFile.value);
+        }
+
         const result = await packager.run();
         addDownloadLink(result, 'project.html');
       } catch (e) {

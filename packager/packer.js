@@ -137,6 +137,22 @@ window.Packer = (function() {
       this.projectType = type;
     }
 
+    async loadProjectFromFile(file) {
+      const extension = file.name.split('.').pop();
+      return new Promise((resolve, reject) => {
+        const fileReader = new FileReader();
+        fileReader.onload = () => {
+          this.projectData = fileReader.result;
+          this.projectType = extension;
+          resolve();
+        };
+        fileReader.onerror = () => {
+          reject('cannot read file');
+        };
+        fileReader.readAsDataURL(file);
+      });
+    }
+
     async run() {
       if (!this.projectData || !this.projectType) {
         throw new Error('missing project data or type');
