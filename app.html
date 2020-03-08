@@ -142,9 +142,13 @@
       }
     });
 
+    player.setOptions({
+      fullscreenMode: 'window',
+      autoplayPolicy: 'if-audio-playable',
+    });
+
     player.loadProjectById(projectId)
       .then(function() {
-        player.setOptions({ fullscreenMode: 'window' });
         player.enterFullscreen();
         splash.style.display = 'none';
       });
