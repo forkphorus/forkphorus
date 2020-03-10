@@ -1738,7 +1738,7 @@ var P;
         }
         VectorCostume.MAX_ZOOM = 6;
         core.VectorCostume = VectorCostume;
-        if (/iPhone/.test(navigator.userAgent) || /iPad/.test(navigator.userAgent)) {
+        if (/iPhone/.test(navigator.userAgent) || /iPad/.test(navigator.userAgent) || /iPod/.test(navigator.userAgent) || window.safari) {
             VectorCostume.MAX_ZOOM = 1;
         }
         class Sound {

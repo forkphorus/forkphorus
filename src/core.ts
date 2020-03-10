@@ -1743,8 +1743,8 @@ namespace P.core {
   }
 
   // TEMPORARY INTERVENTION:
-  // Disable Vector scaling on iPhone, iPad due to various bugs.
-  if (/iPhone/.test(navigator.userAgent) || /iPad/.test(navigator.userAgent)) {
+  // Disable Vector scaling on Safari.
+  if (/iPhone/.test(navigator.userAgent) || /iPad/.test(navigator.userAgent) || /iPod/.test(navigator.userAgent) || (window as any).safari) {
     VectorCostume.MAX_ZOOM = 1;
   }
 
