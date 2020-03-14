@@ -2768,10 +2768,10 @@ var P;
                 }
             }
             updateFullscreen() {
-                this.throwWithoutStage();
                 if (!this.fullscreenEnabled) {
                     return;
                 }
+                this.throwWithoutStage();
                 const controlsHeight = this.controlsContainer ? this.controlsContainer.offsetHeight : 0;
                 window.scrollTo(0, 0);
                 let w = window.innerWidth - this.options.fullscreenPadding * 2;

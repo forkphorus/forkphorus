@@ -654,10 +654,10 @@ namespace P.player {
      * Updates the stage in fullscreen mode to ensure proper dimensions.
      */
     private updateFullscreen() {
-      this.throwWithoutStage();
       if (!this.fullscreenEnabled) {
         return;
       }
+      this.throwWithoutStage();
       const controlsHeight = this.controlsContainer ? this.controlsContainer.offsetHeight : 0;
       window.scrollTo(0, 0);
 
