@@ -903,7 +903,7 @@ namespace P.player {
         // When downloaded from scratch.mit.edu, there are two types of projects:
         // 1. "JSON projects" which are only the project.json of a sb2 or sb3 file.
         //    This is most projects, especially as this is the only format of Scratch 3 projects.
-        // 2. "Binary projects" which are full binary .sb or .sb2 projects, including their assets.
+        // 2. "Binary projects" which are full binary .sb or .sb2 files.
         //    As an example: https://scratch.mit.edu/projects/250740608/
 
         const projectText = await P.io.readers.toText(blob);
@@ -916,7 +916,9 @@ namespace P.player {
             case 'sb3': return new P.sb3.Scratch3Loader(projectJson);
           }
         } catch (e) {
+          // if the project cannot be loaded as JSON, it may be a binary project.
           const buffer = await P.io.readers.toArrayBuffer(blob);
+
           // check for Scratch 1, which we do not support
           if (this.isScratch1Project(buffer)) {
             throw new ProjectNotSupportedError('Scratch 1');
