@@ -259,7 +259,7 @@
       var se = urlInput.selectionEnd;
       var url = urlInput.value;
       var id = url.match(/\d+/g) || [''];
-      var pid = player.getProjectMeta().getId();
+      var pid = player.hasProjectMeta() ? player.getProjectMeta().getId() : -1;
       while (id.length > 1 && id.indexOf(pid) > -1) {
         id.splice(id.indexOf(pid), 1);
       }

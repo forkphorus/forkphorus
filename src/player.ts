@@ -106,6 +106,7 @@ namespace P.player {
     enterFullscreen(): void;
     exitFullscreen(): void;
 
+    hasProjectMeta(): boolean;
     getProjectMeta(): ProjectMeta;
   }
 
@@ -568,6 +569,10 @@ namespace P.player {
     getStage(): core.Stage {
       this.throwWithoutStage();
       return this.stage;
+    }
+
+    hasProjectMeta() {
+      return !!this.projectMeta;
     }
 
     getProjectMeta() {

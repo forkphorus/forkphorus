@@ -2698,6 +2698,9 @@ var P;
                 this.throwWithoutStage();
                 return this.stage;
             }
+            hasProjectMeta() {
+                return !!this.projectMeta;
+            }
             getProjectMeta() {
                 if (!this.projectMeta) {
                     throw new Error('no project meta');
