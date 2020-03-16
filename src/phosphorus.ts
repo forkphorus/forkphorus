@@ -1,14 +1,14 @@
+// This comment will be included in the generated source file.
 /*!
-Forkphorus: A JavaScript compiler for Scratch 2 and 3 projects.
-(A fork of phosphorus)
+=== NOTE ===
+This file is generated from source files in https://github.com/forkphorus/forkphorus
+Please see the README for more information.
 
-Note: phosphorus.dist.js is automatically generated from the `phosphorus` folder.
-See the README for more information.
-
+=== LICENSE ===
 The MIT License (MIT)
 
 Copyright (c) 2013-2017 Nathan Dinsmore
-Copyright (c) 2019 Thomas Weber
+Copyright (c) 2019-2020 Thomas Weber
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in

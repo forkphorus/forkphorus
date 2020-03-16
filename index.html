@@ -5,6 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Forkphorus is a JavaScript compiler for Scratch 2 and Scratch 3 projects.">
+  <link rel="canonical" href="https://forkphorus.github.io/" />
   <title>forkphorus - phosphorus for Scratch 3</title>
   <script>
     // Apply local dark mode preference very early to avoid a flash of white
@@ -52,7 +53,7 @@
 
       <section>
         <h1 data-i18n="index.report">Report a problem</h1>
-        <p>forkphorus is still in development. <a id="bug-link" target="_blank" rel="noopener" href="https://github.com/forkphorus/forkphorus/issues/new">Click here</a> to report a problem with this project. You can also comment problems <a href="https://scratch.mit.edu/users/GarboMuffin/#comments" target="_blank" rel="noopener">here</a> if you don't have a GitHub account.</p>
+        <p>forkphorus is still in development. <a id="bug-link" target="_blank" rel="noopener" href="https://github.com/forkphorus/forkphorus/issues/new">Click here</a> to report a problem with this project. You can also comment problems <a href="https://scratch.mit.edu/projects/366001364/" target="_blank" rel="noopener">here</a> if you don't have a GitHub account.</p>
       </section>
 
       <section class=package>
@@ -119,7 +120,7 @@
 
     <section>
       <h1 data-i18n="index.credits">Credits</h1>
-      <p>forkphorus is a fork of <a href="https://phosphorus.github.io/">phosphorus</a> by <a href="https://github.com/nathan">Nathan</a>. Its CPS-style compilation and overall design was inspired by <a href="https://github.com/RHY3756547">Rhys</a>'s <a href="https://code.google.com/p/sb2-js/">sb2.js</a>. It would have more bugs if not for <a href="https://github.com/trumank">Truman</a> and <a href="https://github.com/tjvr">Tim</a>. The <a href="https://stuk.github.io/jszip/">JSZip</a> library is used to read <code>.sb2</code> and <code>.sb3</code> files.</p>
+      <p>forkphorus is a based on <a href="https://github.com/nathan">Nathan</a>'s <a href="https://phosphorus.github.io/">phosphorus</a>. Its CPS-style compilation and overall design was inspired by <a href="https://github.com/RHY3756547">Rhys</a>'s <a href="https://code.google.com/p/sb2-js/">sb2.js</a>. It would have more bugs if not for <a href="https://github.com/trumank">Truman</a> and <a href="https://github.com/tjvr">Tim</a>. The <a href="https://stuk.github.io/jszip/">JSZip</a> library is used to read <code>.sb2</code> and <code>.sb3</code> files, and the <a href="https://github.com/canvg/canvg">canvg</a> library is used to render SVGs in <code>&lt;canvas&gt;</code> elements for some projects.</p>
 
       <h1 data-i18n="index.code">Code</h1>
       <p>The source code for forkphorus is available <a href=https://github.com/forkphorus/forkphorus>on GitHub</a>.</p>
@@ -228,7 +229,7 @@
       }
       err = '' + err;
       var el = document.createElement('div');
-      el.innerHTML = `Alternatively, <a href="https://scratch.mit.edu/users/GarboMuffin/#comments" target="_blank">post a Scratch comment</a> and include: "<span style="font-family: monospace; user-select: all">${err.replace(/<>/g, '')} (${player.projectId})</span>"`;
+      el.innerHTML = `Alternatively, <a href="https://scratch.mit.edu/projects/366001364/" target="_blank">post a Scratch comment</a> and include: "<span style="font-family: monospace; user-select: all">${err.replace(/<>/g, '')} (${player.projectId})</span>"`;
       errorHandler.errorEl.appendChild(el);
     });
     playerArea.appendChild(player.root);

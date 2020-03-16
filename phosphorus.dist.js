@@ -1,15 +1,14 @@
 "use strict";
 /*!
-Forkphorus: A JavaScript compiler for Scratch 2 and 3 projects.
-(A fork of phosphorus)
+=== NOTE ===
+This file is generated from source files in https://github.com/forkphorus/forkphorus
+Please see the README for more information.
 
-Note: phosphorus.dist.js is automatically generated from the `phosphorus` folder.
-See the README for more information.
-
+=== LICENSE ===
 The MIT License (MIT)
 
 Copyright (c) 2013-2017 Nathan Dinsmore
-Copyright (c) 2019 Thomas Weber
+Copyright (c) 2019-2020 Thomas Weber
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
@@ -269,7 +268,7 @@ var P;
             'WoodBlock': 'drums/WoodBlock(1)_22k.wav'
         };
         const soundbank = {};
-        function loadSB2Soundbank(hooks) {
+        function loadSoundbank(hooks) {
             if (!audio.context)
                 return Promise.resolve();
             const promises = [];
@@ -284,7 +283,7 @@ var P;
             }
             return Promise.all(promises);
         }
-        audio.loadSB2Soundbank = loadSB2Soundbank;
+        audio.loadSoundbank = loadSoundbank;
         function loadSoundbankBuffer(name) {
             return new P.IO.ArrayBufferRequest(SOUNDBANK_URL + SOUNDBANK_FILES[name], { local: true }).load()
                 .then((buffer) => P.audio.decodeAudio(buffer))
@@ -726,6 +725,9 @@ var P;
                             value = 100;
                         break;
                     case 'color':
+                        if (value === Infinity) {
+                            break;
+                        }
                         value = value % 200;
                         if (value < 0)
                             value += 200;
@@ -1702,7 +1704,6 @@ var P;
                 this.width = svg.width;
                 this.height = svg.height;
                 this.source = svg;
-                this.scales[0] = this.getScale(1);
             }
             getScale(scale) {
                 const canvas = document.createElement('canvas');
@@ -1729,6 +1730,9 @@ var P;
         }
         VectorCostume.MAX_ZOOM = 6;
         core.VectorCostume = VectorCostume;
+        if (/iPhone/.test(navigator.userAgent) || /iPad/.test(navigator.userAgent) || /iPod/.test(navigator.userAgent) || window.safari) {
+            VectorCostume.MAX_ZOOM = 1;
+        }
         class Sound {
             constructor(data) {
                 this.source = null;
@@ -3236,6 +3240,7 @@ var P;
             return 0;
         };
         function getKeyCode(keyName) {
+            keyName = keyName + '';
             switch (keyName.toLowerCase()) {
                 case 'space': return 32;
                 case 'left arrow': return 37;
@@ -3679,7 +3684,7 @@ var P;
     var sb2;
     (function (sb2) {
         const ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
-        let zipArchive;
+        let zipArchive = null;
         sb2.hooks = {
             newTask() { },
             endTask() { },
@@ -4029,9 +4034,10 @@ var P;
         function loadProject(data) {
             var children;
             var stage;
+            zipArchive = null;
             return loadFonts()
                 .then(() => Promise.all([
-                P.audio.loadSB2Soundbank(sb2.hooks),
+                P.audio.loadSoundbank(sb2.hooks),
                 loadArray(data.children, loadObject).then((c) => children = c),
                 loadBase(data, true).then((s) => stage = s),
             ]))
@@ -4605,6 +4611,7 @@ var P;
                         return 'S.distanceTo(' + val(e[1]) + ')';
                     }
                     else if (e[0] === 'soundLevel') {
+                        object.stage.initLoudness();
                         return 'self.microphone.getLoudness()';
                     }
                     else if (e[0] === 'timestamp') {
@@ -5760,7 +5767,7 @@ var P;
                             resolve(image);
                         };
                         image.onerror = (e) => {
-                            reject(e);
+                            reject('Failed to load SVG: ' + path);
                         };
                         image.src = 'data:image/svg+xml,' + encodeURIComponent(svg.outerHTML);
                     });
@@ -5862,6 +5869,18 @@ var P;
                     return target;
                 });
             }
+            loadAssets() {
+                return Promise.all([
+                    this.loadSoundbank(),
+                    this.loadFonts(),
+                ]);
+            }
+            loadSoundbank() {
+                return P.audio.loadSoundbank({
+                    endTask() { },
+                    newTask() { },
+                });
+            }
             loadFonts() {
                 const promises = [];
                 for (const family in P.fonts.scratch3) {
@@ -5890,7 +5909,7 @@ var P;
                 }
                 const targets = this.projectData.targets;
                 targets.sort((a, b) => a.layerOrder - b.layerOrder);
-                return this.loadFonts()
+                return this.loadAssets()
                     .then(() => Promise.all(targets.map((data) => this.loadTarget(data))))
                     .then((targets) => {
                     if (this.aborted) {
@@ -6408,7 +6427,7 @@ var P;
                         this.warn('missing field', fieldName);
                         return '';
                     }
-                    return value[0];
+                    return '' + value[0];
                 }
                 compileSubstackInput(block, substackName) {
                     if (!block.inputs[substackName]) {
@@ -6983,9 +7002,70 @@ var P;
         const TEMPO = util.getInput('TEMPO', 'number');
         util.writeLn(`self.tempoBPM += ${TEMPO};`);
     };
+    statementLibrary['music_playDrumForBeats'] = function (util) {
+        const BEATS = util.getInput('BEATS', 'any');
+        const DRUM = util.getInput('DRUM', 'any');
+        util.writeLn('save();');
+        util.writeLn('R.start = runtime.now();');
+        util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
+        util.writeLn(`var first = true;`);
+        if (P.audio.context) {
+            util.writeLn(`R.sound = playSpan(DRUMS[Math.round(${DRUM}) - 1] || DRUMS[2], 60, 10);`);
+        }
+        else {
+            util.writeLn('R.sound = { stopped: false };');
+        }
+        const id = util.addLabel();
+        util.writeLn('S.activeSounds.add(R.sound);');
+        util.writeLn('if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
+        util.writeLn('  var first;');
+        util.forceQueue(id);
+        util.writeLn('}');
+        util.writeLn('S.activeSounds.delete(R.sound);');
+        util.writeLn('restore();');
+    };
+    statementLibrary['music_playNoteForBeats'] = function (util) {
+        const BEATS = util.getInput('BEATS', 'any');
+        const NOTE = util.getInput('NOTE', 'any');
+        util.writeLn('save();');
+        util.writeLn('R.start = runtime.now();');
+        util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
+        util.writeLn(`var first = true;`);
+        if (P.audio.context) {
+            util.writeLn(`R.sound = playNote(${NOTE}, R.duration);`);
+        }
+        else {
+            util.writeLn('R.sound = { stopped: false };');
+        }
+        const id = util.addLabel();
+        util.writeLn('S.activeSounds.add(R.sound);');
+        util.writeLn('if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
+        util.writeLn('  var first;');
+        util.forceQueue(id);
+        util.writeLn('}');
+        util.writeLn('S.activeSounds.delete(R.sound);');
+        util.writeLn('restore();');
+    };
+    statementLibrary['music_restForBeats'] = function (util) {
+        const BEATS = util.getInput('BEATS', 'number');
+        util.writeLn('save();');
+        util.writeLn('R.start = runtime.now();');
+        util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
+        util.writeLn(`var first = true;`);
+        const id = util.addLabel();
+        util.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
+        util.writeLn('  var first;');
+        util.forceQueue(id);
+        util.writeLn('}');
+        util.writeLn('restore();');
+    };
     statementLibrary['music_setTempo'] = function (util) {
         const TEMPO = util.getInput('TEMPO', 'number');
         util.writeLn(`self.tempoBPM = ${TEMPO};`);
+    };
+    statementLibrary['music_setInstrument'] = function (util) {
+        const INSTRUMENT = util.getInput('INSTRUMENT', 'number');
+        util.writeLn(`S.instrument = Math.max(0, Math.min(INSTRUMENTS.length - 1, ${INSTRUMENT} - 1)) | 0;`);
     };
     statementLibrary['sound_changeeffectby'] = function (util) {
         const EFFECT = util.sanitizedString(util.getField('EFFECT'));
@@ -7289,6 +7369,15 @@ var P;
     };
     inputLibrary['music_getTempo'] = function (util) {
         return util.numberInput('self.tempoBPM');
+    };
+    inputLibrary['music_menu_DRUM'] = function (util) {
+        return util.fieldInput('DRUM');
+    };
+    inputLibrary['music_menu_INSTRUMENT'] = function (util) {
+        return util.fieldInput('INSTRUMENT');
+    };
+    inputLibrary['note'] = function (util) {
+        return util.fieldInput('NOTE');
     };
     inputLibrary['operator_add'] = function (util) {
         const NUM1 = util.getInput('NUM1', 'number');
@@ -8024,7 +8113,12 @@ var P;
                     filter += 'brightness(' + (100 + filters.brightness) + '%) ';
                 }
                 if (filters.color) {
-                    filter += 'hue-rotate(' + (filters.color / 200 * 360) + 'deg) ';
+                    if (filters.color === Infinity) {
+                        filter += 'grayscale(100%) ';
+                    }
+                    else {
+                        filter += 'hue-rotate(' + (filters.color / 200 * 360) + 'deg) ';
+                    }
                 }
                 return filter;
             }
@@ -8238,6 +8332,7 @@ var P;
                     super();
                     this.stage = stage;
                     this.zoom = 1;
+                    this.penScalingEnabled = true;
                     this.penModified = false;
                     this.penTargetZoom = -1;
                     this.penZoom = 1;
@@ -8253,7 +8348,7 @@ var P;
                     this.renderStageCostume(this.zoom);
                 }
                 renderStageCostume(scale) {
-                    this._reset(this.stageContext, scale * P.config.scale);
+                    this._reset(this.stageContext, scale);
                     this._drawChild(this.stage, this.stageContext);
                 }
                 init(root) {
@@ -8271,7 +8366,7 @@ var P;
                 }
                 drawAllExcept(renderer, skip) {
                     renderer.drawChild(this.stage);
-                    renderer.ctx.drawImage(this.penLayer, 0, 0, this.canvas.width, this.canvas.height);
+                    renderer.ctx.drawImage(this.penLayer, 0, 0, 480, 360);
                     for (var i = 0; i < this.stage.children.length; i++) {
                         var child = this.stage.children[i];
                         if (!child.visible || child === skip) {
@@ -8286,6 +8381,9 @@ var P;
                     this.renderStageCostume(this.zoom);
                 }
                 resizePen(zoom) {
+                    if (!this.penScalingEnabled) {
+                        return;
+                    }
                     if (zoom > this.penZoom) {
                         this.penZoom = zoom;
                         workingRenderer.canvas.width = this.penLayer.width;
@@ -8367,7 +8465,7 @@ var P;
                     const mb = spriteA.rotatedBounds();
                     for (var i = 0; i < otherSprites.length; i++) {
                         const spriteB = otherSprites[i];
-                        if (!spriteB.visible) {
+                        if (!spriteB.visible || spriteA === spriteB) {
                             continue;
                         }
                         const ob = spriteB.rotatedBounds();

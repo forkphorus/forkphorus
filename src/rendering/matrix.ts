@@ -1,10 +1,6 @@
 /// <reference path="../phosphorus.ts" />
 
 namespace P.m3 {
-  // Most of this is heavily based on:
-  // https://webglfundamentals.org/webgl/lessons/webgl-2d-matrices.html
-  // Eventually I want to move this to the shader itself.
-
   export type Matrix3 = [
     number, number, number,
     number, number, number,

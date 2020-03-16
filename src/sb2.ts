@@ -6,7 +6,7 @@
 
 namespace P.sb2 {
   const ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
-  let zipArchive: JSZip.Zip;
+  let zipArchive: JSZip.Zip | null = null;
 
   export interface Hooks {
     newTask(): void;
@@ -409,10 +409,11 @@ namespace P.sb2 {
   export function loadProject(data) {
     var children;
     var stage;
+    zipArchive = null;
 
     return loadFonts()
       .then(() => Promise.all<any>([
-        P.audio.loadSB2Soundbank(hooks),
+        P.audio.loadSoundbank(hooks),
         loadArray(data.children, loadObject).then((c) => children = c),
         loadBase(data, true).then((s) => stage = s),
       ]))
@@ -751,7 +752,7 @@ namespace P.sb2.compiler {
     warnings[message] = (warnings[message] || 0) + 1;
   };
 
-  export var compileListener = function(object, script) {
+  export var compileListener = function(object: P.core.Base, script) {
     if (!script[0] || EVENT_SELECTORS.indexOf(script[0][0]) === -1) return;
 
     var nextLabel = function() {
@@ -1059,6 +1060,7 @@ namespace P.sb2.compiler {
 
       } else if (e[0] === 'soundLevel') {
 
+        object.stage.initLoudness();
         return 'self.microphone.getLoudness()';
 
       } else if (e[0] === 'timestamp') {

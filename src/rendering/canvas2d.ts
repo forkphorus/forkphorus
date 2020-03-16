@@ -10,7 +10,11 @@ namespace P.renderer.canvas2d {
       filter += 'brightness(' + (100 + filters.brightness) + '%) ';
     }
     if (filters.color) {
-      filter += 'hue-rotate(' + (filters.color / 200 * 360) + 'deg) ';
+      if (filters.color === Infinity) {
+        filter += 'grayscale(100%) ';
+      } else {
+        filter += 'hue-rotate(' + (filters.color / 200 * 360) + 'deg) ';
+      }
     }
     // ghost could be supported through opacity(), however that effect is applied with the opacity property because more browsers support it
     return filter;
@@ -239,6 +243,7 @@ namespace P.renderer.canvas2d {
     public penContext: CanvasRenderingContext2D;
     public zoom: number = 1;
 
+    public penScalingEnabled: boolean = true;
     private penModified: boolean = false;
     private penTargetZoom: number = -1;
     private penZoom: number = 1;
@@ -261,7 +266,7 @@ namespace P.renderer.canvas2d {
     }
 
     renderStageCostume(scale: number) {
-      this._reset(this.stageContext, scale * P.config.scale);
+      this._reset(this.stageContext, scale);
       this._drawChild(this.stage, this.stageContext);
     }
 
@@ -286,7 +291,7 @@ namespace P.renderer.canvas2d {
      */
     drawAllExcept(renderer: SpriteRenderer2D, skip: P.core.Base) {
       renderer.drawChild(this.stage);
-      renderer.ctx.drawImage(this.penLayer, 0, 0, this.canvas.width, this.canvas.height);
+      renderer.ctx.drawImage(this.penLayer, 0, 0, 480, 360);
       for (var i = 0; i < this.stage.children.length; i++) {
         var child = this.stage.children[i];
         if (!child.visible || child === skip) {
@@ -303,6 +308,9 @@ namespace P.renderer.canvas2d {
     }
 
     resizePen(zoom: number) {
+      if (!this.penScalingEnabled) {
+        return;
+      }
       if (zoom > this.penZoom) {
         this.penZoom = zoom;
         workingRenderer.canvas.width = this.penLayer.width;
@@ -392,7 +400,9 @@ namespace P.renderer.canvas2d {
 
       for (var i = 0; i < otherSprites.length; i++) {
         const spriteB = otherSprites[i];
-        if (!spriteB.visible) {
+        // Invisible sprites are ignored.
+        // Sprites cannot intersect with themselves.
+        if (!spriteB.visible || spriteA === spriteB) {
           continue;
         }
 

@@ -443,6 +443,9 @@ namespace P.core {
           if (value > 100) value = 100;
           break;
         case 'color':
+          if (value === Infinity) {
+            break;
+          }
           value = value % 200;
           if (value < 0) value += 200;
           break;
@@ -1711,9 +1714,6 @@ namespace P.core {
       this.width = svg.width;
       this.height = svg.height;
       this.source = svg;
-      // calculate the 1x zoom before load because it'll most likely be used.
-      // TODO: maybe don't do this?
-      this.scales[0] = this.getScale(1);
     }
 
     private getScale(scale: number) {
@@ -1740,6 +1740,12 @@ namespace P.core {
       }
       return this.scales[index];
     }
+  }
+
+  // TEMPORARY INTERVENTION:
+  // Disable Vector scaling on Safari.
+  if (/iPhone/.test(navigator.userAgent) || /iPad/.test(navigator.userAgent) || /iPod/.test(navigator.userAgent) || (window as any).safari) {
+    VectorCostume.MAX_ZOOM = 1;
   }
 
   interface SoundOptions {

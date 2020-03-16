@@ -29,7 +29,7 @@ Forkphorus is written in mostly TypeScript, which must be compiled to JavaScript
    * Install dependencies by running `npm install` in the repository.
    * Run `tsc -w` to start the TypeScript compiler in watch mode.
    * Open index.html in your browser with a local HTTP server or a file:// URL.
- * Edit TypeScript files in the `phosphorus` folder, and the compiler will automatically rebuild the output.
+ * Edit TypeScript files in the `src` folder, and the compiler will automatically rebuild the output.
  * Refresh to observe changes.
 
 If for some reason you don't want to or can't do that, then you could edit phosphorus.dist.js directly instead.

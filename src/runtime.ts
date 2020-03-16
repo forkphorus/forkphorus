@@ -336,7 +336,8 @@ namespace P.runtime {
   /**
    * Converts the name of a key to its code
    */
-  export function getKeyCode(keyName: string): number | 'any' {
+  export function getKeyCode(keyName: any): number | 'any' {
+    keyName = keyName + '';
     switch (keyName.toLowerCase()) {
       case 'space': return 32;
       case 'left arrow': return 37;
