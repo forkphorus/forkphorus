@@ -5728,6 +5728,14 @@ var P;
             }
             P.fonts.addFontRules(svg, usedFonts);
         }
+        function fixVectorNamespace(svg) {
+            var newSVG = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            for (const attribute of svg.attributes) {
+                newSVG.setAttribute(attribute.name, attribute.value);
+            }
+            newSVG.innerHTML = svg.innerHTML;
+            return newSVG;
+        }
         class BaseSB3Loader {
             constructor() {
                 this.totalTasks = 0;
@@ -5741,7 +5749,10 @@ var P;
                     .then((source) => {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(source, 'image/svg+xml');
-                    const svg = doc.documentElement;
+                    let svg = doc.documentElement;
+                    if (svg.namespaceURI !== 'http://www.w3.org/2000/svg') {
+                        svg = fixVectorNamespace(svg);
+                    }
                     patchSVG(svg);
                     return new Promise((resolve, reject) => {
                         const image = new Image();
@@ -5751,7 +5762,7 @@ var P;
                         image.onerror = (e) => {
                             reject('Failed to load SVG: ' + path);
                         };
-                        image.src = 'data:image/svg+xml,' + encodeURIComponent(svg.outerHTML);
+                        image.src = 'data:image/svg+xml,' + encodeURIComponent(new XMLSerializer().serializeToString(svg));
                     });
                 });
             }
@@ -8017,9 +8028,7 @@ var P;
                     this.recognition.continuous = true;
                     this.recognition.onresult = (event) => this.onresult(event);
                     this.recognition.onerror = (event) => {
-                        if (event.error !== 'aborted') {
-                            console.error('speech2text error', event);
-                        }
+                        console.warn('speech2text error', event);
                     };
                     this.recognition.onend = () => {
                         console.warn('speech2text disconnected, reconnecting');
