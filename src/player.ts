@@ -268,6 +268,16 @@ namespace P.player {
     public playerContainer: HTMLElement;
     public controlsContainer: HTMLElement;
 
+    /** Magic values (such as URLs) that you may want to change. */
+    public MAGIC = {
+      // A large z-index, used for some fullscreen modes to display on top of everything.
+      LARGE_Z_INDEX: '9999999999',
+      // $id is replaced with the project's ID
+      CLOUD_HISTORY_API: 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100',
+      // $id is replaced with the project's ID
+      PROJECT_API: 'https://projects.scratch.mit.edu/$id',
+    };
+
     private options: Readonly<PlayerOptions>;
     private stage: P.core.Stage;
     private projectMeta: ProjectMeta | null = null;
@@ -613,7 +623,7 @@ namespace P.player {
       }
 
       document.body.classList.add('player-body-fullscreen');
-      this.root.style.zIndex = '9999999999'; // TODO: configurable
+      this.root.style.zIndex = this.MAGIC.LARGE_Z_INDEX;
       this.enableAttribute('fullscreen');
       this.fullscreenEnabled = true;
 
@@ -706,8 +716,7 @@ namespace P.player {
     private async getCloudVariables(id: string): Promise<ObjectMap<any>> {
       // To get the cloud variables of a project, we will fetch the history logs and essentially replay the latest changes.
       // This is primarily designed so that highscores in projects can remain up-to-date, and nothing more than that.
-      // TODO: configurable URL
-      const data = await new P.io.Request('https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100'.replace('$id', id)).load('json');
+      const data = await new P.io.Request(this.MAGIC.CLOUD_HISTORY_API.replace('$id', id)).load('json');
       const variables = Object.create(null);
       for (const entry of data.reverse()) {
         const { verb, name, value } = entry;
@@ -848,8 +857,7 @@ namespace P.player {
      * Download a project from the scratch.mit.edu using its ID.
      */
     private fetchProject(id: string): Promise<Blob> {
-      // TODO: configurable
-      const request = new P.io.Request('https://projects.scratch.mit.edu/$id'.replace('$id', id));
+      const request = new P.io.Request(this.MAGIC.PROJECT_API.replace('$id', id));
       return request
         .ignoreErrors()
         .load('blob')

@@ -2450,6 +2450,11 @@ var P;
                 this.onresume = new Slot();
                 this.onpause = new Slot();
                 this.onoptionschange = new Slot();
+                this.MAGIC = {
+                    LARGE_Z_INDEX: '9999999999',
+                    CLOUD_HISTORY_API: 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100',
+                    PROJECT_API: 'https://projects.scratch.mit.edu/$id',
+                };
                 this.projectMeta = null;
                 this.currentLoader = null;
                 this.fullscreenEnabled = false;
@@ -2730,7 +2735,7 @@ var P;
                     }
                 }
                 document.body.classList.add('player-body-fullscreen');
-                this.root.style.zIndex = '9999999999';
+                this.root.style.zIndex = this.MAGIC.LARGE_Z_INDEX;
                 this.enableAttribute('fullscreen');
                 this.fullscreenEnabled = true;
                 if (this.hasStage()) {
@@ -2803,7 +2808,7 @@ var P;
             }
             getCloudVariables(id) {
                 return __awaiter(this, void 0, void 0, function* () {
-                    const data = yield new P.io.Request('https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100'.replace('$id', id)).load('json');
+                    const data = yield new P.io.Request(this.MAGIC.CLOUD_HISTORY_API.replace('$id', id)).load('json');
                     const variables = Object.create(null);
                     for (const entry of data.reverse()) {
                         const { verb, name, value } = entry;
@@ -2915,7 +2920,7 @@ var P;
                 return true;
             }
             fetchProject(id) {
-                const request = new P.io.Request('https://projects.scratch.mit.edu/$id'.replace('$id', id));
+                const request = new P.io.Request(this.MAGIC.PROJECT_API.replace('$id', id));
                 return request
                     .ignoreErrors()
                     .load('blob')
