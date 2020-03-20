@@ -70,9 +70,13 @@ namespace P.renderer.canvas2d {
     public ctx: CanvasRenderingContext2D;
     public canvas: HTMLCanvasElement;
     /**
-     * Disables rendering filters on this renderer
+     * Disables rendering filters on this renderer.
      */
     public noEffects: boolean = false;
+    /**
+     * Controls canvas image smoothing.
+     */
+    public imageSmoothingEnabled: boolean = false;
 
     constructor() {
       const { canvas, ctx } = create2dCanvas();
@@ -133,7 +137,6 @@ namespace P.renderer.canvas2d {
       }
 
       const lod = costume.get(objectScale * c.stage.zoom);
-      ctx.imageSmoothingEnabled = false;
       const x = -costume.rotationCenterX * objectScale;
       const y = -costume.rotationCenterY * objectScale;
       const w = costume.width * objectScale;
@@ -142,7 +145,7 @@ namespace P.renderer.canvas2d {
         ctx.restore();
         return;
       }
-      ctx.imageSmoothingEnabled = false;
+      ctx.imageSmoothingEnabled = this.imageSmoothingEnabled;
 
       if (!this.noEffects) {
         ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
@@ -153,16 +156,16 @@ namespace P.renderer.canvas2d {
             // we cannot modify imageData directly as it would ruin the cached ImageData object for the costume
             // instead we create a new ImageData and copy values into it
             let destImage = ctx.createImageData(sourceImage.width, sourceImage.height);
-  
+
             if (c.filters.color !== 0) {
               this.applyColorEffect(sourceImage, destImage, c.filters.color / 200);
               sourceImage = destImage;
             }
-  
+
             if (c.filters.brightness !== 0) {
               this.applyBrightnessEffect(sourceImage, destImage, c.filters.brightness / 100 * 255);
             }
-  
+
             // putImageData() doesn't respect canvas transforms so we need to draw to another canvas and then drawImage() that
             workingRenderer.canvas.width = sourceImage.width;
             workingRenderer.canvas.height = sourceImage.height;
@@ -244,6 +247,7 @@ namespace P.renderer.canvas2d {
     public zoom: number = 1;
 
     public penScalingEnabled: boolean = true;
+
     private penModified: boolean = false;
     private penTargetZoom: number = -1;
     private penZoom: number = 1;
