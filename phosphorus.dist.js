@@ -2616,6 +2616,7 @@ var P;
                 }
                 this.stage.username = this.options.username;
                 this.stage.runtime.isTurbo = this.options.turbo;
+                this.stage.renderer.imageSmoothingEnabled = this.options.imageSmoothing;
             }
             throwWithoutStage() {
                 if (!this.stage) {
@@ -2675,12 +2676,15 @@ var P;
                     this.currentLoader.cancel();
                     this.currentLoader = null;
                 }
-                if (this.stage) {
-                    this.stage.destroy();
-                    this.stage = null;
+                if (this.clickToPlayContainer) {
+                    this.removeClickToPlayContainer();
                 }
                 if (this.fullscreenEnabled) {
                     this.exitFullscreen();
+                }
+                if (this.stage) {
+                    this.stage.destroy();
+                    this.stage = null;
                 }
                 this.projectMeta = null;
                 while (this.playerContainer.firstChild) {
@@ -2866,7 +2870,7 @@ var P;
             }
             showClickToPlayContainer() {
                 if (this.clickToPlayContainer) {
-                    throw new Error('cannot show click-to-play interface: already shwon');
+                    throw new Error('cannot show click-to-play interface: already shown');
                 }
                 this.clickToPlayContainer = document.createElement('div');
                 this.clickToPlayContainer.className = 'player-click-to-play-container';
@@ -3038,6 +3042,7 @@ var P;
             fullscreenMode: 'full',
             fullscreenPadding: 8,
             fullscreenMaxWidth: Infinity,
+            imageSmoothing: false,
         };
         player_1.Player = Player;
         class ErrorHandler {
@@ -8383,6 +8388,7 @@ var P;
             class SpriteRenderer2D {
                 constructor() {
                     this.noEffects = false;
+                    this.imageSmoothingEnabled = false;
                     const { canvas, ctx } = create2dCanvas();
                     this.canvas = canvas;
                     this.ctx = ctx;
@@ -8434,7 +8440,6 @@ var P;
                         objectScale *= c.scale;
                     }
                     const lod = costume.get(objectScale * c.stage.zoom);
-                    ctx.imageSmoothingEnabled = false;
                     const x = -costume.rotationCenterX * objectScale;
                     const y = -costume.rotationCenterY * objectScale;
                     const w = costume.width * objectScale;
@@ -8443,7 +8448,7 @@ var P;
                         ctx.restore();
                         return;
                     }
-                    ctx.imageSmoothingEnabled = false;
+                    ctx.imageSmoothingEnabled = this.imageSmoothingEnabled;
                     if (!this.noEffects) {
                         ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
                         if (P.config.accurateFilters) {
