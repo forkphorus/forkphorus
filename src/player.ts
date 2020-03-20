@@ -546,13 +546,17 @@ namespace P.player {
         this.currentLoader.cancel();
         this.currentLoader = null;
       }
-      // Remove an existing stage
-      if (this.stage) {
-        this.stage.destroy();
-        this.stage = null!;
+      // Reset interface
+      if (this.clickToPlayContainer) {
+        this.removeClickToPlayContainer();
       }
       if (this.fullscreenEnabled) {
         this.exitFullscreen();
+      }
+      // Remove stage
+      if (this.stage) {
+        this.stage.destroy();
+        this.stage = null!;
       }
       // Clear some additional data
       this.projectMeta = null;
@@ -777,7 +781,7 @@ namespace P.player {
 
     private showClickToPlayContainer() {
       if (this.clickToPlayContainer) {
-        throw new Error('cannot show click-to-play interface: already shwon');
+        throw new Error('cannot show click-to-play interface: already shown');
       }
       this.clickToPlayContainer = document.createElement('div');
       this.clickToPlayContainer.className = 'player-click-to-play-container';
