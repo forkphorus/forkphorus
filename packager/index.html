@@ -24,10 +24,6 @@
       font-weight: bold;
     }
 
-    .input {
-
-    }
-
     .description {
       font-size: smaller;
     }
@@ -484,19 +480,19 @@
     }
 
     document.querySelector('#package-html').onclick = async function() {
-      resetProgress();
-
-      const packager = new Packer.Packager({ fileLoader });
-
-      packager.archiveProgress.start = () => setAction('Creating archive');
-      packager.archiveProgress.setProgress = (progress) => setProgress(progress);
-
-      packager.playerOptions.turbo = turbo.value;
-      packager.playerOptions.autoplayPolicy = autoplay.value;
-      packager.playerOptions.username = username.value;
-      packager.playerOptions.fps = fps.value;
-
       try {
+        resetProgress();
+
+        const packager = new Packer.Packager({ fileLoader });
+
+        packager.archiveProgress.start = () => setAction('Creating archive');
+        packager.archiveProgress.setProgress = (progress) => setProgress(progress);
+
+        packager.playerOptions.turbo = turbo.value;
+        packager.playerOptions.autoplayPolicy = autoplay.value;
+        packager.playerOptions.username = username.value;
+        packager.playerOptions.fps = fps.value;
+
         setAction('Loading project data');
 
         if (projectSource.value === 'id') {

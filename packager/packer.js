@@ -9,6 +9,27 @@ window.Packer = (function() {
   // @ts-ignore
   const JSZip = window.JSZip;
 
+  /**
+   * A file that represents a script or stylesheet to be included in the packager output.
+   * @typedef {Object} PackagerFile
+   * @property {'script'|'style'} type The type of file
+   * @property {string} src Where to fetch the file from, relative to the forkphorus root
+   * @property {boolean} [loaded] Whether the file has been loaded.
+   * @property {string} [content] Raw text of the file
+   */
+
+  /**
+   * A runtime asset to be included in the packager output.
+   * @typedef {Object} PackagerAsset
+   * @property {string} src Where to fetch the file from, relative to the forkphorus root
+   * @property {boolean} [loaded] Whether the file has been loaded.
+   * @property {boolean} [data] Raw data of the asset in the form of a data: URI
+   */
+
+  /**
+   * Convert a Blob to a data: URI
+   * @param {Blob} blob Blob or file to be read
+   */
   function readAsURL(blob) {
     return new Promise((resolve, reject) => {
       const fileReader = new FileReader();
@@ -22,14 +43,30 @@ window.Packer = (function() {
     });
   }
 
+  /**
+   * Helper class for users to implement progress monitoring.
+   */
+  class Progress {
+    newTask() {}
+    endTask() {}
+    setProgress(progress) {}
+    setCaption(text) {}
+    start() {}
+  }
+
   class FileLoader {
     constructor() {
       this.progress = new Progress();
+      /** @type {PackagerFile[]} */
       this.files = [];
+      /** @type {PackagerAsset[]} */
       this.assets = [];
     }
 
-    loadFile(file) {
+    /**
+     * @param {PackagerFile} file
+     */
+    _loadFile(file) {
       return fetch('../' + file.src)
         .then((r) => r.text())
         .then((t) => {
@@ -38,7 +75,10 @@ window.Packer = (function() {
         });
     }
 
-    loadAsset(asset) {
+    /**
+     * @param {PackagerAsset} asset
+     */
+    _loadAsset(asset) {
       return fetch('../' + asset.src)
         .then((r) => r.blob())
         .then((b) => readAsURL(b))
@@ -48,6 +88,16 @@ window.Packer = (function() {
         });
     }
 
+    /**
+     * @param {PackagerFile[]} files
+     */
+    _concatenateFiles(files) {
+      return files.map((i) => i.content).join('\n');
+    }
+
+    /**
+     * Fetch & load any assets that have not yet been loaded.
+     */
     async loadMissingAssets() {
       const missingFiles = this.files.filter((i) => !i.loaded);
       const missingAssets = this.assets.filter((i) => !i.loaded);
@@ -55,41 +105,42 @@ window.Packer = (function() {
       if (missingFiles.length > 0 || missingAssets.length > 0) {
         this.progress.start();
         await Promise.all([
-          ...missingFiles.map((i) => this.loadFile(i)),
-          ...missingAssets.map((i) => this.loadAsset(i)),
+          ...missingFiles.map((i) => this._loadFile(i)),
+          ...missingAssets.map((i) => this._loadAsset(i)),
         ]);
       }
 
       return {
-        scripts: this.files.filter((i) => i.type === 'script').map((i) => i.content).join('\n'),
-        styles: this.files.filter((i) => i.type === 'style').map((i) => i.content).join('\n'),
+        scripts: this._concatenateFiles(this.files.filter((i) => i.type === 'script')),
+        styles: this._concatenateFiles(this.files.filter((i) => i.type === 'style')),
         assets: this.assets,
       };
     }
   }
 
-  class Progress {
-    newTask() {}
-    endTask() {}
-    setProgress(progress) {}
-    setCaption(text) {}
-    start() {}
-  }
-
   class Packager {
     constructor({ fileLoader }) {
       this.fileLoader = fileLoader;
+      /** Options to be passed to the player. */
       this.playerOptions = {
         fullscreenPadding: 0,
         fullscreenMode: 'window',
       };
+
+      /** Options to be passed to player.addControls(). if null, addControls() is not called. */
+      this.controlsOptions = null;
+
       this.projectType = null;
       this.projectData = null;
-      this.controlsOptions = null;
+
       this.archiveProgress = new Progress();
     }
 
-    createArchive(files) {
+    /**
+     * Create an archive from an SBDL files result
+     * @param {*} files 
+     */
+    _createArchive(files) {
       this.archiveProgress.start();
       const zip = new JSZip();
       for (const file of files) {
@@ -106,10 +157,16 @@ window.Packer = (function() {
       });
     }
 
-    async getProjectTypeById(id) {
+    /**
+     * @param {string} id
+     */
+    async _getProjectTypeById(id) {
       const res = await fetch('https://projects.scratch.mit.edu/' + id);
       if (res.status !== 200) {
-        throw new Error('Cannot get project');
+        if (res.status === 404) {
+          throw new Error('Project does not exist');
+        }
+        throw new Error('Cannot get project, got error code: ' + res.status);
       }
       const data = await res.json();
       if ('targets' in data) return 'sb3';
@@ -117,13 +174,16 @@ window.Packer = (function() {
       throw new Error('unknown project type');
     }
 
-    async getProjectById(id) {
-      const type = await this.getProjectTypeById(id);
+    /**
+     * @param {string} id
+     */
+    async _getProjectById(id) {
+      const type = await this._getProjectTypeById(id);
       const result = await SBDL.loadProject(id, type);
       if (result.type !== 'zip') {
         throw new Error('unknown result type: ' + result.type);
       }
-      const archive = await this.createArchive(result.files);
+      const archive = await this._createArchive(result.files);
       const url = await readAsURL(archive);
       return {
         url: url,
@@ -131,13 +191,24 @@ window.Packer = (function() {
       };
     }
 
+    /**
+     * Load a project using its ID on scratch.mit.edu
+     * @param {string} id The project's ID
+     */
     async loadProjectById(id) {
-      const { url, type } = await this.getProjectById(id);
+      const { url, type } = await this._getProjectById(id);
       this.projectData = url;
       this.projectType = type;
     }
 
+    /**
+     * Load a project from a File
+     * @param {File} file The file to be read
+     */
     async loadProjectFromFile(file) {
+      if (!file) {
+        throw new Error('Missing file');
+      }
       const extension = file.name.split('.').pop();
       return new Promise((resolve, reject) => {
         const fileReader = new FileReader();
@@ -153,16 +224,16 @@ window.Packer = (function() {
       });
     }
 
+    /**
+     * Run the packager, and generate a result HTML page. Must be run after one of the load() methods resolves.
+     */
     async run() {
       if (!this.projectData || !this.projectType) {
         throw new Error('missing project data or type');
       }
 
       const { scripts, styles, assets } = await this.fileLoader.loadMissingAssets();
-
-      const generateAssetManagerData = () => {
-        return '{' + assets.map((asset) => `"${asset.src}": "${asset.data}"`).join(', ') + '}';
-      };
+      const assetManagerData = '{' + assets.map((asset) => `"${asset.src}": "${asset.data}"`).join(', ') + '}';
 
       const body = `<!DOCTYPE html>
 <!-- Generated by the forkphorus packager: https://forkphorus.github.io/packager/ -->
@@ -170,7 +241,9 @@ window.Packer = (function() {
   <head>
     <meta http-equiv="Content-Security-Policy" content="default-src 'unsafe-inline' 'unsafe-eval' data: blob:">
     <style>
+/* Forkphorus styles... */
 ${styles}
+/* Player styles... */
 body {
   background: #000;
   margin: 0;
@@ -244,7 +317,9 @@ p {
     </div>
 
     <script>
+// Forkphorus scripts...
 ${scripts}
+// Player scripts...
 (function () {
   'use strict';
 
@@ -279,7 +354,7 @@ ${scripts}
   P.io.setAssetManager(new class {
     constructor() {
       // Assets...
-      this.data = ${generateAssetManagerData()};
+      this.data = ${assetManagerData};
     }
 
     loadSoundbankFile(src) {
@@ -295,13 +370,17 @@ ${scripts}
     }
   });
 
-  // Project data...
+  // Project type...
   var type = '${this.projectType}';
+  // Project data...
   var project = '${this.projectData}';
 
-  // Options...
-  player.setOptions(${JSON.stringify(this.playerOptions)});
+  // Player options...
+  var playerOptions = ${JSON.stringify(this.playerOptions)};
+  // Controls options...
   var controlsOptions = ${JSON.stringify(this.controlsOptions)};
+
+  player.setOptions(playerOptions);
   if (controlsOptions) {
     player.addControls(controlsOptions);
   }
@@ -328,5 +407,4 @@ ${scripts}
     FileLoader,
     Packager,
   };
-
 }());
