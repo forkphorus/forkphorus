@@ -124,6 +124,7 @@ namespace P.player {
     fullscreenMode: FullscreenMode;
     fullscreenPadding: number;
     fullscreenMaxWidth: number;
+    imageSmoothing: boolean;
   }
 
   interface ControlsOptions {
@@ -250,6 +251,7 @@ namespace P.player {
       fullscreenMode: 'full',
       fullscreenPadding: 8,
       fullscreenMaxWidth: Infinity,
+      imageSmoothing: false,
     };
 
     public onprogress = new Slot<number>();
@@ -462,6 +464,7 @@ namespace P.player {
      * Apply local options to a stage
      */
     private applyOptionsToStage(): void {
+      // Changing FPS involved restarting an interval, which may cause a noticable interruption.
       if (this.stage.runtime.framerate !== this.options.fps) {
         this.stage.runtime.framerate = this.options.fps;
         if (this.isRunning()) {
@@ -470,6 +473,7 @@ namespace P.player {
       }
       this.stage.username = this.options.username;
       this.stage.runtime.isTurbo = this.options.turbo;
+      (this.stage.renderer as P.renderer.canvas2d.ProjectRenderer2D).imageSmoothingEnabled = this.options.imageSmoothing;
     }
 
     // COMMON OPERATIONS

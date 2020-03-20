@@ -111,8 +111,11 @@
         </tr>
         <tr>
           <td class="name" title="The value of the &quot;username&quot; block. Changing this may cause issues in some projects."><label for="settings-username">Username</label></td>
-          <!-- scratch has some restrictions on usernames that we don't care about -->
           <td class="value"><input id="settings-username" value="" type="text" placeholder="(nothing)" autocomplete="off"></td>
+        </tr>
+        <tr>
+          <td class="name" title="Controls whether the renderer tries to make images look smoother."><label for="settings-image-smoothing">Image Smoothing</label></td>
+          <td class="value"><input id="settings-image-smoothing" type="checkbox" autocomplete="off"></td>
         </tr>
       </table>
       <p>Changes are applied automatically.</p>
@@ -578,16 +581,20 @@
     setDarkMode(getLocalDarkMode());
 
     /** Settings Menu **/
-    var optionFramerate = querySelector('#settings-framerate');
-    var optionUsername = querySelector('#settings-username');
+    var settingFramerate = querySelector('#settings-framerate');
+    var settingUsername = querySelector('#settings-username');
+    var settingImageSmoothing = querySelector('#settings-image-smoothing');
 
-    optionFramerate.addEventListener('input', (e) => {
-      if (optionFramerate.checkValidity()) {
-        player.setOptions({ fps: +optionFramerate.value });
+    settingFramerate.addEventListener('input', (e) => {
+      if (settingFramerate.checkValidity()) {
+        player.setOptions({ fps: +settingFramerate.value });
       }
     });
-    optionUsername.addEventListener('input', (e) => {
-      player.setOptions({ username: optionUsername.value });
+    settingUsername.addEventListener('input', (e) => {
+      player.setOptions({ username: settingUsername.value });
+    });
+    settingImageSmoothing.addEventListener('change', (e) => {
+      player.setOptions({ imageSmoothing: settingImageSmoothing.checked });
     });
 
     if (initialId) {
