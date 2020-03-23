@@ -199,7 +199,6 @@
           'fonts/Griffy-Regular.woff',
           'fonts/SourceSerifPro-Regular.woff',
           'fonts/NotoSans-Regular.woff',
-          'fonts/Scratch.ttf',
         ]).then((source) => {
           // TODO: remove this dirty hack
           fileCache.js = source.replace(/P\.audio\.loadSoundbank/g, 'Promise.resolve');
@@ -215,7 +214,6 @@
           'fonts/GloriaHallelujah.woff',
           'fonts/MysteryQuest-Regular.woff',
           'fonts/PermanentMarker-Regular.woff',
-          'fonts/Scratch.ttf',
         ]).then((source) => {
           fileCache.css = source;
         });

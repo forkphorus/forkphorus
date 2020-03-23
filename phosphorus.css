@@ -36,10 +36,6 @@
   font-family: "Permanent Marker";
   src: url("fonts/PermanentMarker-Regular.woff") format("woff");
 }
-@font-face {
-  font-family: "Scratch";
-  src: url("fonts/Scratch.ttf") format("truetype");
-}
 
 /* Scratch 3 Variable Watchers */
 .s3-watcher-container {

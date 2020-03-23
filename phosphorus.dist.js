@@ -1796,7 +1796,6 @@ var P;
             'Curly': 'fonts/Griffy-Regular.woff',
             'Serif': 'fonts/SourceSerifPro-Regular.woff',
             'Sans Serif': 'fonts/NotoSans-Regular.woff',
-            'Scratch': 'fonts/Scratch.ttf',
         };
         function loadLocalFont(fontFamily, src) {
             if (fontFamilyCache[fontFamily]) {
