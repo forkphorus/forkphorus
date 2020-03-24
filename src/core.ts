@@ -213,6 +213,15 @@ namespace P.core {
     }
   }
 
+  export const enum SpecialKeys {
+    Enter = 13,
+    Space = 32,
+    Left = 37,
+    Up = 38,
+    Right = 39,
+    Down = 40,
+  }
+
   export abstract class Base {
     /**
      * The stage this object belongs to.
@@ -907,17 +916,32 @@ namespace P.core {
     private _onwheel(e: WheelEvent) {
       // Scroll up/down triggers key listeners for up/down arrows, but without affecting "is key pressed?" blocks
       if (e.deltaY > 0) {
-        // 40 = down arrow
-        this.runtime.trigger('whenKeyPressed', 40);
+        this.runtime.trigger('whenKeyPressed', SpecialKeys.Down);
       } else if (e.deltaY < 0) {
-        // 38 = up arrow
-        this.runtime.trigger('whenKeyPressed', 38);
+        this.runtime.trigger('whenKeyPressed', SpecialKeys.Up);
       }
     }
 
+    private keyEventToCode(e: KeyboardEvent): number {
+      const key = e.key;
+      switch (key) {
+        case 'Enter': return SpecialKeys.Enter;
+        case 'ArrowLeft': return SpecialKeys.Left;
+        case 'ArrowUp': return SpecialKeys.Up;
+        case 'ArrowRight': return SpecialKeys.Right;
+        case 'ArrowDown': return SpecialKeys.Down;
+      }
+      if (key.length !== 1) {
+        // Additional keys that we don't care about such as volume keys (AudioVolumeUp/Down) and modifier keys (Shift)
+        // TODO: see if we can support Shift because Scratch 2 did
+        return -1;
+      }
+      return key.toUpperCase().charCodeAt(0);
+    }
+
     private _onkeyup(e: KeyboardEvent) {
-      var c = e.keyCode;
-      if (c >= 128) c = P.runtime.getKeyCode(e.key) as number;
+      const c = this.keyEventToCode(e);
+      if (c === -1) return;
       if (this.keys[c]) this.keys.any--;
       this.keys[c] = false;
       e.stopPropagation();
@@ -927,8 +951,8 @@ namespace P.core {
     }
 
     private _onkeydown(e: KeyboardEvent) {
-      var c = e.keyCode;
-      if (c >= 128 && e.key.length === 1) c = P.runtime.getKeyCode(e.key) as number;
+      const c = this.keyEventToCode(e);
+      if (c === -1) return;
       if (!this.keys[c]) this.keys.any++;
       this.keys[c] = true;
       if (e.ctrlKey || e.altKey || e.metaKey || c === 27) return;

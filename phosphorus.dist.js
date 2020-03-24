@@ -1084,10 +1084,24 @@ var P;
                     this.runtime.trigger('whenKeyPressed', 38);
                 }
             }
+            keyEventToCode(e) {
+                const key = e.key;
+                switch (key) {
+                    case 'Enter': return 13;
+                    case 'ArrowLeft': return 37;
+                    case 'ArrowUp': return 38;
+                    case 'ArrowRight': return 39;
+                    case 'ArrowDown': return 40;
+                }
+                if (key.length !== 1) {
+                    return -1;
+                }
+                return key.toUpperCase().charCodeAt(0);
+            }
             _onkeyup(e) {
-                var c = e.keyCode;
-                if (c >= 128)
-                    c = P.runtime.getKeyCode(e.key);
+                const c = this.keyEventToCode(e);
+                if (c === -1)
+                    return;
                 if (this.keys[c])
                     this.keys.any--;
                 this.keys[c] = false;
@@ -1097,9 +1111,9 @@ var P;
                 }
             }
             _onkeydown(e) {
-                var c = e.keyCode;
-                if (c >= 128 && e.key.length === 1)
-                    c = P.runtime.getKeyCode(e.key);
+                const c = this.keyEventToCode(e);
+                if (c === -1)
+                    return;
                 if (!this.keys[c])
                     this.keys.any++;
                 this.keys[c] = true;
