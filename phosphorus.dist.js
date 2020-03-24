@@ -6569,6 +6569,22 @@ var P;
         util.writeLn('  return;');
         util.writeLn('}');
     };
+    statementLibrary['control_for_each'] = function (util) {
+        const VARIABLE = util.getVariableReference('VARIABLE');
+        const SUBSTACK = util.getSubstack('SUBSTACK');
+        const VALUE = util.getInput('VALUE', 'number');
+        util.writeLn('save();');
+        util.writeLn(`${VARIABLE} = 0;`);
+        util.writeLn(`R.times = ${VALUE};`);
+        const label = util.addLabel();
+        util.writeLn(`if (${VARIABLE} <= R.times) {`);
+        util.writeLn(`  ${VARIABLE} = ${util.asType(VARIABLE, 'number')} + 1;`);
+        util.write(SUBSTACK);
+        util.queue(label);
+        util.writeLn('} else {');
+        util.writeLn('  restore();');
+        util.writeLn('}');
+    };
     statementLibrary['control_forever'] = function (util) {
         const SUBSTACK = util.getSubstack('SUBSTACK');
         if (util.compiler.state.isWarp && !util.substacksQueue) {
