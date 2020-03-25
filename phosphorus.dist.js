@@ -1092,10 +1092,24 @@ var P;
                     this.runtime.trigger('whenKeyPressed', 38);
                 }
             }
+            keyEventToCode(e) {
+                const key = e.key;
+                switch (key) {
+                    case 'Enter': return 13;
+                    case 'ArrowLeft': return 37;
+                    case 'ArrowUp': return 38;
+                    case 'ArrowRight': return 39;
+                    case 'ArrowDown': return 40;
+                }
+                if (key.length !== 1) {
+                    return -1;
+                }
+                return key.toUpperCase().charCodeAt(0);
+            }
             _onkeyup(e) {
-                var c = e.keyCode;
-                if (c >= 128)
-                    c = P.runtime.getKeyCode(e.key);
+                const c = this.keyEventToCode(e);
+                if (c === -1)
+                    return;
                 if (this.keys[c])
                     this.keys.any--;
                 this.keys[c] = false;
@@ -1105,9 +1119,9 @@ var P;
                 }
             }
             _onkeydown(e) {
-                var c = e.keyCode;
-                if (c >= 128 && e.key.length === 1)
-                    c = P.runtime.getKeyCode(e.key);
+                const c = this.keyEventToCode(e);
+                if (c === -1)
+                    return;
                 if (!this.keys[c])
                     this.keys.any++;
                 this.keys[c] = true;
@@ -1804,7 +1818,6 @@ var P;
             'Curly': 'fonts/Griffy-Regular.woff',
             'Serif': 'fonts/SourceSerifPro-Regular.woff',
             'Sans Serif': 'fonts/NotoSans-Regular.woff',
-            'Scratch': 'fonts/Scratch.ttf',
         };
         function loadLocalFont(fontFamily, src) {
             if (fontFamilyCache[fontFamily]) {
@@ -4858,6 +4871,7 @@ var P;
                         return 'S.distanceTo(' + val(e[1]) + ')';
                     }
                     else if (e[0] === 'soundLevel') {
+                        object.stage.initLoudness();
                         return 'self.microphone.getLoudness()';
                     }
                     else if (e[0] === 'timestamp') {
@@ -5992,13 +6006,24 @@ var P;
             }
             P.fonts.addFontRules(svg, usedFonts);
         }
+        function fixVectorNamespace(svg) {
+            var newSVG = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            for (const attribute of svg.attributes) {
+                newSVG.setAttribute(attribute.name, attribute.value);
+            }
+            newSVG.innerHTML = svg.innerHTML;
+            return newSVG;
+        }
         class BaseSB3Loader extends P.io.Loader {
             getSVG(path) {
                 return this.getAsText(path)
                     .then((source) => {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(source, 'image/svg+xml');
-                    const svg = doc.documentElement;
+                    let svg = doc.documentElement;
+                    if (svg.namespaceURI !== 'http://www.w3.org/2000/svg') {
+                        svg = fixVectorNamespace(svg);
+                    }
                     patchSVG(svg);
                     return new Promise((resolve, reject) => {
                         const image = new Image();
@@ -6006,9 +6031,9 @@ var P;
                             resolve(image);
                         };
                         image.onerror = (e) => {
-                            reject(e);
+                            reject('Failed to load SVG: ' + path);
                         };
-                        image.src = 'data:image/svg+xml,' + encodeURIComponent(svg.outerHTML);
+                        image.src = 'data:image/svg+xml,' + encodeURIComponent(new XMLSerializer().serializeToString(svg));
                     });
                 });
             }
@@ -6781,6 +6806,22 @@ var P;
         util.writeLn('    }');
         util.writeLn('  }');
         util.writeLn('  return;');
+        util.writeLn('}');
+    };
+    statementLibrary['control_for_each'] = function (util) {
+        const VARIABLE = util.getVariableReference('VARIABLE');
+        const SUBSTACK = util.getSubstack('SUBSTACK');
+        const VALUE = util.getInput('VALUE', 'number');
+        util.writeLn('save();');
+        util.writeLn(`${VARIABLE} = 0;`);
+        util.writeLn(`R.times = ${VALUE};`);
+        const label = util.addLabel();
+        util.writeLn(`if (${VARIABLE} <= R.times) {`);
+        util.writeLn(`  ${VARIABLE} = ${util.asType(VARIABLE, 'number')} + 1;`);
+        util.write(SUBSTACK);
+        util.queue(label);
+        util.writeLn('} else {');
+        util.writeLn('  restore();');
         util.writeLn('}');
     };
     statementLibrary['control_forever'] = function (util) {
@@ -8241,9 +8282,7 @@ var P;
                     this.recognition.continuous = true;
                     this.recognition.onresult = (event) => this.onresult(event);
                     this.recognition.onerror = (event) => {
-                        if (event.error !== 'aborted') {
-                            console.error('speech2text error', event);
-                        }
+                        console.warn('speech2text error', event);
                     };
                     this.recognition.onend = () => {
                         console.warn('speech2text disconnected, reconnecting');
@@ -8672,7 +8711,7 @@ var P;
                     const mb = spriteA.rotatedBounds();
                     for (var i = 0; i < otherSprites.length; i++) {
                         const spriteB = otherSprites[i];
-                        if (!spriteB.visible) {
+                        if (!spriteB.visible || spriteA === spriteB) {
                             continue;
                         }
                         const ob = spriteB.rotatedBounds();

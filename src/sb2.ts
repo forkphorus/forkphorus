@@ -778,7 +778,7 @@ namespace P.sb2.compiler {
     warnings[message] = (warnings[message] || 0) + 1;
   };
 
-  export var compileListener = function(object, script) {
+  export var compileListener = function(object: P.core.Base, script) {
     if (!script[0] || EVENT_SELECTORS.indexOf(script[0][0]) === -1) return;
 
     var nextLabel = function() {
@@ -1086,6 +1086,7 @@ namespace P.sb2.compiler {
 
       } else if (e[0] === 'soundLevel') {
 
+        object.stage.initLoudness();
         return 'self.microphone.getLoudness()';
 
       } else if (e[0] === 'timestamp') {

@@ -339,25 +339,25 @@ namespace P.runtime {
   export function getKeyCode(keyName: any): number | 'any' {
     keyName = keyName + '';
     switch (keyName.toLowerCase()) {
-      case 'space': return 32;
-      case 'left arrow': return 37;
-      case 'up arrow': return 38;
-      case 'right arrow': return 39;
-      case 'down arrow': return 40;
+      case 'space': return P.core.SpecialKeys.Space;
+      case 'left arrow': return P.core.SpecialKeys.Left;
+      case 'up arrow': return P.core.SpecialKeys.Up;
+      case 'right arrow': return P.core.SpecialKeys.Right;
+      case 'down arrow': return P.core.SpecialKeys.Down;
       case 'any': return 'any';
     }
     return keyName.toUpperCase().charCodeAt(0);
   }
 
   var getKeyCode3 = function(keyName: string): number | 'any' {
-    // Scratch 3 added support for 'enter'
     switch (keyName.toLowerCase()) {
-      case 'space': return 32;
-      case 'left arrow': return 37;
-      case 'up arrow': return 38;
-      case 'right arrow': return 39;
-      case 'down arrow': return 40;
-      case 'enter': return 13;
+      case 'space': return P.core.SpecialKeys.Space;
+      case 'left arrow': return P.core.SpecialKeys.Left;
+      case 'up arrow': return P.core.SpecialKeys.Up;
+      case 'right arrow': return P.core.SpecialKeys.Right;
+      case 'down arrow': return P.core.SpecialKeys.Down;
+      // Scratch 3 added support for 'enter'
+      case 'enter': return P.core.SpecialKeys.Enter;
       case 'any': return 'any';
     }
     return keyName.toUpperCase().charCodeAt(0);

@@ -681,6 +681,19 @@ namespace P.sb3 {
     P.fonts.addFontRules(svg, usedFonts);
   }
 
+  /**
+   * Convert an SVG with an improper or missing namespace to a proper namespaced SVG
+   * @param svg An SVG with an improper or missing namespace
+   */
+  function fixVectorNamespace(svg: SVGSVGElement): SVGSVGElement {
+    var newSVG = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    for (const attribute of svg.attributes) {
+      newSVG.setAttribute(attribute.name, attribute.value);
+    }
+    newSVG.innerHTML = svg.innerHTML;
+    return newSVG;
+  }
+
   // Implements base SB3 loading logic.
   // Needs to be extended to add file loading methods.
   // Implementations are expected to set `this.projectData` to something before calling super.load()
@@ -699,7 +712,12 @@ namespace P.sb3 {
         .then((source) => {
           const parser = new DOMParser();
           const doc = parser.parseFromString(source, 'image/svg+xml');
-          const svg = doc.documentElement as any;
+
+          let svg = doc.documentElement as any;
+          if (svg.namespaceURI !== 'http://www.w3.org/2000/svg') {
+            svg = fixVectorNamespace(svg);
+          }
+
           patchSVG(svg);
 
           return new Promise((resolve, reject) => {
@@ -708,9 +726,9 @@ namespace P.sb3 {
               resolve(image);
             };
             image.onerror = (e) => {
-              reject(e);
+              reject('Failed to load SVG: ' + path);
             };
-            image.src = 'data:image/svg+xml,' + encodeURIComponent(svg.outerHTML);
+            image.src = 'data:image/svg+xml,' + encodeURIComponent(new XMLSerializer().serializeToString(svg));
           });
         });
     }
@@ -1907,6 +1925,22 @@ namespace P.sb3.compiler {
     util.writeLn('    }');
     util.writeLn('  }');
     util.writeLn('  return;');
+    util.writeLn('}');
+  };
+  statementLibrary['control_for_each'] = function(util) {
+    const VARIABLE = util.getVariableReference('VARIABLE');
+    const SUBSTACK = util.getSubstack('SUBSTACK');
+    const VALUE = util.getInput('VALUE', 'number');
+    util.writeLn('save();');
+    util.writeLn(`${VARIABLE} = 0;`);
+    util.writeLn(`R.times = ${VALUE};`);
+    const label = util.addLabel();
+    util.writeLn(`if (${VARIABLE} <= R.times) {`);
+    util.writeLn(`  ${VARIABLE} = ${util.asType(VARIABLE, 'number')} + 1;`);
+    util.write(SUBSTACK);
+    util.queue(label);
+    util.writeLn('} else {');
+    util.writeLn('  restore();');
     util.writeLn('}');
   };
   statementLibrary['control_forever'] = function(util) {
