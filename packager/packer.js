@@ -16,6 +16,7 @@ window.Packer = (function() {
    * @property {string} src Where to fetch the file from, relative to the forkphorus root
    * @property {boolean} [loaded] Whether the file has been loaded.
    * @property {string} [content] Raw text of the file
+   * @property {string[]} [inlineSources] File paths to include with data: URIs
    */
 
   /**
@@ -61,31 +62,50 @@ window.Packer = (function() {
       this.files = [];
       /** @type {PackagerAsset[]} */
       this.assets = [];
+      /** @type {string} */
+      this.pathPrefix = '../';
+    }
+
+    /**
+     * @param {string} source
+     */
+    async _loadInlineSource(source) {
+      const response = await fetch(this.pathPrefix + source);
+      const blob = await response.blob();
+      const url = await readAsURL(blob);
+      return url;
     }
 
     /**
      * @param {PackagerFile} file
      */
-    _loadFile(file) {
-      return fetch('../' + file.src)
-        .then((r) => r.text())
-        .then((t) => {
-          file.loaded = true;
-          file.content = `/* F: ${file.src} */` + t;
-        });
+    async _loadFile(file) {
+      const response = await fetch(this.pathPrefix + file.src);
+      let body = await response.text();
+
+      if (file.inlineSources) {
+        for (const source of file.inlineSources) {
+          const sourceData = await this._loadInlineSource(source);
+          // string.replace only does the first occurence, but a source may appear multiple times in the file
+          while (body.includes(source)) {
+            body = body.replace(source, sourceData);
+          }
+        }
+      }
+
+      file.loaded = true;
+      file.content = body;
     }
 
     /**
      * @param {PackagerAsset} asset
      */
-    _loadAsset(asset) {
-      return fetch('../' + asset.src)
-        .then((r) => r.blob())
-        .then((b) => readAsURL(b))
-        .then((url) => {
-          asset.loaded = true;
-          asset.data = url;
-        });
+    async _loadAsset(asset) {
+      const response = await fetch(this.pathPrefix + asset.src);
+      const blob = await response.blob();
+      const data = await readAsURL(blob);
+      asset.loaded = true;
+      asset.data = data;
     }
 
     /**
