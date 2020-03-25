@@ -372,6 +372,12 @@
       .description('Enables Turbo Mode')
       .add();
 
+    const showControls = new Option()
+      .label('Show Controls')
+      .input({ type: 'checkbox' })
+      .description('Show or hide the control widget')
+      .add();
+
     const username = new Option()
       .label('Username')
       .input()
@@ -498,6 +504,10 @@
         packager.playerOptions.autoplayPolicy = autoplay.value;
         packager.playerOptions.username = username.value;
         packager.playerOptions.fps = fps.value;
+
+        if (showControls.value) {
+          packager.controlsOptions = {};
+        }
 
         setAction('Loading project data');
 
