@@ -45,6 +45,28 @@ window.Packer = (function() {
   }
 
   /**
+   * Create an archive from an SBDL files result
+   * @param {*} files 
+   * @param {Progress} progress
+   */
+  function createArchive(files, progress) {
+    progress.start();
+    const zip = new JSZip();
+    for (const file of files) {
+      const path = file.path;
+      const data = file.data;
+      zip.file(path, data);
+    }
+    return zip.generateAsync({
+      type: 'blob',
+      compression: 'DEFLATE',
+    }, (metadata) => {
+      progress.setProgress(metadata.percent);
+      progress.setCaption(metadata.currentFile);
+    });
+  }
+
+  /**
    * Helper class for users to implement progress monitoring.
    */
   class Progress {
@@ -138,6 +160,25 @@ window.Packer = (function() {
     }
   }
 
+  class PhoneGap {
+    constructor() {
+      this.configXML = '';
+      this.icon = null;
+      this.progress = new Progress();
+    }
+
+    /**
+     * @param {string} html HTML output from a Packager
+     */
+    async package(html) {
+      return createArchive([
+        { path: 'index.html', data: html, },
+        { path: 'config.xml', data: this.configXML, },
+        { path: 'icon.png', data: this.icon, },
+      ], this.progress);
+    }
+  }
+
   class Packager {
     constructor({ fileLoader }) {
       this.fileLoader = fileLoader;
@@ -154,27 +195,6 @@ window.Packer = (function() {
       this.projectData = null;
 
       this.archiveProgress = new Progress();
-    }
-
-    /**
-     * Create an archive from an SBDL files result
-     * @param {*} files 
-     */
-    _createArchive(files) {
-      this.archiveProgress.start();
-      const zip = new JSZip();
-      for (const file of files) {
-        const path = file.path;
-        const data = file.data;
-        zip.file(path, data);
-      }
-      return zip.generateAsync({
-        type: 'blob',
-        compression: 'DEFLATE',
-      }, (metadata) => {
-        this.archiveProgress.setProgress(metadata.percent);
-        this.archiveProgress.setCaption(metadata.currentFile);
-      });
     }
 
     /**
@@ -203,7 +223,7 @@ window.Packer = (function() {
       if (result.type !== 'zip') {
         throw new Error('unknown result type: ' + result.type);
       }
-      const archive = await this._createArchive(result.files);
+      const archive = await createArchive(result.files, this.archiveProgress);
       const url = await readAsURL(archive);
       return {
         url: url,
@@ -425,6 +445,7 @@ ${scripts}
 
   return {
     FileLoader,
+    PhoneGap,
     Packager,
   };
 }());
