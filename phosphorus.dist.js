@@ -7626,6 +7626,17 @@ var P;
         util.stage.initSpeech2Text();
         return util.stringInput('(self.speech2text ? self.speech2text.speech : "")');
     };
+    inputLibrary['translate_menu_languages'] = function (util) {
+        return util.fieldInput('languages');
+    };
+    inputLibrary['translate_getTranslate'] = function (util) {
+        const WORDS = util.getInput('WORDS', 'string');
+        const LANGUAGE = util.getInput('LANGUAGE', 'string');
+        return WORDS;
+    };
+    inputLibrary['translate_getViewerLanguage'] = function (util) {
+        return util.sanitizedInput('English');
+    };
     inputLibrary['videoSensing_menu_VIDEO_STATE'] = function (util) {
         return util.fieldInput('VIDEO_STATE');
     };

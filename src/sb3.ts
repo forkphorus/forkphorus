@@ -3032,6 +3032,20 @@ namespace P.sb3.compiler {
     util.stage.initSpeech2Text();
     return util.stringInput('(self.speech2text ? self.speech2text.speech : "")');
   };
+  inputLibrary['translate_menu_languages'] = function(util) {
+    return util.fieldInput('languages');
+  };
+  inputLibrary['translate_getTranslate'] = function(util) {
+    const WORDS = util.getInput('WORDS', 'string');
+    const LANGUAGE = util.getInput('LANGUAGE', 'string');
+    // The translation extension is stubbed in forkphorus to only return the supplied input.
+    // Using Scratch' translation API is very questionable, and most projects don't use the API anyways.
+    return WORDS;
+  };
+  inputLibrary['translate_getViewerLanguage'] = function(util) {
+    // TODO: return option or user's actual language?
+    return util.sanitizedInput('English');
+  };
   inputLibrary['videoSensing_menu_VIDEO_STATE'] = function(util) {
     return util.fieldInput('VIDEO_STATE');
   };
