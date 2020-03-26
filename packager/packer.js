@@ -24,7 +24,8 @@ window.Packer = (function() {
    * @typedef {Object} PackagerAsset
    * @property {string} src Where to fetch the file from, relative to the forkphorus root
    * @property {boolean} [loaded] Whether the file has been loaded.
-   * @property {boolean} [data] Raw data of the asset in the form of a data: URI
+   * @property {Blob} [blob] Raw binary data of the asset
+   * @property {string} [data] Raw binary data the asset in the form of a data: URI
    */
 
   /**
@@ -80,6 +81,9 @@ window.Packer = (function() {
     start() {}
   }
 
+  /**
+   * FileLoader downloads files for use in the packager.
+   */
   class FileLoader {
     constructor() {
       this.progress = new Progress();
@@ -130,6 +134,7 @@ window.Packer = (function() {
       const blob = await response.blob();
       const data = await readAsURL(blob);
       asset.loaded = true;
+      asset.blob = blob;
       asset.data = data;
     }
 
@@ -163,6 +168,9 @@ window.Packer = (function() {
     }
   }
 
+  /**
+   * Implements PhoneGap support.
+   */
   class PhoneGap {
     constructor() {
       this.configXML = '';
@@ -182,6 +190,9 @@ window.Packer = (function() {
     }
   }
 
+  /**
+   * Converts Scratch projects to HTML.
+   */
   class Packager {
     constructor({ fileLoader }) {
       this.fileLoader = fileLoader;
