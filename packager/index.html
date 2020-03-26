@@ -12,6 +12,27 @@
       line-height: 1.3;
       margin-bottom: 50px;
     }
+
+    #options {
+      position: relative;
+    }
+    #options[data-usable=false] {
+      pointer-events: none;
+      opacity: 0.75;
+    }
+    #options[data-usable=true] #click-disabler {
+      display: none;
+    }
+    #options[data-usable=false] #click-disabler {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      cursor: not-allowed;
+      pointer-events: auto;
+    }
+
     table {
       width: 100%;
       margin-bottom: 10px;
@@ -78,10 +99,11 @@
   <ul>
     <li>Guide: <a href="guide.html">Packaging to .EXE</a> (Windows/Mac OS/Linux)</li>
     <li>Guide: <a href="android.html">Packaging to .APK</a> (Android, maybe iOS)</li>
-    <li>Get Help: Create an issue on <a href="https://github.com/forkphorus/forkphorus/issues">GitHub</a></li>
+    <li>Additional Help: Create an issue on <a href="https://github.com/forkphorus/forkphorus/issues">GitHub</a></li>
   </ul>
 
-  <div id="opts">
+  <div id="options" data-usable="true">
+    <div id="click-disabler" title="please wait for the packager to finish..."></div>
     <!-- JS injects options into here -->
   </div>
 
@@ -90,7 +112,7 @@
   </section>
 
   <section id="loading-section">
-    <!-- used for progress meters -->
+    <!-- JS injects progress bars here -->
   </section>
 
   <script src="../lib/details-element-polyfill.js"></script>
@@ -371,13 +393,13 @@
         return this;
       }
 
-      onchange(value) {
-
-      }
-
       add(section = defaultSection) {
         section.root.appendChild(this.root);
         return this;
+      }
+
+      onchange(value) {
+
       }
     }
 
@@ -397,7 +419,7 @@
       }
     }
 
-    const optionsContainer = document.querySelector('#opts');
+    const optionsContainer = document.querySelector('#options');
     const defaultSection = new Section('Options', { collapsable: false });
   </script>
 
@@ -414,11 +436,13 @@
     const projectId = new Option()
       .label('Project ID')
       .input({ pattern: '[0-9]+', value: location.hash ? location.hash.substr(1) : '' })
+      .description('Load a project from scratch.mit.edu. Some very old projects are not supported.')
       .add();
 
     const projectFile = new Option()
       .label('Project File')
       .file({ accept: '.sb3,.sb2' })
+      .description('.sb2 and .sb3 files are supported.')
       .hide()
       .add();
 
@@ -440,7 +464,7 @@
     const showControls = new Option()
       .label('Show Controls')
       .input({ type: 'checkbox' })
-      .description('Show or hide the control widget')
+      .description('Show or hide the control widget. This includes the flag, stop sign, pause, but not fullscreen (for now). The user can enable or disable Turbo Mode with this enabled.')
       .add(playerOptionsSection);
 
     const username = new Option()
@@ -492,7 +516,7 @@
   <description>Some description.</description>
 
   <author href="https://scratch.mit.edu/users/you" email="you@example.com">You</author>
-  
+
   <icon src="icon.png" />
 
 </widget>`})
@@ -518,7 +542,7 @@
     }
   </script>
 
-  <!-- Packager interface code -->
+  <!-- Interface Logic -->
   <script>
     const loadingSection = document.getElementById('loading-section');
     let progressBar = null;
@@ -577,6 +601,10 @@
       fileLoader.progress.setProgress = (progress) => setProgress(progress);
     }
 
+    function setInputsUsable(usable) {
+      optionsContainer.dataset.usable = usable;
+    }
+
     SBDL.progressHooks.start = () => setAction('Loading project files');
     SBDL.progressHooks.newTask = () => newTask();
     SBDL.progressHooks.finishTask = () => endTask();
@@ -613,8 +641,8 @@
 
     document.querySelector('#package-html').onclick = async function() {
       try {
-        // Reset state
         resetProgress();
+        setInputsUsable(false);
 
         // Init Packager
         const packager = new Packer.Packager({ fileLoader });
@@ -626,7 +654,7 @@
         packager.playerOptions.username = username.value;
         packager.playerOptions.fps = fps.value;
         if (showControls.value) {
-          packager.controlsOptions = {};
+          packager.controlsOptions = { enableFullscreen: false };
         }
 
         // Fetch the project
@@ -664,7 +692,9 @@
         alert('Error: ' + e);
       }
 
+      // Always reset this state, even when an error occurs.
       progressBar = null;
+      setInputsUsable(true);
     }
   </script>
 
