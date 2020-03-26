@@ -878,7 +878,10 @@ var P;
                 const height = this.bubbleContainer.offsetHeight / this.stage.zoom;
                 this.bubblePointer.style.top = ((height - 6) / 14) + 'em';
                 if (left + width + 2 > 480) {
-                    this.bubbleContainer.style.right = ((240 - b.left) / 14) + 'em';
+                    var d = (240 - b.left) / 14;
+                    if (d > 25)
+                        d = 25;
+                    this.bubbleContainer.style.right = d + 'em';
                     this.bubbleContainer.style.left = 'auto';
                     this.bubblePointer.style.right = (3 / 14) + 'em';
                     this.bubblePointer.style.left = 'auto';
