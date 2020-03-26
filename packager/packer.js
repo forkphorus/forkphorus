@@ -63,6 +63,9 @@ window.Packer = (function() {
     }, (metadata) => {
       progress.setProgress(metadata.percent);
       progress.setCaption(metadata.currentFile);
+    }).then((archive) => {
+      progress.setProgress(1);
+      return archive;
     });
   }
 
