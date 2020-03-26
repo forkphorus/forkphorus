@@ -13,6 +13,10 @@
       margin-bottom: 50px;
     }
 
+    #loading-message {
+      text-align: center;
+      font-style: italic;
+    }
     #options {
       position: relative;
     }
@@ -102,18 +106,23 @@
     <li>Additional Help: Create an issue on <a href="https://github.com/forkphorus/forkphorus/issues">GitHub</a></li>
   </ul>
 
-  <div id="options" data-usable="true">
-    <div id="click-disabler" title="please wait for the packager to finish..."></div>
-    <!-- JS injects options into here -->
+  <div id="loading-message">Loading...</div>
+
+  <div id="interface-container" hidden>
+    <div id="options" data-usable="true">
+      <div id="click-disabler" title="please wait for the packager to finish..."></div>
+      <!-- JS injects options into here -->
+    </div>
+  
+    <section>
+      <button id="package-html">Package Project</button>
+    </section>
+  
+    <section id="loading-section">
+      <!-- JS injects progress bars here -->
+    </section>
   </div>
 
-  <section>
-    <button id="package-html">Package Project</button>
-  </section>
-
-  <section id="loading-section">
-    <!-- JS injects progress bars here -->
-  </section>
 
   <script src="../lib/details-element-polyfill.js"></script>
   <script src="../lib/jszip.min.js"></script>
@@ -696,6 +705,10 @@
       progressBar = null;
       setInputsUsable(true);
     }
+
+    // Show the interface
+    document.getElementById('loading-message').hidden = true;
+    document.getElementById('interface-container').hidden = false;
   </script>
 
 </body>
