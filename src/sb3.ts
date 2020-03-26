@@ -2168,10 +2168,21 @@ namespace P.sb3.compiler {
     const scope = util.getVariableScope('VARIABLE');
     util.writeLn(`${scope}.showVariable(${VARIABLE}, true);`);
   };
-  statementLibrary['motion_turnright'] = function(util) {
-    const DEGREES = util.getInput('DEGREES', 'number');
-    util.writeLn(`S.setDirection(S.direction + ${DEGREES});`);
-    util.visual('visible');
+  statementLibrary['event_broadcast'] = function(util) {
+    const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
+    util.writeLn(`var threads = broadcast(${BROADCAST_INPUT});`);
+    util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
+  };
+  statementLibrary['event_broadcastandwait'] = function(util) {
+    const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
+    util.writeLn('save();');
+    util.writeLn(`R.threads = broadcast(${BROADCAST_INPUT});`);
+    util.writeLn('if (R.threads.indexOf(BASE) !== -1) {return;}');
+    const label = util.addLabel();
+    util.writeLn('if (running(R.threads)) {');
+    util.forceQueue(label);
+    util.writeLn('}');
+    util.writeLn('restore();');
   };
   statementLibrary['looks_changeeffectby'] = function(util) {
     const EFFECT = util.sanitizedString(util.getField('EFFECT')).toLowerCase();
@@ -2402,6 +2413,11 @@ namespace P.sb3.compiler {
     util.writeLn(`S.setDirection(S.direction - ${DEGREES});`);
     util.visual('visible');
   };
+  statementLibrary['motion_turnright'] = function(util) {
+    const DEGREES = util.getInput('DEGREES', 'number');
+    util.writeLn(`S.setDirection(S.direction + ${DEGREES});`);
+    util.visual('visible');
+  };
   statementLibrary['music_changeTempo'] = function(util) {
     const TEMPO = util.getInput('TEMPO', 'number');
     util.writeLn(`self.tempoBPM += ${TEMPO};`)
@@ -2474,78 +2490,6 @@ namespace P.sb3.compiler {
   statementLibrary['music_setInstrument'] = function(util) {
     const INSTRUMENT = util.getInput('INSTRUMENT', 'number');
     util.writeLn(`S.instrument = Math.max(0, Math.min(INSTRUMENTS.length - 1, ${INSTRUMENT} - 1)) | 0;`);
-  };
-  statementLibrary['sound_changeeffectby'] = function(util) {
-    const EFFECT = util.sanitizedString(util.getField('EFFECT'));
-    const VALUE = util.getInput('VALUE', 'number');
-    util.writeLn(`S.changeSoundFilter(${EFFECT}, ${VALUE});`);
-  };
-  statementLibrary['sound_changevolumeby'] = function(util) {
-    const VOLUME = util.getInput('VOLUME', 'number');
-    util.writeLn(`S.volume = Math.max(0, Math.min(1, S.volume + ${VOLUME} / 100));`);
-    util.writeLn('if (S.node) S.node.gain.value = S.volume;');
-  };
-  statementLibrary['sound_cleareffects'] = function(util) {
-    util.writeLn('S.resetSoundFilters();');
-  };
-  statementLibrary['sound_play'] = function(util) {
-    const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
-    if (P.audio.context) {
-      util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
-      util.writeLn('if (sound) startSound(sound);');
-    }
-  };
-  statementLibrary['sound_playuntildone'] = function(util) {
-    const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
-    if (P.audio.context) {
-      util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
-      util.writeLn('if (sound) {');
-      util.writeLn('  save();');
-      util.writeLn('  R.sound = playSound(sound);');
-      util.writeLn('  S.activeSounds.add(R.sound);')
-      util.writeLn('  R.start = runtime.now();');
-      util.writeLn('  R.duration = sound.duration;');
-      util.writeLn('  var first = true;');
-      const label = util.addLabel();
-      util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
-      util.writeLn('    var first;');
-      util.forceQueue(label);
-      util.writeLn('  }');
-      util.writeLn('  S.activeSounds.delete(R.sound);');
-      util.writeLn('  restore();');
-      util.writeLn('}');
-    }
-  };
-  statementLibrary['sound_seteffectto'] = function(util) {
-    const EFFECT = util.sanitizedString(util.getField('EFFECT'));
-    const VALUE = util.getInput('VALUE', 'number');
-    util.writeLn(`S.setSoundFilter(${EFFECT}, ${VALUE});`);
-  };
-  statementLibrary['sound_setvolumeto'] = function(util) {
-    const VOLUME = util.getInput('VOLUME', 'number');
-    util.writeLn(`S.volume = Math.max(0, Math.min(1, ${VOLUME} / 100));`);
-    util.writeLn('if (S.node) S.node.gain.value = S.volume;');
-  };
-  statementLibrary['sound_stopallsounds'] = function(util) {
-    if (P.audio.context) {
-      util.writeLn('self.stopAllSounds();');
-    }
-  };
-  statementLibrary['event_broadcast'] = function(util) {
-    const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
-    util.writeLn(`var threads = broadcast(${BROADCAST_INPUT});`);
-    util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
-  };
-  statementLibrary['event_broadcastandwait'] = function(util) {
-    const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
-    util.writeLn('save();');
-    util.writeLn(`R.threads = broadcast(${BROADCAST_INPUT});`);
-    util.writeLn('if (R.threads.indexOf(BASE) !== -1) {return;}');
-    const label = util.addLabel();
-    util.writeLn('if (running(R.threads)) {');
-    util.forceQueue(label);
-    util.writeLn('}');
-    util.writeLn('restore();');
   };
   statementLibrary['pen_changePenColorParamBy'] = function(util) {
     const COLOR_PARAM = util.getInput('COLOR_PARAM', 'string');
@@ -2640,6 +2584,62 @@ namespace P.sb3.compiler {
 
     util.writeLn(']); return;');
     util.addLabel(label);
+  };
+  statementLibrary['sound_changeeffectby'] = function(util) {
+    const EFFECT = util.sanitizedString(util.getField('EFFECT'));
+    const VALUE = util.getInput('VALUE', 'number');
+    util.writeLn(`S.changeSoundFilter(${EFFECT}, ${VALUE});`);
+  };
+  statementLibrary['sound_changevolumeby'] = function(util) {
+    const VOLUME = util.getInput('VOLUME', 'number');
+    util.writeLn(`S.volume = Math.max(0, Math.min(1, S.volume + ${VOLUME} / 100));`);
+    util.writeLn('if (S.node) S.node.gain.value = S.volume;');
+  };
+  statementLibrary['sound_cleareffects'] = function(util) {
+    util.writeLn('S.resetSoundFilters();');
+  };
+  statementLibrary['sound_play'] = function(util) {
+    const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
+    if (P.audio.context) {
+      util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
+      util.writeLn('if (sound) startSound(sound);');
+    }
+  };
+  statementLibrary['sound_playuntildone'] = function(util) {
+    const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
+    if (P.audio.context) {
+      util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
+      util.writeLn('if (sound) {');
+      util.writeLn('  save();');
+      util.writeLn('  R.sound = playSound(sound);');
+      util.writeLn('  S.activeSounds.add(R.sound);')
+      util.writeLn('  R.start = runtime.now();');
+      util.writeLn('  R.duration = sound.duration;');
+      util.writeLn('  var first = true;');
+      const label = util.addLabel();
+      util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
+      util.writeLn('    var first;');
+      util.forceQueue(label);
+      util.writeLn('  }');
+      util.writeLn('  S.activeSounds.delete(R.sound);');
+      util.writeLn('  restore();');
+      util.writeLn('}');
+    }
+  };
+  statementLibrary['sound_seteffectto'] = function(util) {
+    const EFFECT = util.sanitizedString(util.getField('EFFECT'));
+    const VALUE = util.getInput('VALUE', 'number');
+    util.writeLn(`S.setSoundFilter(${EFFECT}, ${VALUE});`);
+  };
+  statementLibrary['sound_setvolumeto'] = function(util) {
+    const VOLUME = util.getInput('VOLUME', 'number');
+    util.writeLn(`S.volume = Math.max(0, Math.min(1, ${VOLUME} / 100));`);
+    util.writeLn('if (S.node) S.node.gain.value = S.volume;');
+  };
+  statementLibrary['sound_stopallsounds'] = function(util) {
+    if (P.audio.context) {
+      util.writeLn('self.stopAllSounds();');
+    }
   };
   statementLibrary['sensing_askandwait'] = function(util) {
     const QUESTION = util.getInput('QUESTION', 'string');
