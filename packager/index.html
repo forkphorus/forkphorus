@@ -677,8 +677,14 @@
         // Fetch the project
         setAction('Loading project data');
         if (projectSource.value === 'id') {
+          if (!/^\d+$/.test(projectId.value)) {
+            throw new Error('Invalid Project ID');
+          }
           await packager.loadProjectById(projectId.value);
         } else if (projectSource.value === 'file') {
+          if (!projectFile.value) {
+            throw new Error('No file selected');
+          }
           await packager.loadProjectFromFile(projectFile.value);
         }
 
@@ -706,7 +712,7 @@
         addDownloadLink(result, `${filename}.${filetype}`);
       } catch (e) {
         console.error(e);
-        alert('Error: ' + e);
+        alert('There was an error running the packager:\n' + e);
       }
 
       // Always reset this state, even when an error occurs.
