@@ -345,7 +345,9 @@
     function updateLinks() {
       projectLink.href = player.projectLink;
       bugLink.href = errorHandler.createBugReportLink(P.i18n.translate('index.report.instructions'));
-      htmlPackagerLink.href = 'packager/#' + player.getProjectMeta().getId();
+      if (player.getProjectMeta().getId()) {
+        htmlPackagerLink.href = 'packager/#' + player.getProjectMeta().getId();
+      }
       updatePackageLink();
       updateEmbedCode();
     }
