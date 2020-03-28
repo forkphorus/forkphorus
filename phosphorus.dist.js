@@ -886,7 +886,10 @@ var P;
                 const height = this.bubbleContainer.offsetHeight / this.stage.zoom;
                 this.bubblePointer.style.top = ((height - 6) / 14) + 'em';
                 if (left + width + 2 > 480) {
-                    this.bubbleContainer.style.right = ((240 - b.left) / 14) + 'em';
+                    var d = (240 - b.left) / 14;
+                    if (d > 25)
+                        d = 25;
+                    this.bubbleContainer.style.right = d + 'em';
                     this.bubbleContainer.style.left = 'auto';
                     this.bubblePointer.style.right = (3 / 14) + 'em';
                     this.bubblePointer.style.left = 'auto';
@@ -7011,10 +7014,21 @@ var P;
         const scope = util.getVariableScope('VARIABLE');
         util.writeLn(`${scope}.showVariable(${VARIABLE}, true);`);
     };
-    statementLibrary['motion_turnright'] = function (util) {
-        const DEGREES = util.getInput('DEGREES', 'number');
-        util.writeLn(`S.setDirection(S.direction + ${DEGREES});`);
-        util.visual('visible');
+    statementLibrary['event_broadcast'] = function (util) {
+        const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
+        util.writeLn(`var threads = broadcast(${BROADCAST_INPUT});`);
+        util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
+    };
+    statementLibrary['event_broadcastandwait'] = function (util) {
+        const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
+        util.writeLn('save();');
+        util.writeLn(`R.threads = broadcast(${BROADCAST_INPUT});`);
+        util.writeLn('if (R.threads.indexOf(BASE) !== -1) {return;}');
+        const label = util.addLabel();
+        util.writeLn('if (running(R.threads)) {');
+        util.forceQueue(label);
+        util.writeLn('}');
+        util.writeLn('restore();');
     };
     statementLibrary['looks_changeeffectby'] = function (util) {
         const EFFECT = util.sanitizedString(util.getField('EFFECT')).toLowerCase();
@@ -7246,6 +7260,11 @@ var P;
         util.writeLn(`S.setDirection(S.direction - ${DEGREES});`);
         util.visual('visible');
     };
+    statementLibrary['motion_turnright'] = function (util) {
+        const DEGREES = util.getInput('DEGREES', 'number');
+        util.writeLn(`S.setDirection(S.direction + ${DEGREES});`);
+        util.visual('visible');
+    };
     statementLibrary['music_changeTempo'] = function (util) {
         const TEMPO = util.getInput('TEMPO', 'number');
         util.writeLn(`self.tempoBPM += ${TEMPO};`);
@@ -7314,78 +7333,6 @@ var P;
     statementLibrary['music_setInstrument'] = function (util) {
         const INSTRUMENT = util.getInput('INSTRUMENT', 'number');
         util.writeLn(`S.instrument = Math.max(0, Math.min(INSTRUMENTS.length - 1, ${INSTRUMENT} - 1)) | 0;`);
-    };
-    statementLibrary['sound_changeeffectby'] = function (util) {
-        const EFFECT = util.sanitizedString(util.getField('EFFECT'));
-        const VALUE = util.getInput('VALUE', 'number');
-        util.writeLn(`S.changeSoundFilter(${EFFECT}, ${VALUE});`);
-    };
-    statementLibrary['sound_changevolumeby'] = function (util) {
-        const VOLUME = util.getInput('VOLUME', 'number');
-        util.writeLn(`S.volume = Math.max(0, Math.min(1, S.volume + ${VOLUME} / 100));`);
-        util.writeLn('if (S.node) S.node.gain.value = S.volume;');
-    };
-    statementLibrary['sound_cleareffects'] = function (util) {
-        util.writeLn('S.resetSoundFilters();');
-    };
-    statementLibrary['sound_play'] = function (util) {
-        const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
-        if (P.audio.context) {
-            util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
-            util.writeLn('if (sound) startSound(sound);');
-        }
-    };
-    statementLibrary['sound_playuntildone'] = function (util) {
-        const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
-        if (P.audio.context) {
-            util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
-            util.writeLn('if (sound) {');
-            util.writeLn('  save();');
-            util.writeLn('  R.sound = playSound(sound);');
-            util.writeLn('  S.activeSounds.add(R.sound);');
-            util.writeLn('  R.start = runtime.now();');
-            util.writeLn('  R.duration = sound.duration;');
-            util.writeLn('  var first = true;');
-            const label = util.addLabel();
-            util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
-            util.writeLn('    var first;');
-            util.forceQueue(label);
-            util.writeLn('  }');
-            util.writeLn('  S.activeSounds.delete(R.sound);');
-            util.writeLn('  restore();');
-            util.writeLn('}');
-        }
-    };
-    statementLibrary['sound_seteffectto'] = function (util) {
-        const EFFECT = util.sanitizedString(util.getField('EFFECT'));
-        const VALUE = util.getInput('VALUE', 'number');
-        util.writeLn(`S.setSoundFilter(${EFFECT}, ${VALUE});`);
-    };
-    statementLibrary['sound_setvolumeto'] = function (util) {
-        const VOLUME = util.getInput('VOLUME', 'number');
-        util.writeLn(`S.volume = Math.max(0, Math.min(1, ${VOLUME} / 100));`);
-        util.writeLn('if (S.node) S.node.gain.value = S.volume;');
-    };
-    statementLibrary['sound_stopallsounds'] = function (util) {
-        if (P.audio.context) {
-            util.writeLn('self.stopAllSounds();');
-        }
-    };
-    statementLibrary['event_broadcast'] = function (util) {
-        const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
-        util.writeLn(`var threads = broadcast(${BROADCAST_INPUT});`);
-        util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
-    };
-    statementLibrary['event_broadcastandwait'] = function (util) {
-        const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
-        util.writeLn('save();');
-        util.writeLn(`R.threads = broadcast(${BROADCAST_INPUT});`);
-        util.writeLn('if (R.threads.indexOf(BASE) !== -1) {return;}');
-        const label = util.addLabel();
-        util.writeLn('if (running(R.threads)) {');
-        util.forceQueue(label);
-        util.writeLn('}');
-        util.writeLn('restore();');
     };
     statementLibrary['pen_changePenColorParamBy'] = function (util) {
         const COLOR_PARAM = util.getInput('COLOR_PARAM', 'string');
@@ -7472,6 +7419,62 @@ var P;
         }
         util.writeLn(']); return;');
         util.addLabel(label);
+    };
+    statementLibrary['sound_changeeffectby'] = function (util) {
+        const EFFECT = util.sanitizedString(util.getField('EFFECT'));
+        const VALUE = util.getInput('VALUE', 'number');
+        util.writeLn(`S.changeSoundFilter(${EFFECT}, ${VALUE});`);
+    };
+    statementLibrary['sound_changevolumeby'] = function (util) {
+        const VOLUME = util.getInput('VOLUME', 'number');
+        util.writeLn(`S.volume = Math.max(0, Math.min(1, S.volume + ${VOLUME} / 100));`);
+        util.writeLn('if (S.node) S.node.gain.value = S.volume;');
+    };
+    statementLibrary['sound_cleareffects'] = function (util) {
+        util.writeLn('S.resetSoundFilters();');
+    };
+    statementLibrary['sound_play'] = function (util) {
+        const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
+        if (P.audio.context) {
+            util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
+            util.writeLn('if (sound) startSound(sound);');
+        }
+    };
+    statementLibrary['sound_playuntildone'] = function (util) {
+        const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
+        if (P.audio.context) {
+            util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
+            util.writeLn('if (sound) {');
+            util.writeLn('  save();');
+            util.writeLn('  R.sound = playSound(sound);');
+            util.writeLn('  S.activeSounds.add(R.sound);');
+            util.writeLn('  R.start = runtime.now();');
+            util.writeLn('  R.duration = sound.duration;');
+            util.writeLn('  var first = true;');
+            const label = util.addLabel();
+            util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
+            util.writeLn('    var first;');
+            util.forceQueue(label);
+            util.writeLn('  }');
+            util.writeLn('  S.activeSounds.delete(R.sound);');
+            util.writeLn('  restore();');
+            util.writeLn('}');
+        }
+    };
+    statementLibrary['sound_seteffectto'] = function (util) {
+        const EFFECT = util.sanitizedString(util.getField('EFFECT'));
+        const VALUE = util.getInput('VALUE', 'number');
+        util.writeLn(`S.setSoundFilter(${EFFECT}, ${VALUE});`);
+    };
+    statementLibrary['sound_setvolumeto'] = function (util) {
+        const VOLUME = util.getInput('VOLUME', 'number');
+        util.writeLn(`S.volume = Math.max(0, Math.min(1, ${VOLUME} / 100));`);
+        util.writeLn('if (S.node) S.node.gain.value = S.volume;');
+    };
+    statementLibrary['sound_stopallsounds'] = function (util) {
+        if (P.audio.context) {
+            util.writeLn('self.stopAllSounds();');
+        }
     };
     statementLibrary['sensing_askandwait'] = function (util) {
         const QUESTION = util.getInput('QUESTION', 'string');
@@ -7848,6 +7851,17 @@ var P;
     inputLibrary['speech2text_getSpeech'] = function (util) {
         util.stage.initSpeech2Text();
         return util.stringInput('(self.speech2text ? self.speech2text.speech : "")');
+    };
+    inputLibrary['translate_menu_languages'] = function (util) {
+        return util.fieldInput('languages');
+    };
+    inputLibrary['translate_getTranslate'] = function (util) {
+        const WORDS = util.getInput('WORDS', 'string');
+        const LANGUAGE = util.getInput('LANGUAGE', 'string');
+        return WORDS;
+    };
+    inputLibrary['translate_getViewerLanguage'] = function (util) {
+        return util.sanitizedInput('English');
     };
     inputLibrary['videoSensing_menu_VIDEO_STATE'] = function (util) {
         return util.fieldInput('VIDEO_STATE');
