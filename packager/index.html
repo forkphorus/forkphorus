@@ -410,7 +410,7 @@
       }
 
       add(section = defaultSection) {
-        section.root.appendChild(this.root);
+        section._sectionRoot.appendChild(this.root);
         return this;
       }
 
@@ -422,16 +422,16 @@
     class Section {
       constructor(title, options = {}) {
         if ('collapsable' in options ? options.collapsable : true) {
-          this.root = document.createElement('details');
-          this.root.open = 'open' in options ? options.open : false;
+          this._sectionRoot = document.createElement('details');
+          this._sectionRoot.open = 'open' in options ? options.open : false;
           const summary = document.createElement('summary');
           summary.textContent = title;
-          this.root.appendChild(summary);
+          this._sectionRoot.appendChild(summary);
         } else {
-          this.root = document.createElement('div');
+          this._sectionRoot = document.createElement('div');
         }
 
-        optionsContainer.appendChild(this.root);
+        optionsContainer.appendChild(this._sectionRoot);
       }
     }
 
@@ -516,9 +516,7 @@
 
   <!-- PhoneGap -->
   <script>
-    const phonegap = {};
-
-    phonegap.section = new Section('PhoneGap Options');
+    const phonegap = new Section('PhoneGap Options');
 
     phonegap.loader = new Packer.FileLoader();
     phonegap.defaultIconAsset = { src: 'packager/defaultIcon.png' }
@@ -528,7 +526,7 @@
         .label('Enable Phonegap')
         .input({ type: 'checkbox' })
         .description('Enables special behavior and options related to PhoneGap. This will make the output of this packager a ZIP archive instead of HTML.')
-        .add(phonegap.section);
+        .add(phonegap);
 
     phonegap.xml = new Option()
         .label('PhoneGap config.xml')
@@ -546,14 +544,14 @@
 </widget>`})
         .description('This is the config file for PhoneGap apps. It allows you to control name, ID, description, author, version, etc. This is XML, so formatting like quotes, angled brackets, and case are important.')
         .hide()
-        .add(phonegap.section);
+        .add(phonegap);
 
     phonegap.icon = new Option()
         .label('Phonegap Icon (.png)')
         .file({ accept: '.png' })
         .description('The icon that PhoneGap will use. If you do not select an icon, a default will be used instead.')
         .hide()
-        .add(phonegap.section);
+        .add(phonegap);
 
     phonegap.enabled.onchange = (value) => {
       if (value) {
