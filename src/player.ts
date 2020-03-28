@@ -797,6 +797,7 @@ namespace P.player {
       this.clickToPlayContainer.onclick = () => {
         this.removeClickToPlayContainer();
         this.triggerGreenFlag();
+        this.focus();
       };
 
       const content = document.createElement('div');

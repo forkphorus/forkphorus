@@ -2895,6 +2895,7 @@ var P;
                 this.clickToPlayContainer.onclick = () => {
                     this.removeClickToPlayContainer();
                     this.triggerGreenFlag();
+                    this.focus();
                 };
                 const content = document.createElement('div');
                 content.className = 'player-click-to-play-icon';
