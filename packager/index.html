@@ -123,7 +123,6 @@
     </section>
   </div>
 
-
   <script src="../lib/details-element-polyfill.js"></script>
   <script src="../lib/jszip.min.js"></script>
   <script src="loader.js"></script>
@@ -247,6 +246,8 @@
         row.appendChild(this.inputContainer);
         this.root.appendChild(row);
 
+        this.parserFunction = (v) => v;
+
         // Init data
         this._value = null;
       }
@@ -367,6 +368,12 @@
         return this;
       }
 
+      // Set parser
+      parser(p) {
+        this.parserFunction = p;
+        return this;
+      }
+
       // Add a description
       description(content) {
         const row = document.createElement('tr');
@@ -382,8 +389,8 @@
       }
 
       setValue(v) {
-        this._value = v;
-        this.onchange(v);
+        this._value = this.parserFunction(v);
+        this.onchange(this._value);
       }
 
       get value() {
@@ -444,8 +451,9 @@
 
     const projectId = new Option()
       .label('Project ID')
-      .input({ pattern: '[0-9]+', value: location.hash ? location.hash.substr(1) : '' })
-      .description('Load a project from scratch.mit.edu. Some very old projects are not supported.')
+      .input({ pattern: '.*[0-9]+.*', value: location.hash ? location.hash.substr(1) : '' })
+      .parser((input) => input.match(/\d+/)[0])
+      .description('Load a project from scratch.mit.edu. Project ID or URL are accepted.')
       .add();
 
     const projectFile = new Option()
