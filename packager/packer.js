@@ -196,7 +196,8 @@ window.Packer = (function() {
   class Packager {
     constructor({ fileLoader }) {
       this.fileLoader = fileLoader;
-      /** Options to be passed to the player. */
+
+      /** Options to be passed to player.setOptions() */
       this.playerOptions = {
         fullscreenPadding: 0,
         fullscreenMode: 'window',
@@ -204,6 +205,11 @@ window.Packer = (function() {
 
       /** Options to be passed to player.addControls(). if null, addControls() is not called. */
       this.controlsOptions = null;
+
+      /** Options regarding the loading screen. */
+      this.loadingScreenOptions = {
+        text: 'forkphorus',
+      };
 
       this.projectType = null;
       this.projectData = null;
@@ -360,7 +366,7 @@ p {
     <div class="player"></div>
     <div class="splash">
       <div>
-        <h1>forkphorus</h1>
+        ${this.loadingScreenOptions.text ? `<h1>${this.loadingScreenOptions.text}</h1>` : ''}
         <div class="progress">
           <div class="progress-bar"></div>
         </div>

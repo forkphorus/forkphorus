@@ -505,6 +505,13 @@
       .input({ type: 'number', value: 30 })
       .description('Framerate in frames per second.')
       .add(playerOptionsSection);
+    
+    const loadingScreen = new Section('Loading Screen Options');
+    loadingScreen.text = new Option()
+      .label('Loading screen text')
+      .input({ value: 'forkphorus' })
+      .description('Text to be displayed while the project is loading. Set to blank to display nothing.')
+      .add(loadingScreen);
   </script>
 
   <!-- PhoneGap -->
@@ -673,6 +680,8 @@
         if (showControls.value) {
           packager.controlsOptions = { enableFullscreen: false };
         }
+
+        packager.loadingScreenOptions.text = loadingScreen.text.value;
 
         // Fetch the project
         setAction('Loading project data');
