@@ -343,9 +343,9 @@
       resetTitle();
     }
     function updateLinks() {
-      projectLink.href = player.projectLink;
       bugLink.href = errorHandler.createBugReportLink(P.i18n.translate('index.report.instructions'));
       if (player.getProjectMeta().getId()) {
+        projectLink.href = 'https://scratch.mit.edu/projects/' + player.getProjectMeta().getId();
         htmlPackagerLink.href = 'packager/#' + player.getProjectMeta().getId();
       }
       updatePackageLink();
