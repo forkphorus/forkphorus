@@ -376,7 +376,7 @@ namespace P.renderer.canvas2d {
 
     spriteTouchesPoint(sprite: P.core.Sprite, x: number, y: number) {
       const bounds = sprite.rotatedBounds();
-      if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top) {
+      if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top || sprite.scale === 0) {
         return false;
       }
 
