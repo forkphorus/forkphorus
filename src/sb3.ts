@@ -442,6 +442,11 @@ namespace P.sb3 {
     }
 
     updateList() {
+      // Temporary hack to fix setZoom() calling updateList() on invisible lists, causing _rowHeight to be invalid.
+      if (!this.visible && this._rowHeight === -1) {
+        return;
+      }
+      
       const height = this.list.length * this.getRowHeight();
       this.endpointEl.style.transform = 'translateY(' + (height * this.stage.zoom) + 'px)';
 

@@ -5811,6 +5811,9 @@ var P;
                 }
             }
             updateList() {
+                if (!this.visible && this._rowHeight === -1) {
+                    return;
+                }
                 const height = this.list.length * this.getRowHeight();
                 this.endpointEl.style.transform = 'translateY(' + (height * this.stage.zoom) + 'px)';
                 const topVisible = this.scrollTop;
