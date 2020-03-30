@@ -2687,6 +2687,7 @@ var P;
                 if (!this.isRunning()) {
                     this.resume();
                 }
+                this.stage.runtime.stopAll();
                 this.stage.runtime.triggerGreenFlag();
                 if (this.clickToPlayContainer) {
                     this.removeClickToPlayContainer();
