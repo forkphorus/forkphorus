@@ -1643,7 +1643,6 @@ namespace P.core {
     private width: number;
     private height: number;
     private context: CanvasRenderingContext2D | null;
-    private imageData: ImageData | null = null;
 
     constructor(image: HTMLCanvasElement | HTMLImageElement) {
       this.image = image;
@@ -1673,13 +1672,6 @@ namespace P.core {
       ctx.drawImage(this.image, 0, 0);
       this.context = ctx;
       return ctx;
-    }
-
-    getImageData() {
-      if (this.imageData) return this.imageData;
-      const context = this.getContext();
-      this.imageData = context.getImageData(0, 0, context.canvas.width, context.canvas.height);
-      return this.imageData;
     }
   }
 

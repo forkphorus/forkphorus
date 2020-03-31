@@ -1655,7 +1655,6 @@ var P;
         core.Sprite = Sprite;
         class ImageLOD {
             constructor(image) {
-                this.imageData = null;
                 this.image = image;
                 if (image.tagName === 'CANVAS') {
                     const ctx = image.getContext('2d');
@@ -1683,13 +1682,6 @@ var P;
                 ctx.drawImage(this.image, 0, 0);
                 this.context = ctx;
                 return ctx;
-            }
-            getImageData() {
-                if (this.imageData)
-                    return this.imageData;
-                const context = this.getContext();
-                this.imageData = context.getImageData(0, 0, context.canvas.width, context.canvas.height);
-                return this.imageData;
             }
         }
         core.ImageLOD = ImageLOD;
