@@ -160,6 +160,7 @@
   align-items: center;
   will-change: transform;
   contain: layout;
+  white-space: pre;
 }
 .s3-list-index, .s3-list-value {
   margin: 0 3px;
