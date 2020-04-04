@@ -1727,10 +1727,12 @@ var P;
                 canvas.height = Math.max(1, this.height * scale);
                 const ctx = canvas.getContext('2d');
                 if (!ctx) {
-                    if (this.scales[0]) {
-                        return this.scales[0];
+                    for (var i = 0; i < this.scales.length; i++) {
+                        if (this.scales[i]) {
+                            return this.scales[i];
+                        }
                     }
-                    throw new Error('cannot get 2d rendering context while rendering VectorCostume ' + this.name + ' at scale ' + scale);
+                    return new ImageLOD(this.source);
                 }
                 ctx.drawImage(this.source, 0, 0, canvas.width, canvas.height);
                 return new ImageLOD(canvas);

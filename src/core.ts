@@ -1722,7 +1722,7 @@ namespace P.core {
     public static MAX_ZOOM: number = 6;
 
     private source: HTMLImageElement;
-    private scales: Array<ImageLOD> = [];
+    private scales: ImageLOD[] = [];
 
     constructor(svg: HTMLImageElement, options: CostumeOptions) {
       super(options);
@@ -1740,11 +1740,14 @@ namespace P.core {
       canvas.height = Math.max(1, this.height * scale);
       const ctx = canvas.getContext('2d');
       if (!ctx) {
-        // If we already have a 1x zoom calculated, it would be best to return that instead of throwing an error.
-        if (this.scales[0]) {
-          return this.scales[0];
+        // Search for any other calculated zoom level.
+        for (var i = 0; i < this.scales.length; i++) {
+          if (this.scales[i]) {
+            return this.scales[i];
+          }
         }
-        throw new Error('cannot get 2d rendering context while rendering VectorCostume ' + this.name + ' at scale ' + scale);
+        // Can't rasterize -- use the vector itself.
+        return new ImageLOD(this.source);
       }
       ctx.drawImage(this.source, 0, 0, canvas.width, canvas.height);
       return new ImageLOD(canvas);
