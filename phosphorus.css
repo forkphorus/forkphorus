@@ -160,7 +160,6 @@
   align-items: center;
   will-change: transform;
   contain: layout;
-  white-space: pre;
 }
 .s3-list-index, .s3-list-value {
   margin: 0 3px;
@@ -180,7 +179,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   user-select: text;
-  white-space: nowrap;
+  white-space: pre;
 }
 .s3-list-top-label, .s3-list-bottom-label {
   padding: 3px;
