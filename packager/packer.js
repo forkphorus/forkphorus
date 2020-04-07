@@ -217,6 +217,20 @@ window.Packer = (function() {
       this.archiveProgress = new Progress();
     }
 
+    _resultToBlob(result) {
+      switch (result.type) {
+        case 'zip': {
+          return createArchive(result.files, this.archiveProgress);
+        }
+        case 'buffer': {
+          return new Blob([result.buffer]);
+        }
+        default: {
+          throw new Error('Unknown result type: ' + result.type);
+        }
+      }
+    }
+
     /**
      * @param {string} id
      */
@@ -228,12 +242,24 @@ window.Packer = (function() {
         }
         throw new Error('Cannot get project, got error code: ' + res.status);
       }
+
+      const responseClone = res.clone();
+
       let data;
       try {
         data = await res.json();
       } catch (e) {
-        throw new Error('Project is not supported (binary file)');
+        // binary file, try to see if it could be a Scratch 2 project
+        try {
+          const blob = await responseClone.blob();
+          const zip = await JSZip.loadAsync(blob);
+          // if loadAsync doesnt reject, this is valid zip, and is probably a Scratch 2 project
+          return 'sb2';
+        } catch (e) {
+          throw new Error('Binary projects not supported (' + e + ')');
+        }
       }
+
       if ('targets' in data) return 'sb3';
       if ('objName' in data) return 'sb2';
       throw new Error('unknown project type');
@@ -243,13 +269,11 @@ window.Packer = (function() {
      * @param {string} id
      */
     async _getProjectById(id) {
+      // TODO: don't fetch the project data twice, especially important for binary projects.
       const type = await this._getProjectTypeById(id);
       const result = await SBDL.loadProject(id, type);
-      if (result.type !== 'zip') {
-        throw new Error('Project type not supported');
-      }
-      const archive = await createArchive(result.files, this.archiveProgress);
-      const url = await readAsURL(archive);
+      const blob = await this._resultToBlob(result);
+      const url = await readAsURL(blob);
       return {
         url: url,
         type: type,
