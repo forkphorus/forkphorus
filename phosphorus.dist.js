@@ -281,7 +281,7 @@ var P;
             const promises = [];
             for (const name in SB2_SOUNDBANK_FILES) {
                 if (!soundbank[name]) {
-                    const promise = loadSoundbankBuffer(name);
+                    const promise = P.utils.settled(loadSoundbankBuffer(name));
                     promises.push(promise);
                     if (loader) {
                         loader.addTask(new P.io.PromiseTask(promise));
