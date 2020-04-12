@@ -2113,9 +2113,11 @@ var P;
                             return;
                         }
                         console.warn(`First attempt to download ${this.url} failed, trying again.`, err);
-                        this._load()
-                            .then((response) => resolve(response))
-                            .catch((err) => reject(err));
+                        setTimeout(() => {
+                            this._load()
+                                .then((response) => resolve(response))
+                                .catch((err) => reject(err));
+                        }, 250);
                     });
                 });
             }

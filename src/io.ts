@@ -269,9 +269,12 @@ namespace P.io {
               return;
             }
             console.warn(`First attempt to download ${this.url} failed, trying again.`, err);
-            this._load()
-              .then((response) => resolve(response))
-              .catch((err) => reject(err));
+            // We will wait a little bit before retrying the request.
+            setTimeout(() => {
+              this._load()
+                .then((response) => resolve(response))
+                .catch((err) => reject(err));
+            }, 250);
           });
       });
     }
