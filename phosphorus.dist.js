@@ -8427,56 +8427,6 @@ var P;
                 ctx.imageSmoothingEnabled = false;
                 return { canvas, ctx };
             }
-            function rgb2hsv(r, g, b) {
-                var max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min, h, s = (max === 0 ? 0 : d / max), v = max / 255;
-                switch (max) {
-                    case min:
-                        h = 0;
-                        break;
-                    case r:
-                        h = (g - b) + d * (g < b ? 6 : 0);
-                        h /= 6 * d;
-                        break;
-                    case g:
-                        h = (b - r) + d * 2;
-                        h /= 6 * d;
-                        break;
-                    case b:
-                        h = (r - g) + d * 4;
-                        h /= 6 * d;
-                        break;
-                }
-                return [h, s, v];
-            }
-            function hsv2rgb(h, s, v) {
-                var r, g, b, i, f, p, q, t;
-                i = Math.floor(h * 6);
-                f = h * 6 - i;
-                p = v * (1 - s);
-                q = v * (1 - f * s);
-                t = v * (1 - (1 - f) * s);
-                switch (i % 6) {
-                    case 0:
-                        r = v, g = t, b = p;
-                        break;
-                    case 1:
-                        r = q, g = v, b = p;
-                        break;
-                    case 2:
-                        r = p, g = v, b = t;
-                        break;
-                    case 3:
-                        r = p, g = q, b = v;
-                        break;
-                    case 4:
-                        r = t, g = p, b = v;
-                        break;
-                    case 5:
-                        r = v, g = p, b = q;
-                        break;
-                }
-                return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
-            }
             class SpriteRenderer2D {
                 constructor() {
                     this.noEffects = false;
@@ -8567,47 +8517,6 @@ var P;
                         ctx.drawImage(lod.image, x, y, w, h);
                     }
                     ctx.restore();
-                }
-                applyColorEffect(sourceImage, destImage, hueShift) {
-                    const MIN_VALUE = 0.11 / 2;
-                    const MIN_SATURATION = 0.09;
-                    const colorCache = {};
-                    for (var i = 0; i < sourceImage.data.length; i += 4) {
-                        const r = sourceImage.data[i];
-                        const g = sourceImage.data[i + 1];
-                        const b = sourceImage.data[i + 2];
-                        destImage.data[i + 3] = sourceImage.data[i + 3];
-                        const rgbHash = (r << 16) + (g << 8) + b;
-                        const cachedColor = colorCache[rgbHash];
-                        if (cachedColor !== undefined) {
-                            destImage.data[i] = (0xff0000 & cachedColor) >> 16;
-                            destImage.data[i + 1] = (0x00ff00 & cachedColor) >> 8;
-                            destImage.data[i + 2] = (0x0000ff & cachedColor);
-                            continue;
-                        }
-                        let hsv = rgb2hsv(r, g, b);
-                        if (hsv[2] < MIN_VALUE)
-                            hsv = [0, 1, MIN_VALUE];
-                        else if (hsv[1] < MIN_SATURATION)
-                            hsv = [0, MIN_SATURATION, hsv[2]];
-                        hsv[0] = hsv[0] + hueShift - Math.floor(hsv[0] + hueShift);
-                        if (hsv[0] < 0)
-                            hsv[0] += 1;
-                        const rgb = hsv2rgb(hsv[0], hsv[1], hsv[2]);
-                        colorCache[rgbHash] = (rgb[0] << 16) + (rgb[1] << 8) + rgb[2];
-                        destImage.data[i] = rgb[0];
-                        destImage.data[i + 1] = rgb[1];
-                        destImage.data[i + 2] = rgb[2];
-                    }
-                }
-                applyBrightnessEffect(sourceImage, destImage, brightness) {
-                    const length = sourceImage.data.length;
-                    for (var i = 0; i < length; i += 4) {
-                        destImage.data[i] = sourceImage.data[i] + brightness;
-                        destImage.data[i + 1] = sourceImage.data[i + 1] + brightness;
-                        destImage.data[i + 2] = sourceImage.data[i + 2] + brightness;
-                        destImage.data[i + 3] = sourceImage.data[i + 3];
-                    }
                 }
             }
             canvas2d.SpriteRenderer2D = SpriteRenderer2D;
