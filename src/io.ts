@@ -166,6 +166,7 @@ namespace P.io {
   export class Request extends AbstractTask {
     private static readonly acceptableResponseCodes = [0, 200];
 
+    private responseType: XMLHttpRequestResponseType;
     private shouldIgnoreErrors: boolean = false;
     private workComputable: boolean = false;
     private totalWork: number = 0;
@@ -209,11 +210,7 @@ namespace P.io {
       this.updateLoaderProgress();
     }
 
-    load(type: 'arraybuffer'): Promise<ArrayBuffer>;
-    load(type: 'json'): Promise<any>;
-    load(type: 'text'): Promise<string>;
-    load(type: 'blob'): Promise<Blob>;
-    load(type: XMLHttpRequestResponseType): Promise<any> {
+    private _load(): Promise<any> {
       return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
 
@@ -248,8 +245,27 @@ namespace P.io {
         });
 
         xhr.open('GET', this.url);
-        xhr.responseType = type;
+        xhr.responseType = this.responseType;
         setTimeout(xhr.send.bind(xhr));
+      });
+    }
+
+    load(type: 'arraybuffer'): Promise<ArrayBuffer>;
+    load(type: 'json'): Promise<any>;
+    load(type: 'text'): Promise<string>;
+    load(type: 'blob'): Promise<Blob>;
+    load(type: XMLHttpRequestResponseType): Promise<any> {
+      this.responseType = type;
+      return new Promise((resolve, reject) => {
+        // We attempt all requests twice, in case of spurious errors from browsers.
+        this._load()
+          .then((response) => resolve(response))
+          .catch((err) => {
+            console.warn(`First attempt to download ${this.url} failed, trying again.`, err);
+            this._load()
+              .then((response) => resolve(response))
+              .catch((err) => reject(err));
+          });
       });
     }
   }

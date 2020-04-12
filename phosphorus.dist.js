@@ -2067,7 +2067,7 @@ var P;
                 this.completedWork = event.loaded;
                 this.updateLoaderProgress();
             }
-            load(type) {
+            _load() {
                 return new Promise((resolve, reject) => {
                     const xhr = new XMLHttpRequest();
                     xhr.addEventListener('load', () => {
@@ -2096,8 +2096,21 @@ var P;
                         reject(`Error while downloading ${this.url} (abort) (${xhr.status})`);
                     });
                     xhr.open('GET', this.url);
-                    xhr.responseType = type;
+                    xhr.responseType = this.responseType;
                     setTimeout(xhr.send.bind(xhr));
+                });
+            }
+            load(type) {
+                this.responseType = type;
+                return new Promise((resolve, reject) => {
+                    this._load()
+                        .then((response) => resolve(response))
+                        .catch((err) => {
+                        console.warn(`First attempt to download ${this.url} failed, trying again.`, err);
+                        this._load()
+                            .then((response) => resolve(response))
+                            .catch((err) => reject(err));
+                    });
                 });
             }
         }
