@@ -157,6 +157,7 @@ namespace P.io {
   export class Request extends AbstractTask {
     private static readonly acceptableResponseCodes = [0, 200];
 
+    private aborted: boolean = false;
     private responseType: XMLHttpRequestResponseType;
     private shouldIgnoreErrors: boolean = false;
     private workComputable: boolean = false;
@@ -164,6 +165,7 @@ namespace P.io {
     private completedWork: number = 0;
     private complete: boolean = false;
     private status: number = 0;
+    private xhr: XMLHttpRequest | null = null;
 
     constructor(private readonly url: string) {
       super();
@@ -186,7 +188,10 @@ namespace P.io {
     }
 
     abort() {
-
+      this.aborted = true;
+      if (this.xhr) {
+        this.xhr.abort();
+      }
     }
 
     ignoreErrors(): this {
@@ -232,15 +237,16 @@ namespace P.io {
         });
 
         xhr.addEventListener('error', (err) => {
-          reject(`Error while downloading ${this.url} (error) (${xhr.status})`);
+          reject(`Error while downloading ${this.url} (error) (${xhr.status}/${xhr.readyState})`);
         });
 
         xhr.addEventListener('abort', (err) => {
-          reject(`Error while downloading ${this.url} (abort) (${xhr.status})`);
+          reject(`Error while downloading ${this.url} (abort) (${xhr.status}/${xhr.readyState})`);
         });
 
         xhr.open('GET', this.url);
         xhr.responseType = this.responseType;
+        this.xhr = xhr;
         setTimeout(xhr.send.bind(xhr));
       });
     }
@@ -256,6 +262,11 @@ namespace P.io {
         this._load()
           .then((response) => resolve(response))
           .catch((err) => {
+            // Do not retry after an abort.
+            if (this.aborted) {
+              reject(err);
+              return;
+            }
             console.warn(`First attempt to download ${this.url} failed, trying again.`, err);
             this._load()
               .then((response) => resolve(response))

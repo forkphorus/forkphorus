@@ -2027,12 +2027,14 @@ var P;
             constructor(url) {
                 super();
                 this.url = url;
+                this.aborted = false;
                 this.shouldIgnoreErrors = false;
                 this.workComputable = false;
                 this.totalWork = 0;
                 this.completedWork = 0;
                 this.complete = false;
                 this.status = 0;
+                this.xhr = null;
             }
             isComplete() {
                 return this.complete;
@@ -2047,6 +2049,10 @@ var P;
                 return this.completedWork;
             }
             abort() {
+                this.aborted = true;
+                if (this.xhr) {
+                    this.xhr.abort();
+                }
             }
             ignoreErrors() {
                 this.shouldIgnoreErrors = true;
@@ -2084,13 +2090,14 @@ var P;
                         this.updateProgress(e);
                     });
                     xhr.addEventListener('error', (err) => {
-                        reject(`Error while downloading ${this.url} (error) (${xhr.status})`);
+                        reject(`Error while downloading ${this.url} (error) (${xhr.status}/${xhr.readyState})`);
                     });
                     xhr.addEventListener('abort', (err) => {
-                        reject(`Error while downloading ${this.url} (abort) (${xhr.status})`);
+                        reject(`Error while downloading ${this.url} (abort) (${xhr.status}/${xhr.readyState})`);
                     });
                     xhr.open('GET', this.url);
                     xhr.responseType = this.responseType;
+                    this.xhr = xhr;
                     setTimeout(xhr.send.bind(xhr));
                 });
             }
@@ -2100,6 +2107,10 @@ var P;
                     this._load()
                         .then((response) => resolve(response))
                         .catch((err) => {
+                        if (this.aborted) {
+                            reject(err);
+                            return;
+                        }
                         console.warn(`First attempt to download ${this.url} failed, trying again.`, err);
                         this._load()
                             .then((response) => resolve(response))
