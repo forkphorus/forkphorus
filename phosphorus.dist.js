@@ -2093,6 +2093,7 @@ var P;
                         reject(`Error while downloading ${this.url} (error) (${xhr.status}/${xhr.readyState})`);
                     });
                     xhr.addEventListener('abort', (err) => {
+                        this.aborted = true;
                         reject(`Error while downloading ${this.url} (abort) (${xhr.status}/${xhr.readyState})`);
                     });
                     xhr.open('GET', this.url);

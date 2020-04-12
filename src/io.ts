@@ -241,6 +241,7 @@ namespace P.io {
         });
 
         xhr.addEventListener('abort', (err) => {
+          this.aborted = true;
           reject(`Error while downloading ${this.url} (abort) (${xhr.status}/${xhr.readyState})`);
         });
 
