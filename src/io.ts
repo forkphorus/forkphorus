@@ -34,9 +34,6 @@ namespace P.io {
         fileReader.onerror = function(err) {
           reject('Could not read object');
         };
-        fileReader.onprogress = function(progress) {
-
-        };
         fileReader.readAsArrayBuffer(object);
       });
     }
@@ -50,9 +47,6 @@ namespace P.io {
         fileReader.onerror = function(err) {
           reject('Could not read object');
         };
-        fileReader.onprogress = function(progress) {
-
-        };
         fileReader.readAsDataURL(object);
       });
     }
@@ -65,9 +59,6 @@ namespace P.io {
         };
         fileReader.onerror = function(err) {
           reject('Could not read object');
-        };
-        fileReader.onprogress = function(progress) {
-
         };
         fileReader.readAsText(object);
       });
@@ -181,15 +172,19 @@ namespace P.io {
     isComplete() {
       return this.complete;
     }
+
     isWorkComputable() {
       return this.workComputable;
     }
+
     getTotalWork() {
       return this.totalWork;
     }
+
     getCompletedWork() {
       return this.completedWork;
     }
+
     abort() {
 
     }
@@ -359,10 +354,6 @@ namespace P.io {
     public aborted: boolean = false;
     public error: boolean = false;
 
-    constructor() {
-
-    }
-
     private calculateProgress(): number {
       if (this.aborted) {
         return 1;
@@ -425,10 +416,6 @@ namespace P.io {
       this.onprogress(progress);
     }
 
-    onprogress(progress: number) {
-
-    }
-
     resetTasks() {
       this._tasks = [];
       this.updateProgress();
@@ -445,6 +432,10 @@ namespace P.io {
       for (const task of this._tasks) {
         task.abort();
       }
+    }
+
+    onprogress(progress: number) {
+      // Users of the Loader class are expected to override this method.
     }
 
     abstract load(): Promise<T>;

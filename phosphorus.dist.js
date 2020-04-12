@@ -1955,8 +1955,6 @@ var P;
                     fileReader.onerror = function (err) {
                         reject('Could not read object');
                     };
-                    fileReader.onprogress = function (progress) {
-                    };
                     fileReader.readAsArrayBuffer(object);
                 });
             }
@@ -1970,8 +1968,6 @@ var P;
                     fileReader.onerror = function (err) {
                         reject('Could not read object');
                     };
-                    fileReader.onprogress = function (progress) {
-                    };
                     fileReader.readAsDataURL(object);
                 });
             }
@@ -1984,8 +1980,6 @@ var P;
                     };
                     fileReader.onerror = function (err) {
                         reject('Could not read object');
-                    };
-                    fileReader.onprogress = function (progress) {
                     };
                     fileReader.readAsText(object);
                 });
@@ -2247,8 +2241,6 @@ var P;
                 const progress = this.calculateProgress();
                 this.onprogress(progress);
             }
-            onprogress(progress) {
-            }
             resetTasks() {
                 this._tasks = [];
                 this.updateProgress();
@@ -2263,6 +2255,8 @@ var P;
                 for (const task of this._tasks) {
                     task.abort();
                 }
+            }
+            onprogress(progress) {
             }
         }
         io.Loader = Loader;
