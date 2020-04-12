@@ -363,21 +363,7 @@ namespace P.sb2 {
     protected projectData: SB2Project;
 
     loadImage(url: string): Promise<HTMLImageElement> {
-      const manual = this.addTask(new P.io.Manual());
-
-      var image = new Image();
-      image.crossOrigin = 'anonymous';
-
-      return new Promise((resolve, reject) => {
-        image.onload = function() {
-          manual.markComplete();
-          resolve(image);
-        };
-        image.onerror = function(err) {
-          reject('Failed to load image: ' + image.src);
-        };
-        image.src = url;
-      });
+      return this.addTask(new P.io.Img(url)).load();
     }
 
     loadFonts(): Promise<void> {

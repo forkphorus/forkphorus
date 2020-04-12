@@ -2116,6 +2116,45 @@ var P;
         }
         Request.acceptableResponseCodes = [0, 200];
         io.Request = Request;
+        class Img extends AbstractTask {
+            constructor(src) {
+                super();
+                this.complete = false;
+                this.aborted = false;
+                this.src = src;
+            }
+            load() {
+                return new Promise((resolve, reject) => {
+                    const image = new Image();
+                    image.onload = () => {
+                        this.complete = true;
+                        this.updateLoaderProgress();
+                        resolve(image);
+                    };
+                    image.onerror = (err) => {
+                        reject('Failed to load image: ' + image.src);
+                    };
+                    image.crossOrigin = 'anonymous';
+                    image.src = this.src;
+                });
+            }
+            isComplete() {
+                return this.complete;
+            }
+            isWorkComputable() {
+                return false;
+            }
+            getTotalWork() {
+                return 0;
+            }
+            getCompletedWork() {
+                return 0;
+            }
+            abort() {
+                this.aborted = true;
+            }
+        }
+        io.Img = Img;
         class Manual extends AbstractTask {
             constructor() {
                 super(...arguments);
@@ -4257,19 +4296,7 @@ var P;
         sb2.Scratch2Sprite = Scratch2Sprite;
         class BaseSB2Loader extends P.io.Loader {
             loadImage(url) {
-                const manual = this.addTask(new P.io.Manual());
-                var image = new Image();
-                image.crossOrigin = 'anonymous';
-                return new Promise((resolve, reject) => {
-                    image.onload = function () {
-                        manual.markComplete();
-                        resolve(image);
-                    };
-                    image.onerror = function (err) {
-                        reject('Failed to load image: ' + image.src);
-                    };
-                    image.src = url;
-                });
+                return this.addTask(new P.io.Img(url)).load();
             }
             loadFonts() {
                 return Promise.all([
@@ -6289,19 +6316,7 @@ var P;
                 return this.addTask(new P.io.Request(sb3.ASSETS_API.replace('$md5ext', path))).load('arraybuffer');
             }
             getAsImage(path) {
-                const task = this.addTask(new P.io.Manual());
-                return new Promise((resolve, reject) => {
-                    const image = new Image();
-                    image.onload = () => {
-                        task.markComplete();
-                        resolve(image);
-                    };
-                    image.onerror = (err) => {
-                        reject('Failed to load image: ' + image.src);
-                    };
-                    image.crossOrigin = 'anonymous';
-                    image.src = sb3.ASSETS_API.replace('$md5ext', path);
-                });
+                return this.addTask(new P.io.Img(sb3.ASSETS_API.replace('$md5ext', path))).load();
             }
             load() {
                 if (this.projectId) {

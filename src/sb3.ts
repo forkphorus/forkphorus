@@ -1018,19 +1018,7 @@ namespace P.sb3 {
     }
 
     getAsImage(path: string) {
-      const task = this.addTask(new P.io.Manual());
-      return new Promise<HTMLImageElement>((resolve, reject) => {
-        const image = new Image();
-        image.onload = () => {
-          task.markComplete();
-          resolve(image);
-        };
-        image.onerror = (err) => {
-          reject('Failed to load image: ' + image.src);
-        };
-        image.crossOrigin = 'anonymous';
-        image.src = ASSETS_API.replace('$md5ext', path);
-      });
+      return this.addTask(new P.io.Img(ASSETS_API.replace('$md5ext', path))).load();
     }
 
     load() {

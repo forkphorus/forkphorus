@@ -270,6 +270,53 @@ namespace P.io {
     }
   }
 
+  export class Img extends AbstractTask {
+    private complete: boolean = false;
+    private aborted: boolean = false;
+    private src: string;
+
+    constructor(src: string) {
+      super();
+      this.src = src;
+    }
+
+    load(): Promise<HTMLImageElement> {
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => {
+          this.complete = true;
+          this.updateLoaderProgress();
+          resolve(image);
+        };
+        image.onerror = (err) => {
+          reject('Failed to load image: ' + image.src);
+        };
+        image.crossOrigin = 'anonymous';
+        image.src = this.src;
+      });
+    }
+
+    isComplete(): boolean {
+      return this.complete;
+    }
+
+    isWorkComputable(): boolean {
+      return false;
+    }
+
+    getTotalWork(): number {
+      return 0;
+    }
+
+    getCompletedWork(): number {
+      return 0;
+    }
+
+    abort(): void {
+      this.aborted = true;
+    }
+  }
+
   export class Manual extends AbstractTask {
     private complete: boolean = false;
     private aborted: boolean = false;
