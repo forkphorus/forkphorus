@@ -3307,6 +3307,7 @@ var P;
         var THREAD;
         var IMMEDIATE;
         var VISUAL;
+        var THREAD_CHANGE = false;
         const epoch = Date.UTC(2000, 0, 1);
         const INSTRUMENTS = P.audio.instruments;
         const DRUMS = P.audio.drums;
@@ -3726,7 +3727,12 @@ var P;
             }
         };
         var forceQueue = function (id) {
-            runtime.queue[THREAD] = new Thread(S, BASE, S.fns[id], CALLS);
+            const t = runtime.queue[THREAD];
+            t.sprite = S;
+            t.base = BASE;
+            t.fn = S.fns[id];
+            t.calls = CALLS;
+            THREAD_CHANGE = true;
         };
         class Thread {
             constructor(sprite, base, fn, calls) {
@@ -3902,12 +3908,15 @@ var P;
                             C = CALLS.pop();
                             STACK = C.stack;
                             R = STACK.pop();
-                            queue[THREAD] = undefined;
                             WARP = 0;
+                            THREAD_CHANGE = false;
                             while (IMMEDIATE) {
                                 const fn = IMMEDIATE;
                                 IMMEDIATE = null;
                                 fn();
+                            }
+                            if (!THREAD_CHANGE) {
+                                queue[THREAD] = undefined;
                             }
                             STACK.push(R);
                             CALLS.push(C);

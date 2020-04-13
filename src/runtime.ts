@@ -26,7 +26,7 @@ namespace P.runtime {
   // Each level (usually procedures) of depth will increment and decrement as they start and stop.
   // As long as this is greater than 0, functions will run without waiting for the screen.
   var WARP: number;
-  // ??
+  // Top level function
   var BASE;
   // The ID of the active thread in the Runtime's queue
   var THREAD: number;
@@ -34,6 +34,7 @@ namespace P.runtime {
   var IMMEDIATE: Fn | null | undefined;
   // Has a "visual change" been made in this frame?
   var VISUAL: boolean;
+  var THREAD_CHANGE: boolean = false;
 
   // Note:
   // Your editor might warn you about "unused variables" or things like that.
@@ -491,7 +492,12 @@ namespace P.runtime {
   };
 
   var forceQueue = function(id) {
-    runtime.queue[THREAD] = new Thread(S, BASE, S.fns[id], CALLS);
+    const t = runtime.queue[THREAD]!;
+    t.sprite = S;
+    t.base = BASE;
+    t.fn = S.fns[id];
+    t.calls = CALLS;
+    THREAD_CHANGE = true;
   };
 
   type ThreadResume = any;
@@ -718,13 +724,17 @@ namespace P.runtime {
             C = CALLS.pop();
             STACK = C.stack;
             R = STACK.pop();
-            queue[THREAD] = undefined;
             WARP = 0;
+            THREAD_CHANGE = false;
 
             while (IMMEDIATE) {
               const fn = IMMEDIATE;
               IMMEDIATE = null;
               fn();
+            }
+
+            if (!THREAD_CHANGE) {
+              queue[THREAD] = undefined;
             }
 
             STACK.push(R);
