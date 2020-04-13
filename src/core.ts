@@ -1708,7 +1708,7 @@ namespace P.core {
     /** Maximum zoom level of a Vector costume. */
     public static MAX_ZOOM = 8;
     /** Maximum width or height of a Vector costume. Overrides MAX_ZOOM. */
-    public static MAX_SIZE = 512;
+    public static MAX_SIZE = 1024;
 
     private svg: HTMLImageElement;
     private currentScale: number = 1;

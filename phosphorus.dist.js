@@ -1764,7 +1764,7 @@ var P;
             }
         }
         VectorCostume.MAX_ZOOM = 8;
-        VectorCostume.MAX_SIZE = 512;
+        VectorCostume.MAX_SIZE = 1024;
         core.VectorCostume = VectorCostume;
         if (/iPhone/.test(navigator.userAgent) || /iPad/.test(navigator.userAgent) || /iPod/.test(navigator.userAgent) || window.safari) {
             VectorCostume.MAX_ZOOM = 1;
