@@ -8849,7 +8849,7 @@ var P;
                     filters.whirl !== 0;
             }
             const horizontalInvertMatrix = P.m3.scaling(-1, 1);
-            class ShaderVariant {
+            class Shader {
                 constructor(gl, program) {
                     this.gl = gl;
                     this.program = program;
@@ -8928,8 +8928,8 @@ var P;
                     this.costumeTextures = new Map();
                     this.canvas = createCanvas();
                     const gl = this.canvas.getContext('webgl', {
-                        alpha: false,
                         antialias: false,
+                        preserveDrawingBuffer: true
                     });
                     if (!gl) {
                         throw new Error('cannot get webgl rendering context');
@@ -8946,6 +8946,7 @@ var P;
                     ]);
                     this.gl.enable(this.gl.BLEND);
                     this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+                    this.gl.disable(this.gl.DEPTH_TEST);
                     this.quadBuffer = this.gl.createBuffer();
                     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
                     this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
@@ -8995,7 +8996,7 @@ var P;
                 }
                 compileVariant(definitions) {
                     const program = this.compileProgram(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, definitions);
-                    return new ShaderVariant(this.gl, program);
+                    return new Shader(this.gl, program);
                 }
                 createTexture() {
                     const texture = this.gl.createTexture();
@@ -9252,13 +9253,171 @@ var P;
       gl_FragColor = color;
     }
     `;
-            webgl.WebGLSpriteRenderer = WebGLSpriteRenderer;
+            class CollisionRenderer extends WebGLSpriteRenderer {
+                constructor() {
+                    super();
+                    this.gl.enable(this.gl.SCISSOR_TEST);
+                    this.gl.scissor(0, 0, 480, 360);
+                    this.touchingShader = new Shader(this.gl, this.compileProgram(CollisionRenderer.touchingVertex, CollisionRenderer.touchingFragment));
+                }
+                drawChild(sprite) {
+                    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+                    super.drawChild(sprite);
+                }
+                drawChildTouching(sprite) {
+                    this.gl.blendFunc(this.gl.DST_ALPHA, this.gl.ZERO);
+                    this._drawChild(sprite, this.touchingShader);
+                }
+            }
+            CollisionRenderer.touchingVertex = `
+    attribute vec2 a_position;
+
+    uniform mat3 u_matrix;
+
+    varying vec2 v_texcoord;
+
+    void main() {
+      gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
+      v_texcoord = a_position;
+    }`;
+            CollisionRenderer.touchingFragment = `
+    precision mediump float;
+
+    varying vec2 v_texcoord;
+
+    uniform sampler2D u_texture;
+
+    #ifdef ENABLE_BRIGHTNESS
+      uniform float u_brightness;
+    #endif
+    #ifdef ENABLE_COLOR
+      uniform float u_color;
+    #endif
+    #ifdef ENABLE_GHOST
+      uniform float u_opacity;
+    #endif
+    #ifdef ENABLE_MOSAIC
+      uniform float u_mosaic;
+    #endif
+    #ifdef ENABLE_WHIRL
+      uniform float u_whirl;
+    #endif
+    #ifdef ENABLE_FISHEYE
+      uniform float u_fisheye;
+    #endif
+    #ifdef ENABLE_PIXELATE
+      uniform float u_pixelate;
+      uniform vec2 u_size;
+    #endif
+
+    const float minimumAlpha = 1.0 / 250.0;
+    const vec2 vecCenter = vec2(0.5, 0.5);
+
+    // http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl
+    vec3 rgb2hsv(vec3 c) {
+      vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+      vec4 p = c.g < c.b ? vec4(c.bg, K.wz) : vec4(c.gb, K.xy);
+      vec4 q = c.r < p.x ? vec4(p.xyw, c.r) : vec4(c.r, p.yzx);
+      float d = q.x - min(q.w, q.y);
+      float e = 1.0e-10;
+      return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+    }
+    vec3 hsv2rgb(vec3 c) {
+      vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+      vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+      return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+    }
+
+    void main() {
+      // varyings cannot be modified
+      vec2 texcoord = v_texcoord;
+
+      #ifdef ENABLE_MOSAIC
+        texcoord = fract(u_mosaic * v_texcoord);
+      #endif
+
+      #ifdef ENABLE_PIXELATE
+      if (u_pixelate != 0.0) {
+        vec2 texelSize = u_size / u_pixelate;
+        texcoord = (floor(texcoord * texelSize) + vecCenter) / texelSize;
+      }
+      #endif
+
+      #ifdef ENABLE_WHIRL
+      {
+        const float radius = 0.5;
+        vec2 offset = texcoord - vecCenter;
+        float offsetMagnitude = length(offset);
+        float whirlFactor = max(1.0 - (offsetMagnitude / radius), 0.0);
+        float whirlActual = u_whirl * whirlFactor * whirlFactor;
+        float sinWhirl = sin(whirlActual);
+        float cosWhirl = cos(whirlActual);
+        mat2 rotationMatrix = mat2(
+          cosWhirl, -sinWhirl,
+          sinWhirl, cosWhirl
+        );
+        texcoord = rotationMatrix * offset + vecCenter;
+      }
+      #endif
+
+      #ifdef ENABLE_FISHEYE
+      {
+        vec2 vec = (texcoord - vecCenter) / vecCenter;
+        float vecLength = length(vec);
+        float r = pow(min(vecLength, 1.0), u_fisheye) * max(1.0, vecLength);
+        vec2 unit = vec / vecLength;
+        texcoord = vecCenter + r * unit * vecCenter;
+      }
+      #endif
+
+      vec4 color = texture2D(u_texture, texcoord);
+      // if (color.a < minimumAlpha) {
+      //   discard;
+      // }
+
+      #ifdef ENABLE_GHOST
+        color.a *= u_opacity;
+      #endif
+
+      #ifdef ENABLE_COLOR
+      if (u_color != 0.0) {
+        vec3 hsv = rgb2hsv(color.rgb);
+        // hsv.x = hue
+        // hsv.y = saturation
+        // hsv.z = value
+
+        // scratch forces all colors to have some minimal amount saturation so there is a visual change
+        const float minValue = 0.11 / 2.0;
+        const float minSaturation = 0.09;
+        if (hsv.z < minValue) hsv = vec3(0.0, 1.0, minValue);
+        else if (hsv.y < minSaturation) hsv = vec3(0.0, minSaturation, hsv.z);
+
+        hsv.x = mod(hsv.x + u_color, 1.0);
+        if (hsv.x < 0.0) hsv.x += 1.0;
+        color = vec4(hsv2rgb(hsv), color.a);
+      }
+      #endif
+
+      #ifdef ENABLE_BRIGHTNESS
+        color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
+      #endif
+
+      if (color.a > 0.0) {
+        color = vec4(1.0, 1.0, 1.0, 1.0);
+      } else {
+        color = vec4(0.0, 0.0, 0.0, 0.0);
+      }
+
+      gl_FragColor = color;
+    }
+    `;
             class WebGLProjectRenderer extends WebGLSpriteRenderer {
                 constructor(stage) {
                     super();
                     this.stage = stage;
                     this.zoom = 1;
                     this.shaderOnlyShapeFilters = this.compileVariant(['ONLY_SHAPE_FILTERS']);
+                    this.collisionRenderer = new CollisionRenderer();
                     this.fallbackRenderer = new P.renderer.canvas2d.ProjectRenderer2D(stage);
                     this.penTexture = this.createTexture();
                     this.penBuffer = this.createFramebuffer();
@@ -9266,8 +9425,8 @@ var P;
                     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
                     this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.penTexture, 0);
                     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
-                    this.penDotShader = new ShaderVariant(this.gl, this.compileProgram(WebGLProjectRenderer.PEN_DOT_VERTEX_SHADER, WebGLProjectRenderer.PEN_DOT_FRAGMENT_SHADER));
-                    this.penLineShader = new ShaderVariant(this.gl, this.compileProgram(WebGLProjectRenderer.PEN_LINE_VERTEX_SHADER, WebGLProjectRenderer.PEN_LINE_FRAGMENT_SHADER));
+                    this.penDotShader = new Shader(this.gl, this.compileProgram(WebGLProjectRenderer.PEN_DOT_VERTEX_SHADER, WebGLProjectRenderer.PEN_DOT_FRAGMENT_SHADER));
+                    this.penLineShader = new Shader(this.gl, this.compileProgram(WebGLProjectRenderer.PEN_LINE_VERTEX_SHADER, WebGLProjectRenderer.PEN_LINE_FRAGMENT_SHADER));
                     this.reset(1);
                 }
                 drawFrame() {
@@ -9348,7 +9507,36 @@ var P;
                     return result[3] !== 0;
                 }
                 spritesIntersect(spriteA, otherSprites) {
-                    return this.fallbackRenderer.spritesIntersect(spriteA, otherSprites);
+                    const mb = spriteA.rotatedBounds();
+                    for (const spriteB of otherSprites) {
+                        if (!spriteB.visible || spriteA === spriteB) {
+                            continue;
+                        }
+                        const ob = spriteB.rotatedBounds();
+                        if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
+                            continue;
+                        }
+                        const left = Math.max(mb.left, ob.left);
+                        const top = Math.min(mb.top, ob.top);
+                        const right = Math.min(mb.right, ob.right);
+                        const bottom = Math.max(mb.bottom, ob.bottom);
+                        const width = Math.max(right - left, 1);
+                        const height = Math.max(top - bottom, 1);
+                        this.collisionRenderer.gl.scissor(240 + left, 180 + bottom, width, height);
+                        this.collisionRenderer.gl.clear(this.collisionRenderer.gl.COLOR_BUFFER_BIT);
+                        this.collisionRenderer.drawChild(spriteA);
+                        this.collisionRenderer.drawChildTouching(spriteB);
+                        var data = new Uint8Array(width * height * 4);
+                        this.collisionRenderer.gl.readPixels(240 + left, 180 + bottom, width, height, this.collisionRenderer.gl.RGBA, this.collisionRenderer.gl.UNSIGNED_BYTE, data);
+                        this.collisionRenderer.gl.scissor(0, 0, 480, 360);
+                        var length = data.length;
+                        for (var j = 0; j < length; j += 4) {
+                            if (data[j + 3]) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
                 }
                 spriteTouchesColor(sprite, color) {
                     return this.fallbackRenderer.spriteTouchesColor(sprite, color);
