@@ -8502,7 +8502,7 @@ var P;
                     if (costume.isScalable) {
                         costume.requestSize(objectScale * globalScale);
                     }
-                    ctx.imageSmoothingEnabled = costume.isScalable;
+                    ctx.imageSmoothingEnabled = costume.isScalable || this.imageSmoothingEnabled;
                     const image = costume.getImage();
                     const x = -costume.rotationCenterX * objectScale;
                     const y = -costume.rotationCenterY * objectScale;
