@@ -9044,12 +9044,12 @@ var P;
                     this.boundFramebuffer = buffer;
                 }
                 reset(scale) {
-                    this.canvas.width = scale * P.config.scale * 480;
-                    this.canvas.height = scale * P.config.scale * 360;
+                    this.canvas.width = scale * 480;
+                    this.canvas.height = scale * 360;
                     this.resetFramebuffer(scale);
                 }
                 resetFramebuffer(scale) {
-                    this.gl.viewport(0, 0, 480 * scale, 360 * scale);
+                    this.gl.viewport(0, 0, 480, 360);
                     if (this.globalScaleMatrix[0] !== scale) {
                         this.globalScaleMatrix = P.m3.scaling(scale, scale);
                     }
