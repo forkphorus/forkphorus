@@ -124,7 +124,7 @@ namespace P.renderer.canvas2d {
           workingRenderer.ctx.drawImage(image, 0, 0, w, h);
           workingRenderer.ctx.globalCompositeOperation = 'source-in';
           workingRenderer.ctx.fillStyle = 'white';
-          workingRenderer.ctx.fillRect(0, 0, 480, 360);
+          workingRenderer.ctx.fillRect(0, 0, w, h);
           ctx.drawImage(workingRenderer.canvas, x, y);
 
           workingRenderer.ctx.restore();
