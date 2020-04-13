@@ -35,13 +35,8 @@ namespace P.renderer.canvas2d {
   export class SpriteRenderer2D implements SpriteRenderer {
     public ctx: CanvasRenderingContext2D;
     public canvas: HTMLCanvasElement;
-    /**
-     * Disables rendering filters on this renderer.
-     */
-    public noEffects: boolean = false;
-    /**
-     * Controls canvas image smoothing.
-     */
+
+    public noEffects: boolean = false
     public imageSmoothingEnabled: boolean = false;
 
     constructor() {
@@ -102,7 +97,12 @@ namespace P.renderer.canvas2d {
         objectScale *= c.scale;
       }
 
-      const lod = costume.get(objectScale * c.stage.zoom);
+      if (costume.isScalable) {
+        costume.requestSize(objectScale * globalScale);
+      }
+      ctx.imageSmoothingEnabled = costume.isScalable;
+
+      const image = costume.getImage();
       const x = -costume.rotationCenterX * objectScale;
       const y = -costume.rotationCenterY * objectScale;
       const w = costume.width * objectScale;
@@ -111,7 +111,6 @@ namespace P.renderer.canvas2d {
         ctx.restore();
         return;
       }
-      ctx.imageSmoothingEnabled = this.imageSmoothingEnabled;
 
       if (!this.noEffects) {
         ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
@@ -122,10 +121,10 @@ namespace P.renderer.canvas2d {
           workingRenderer.ctx.save();
 
           workingRenderer.ctx.translate(0, 0);
-          workingRenderer.ctx.drawImage(lod.image, 0, 0, w, h);
+          workingRenderer.ctx.drawImage(image, 0, 0, w, h);
           workingRenderer.ctx.globalCompositeOperation = 'source-in';
           workingRenderer.ctx.fillStyle = 'white';
-          workingRenderer.ctx.fillRect(0, 0, 480, 360);
+          workingRenderer.ctx.fillRect(0, 0, w, h);
           ctx.drawImage(workingRenderer.canvas, x, y);
 
           workingRenderer.ctx.restore();
@@ -134,10 +133,10 @@ namespace P.renderer.canvas2d {
           if (filter !== '') {
             ctx.filter = getCSSFilter(c.filters);
           }
-          ctx.drawImage(lod.image, x, y, w, h);
+          ctx.drawImage(image, x, y, w, h);
         }
       } else {
-        ctx.drawImage(lod.image, x, y, w, h);
+        ctx.drawImage(image, x, y, w, h);
       }
 
       ctx.restore();
@@ -302,8 +301,8 @@ namespace P.renderer.canvas2d {
         cx = -cx;
       }
 
-      const positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
-      const positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
+      const positionX = Math.round(cx / costume.scale + costume.rotationCenterX);
+      const positionY = Math.round(cy / costume.scale + costume.rotationCenterY);
       const data = costume.getContext().getImageData(positionX, positionY, 1, 1).data;
       return data[3] !== 0;
     }

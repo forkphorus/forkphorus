@@ -303,7 +303,7 @@ namespace P.renderer.webgl {
 
     private boundFramebuffer: WebGLFramebuffer | null = null;
 
-    private costumeTextures: Map<P.core.ImageLOD, WebGLTexture> = new Map();
+    private costumeTextures: Map<P.core.Costume, WebGLTexture> = new Map();
 
     constructor() {
       this.canvas = createCanvas();
@@ -496,12 +496,12 @@ namespace P.renderer.webgl {
       // Create the texture if it doesn't already exist.
       // We'll create a texture only once for performance.
       const costume = child.costumes[child.currentCostumeIndex];
-      const lod = costume.get(P.core.isSprite(child) ? child.scale : 1);
-      if (!this.costumeTextures.has(lod)) {
-        const texture = this.convertToTexture(lod.image);
-        this.costumeTextures.set(lod, texture);
+      if (!this.costumeTextures.has(costume)) {
+        const image = costume.getImage();
+        const texture = this.convertToTexture(image);
+        this.costumeTextures.set(costume, texture);
       }
-      this.gl.bindTexture(this.gl.TEXTURE_2D, this.costumeTextures.get(lod)!);
+      this.gl.bindTexture(this.gl.TEXTURE_2D, this.costumeTextures.get(costume)!);
 
       shader.attributeBuffer('a_position', this.quadBuffer);
 
