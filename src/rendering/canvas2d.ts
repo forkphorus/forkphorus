@@ -38,18 +38,11 @@ namespace P.renderer.canvas2d {
 
     public noEffects: boolean = false
     public imageSmoothingEnabled: boolean = false;
-    public maxCostumeScale: number = 6;
 
     constructor() {
       const { canvas, ctx } = create2dCanvas();
       this.canvas = canvas;
       this.ctx = ctx;
-
-      // TEMPORARY INTERVENTION:
-      // Disable image scaling on Safari.
-      if (/iPhone/.test(navigator.userAgent) || /iPad/.test(navigator.userAgent) || /iPod/.test(navigator.userAgent) || (window as any).safari) {
-        this.maxCostumeScale = 1;
-      }
     }
 
     reset(scale: number) {
@@ -105,10 +98,7 @@ namespace P.renderer.canvas2d {
       }
 
       if (costume.isScalable) {
-        const scale = Math.max(Math.ceil(objectScale * globalScale), this.maxCostumeScale);
-        if (costume.getScale() < scale) {
-          costume.setScale(scale);
-        }
+        costume.requestSize(objectScale * globalScale);
       }
 
       const image = costume.getImage();

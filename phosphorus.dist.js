@@ -1695,10 +1695,7 @@ var P;
             getImage() {
                 return this.image;
             }
-            setScale(scale) {
-            }
-            getScale() {
-                return 1;
+            requestSize(scale) {
             }
         }
         core.BitmapCostume = BitmapCostume;
@@ -1713,6 +1710,16 @@ var P;
                 this.width = svg.width;
                 this.height = svg.height;
                 this.svg = svg;
+                this.maxZoom = this.calculateMaxZoom();
+            }
+            calculateMaxZoom() {
+                if (VectorCostume.MAX_SIZE / this.width < VectorCostume.MAX_ZOOM) {
+                    return VectorCostume.MAX_SIZE / this.width;
+                }
+                if (VectorCostume.MAX_SIZE / this.height < VectorCostume.MAX_ZOOM) {
+                    return VectorCostume.MAX_SIZE / this.height;
+                }
+                return VectorCostume.MAX_ZOOM;
             }
             render() {
                 const width = Math.max(1, this.width * this.currentScale);
@@ -1734,12 +1741,12 @@ var P;
                 }
                 this.ctx.drawImage(this.svg, 0, 0, width, height);
             }
-            setScale(scale) {
-                this.currentScale = scale;
-                this.render();
-            }
-            getScale() {
-                return this.currentScale;
+            requestSize(costumeScale) {
+                const scale = Math.min(Math.ceil(costumeScale), this.maxZoom);
+                if (this.currentScale < scale) {
+                    this.currentScale = scale;
+                    this.render();
+                }
             }
             getContext() {
                 if (this.ctx) {
@@ -1756,7 +1763,12 @@ var P;
                 return this.canvas;
             }
         }
+        VectorCostume.MAX_ZOOM = 8;
+        VectorCostume.MAX_SIZE = 512;
         core.VectorCostume = VectorCostume;
+        if (/iPhone/.test(navigator.userAgent) || /iPad/.test(navigator.userAgent) || /iPod/.test(navigator.userAgent) || window.safari) {
+            VectorCostume.MAX_ZOOM = 1;
+        }
         class Sound {
             constructor(data) {
                 this.source = null;
@@ -8437,13 +8449,9 @@ var P;
                 constructor() {
                     this.noEffects = false;
                     this.imageSmoothingEnabled = false;
-                    this.maxCostumeScale = 6;
                     const { canvas, ctx } = create2dCanvas();
                     this.canvas = canvas;
                     this.ctx = ctx;
-                    if (/iPhone/.test(navigator.userAgent) || /iPad/.test(navigator.userAgent) || /iPod/.test(navigator.userAgent) || window.safari) {
-                        this.maxCostumeScale = 1;
-                    }
                 }
                 reset(scale) {
                     this._reset(this.ctx, scale);
@@ -8492,10 +8500,7 @@ var P;
                         objectScale *= c.scale;
                     }
                     if (costume.isScalable) {
-                        const scale = Math.max(Math.ceil(objectScale * globalScale), this.maxCostumeScale);
-                        if (costume.getScale() < scale) {
-                            costume.setScale(scale);
-                        }
+                        costume.requestSize(objectScale * globalScale);
                     }
                     const image = costume.getImage();
                     const x = -costume.rotationCenterX * objectScale;

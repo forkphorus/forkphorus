@@ -1655,9 +1655,7 @@ namespace P.core {
       this.rotationCenterY = costumeData.rotationCenterY;
     }
 
-    abstract getScale(): number;
-    abstract setScale(scale: number): void;
-
+    abstract requestSize(scale: number): void;
     abstract getContext(): CanvasRenderingContext2D;
     abstract getImage(): HTMLImageElement | HTMLCanvasElement;
   }
@@ -1701,21 +1699,20 @@ namespace P.core {
       return this.image;
     }
 
-    setScale(scale: number) {
-      // no-op
-    }
-
-    getScale() {
-      // value is ignored
-      return 1;
+    requestSize(scale: number) {
+      // no-op, shouldn't get called anyways
     }
   }
 
   export class VectorCostume extends Costume {
-    private svg: HTMLImageElement;
-    // default value of currentScale shouldn't matter because setScale should always get called if it is wrong.
-    private currentScale: number = 1;
+    /** Maximum zoom level of a Vector costume. */
+    public static MAX_ZOOM = 8;
+    /** Maximum width or height of a Vector costume. Overrides MAX_ZOOM. */
+    public static MAX_SIZE = 512;
 
+    private svg: HTMLImageElement;
+    private currentScale: number = 1;
+    private maxZoom: number;
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
 
@@ -1728,6 +1725,17 @@ namespace P.core {
       this.width = svg.width;
       this.height = svg.height;
       this.svg = svg;
+      this.maxZoom = this.calculateMaxZoom();
+    }
+
+    private calculateMaxZoom(): number {
+      if (VectorCostume.MAX_SIZE / this.width < VectorCostume.MAX_ZOOM) {
+        return VectorCostume.MAX_SIZE / this.width;
+      }
+      if (VectorCostume.MAX_SIZE / this.height < VectorCostume.MAX_ZOOM) {
+        return VectorCostume.MAX_SIZE / this.height;
+      }
+      return VectorCostume.MAX_ZOOM;
     }
 
     private render() {
@@ -1752,13 +1760,12 @@ namespace P.core {
       this.ctx.drawImage(this.svg, 0, 0, width, height);
     }
 
-    setScale(scale: number) {
-      this.currentScale = scale;
-      this.render();
-    }
-
-    getScale() {
-      return this.currentScale;
+    requestSize(costumeScale: number) {
+      const scale = Math.min(Math.ceil(costumeScale), this.maxZoom);
+      if (this.currentScale < scale) {
+        this.currentScale = scale;
+        this.render();
+      }
     }
 
     getContext(): CanvasRenderingContext2D {
@@ -1776,6 +1783,13 @@ namespace P.core {
       this.render();
       return this.canvas;
     }
+  }
+
+  // TEMPORARY FIX:
+  // Disable image scaling on Safari.
+  // TODO: see if this is not necessary anymore due to changes in scaling
+  if (/iPhone/.test(navigator.userAgent) || /iPad/.test(navigator.userAgent) || /iPod/.test(navigator.userAgent) || (window as any).safari) {
+    VectorCostume.MAX_ZOOM = 1;
   }
 
   interface SoundOptions {
