@@ -349,7 +349,7 @@ namespace P.runtime {
     return keyName.toUpperCase().charCodeAt(0);
   }
 
-  var getKeyCode3 = function(keyName: string): number | 'any' {
+  export function getKeyCode3(keyName: string): number | 'any' {
     switch (keyName.toLowerCase()) {
       case 'space': return P.core.SpecialKeys.Space;
       case 'left arrow': return P.core.SpecialKeys.Left;
@@ -361,7 +361,7 @@ namespace P.runtime {
       case 'any': return 'any';
     }
     return keyName.toUpperCase().charCodeAt(0);
-  };
+  }
 
   // Load audio methods if audio is supported
   const audioContext = P.audio.context;

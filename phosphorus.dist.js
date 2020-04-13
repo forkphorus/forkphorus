@@ -3599,7 +3599,7 @@ var P;
             return keyName.toUpperCase().charCodeAt(0);
         }
         runtime_1.getKeyCode = getKeyCode;
-        var getKeyCode3 = function (keyName) {
+        function getKeyCode3(keyName) {
             switch (keyName.toLowerCase()) {
                 case 'space': return 32;
                 case 'left arrow': return 37;
@@ -3610,7 +3610,8 @@ var P;
                 case 'any': return 'any';
             }
             return keyName.toUpperCase().charCodeAt(0);
-        };
+        }
+        runtime_1.getKeyCode3 = getKeyCode3;
         const audioContext = P.audio.context;
         if (audioContext) {
             var playNote = function (key, duration) {
@@ -7856,6 +7857,12 @@ var P;
     };
     inputLibrary['sensing_keypressed'] = function (util) {
         const KEY_OPTION = util.getInput('KEY_OPTION', 'string');
+        if (KEY_OPTION.isConstant) {
+            const constant = KEY_OPTION.constantValue;
+            if (typeof constant === 'string') {
+                return util.booleanInput(`!!self.keys[${P.runtime.getKeyCode3(constant)}]`);
+            }
+        }
         return util.booleanInput(`!!self.keys[getKeyCode3(${KEY_OPTION})]`);
     };
     inputLibrary['sensing_loud'] = function (util) {

@@ -2934,6 +2934,12 @@ namespace P.sb3.compiler {
   };
   inputLibrary['sensing_keypressed'] = function(util) {
     const KEY_OPTION = util.getInput('KEY_OPTION', 'string');
+    if (KEY_OPTION.isConstant) {
+      const constant = KEY_OPTION.constantValue;
+      if (typeof constant === 'string') {
+        return util.booleanInput(`!!self.keys[${P.runtime.getKeyCode3(constant)}]`);
+      }
+    }
     // in scratch 3, the input can be dynamic so the getKeyCode call cannot be easily removed
     // we also have to use getKeyCode3 because of some changes made in Scratch 3
     return util.booleanInput(`!!self.keys[getKeyCode3(${KEY_OPTION})]`);
