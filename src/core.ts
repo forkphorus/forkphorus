@@ -1638,135 +1638,144 @@ namespace P.core {
     rotationCenterY: number;
   }
 
-  export class ImageLOD {
-    public image: HTMLImageElement | HTMLCanvasElement;
-    private width: number;
-    private height: number;
-    private context: CanvasRenderingContext2D | null;
-
-    constructor(image: HTMLCanvasElement | HTMLImageElement) {
-      this.image = image;
-      if (image.tagName === 'CANVAS') {
-        const ctx = (image as HTMLCanvasElement).getContext('2d');
-        if (!ctx) {
-          throw new Error('Cannot get 2d rendering context of costume image');
-        }
-        this.context = ctx;
-      } else {
-        this.context = null;
-      }
-      this.width = image.width;
-      this.height = image.height;
-    }
-
-    getContext() {
-      if (this.context) return this.context;
-
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        throw new Error('cannot get 2d rendering context');
-      }
-      canvas.width = this.width;
-      canvas.height = this.height;
-      ctx.drawImage(this.image, 0, 0);
-      this.context = ctx;
-      return ctx;
-    }
-  }
-
-  // A costume
   export abstract class Costume {
     public name: string;
     public rotationCenterX: number;
     public rotationCenterY: number;
-    public bitmapResolution: number;
     public scale: number;
+
     public width: number;
     public height: number;
+    public isScalable: boolean;
 
     constructor(costumeData: CostumeOptions) {
-      this.bitmapResolution = costumeData.bitmapResolution;
-      this.scale = 1 / this.bitmapResolution;
       this.name = costumeData.name;
+      this.scale = 1 / costumeData.bitmapResolution;
       this.rotationCenterX = costumeData.rotationCenterX;
       this.rotationCenterY = costumeData.rotationCenterY;
     }
-    
-    getContext() {
-      return this.get(1).getContext();
-    }
 
-    /**
-     * Gets a zoom level of the costume. The costume may provide a different zoom level than requested.
-     */
-    abstract get(scale: number): ImageLOD;
+    abstract getScale(): number;
+    abstract setScale(scale: number): void;
+
+    abstract getContext(): CanvasRenderingContext2D;
+    abstract getImage(): HTMLImageElement | HTMLCanvasElement;
   }
 
   export class BitmapCostume extends Costume {
-    private source: ImageLOD;
+    private ctx: CanvasRenderingContext2D;
+    private image: HTMLCanvasElement | HTMLImageElement;
 
-    constructor(source: HTMLCanvasElement | HTMLImageElement, options: CostumeOptions) {
+    constructor(image: HTMLCanvasElement | HTMLImageElement, options: CostumeOptions) {
       super(options);
-      this.source = new ImageLOD(source);
-      this.width = source.width;
-      this.height = source.height;
+      if (image.tagName === 'CANVAS') {
+        const ctx = (image as HTMLCanvasElement).getContext('2d');
+        if (!ctx) {
+          throw new Error('Cannot get 2d rendering context of costume image, despite it already being a canvas.');
+        }
+        this.ctx = ctx;
+      }
+      this.image = image;
+      this.width = image.width;
+      this.height = image.height;
+      this.isScalable = false;
     }
 
-    get(scale: number) {
-      return this.source;
+    getContext() {
+      if (this.ctx) {
+        return this.ctx;
+      }
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('cannot get 2d rendering context (getContext on Bitmap)');
+      }
+      canvas.width = this.width;
+      canvas.height = this.height;
+      ctx.drawImage(this.image, 0, 0);
+      this.ctx = ctx;
+      return ctx;
+    }
+
+    getImage() {
+      return this.image;
+    }
+
+    setScale(scale: number) {
+      // no-op
+    }
+
+    getScale() {
+      // value is ignored
+      return 1;
     }
   }
 
   export class VectorCostume extends Costume {
-    public static MAX_ZOOM: number = 6;
+    private svg: HTMLImageElement;
+    // default value of currentScale shouldn't matter because setScale should always get called if it is wrong.
+    private currentScale: number = 1;
 
-    private source: HTMLImageElement;
-    private scales: ImageLOD[] = [];
+    private canvas: HTMLCanvasElement;
+    private ctx: CanvasRenderingContext2D;
 
     constructor(svg: HTMLImageElement, options: CostumeOptions) {
       super(options);
       if (svg.height < 1 || svg.width < 1) {
         svg = new Image(1, 1);
       }
+      this.isScalable = true;
       this.width = svg.width;
       this.height = svg.height;
-      this.source = svg;
+      this.svg = svg;
     }
 
-    private getScale(scale: number) {
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, this.width * scale);
-      canvas.height = Math.max(1, this.height * scale);
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        // Search for any other calculated zoom level.
-        for (var i = 0; i < this.scales.length; i++) {
-          if (this.scales[i]) {
-            return this.scales[i];
-          }
+    private render() {
+      const width = Math.max(1, this.width * this.currentScale);
+      const height = Math.max(1, this.height * this.currentScale);
+
+      if (!this.canvas) {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          throw new Error('cannot get 2d rendering context (initCanvas on Vector)');
         }
-        // Can't rasterize -- use the vector itself.
-        return new ImageLOD(this.source);
+        this.canvas = canvas;
+        this.ctx = ctx;
+      } else {
+        this.canvas.width = width;
+        this.canvas.height = height;
       }
-      ctx.drawImage(this.source, 0, 0, canvas.width, canvas.height);
-      return new ImageLOD(canvas);
+
+      this.ctx.drawImage(this.svg, 0, 0, width, height);
     }
 
-    get(scale: number) {
-      scale = Math.min(VectorCostume.MAX_ZOOM, Math.ceil(scale));
-      const index = scale - 1;
-      if (!this.scales[index]) {
-        this.scales[index] = this.getScale(scale);
-      }
-      return this.scales[index];
+    setScale(scale: number) {
+      this.currentScale = scale;
+      this.render();
     }
-  }
 
-  // TEMPORARY INTERVENTION:
-  // Disable Vector scaling on Safari.
-  if (/iPhone/.test(navigator.userAgent) || /iPad/.test(navigator.userAgent) || /iPod/.test(navigator.userAgent) || (window as any).safari) {
-    VectorCostume.MAX_ZOOM = 1;
+    getScale() {
+      return this.currentScale;
+    }
+
+    getContext(): CanvasRenderingContext2D {
+      if (this.ctx) {
+        return this.ctx;
+      }
+      this.render();
+      return this.ctx;
+    }
+
+    getImage() {
+      if (this.canvas) {
+        return this.canvas;
+      }
+      this.render();
+      return this.canvas;
+    }
   }
 
   interface SoundOptions {
