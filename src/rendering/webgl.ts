@@ -461,8 +461,8 @@ namespace P.renderer.webgl {
      * Reset and resize this renderer.
      */
     reset(scale: number) {
-      this.canvas.width = scale * P.config.scale * 480;
-      this.canvas.height = scale * P.config.scale * 360;
+      this.canvas.width = scale * 480;
+      this.canvas.height = scale * 360;
       this.resetFramebuffer(scale);
     }
 
@@ -471,7 +471,7 @@ namespace P.renderer.webgl {
      * @param scale Zoom level
      */
     protected resetFramebuffer(scale: number) {
-      this.gl.viewport(0, 0, 480 * scale, 360 * scale);
+      this.gl.viewport(0, 0, 480, 360);
       // the first element of the matrix is the x-scale, so we can use that to only recreate the matrix when needed
       if (this.globalScaleMatrix[0] !== scale) {
         this.globalScaleMatrix = P.m3.scaling(scale, scale);
