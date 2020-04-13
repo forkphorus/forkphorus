@@ -8502,6 +8502,7 @@ var P;
                     if (costume.isScalable) {
                         costume.requestSize(objectScale * globalScale);
                     }
+                    ctx.imageSmoothingEnabled = costume.isScalable;
                     const image = costume.getImage();
                     const x = -costume.rotationCenterX * objectScale;
                     const y = -costume.rotationCenterY * objectScale;
@@ -8511,7 +8512,6 @@ var P;
                         ctx.restore();
                         return;
                     }
-                    ctx.imageSmoothingEnabled = this.imageSmoothingEnabled;
                     if (!this.noEffects) {
                         ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
                         if (c.filters.brightness === 100) {
