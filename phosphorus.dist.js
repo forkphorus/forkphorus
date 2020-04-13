@@ -6373,6 +6373,7 @@ var P;
                     this.source = source;
                     this.type = type;
                     this.potentialNumber = true;
+                    this.isConstant = false;
                 }
                 toString() {
                     return this.source;
@@ -6402,7 +6403,11 @@ var P;
                     return this.compiler.getField(this.block, name);
                 }
                 fieldInput(name) {
-                    return this.sanitizedInput(this.getField(name));
+                    const value = this.getField(name);
+                    const input = this.sanitizedInput(value);
+                    input.isConstant = true;
+                    input.constantValue = value;
+                    return input;
                 }
                 sanitizedInput(string) {
                     return this.compiler.sanitizedInput(string);
@@ -6644,7 +6649,7 @@ var P;
                             }
                         }
                         case 10: {
-                            const value = native[1];
+                            const value = native[1] + '';
                             if (desiredType !== 'string' && /\d|Infinity/.test(value)) {
                                 const number = +value;
                                 if (number.toString() === value) {
@@ -6653,8 +6658,10 @@ var P;
                                     }
                                 }
                             }
-                            const input = this.sanitizedInput(native[1] + '');
+                            const input = this.sanitizedInput(native[1]);
                             input.potentialNumber = this.isStringLiteralPotentialNumber(native[1]);
+                            input.isConstant = true;
+                            input.constantValue = native[1];
                             return input;
                         }
                         case 12:

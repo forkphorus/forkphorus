@@ -1076,6 +1076,8 @@ namespace P.sb3.compiler {
      *  - it is a string that represents a number or a boolean
      */
     public potentialNumber: boolean = true;
+    public isConstant: boolean = false;
+    public constantValue: string | boolean | number;
 
     constructor(public source: string, public type: InputType) {
 
@@ -1159,7 +1161,11 @@ namespace P.sb3.compiler {
      * Get and sanitize a field.
      */
     fieldInput(name: string): CompiledInput {
-      return this.sanitizedInput(this.getField(name));
+      const value = this.getField(name);
+      const input = this.sanitizedInput(value);
+      input.isConstant = true;
+      input.constantValue = value;
+      return input;
     }
 
     /**
@@ -1594,7 +1600,7 @@ namespace P.sb3.compiler {
 
         case NativeTypes.TEXT: {
           // [type, value]
-          const value = native[1];
+          const value = native[1] + '';
           // Do not attempt any conversions if the desired type is string or if the value does not appear to be number-like
           if (desiredType !== 'string' && /\d|Infinity/.test(value)) {
             const number = +value;
@@ -1607,8 +1613,10 @@ namespace P.sb3.compiler {
               }
             }
           }
-          const input = this.sanitizedInput(native[1] + '');
+          const input = this.sanitizedInput(native[1]);
           input.potentialNumber = this.isStringLiteralPotentialNumber(native[1]);
+          input.isConstant = true;
+          input.constantValue = native[1];
           return input;
         }
 
