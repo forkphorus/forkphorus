@@ -1755,8 +1755,8 @@ namespace P.core {
     }
 
     private render() {
-      const width = Math.max(1, this.width * this.currentScale);
-      const height = Math.max(1, this.height * this.currentScale);
+      const width = Math.floor(Math.max(1, this.width * this.currentScale));
+      const height = Math.floor(Math.max(1, this.height * this.currentScale));
 
       if (!this.canvas) {
         const canvas = document.createElement('canvas');
