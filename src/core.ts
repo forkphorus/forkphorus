@@ -1655,8 +1655,24 @@ namespace P.core {
       this.rotationCenterY = costumeData.rotationCenterY;
     }
 
+    /**
+     * Renderers will inform the Costume of the scale requested using requestSize()
+     * The Costume will choose whether it needs to rerender or simply do nothing.
+     * Only called if isScalable = true
+     * TODO: return a boolean to indicate whether texture needs reupload?
+     * @param scale The scale factor
+     */
     abstract requestSize(scale: number): void;
+
+    /**
+     * Get a 2d rendering context for the base image.
+     */
     abstract getContext(): CanvasRenderingContext2D;
+
+    /**
+     * Get the current image.
+     * The image may be scaled in arbitrary ways, the renderer must handle this.
+     */
     abstract getImage(): HTMLImageElement | HTMLCanvasElement;
   }
 
@@ -1669,7 +1685,7 @@ namespace P.core {
       if (image.tagName === 'CANVAS') {
         const ctx = (image as HTMLCanvasElement).getContext('2d');
         if (!ctx) {
-          throw new Error('Cannot get 2d rendering context of costume image, despite it already being a canvas.');
+          throw new Error(`Cannot get 2d rendering context of costume image, despite it already being a canvas "${this.name}"`);
         }
         this.ctx = ctx;
       }
@@ -1686,7 +1702,7 @@ namespace P.core {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       if (!ctx) {
-        throw new Error('cannot get 2d rendering context (getContext on Bitmap)');
+        throw new Error(`cannot get 2d rendering context in getContext on Bitmap "${this.name}"`);
       }
       canvas.width = this.width;
       canvas.height = this.height;
@@ -1700,19 +1716,19 @@ namespace P.core {
     }
 
     requestSize(scale: number) {
-      // no-op, shouldn't get called anyways
+      throw new Error(`requestSize is not implemented on BitmapCostume "${this.name}" isScalable=${this.isScalable}`);
     }
   }
 
   export class VectorCostume extends Costume {
-    /** Maximum zoom level of a Vector costume. */
-    public static MAX_ZOOM = 8;
-    /** Maximum width or height of a Vector costume. Overrides MAX_ZOOM. */
+    /** Maximum scale factor of a Vector costume. */
+    public static MAX_SCALE = 8;
+    /** Maximum width or height of a Vector costume. Overrides MAX_SCALE. */
     public static MAX_SIZE = 1024;
 
     private svg: HTMLImageElement;
     private currentScale: number = 1;
-    private maxZoom: number;
+    private maxScale: number;
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
 
@@ -1725,17 +1741,17 @@ namespace P.core {
       this.width = svg.width;
       this.height = svg.height;
       this.svg = svg;
-      this.maxZoom = this.calculateMaxZoom();
+      this.maxScale = this.calculateMaxScale();
     }
 
-    private calculateMaxZoom(): number {
-      if (VectorCostume.MAX_SIZE / this.width < VectorCostume.MAX_ZOOM) {
+    private calculateMaxScale(): number {
+      if (VectorCostume.MAX_SIZE / this.width < VectorCostume.MAX_SCALE) {
         return VectorCostume.MAX_SIZE / this.width;
       }
-      if (VectorCostume.MAX_SIZE / this.height < VectorCostume.MAX_ZOOM) {
+      if (VectorCostume.MAX_SIZE / this.height < VectorCostume.MAX_SCALE) {
         return VectorCostume.MAX_SIZE / this.height;
       }
-      return VectorCostume.MAX_ZOOM;
+      return VectorCostume.MAX_SCALE;
     }
 
     private render() {
@@ -1748,7 +1764,7 @@ namespace P.core {
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         if (!ctx) {
-          throw new Error('cannot get 2d rendering context (initCanvas on Vector)');
+          throw new Error(`cannot get 2d rendering context in initCanvas on Vector "${this.name}" @ ${this.currentScale}/${this.maxScale} | ${width}x${height}`);
         }
         this.canvas = canvas;
         this.ctx = ctx;
@@ -1761,7 +1777,7 @@ namespace P.core {
     }
 
     requestSize(costumeScale: number) {
-      const scale = Math.min(Math.ceil(costumeScale), this.maxZoom);
+      const scale = Math.min(Math.ceil(costumeScale), this.maxScale);
       if (this.currentScale < scale) {
         this.currentScale = scale;
         this.render();
@@ -1789,7 +1805,8 @@ namespace P.core {
   // Disable image scaling on Safari.
   // TODO: see if this is not necessary anymore due to changes in scaling
   if (/iPhone/.test(navigator.userAgent) || /iPad/.test(navigator.userAgent) || /iPod/.test(navigator.userAgent) || (window as any).safari) {
-    VectorCostume.MAX_ZOOM = 1;
+    console.log('Vector scaling is disabled');
+    VectorCostume.MAX_SCALE = 1;
   }
 
   interface SoundOptions {
