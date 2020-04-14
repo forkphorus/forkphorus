@@ -1764,7 +1764,8 @@ namespace P.core {
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         if (!ctx) {
-          throw new Error(`cannot get 2d rendering context in initCanvas on Vector "${this.name}" @ ${this.currentScale}/${this.maxScale} | ${width}x${height}`);
+          const fmt = (n: number) => Math.round(n * 100) / 100;
+          throw new Error(`cannot get 2d rendering context in initCanvas on Vector "${this.name}" @ ${fmt(this.currentScale)}/${fmt(this.maxScale)} | ${width}x${height}`);
         }
         this.canvas = canvas;
         this.ctx = ctx;
