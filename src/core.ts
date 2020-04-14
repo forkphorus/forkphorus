@@ -694,6 +694,12 @@ namespace P.core {
 
     abstract moveTo(x: number, y: number): void;
 
+    abstract touching(thing: string): boolean;
+
+    abstract touchingColor(color: number): boolean;
+
+    abstract colorTouchingColor(sourceColor: number, touchingColor: number): boolean;
+
     /**
      * Create a Watcher for a variable.
      * @param target The sprite that will own the watcher
@@ -764,15 +770,15 @@ namespace P.core {
     public promptId: number = 0;
     public nextPromptId: number = 0;
     public hidePrompt: boolean = false;
-    
+
     public zoom: number = 1;
-    
+
     public rawMouseX: number = 0;
     public rawMouseY: number = 0;
     public mouseX: number = 0;
     public mouseY: number = 0;
     public mousePressed: boolean = false;
-    
+
     public tempoBPM: number = 60;
     public keys: KeyList;
     public username: string = '';
@@ -1291,7 +1297,22 @@ namespace P.core {
         left: 0,
         right: 0,
       };
-    }    
+    }
+
+    touching(thing: string) {
+      if (thing == SpecialObjects.Mouse) {
+        return true;
+      }
+      return false;
+    }
+
+    touchingColor(color: number) {
+      return false;
+    }
+
+    colorTouchingColor(colorA: number, colorB: number) {
+      return false;
+    }
 
     submitPrompt() {
       if (this.promptId < this.nextPromptId) {

@@ -1407,6 +1407,18 @@ var P;
                     right: 0,
                 };
             }
+            touching(thing) {
+                if (thing == "_mouse_") {
+                    return true;
+                }
+                return false;
+            }
+            touchingColor(color) {
+                return false;
+            }
+            colorTouchingColor(colorA, colorB) {
+                return false;
+            }
             submitPrompt() {
                 if (this.promptId < this.nextPromptId) {
                     this.answer = this.prompt.value;
