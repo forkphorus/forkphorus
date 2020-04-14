@@ -5383,11 +5383,13 @@ var P;
                     }
                     else if (block[0] === 'showVariable:' || block[0] === 'hideVariable:') {
                         var isShow = block[0] === 'showVariable:';
-                        if (typeof block[1] !== 'string') {
-                            throw new Error('Dynamic variables are not supported');
+                        if (typeof block[1] === 'string') {
+                            var o = object.vars[block[1]] !== undefined ? 'S' : 'self';
+                            source += o + '.showVariable(' + val(block[1]) + ', ' + isShow + ');\n';
                         }
-                        var o = object.vars[block[1]] !== undefined ? 'S' : 'self';
-                        source += o + '.showVariable(' + val(block[1]) + ', ' + isShow + ');\n';
+                        else {
+                            warn('ignoring dynamic variable');
+                        }
                     }
                     else if (block[0] === 'broadcast:') {
                         source += 'var threads = broadcast(' + val(block[1]) + ');\n';
