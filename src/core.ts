@@ -139,11 +139,21 @@ namespace P.core {
     }
 
     /**
-     * Convert this color to its RGBA parts, each from 0-1
+     * Convert this color to its RGBA parts
+     * R, G, B [0-255]
+     * A [0-1]
      */
     toParts(): [number, number, number, number] {
-      // TODO, not important for now
-      return [1, 0, 0, 1];
+      switch (this.mode) {
+        case PenMode.RGBA: {
+          return [this.x, this.y, this.z, this.a];
+        }
+        case PenMode.HSVA: {
+          const rgb = P.utils.hsvToRGB(this.x / 360, this.y / 100, this.z / 100);
+          return [rgb[0], rgb[1], rgb[2], this.a];
+        }
+      }
+      return [255, 0, 0, 1];
     }
 
     /**

@@ -522,7 +522,16 @@ var P;
                 }
             }
             toParts() {
-                return [1, 0, 0, 1];
+                switch (this.mode) {
+                    case 0: {
+                        return [this.x, this.y, this.z, this.a];
+                    }
+                    case 2: {
+                        const rgb = P.utils.hsvToRGB(this.x / 360, this.y / 100, this.z / 100);
+                        return [rgb[0], rgb[1], rgb[2], this.a];
+                    }
+                }
+                return [255, 0, 0, 1];
             }
             toCSS() {
                 switch (this.mode) {
@@ -9411,6 +9420,99 @@ var P;
       gl_FragColor = color;
     }
     `;
+            class PenRenderer extends WebGLSpriteRenderer {
+                constructor() {
+                    super();
+                    this.penCoords = new Float32Array(65536);
+                    this.penLines = new Float32Array(32768);
+                    this.penColors = new Float32Array(65536);
+                    this.penCoordsIndex = 0;
+                    this.penLinesIndex = 0;
+                    this.penColorsIndex = 0;
+                    document.getElementById('project-area').prepend(this.canvas);
+                    this.shader = new Shader(this.gl, this.compileProgram(PenRenderer.vert, PenRenderer.frag));
+                    this.positionBuffer = this.gl.createBuffer();
+                    this.lineBuffer = this.gl.createBuffer();
+                    this.colorBuffer = this.gl.createBuffer();
+                    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+                    this.gl.enable(this.gl.BLEND);
+                    this.gl.disable(this.gl.DEPTH_TEST);
+                    this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+                }
+                renderPen() {
+                    const gl = this.gl;
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+                    gl.bufferData(gl.ARRAY_BUFFER, this.penCoords, gl.STREAM_DRAW);
+                    gl.vertexAttribPointer(this.shader.getAttribute('vertexData'), 4, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(this.shader.getAttribute('vertexData'));
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.lineBuffer);
+                    gl.bufferData(gl.ARRAY_BUFFER, this.penLines, gl.STREAM_DRAW);
+                    gl.vertexAttribPointer(this.shader.getAttribute('lineData'), 2, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(this.shader.getAttribute('lineData'));
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer);
+                    gl.bufferData(gl.ARRAY_BUFFER, this.penColors, gl.STREAM_DRAW);
+                    gl.vertexAttribPointer(this.shader.getAttribute('colorData'), 4, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(this.shader.getAttribute('colorData'));
+                    gl.useProgram(this.shader.program);
+                    gl.drawArrays(gl.TRIANGLES, 0, (this.penCoordsIndex + 1) / 4);
+                    this.penCoordsIndex = 0;
+                    this.penLinesIndex = 0;
+                    this.penColorsIndex = 0;
+                }
+            }
+            PenRenderer.vert = `
+    precision mediump float;
+    attribute vec4 vertexData;
+    attribute vec2 lineData;
+    attribute vec4 colorData;
+    
+    varying vec4 fragColor;
+    
+    
+    //vertexData:
+    //[0] = x1
+    //[1] = y1
+    //[2] = x2
+    //[3] = y2
+    
+    //lineData:
+    //[0] = thickened vertex direction
+    //[1] = thickened vertex distance
+    
+    //colorData:
+    //[0] = red
+    //[1] = green
+    //[2] = blue
+    //[3] = alpha
+    
+    
+    
+    void main(){
+      
+      vec2 lineDir = normalize(vertexData.zw - vertexData.xy);
+      
+      mat2 rot;
+      rot[0] = vec2(cos(lineData.x), sin(lineData.x));
+      rot[1] = vec2(-sin(lineData.x), cos(lineData.x));
+      
+      lineDir *= rot * lineData.y;
+      
+      vec2 p = (vertexData.xy + lineDir);
+      p.x /= 240.0;
+      p.y /= 180.0;
+      
+      gl_Position = vec4(p, 0.0, 1.0);
+      fragColor = colorData;
+    }
+  `;
+            PenRenderer.frag = `
+    precision mediump float;
+    varying vec4 fragColor;
+    void main(){
+      
+      gl_FragColor = vec4(fragColor.xyz / 255.0, fragColor.w);
+    }
+    `;
             class WebGLProjectRenderer extends WebGLSpriteRenderer {
                 constructor(stage) {
                     super();
@@ -9418,6 +9520,7 @@ var P;
                     this.zoom = 1;
                     this.shaderOnlyShapeFilters = this.compileVariant(['ONLY_SHAPE_FILTERS']);
                     this.collisionRenderer = new CollisionRenderer();
+                    this.penRenderer = new PenRenderer();
                     this.fallbackRenderer = new P.renderer.canvas2d.ProjectRenderer2D(stage);
                     this.penTexture = this.createTexture();
                     this.penBuffer = this.createFramebuffer();
@@ -9431,6 +9534,9 @@ var P;
                 }
                 drawFrame() {
                     this.bindFramebuffer(null);
+                    if (this.penRenderer.penCoordsIndex) {
+                        this.penRenderer.renderPen();
+                    }
                     this.reset(this.zoom);
                     this.drawChild(this.stage);
                     this.drawTextureOverlay(this.penTexture);
@@ -9447,46 +9553,234 @@ var P;
                 }
                 onStageFiltersChanged() {
                 }
-                penLine(color, size, x, y, x2, y2) {
-                    this.bindFramebuffer(this.penBuffer);
-                    const shader = this.penLineShader;
-                    this.gl.useProgram(shader.program);
-                    const buffer = this.gl.createBuffer();
-                    if (buffer === null) {
-                        throw new Error('buffer is null');
+                penLine(color, size, x1, y1, x2, y2) {
+                    var circleRes = Math.max(Math.ceil(size), 3);
+                    if (this.penRenderer.penCoordsIndex + 24 * (circleRes + 1) > this.penRenderer.penCoords.length) {
+                        this.penRenderer.renderPen();
                     }
-                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
-                    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
-                        x / 240, y / 180,
-                        x2 / 240, y2 / 180,
-                    ]), this.gl.STATIC_DRAW);
-                    shader.attributeBuffer('a_position', buffer);
-                    const parts = color.toParts();
-                    shader.uniform4f('u_color', parts[0], parts[1], parts[2], parts[3]);
-                    this.gl.drawArrays(this.gl.LINES, 0, 2);
-                    this.gl.deleteBuffer(buffer);
+                    {
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x2;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y2;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = -Math.PI / 2;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = size / 2;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x2;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y2;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = Math.PI / 2;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = size / 2;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x2;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y2;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = Math.PI / 2;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = size / 2;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x2;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y2;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = Math.PI / 2;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = size / 2;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x2;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y2;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = -Math.PI / 2;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = size / 2;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x2;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y2;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = Math.PI / 2;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = size / 2;
+                        this.penRenderer.penLinesIndex++;
+                    }
+                    for (var i = 0; i < circleRes; i++) {
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x2;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y2;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = 0;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = 0;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x2;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y2;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = Math.PI / 2 + i / circleRes * Math.PI;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = size / 2;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x2;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y2;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = Math.PI / 2 + (i + 1) / circleRes * Math.PI;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = size / 2;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x2;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y2;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = 0;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = 0;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x2;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y2;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = Math.PI / 2 + i / circleRes * Math.PI;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = size / 2;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x2;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y2;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = Math.PI / 2 + (i + 1) / circleRes * Math.PI;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = size / 2;
+                        this.penRenderer.penLinesIndex++;
+                    }
+                    const [r, g, b, a] = color.toParts();
+                    for (var i = 0; i < circleRes * 6 + 6; i++) {
+                        this.penRenderer.penColors[this.penRenderer.penColorsIndex] = r;
+                        this.penRenderer.penColorsIndex++;
+                        this.penRenderer.penColors[this.penRenderer.penColorsIndex] = g;
+                        this.penRenderer.penColorsIndex++;
+                        this.penRenderer.penColors[this.penRenderer.penColorsIndex] = b;
+                        this.penRenderer.penColorsIndex++;
+                        this.penRenderer.penColors[this.penRenderer.penColorsIndex] = a;
+                        this.penRenderer.penColorsIndex++;
+                    }
                 }
                 penDot(color, size, x, y) {
-                    this.bindFramebuffer(this.penBuffer);
-                    const shader = this.penDotShader;
-                    this.gl.useProgram(shader.program);
-                    shader.attributeBuffer('a_position', this.quadBuffer);
-                    const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
-                    P.m3.multiply(matrix, P.m3.translation(240 + x - size / 2 | 0, 180 - y - size / 2 | 0));
-                    P.m3.multiply(matrix, P.m3.scaling(size, size));
-                    shader.uniformMatrix3('u_matrix', matrix);
-                    const parts = color.toParts();
-                    shader.uniform4f('u_color', parts[0], parts[1], parts[2], parts[3]);
-                    this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+                    var circleRes = Math.max(Math.ceil(size), 3);
+                    if (this.penRenderer.penCoordsIndex + 12 * circleRes > this.penRenderer.penCoords.length) {
+                        this.penRenderer.renderPen();
+                    }
+                    for (var i = 0; i < circleRes; i++) {
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = 0;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = 0;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x + 1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y + 1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = Math.PI / 2 + i / circleRes * 2 * Math.PI;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = size / 2;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = x + 1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penCoords[this.penRenderer.penCoordsIndex] = y + 1;
+                        this.penRenderer.penCoordsIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = Math.PI / 2 + (i + 1) / circleRes * 2 * Math.PI;
+                        this.penRenderer.penLinesIndex++;
+                        this.penRenderer.penLines[this.penRenderer.penLinesIndex] = size / 2;
+                        this.penRenderer.penLinesIndex++;
+                    }
+                    const [r, g, b, a] = color.toParts();
+                    for (var i = 0; i < circleRes * 3; i++) {
+                        this.penRenderer.penColors[this.penRenderer.penColorsIndex] = r;
+                        this.penRenderer.penColorsIndex++;
+                        this.penRenderer.penColors[this.penRenderer.penColorsIndex] = g;
+                        this.penRenderer.penColorsIndex++;
+                        this.penRenderer.penColors[this.penRenderer.penColorsIndex] = b;
+                        this.penRenderer.penColorsIndex++;
+                        this.penRenderer.penColors[this.penRenderer.penColorsIndex] = a;
+                        this.penRenderer.penColorsIndex++;
+                    }
                 }
                 penStamp(sprite) {
-                    this.bindFramebuffer(this.penBuffer);
-                    this.drawChild(sprite);
+                    if (this.penRenderer.penCoordsIndex) {
+                        this.penRenderer.renderPen();
+                    }
+                    this.penRenderer.drawChild(sprite);
                 }
                 penClear() {
-                    this.bindFramebuffer(this.penBuffer);
-                    this.gl.clearColor(255, 255, 255, 0);
-                    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                    this.penRenderer.gl.clear(this.penRenderer.gl.COLOR_BUFFER_BIT);
                 }
                 resize(scale) {
                     this.zoom = scale;
