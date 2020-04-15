@@ -1826,7 +1826,8 @@ namespace P.core {
   // TEMPORARY FIX:
   // Disable image scaling on Safari.
   // TODO: see if this is not necessary anymore due to changes in scaling
-  if (/iPhone/.test(navigator.userAgent) || /iPad/.test(navigator.userAgent) || /iPod/.test(navigator.userAgent) || (window as any).safari) {
+  // detection method from https://stackoverflow.com/a/23522755
+  if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
     console.log('Vector scaling is disabled');
     VectorCostume.MAX_SCALE = 1;
   }
