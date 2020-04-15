@@ -8691,9 +8691,6 @@ var P;
                     }
                     const positionX = Math.round(cx / costume.scale + costume.rotationCenterX);
                     const positionY = Math.round(cy / costume.scale + costume.rotationCenterY);
-                    if (!Number.isFinite(positionX) || !Number.isFinite(positionY)) {
-                        return false;
-                    }
                     const data = costume.getContext().getImageData(positionX, positionY, 1, 1).data;
                     return data[3] !== 0;
                 }
