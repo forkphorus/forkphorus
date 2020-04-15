@@ -1748,8 +1748,8 @@ namespace P.core {
     public static MAX_SIZE = 1024;
 
     private svg: HTMLImageElement;
-    private currentScale: number = 1;
-    private maxScale: number;
+    public currentScale: number = 1;
+    public maxScale: number;
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
 
