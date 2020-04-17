@@ -2542,6 +2542,7 @@ var P;
             }
             load() {
                 return new P.io.Request('https://scratch.garbomuffin.com/proxy/projects/$id'.replace('$id', this.id))
+                    .ignoreErrors()
                     .load('json')
                     .then((data) => {
                     if (data.title) {
