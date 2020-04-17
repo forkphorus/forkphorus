@@ -1,6 +1,12 @@
 // MIT Licensed.
 // https://github.com/forkphorus/sb-downloader
 
+// Note: The API of SBDL is not very easy to integrate. Please consider another API first.
+// The API is only designed for web environments, and the progress monitoring API is very strange and doesn't support concurrent downloads properly.
+// Also the API can return two types of results (zip or buffer) and you have to handle both of them in different ways.
+
+// If you want to use this library still, see index.html for a pretty complete usage example (notably downloadProject())
+
 window.SBDL = (function() {
   'use strict';
 
@@ -72,9 +78,65 @@ window.SBDL = (function() {
       });
   }
 
-  // Loads a scratch 2 project
+  // Loads a Scratch 2 project
   function loadScratch2Project(id) {
     const PROJECTS_API = 'https://projects.scratch.mit.edu/internalapi/project/$id/get/';
+
+    // Scratch 2 projects can either by stored as JSON (project.json) or binary (sb2 file)
+    // JSON example: https://scratch.mit.edu/projects/15832807 (most Scratch 2 projects are like this)
+    // Binary example: https://scratch.mit.edu/projects/250740608
+
+    progressHooks.start();
+    progressHooks.newTask();
+
+    let blob;
+
+    // The fetch routine is rather complicated because we have to determine which type of project we are looking at.
+    return fetch(PROJECTS_API.replace('$id', id))
+      .then((request) => request.blob())
+      .then((b) => {
+        blob = b;
+        return new Promise((resolve, reject) => {
+          const fileReader = new FileReader();
+          fileReader.onload = () => resolve(fileReader.result);
+          fileReader.onerror = () => reject('Cannot read blob as text');
+          fileReader.readAsText(blob);
+        });
+      })
+      .then((text) => {
+        let projectData;
+        try {
+          projectData = JSON.parse(text);
+        } catch (e) {
+          return loadScratch2BinaryProject(id, blob);
+        }
+        return loadScratch2JSONProject(id, projectData);
+      })
+      .then((result) => {
+        progressHooks.finishTask();
+        return result;
+      });
+  }
+
+  // Loads a Scratch 2 binary-type project
+  function loadScratch2BinaryProject(id, blob) {
+    return new Promise((resolve, reject) => {
+      const fileReader = new FileReader();
+      fileReader.onload = () => {
+        resolve({
+          title: id.toString(),
+          extension: 'sb2',
+          type: 'buffer',
+          buffer: fileReader.result,
+        });
+      };
+      fileReader.onerror = () => reject('Cannot read blob as array buffer');
+      fileReader.readAsArrayBuffer(blob);
+    });
+  }
+
+  // Loads a Scratch 2 JSON-type project
+  function loadScratch2JSONProject(id, projectData) {
     const ASSETS_API = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/$path/get/';
 
     const IMAGE_EXTENSIONS = [
@@ -99,7 +161,6 @@ window.SBDL = (function() {
 
     let soundAccumulator = 0;
     let imageAccumulator = 0;
-    let projectData = null;
 
     // Gets the md5 and extension of an object.
     function md5Of(thing) {
@@ -154,47 +215,41 @@ window.SBDL = (function() {
     // Finds and groups duplicate assets.
     function processAssets(assets) {
       // Records a list of all unique asset md5s and stores all references to an asset.
-      const md5s = {};
+      const hashToAssetMap = Object.create(null);
+      const allAssets = [];
 
       for (const data of assets) {
         const md5ext = md5Of(data);
-        if (!(md5ext in md5s)) {
-          md5s[md5ext] = {
+        if (!(md5ext in hashToAssetMap)) {
+          const asset = {
             md5: md5ext,
             extension: md5ext.split('.').pop(),
             references: [],
           };
+          hashToAssetMap[md5ext] = asset;
+          allAssets.push(asset);
         }
-        md5s[md5ext].references.push(data);
+        hashToAssetMap[md5ext].references.push(data);
       }
 
-      return Object.values(md5s);
+      return allAssets;
     }
 
-    progressHooks.start();
-    progressHooks.newTask();
-
-    return fetch(PROJECTS_API.replace('$id', id))
-      .then((request) => request.json())
-      .then((pd) => {
-        projectData = pd;
-        const children = projectData.children.filter((c) => !c.listName && !c.target);
-        const targets = [].concat.apply([], [projectData, children]);
-        const costumes = [].concat.apply([], targets.map((c) => c.costumes || []));
-        const sounds = [].concat.apply([], targets.map((c) => c.sounds || []));
-        const assets = processAssets([].concat.apply([], [costumes, sounds, projectData]));
-        return Promise.all(assets.map((a) => addAsset(a)));
-      })
+    const children = projectData.children.filter((c) => !c.listName && !c.target);
+    const targets = [].concat.apply([], [projectData, children]);
+    const costumes = [].concat.apply([], targets.map((c) => c.costumes || []));
+    const sounds = [].concat.apply([], targets.map((c) => c.sounds || []));
+    const assets = processAssets([].concat.apply([], [costumes, sounds, projectData]));
+    return Promise.all(assets.map((a) => addAsset(a)))
       .then(() => {
         // We must add the project JSON at the end because it was probably changed during the loading from updating asset IDs
         result.files.push({path: 'project.json', data: JSON.stringify(projectData)});
         sortFiles(result.files);
-        progressHooks.finishTask();
         return result;
       });
   }
 
-  // Loads a scratch 3 project
+  // Loads a Scratch 3 project
   function loadScratch3Project(id) {
     const PROJECTS_API = 'https://projects.scratch.mit.edu/$id';
     const ASSETS_API = 'https://assets.scratch.mit.edu/internalapi/asset/$path/get/';
@@ -264,8 +319,13 @@ window.SBDL = (function() {
   }
 
   // Adds a list of files to a JSZip archive.
-  function createArchive(files, zip) {
-    for (const file of files) {
+  // This is a convenience method to make the library less painful to use. It's not used by SBDL internally.
+  // If a 'zip' type result is returned, pass result.files into here to get a Blob out.
+  // progressCallback (optional) will be called when the progress changes
+  function createArchive(files, progressCallback) {
+    const zip = new JSZip();
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       const path = file.path;
       const data = file.data;
       zip.file(path, data);
@@ -273,6 +333,10 @@ window.SBDL = (function() {
     return zip.generateAsync({
       type: 'blob',
       compression: 'DEFLATE',
+    }, function(metadata) {
+      if (progressCallback) {
+        progressCallback(metadata.percent / 100);
+      }
     });
   }
 

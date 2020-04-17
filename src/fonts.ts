@@ -19,7 +19,6 @@ namespace P.fonts {
     'Curly': 'fonts/Griffy-Regular.woff',
     'Serif': 'fonts/SourceSerifPro-Regular.woff',
     'Sans Serif': 'fonts/NotoSans-Regular.woff',
-    'Scratch': 'fonts/Scratch.ttf',
   };
 
   /**
@@ -29,8 +28,8 @@ namespace P.fonts {
     if (fontFamilyCache[fontFamily]) {
       return Promise.resolve(fontFamilyCache[fontFamily]);
     }
-    return new P.IO.BlobRequest(src, {local: true}).load()
-      .then((blob) => P.IO.readers.toDataURL(blob))
+    return P.io.getAssetManager().loadFont(src)
+      .then((blob) => P.io.readers.toDataURL(blob))
       .then((url) => {
         fontFamilyCache[fontFamily] = url;
         return url;

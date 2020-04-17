@@ -213,6 +213,15 @@ namespace P.core {
     }
   }
 
+  export const enum SpecialKeys {
+    Enter = 13,
+    Space = 32,
+    Left = 37,
+    Up = 38,
+    Right = 39,
+    Down = 40,
+  }
+
   export abstract class Base {
     /**
      * The stage this object belongs to.
@@ -617,7 +626,9 @@ namespace P.core {
       const height = this.bubbleContainer.offsetHeight / this.stage.zoom;
       this.bubblePointer.style.top = ((height - 6) / 14) + 'em';
       if (left + width + 2 > 480) {
-        this.bubbleContainer.style.right = ((240 - b.left) / 14) + 'em';
+        var d = (240 - b.left) / 14;
+        if (d > 25) d = 25;
+        this.bubbleContainer.style.right = d + 'em';
         this.bubbleContainer.style.left = 'auto';
         this.bubblePointer.style.right = (3/14)+'em';
         this.bubblePointer.style.left = 'auto';
@@ -682,6 +693,12 @@ namespace P.core {
     abstract forward(steps: number): void;
 
     abstract moveTo(x: number, y: number): void;
+
+    abstract touching(thing: string): boolean;
+
+    abstract touchingColor(color: number): boolean;
+
+    abstract colorTouchingColor(sourceColor: number, touchingColor: number): boolean;
 
     /**
      * Create a Watcher for a variable.
@@ -753,15 +770,15 @@ namespace P.core {
     public promptId: number = 0;
     public nextPromptId: number = 0;
     public hidePrompt: boolean = false;
-    
+
     public zoom: number = 1;
-    
+
     public rawMouseX: number = 0;
     public rawMouseY: number = 0;
     public mouseX: number = 0;
     public mouseY: number = 0;
     public mousePressed: boolean = false;
-    
+
     public tempoBPM: number = 60;
     public keys: KeyList;
     public username: string = '';
@@ -907,17 +924,32 @@ namespace P.core {
     private _onwheel(e: WheelEvent) {
       // Scroll up/down triggers key listeners for up/down arrows, but without affecting "is key pressed?" blocks
       if (e.deltaY > 0) {
-        // 40 = down arrow
-        this.runtime.trigger('whenKeyPressed', 40);
+        this.runtime.trigger('whenKeyPressed', SpecialKeys.Down);
       } else if (e.deltaY < 0) {
-        // 38 = up arrow
-        this.runtime.trigger('whenKeyPressed', 38);
+        this.runtime.trigger('whenKeyPressed', SpecialKeys.Up);
       }
     }
 
+    private keyEventToCode(e: KeyboardEvent): number {
+      const key = e.key;
+      switch (key) {
+        case 'Enter': return SpecialKeys.Enter;
+        case 'ArrowLeft': return SpecialKeys.Left;
+        case 'ArrowUp': return SpecialKeys.Up;
+        case 'ArrowRight': return SpecialKeys.Right;
+        case 'ArrowDown': return SpecialKeys.Down;
+      }
+      if (key.length !== 1) {
+        // Additional keys that we don't care about such as volume keys (AudioVolumeUp/Down) and modifier keys (Shift)
+        // TODO: see if we can support Shift because Scratch 2 did
+        return -1;
+      }
+      return key.toUpperCase().charCodeAt(0);
+    }
+
     private _onkeyup(e: KeyboardEvent) {
-      var c = e.keyCode;
-      if (c >= 128) c = P.runtime.getKeyCode(e.key) as number;
+      const c = this.keyEventToCode(e);
+      if (c === -1) return;
       if (this.keys[c]) this.keys.any--;
       this.keys[c] = false;
       e.stopPropagation();
@@ -927,8 +959,8 @@ namespace P.core {
     }
 
     private _onkeydown(e: KeyboardEvent) {
-      var c = e.keyCode;
-      if (c >= 128 && e.key.length === 1) c = P.runtime.getKeyCode(e.key) as number;
+      const c = this.keyEventToCode(e);
+      if (c === -1) return;
       if (!this.keys[c]) this.keys.any++;
       this.keys[c] = true;
       if (e.ctrlKey || e.altKey || e.metaKey || c === 27) return;
@@ -1265,7 +1297,22 @@ namespace P.core {
         left: 0,
         right: 0,
       };
-    }    
+    }
+
+    touching(thing: string) {
+      if (thing == SpecialObjects.Mouse) {
+        return true;
+      }
+      return false;
+    }
+
+    touchingColor(color: number) {
+      return false;
+    }
+
+    colorTouchingColor(colorA: number, colorB: number) {
+      return false;
+    }
 
     submitPrompt() {
       if (this.promptId < this.nextPromptId) {
@@ -1612,140 +1659,177 @@ namespace P.core {
     rotationCenterY: number;
   }
 
-  export class ImageLOD {
-    public image: HTMLImageElement | HTMLCanvasElement;
-    private width: number;
-    private height: number;
-    private context: CanvasRenderingContext2D | null;
-    private imageData: ImageData | null = null;
-
-    constructor(image: HTMLCanvasElement | HTMLImageElement) {
-      this.image = image;
-      if (image.tagName === 'CANVAS') {
-        const ctx = (image as HTMLCanvasElement).getContext('2d');
-        if (!ctx) {
-          throw new Error('Cannot get 2d rendering context of costume image');
-        }
-        this.context = ctx;
-      } else {
-        this.context = null;
-      }
-      this.width = image.width;
-      this.height = image.height;
-    }
-
-    getContext() {
-      if (this.context) return this.context;
-
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        throw new Error('cannot get 2d rendering context');
-      }
-      canvas.width = this.width;
-      canvas.height = this.height;
-      ctx.drawImage(this.image, 0, 0);
-      this.context = ctx;
-      return ctx;
-    }
-
-    getImageData() {
-      if (this.imageData) return this.imageData;
-      const context = this.getContext();
-      this.imageData = context.getImageData(0, 0, context.canvas.width, context.canvas.height);
-      return this.imageData;
-    }
-  }
-
-  // A costume
   export abstract class Costume {
     public name: string;
     public rotationCenterX: number;
     public rotationCenterY: number;
-    public bitmapResolution: number;
     public scale: number;
+
     public width: number;
     public height: number;
+    public isScalable: boolean;
 
     constructor(costumeData: CostumeOptions) {
-      this.bitmapResolution = costumeData.bitmapResolution;
-      this.scale = 1 / this.bitmapResolution;
       this.name = costumeData.name;
+      this.scale = 1 / costumeData.bitmapResolution;
       this.rotationCenterX = costumeData.rotationCenterX;
       this.rotationCenterY = costumeData.rotationCenterY;
     }
-    
-    getContext() {
-      return this.get(1).getContext();
-    }
 
     /**
-     * Gets a zoom level of the costume. The costume may provide a different zoom level than requested.
+     * Renderers will inform the Costume of the scale requested using requestSize()
+     * The Costume will choose whether it needs to rerender or simply do nothing.
+     * Only called if isScalable = true
+     * TODO: return a boolean to indicate whether texture needs reupload?
+     * @param scale The scale factor
      */
-    abstract get(scale: number): ImageLOD;
+    abstract requestSize(scale: number): void;
+
+    /**
+     * Get a 2d rendering context for the base image.
+     */
+    abstract getContext(): CanvasRenderingContext2D;
+
+    /**
+     * Get the current image.
+     * The image may be scaled in arbitrary ways, the renderer must handle this.
+     */
+    abstract getImage(): HTMLImageElement | HTMLCanvasElement;
   }
 
   export class BitmapCostume extends Costume {
-    private source: ImageLOD;
+    private ctx: CanvasRenderingContext2D;
+    private image: HTMLCanvasElement | HTMLImageElement;
 
-    constructor(source: HTMLCanvasElement | HTMLImageElement, options: CostumeOptions) {
+    constructor(image: HTMLCanvasElement | HTMLImageElement, options: CostumeOptions) {
       super(options);
-      this.source = new ImageLOD(source);
-      this.width = source.width;
-      this.height = source.height;
+      if (image.tagName === 'CANVAS') {
+        const ctx = (image as HTMLCanvasElement).getContext('2d');
+        if (!ctx) {
+          throw new Error(`Cannot get 2d rendering context of costume image, despite it already being a canvas "${this.name}"`);
+        }
+        this.ctx = ctx;
+      }
+      this.image = image;
+      this.width = image.width;
+      this.height = image.height;
+      this.isScalable = false;
     }
 
-    get(scale: number) {
-      return this.source;
+    getContext() {
+      if (this.ctx) {
+        return this.ctx;
+      }
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error(`cannot get 2d rendering context in getContext on Bitmap "${this.name}"`);
+      }
+      canvas.width = this.width;
+      canvas.height = this.height;
+      ctx.drawImage(this.image, 0, 0);
+      this.ctx = ctx;
+      return ctx;
+    }
+
+    getImage() {
+      return this.image;
+    }
+
+    requestSize(scale: number) {
+      throw new Error(`requestSize is not implemented on BitmapCostume "${this.name}" isScalable=${this.isScalable}`);
     }
   }
 
   export class VectorCostume extends Costume {
-    public static MAX_ZOOM: number = 6;
+    /** Maximum scale factor of a Vector costume. */
+    public static MAX_SCALE = 8;
+    /** Maximum width or height of a Vector costume. Overrides MAX_SCALE. */
+    public static MAX_SIZE = 1024;
 
-    private source: HTMLImageElement;
-    private scales: Array<ImageLOD> = [];
+    private svg: HTMLImageElement;
+    public currentScale: number = 1;
+    public maxScale: number;
+    private canvas: HTMLCanvasElement;
+    private ctx: CanvasRenderingContext2D;
 
     constructor(svg: HTMLImageElement, options: CostumeOptions) {
       super(options);
       if (svg.height < 1 || svg.width < 1) {
         svg = new Image(1, 1);
       }
+      this.isScalable = true;
       this.width = svg.width;
       this.height = svg.height;
-      this.source = svg;
+      this.svg = svg;
+      this.maxScale = this.calculateMaxScale();
     }
 
-    private getScale(scale: number) {
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, this.width * scale);
-      canvas.height = Math.max(1, this.height * scale);
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        // If we already have a 1x zoom calculated, it would be best to return that instead of throwing an error.
-        if (this.scales[0]) {
-          return this.scales[0];
+    private calculateMaxScale(): number {
+      if (VectorCostume.MAX_SIZE / this.width < VectorCostume.MAX_SCALE) {
+        return VectorCostume.MAX_SIZE / this.width;
+      }
+      if (VectorCostume.MAX_SIZE / this.height < VectorCostume.MAX_SCALE) {
+        return VectorCostume.MAX_SIZE / this.height;
+      }
+      return VectorCostume.MAX_SCALE;
+    }
+
+    private render() {
+      const width = Math.floor(Math.max(1, this.width * this.currentScale));
+      const height = Math.floor(Math.max(1, this.height * this.currentScale));
+
+      if (!this.canvas) {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          const fmt = (n: number) => Math.round(n * 100) / 100;
+          throw new Error(`cannot get 2d rendering context in initCanvas on Vector "${this.name}" @ ${fmt(this.currentScale)}/${fmt(this.maxScale)} | ${width}x${height}`);
         }
-        throw new Error('cannot get 2d rendering context while rendering VectorCostume ' + this.name + ' at scale ' + scale);
+        this.canvas = canvas;
+        this.ctx = ctx;
+      } else {
+        this.canvas.width = width;
+        this.canvas.height = height;
       }
-      ctx.drawImage(this.source, 0, 0, canvas.width, canvas.height);
-      return new ImageLOD(canvas);
+
+      this.ctx.drawImage(this.svg, 0, 0, width, height);
     }
 
-    get(scale: number) {
-      scale = Math.min(VectorCostume.MAX_ZOOM, Math.ceil(scale));
-      const index = scale - 1;
-      if (!this.scales[index]) {
-        this.scales[index] = this.getScale(scale);
+    requestSize(costumeScale: number) {
+      const scale = Math.min(Math.ceil(costumeScale), this.maxScale);
+      if (this.currentScale < scale) {
+        this.currentScale = scale;
+        this.render();
       }
-      return this.scales[index];
+    }
+
+    getContext(): CanvasRenderingContext2D {
+      if (this.ctx) {
+        return this.ctx;
+      }
+      this.render();
+      return this.ctx;
+    }
+
+    getImage() {
+      if (this.canvas) {
+        return this.canvas;
+      }
+      this.render();
+      return this.canvas;
     }
   }
 
-  // TEMPORARY INTERVENTION:
-  // Disable Vector scaling on Safari.
-  if (/iPhone/.test(navigator.userAgent) || /iPad/.test(navigator.userAgent) || /iPod/.test(navigator.userAgent) || (window as any).safari) {
-    VectorCostume.MAX_ZOOM = 1;
+  // TEMPORARY FIX:
+  // Disable image scaling on Safari.
+  // TODO: see if this is not necessary anymore due to changes in scaling
+  // detection method from https://stackoverflow.com/a/23522755
+  if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
+    console.log('Vector scaling is disabled');
+    VectorCostume.MAX_SCALE = 1;
   }
 
   interface SoundOptions {

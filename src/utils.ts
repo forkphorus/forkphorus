@@ -165,19 +165,4 @@ namespace P.utils {
     });
   }
 
-  type SlotFn<T> = (t: T) => void;
-
-  export class Slot<T> {
-    private _listeners: SlotFn<T>[] = [];
-
-    subscribe(fn: SlotFn<T>) {
-      this._listeners.push(fn);
-    }
-
-    emit(value?: T) {
-      for (const listener of this._listeners) {
-        listener(value!);
-      }
-    }
-  }
 }

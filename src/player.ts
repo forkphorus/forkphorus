@@ -21,6 +21,10 @@ interface HTMLElement {
  * Player is an interface and wrapper around the Forkphorus core classes.
  */
 namespace P.player {
+  /**
+   * PlayerError is a special type of error where the Player has special handling for this class of error.
+   * For example, it may display a help message instead of the error message in certain conditions such as unsupported project types.
+   */
   export class PlayerError extends Error {
     public readonly handledByPlayer: boolean = true;
   }
@@ -45,10 +49,82 @@ namespace P.player {
     }
   }
 
-  type Theme = 'light' | 'dark';
+  interface ProjectPlayer {
+    /** Emitted when there has been an update on loading progress. */
+    onprogress: Slot<number>;
+    /** Emitted when a Stage has loaded and been added to the player. */
+    onload: Slot<P.core.Stage>;
+    /** Emitted when a project begins loading. */
+    onstartload: Slot<never>;
+    /** Emitted when the current stage is removed. */
+    oncleanup: Slot<never>;
+    /** Emitted when the theme of the player is changed. */
+    onthemechange: Slot<Theme>;
+    /** Emitted when there is an error. */
+    onerror: Slot<any>;
+    /** Emitted when a stage is started or resumed. */
+    onresume: Slot<never>;
+    /** Emitted when the stage is paused. */
+    onpause: Slot<never>;
+    /** Emitted when options change. The payload only includes the parts that changed. */
+    onoptionschange: Slot<Partial<PlayerOptions>>;
 
+    root: HTMLElement;
+    controlsContainer: HTMLElement;
+    playerContainer: HTMLElement;
+
+    setOptions(options: Partial<PlayerOptions>): void;
+    getOptions(): PlayerOptions;
+
+    addControls(options: ControlsOptions): void;
+
+    /** Remove the stage and cancel the loader */
+    cleanup(): void;
+
+    /** Resume or start the project's frame loop. */
+    resume(): void;
+    /** Pause the project's frame loop */
+    pause(): void;
+    /** Stop the project and the frame loop, akin to the stop sign in Scratch */
+    stopAll(): void;
+    /** Start the project's scripts and the frame loop, akin to the green flag in Scratch */
+    triggerGreenFlag(): void;
+    /** Whether the project's frame loop is running. */
+    isRunning(): boolean;
+    /** Toggle the project's frame loop status. */
+    toggleRunning(): void;
+
+    loadProjectById(id: string): Promise<void>;
+    loadProjectFromFile(file: File): Promise<void>;
+    loadProjectFromBuffer(buffer: ArrayBuffer, type: 'sb2' | 'sb3'): Promise<void>;
+
+    hasStage(): boolean;
+    getStage(): P.core.Stage;
+
+    focus(): void;
+
+    enterFullscreen(): void;
+    exitFullscreen(): void;
+
+    hasProjectMeta(): boolean;
+    getProjectMeta(): ProjectMeta;
+  }
+
+  type Theme = 'light' | 'dark';
+  type AutoplayPolicy = 'always' | 'if-audio-playable' | 'never';
+  type CloudVariables = 'once' | 'off';
+  type FullscreenMode = 'full' | 'window';
   interface PlayerOptions {
-    theme?: Theme;
+    theme: Theme;
+    autoplayPolicy: AutoplayPolicy;
+    turbo: boolean;
+    fps: number;
+    cloudVariables: CloudVariables;
+    username: string;
+    fullscreenMode: FullscreenMode;
+    fullscreenPadding: number;
+    fullscreenMaxWidth: number;
+    imageSmoothing: boolean;
   }
 
   interface ControlsOptions {
@@ -59,95 +135,166 @@ namespace P.player {
     enableStop?: boolean;
   }
 
-  interface StageLoadOptions {
-    start?: boolean;
-    turbo?: boolean;
-    fps?: number;
+  interface ProjectMeta {
+    /**
+     * Load the metadata. This may involve network requests, so the result is not immediately available.
+     */
+    load(): Promise<this>;
+    /**
+     * Returns the cached title loaded by loadMetadata(), if any
+     */
+    getTitle(): string | null;
+    /**
+     * Returns the project ID, if any.
+     * ID, in this context, refers to project IDs of scratch.mit.edu
+     */
+    getId(): string | null;
+  }
+
+  class LoaderIdentifier {
+    private active: boolean = true;
+    private loader: P.io.Loader | null = null;
+
+    cancel() {
+      if (!this.active) {
+        throw new Error('cannot cancel: already cancelled');
+      }
+      this.active = false;
+      if (this.loader) {
+        this.loader.abort();
+      }
+    }
+
+    setLoader(loader: P.io.Loader) {
+      if (!this.active) {
+        throw new Error('Loading aborted');
+      }
+      this.loader = loader;
+    }
+
+    isActive() {
+      return this.active;
+    }
+  }
+
+  type SlotFn<T> = (t: T) => void;
+  class Slot<T> {
+    private _listeners: SlotFn<T>[] = [];
+
+    subscribe(fn: SlotFn<T>) {
+      this._listeners.push(fn);
+    }
+
+    emit(value?: T) {
+      for (const listener of this._listeners) {
+        listener(value!);
+      }
+    }
+  }
+
+  class LocalProjectMeta implements ProjectMeta {
+    constructor(private filename: string) {
+
+    }
+
+    load() {
+      return Promise.resolve(this);
+    }
+
+    getTitle() {
+      return this.filename;
+    }
+
+    getId() {
+      return null;
+    }
+  }
+
+  class RemoteProjectMeta implements ProjectMeta {
+    private title: string | null = null;
+    constructor(private id: string) {
+
+    }
+
+    load() {
+      return new P.io.Request('https://scratch.garbomuffin.com/proxy/projects/$id'.replace('$id', this.id))
+        .load('json')
+        .then((data) => {
+          if (data.title) {
+            this.title = data.title;
+          }
+          return this;
+        });
+    }
+
+    getTitle() {
+      return this.title;
+    }
+
+    getId() {
+      return this.id;
+    }
   }
 
   /**
    * Project player that makes using the forkphorus API less miserable.
    * You MUST ALWAYS use Player.* instead of Player.stage.* when possible to avoid UI desyncs and other weird behavior.
-   * For controls and error handling, see the other moduels in P.player.
    */
-  export class Player {
-    public static readonly PROJECT_DATA_API = 'https://projects.scratch.mit.edu/$id';
-    public static readonly PROJECT_LINK = 'https://scratch.mit.edu/projects/$id';
-    public static readonly LARGE_Z_INDEX = '9999999999';
-    public static readonly UNKNOWN_ID = '(no id)';
-    public static readonly UNKNOWN_LINK = '(no link)';
-    public static readonly UNKNOWN_TITLE = '(no title)';
-    public static readonly PROJECT_API = 'https://scratch.garbomuffin.com/proxy/projects/$id';
-    public static readonly CLOUD_API = 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100';
-
-    /**
-     * Determines the type of a project.
-     */
-    static getProjectType(data: any): 2 | 3 | null {
-      if (!data) return null;
-      if ('targets' in data) return 3;
-      if ('objName' in data) return 2;
-      return null;
-    }
-
-    static isCloudVariable(variableName: string): boolean {
-      return variableName.startsWith('☁');
+  export class Player implements ProjectPlayer {
+    public static readonly DEFAULT_OPTIONS: PlayerOptions = {
+      autoplayPolicy: 'always',
+      cloudVariables: 'once',
+      fps: 30,
+      theme: 'light',
+      turbo: false,
+      username: '',
+      fullscreenMode: 'full',
+      fullscreenPadding: 8,
+      fullscreenMaxWidth: Infinity,
+      imageSmoothing: false,
     };
 
-    // Event hooks
-    /** Emitted when there has been an update on loading progress. */
-    public onprogress = new P.utils.Slot<number>();
-    /** Emitted when a stage has loaded. (but has not yet been started) */
-    public onload = new P.utils.Slot<P.core.Stage>();
-    /** Emitted when a stage starts loading. */
-    public onstartload = new P.utils.Slot();
-    /** Emitted when the current stage is removed. */
-    public oncleanup = new P.utils.Slot();
-    /** Emitted when the theme of the player is changed. */
-    public onthemechange = new P.utils.Slot<Theme>();
-    /** Emitted when there is an error. */
-    public onerror = new P.utils.Slot<any>();
-    /** Emitted when a stage is started or resumed. */
-    public onstart = new P.utils.Slot();
-    /** Emitted when the stage is paused. */
-    public onpause = new P.utils.Slot();
-    /** Emitted when the stage enteres or leaves turbo mode. Does not emit when a turbo stage is removed. */
-    public onturbochange = new P.utils.Slot<boolean>();
+    public onprogress = new Slot<number>();
+    public onload = new Slot<P.core.Stage>();
+    public onstartload = new Slot<never>();
+    public oncleanup = new Slot<never>();
+    public onthemechange = new Slot<Theme>();
+    public onerror = new Slot<any>();
+    public onresume = new Slot<never>();
+    public onpause = new Slot<never>();
+    public onoptionschange = new Slot<Partial<PlayerOptions>>();
 
     public root: HTMLElement;
-    public player: HTMLElement;
+    public playerContainer: HTMLElement;
+    public controlsContainer: HTMLElement;
 
-    public fullscreen: boolean = false;
-    public fullscreenPadding: number = 8;
-    public fullscreenMaxWidth: number = Infinity;
+    /** Magic values (such as URLs) that you may want to change. */
+    public MAGIC = {
+      // A large z-index, used for some fullscreen modes to display on top of everything.
+      LARGE_Z_INDEX: '9999999999',
+      // $id is replaced with the project's ID
+      CLOUD_HISTORY_API: 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100',
+      // $id is replaced with the project's ID
+      PROJECT_API: 'https://projects.scratch.mit.edu/$id',
+    };
 
-    public stage: P.core.Stage;
-    private stageId: number = 0;
+    private options: Readonly<PlayerOptions>;
+    private stage: P.core.Stage;
+    private projectMeta: ProjectMeta | null = null;
+    private currentLoader: LoaderIdentifier | null = null;
+    private fullscreenEnabled: boolean = false;
+    private savedTheme: Theme;
+    private clickToPlayContainer: HTMLElement | null = null;
 
-    public projectId: string = Player.UNKNOWN_ID;
-    public projectLink: string = Player.UNKNOWN_LINK;
-    public projectTitle: string = Player.UNKNOWN_TITLE;
-
-    private flagTouchTimeout: number | null | undefined = undefined;
-    public controlsEl: HTMLElement;
-    private turboText: HTMLElement;
-    private stopButton: HTMLElement;
-    private pauseButton: HTMLElement;
-    private flagButton: HTMLElement;
-    private fullscreenButton: HTMLElement;
-
-    private previousTheme: Theme;
-    public theme: Theme;
-
-    constructor(options: PlayerOptions = {}) {
+    constructor(options: Partial<PlayerOptions> = {}) {
       this.root = document.createElement('div');
       this.root.className = 'player-root';
 
-      this.player = document.createElement('div');
-      this.player.className = 'player-stage';
-      this.root.appendChild(this.player);
+      this.playerContainer = document.createElement('div');
+      this.playerContainer.className = 'player-stage';
+      this.root.appendChild(this.playerContainer);
 
-      this.setTheme(options.theme || 'light');
+      this.setOptions({ ...options, ...Player.DEFAULT_OPTIONS });
 
       window.addEventListener('resize', () => this.updateFullscreen());
       document.addEventListener('fullscreenchange', () => this.onfullscreenchange());
@@ -157,25 +304,57 @@ namespace P.player {
       this.handleError = this.handleError.bind(this);
     }
 
-    /**
-     * Asserts that a stage is loaded, and throws otherwise.
-     */
-    assertStage() {
-      if (!this.stage) {
-        throw new Error('The player does not currently contain a stage to operate on.');
+    // UI HELPERS
+
+    private enableAttribute(name: string): void {
+      this.root.setAttribute(name, '');
+    }
+
+    private disableAttribute(name: string): void {
+      this.root.removeAttribute(name);
+    }
+
+    private setAttribute(name: string, enabled: boolean): void {
+      if (enabled) {
+        this.enableAttribute(name);
+      } else {
+        this.disableAttribute(name);
       }
     }
 
-    /**
-     * Add controls the Player.
-     */
-    addControls(options: ControlsOptions = {}) {
-      if (this.controlsEl) {
+    // OPTIONS
+
+    setOptions(changedOptions: Partial<PlayerOptions>): void {
+      this.options = { ...this.options, ...changedOptions };
+
+      // Sync some option values
+      if (typeof changedOptions.turbo !== 'undefined') {
+        this.setAttribute('turbo', changedOptions.turbo);
+      }
+      if (typeof changedOptions.theme !== 'undefined') {
+        this.root.setAttribute('theme', changedOptions.theme);
+        this.onthemechange.emit(changedOptions.theme);
+      }
+      if (this.hasStage()) {
+        this.applyOptionsToStage();
+      }
+
+      this.onoptionschange.emit(changedOptions);
+    }
+
+    getOptions(): PlayerOptions {
+      return this.options;
+    }
+
+    addControls(options: ControlsOptions = {}): void {
+      if (this.controlsContainer) {
         throw new Error('This player already has controls.');
       }
 
+      let flagTouchTimeout: number | null | undefined = undefined;
+
       const clickStop = (e: MouseEvent) => {
-        this.assertStage();
+        this.throwWithoutStage();
         this.stopAll();
         this.stage.draw();
         e.preventDefault();
@@ -186,38 +365,36 @@ namespace P.player {
       };
 
       const clickFullscreen = (e: MouseEvent) => {
-        this.assertStage();
-        if (this.fullscreen) {
+        this.throwWithoutStage();
+        this.setOptions({ fullscreenMode: e.shiftKey ? 'window' : 'full' });
+        if (this.fullscreenEnabled) {
           this.exitFullscreen();
         } else {
-          this.enterFullscreen(!e.shiftKey);
+          this.enterFullscreen();
         }
       };
 
       const clickFlag = (e: MouseEvent) => {
-        if (this.flagTouchTimeout === null) {
+        if (flagTouchTimeout === null) {
           return;
         }
-        if (this.flagTouchTimeout) {
-          clearTimeout(this.flagTouchTimeout);
+        if (flagTouchTimeout) {
+          clearTimeout(flagTouchTimeout);
         }
-        this.assertStage();
+        this.throwWithoutStage();
         if (e.shiftKey) {
-          this.setTurbo(!this.stage.runtime.isTurbo);
+          this.setOptions({ turbo: !this.options.turbo });
         } else {
-          this.start();
-          // Use of runtime's stopAll is intentional as it won't pause the runtime.
-          this.stage.runtime.stopAll();
-          this.stage.runtime.triggerGreenFlag();
+          this.triggerGreenFlag();
         }
-        this.stage.focus();
+        this.focus();
         e.preventDefault();
       };
 
       const startTouchFlag = (e: MouseEvent) => {
-        this.flagTouchTimeout = setTimeout(() => {
-          this.flagTouchTimeout = null;
-          this.setTurbo(!this.stage.runtime.isTurbo);
+        flagTouchTimeout = setTimeout(() => {
+          flagTouchTimeout = null;
+          this.setOptions({ turbo: !this.options.turbo });
         }, 500);
       };
 
@@ -225,165 +402,218 @@ namespace P.player {
         e.preventDefault();
       };
 
-      this.controlsEl = document.createElement('div');
-      this.controlsEl.className = 'player-controls';
+      this.controlsContainer = document.createElement('div');
+      this.controlsContainer.className = 'player-controls';
 
       if (options.enableStop !== false) {
-        this.stopButton = document.createElement('span');
-        this.stopButton.className = 'player-button player-stop';
-        this.controlsEl.appendChild(this.stopButton);
-        this.stopButton.addEventListener('click', clickStop);
-        this.stopButton.addEventListener('touchend', clickStop);
-        this.stopButton.addEventListener('touchstart', preventDefault);  
+        var stopButton = document.createElement('span');
+        stopButton.className = 'player-button player-stop';
+        this.controlsContainer.appendChild(stopButton);
+        stopButton.addEventListener('click', clickStop);
+        stopButton.addEventListener('touchend', clickStop);
+        stopButton.addEventListener('touchstart', preventDefault);
       }
-      
+
       if (options.enablePause !== false) {
-        this.pauseButton = document.createElement('span');
-        this.pauseButton.className = 'player-button player-pause';
-        this.controlsEl.appendChild(this.pauseButton);
-        this.pauseButton.addEventListener('click', clickPause);
-        this.pauseButton.addEventListener('touchend', clickPause);  
-        this.pauseButton.addEventListener('touchstart', preventDefault);  
+        var pauseButton = document.createElement('span');
+        pauseButton.className = 'player-button player-pause';
+        this.controlsContainer.appendChild(pauseButton);
+        pauseButton.addEventListener('click', clickPause);
+        pauseButton.addEventListener('touchend', clickPause);
+        pauseButton.addEventListener('touchstart', preventDefault);
       }
 
       if (options.enableFlag !== false) {
-        this.flagButton = document.createElement('span');
-        this.flagButton.className = 'player-button player-flag';
-        this.flagButton.title = P.i18n.translate('player.controls.flag.title');
-        this.controlsEl.appendChild(this.flagButton);
-        this.flagButton.addEventListener('click', clickFlag);
-        this.flagButton.addEventListener('touchend', clickFlag)
-        this.flagButton.addEventListener('touchstart', startTouchFlag);  
-        this.flagButton.addEventListener('touchstart', preventDefault);  
+        var flagButton = document.createElement('span');
+        flagButton.className = 'player-button player-flag';
+        flagButton.title = P.i18n.translate('player.controls.flag.title');
+        this.controlsContainer.appendChild(flagButton);
+        flagButton.addEventListener('click', clickFlag);
+        flagButton.addEventListener('touchend', clickFlag)
+        flagButton.addEventListener('touchstart', startTouchFlag);
+        flagButton.addEventListener('touchstart', preventDefault);
       }
 
       if (options.enableTurbo !== false) {
-        this.turboText = document.createElement('span');
-        this.turboText.innerText = P.i18n.translate('player.controls.turboIndicator');
-        this.turboText.className = 'player-label player-turbo';
-        this.controlsEl.appendChild(this.turboText);
+        var turboText = document.createElement('span');
+        turboText.innerText = P.i18n.translate('player.controls.turboIndicator');
+        turboText.className = 'player-label player-turbo';
+        this.controlsContainer.appendChild(turboText);
+
+        this.onoptionschange.subscribe((options) => {
+          if (flagButton && typeof options.turbo === 'boolean') {
+            if (options.turbo) {
+              flagButton.title = P.i18n.translate('player.controls.flag.title.enabled');
+            } else {
+              flagButton.title = P.i18n.translate('player.controls.flag.title.disabled');
+            }
+          }
+        });
       }
 
       if (options.enableFullscreen !== false) {
-        this.fullscreenButton = document.createElement('span');
-        this.fullscreenButton.className = 'player-button player-fullscreen-btn';
-        this.fullscreenButton.title = P.i18n.translate('player.controls.fullscreen.title');
-        this.controlsEl.appendChild(this.fullscreenButton);
-        this.fullscreenButton.addEventListener('click', clickFullscreen);
-        this.fullscreenButton.addEventListener('touchend', clickFullscreen);
-        this.fullscreenButton.addEventListener('touchstart', preventDefault);  
+        var fullscreenButton = document.createElement('span');
+        fullscreenButton.className = 'player-button player-fullscreen-btn';
+        fullscreenButton.title = P.i18n.translate('player.controls.fullscreen.title');
+        this.controlsContainer.appendChild(fullscreenButton);
+        fullscreenButton.addEventListener('click', clickFullscreen);
+        fullscreenButton.addEventListener('touchend', clickFullscreen);
+        fullscreenButton.addEventListener('touchstart', preventDefault);
       }
 
       this.root.addEventListener('touchmove', (e) => {
-        if (this.fullscreen) {
+        if (this.fullscreenEnabled) {
           e.preventDefault();
         }
       });
 
-      this.root.insertBefore(this.controlsEl, this.root.firstChild);
+      this.root.insertBefore(this.controlsContainer, this.root.firstChild);
     }
 
     /**
-     * Change the turbo state of the stage.
+     * Apply local options to a stage
      */
-    setTurbo(turbo: boolean) {
-      this.assertStage();
-      this.stage.runtime.isTurbo = turbo;
-      if (turbo) {
-        this.root.setAttribute('turbo', '');
-      } else {
-        this.root.removeAttribute('turbo');
-      }
-      if (this.flagButton) {
-        if (turbo) {
-          this.flagButton.title = P.i18n.translate('player.controls.flag.title.enabled');
-        } else {
-          this.flagButton.title = P.i18n.translate('player.controls.flag.title.disabled');
+    private applyOptionsToStage(): void {
+      // Changing FPS involved restarting an interval, which may cause a noticable interruption.
+      if (this.stage.runtime.framerate !== this.options.fps) {
+        this.stage.runtime.framerate = this.options.fps;
+        if (this.isRunning()) {
+          this.stage.runtime.resetInterval();
         }
       }
-      this.onturbochange.emit(turbo);
+      this.stage.username = this.options.username;
+      this.stage.runtime.isTurbo = this.options.turbo;
+      (this.stage.renderer as P.renderer.canvas2d.ProjectRenderer2D).imageSmoothingEnabled = this.options.imageSmoothing;
     }
 
+    // COMMON OPERATIONS
+
     /**
-     * Pause the stage's runtime.
+     * Throw an error if there is no stage available.
      */
-    pause() {
-      this.assertStage();
+    private throwWithoutStage() {
+      if (!this.stage) {
+        throw new Error('Missing stage.');
+      }
+    }
+
+    resume(): void {
+      this.throwWithoutStage();
+      if (this.isRunning()) {
+        throw new Error('cannot resume: project is already running');
+      }
+      this.stage.runtime.start();
+      this.enableAttribute('running');
+      this.onresume.emit();
+    }
+
+    pause(): void {
+      this.throwWithoutStage();
+      if (!this.isRunning()) {
+        throw new Error('cannot pause: project is already paused');
+      }
       this.stage.runtime.pause();
-      this.root.removeAttribute('running');
+      this.disableAttribute('running');
       this.onpause.emit();
     }
 
-    /**
-     * Start or resume the stage's runtime.
-     */
-    start() {
-      this.assertStage();
-      this.stage.runtime.start();
-      this.root.setAttribute('running', '');
-      this.onstart.emit();
-    }
-
-    /**
-     * Active scripts triggered by the green flag.
-     */
-    triggerGreenFlag() {
-      this.assertStage();
-      this.stage.runtime.triggerGreenFlag();
-    }
-
-    /**
-     * Stop all scripts in the runtime, and stop the runtime.
-     */
-    stopAll() {
-      this.assertStage();
-      this.pause();
-      this.stage.runtime.stopAll();
-    }
-
-    /**
-     * Whether the project is running.
-     */
     isRunning() {
-      if (!this.stage) {
+      if (!this.hasStage()) {
         return false;
       }
       return this.stage.runtime.isRunning;
     }
 
-    /**
-     * Toggles the project between paused and running.
-     */
-    toggleRunning() {
-      this.assertStage();
-      if (this.isRunning()) {
+    toggleRunning(): void {
+      this.throwWithoutStage();
+      if (this.stage.runtime.isRunning) {
         this.pause();
       } else {
-        this.start();
-        // TODO: is focus necessary? maybe move to start()
-        this.stage.focus();
+        this.resume();
       }
     }
 
-    /**
-     * Change the theme of the player.
-     * Should not affect the project.
-     */
-    setTheme(theme: Theme) {
-      this.theme = theme;
-      this.root.setAttribute('theme', theme);
-      this.onthemechange.emit(theme);
+    stopAll(): void {
+      this.throwWithoutStage();
+      this.pause();
+      this.stage.runtime.stopAll();
     }
 
-    /**
-     * Enter fullscreen
-     * TODO: fullscreen mode
-     */
-    enterFullscreen(realFullscreen: boolean) {
+    triggerGreenFlag(): void {
+      this.throwWithoutStage();
+      if (!this.isRunning()) {
+        this.resume();
+      }
+      this.stage.runtime.stopAll();
+      this.stage.runtime.triggerGreenFlag();
+      if (this.clickToPlayContainer) {
+        this.removeClickToPlayContainer();
+      }
+    }
+
+    cleanup() {
+      // Stop any loader
+      if (this.currentLoader) {
+        this.currentLoader.cancel();
+        this.currentLoader = null;
+      }
+      // Reset interface
+      if (this.clickToPlayContainer) {
+        this.removeClickToPlayContainer();
+      }
+      if (this.fullscreenEnabled) {
+        this.exitFullscreen();
+      }
+      // Remove stage
+      if (this.stage) {
+        this.stage.destroy();
+        this.stage = null!;
+      }
+      // Clear some additional data
+      this.projectMeta = null;
+      while (this.playerContainer.firstChild) {
+        this.playerContainer.removeChild(this.playerContainer.firstChild);
+      }
+      this.oncleanup.emit();
+    }
+
+    focus() {
+      this.stage.focus();
+    }
+
+    hasStage(): boolean {
+      return !!this.stage;
+    }
+
+    getStage(): core.Stage {
+      this.throwWithoutStage();
+      return this.stage;
+    }
+
+    hasProjectMeta() {
+      return !!this.projectMeta;
+    }
+
+    getProjectMeta() {
+      if (!this.projectMeta) {
+        throw new Error('no project meta');
+      }
+      return this.projectMeta;
+    }
+
+    handleError(error: any) {
+      console.error(error);
+      this.onerror.emit(error);
+    }
+
+    // FULLSCREEN
+
+    enterFullscreen() {
       // fullscreen requires dark theme
-      this.previousTheme = this.root.getAttribute('theme') as Theme;
-      this.setTheme('dark');
-      if (realFullscreen) {
+      this.savedTheme = this.root.getAttribute('theme') as Theme;
+      this.setOptions({ theme: 'dark' });
+
+      if (this.options.fullscreenMode === 'full') {
         if (this.root.requestFullScreenWithKeys) {
           this.root.requestFullScreenWithKeys();
         } else if (this.root.webkitRequestFullScreen) {
@@ -392,26 +622,27 @@ namespace P.player {
           this.root.requestFullscreen();
         }
       }
+
       document.body.classList.add('player-body-fullscreen');
-      this.root.style.zIndex = Player.LARGE_Z_INDEX;
-      this.root.setAttribute('fullscreen', '');
-      this.fullscreen = true;
-      if (this.stage) {
+      this.root.style.zIndex = this.MAGIC.LARGE_Z_INDEX;
+      this.enableAttribute('fullscreen');
+      this.fullscreenEnabled = true;
+
+      if (this.hasStage()) {
         if (!this.isRunning()) {
           this.stage.draw();
         }
-        this.stage.focus();
+        this.focus();
       }
+
       this.updateFullscreen();
     }
 
-    /**
-     * Exit fullscreen
-     */
     exitFullscreen() {
-      this.setTheme(this.previousTheme);
-      this.root.removeAttribute('fullscreen');
-      this.fullscreen = false;
+      this.setOptions({ theme: this.savedTheme });
+      this.disableAttribute('fullscreen');
+      this.fullscreenEnabled = false;
+
       if (document.fullscreenElement === this.root || document.webkitFullscreenElement === this.root) {
         if (document.exitFullscreen) {
           document.exitFullscreen();
@@ -423,123 +654,191 @@ namespace P.player {
           document.webkitExitFullscreen();
         }
       }
+
       this.root.style.paddingLeft = '';
       this.root.style.paddingTop = '';
       this.root.style.zIndex = '';
-      if (this.controlsEl) {
-        this.controlsEl.style.width = '';
+      if (this.controlsContainer) {
+        this.controlsContainer.style.width = '';
       }
       document.body.classList.remove('player-body-fullscreen');
+
       if (this.stage) {
         this.stage.setZoom(1);
-        this.stage.focus();
+        this.focus();
       }
     }
 
     /**
-     * Ensures that the fullscreened project always has proper dimensions.
+     * Updates the stage in fullscreen mode to ensure proper dimensions.
      */
-    updateFullscreen() {
-      if (!this.stage) {
+    private updateFullscreen() {
+      if (!this.fullscreenEnabled) {
         return;
       }
-      if (this.fullscreen) {
-        var controlsHeight = this.controlsEl ? this.controlsEl.offsetHeight : 0;
-        window.scrollTo(0, 0);
-        var w = window.innerWidth - this.fullscreenPadding * 2;
-        var h = window.innerHeight - this.fullscreenPadding - controlsHeight;
-        w = Math.min(w, h / 0.75);
-        w = Math.min(w, this.fullscreenMaxWidth);
-        h = w * 0.75 + controlsHeight;
-        if (this.controlsEl) {
-          this.controlsEl.style.width = w + 'px';
-        }
-        this.root.style.paddingLeft = (window.innerWidth - w) / 2 + 'px';
-        this.root.style.paddingTop = (window.innerHeight - h - this.fullscreenPadding) / 2 + 'px';
-        this.stage.setZoom(w / 480);
+      this.throwWithoutStage();
+      const controlsHeight = this.controlsContainer ? this.controlsContainer.offsetHeight : 0;
+      window.scrollTo(0, 0);
+
+      let w = window.innerWidth - this.options.fullscreenPadding * 2;
+      let h = window.innerHeight - this.options.fullscreenPadding - controlsHeight;
+      w = Math.min(w, h / 0.75);
+      w = Math.min(w, this.options.fullscreenMaxWidth);
+      h = w * 0.75 + controlsHeight;
+
+      if (this.controlsContainer) {
+        this.controlsContainer.style.width = w + 'px';
       }
+
+      this.root.style.paddingLeft = (window.innerWidth - w) / 2 + 'px';
+      this.root.style.paddingTop = (window.innerHeight - h - this.options.fullscreenPadding) / 2 + 'px';
+      this.stage.setZoom(w / 480);
     }
 
+    /**
+     * Responds to changes in the browser's fullscreen state.
+     */
     private onfullscreenchange() {
       // If the user closes fullscreen through some external method (probably pressing escape),
       // we will want to cleanup and go back to the normal display mode.
-      if (typeof document.fullscreen === 'boolean' && document.fullscreen !== this.fullscreen) {
+      if (typeof document.fullscreen === 'boolean' && document.fullscreen !== this.fullscreenEnabled) {
         this.exitFullscreen();
-      } else if (typeof document.webkitIsFullScreen === 'boolean' && document.webkitIsFullScreen !== this.fullscreen) {
+      } else if (typeof document.webkitIsFullScreen === 'boolean' && document.webkitIsFullScreen !== this.fullscreenEnabled) {
         this.exitFullscreen();
       }
     }
+
+    // CLOUD VARIABLES
+
+    private isCloudVariable(variableName: string): boolean {
+      return variableName.startsWith('☁');
+    }
+
+    private async getCloudVariables(id: string): Promise<ObjectMap<any>> {
+      // To get the cloud variables of a project, we will fetch the history logs and essentially replay the latest changes.
+      // This is primarily designed so that highscores in projects can remain up-to-date, and nothing more than that.
+      const data = await new P.io.Request(this.MAGIC.CLOUD_HISTORY_API.replace('$id', id)).load('json');
+      const variables = Object.create(null);
+      for (const entry of data.reverse()) {
+        const { verb, name, value } = entry;
+        // Make sure that the cloud logs are only affecting cloud variables and not regular variables
+        if (!this.isCloudVariable(name)) {
+          console.warn('cloud variable logs affecting non-cloud variable, skipping', name);
+          continue;
+        }
+        switch (verb) {
+          case 'create_var':
+          case 'set_var':
+            variables[name] = value;
+            break;
+          case 'del_var':
+            delete variables[name];
+            break;
+          case 'rename_var':
+            variables[value] = variables[name];
+            delete variables[name];
+            break;
+          default:
+            console.warn('unknown cloud variable log verb', verb);
+        }
+      }
+      return variables;
+    }
+
+    private addCloudVariables(stage: P.core.Stage, id: string) {
+      const variables = Object.keys(stage.vars);
+      const hasCloudVariables = variables.some(this.isCloudVariable);
+      if (!hasCloudVariables) {
+        return;
+      }
+      this.getCloudVariables(id).then((variables) => {
+        for (const name of Object.keys(variables)) {
+          // Ensure that the variables we are setting are known to the stage before setting them.
+          if (name in stage.vars) {
+            stage.vars[name] = variables[name];
+          } else {
+            console.warn('not applying unknown cloud variable:', name);
+          }
+        }
+      });
+    }
+
+    // AUTOPLAY POLICY
 
     /**
-     * Handle errors
+     * Apply an autoplay policy to the current stage.
      */
-    private handleError(error: any) {
-      console.error(error);
-      this.onerror.emit(error);
+    private enactAutoplayPolicy(policy: AutoplayPolicy) {
+      switch (policy) {
+        case 'always': {
+          this.triggerGreenFlag();
+          break;
+        }
+        case 'if-audio-playable': {
+          if (!P.audio.context || P.audio.context.state === 'running') {
+            this.triggerGreenFlag();
+          } else {
+            this.showClickToPlayContainer();
+          }
+          break;
+        }
+        case 'never': {
+          this.showClickToPlayContainer();
+          break;
+        }
+      }
     }
+
+    private showClickToPlayContainer() {
+      if (this.clickToPlayContainer) {
+        throw new Error('cannot show click-to-play interface: already shown');
+      }
+      this.clickToPlayContainer = document.createElement('div');
+      this.clickToPlayContainer.className = 'player-click-to-play-container';
+      this.clickToPlayContainer.onclick = () => {
+        this.removeClickToPlayContainer();
+        this.triggerGreenFlag();
+        this.focus();
+      };
+
+      const content = document.createElement('div');
+      content.className = 'player-click-to-play-icon';
+      this.clickToPlayContainer.appendChild(content);
+
+      this.stage.ui.appendChild(this.clickToPlayContainer);
+    }
+
+    private removeClickToPlayContainer() {
+      if (this.clickToPlayContainer === null) {
+        throw new Error('cannot hide click-to-play interface: already hidden');
+      }
+      this.stage.ui.removeChild(this.clickToPlayContainer);
+      this.clickToPlayContainer = null;
+    }
+
+    // PROJECT LOADERS & HELPERS
 
     /**
-     * Completely remove the stage, and restore this player to an (almost) fresh state.
+     * Begin loading a new project.
+     * This gives you a LoaderIdentifier to use for identification and cancellation.
+     * It also removes any existing stage to make room for the new one.
      */
-    cleanup() {
-      this.stageId++;
-      this.projectId = Player.UNKNOWN_ID;
-      this.projectLink = Player.UNKNOWN_LINK;
-      this.projectTitle = Player.UNKNOWN_TITLE;
-      if (this.stage) {
-        this.stage.destroy();
-        this.stage = null!;
-      }
-      while (this.player.firstChild) {
-        this.player.removeChild(this.player.firstChild);
-      }
-      if (this.fullscreen) {
-        this.exitFullscreen();
-      }
-      this.oncleanup.emit();
-    }
-
-    private startLoadingNewProject() {
+    private beginLoadingProject(): { loaderId: LoaderIdentifier } {
       this.cleanup();
       this.onstartload.emit();
+      const loaderId = new LoaderIdentifier();
+      this.currentLoader = loaderId;
+      return { loaderId };
     }
 
     /**
-     * Get a new stage ID, and invalidate any old ones.
+     * Determine project type by its data.
+     * @param data The project's data (project.json)
      */
-    private getNewStageId() {
-      this.stageId++;
-      return this.stageId;
-    }
-
-    private isStageActive(id: number) {
-      return id === this.stageId;
-    }
-
-    /**
-     * Start a new Stage in this player
-     */
-    private installStage(stage: P.core.Stage, stageOptions: StageLoadOptions = {}) {
-      if (!stage) {
-        throw new Error('Cannot run an invalid stage');
-      }
-
-      this.stage = stage;
-      this.stage.runtime.handleError = this.handleError;
-
-      if (typeof stageOptions.fps !== 'undefined') {
-        stage.runtime.framerate = stageOptions.fps;
-      }
-      this.onload.emit(stage);
-      this.start();
-      if (stageOptions.start !== false) {
-        stage.runtime.triggerGreenFlag();
-      }
-      if (stageOptions.turbo) {
-        stage.runtime.isTurbo = true;
-      }
-      this.player.appendChild(stage.root);
-      stage.focus();
+    private determineProjectType(data: any): 'sb2' | 'sb3' {
+      if ('objName' in data) return 'sb2';
+      if ('targets' in data) return 'sb3';
+      throw new Error('Unknown project type');
     }
 
     /**
@@ -556,233 +855,140 @@ namespace P.player {
       return true;
     }
 
-    // Wrappers around P.sb2 and P.sb3 for loading...
+    /**
+     * Download a project from the scratch.mit.edu using its ID.
+     */
+    private fetchProject(id: string): Promise<Blob> {
+      const request = new P.io.Request(this.MAGIC.PROJECT_API.replace('$id', id));
+      return request
+        .ignoreErrors()
+        .load('blob')
+        .then(function(response) {
+          if (request.getStatus() === 404) {
+            throw new ProjectDoesNotExistError(id);
+          }
+          return response;
+        });
+    }
 
-    private _handleScratch3Loader(loader: P.sb3.BaseSB3Loader, stageId: number) {
-      loader.onprogress.subscribe(progress => {
-        if (this.isStageActive(stageId)) {
+    /**
+     * Set the stage of this loader. Applies options to the stage, among other things.
+     */
+    private setStage(stage: P.core.Stage) {
+      this.stage = stage;
+      this.stage.runtime.handleError = this.handleError;
+      this.applyOptionsToStage();
+
+      this.playerContainer.appendChild(stage.root);
+      stage.focus();
+      stage.draw();
+      this.onload.emit(stage);
+
+      this.enactAutoplayPolicy(this.options.autoplayPolicy);
+    }
+
+    /**
+     * Sets the active loader of this stage.
+     * @param loaderId LoaderIdentifier as given by startLoadingProject()
+     * @param loader The new loader
+     */
+    private async loadLoader(loaderId: LoaderIdentifier, loader: P.io.Loader<P.core.Stage>): Promise<P.core.Stage> {
+      loaderId.setLoader(loader);
+      loader.onprogress = (progress) => {
+        if (loaderId.isActive()) {
           this.onprogress.emit(progress);
-        } else if (!loader.aborted) {
-          loader.abort();
-        }
-      });
-      return loader.load().then(stage => {
-        if (this.isStageActive(stageId)) return stage;
-        return null;
-      });
-    }
-
-    private _handleScratch2Loader(stageId: number, load: () => Promise<P.core.Stage>) {
-      var totalTasks = 0;
-      var finishedTasks = 0;
-      const update = () => {
-        if (this.isStageActive(stageId)) {
-          var progress = finishedTasks / totalTasks || 0;
-          this.onprogress.emit(progress);
         }
       };
-      P.sb2.hooks.newTask = function() {
-        totalTasks++;
-        update();
-      };
-      P.sb2.hooks.endTask = function() {
-        finishedTasks++;
-        update();
-      };
-      return load().then((stage) => {
-        if (this.isStageActive(stageId)) return stage;
-        return null;
-      });
+      const stage = await loader.load();
+      this.setStage(stage);
+      return stage;
     }
 
-    private _loadScratch3(stageId: number, data: any) {
-      var loader = new P.sb3.Scratch3Loader(data);
-      return this._handleScratch3Loader(loader, stageId);
-    }
-
-    private _loadScratch3File(stageId: number, buffer: any) {
-      var loader = new P.sb3.SB3FileLoader(buffer);
-      return this._handleScratch3Loader(loader, stageId);
-    }
-
-    private _loadScratch2(stageId: number, data: any) {
-      return this._handleScratch2Loader(stageId, function() {
-        return P.sb2.loadProject(data);
-      });
-    }
-
-    private _loadScratch2File(stageId: number, data: any) {
-      return this._handleScratch2Loader(stageId, function() {
-        return P.sb2.loadSB2Project(data);
-      });
-    }
-
-    private _fetchProject(id: string) {
-      var request = new P.IO.BlobRequest(Player.PROJECT_DATA_API.replace('$id', id), { rejectOnError: false });
-      return request.load().then(function(response) {
-        if (request.xhr.status === 404) {
-          throw new ProjectDoesNotExistError(id);
-        }
-        return response;
-      });
-    }
-
-    // The main methods you should use for loading things...
-
-    /**
-     * Load a remote project from its ID
-     */
-    loadProjectId(id: string, options: StageLoadOptions) {
-      this.startLoadingNewProject();
-      const stageId = this.getNewStageId();
-      this.projectId = '' + id;
-      this.projectLink = Player.PROJECT_LINK.replace('$id', id);
-      let blob: Blob;
-      return this._fetchProject(id)
-        .then((data) => {
-          blob = data;
-          return P.IO.readers.toText(blob);
-        })
-        .then((text) => {
-          if (!this.isStageActive(stageId)) {
-            return null;
-          }
-          try {
-            var json = JSON.parse(text);
-            var type = Player.getProjectType(json);
-            if (type === 3) {
-              return this._loadScratch3(stageId, json);
-            } else if (type === 2) {
-              return this._loadScratch2(stageId, json);
-            } else {
-              throw new Error('Project is valid JSON but of unknown type');
-            }
-          } catch (e) {
-            // not json, but could be a zipped sb2
-            return P.IO.readers.toArrayBuffer(blob).then((buffer) => {
-              if (this.isScratch1Project(buffer)) {
-                throw new ProjectNotSupportedError('.sb / Scratch 1');
-              }
-              return P.sb2.loadSB2Project(buffer);
-            });
-          }
-        })
-        .then((stage) => {
-          if (stage) {
-            this.installStage(stage, options);
-            this.addCloudVariables(stage, id);
-          }
-        })
-        .catch((error) => {
-          if (this.isStageActive(stageId)) {
-            this.handleError(error);
-          }
-        });
-    }
-
-    /**
-     * Load a project from an ArrayBuffer of the project file.
-     */
-    loadProjectBuffer(buffer: ArrayBuffer, type: 'sb2' | 'sb3', options: StageLoadOptions) {
-      this.startLoadingNewProject();
-      const stageId = this.getNewStageId();
-      const startLoad = () => {
-        if (type === 'sb3') {
-          return this._loadScratch3File(stageId, buffer);
-        } else if (type === 'sb2') {
-          return this._loadScratch2File(stageId, buffer);
-        } else {
-          throw new Error('Unknown type: ' + type);
-        }
-      };
-      return startLoad()
-        .then((stage) => {
-          if (stage) {
-            this.installStage(stage, options);
-          }
-        })
-        .catch((error) => {
-          if (this.isStageActive(stageId)) {
-            this.handleError(error);
-          }
-        });
-    }
-
-    /**
-     * Load a project from a File or Blob of the project file.
-     */
-    loadProjectFile(file: File, options: StageLoadOptions) {
-      var extension = file.name.split('.').pop() || '';
-      if (['sb2', 'sb3'].indexOf(extension) === -1) {
-        throw new Error('Unrecognized file extension: ' + extension);
+    private async loadProjectFromBufferWithType(loaderId: LoaderIdentifier, buffer: ArrayBuffer, type: 'sb2' | 'sb3'): Promise<void> {
+      let loader: P.io.Loader<P.core.Stage>;
+      switch (type) {
+        case 'sb2': loader = new P.sb2.SB2FileLoader(buffer); break;
+        case 'sb3': loader = new P.sb3.SB3FileLoader(buffer); break;
+        default: throw new Error('Unknown type: ' + type);
       }
-      this.startLoadingNewProject();
-      // we won't use this one, we just want to invalidate anything else
-      this.getNewStageId();
-      this.projectId = file.name;
-      this.projectLink = file.name + '#local';
-      return P.IO.readers.toArrayBuffer(file).then(buffer => {
-        return this.loadProjectBuffer(buffer, extension as any, options);
-      });
+      await this.loadLoader(loaderId, loader);
     }
 
-    /**
-     * Get the title of a project.
-     */
-    getProjectTitle(id: string): Promise<string> {
-      return new P.IO.JSONRequest(Player.PROJECT_API.replace('$id', id), { rejectOnError: false }).load()
-        .then((data) => data.title || '');
-    }
+    async loadProjectById(id: string): Promise<void> {
+      const { loaderId } = this.beginLoadingProject();
 
-    getCloudVariables(id: string) {
-      // To get the cloud variables of a project, we will fetch the history logs and essentially replay the latest changes.
-      // This is primarily designed so that highscores in projects can remain up-to-date, and nothing more than that.
-      return new P.IO.JSONRequest(Player.CLOUD_API.replace('$id', id)).load()
-        .then((data) => {
-          const variables = Object.create(null);
-          for (const entry of data.reverse()) {
-            const { verb, name, value } = entry;
-            // Make sure that the cloud logs are only affecting cloud variables and not regular variables
-            if (!Player.isCloudVariable(name)) {
-              console.warn('cloud variable logs affecting non-cloud variable, skipping', name);
-              continue;
-            }
-            switch (verb) {
-              case 'create_var':
-              case 'set_var':
-                variables[name] = value;
-                break;
-              case 'del_var':
-                delete variables[name];
-                break;
-              case 'rename_var':
-                variables[value] = variables[name];
-                delete variables[name];
-                break;
-              default:
-                console.warn('unknown cloud variable log verb', verb);
-            }
+      const getLoader = async (blob: Blob): Promise<P.io.Loader<P.core.Stage>> => {
+        // When downloaded from scratch.mit.edu, there are two types of projects:
+        // 1. "JSON projects" which are only the project.json of a sb2 or sb3 file.
+        //    This is most projects, especially as this is the only format of Scratch 3 projects.
+        // 2. "Binary projects" which are full binary .sb or .sb2 files.
+        //    As an example: https://scratch.mit.edu/projects/250740608/
+
+        const projectText = await P.io.readers.toText(blob);
+        try {
+          // JSON.parse will fail if this is not a JSON project
+          const projectJson = JSON.parse(projectText);
+
+          switch (this.determineProjectType(projectJson)) {
+            case 'sb2': return new P.sb2.Scratch2Loader(projectJson);
+            case 'sb3': return new P.sb3.Scratch3Loader(projectJson);
           }
-          return variables;
-        });
-    }
+        } catch (e) {
+          // if the project cannot be loaded as JSON, it may be a binary project.
+          const buffer = await P.io.readers.toArrayBuffer(blob);
 
-    private addCloudVariables(stage: P.core.Stage, id: string) {
-      const variables = Object.keys(stage.vars);
-      const hasCloudVariables = variables.some(Player.isCloudVariable);
-      if (!hasCloudVariables) {
-        return;
-      }
-      this.getCloudVariables(id).then((variables) => {
-        for (const name of Object.keys(variables)) {
-          // Ensure that the variables we are setting are known to the stage before setting them.
-          if (name in stage.vars) {
-            stage.vars[name] = variables[name];
-          } else {
-            console.warn('not applying unknown cloud variable:', name);
+          // check for Scratch 1, which we do not support
+          if (this.isScratch1Project(buffer)) {
+            throw new ProjectNotSupportedError('Scratch 1');
           }
+
+          return new P.sb2.SB2FileLoader(buffer);
         }
-      });
+      };
+
+      try {
+        this.projectMeta = new RemoteProjectMeta(id);
+        const blob = await this.fetchProject(id);
+        const loader = await getLoader(blob);
+        const stage = await this.loadLoader(loaderId, loader);
+        this.addCloudVariables(stage, id);
+      } catch (e) {
+        if (loaderId.isActive()) {
+          this.handleError(e);
+        }
+      }
+    }
+
+    async loadProjectFromFile(file: File): Promise<void> {
+      const { loaderId } = this.beginLoadingProject();
+
+      try {
+        this.projectMeta = new LocalProjectMeta(file.name);
+        const extension = file.name.split('.').pop() || '';
+        const buffer = await P.io.readers.toArrayBuffer(file);
+
+        switch (extension) {
+          case 'sb2': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb2');
+          case 'sb3': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb3');
+          default: throw new Error('Unrecognized file extension: ' + extension);
+        }
+      } catch (e) {
+        if (loaderId.isActive()) {
+          this.handleError(e);
+        }
+      }
+    }
+
+    async loadProjectFromBuffer(buffer: ArrayBuffer, type: 'sb2' | 'sb3'): Promise<void> {
+      const { loaderId } = this.beginLoadingProject();
+
+      try {
+        return await this.loadProjectFromBufferWithType(loaderId, buffer, type);
+      } catch (e) {
+        if (loaderId.isActive()) {
+          this.handleError(e);
+        }
+      }
     }
   }
 
@@ -799,7 +1005,7 @@ namespace P.player {
     private errorEl: HTMLElement | null;
     private errorContainer: HTMLElement | null;
 
-    constructor(public player: Player, options: ErrorHandlerOptions = {}) {
+    constructor(public player: ProjectPlayer, options: ErrorHandlerOptions = {}) {
       this.player = player;
       player.onerror.subscribe(this.onerror.bind(this));
       player.oncleanup.subscribe(this.oncleanup.bind(this));
@@ -814,7 +1020,7 @@ namespace P.player {
     /**
      * Create a string representation of an error.
      */
-    stringifyError(error: any) {
+    stringifyError(error: any): string {
       if (!error) {
         return 'unknown error';
       }
@@ -827,7 +1033,7 @@ namespace P.player {
     /**
      * Generate the link to report a bug to, including title and metadata.
      */
-    createBugReportLink(bodyBefore: string, bodyAfter: string) {
+    createBugReportLink(bodyBefore: string, bodyAfter: string): string {
       var title = this.getBugReportTitle();
       bodyAfter = bodyAfter || '';
       var body =
@@ -844,19 +1050,25 @@ namespace P.player {
     /**
      * Get the title for bug reports.
      */
-    getBugReportTitle() {
-      if (this.player.projectTitle !== Player.UNKNOWN_TITLE) {
-        return this.player.projectTitle + ' (' + this.player.projectId + ')';
+    getBugReportTitle(): string {
+      const meta = this.player.getProjectMeta();
+      const title = meta.getTitle();
+      const id = meta.getId();
+      if (title) {
+        return title;
       }
-      return this.player.projectLink;
+      if (id) {
+        return id;
+      }
+      return 'Unknown Project';
     }
 
     /**
      * Get the metadata to include in bug reports.
      */
-    getBugReportMetadata() {
-      var meta = 'Project URL: ' + this.player.projectLink + '\n';
-      meta += 'Project ID: ' + this.player.projectId + '\n';
+    getBugReportMetadata(): string {
+      var meta = '';
+      meta += 'Project ID: ' + this.player.getProjectMeta().getId() + '\n';
       meta += location.href + '\n';
       meta += navigator.userAgent;
       return meta;
@@ -865,12 +1077,12 @@ namespace P.player {
     /**
      * Get the URL to report an error to.
      */
-    createErrorLink(error: any) {
+    createErrorLink(error: any): string {
       var body = P.i18n.translate('player.errorhandler.instructions');
       return this.createBugReportLink(body, '```\n' + this.stringifyError(error) + '\n```');
     }
 
-    oncleanup() {
+    oncleanup(): void {
       if (this.errorEl && this.errorEl.parentNode) {
         this.errorEl.parentNode.removeChild(this.errorEl);
         this.errorEl = null;
@@ -880,7 +1092,7 @@ namespace P.player {
     /**
      * Create an error element indicating that forkphorus has crashed, and where to report the bug.
      */
-    handleError(error: any) {
+    handleError(error: any): HTMLElement {
       var el = document.createElement('div');
       var errorLink = this.createErrorLink(error);
       var attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
@@ -892,7 +1104,7 @@ namespace P.player {
     /**
      * Create an error element indicating this project is not supported.
      */
-    handleNotSupportedError(error: ProjectNotSupportedError) {
+    handleNotSupportedError(error: ProjectNotSupportedError): HTMLElement {
       var el = document.createElement('div');
       // use of innerHTML intentional
       el.innerHTML = P.i18n.translate('player.errorhandler.error.unsupported').replace('$type', error.type);
@@ -902,13 +1114,13 @@ namespace P.player {
     /**
      * Create an error element indicating this project does not exist.
      */
-    handleDoesNotExistError(error: ProjectDoesNotExistError) {
+    handleDoesNotExistError(error: ProjectDoesNotExistError): HTMLElement {
       var el = document.createElement('div');
       el.textContent = P.i18n.translate('player.errorhandler.error.doesnotexist').replace('$id', error.id);
       return el;
     }
 
-    onerror(error: any) {
+    onerror(error: any): void {
       var el = document.createElement('div');
       el.className = 'player-error';
       // Special handling for certain errors to provide a better error message
@@ -921,10 +1133,10 @@ namespace P.player {
       }
       if (this.errorContainer) {
         this.errorContainer.appendChild(el);
-      } else if (this.player.stage) {
-        this.player.stage.ui.appendChild(el);
+      } else if (this.player.hasStage()) {
+        this.player.getStage().ui.appendChild(el);
       } else {
-        this.player.player.appendChild(el);
+        this.player.playerContainer.appendChild(el);
       }
       this.errorEl = el;
     }
@@ -941,7 +1153,7 @@ namespace P.player {
     private el: HTMLElement;
     private bar: HTMLElement;
 
-    constructor(player: Player, options: ProgressBarOptions = {}) {
+    constructor(player: ProjectPlayer, options: ProgressBarOptions = {}) {
       this.el = document.createElement('div');
       this.el.className = 'player-progress';
 
@@ -949,7 +1161,7 @@ namespace P.player {
       this.bar.className = 'player-progress-fill';
       this.el.appendChild(this.bar);
 
-      this.setTheme(player.theme);
+      this.setTheme(player.getOptions().theme);
 
       player.onthemechange.subscribe((theme) => this.setTheme(theme));
       player.onprogress.subscribe((progress) => this.setProgress(progress));
@@ -970,10 +1182,10 @@ namespace P.player {
       });
 
       if (options.position === 'controls' || options.position === undefined) {
-        if (!player.controlsEl) {
+        if (!player.controlsContainer) {
           throw new Error('No controls to put progess bar in.');
         }
-        player.controlsEl.appendChild(this.el);
+        player.controlsContainer.appendChild(this.el);
       } else {
         options.position.appendChild(this.el);
       }

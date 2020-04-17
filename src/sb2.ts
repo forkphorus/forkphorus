@@ -6,25 +6,6 @@
 
 namespace P.sb2 {
   const ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
-  let zipArchive: JSZip.Zip | null = null;
-
-  export interface Hooks {
-    newTask(): void;
-    endTask(): void;
-  }
-
-  export const hooks: Hooks = {
-    newTask() {},
-    endTask() {},
-  };
-
-  function promiseTask<T>(pr: Promise<T>): Promise<T> {
-    hooks.newTask();
-    return pr.then((v) => {
-      hooks.endTask();
-      return v;
-    });
-  }
 
   export class Scratch2VariableWatcher extends P.core.Watcher {
     private cmd: string;
@@ -373,208 +354,328 @@ namespace P.sb2 {
     }
   }
 
-  // loads an image from a URL
-  export function loadImage(url): Promise<HTMLImageElement> {
-    hooks.newTask();
+  type SB2Base = any;
+  type SB2Project = any;
+  type SB2Costume = any;
+  type SB2Sound = any;
 
-    var image = new Image();
-    image.crossOrigin = 'anonymous';
+  export abstract class BaseSB2Loader extends P.io.Loader<P.core.Stage> {
+    protected projectData: SB2Project;
 
-    return new Promise((resolve, reject) => {
-      image.onload = function() {
-        hooks.endTask();
-        resolve(image);
-      };
-      image.onerror = function(err) {
-        reject('Failed to load image: ' + image.src);
-      };
-      image.src = url;
-    });
-  }
-
-  // Loads a .sb2 file from an ArrayBuffer containing the .sb2 file
-  export function loadSB2Project(arrayBuffer) {
-    return JSZip.loadAsync(arrayBuffer)
-      .then((zip) => {
-        zipArchive = zip;
-        return zip.file('project.json').async('text');
-      })
-      .then((text: string) => {
-        const project = JSON.parse(text);
-        return loadProject(project);
-      });
-  }
-
-  // Loads a project on the scratch.mit.edu website from its project.json
-  export function loadProject(data) {
-    var children;
-    var stage;
-    zipArchive = null;
-
-    return loadFonts()
-      .then(() => Promise.all<any>([
-        P.audio.loadSoundbank(hooks),
-        loadArray(data.children, loadObject).then((c) => children = c),
-        loadBase(data, true).then((s) => stage = s),
-      ]))
-      .then(() => {
-        children = children.filter((i) => i);
-        children.forEach((c) => c.stage = stage);
-        var sprites = children.filter((i) => i instanceof Scratch2Sprite);
-        var watchers = children.filter((i) => i instanceof Scratch2VariableWatcher);
-
-        stage.children = sprites;
-        stage.allWatchers = watchers;
-        stage.allWatchers.forEach((w) => w.init());
-
-        P.sb2.compiler.compile(stage);
-        return stage;
-      });
-  }
-
-  export function loadBase(data, isStage = false) {
-    var costumes;
-    var sounds;
-
-    return Promise.all([
-      loadArray(data.costumes, loadCostume).then((c) => costumes = c),
-      loadArray(data.sounds, loadSound).then((s) => sounds = s),
-    ]).then(() => {
-      const variables = {};
-      if (data.variables) {
-        for (const variable of data.variables) {
-          if (variable.isPeristent) {
-            throw new Error('Cloud variables are not supported');
-          }
-          variables[variable.name] = variable.value;
-        }
-      }
-
-      const lists = {};
-      if (data.lists) {
-        for (const list of data.lists) {
-          if (list.isPeristent) {
-            throw new Error('Cloud lists are not supported');
-          }
-          lists[list.listName] = list.contents;
-        }
-      }
-
-      // Dirty hack to construct a target with a null stage
-      const object = new (isStage ? Scratch2Stage : Scratch2Sprite)(null!);
-
-      object.name = data.objName;
-      object.vars = variables;
-      object.lists = lists;
-      object.costumes = costumes;
-      object.currentCostumeIndex = data.currentCostumeIndex;
-      sounds.forEach((sound) => sound && object.addSound(sound));
-
-      if (isStage) {
-
-      } else {
-        const sprite = object as Scratch2Sprite;
-        sprite.scratchX = data.scratchX;
-        sprite.scratchY = data.scratchY;
-        sprite.direction = data.direction;
-        sprite.isDraggable = data.isDraggable;
-        sprite.rotationStyle = P.utils.parseRotationStyle(data.rotationStyle);
-        sprite.scale = data.scale;
-        sprite.visible = data.visible;
-      }
-
-      // We store the scripts on the Sprite so the compiler can find them easier
-      // TODO: to something different?
-      object.scripts = data.scripts || [];
-
-      return object;
-    });
-  }
-
-  // A weird mix of Array.map and Promise.all
-  export function loadArray(data, process) {
-    return Promise.all((data || []).map((i, ind) => process(i, ind)));
-  }
-
-  export function loadFonts(): Promise<void> {
-    return Promise.all([
-      promiseTask(P.utils.settled(P.fonts.loadWebFont('Donegal One'))),
-      promiseTask(P.utils.settled(P.fonts.loadWebFont('Gloria Hallelujah'))),
-      promiseTask(P.utils.settled(P.fonts.loadWebFont('Mystery Quest'))),
-      promiseTask(P.utils.settled(P.fonts.loadWebFont('Permanent Marker'))),
-      promiseTask(P.utils.settled(P.fonts.loadWebFont('Scratch'))),
-    ]).then(() => undefined);
-  }
-
-  export function loadObject(data) {
-    if (data.cmd) {
-      return loadVariableWatcher(data);
-    } else if (data.listName) {
-      // TODO: list watcher
-    } else {
-      return loadBase(data);
+    loadImage(url: string): Promise<HTMLImageElement> {
+      return this.addTask(new P.io.Img(url)).load();
     }
-  }
 
-  export function loadVariableWatcher(data) {
-    const targetName = data.target;
-    const watcher = new Scratch2VariableWatcher(null, targetName, data);
-    return watcher;
-  }
-
-  export function loadCostume(data, index) {
-    const promises = [
-      loadMD5(data.baseLayerMD5, data.baseLayerID)
-        .then((asset) => data.$image = asset)
-    ];
-    if (data.textLayerMD5) {
-      promises.push(loadMD5(data.textLayerMD5, data.textLayerID)
-        .then((asset) => data.$text = asset));
+    loadFonts(): Promise<void> {
+      return Promise.all([
+        this.addTask(new P.io.PromiseTask((P.utils.settled(P.fonts.loadWebFont('Donegal One'))))),
+        this.addTask(new P.io.PromiseTask((P.utils.settled(P.fonts.loadWebFont('Gloria Hallelujah'))))),
+        this.addTask(new P.io.PromiseTask((P.utils.settled(P.fonts.loadWebFont('Mystery Quest'))))),
+        this.addTask(new P.io.PromiseTask((P.utils.settled(P.fonts.loadWebFont('Permanent Marker'))))),
+        this.addTask(new P.io.PromiseTask((P.utils.settled(P.fonts.loadWebFont('Scratch'))))),
+      ]).then(() => undefined);
     }
-    return Promise.all(promises)
-      .then((layers: any[]) => {
-        var image;
-        if (layers.length > 1) {
-          image = document.createElement('canvas');
-          const ctx = image.getContext('2d');
-          if (!ctx) {
-            throw new Error('Cannot get 2d rendering context loading costume ' + data.costumeName);
+
+    loadBase(data: any, isStage: boolean) {
+      var costumes;
+      var sounds;
+
+      return Promise.all([
+        this.loadArray(data.costumes, this.loadCostume.bind(this)).then((c) => costumes = c),
+        this.loadArray(data.sounds, this.loadSound.bind(this)).then((s) => sounds = s),
+      ]).then(() => {
+        const variables = {};
+        if (data.variables) {
+          for (const variable of data.variables) {
+            if (variable.isPeristent) {
+              throw new Error('Cloud variables are not supported');
+            }
+            variables[variable.name] = variable.value;
           }
-          image.width = Math.max(layers[0].width, 1);
-          image.height = Math.max(layers[0].height, 1);
-          for (const layer of layers) {
-            ctx.drawImage(layer, 0, 0);
+        }
+
+        const lists = {};
+        if (data.lists) {
+          for (const list of data.lists) {
+            if (list.isPeristent) {
+              throw new Error('Cloud lists are not supported');
+            }
+            lists[list.listName] = list.contents;
           }
+        }
+
+        // Dirty hack to construct a target with a null stage
+        const object = new (isStage ? Scratch2Stage : Scratch2Sprite)(null!);
+
+        object.name = data.objName;
+        object.vars = variables;
+        object.lists = lists;
+        object.costumes = costumes;
+        object.currentCostumeIndex = data.currentCostumeIndex;
+        sounds.forEach((sound) => sound && object.addSound(sound));
+
+        if (isStage) {
+
         } else {
-          image = layers[0];
+          const sprite = object as Scratch2Sprite;
+          sprite.scratchX = data.scratchX;
+          sprite.scratchY = data.scratchY;
+          sprite.direction = data.direction;
+          sprite.isDraggable = data.isDraggable;
+          sprite.rotationStyle = P.utils.parseRotationStyle(data.rotationStyle);
+          sprite.scale = data.scale;
+          sprite.visible = data.visible;
         }
 
-        return new P.core.BitmapCostume(image, {
-          name: data.costumeName,
-          bitmapResolution: data.bitmapResolution,
-          rotationCenterX: data.rotationCenterX,
-          rotationCenterY: data.rotationCenterY,
+        // Store the scripts on the Sprite so the compiler can access them
+        object.scripts = data.scripts || [];
+
+        return object;
+      });
+    }
+
+    loadArray(data: any[], process: any) {
+      return Promise.all((data || []).map((i, ind) => process(i, ind)));
+    }
+
+    loadObject(data: SB2Base) {
+      if (data.cmd) {
+        return this.loadVariableWatcher(data);
+      } else if (data.listName) {
+        // TODO: list watcher
+      } else {
+        return this.loadBase(data, false);
+      }
+    }
+
+    loadVariableWatcher(data: SB2Base) {
+      const targetName = data.target;
+      const watcher = new Scratch2VariableWatcher(null, targetName, data);
+      return watcher;
+    }
+
+    loadCostume(data: SB2Costume) {
+      const promises = [
+        this.loadMD5(data.baseLayerMD5, data.baseLayerID)
+          .then((asset) => data.$image = asset)
+      ];
+      if (data.textLayerMD5) {
+        promises.push(this.loadMD5(data.textLayerMD5, data.textLayerID)
+          .then((asset) => data.$text = asset));
+      }
+      return Promise.all(promises)
+        .then((layers: any[]) => {
+          var image;
+          if (layers.length > 1) {
+            image = document.createElement('canvas');
+            const ctx = image.getContext('2d');
+            if (!ctx) {
+              throw new Error('Cannot get 2d rendering context loading costume ' + data.costumeName);
+            }
+            image.width = Math.max(layers[0].width, 1);
+            image.height = Math.max(layers[0].height, 1);
+            for (const layer of layers) {
+              ctx.drawImage(layer, 0, 0);
+            }
+          } else {
+            image = layers[0];
+          }
+
+          return new P.core.BitmapCostume(image, {
+            name: data.costumeName,
+            bitmapResolution: data.bitmapResolution,
+            rotationCenterX: data.rotationCenterX,
+            rotationCenterY: data.rotationCenterY,
+          });
+        });
+    }
+
+    loadSound(data: SB2Sound): Promise<P.core.Sound | null> {
+      return new Promise((resolve, reject) => {
+        this.loadMD5(data.md5, data.soundID, true)
+          .then((buffer) => {
+            resolve(new P.core.Sound({
+              name: data.soundName,
+              buffer,
+            }));
+          })
+          .catch((err) => {
+            resolve(null);
+            console.warn('Could not load sound: ' + err);
+          });
+      });
+    }
+
+    loadSVG(source: string): Promise<HTMLCanvasElement | HTMLImageElement> {
+      // canvg needs and actual SVG element, not the source.
+      const parser = new DOMParser();
+      var doc = parser.parseFromString(source, 'image/svg+xml');
+      var svg = doc.documentElement as any;
+      if (!svg.style) {
+        doc = parser.parseFromString('<body>' + source, 'text/html');
+        svg = doc.querySelector('svg');
+      }
+      svg.style.visibility = 'hidden';
+      svg.style.position = 'absolute';
+      svg.style.left = '-10000px';
+      svg.style.top = '-10000px';
+      document.body.appendChild(svg);
+      const viewBox = svg.viewBox.baseVal;
+      if (viewBox && (viewBox.x || viewBox.y)) {
+        svg.width.baseVal.value = viewBox.width - viewBox.x;
+        svg.height.baseVal.value = viewBox.height - viewBox.y;
+        viewBox.x = 0;
+        viewBox.y = 0;
+        viewBox.width = 0;
+        viewBox.height = 0;
+      }
+      patchSVG(svg, svg);
+      document.body.removeChild(svg);
+      svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
+
+      return new Promise<HTMLCanvasElement | HTMLImageElement>((resolve, reject) => {
+        const canvas = document.createElement('canvas');
+        canvg(canvas, new XMLSerializer().serializeToString(svg), {
+          ignoreMouse: true,
+          ignoreAnimation: true,
+          ignoreClear: true,
+          renderCallback: function() {
+            if (canvas.width === 0 || canvas.height === 0) {
+              resolve(new Image());
+              return;
+            }
+            resolve(canvas);
+          }
         });
       });
-  }
+    }
 
-  export function loadSound(data): Promise<P.core.Sound | null> {
-    return new Promise((resolve, reject) => {
-      loadMD5(data.md5, data.soundID, true)
-        .then((buffer) => {
-          resolve(new P.core.Sound({
-            name: data.soundName,
-            buffer,
-          }));
-        })
-        .catch((err) => {
-          resolve(null);
-          console.warn('Could not load sound: ' + err);
+    abstract loadMD5(hash: string, id: string, isAudio?: true): Promise<AudioBuffer>;
+    abstract loadMD5(hash: string, id: string, isAudio?: false): Promise<HTMLImageElement | HTMLCanvasElement | null>;
+    abstract loadMD5(hash: string, id: string, isAudio?: boolean): Promise<HTMLImageElement | HTMLCanvasElement | AudioBuffer | null>;
+
+    load() {
+      var children: any[];
+      var stage: P.core.Stage;
+
+      return this.loadFonts()
+        .then(() => Promise.all<any>([
+          P.audio.loadSoundbankSB2(this),
+          this.loadArray(this.projectData.children, this.loadObject.bind(this)).then((c) => children = c),
+          this.loadBase(this.projectData, true).then((s) => stage = s as P.core.Stage),
+        ]))
+        .then(() => {
+          if (this.aborted) {
+            throw new Error('Loading aborting.');
+          }
+
+          children = children.filter((i) => i);
+          children.forEach((c) => c.stage = stage);
+          const sprites: Scratch2Sprite[] = children.filter((i) => i instanceof Scratch2Sprite);
+          const watchers: Scratch2VariableWatcher[] = children.filter((i) => i instanceof Scratch2VariableWatcher);
+
+          stage.children = sprites;
+          stage.allWatchers = watchers;
+          stage.allWatchers.forEach((w) => w.init());
+
+          P.sb2.compiler.compile(stage);
+          return stage;
         });
-    });
+    }
   }
 
-  export function patchSVG(svg, element) {
+  export class SB2FileLoader extends BaseSB2Loader {
+    private buffer: ArrayBuffer;
+    private zip: JSZip.Zip;
+
+    constructor(buffer: ArrayBuffer) {
+      super();
+      this.buffer = buffer;
+    }
+
+    loadMD5(hash: string, id: string, isAudio?: true): Promise<AudioBuffer>;
+    loadMD5(hash: string, id: string, isAudio?: false): Promise<HTMLImageElement | HTMLCanvasElement | null>;
+    loadMD5(hash: string, id: string, isAudio: boolean = false): Promise<HTMLImageElement | HTMLCanvasElement | AudioBuffer | null> {
+      const f = isAudio ? this.zip.file(id + '.wav') : this.zip.file(id + '.gif') || this.zip.file(id + '.png') || this.zip.file(id + '.jpg') || this.zip.file(id + '.svg');
+      hash = f.name;
+      const ext = hash.split('.').pop();
+
+      if (ext === 'svg') {
+        return f.async('text')
+          .then((text) => this.loadSVG(text));
+      } else if (ext === 'wav') {
+        return f.async('arrayBuffer')
+          .then((buffer) => P.audio.decodeAudio(buffer));
+      } else {
+        return new Promise((resolve, reject) => {
+          var image = new Image();
+          image.onload = function() {
+            resolve(image);
+          };
+          f.async('binarystring')
+            .then((data: string) => {
+              image.src = 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(data);
+            });
+        });
+      }
+    }
+
+    load() {
+      return JSZip.loadAsync(this.buffer)
+        .then((data) => {
+          this.zip = data;
+          return this.zip.file('project.json').async('text');
+        })
+        .then((project) => {
+          this.projectData = JSON.parse(project);
+        })
+        .then(() => super.load());
+    }
+  }
+
+  export class Scratch2Loader extends BaseSB2Loader {
+    private projectId: number | null;
+
+    constructor(idOrData: number | SB2Project) {
+      super();
+      if (typeof idOrData === 'object') {
+        this.projectData = idOrData;
+        this.projectId = null;
+      } else {
+        this.projectId = idOrData;
+      }
+    }
+
+    loadMD5(hash: string, id: string, isAudio?: true): Promise<AudioBuffer>;
+    loadMD5(hash: string, id: string, isAudio?: false): Promise<HTMLImageElement | HTMLCanvasElement | null>;
+    loadMD5(hash: string, id: string, isAudio: boolean = false): Promise<HTMLImageElement | HTMLCanvasElement | AudioBuffer | null> {
+      const ext = hash.split('.').pop();
+
+      if (ext === 'svg') {
+        return this.addTask(new P.io.Request(ASSET_URL + hash + '/get/')).load('text')
+          .then((text) => this.loadSVG(text));
+      } else if (ext === 'wav') {
+        return this.addTask(new P.io.Request(ASSET_URL + hash + '/get/')).load('arraybuffer')
+          .then((buffer) => P.audio.decodeAudio(buffer));
+      } else {
+        return this.loadImage(ASSET_URL + hash + '/get/');
+      }
+    }
+
+    load() {
+      if (this.projectId) {
+        return this.addTask(new P.io.Request(P.config.PROJECT_API.replace('$id', '' + this.projectId))).load('json')
+          .then((data) => {
+            this.projectData = data;
+            return super.load();
+          });
+      } else {
+        return super.load();
+      }
+    }
+  }
+
+  function patchSVG(svg, element) {
     const FONTS: ObjectMap<string> = {
       '': 'Helvetica',
       Donegal: 'Donegal One',
@@ -626,95 +727,6 @@ namespace P.sb2 {
       element.setAttribute('y', 0);
     }
     [].forEach.call(element.childNodes, patchSVG.bind(null, svg));
-  }
-
-  export function loadSVG(source): Promise<HTMLCanvasElement | HTMLImageElement> {
-    // canvg needs and actual SVG element, not the source.
-    const parser = new DOMParser();
-    var doc = parser.parseFromString(source, 'image/svg+xml');
-    var svg = doc.documentElement as any;
-    if (!svg.style) {
-      doc = parser.parseFromString('<body>' + source, 'text/html');
-      svg = doc.querySelector('svg');
-    }
-    svg.style.visibility = 'hidden';
-    svg.style.position = 'absolute';
-    svg.style.left = '-10000px';
-    svg.style.top = '-10000px';
-    document.body.appendChild(svg);
-    const viewBox = svg.viewBox.baseVal;
-    if (viewBox && (viewBox.x || viewBox.y)) {
-      svg.width.baseVal.value = viewBox.width - viewBox.x;
-      svg.height.baseVal.value = viewBox.height - viewBox.y;
-      viewBox.x = 0;
-      viewBox.y = 0;
-      viewBox.width = 0;
-      viewBox.height = 0;
-    }
-    patchSVG(svg, svg);
-    document.body.removeChild(svg);
-    svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
-
-    // TODO: use native renderer
-    return new Promise<HTMLCanvasElement | HTMLImageElement>((resolve, reject) => {
-      const canvas = document.createElement('canvas');
-      canvg(canvas, new XMLSerializer().serializeToString(svg), {
-        ignoreMouse: true,
-        ignoreAnimation: true,
-        ignoreClear: true,
-        renderCallback: function() {
-          if (canvas.width === 0 || canvas.height === 0) {
-            resolve(new Image());
-            return;
-          }
-          resolve(canvas);
-        }
-      });
-    });
-  }
-
-  export function loadMD5(hash: string, id: string, isAudio?: true): Promise<AudioBuffer>;
-  export function loadMD5(hash: string, id: string, isAudio?: false): Promise<HTMLImageElement | HTMLCanvasElement | null>;
-  export function loadMD5(hash: string, id: string, isAudio: boolean = false): Promise<HTMLImageElement | HTMLCanvasElement | AudioBuffer | null> {
-    if (zipArchive) {
-      var f = isAudio ? zipArchive.file(id + '.wav') : zipArchive.file(id + '.gif') || zipArchive.file(id + '.png') || zipArchive.file(id + '.jpg') || zipArchive.file(id + '.svg');
-      hash = f.name;
-    }
-
-    const ext = hash.split('.').pop();
-
-    if (ext === 'svg') {
-      if (zipArchive) {
-        return f!.async('text')
-          .then((text) => loadSVG(text));
-      } else {
-        return promiseTask(new P.IO.TextRequest(ASSET_URL + hash + '/get/').load())
-          .then((text) => loadSVG(text));
-      }
-    } else if (ext === 'wav') {
-      if (zipArchive) {
-        return f!.async('arrayBuffer')
-          .then((buffer) => P.audio.decodeAudio(buffer));
-      } else {
-        return promiseTask(new P.IO.ArrayBufferRequest(ASSET_URL + hash + '/get/').load())
-          .then((buffer) => P.audio.decodeAudio(buffer));
-      }
-    } else {
-      if (zipArchive) {
-        return new Promise((resolve, reject) => {
-          var image = new Image();
-          image.onload = function() {
-            resolve(image);
-          };
-          f.async('binarystring')
-            .then((data: string) => {
-              image.src = 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(data);
-            });
-        });
-      } else {
-        return loadImage(ASSET_URL + hash + '/get/');
-      }
-    }
   }
 }
 
@@ -1588,11 +1600,12 @@ namespace P.sb2.compiler {
       } else if (block[0] === 'showVariable:' || block[0] === 'hideVariable:') {
 
         var isShow = block[0] === 'showVariable:';
-        if (typeof block[1] !== 'string') {
-          throw new Error('Dynamic variables are not supported');
+        if (typeof block[1] === 'string') {
+          var o = object.vars[block[1]] !== undefined ? 'S' : 'self';
+          source += o + '.showVariable(' + val(block[1]) + ', ' + isShow + ');\n';
+        } else {
+          warn('ignoring dynamic variable');
         }
-        var o = object.vars[block[1]] !== undefined ? 'S' : 'self';
-        source += o + '.showVariable(' + val(block[1]) + ', ' + isShow + ');\n';
 
       // } else if (block[0] === 'showList:') {
 

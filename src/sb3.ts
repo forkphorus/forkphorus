@@ -442,6 +442,11 @@ namespace P.sb3 {
     }
 
     updateList() {
+      // Temporary hack to fix setZoom() calling updateList() on invisible lists, causing _rowHeight to be invalid.
+      if (!this.visible && this._rowHeight === -1) {
+        return;
+      }
+      
       const height = this.list.length * this.getRowHeight();
       this.endpointEl.style.transform = 'translateY(' + (height * this.stage.zoom) + 'px)';
 
@@ -681,16 +686,27 @@ namespace P.sb3 {
     P.fonts.addFontRules(svg, usedFonts);
   }
 
+  /**
+   * Convert an SVG with an improper or missing namespace to a proper namespaced SVG
+   * @param svg An SVG with an improper or missing namespace
+   */
+  function fixVectorNamespace(svg: SVGSVGElement): SVGSVGElement {
+    var newSVG = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    for (const attribute of svg.attributes) {
+      newSVG.setAttribute(attribute.name, attribute.value);
+    }
+    newSVG.innerHTML = svg.innerHTML;
+    return newSVG;
+  }
+
   // Implements base SB3 loading logic.
   // Needs to be extended to add file loading methods.
   // Implementations are expected to set `this.projectData` to something before calling super.load()
-  export abstract class BaseSB3Loader {
+  export abstract class BaseSB3Loader extends P.io.Loader<P.core.Stage> {
     protected projectData: SB3Project;
-    private totalTasks: number = 0;
-    private finishedTasks: number = 0;
-    private requests: XMLHttpRequest[] = [];
-    public aborted: boolean = false;
-    public onprogress = new P.utils.Slot<number>();
+    // private totalTasks: number = 0;
+    // private finishedTasks: number = 0;
+    // private requests: XMLHttpRequest[] = [];
 
     protected abstract getAsText(path: string): Promise<string>;
     protected abstract getAsArrayBuffer(path: string): Promise<ArrayBuffer>;
@@ -701,7 +717,12 @@ namespace P.sb3 {
         .then((source) => {
           const parser = new DOMParser();
           const doc = parser.parseFromString(source, 'image/svg+xml');
-          const svg = doc.documentElement as any;
+
+          let svg = doc.documentElement as any;
+          if (svg.namespaceURI !== 'http://www.w3.org/2000/svg') {
+            svg = fixVectorNamespace(svg);
+          }
+
           patchSVG(svg);
 
           return new Promise((resolve, reject) => {
@@ -712,7 +733,7 @@ namespace P.sb3 {
             image.onerror = (e) => {
               reject('Failed to load SVG: ' + path);
             };
-            image.src = 'data:image/svg+xml,' + encodeURIComponent(svg.outerHTML);
+            image.src = 'data:image/svg+xml,' + encodeURIComponent(new XMLSerializer().serializeToString(svg));
           });
         });
     }
@@ -838,17 +859,15 @@ namespace P.sb3 {
     }
 
     loadSoundbank() {
-      return P.audio.loadSoundbank({
-        // TODO: progress monitoring
-        endTask() {},
-        newTask() {},
-      });
+      return P.audio.loadSoundbankSB2(this);
     }
 
     loadFonts() {
       const promises: Promise<unknown>[] = [];
       for (const family in P.fonts.scratch3) {
-        promises.push(this.promiseTask(P.utils.settled(P.fonts.loadLocalFont(family, P.fonts.scratch3[family]))));
+        const promise = P.utils.settled(P.fonts.loadLocalFont(family, P.fonts.scratch3[family]));
+        promises.push(promise);
+        this.addTask(new P.io.PromiseTask(promise));
       }
       return Promise.all(promises);
     }
@@ -879,7 +898,10 @@ namespace P.sb3 {
       targets.sort((a, b) => a.layerOrder - b.layerOrder);
 
       return this.loadAssets()
-        .then(() => Promise.all(targets.map((data) => this.loadTarget(data))))
+        .then(() => {
+          this.resetTasks();
+          return Promise.all(targets.map((data) => this.loadTarget(data)));
+        })
         .then((targets: any) => {
           if (this.aborted) {
             throw new Error('Loading aborting.');
@@ -902,47 +924,6 @@ namespace P.sb3 {
           return stage;
         });
     }
-
-    abort() {
-      this.aborted = true;
-      for (const request of this.requests) {
-        request.abort();
-      }
-    }
-
-    newTask() {
-      if (this.aborted) {
-        throw new Error('Loading aborted.');
-      }
-      this.totalTasks++;
-      this.onprogress.emit(this.progress);
-    }
-
-    endTask() {
-      if (this.aborted) {
-        throw new Error('Loading aborted.');
-      }
-      this.finishedTasks++;
-      this.onprogress.emit(this.progress);
-    }
-
-    requestTask<T>(request: P.IO.XHRRequest<T>): Promise<T> {
-      this.requests.push(request.xhr);
-      return this.promiseTask(request.load());
-    }
-
-    promiseTask<T>(promise: Promise<T>): Promise<T> {
-      this.newTask();
-      return promise
-        .then((value) => {
-          this.endTask();
-          return value;
-        });
-    }
-
-    get progress() {
-      return this.finishedTasks / this.totalTasks || 0;
-    }
   }
 
   // Loads a .sb3 file
@@ -956,40 +937,40 @@ namespace P.sb3 {
     }
 
     getAsText(path: string) {
-      this.newTask();
+      const task = this.addTask(new P.io.Manual());
       return this.zip.file(path).async('text')
         .then((response) => {
-          this.endTask();
+          task.markComplete();
           return response;
         });
     }
 
     getAsArrayBuffer(path: string) {
-      this.newTask();
+      const task = this.addTask(new P.io.Manual());
       return this.zip.file(path).async('arrayBuffer')
         .then((response) => {
-          this.endTask();
+          task.markComplete();
           return response;
         });
     }
 
     getAsBase64(path: string) {
-      this.newTask();
+      const task = this.addTask(new P.io.Manual());
       return this.zip.file(path).async('base64')
         .then((response) => {
-          this.endTask();
+          task.markComplete();
           return response;
         });
     }
 
     getAsImage(path: string, format: string) {
-      this.newTask();
+      const task = this.addTask(new P.io.Manual());
       return this.getAsBase64(path)
         .then((imageData) => {
           return new Promise<HTMLImageElement>((resolve, reject) => {
             const image = new Image();
             image.onload = () => {
-              this.endTask();
+              task.markComplete();
               resolve(image);
             };
             image.onerror = (error) => {
@@ -1029,32 +1010,20 @@ namespace P.sb3 {
     }
 
     getAsText(path: string) {
-      return this.requestTask(new P.IO.TextRequest(ASSETS_API.replace('$md5ext', path)));
+      return this.addTask(new P.io.Request(ASSETS_API.replace('$md5ext', path))).load('text');
     }
 
     getAsArrayBuffer(path: string) {
-      return this.requestTask(new P.IO.ArrayBufferRequest(ASSETS_API.replace('$md5ext', path)));
+      return this.addTask(new P.io.Request(ASSETS_API.replace('$md5ext', path))).load('arraybuffer');
     }
 
     getAsImage(path: string) {
-      this.newTask();
-      return new Promise<HTMLImageElement>((resolve, reject) => {
-        const image = new Image();
-        image.onload = () => {
-          this.endTask();
-          resolve(image);
-        };
-        image.onerror = (err) => {
-          reject('Failed to load image: ' + image.src);
-        };
-        image.crossOrigin = 'anonymous';
-        image.src = ASSETS_API.replace('$md5ext', path);
-      });
+      return this.addTask(new P.io.Img(ASSETS_API.replace('$md5ext', path))).load();
     }
 
     load() {
       if (this.projectId) {
-        return this.requestTask(new P.IO.JSONRequest(P.config.PROJECT_API.replace('$id', '' + this.projectId)))
+        return this.addTask(new P.io.Request(P.config.PROJECT_API.replace('$id', '' + this.projectId))).load('json')
           .then((data) => {
             this.projectData = data;
             return super.load();
@@ -1831,7 +1800,6 @@ namespace P.sb3.compiler {
       script += this.compileStack(startingBlock);
 
       // If a block wants to do some changes to the script after script generation but before compilation, let it.
-      // TODO: should this happen after parseResult?
       if (hatCompiler.postcompile) {
         script = hatCompiler.postcompile(this, script, hat);
       }
@@ -1950,6 +1918,22 @@ namespace P.sb3.compiler {
     util.writeLn('    }');
     util.writeLn('  }');
     util.writeLn('  return;');
+    util.writeLn('}');
+  };
+  statementLibrary['control_for_each'] = function(util) {
+    const VARIABLE = util.getVariableReference('VARIABLE');
+    const SUBSTACK = util.getSubstack('SUBSTACK');
+    const VALUE = util.getInput('VALUE', 'number');
+    util.writeLn('save();');
+    util.writeLn(`${VARIABLE} = 0;`);
+    util.writeLn(`R.times = ${VALUE};`);
+    const label = util.addLabel();
+    util.writeLn(`if (${VARIABLE} <= R.times) {`);
+    util.writeLn(`  ${VARIABLE} = ${util.asType(VARIABLE, 'number')} + 1;`);
+    util.write(SUBSTACK);
+    util.queue(label);
+    util.writeLn('} else {');
+    util.writeLn('  restore();');
     util.writeLn('}');
   };
   statementLibrary['control_forever'] = function(util) {
@@ -2134,10 +2118,21 @@ namespace P.sb3.compiler {
     const scope = util.getVariableScope('VARIABLE');
     util.writeLn(`${scope}.showVariable(${VARIABLE}, true);`);
   };
-  statementLibrary['motion_turnright'] = function(util) {
-    const DEGREES = util.getInput('DEGREES', 'number');
-    util.writeLn(`S.setDirection(S.direction + ${DEGREES});`);
-    util.visual('visible');
+  statementLibrary['event_broadcast'] = function(util) {
+    const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
+    util.writeLn(`var threads = broadcast(${BROADCAST_INPUT});`);
+    util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
+  };
+  statementLibrary['event_broadcastandwait'] = function(util) {
+    const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
+    util.writeLn('save();');
+    util.writeLn(`R.threads = broadcast(${BROADCAST_INPUT});`);
+    util.writeLn('if (R.threads.indexOf(BASE) !== -1) {return;}');
+    const label = util.addLabel();
+    util.writeLn('if (running(R.threads)) {');
+    util.forceQueue(label);
+    util.writeLn('}');
+    util.writeLn('restore();');
   };
   statementLibrary['looks_changeeffectby'] = function(util) {
     const EFFECT = util.sanitizedString(util.getField('EFFECT')).toLowerCase();
@@ -2368,6 +2363,11 @@ namespace P.sb3.compiler {
     util.writeLn(`S.setDirection(S.direction - ${DEGREES});`);
     util.visual('visible');
   };
+  statementLibrary['motion_turnright'] = function(util) {
+    const DEGREES = util.getInput('DEGREES', 'number');
+    util.writeLn(`S.setDirection(S.direction + ${DEGREES});`);
+    util.visual('visible');
+  };
   statementLibrary['music_changeTempo'] = function(util) {
     const TEMPO = util.getInput('TEMPO', 'number');
     util.writeLn(`self.tempoBPM += ${TEMPO};`)
@@ -2440,78 +2440,6 @@ namespace P.sb3.compiler {
   statementLibrary['music_setInstrument'] = function(util) {
     const INSTRUMENT = util.getInput('INSTRUMENT', 'number');
     util.writeLn(`S.instrument = Math.max(0, Math.min(INSTRUMENTS.length - 1, ${INSTRUMENT} - 1)) | 0;`);
-  };
-  statementLibrary['sound_changeeffectby'] = function(util) {
-    const EFFECT = util.sanitizedString(util.getField('EFFECT'));
-    const VALUE = util.getInput('VALUE', 'number');
-    util.writeLn(`S.changeSoundFilter(${EFFECT}, ${VALUE});`);
-  };
-  statementLibrary['sound_changevolumeby'] = function(util) {
-    const VOLUME = util.getInput('VOLUME', 'number');
-    util.writeLn(`S.volume = Math.max(0, Math.min(1, S.volume + ${VOLUME} / 100));`);
-    util.writeLn('if (S.node) S.node.gain.value = S.volume;');
-  };
-  statementLibrary['sound_cleareffects'] = function(util) {
-    util.writeLn('S.resetSoundFilters();');
-  };
-  statementLibrary['sound_play'] = function(util) {
-    const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
-    if (P.audio.context) {
-      util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
-      util.writeLn('if (sound) startSound(sound);');
-    }
-  };
-  statementLibrary['sound_playuntildone'] = function(util) {
-    const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
-    if (P.audio.context) {
-      util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
-      util.writeLn('if (sound) {');
-      util.writeLn('  save();');
-      util.writeLn('  R.sound = playSound(sound);');
-      util.writeLn('  S.activeSounds.add(R.sound);')
-      util.writeLn('  R.start = runtime.now();');
-      util.writeLn('  R.duration = sound.duration;');
-      util.writeLn('  var first = true;');
-      const label = util.addLabel();
-      util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
-      util.writeLn('    var first;');
-      util.forceQueue(label);
-      util.writeLn('  }');
-      util.writeLn('  S.activeSounds.delete(R.sound);');
-      util.writeLn('  restore();');
-      util.writeLn('}');
-    }
-  };
-  statementLibrary['sound_seteffectto'] = function(util) {
-    const EFFECT = util.sanitizedString(util.getField('EFFECT'));
-    const VALUE = util.getInput('VALUE', 'number');
-    util.writeLn(`S.setSoundFilter(${EFFECT}, ${VALUE});`);
-  };
-  statementLibrary['sound_setvolumeto'] = function(util) {
-    const VOLUME = util.getInput('VOLUME', 'number');
-    util.writeLn(`S.volume = Math.max(0, Math.min(1, ${VOLUME} / 100));`);
-    util.writeLn('if (S.node) S.node.gain.value = S.volume;');
-  };
-  statementLibrary['sound_stopallsounds'] = function(util) {
-    if (P.audio.context) {
-      util.writeLn('self.stopAllSounds();');
-    }
-  };
-  statementLibrary['event_broadcast'] = function(util) {
-    const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
-    util.writeLn(`var threads = broadcast(${BROADCAST_INPUT});`);
-    util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
-  };
-  statementLibrary['event_broadcastandwait'] = function(util) {
-    const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
-    util.writeLn('save();');
-    util.writeLn(`R.threads = broadcast(${BROADCAST_INPUT});`);
-    util.writeLn('if (R.threads.indexOf(BASE) !== -1) {return;}');
-    const label = util.addLabel();
-    util.writeLn('if (running(R.threads)) {');
-    util.forceQueue(label);
-    util.writeLn('}');
-    util.writeLn('restore();');
   };
   statementLibrary['pen_changePenColorParamBy'] = function(util) {
     const COLOR_PARAM = util.getInput('COLOR_PARAM', 'string');
@@ -2606,6 +2534,62 @@ namespace P.sb3.compiler {
 
     util.writeLn(']); return;');
     util.addLabel(label);
+  };
+  statementLibrary['sound_changeeffectby'] = function(util) {
+    const EFFECT = util.sanitizedString(util.getField('EFFECT'));
+    const VALUE = util.getInput('VALUE', 'number');
+    util.writeLn(`S.changeSoundFilter(${EFFECT}, ${VALUE});`);
+  };
+  statementLibrary['sound_changevolumeby'] = function(util) {
+    const VOLUME = util.getInput('VOLUME', 'number');
+    util.writeLn(`S.volume = Math.max(0, Math.min(1, S.volume + ${VOLUME} / 100));`);
+    util.writeLn('if (S.node) S.node.gain.value = S.volume;');
+  };
+  statementLibrary['sound_cleareffects'] = function(util) {
+    util.writeLn('S.resetSoundFilters();');
+  };
+  statementLibrary['sound_play'] = function(util) {
+    const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
+    if (P.audio.context) {
+      util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
+      util.writeLn('if (sound) startSound(sound);');
+    }
+  };
+  statementLibrary['sound_playuntildone'] = function(util) {
+    const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
+    if (P.audio.context) {
+      util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
+      util.writeLn('if (sound) {');
+      util.writeLn('  save();');
+      util.writeLn('  R.sound = playSound(sound);');
+      util.writeLn('  S.activeSounds.add(R.sound);')
+      util.writeLn('  R.start = runtime.now();');
+      util.writeLn('  R.duration = sound.duration;');
+      util.writeLn('  var first = true;');
+      const label = util.addLabel();
+      util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
+      util.writeLn('    var first;');
+      util.forceQueue(label);
+      util.writeLn('  }');
+      util.writeLn('  S.activeSounds.delete(R.sound);');
+      util.writeLn('  restore();');
+      util.writeLn('}');
+    }
+  };
+  statementLibrary['sound_seteffectto'] = function(util) {
+    const EFFECT = util.sanitizedString(util.getField('EFFECT'));
+    const VALUE = util.getInput('VALUE', 'number');
+    util.writeLn(`S.setSoundFilter(${EFFECT}, ${VALUE});`);
+  };
+  statementLibrary['sound_setvolumeto'] = function(util) {
+    const VOLUME = util.getInput('VOLUME', 'number');
+    util.writeLn(`S.volume = Math.max(0, Math.min(1, ${VOLUME} / 100));`);
+    util.writeLn('if (S.node) S.node.gain.value = S.volume;');
+  };
+  statementLibrary['sound_stopallsounds'] = function(util) {
+    if (P.audio.context) {
+      util.writeLn('self.stopAllSounds();');
+    }
   };
   statementLibrary['sensing_askandwait'] = function(util) {
     const QUESTION = util.getInput('QUESTION', 'string');
@@ -2997,6 +2981,20 @@ namespace P.sb3.compiler {
   inputLibrary['speech2text_getSpeech'] = function(util) {
     util.stage.initSpeech2Text();
     return util.stringInput('(self.speech2text ? self.speech2text.speech : "")');
+  };
+  inputLibrary['translate_menu_languages'] = function(util) {
+    return util.fieldInput('languages');
+  };
+  inputLibrary['translate_getTranslate'] = function(util) {
+    const WORDS = util.getInput('WORDS', 'string');
+    const LANGUAGE = util.getInput('LANGUAGE', 'string');
+    // The translation extension is stubbed in forkphorus to only return the supplied input.
+    // Using Scratch' translation API is very questionable, and most projects don't use the API anyways.
+    return WORDS;
+  };
+  inputLibrary['translate_getViewerLanguage'] = function(util) {
+    // TODO: return option or user's actual language?
+    return util.sanitizedInput('English');
   };
   inputLibrary['videoSensing_menu_VIDEO_STATE'] = function(util) {
     return util.fieldInput('VIDEO_STATE');

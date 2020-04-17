@@ -212,93 +212,92 @@ namespace P.audio {
     ]
   ];
 
-  const SOUNDBANK_URL = '/soundbank/';
-  const SOUNDBANK_FILES = {
-    'AcousticGuitar_F3': 'instruments/AcousticGuitar_F3_22k.wav',
-    'AcousticPiano_As3': 'instruments/AcousticPiano(5)_A%233_22k.wav',
-    'AcousticPiano_C4': 'instruments/AcousticPiano(5)_C4_22k.wav',
-    'AcousticPiano_G4': 'instruments/AcousticPiano(5)_G4_22k.wav',
-    'AcousticPiano_F5': 'instruments/AcousticPiano(5)_F5_22k.wav',
-    'AcousticPiano_C6': 'instruments/AcousticPiano(5)_C6_22k.wav',
-    'AcousticPiano_Ds6': 'instruments/AcousticPiano(5)_D%236_22k.wav',
-    'AcousticPiano_D7': 'instruments/AcousticPiano(5)_D7_22k.wav',
-    'AltoSax_A3': 'instruments/AltoSax_A3_22K.wav',
-    'AltoSax_C6': 'instruments/AltoSax(3)_C6_22k.wav',
-    'Bassoon_C3': 'instruments/Bassoon_C3_22k.wav',
-    'BassTrombone_A2_2': 'instruments/BassTrombone_A2(2)_22k.wav',
-    'BassTrombone_A2_3': 'instruments/BassTrombone_A2(3)_22k.wav',
-    'Cello_C2': 'instruments/Cello(3b)_C2_22k.wav',
-    'Cello_As2': 'instruments/Cello(3)_A%232_22k.wav',
-    'Choir_F3': 'instruments/Choir(4)_F3_22k.wav',
-    'Choir_F4': 'instruments/Choir(4)_F4_22k.wav',
-    'Choir_F5': 'instruments/Choir(4)_F5_22k.wav',
-    'Clarinet_C4': 'instruments/Clarinet_C4_22k.wav',
-    'ElectricBass_G1': 'instruments/ElectricBass(2)_G1_22k.wav',
-    'ElectricGuitar_F3': 'instruments/ElectricGuitar(2)_F3(1)_22k.wav',
-    'ElectricPiano_C2': 'instruments/ElectricPiano_C2_22k.wav',
-    'ElectricPiano_C4': 'instruments/ElectricPiano_C4_22k.wav',
-    'EnglishHorn_D4': 'instruments/EnglishHorn(1)_D4_22k.wav',
-    'EnglishHorn_F3': 'instruments/EnglishHorn(1)_F3_22k.wav',
-    'Flute_B5_1': 'instruments/Flute(3)_B5(1)_22k.wav',
-    'Flute_B5_2': 'instruments/Flute(3)_B5(2)_22k.wav',
-    'Marimba_C4': 'instruments/Marimba_C4_22k.wav',
-    'MusicBox_C4': 'instruments/MusicBox_C4_22k.wav',
-    'Organ_G2': 'instruments/Organ(2)_G2_22k.wav',
-    'Pizz_A3': 'instruments/Pizz(2)_A3_22k.wav',
-    'Pizz_E4': 'instruments/Pizz(2)_E4_22k.wav',
-    'Pizz_G2': 'instruments/Pizz(2)_G2_22k.wav',
-    'SteelDrum_D5': 'instruments/SteelDrum_D5_22k.wav',
-    'SynthLead_C4': 'instruments/SynthLead(6)_C4_22k.wav',
-    'SynthLead_C6': 'instruments/SynthLead(6)_C6_22k.wav',
-    'SynthPad_A3': 'instruments/SynthPad(2)_A3_22k.wav',
-    'SynthPad_C6': 'instruments/SynthPad(2)_C6_22k.wav',
-    'TenorSax_C3': 'instruments/TenorSax(1)_C3_22k.wav',
-    'Trombone_B3': 'instruments/Trombone_B3_22k.wav',
-    'Trumpet_E5': 'instruments/Trumpet_E5_22k.wav',
-    'Vibraphone_C3': 'instruments/Vibraphone_C3_22k.wav',
-    'Violin_D4': 'instruments/Violin(2)_D4_22K.wav',
-    'Violin_A4': 'instruments/Violin(3)_A4_22k.wav',
-    'Violin_E5': 'instruments/Violin(3b)_E5_22k.wav',
-    'WoodenFlute_C5': 'instruments/WoodenFlute_C5_22k.wav',
-    'BassDrum': 'drums/BassDrum(1b)_22k.wav',
-    'Bongo': 'drums/Bongo_22k.wav',
-    'Cabasa': 'drums/Cabasa(1)_22k.wav',
-    'Clap': 'drums/Clap(1)_22k.wav',
-    'Claves': 'drums/Claves(1)_22k.wav',
-    'Conga': 'drums/Conga(1)_22k.wav',
-    'Cowbell': 'drums/Cowbell(3)_22k.wav',
-    'Crash': 'drums/Crash(2)_22k.wav',
-    'Cuica': 'drums/Cuica(2)_22k.wav',
-    'GuiroLong': 'drums/GuiroLong(1)_22k.wav',
-    'GuiroShort': 'drums/GuiroShort(1)_22k.wav',
-    'HiHatClosed': 'drums/HiHatClosed(1)_22k.wav',
-    'HiHatOpen': 'drums/HiHatOpen(2)_22k.wav',
-    'HiHatPedal': 'drums/HiHatPedal(1)_22k.wav',
-    'Maracas': 'drums/Maracas(1)_22k.wav',
-    'SideStick': 'drums/SideStick(1)_22k.wav',
-    'SnareDrum': 'drums/SnareDrum(1)_22k.wav',
-    'Tambourine': 'drums/Tambourine(3)_22k.wav',
-    'Tom': 'drums/Tom(1)_22k.wav',
-    'Triangle': 'drums/Triangle(1)_22k.wav',
-    'Vibraslap': 'drums/Vibraslap(1)_22k.wav',
-    'WoodBlock': 'drums/WoodBlock(1)_22k.wav'
+  const SB2_SOUNDBANK_FILES = {
+    'AcousticGuitar_F3': 'sb2/instruments/AcousticGuitar_F3_22k.wav',
+    'AcousticPiano_As3': 'sb2/instruments/AcousticPiano(5)_A%233_22k.wav',
+    'AcousticPiano_C4': 'sb2/instruments/AcousticPiano(5)_C4_22k.wav',
+    'AcousticPiano_G4': 'sb2/instruments/AcousticPiano(5)_G4_22k.wav',
+    'AcousticPiano_F5': 'sb2/instruments/AcousticPiano(5)_F5_22k.wav',
+    'AcousticPiano_C6': 'sb2/instruments/AcousticPiano(5)_C6_22k.wav',
+    'AcousticPiano_Ds6': 'sb2/instruments/AcousticPiano(5)_D%236_22k.wav',
+    'AcousticPiano_D7': 'sb2/instruments/AcousticPiano(5)_D7_22k.wav',
+    'AltoSax_A3': 'sb2/instruments/AltoSax_A3_22K.wav',
+    'AltoSax_C6': 'sb2/instruments/AltoSax(3)_C6_22k.wav',
+    'Bassoon_C3': 'sb2/instruments/Bassoon_C3_22k.wav',
+    'BassTrombone_A2_2': 'sb2/instruments/BassTrombone_A2(2)_22k.wav',
+    'BassTrombone_A2_3': 'sb2/instruments/BassTrombone_A2(3)_22k.wav',
+    'Cello_C2': 'sb2/instruments/Cello(3b)_C2_22k.wav',
+    'Cello_As2': 'sb2/instruments/Cello(3)_A%232_22k.wav',
+    'Choir_F3': 'sb2/instruments/Choir(4)_F3_22k.wav',
+    'Choir_F4': 'sb2/instruments/Choir(4)_F4_22k.wav',
+    'Choir_F5': 'sb2/instruments/Choir(4)_F5_22k.wav',
+    'Clarinet_C4': 'sb2/instruments/Clarinet_C4_22k.wav',
+    'ElectricBass_G1': 'sb2/instruments/ElectricBass(2)_G1_22k.wav',
+    'ElectricGuitar_F3': 'sb2/instruments/ElectricGuitar(2)_F3(1)_22k.wav',
+    'ElectricPiano_C2': 'sb2/instruments/ElectricPiano_C2_22k.wav',
+    'ElectricPiano_C4': 'sb2/instruments/ElectricPiano_C4_22k.wav',
+    'EnglishHorn_D4': 'sb2/instruments/EnglishHorn(1)_D4_22k.wav',
+    'EnglishHorn_F3': 'sb2/instruments/EnglishHorn(1)_F3_22k.wav',
+    'Flute_B5_1': 'sb2/instruments/Flute(3)_B5(1)_22k.wav',
+    'Flute_B5_2': 'sb2/instruments/Flute(3)_B5(2)_22k.wav',
+    'Marimba_C4': 'sb2/instruments/Marimba_C4_22k.wav',
+    'MusicBox_C4': 'sb2/instruments/MusicBox_C4_22k.wav',
+    'Organ_G2': 'sb2/instruments/Organ(2)_G2_22k.wav',
+    'Pizz_A3': 'sb2/instruments/Pizz(2)_A3_22k.wav',
+    'Pizz_E4': 'sb2/instruments/Pizz(2)_E4_22k.wav',
+    'Pizz_G2': 'sb2/instruments/Pizz(2)_G2_22k.wav',
+    'SteelDrum_D5': 'sb2/instruments/SteelDrum_D5_22k.wav',
+    'SynthLead_C4': 'sb2/instruments/SynthLead(6)_C4_22k.wav',
+    'SynthLead_C6': 'sb2/instruments/SynthLead(6)_C6_22k.wav',
+    'SynthPad_A3': 'sb2/instruments/SynthPad(2)_A3_22k.wav',
+    'SynthPad_C6': 'sb2/instruments/SynthPad(2)_C6_22k.wav',
+    'TenorSax_C3': 'sb2/instruments/TenorSax(1)_C3_22k.wav',
+    'Trombone_B3': 'sb2/instruments/Trombone_B3_22k.wav',
+    'Trumpet_E5': 'sb2/instruments/Trumpet_E5_22k.wav',
+    'Vibraphone_C3': 'sb2/instruments/Vibraphone_C3_22k.wav',
+    'Violin_D4': 'sb2/instruments/Violin(2)_D4_22K.wav',
+    'Violin_A4': 'sb2/instruments/Violin(3)_A4_22k.wav',
+    'Violin_E5': 'sb2/instruments/Violin(3b)_E5_22k.wav',
+    'WoodenFlute_C5': 'sb2/instruments/WoodenFlute_C5_22k.wav',
+    'BassDrum': 'sb2/drums/BassDrum(1b)_22k.wav',
+    'Bongo': 'sb2/drums/Bongo_22k.wav',
+    'Cabasa': 'sb2/drums/Cabasa(1)_22k.wav',
+    'Clap': 'sb2/drums/Clap(1)_22k.wav',
+    'Claves': 'sb2/drums/Claves(1)_22k.wav',
+    'Conga': 'sb2/drums/Conga(1)_22k.wav',
+    'Cowbell': 'sb2/drums/Cowbell(3)_22k.wav',
+    'Crash': 'sb2/drums/Crash(2)_22k.wav',
+    'Cuica': 'sb2/drums/Cuica(2)_22k.wav',
+    'GuiroLong': 'sb2/drums/GuiroLong(1)_22k.wav',
+    'GuiroShort': 'sb2/drums/GuiroShort(1)_22k.wav',
+    'HiHatClosed': 'sb2/drums/HiHatClosed(1)_22k.wav',
+    'HiHatOpen': 'sb2/drums/HiHatOpen(2)_22k.wav',
+    'HiHatPedal': 'sb2/drums/HiHatPedal(1)_22k.wav',
+    'Maracas': 'sb2/drums/Maracas(1)_22k.wav',
+    'SideStick': 'sb2/drums/SideStick(1)_22k.wav',
+    'SnareDrum': 'sb2/drums/SnareDrum(1)_22k.wav',
+    'Tambourine': 'sb2/drums/Tambourine(3)_22k.wav',
+    'Tom': 'sb2/drums/Tom(1)_22k.wav',
+    'Triangle': 'sb2/drums/Triangle(1)_22k.wav',
+    'Vibraslap': 'sb2/drums/Vibraslap(1)_22k.wav',
+    'WoodBlock': 'sb2/drums/WoodBlock(1)_22k.wav'
   };
   const soundbank: {[s: string]: AudioBuffer} = {};
 
   /**
    * Loads missing soundbank files, if any.
    */
-  export function loadSoundbank(hooks: P.sb2.Hooks): Promise<any> {
+  export function loadSoundbankSB2(loader?: P.io.Loader): Promise<any> {
     if (!context) return Promise.resolve();
 
-    const promises: any[] = [];
-    for (const name in SOUNDBANK_FILES) {
+    const promises: Promise<unknown>[] = [];
+    for (const name in SB2_SOUNDBANK_FILES) {
       if (!soundbank[name]) {
-        hooks.newTask();
-        promises.push(loadSoundbankBuffer(name).then((v) => {
-          hooks.endTask();
-          return v;
-        }));
+        const promise = P.utils.settled(loadSoundbankBuffer(name));
+        promises.push(promise);
+        if (loader) {
+          loader.addTask(new P.io.PromiseTask(promise));
+        }
       }
     }
 
@@ -309,14 +308,14 @@ namespace P.audio {
    * Loads a soundbank file
    */
   function loadSoundbankBuffer(name: string): Promise<AudioBuffer> {
-    return new P.IO.ArrayBufferRequest(SOUNDBANK_URL + SOUNDBANK_FILES[name], {local: true}).load()
+    return P.io.getAssetManager().loadSoundbankFile(SB2_SOUNDBANK_FILES[name])
       .then((buffer) => P.audio.decodeAudio(buffer))
       .then((sound) => soundbank[name] = sound);
   }
 
   export function playSpan(span: Span, key: number, duration: number, connection: AudioNode): AudioNode {
     if (!context) {
-      throw new Error('Cannot playSpawn without an AudioContext');
+      throw new Error('Cannot playSpan without an AudioContext');
     }
 
     const buffer = soundbank[span.name];

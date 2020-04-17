@@ -32,47 +32,12 @@ namespace P.renderer.canvas2d {
     return { canvas, ctx };
   }
 
-  function rgb2hsv(r: number, g: number, b: number): [number, number, number] {
-    var max = Math.max(r, g, b), min = Math.min(r, g, b),
-      d = max - min,
-      h,
-      s = (max === 0 ? 0 : d / max),
-      v = max / 255;
-    switch (max) {
-      case min: h = 0; break;
-      case r: h = (g - b) + d * (g < b ? 6: 0); h /= 6 * d; break;
-      case g: h = (b - r) + d * 2; h /= 6 * d; break;
-      case b: h = (r - g) + d * 4; h /= 6 * d; break;
-    }
-    return [h, s, v];
-  }
-
-  function hsv2rgb(h: number, s: number, v: number): [number, number, number] {
-    // https://stackoverflow.com/a/17243070
-    var r, g, b, i, f, p, q, t;
-    i = Math.floor(h * 6);
-    f = h * 6 - i;
-    p = v * (1 - s);
-    q = v * (1 - f * s);
-    t = v * (1 - (1 - f) * s);
-    switch (i % 6) {
-      case 0: r = v, g = t, b = p; break;
-      case 1: r = q, g = v, b = p; break;
-      case 2: r = p, g = v, b = t; break;
-      case 3: r = p, g = q, b = v; break;
-      case 4: r = t, g = p, b = v; break;
-      case 5: r = v, g = p, b = q; break;
-    }
-    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
-  }
-
   export class SpriteRenderer2D implements SpriteRenderer {
     public ctx: CanvasRenderingContext2D;
     public canvas: HTMLCanvasElement;
-    /**
-     * Disables rendering filters on this renderer
-     */
-    public noEffects: boolean = false;
+
+    public noEffects: boolean = false
+    public imageSmoothingEnabled: boolean = false;
 
     constructor() {
       const { canvas, ctx } = create2dCanvas();
@@ -132,8 +97,12 @@ namespace P.renderer.canvas2d {
         objectScale *= c.scale;
       }
 
-      const lod = costume.get(objectScale * c.stage.zoom);
-      ctx.imageSmoothingEnabled = false;
+      if (costume.isScalable) {
+        costume.requestSize(objectScale * globalScale);
+      }
+      ctx.imageSmoothingEnabled = costume.isScalable || this.imageSmoothingEnabled;
+
+      const image = costume.getImage();
       const x = -costume.rotationCenterX * objectScale;
       const y = -costume.rotationCenterY * objectScale;
       const w = costume.width * objectScale;
@@ -142,93 +111,35 @@ namespace P.renderer.canvas2d {
         ctx.restore();
         return;
       }
-      ctx.imageSmoothingEnabled = false;
 
       if (!this.noEffects) {
         ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
 
-        if (P.config.accurateFilters) {
-          if (c.filters.brightness !== 0 || c.filters.color !== 0) {
-            let sourceImage = lod.getImageData();
-            // we cannot modify imageData directly as it would ruin the cached ImageData object for the costume
-            // instead we create a new ImageData and copy values into it
-            let destImage = ctx.createImageData(sourceImage.width, sourceImage.height);
-  
-            if (c.filters.color !== 0) {
-              this.applyColorEffect(sourceImage, destImage, c.filters.color / 200);
-              sourceImage = destImage;
-            }
-  
-            if (c.filters.brightness !== 0) {
-              this.applyBrightnessEffect(sourceImage, destImage, c.filters.brightness / 100 * 255);
-            }
-  
-            // putImageData() doesn't respect canvas transforms so we need to draw to another canvas and then drawImage() that
-            workingRenderer.canvas.width = sourceImage.width;
-            workingRenderer.canvas.height = sourceImage.height;
-            workingRenderer.ctx.putImageData(destImage, 0, 0);
-            ctx.drawImage(workingRenderer.canvas, x, y, w, h);
-          } else {
-            ctx.drawImage(lod.image, x, y, w, h);
-          }
+        if (c.filters.brightness === 100) {
+          workingRenderer.canvas.width = w;
+          workingRenderer.canvas.height = h;
+          workingRenderer.ctx.save();
+
+          workingRenderer.ctx.translate(0, 0);
+          workingRenderer.ctx.drawImage(image, 0, 0, w, h);
+          workingRenderer.ctx.globalCompositeOperation = 'source-in';
+          workingRenderer.ctx.fillStyle = 'white';
+          workingRenderer.ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(workingRenderer.canvas, x, y);
+
+          workingRenderer.ctx.restore();
         } else {
           const filter = getCSSFilter(c.filters);
           if (filter !== '') {
             ctx.filter = getCSSFilter(c.filters);
           }
-          ctx.drawImage(lod.image, x, y, w, h);
+          ctx.drawImage(image, x, y, w, h);
         }
       } else {
-        ctx.drawImage(lod.image, x, y, w, h);
+        ctx.drawImage(image, x, y, w, h);
       }
 
       ctx.restore();
-    }
-
-    private applyColorEffect(sourceImage: ImageData, destImage: ImageData, hueShift: number) {
-      const MIN_VALUE = 0.11 / 2;
-      const MIN_SATURATION = 0.09;
-      const colorCache: { [s: number]: number; } = {};
-
-      for (var i = 0; i < sourceImage.data.length; i += 4) {
-        const r = sourceImage.data[i];
-        const g = sourceImage.data[i + 1];
-        const b = sourceImage.data[i + 2];
-        destImage.data[i + 3] = sourceImage.data[i + 3];
-
-        const rgbHash = (r << 16) + (g << 8) + b;
-        const cachedColor = colorCache[rgbHash];
-        if (cachedColor !== undefined) {
-          destImage.data[i] =     (0xff0000 & cachedColor) >> 16;
-          destImage.data[i + 1] = (0x00ff00 & cachedColor) >> 8;
-          destImage.data[i + 2] = (0x0000ff & cachedColor);
-          continue;
-        }
-
-        let hsv = rgb2hsv(r, g, b);
-        if (hsv[2] < MIN_VALUE) hsv = [0, 1, MIN_VALUE];
-        else if (hsv[1] < MIN_SATURATION) hsv = [0, MIN_SATURATION, hsv[2]];
-
-        // hue + hueShift modulo 1
-        hsv[0] = hsv[0] + hueShift - Math.floor(hsv[0] + hueShift);
-        if (hsv[0] < 0) hsv[0] += 1;
-
-        const rgb = hsv2rgb(hsv[0], hsv[1], hsv[2]);
-        colorCache[rgbHash] = (rgb[0] << 16) + (rgb[1] << 8) + rgb[2];
-        destImage.data[i] = rgb[0];
-        destImage.data[i + 1] = rgb[1];
-        destImage.data[i + 2] = rgb[2];
-      }
-    }
-
-    private applyBrightnessEffect(sourceImage: ImageData, destImage: ImageData, brightness: number) {
-      const length = sourceImage.data.length;
-      for (var i = 0; i < length; i += 4) {
-        destImage.data[i] = sourceImage.data[i] + brightness;
-        destImage.data[i + 1] = sourceImage.data[i + 1] + brightness;
-        destImage.data[i + 2] = sourceImage.data[i + 2] + brightness;
-        destImage.data[i + 3] = sourceImage.data[i + 3];
-      }
     }
   }
 
@@ -244,6 +155,7 @@ namespace P.renderer.canvas2d {
     public zoom: number = 1;
 
     public penScalingEnabled: boolean = true;
+
     private penModified: boolean = false;
     private penTargetZoom: number = -1;
     private penZoom: number = 1;
@@ -372,7 +284,7 @@ namespace P.renderer.canvas2d {
 
     spriteTouchesPoint(sprite: P.core.Sprite, x: number, y: number) {
       const bounds = sprite.rotatedBounds();
-      if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top) {
+      if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top || sprite.scale === 0) {
         return false;
       }
 
@@ -389,8 +301,13 @@ namespace P.renderer.canvas2d {
         cx = -cx;
       }
 
-      const positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
-      const positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
+      let positionX = Math.round(cx / costume.scale + costume.rotationCenterX);
+      let positionY = Math.round(cy / costume.scale + costume.rotationCenterY);
+      // Temporary hack: https://github.com/forkphorus/forkphorus/issues/187
+      if (costume instanceof P.core.VectorCostume) {
+        positionX *= costume.currentScale;
+        positionY *= costume.currentScale;
+      }
       const data = costume.getContext().getImageData(positionX, positionY, 1, 1).data;
       return data[3] !== 0;
     }

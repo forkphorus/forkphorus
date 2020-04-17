@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
   <title>forkphorus</title>
   <link rel="stylesheet" href="phosphorus.css">
 
@@ -39,13 +41,12 @@
   (function() {
     'use strict';
 
+    var player = new P.player.Player();
+
     var projectId = 17088932;
-    var autoStart = true;
-    var lightContent = false;
     var hasUI = true;
     var id = Math.random().toString().substr(2, 5) + '-' + projectId + '-' + Date.now();
     var width = 480;
-    var fps = 30;
 
     location.search.substr(1).split('&').forEach(function(p) {
       const parts = p.split('=');
@@ -55,10 +56,18 @@
             projectId = Number(parts[1]);
             break;
           case 'auto-start':
-            autoStart = parts[1] !== 'false';
+            if (parts[1] === 'true') {
+              player.setOptions({ autoplayPolicy: 'always' });
+            } else {
+              player.setOptions({ autoplayPolicy: 'never' });
+            }
             break;
           case 'light-content':
-            lightContent = parts[1] !== 'false';
+            if (parts[1] === 'true') {
+              player.setOptions({ theme: 'dark' });
+            } else {
+              player.setOptions({ theme: 'light' });
+            }
             break;
           case 'ui':
             hasUI = parts[1] !== 'false';
@@ -70,7 +79,7 @@
             // ignored by the embed itself. the scriptlet handles height
             break;
           case 'fps':
-            fps = Number(parts[1]);
+            player.setOptions({ fps: Number(parts[1]) });
             break;
           default:
             console.warn('unknown search param', parts);
@@ -88,14 +97,11 @@
       }
     }
 
-    var player = new P.player.Player({theme: lightContent ? 'dark' : 'light'});
-
     if (hasUI) {
       document.body.classList.add('has-ui');
       player.addControls();
       new P.player.ProgressBar(player, {position: 'controls'});
     }
-    // TODO: don't add ErrorHandler if UI is not set to be visible?
     new P.player.ErrorHandler(player);
     document.querySelector('.player').appendChild(player.root);
 
@@ -105,7 +111,7 @@
       var type = data.type;
       switch (type) {
         case 'start': {
-          player.start();
+          player.resume();
           break;
         }
         case 'pause': {
@@ -131,15 +137,12 @@
     player.onerror.subscribe(function(error) {
       postMessage('error');
     });
-    player.onstart.subscribe(function(error) {
-      postMessage('start');
-    });
     player.onpause.subscribe(function(error) {
       postMessage('pause');
     });
     postMessage('hello', { version: 1 });
 
-    player.loadProjectId(projectId, { start: autoStart, fps: fps })
+    player.loadProjectById(projectId)
       .then(function() {
         player.stage.setZoom(width / 480);
       });

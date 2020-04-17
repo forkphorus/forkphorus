@@ -1,4 +1,13 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 /*!
 === NOTE ===
 This file is generated from source files in https://github.com/forkphorus/forkphorus
@@ -39,7 +48,6 @@ var P;
         config.useWebGL = features.indexOf('webgl') > -1;
         config.supportVideoSensing = features.indexOf('video') > -1;
         config.experimentalOptimizations = features.indexOf('opt') > -1;
-        config.accurateFilters = features.indexOf('filters') > -1;
         config.scale = window.devicePixelRatio || 1;
         config.PROJECT_API = 'https://projects.scratch.mit.edu/$id';
     })(config = P.config || (P.config = {}));
@@ -196,102 +204,101 @@ var P;
                 { top: 128, name: 'SynthPad_C6', baseRatio: 2.3820424708835755, loop: true, loopStart: 0.11678004535147392, loopEnd: 0.41732426303854875, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
             ]
         ];
-        const SOUNDBANK_URL = '/soundbank/';
-        const SOUNDBANK_FILES = {
-            'AcousticGuitar_F3': 'instruments/AcousticGuitar_F3_22k.wav',
-            'AcousticPiano_As3': 'instruments/AcousticPiano(5)_A%233_22k.wav',
-            'AcousticPiano_C4': 'instruments/AcousticPiano(5)_C4_22k.wav',
-            'AcousticPiano_G4': 'instruments/AcousticPiano(5)_G4_22k.wav',
-            'AcousticPiano_F5': 'instruments/AcousticPiano(5)_F5_22k.wav',
-            'AcousticPiano_C6': 'instruments/AcousticPiano(5)_C6_22k.wav',
-            'AcousticPiano_Ds6': 'instruments/AcousticPiano(5)_D%236_22k.wav',
-            'AcousticPiano_D7': 'instruments/AcousticPiano(5)_D7_22k.wav',
-            'AltoSax_A3': 'instruments/AltoSax_A3_22K.wav',
-            'AltoSax_C6': 'instruments/AltoSax(3)_C6_22k.wav',
-            'Bassoon_C3': 'instruments/Bassoon_C3_22k.wav',
-            'BassTrombone_A2_2': 'instruments/BassTrombone_A2(2)_22k.wav',
-            'BassTrombone_A2_3': 'instruments/BassTrombone_A2(3)_22k.wav',
-            'Cello_C2': 'instruments/Cello(3b)_C2_22k.wav',
-            'Cello_As2': 'instruments/Cello(3)_A%232_22k.wav',
-            'Choir_F3': 'instruments/Choir(4)_F3_22k.wav',
-            'Choir_F4': 'instruments/Choir(4)_F4_22k.wav',
-            'Choir_F5': 'instruments/Choir(4)_F5_22k.wav',
-            'Clarinet_C4': 'instruments/Clarinet_C4_22k.wav',
-            'ElectricBass_G1': 'instruments/ElectricBass(2)_G1_22k.wav',
-            'ElectricGuitar_F3': 'instruments/ElectricGuitar(2)_F3(1)_22k.wav',
-            'ElectricPiano_C2': 'instruments/ElectricPiano_C2_22k.wav',
-            'ElectricPiano_C4': 'instruments/ElectricPiano_C4_22k.wav',
-            'EnglishHorn_D4': 'instruments/EnglishHorn(1)_D4_22k.wav',
-            'EnglishHorn_F3': 'instruments/EnglishHorn(1)_F3_22k.wav',
-            'Flute_B5_1': 'instruments/Flute(3)_B5(1)_22k.wav',
-            'Flute_B5_2': 'instruments/Flute(3)_B5(2)_22k.wav',
-            'Marimba_C4': 'instruments/Marimba_C4_22k.wav',
-            'MusicBox_C4': 'instruments/MusicBox_C4_22k.wav',
-            'Organ_G2': 'instruments/Organ(2)_G2_22k.wav',
-            'Pizz_A3': 'instruments/Pizz(2)_A3_22k.wav',
-            'Pizz_E4': 'instruments/Pizz(2)_E4_22k.wav',
-            'Pizz_G2': 'instruments/Pizz(2)_G2_22k.wav',
-            'SteelDrum_D5': 'instruments/SteelDrum_D5_22k.wav',
-            'SynthLead_C4': 'instruments/SynthLead(6)_C4_22k.wav',
-            'SynthLead_C6': 'instruments/SynthLead(6)_C6_22k.wav',
-            'SynthPad_A3': 'instruments/SynthPad(2)_A3_22k.wav',
-            'SynthPad_C6': 'instruments/SynthPad(2)_C6_22k.wav',
-            'TenorSax_C3': 'instruments/TenorSax(1)_C3_22k.wav',
-            'Trombone_B3': 'instruments/Trombone_B3_22k.wav',
-            'Trumpet_E5': 'instruments/Trumpet_E5_22k.wav',
-            'Vibraphone_C3': 'instruments/Vibraphone_C3_22k.wav',
-            'Violin_D4': 'instruments/Violin(2)_D4_22K.wav',
-            'Violin_A4': 'instruments/Violin(3)_A4_22k.wav',
-            'Violin_E5': 'instruments/Violin(3b)_E5_22k.wav',
-            'WoodenFlute_C5': 'instruments/WoodenFlute_C5_22k.wav',
-            'BassDrum': 'drums/BassDrum(1b)_22k.wav',
-            'Bongo': 'drums/Bongo_22k.wav',
-            'Cabasa': 'drums/Cabasa(1)_22k.wav',
-            'Clap': 'drums/Clap(1)_22k.wav',
-            'Claves': 'drums/Claves(1)_22k.wav',
-            'Conga': 'drums/Conga(1)_22k.wav',
-            'Cowbell': 'drums/Cowbell(3)_22k.wav',
-            'Crash': 'drums/Crash(2)_22k.wav',
-            'Cuica': 'drums/Cuica(2)_22k.wav',
-            'GuiroLong': 'drums/GuiroLong(1)_22k.wav',
-            'GuiroShort': 'drums/GuiroShort(1)_22k.wav',
-            'HiHatClosed': 'drums/HiHatClosed(1)_22k.wav',
-            'HiHatOpen': 'drums/HiHatOpen(2)_22k.wav',
-            'HiHatPedal': 'drums/HiHatPedal(1)_22k.wav',
-            'Maracas': 'drums/Maracas(1)_22k.wav',
-            'SideStick': 'drums/SideStick(1)_22k.wav',
-            'SnareDrum': 'drums/SnareDrum(1)_22k.wav',
-            'Tambourine': 'drums/Tambourine(3)_22k.wav',
-            'Tom': 'drums/Tom(1)_22k.wav',
-            'Triangle': 'drums/Triangle(1)_22k.wav',
-            'Vibraslap': 'drums/Vibraslap(1)_22k.wav',
-            'WoodBlock': 'drums/WoodBlock(1)_22k.wav'
+        const SB2_SOUNDBANK_FILES = {
+            'AcousticGuitar_F3': 'sb2/instruments/AcousticGuitar_F3_22k.wav',
+            'AcousticPiano_As3': 'sb2/instruments/AcousticPiano(5)_A%233_22k.wav',
+            'AcousticPiano_C4': 'sb2/instruments/AcousticPiano(5)_C4_22k.wav',
+            'AcousticPiano_G4': 'sb2/instruments/AcousticPiano(5)_G4_22k.wav',
+            'AcousticPiano_F5': 'sb2/instruments/AcousticPiano(5)_F5_22k.wav',
+            'AcousticPiano_C6': 'sb2/instruments/AcousticPiano(5)_C6_22k.wav',
+            'AcousticPiano_Ds6': 'sb2/instruments/AcousticPiano(5)_D%236_22k.wav',
+            'AcousticPiano_D7': 'sb2/instruments/AcousticPiano(5)_D7_22k.wav',
+            'AltoSax_A3': 'sb2/instruments/AltoSax_A3_22K.wav',
+            'AltoSax_C6': 'sb2/instruments/AltoSax(3)_C6_22k.wav',
+            'Bassoon_C3': 'sb2/instruments/Bassoon_C3_22k.wav',
+            'BassTrombone_A2_2': 'sb2/instruments/BassTrombone_A2(2)_22k.wav',
+            'BassTrombone_A2_3': 'sb2/instruments/BassTrombone_A2(3)_22k.wav',
+            'Cello_C2': 'sb2/instruments/Cello(3b)_C2_22k.wav',
+            'Cello_As2': 'sb2/instruments/Cello(3)_A%232_22k.wav',
+            'Choir_F3': 'sb2/instruments/Choir(4)_F3_22k.wav',
+            'Choir_F4': 'sb2/instruments/Choir(4)_F4_22k.wav',
+            'Choir_F5': 'sb2/instruments/Choir(4)_F5_22k.wav',
+            'Clarinet_C4': 'sb2/instruments/Clarinet_C4_22k.wav',
+            'ElectricBass_G1': 'sb2/instruments/ElectricBass(2)_G1_22k.wav',
+            'ElectricGuitar_F3': 'sb2/instruments/ElectricGuitar(2)_F3(1)_22k.wav',
+            'ElectricPiano_C2': 'sb2/instruments/ElectricPiano_C2_22k.wav',
+            'ElectricPiano_C4': 'sb2/instruments/ElectricPiano_C4_22k.wav',
+            'EnglishHorn_D4': 'sb2/instruments/EnglishHorn(1)_D4_22k.wav',
+            'EnglishHorn_F3': 'sb2/instruments/EnglishHorn(1)_F3_22k.wav',
+            'Flute_B5_1': 'sb2/instruments/Flute(3)_B5(1)_22k.wav',
+            'Flute_B5_2': 'sb2/instruments/Flute(3)_B5(2)_22k.wav',
+            'Marimba_C4': 'sb2/instruments/Marimba_C4_22k.wav',
+            'MusicBox_C4': 'sb2/instruments/MusicBox_C4_22k.wav',
+            'Organ_G2': 'sb2/instruments/Organ(2)_G2_22k.wav',
+            'Pizz_A3': 'sb2/instruments/Pizz(2)_A3_22k.wav',
+            'Pizz_E4': 'sb2/instruments/Pizz(2)_E4_22k.wav',
+            'Pizz_G2': 'sb2/instruments/Pizz(2)_G2_22k.wav',
+            'SteelDrum_D5': 'sb2/instruments/SteelDrum_D5_22k.wav',
+            'SynthLead_C4': 'sb2/instruments/SynthLead(6)_C4_22k.wav',
+            'SynthLead_C6': 'sb2/instruments/SynthLead(6)_C6_22k.wav',
+            'SynthPad_A3': 'sb2/instruments/SynthPad(2)_A3_22k.wav',
+            'SynthPad_C6': 'sb2/instruments/SynthPad(2)_C6_22k.wav',
+            'TenorSax_C3': 'sb2/instruments/TenorSax(1)_C3_22k.wav',
+            'Trombone_B3': 'sb2/instruments/Trombone_B3_22k.wav',
+            'Trumpet_E5': 'sb2/instruments/Trumpet_E5_22k.wav',
+            'Vibraphone_C3': 'sb2/instruments/Vibraphone_C3_22k.wav',
+            'Violin_D4': 'sb2/instruments/Violin(2)_D4_22K.wav',
+            'Violin_A4': 'sb2/instruments/Violin(3)_A4_22k.wav',
+            'Violin_E5': 'sb2/instruments/Violin(3b)_E5_22k.wav',
+            'WoodenFlute_C5': 'sb2/instruments/WoodenFlute_C5_22k.wav',
+            'BassDrum': 'sb2/drums/BassDrum(1b)_22k.wav',
+            'Bongo': 'sb2/drums/Bongo_22k.wav',
+            'Cabasa': 'sb2/drums/Cabasa(1)_22k.wav',
+            'Clap': 'sb2/drums/Clap(1)_22k.wav',
+            'Claves': 'sb2/drums/Claves(1)_22k.wav',
+            'Conga': 'sb2/drums/Conga(1)_22k.wav',
+            'Cowbell': 'sb2/drums/Cowbell(3)_22k.wav',
+            'Crash': 'sb2/drums/Crash(2)_22k.wav',
+            'Cuica': 'sb2/drums/Cuica(2)_22k.wav',
+            'GuiroLong': 'sb2/drums/GuiroLong(1)_22k.wav',
+            'GuiroShort': 'sb2/drums/GuiroShort(1)_22k.wav',
+            'HiHatClosed': 'sb2/drums/HiHatClosed(1)_22k.wav',
+            'HiHatOpen': 'sb2/drums/HiHatOpen(2)_22k.wav',
+            'HiHatPedal': 'sb2/drums/HiHatPedal(1)_22k.wav',
+            'Maracas': 'sb2/drums/Maracas(1)_22k.wav',
+            'SideStick': 'sb2/drums/SideStick(1)_22k.wav',
+            'SnareDrum': 'sb2/drums/SnareDrum(1)_22k.wav',
+            'Tambourine': 'sb2/drums/Tambourine(3)_22k.wav',
+            'Tom': 'sb2/drums/Tom(1)_22k.wav',
+            'Triangle': 'sb2/drums/Triangle(1)_22k.wav',
+            'Vibraslap': 'sb2/drums/Vibraslap(1)_22k.wav',
+            'WoodBlock': 'sb2/drums/WoodBlock(1)_22k.wav'
         };
         const soundbank = {};
-        function loadSoundbank(hooks) {
+        function loadSoundbankSB2(loader) {
             if (!audio.context)
                 return Promise.resolve();
             const promises = [];
-            for (const name in SOUNDBANK_FILES) {
+            for (const name in SB2_SOUNDBANK_FILES) {
                 if (!soundbank[name]) {
-                    hooks.newTask();
-                    promises.push(loadSoundbankBuffer(name).then((v) => {
-                        hooks.endTask();
-                        return v;
-                    }));
+                    const promise = P.utils.settled(loadSoundbankBuffer(name));
+                    promises.push(promise);
+                    if (loader) {
+                        loader.addTask(new P.io.PromiseTask(promise));
+                    }
                 }
             }
             return Promise.all(promises);
         }
-        audio.loadSoundbank = loadSoundbank;
+        audio.loadSoundbankSB2 = loadSoundbankSB2;
         function loadSoundbankBuffer(name) {
-            return new P.IO.ArrayBufferRequest(SOUNDBANK_URL + SOUNDBANK_FILES[name], { local: true }).load()
+            return P.io.getAssetManager().loadSoundbankFile(SB2_SOUNDBANK_FILES[name])
                 .then((buffer) => P.audio.decodeAudio(buffer))
                 .then((sound) => soundbank[name] = sound);
         }
         function playSpan(span, key, duration, connection) {
             if (!audio.context) {
-                throw new Error('Cannot playSpawn without an AudioContext');
+                throw new Error('Cannot playSpan without an AudioContext');
             }
             const buffer = soundbank[span.name];
             if (!buffer) {
@@ -878,7 +885,10 @@ var P;
                 const height = this.bubbleContainer.offsetHeight / this.stage.zoom;
                 this.bubblePointer.style.top = ((height - 6) / 14) + 'em';
                 if (left + width + 2 > 480) {
-                    this.bubbleContainer.style.right = ((240 - b.left) / 14) + 'em';
+                    var d = (240 - b.left) / 14;
+                    if (d > 25)
+                        d = 25;
+                    this.bubbleContainer.style.right = d + 'em';
                     this.bubbleContainer.style.left = 'auto';
                     this.bubblePointer.style.right = (3 / 14) + 'em';
                     this.bubblePointer.style.left = 'auto';
@@ -1084,10 +1094,24 @@ var P;
                     this.runtime.trigger('whenKeyPressed', 38);
                 }
             }
+            keyEventToCode(e) {
+                const key = e.key;
+                switch (key) {
+                    case 'Enter': return 13;
+                    case 'ArrowLeft': return 37;
+                    case 'ArrowUp': return 38;
+                    case 'ArrowRight': return 39;
+                    case 'ArrowDown': return 40;
+                }
+                if (key.length !== 1) {
+                    return -1;
+                }
+                return key.toUpperCase().charCodeAt(0);
+            }
             _onkeyup(e) {
-                var c = e.keyCode;
-                if (c >= 128)
-                    c = P.runtime.getKeyCode(e.key);
+                const c = this.keyEventToCode(e);
+                if (c === -1)
+                    return;
                 if (this.keys[c])
                     this.keys.any--;
                 this.keys[c] = false;
@@ -1097,9 +1121,9 @@ var P;
                 }
             }
             _onkeydown(e) {
-                var c = e.keyCode;
-                if (c >= 128 && e.key.length === 1)
-                    c = P.runtime.getKeyCode(e.key);
+                const c = this.keyEventToCode(e);
+                if (c === -1)
+                    return;
                 if (!this.keys[c])
                     this.keys.any++;
                 this.keys[c] = true;
@@ -1383,6 +1407,18 @@ var P;
                     right: 0,
                 };
             }
+            touching(thing) {
+                if (thing == "_mouse_") {
+                    return true;
+                }
+                return false;
+            }
+            touchingColor(color) {
+                return false;
+            }
+            colorTouchingColor(colorA, colorB) {
+                return false;
+            }
             submitPrompt() {
                 if (this.promptId < this.nextPromptId) {
                     this.answer = this.prompt.value;
@@ -1629,109 +1665,124 @@ var P;
             }
         }
         core.Sprite = Sprite;
-        class ImageLOD {
-            constructor(image) {
-                this.imageData = null;
-                this.image = image;
-                if (image.tagName === 'CANVAS') {
-                    const ctx = image.getContext('2d');
-                    if (!ctx) {
-                        throw new Error('Cannot get 2d rendering context of costume image');
-                    }
-                    this.context = ctx;
-                }
-                else {
-                    this.context = null;
-                }
-                this.width = image.width;
-                this.height = image.height;
-            }
-            getContext() {
-                if (this.context)
-                    return this.context;
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                    throw new Error('cannot get 2d rendering context');
-                }
-                canvas.width = this.width;
-                canvas.height = this.height;
-                ctx.drawImage(this.image, 0, 0);
-                this.context = ctx;
-                return ctx;
-            }
-            getImageData() {
-                if (this.imageData)
-                    return this.imageData;
-                const context = this.getContext();
-                this.imageData = context.getImageData(0, 0, context.canvas.width, context.canvas.height);
-                return this.imageData;
-            }
-        }
-        core.ImageLOD = ImageLOD;
         class Costume {
             constructor(costumeData) {
-                this.bitmapResolution = costumeData.bitmapResolution;
-                this.scale = 1 / this.bitmapResolution;
                 this.name = costumeData.name;
+                this.scale = 1 / costumeData.bitmapResolution;
                 this.rotationCenterX = costumeData.rotationCenterX;
                 this.rotationCenterY = costumeData.rotationCenterY;
-            }
-            getContext() {
-                return this.get(1).getContext();
             }
         }
         core.Costume = Costume;
         class BitmapCostume extends Costume {
-            constructor(source, options) {
+            constructor(image, options) {
                 super(options);
-                this.source = new ImageLOD(source);
-                this.width = source.width;
-                this.height = source.height;
+                if (image.tagName === 'CANVAS') {
+                    const ctx = image.getContext('2d');
+                    if (!ctx) {
+                        throw new Error(`Cannot get 2d rendering context of costume image, despite it already being a canvas "${this.name}"`);
+                    }
+                    this.ctx = ctx;
+                }
+                this.image = image;
+                this.width = image.width;
+                this.height = image.height;
+                this.isScalable = false;
             }
-            get(scale) {
-                return this.source;
+            getContext() {
+                if (this.ctx) {
+                    return this.ctx;
+                }
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    throw new Error(`cannot get 2d rendering context in getContext on Bitmap "${this.name}"`);
+                }
+                canvas.width = this.width;
+                canvas.height = this.height;
+                ctx.drawImage(this.image, 0, 0);
+                this.ctx = ctx;
+                return ctx;
+            }
+            getImage() {
+                return this.image;
+            }
+            requestSize(scale) {
+                throw new Error(`requestSize is not implemented on BitmapCostume "${this.name}" isScalable=${this.isScalable}`);
             }
         }
         core.BitmapCostume = BitmapCostume;
         class VectorCostume extends Costume {
             constructor(svg, options) {
                 super(options);
-                this.scales = [];
+                this.currentScale = 1;
                 if (svg.height < 1 || svg.width < 1) {
                     svg = new Image(1, 1);
                 }
+                this.isScalable = true;
                 this.width = svg.width;
                 this.height = svg.height;
-                this.source = svg;
+                this.svg = svg;
+                this.maxScale = this.calculateMaxScale();
             }
-            getScale(scale) {
-                const canvas = document.createElement('canvas');
-                canvas.width = Math.max(1, this.width * scale);
-                canvas.height = Math.max(1, this.height * scale);
-                const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                    if (this.scales[0]) {
-                        return this.scales[0];
+            calculateMaxScale() {
+                if (VectorCostume.MAX_SIZE / this.width < VectorCostume.MAX_SCALE) {
+                    return VectorCostume.MAX_SIZE / this.width;
+                }
+                if (VectorCostume.MAX_SIZE / this.height < VectorCostume.MAX_SCALE) {
+                    return VectorCostume.MAX_SIZE / this.height;
+                }
+                return VectorCostume.MAX_SCALE;
+            }
+            render() {
+                const width = Math.floor(Math.max(1, this.width * this.currentScale));
+                const height = Math.floor(Math.max(1, this.height * this.currentScale));
+                if (!this.canvas) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) {
+                        const fmt = (n) => Math.round(n * 100) / 100;
+                        throw new Error(`cannot get 2d rendering context in initCanvas on Vector "${this.name}" @ ${fmt(this.currentScale)}/${fmt(this.maxScale)} | ${width}x${height}`);
                     }
-                    throw new Error('cannot get 2d rendering context while rendering VectorCostume ' + this.name + ' at scale ' + scale);
+                    this.canvas = canvas;
+                    this.ctx = ctx;
                 }
-                ctx.drawImage(this.source, 0, 0, canvas.width, canvas.height);
-                return new ImageLOD(canvas);
+                else {
+                    this.canvas.width = width;
+                    this.canvas.height = height;
+                }
+                this.ctx.drawImage(this.svg, 0, 0, width, height);
             }
-            get(scale) {
-                scale = Math.min(VectorCostume.MAX_ZOOM, Math.ceil(scale));
-                const index = scale - 1;
-                if (!this.scales[index]) {
-                    this.scales[index] = this.getScale(scale);
+            requestSize(costumeScale) {
+                const scale = Math.min(Math.ceil(costumeScale), this.maxScale);
+                if (this.currentScale < scale) {
+                    this.currentScale = scale;
+                    this.render();
                 }
-                return this.scales[index];
+            }
+            getContext() {
+                if (this.ctx) {
+                    return this.ctx;
+                }
+                this.render();
+                return this.ctx;
+            }
+            getImage() {
+                if (this.canvas) {
+                    return this.canvas;
+                }
+                this.render();
+                return this.canvas;
             }
         }
-        VectorCostume.MAX_ZOOM = 6;
+        VectorCostume.MAX_SCALE = 8;
+        VectorCostume.MAX_SIZE = 1024;
         core.VectorCostume = VectorCostume;
-        if (/iPhone/.test(navigator.userAgent) || /iPad/.test(navigator.userAgent) || /iPod/.test(navigator.userAgent) || window.safari) {
-            VectorCostume.MAX_ZOOM = 1;
+        if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
+            console.log('Vector scaling is disabled');
+            VectorCostume.MAX_SCALE = 1;
         }
         class Sound {
             constructor(data) {
@@ -1796,14 +1847,13 @@ var P;
             'Curly': 'fonts/Griffy-Regular.woff',
             'Serif': 'fonts/SourceSerifPro-Regular.woff',
             'Sans Serif': 'fonts/NotoSans-Regular.woff',
-            'Scratch': 'fonts/Scratch.ttf',
         };
         function loadLocalFont(fontFamily, src) {
             if (fontFamilyCache[fontFamily]) {
                 return Promise.resolve(fontFamilyCache[fontFamily]);
             }
-            return new P.IO.BlobRequest(src, { local: true }).load()
-                .then((blob) => P.IO.readers.toDataURL(blob))
+            return P.io.getAssetManager().loadFont(src)
+                .then((blob) => P.io.readers.toDataURL(blob))
                 .then((url) => {
                 fontFamilyCache[fontFamily] = url;
                 return url;
@@ -1919,93 +1969,14 @@ var P;
 })(P || (P = {}));
 var P;
 (function (P) {
-    var IO;
-    (function (IO) {
-        IO.config = {
+    var io;
+    (function (io) {
+        io.config = {
             localPath: '',
         };
         if (['http:', 'https:'].indexOf(location.protocol) === -1) {
-            IO.config.localPath = 'https://forkphorus.github.io';
+            io.config.localPath = 'https://forkphorus.github.io';
         }
-        class Request {
-            constructor(url, options = {}) {
-                if (options.local) {
-                    if (url.indexOf('data:') !== 0) {
-                        url = IO.config.localPath + url;
-                    }
-                }
-                this.rejectOnError = options.rejectOnError !== false;
-                this.url = url;
-            }
-            load() {
-                return new Promise((resolve, reject) => {
-                    const attempt = (errorCallback) => {
-                        this._load()
-                            .then((response) => {
-                            resolve(response);
-                        })
-                            .catch((err) => {
-                            errorCallback(err);
-                        });
-                    };
-                    attempt((err) => {
-                        if (!(err + '').includes('abort')) {
-                            return;
-                        }
-                        console.warn(`First attempt to download ${this.url} failed, trying again (${err})`);
-                        setTimeout(function () {
-                            attempt((err) => {
-                                reject(err);
-                            });
-                        }, 250);
-                    });
-                });
-            }
-        }
-        IO.Request = Request;
-        class XHRRequest extends Request {
-            _load() {
-                return new Promise((resolve, reject) => {
-                    const xhr = new XMLHttpRequest();
-                    this.xhr = xhr;
-                    xhr.addEventListener('load', () => {
-                        if (XHRRequest.acceptableResponseCodes.indexOf(xhr.status) !== -1 || !this.rejectOnError) {
-                            resolve(xhr.response);
-                        }
-                        else {
-                            reject(new Error(`HTTP Error ${xhr.status} while downloading ${this.url}`));
-                        }
-                    });
-                    xhr.addEventListener('error', (err) => {
-                        reject(`Error while downloading ${this.url} (error) (${xhr.status})`);
-                    });
-                    xhr.addEventListener('abort', (err) => {
-                        reject(`Error while downloading ${this.url} (abort) (${xhr.status})`);
-                    });
-                    xhr.open('GET', this.url);
-                    xhr.responseType = this.type;
-                    setTimeout(xhr.send.bind(xhr));
-                });
-            }
-        }
-        XHRRequest.acceptableResponseCodes = [0, 200];
-        IO.XHRRequest = XHRRequest;
-        class ArrayBufferRequest extends XHRRequest {
-            get type() { return 'arraybuffer'; }
-        }
-        IO.ArrayBufferRequest = ArrayBufferRequest;
-        class BlobRequest extends XHRRequest {
-            get type() { return 'blob'; }
-        }
-        IO.BlobRequest = BlobRequest;
-        class TextRequest extends XHRRequest {
-            get type() { return 'text'; }
-        }
-        IO.TextRequest = TextRequest;
-        class JSONRequest extends XHRRequest {
-            get type() { return 'json'; }
-        }
-        IO.JSONRequest = JSONRequest;
         let readers;
         (function (readers) {
             function toArrayBuffer(object) {
@@ -2016,8 +1987,6 @@ var P;
                     };
                     fileReader.onerror = function (err) {
                         reject('Could not read object');
-                    };
-                    fileReader.onprogress = function (progress) {
                     };
                     fileReader.readAsArrayBuffer(object);
                 });
@@ -2032,8 +2001,6 @@ var P;
                     fileReader.onerror = function (err) {
                         reject('Could not read object');
                     };
-                    fileReader.onprogress = function (progress) {
-                    };
                     fileReader.readAsDataURL(object);
                 });
             }
@@ -2047,14 +2014,300 @@ var P;
                     fileReader.onerror = function (err) {
                         reject('Could not read object');
                     };
-                    fileReader.onprogress = function (progress) {
-                    };
                     fileReader.readAsText(object);
                 });
             }
             readers.toText = toText;
-        })(readers = IO.readers || (IO.readers = {}));
-    })(IO = P.IO || (P.IO = {}));
+        })(readers = io.readers || (io.readers = {}));
+        class FetchingAssetManager {
+            constructor() {
+                this.soundbankSource = 'soundbank/';
+            }
+            loadSoundbankFile(src) {
+                return this.loadArrayBuffer(this.soundbankSource + src);
+            }
+            loadFont(src) {
+                return this.loadBlob(src);
+            }
+            loadArrayBuffer(src) {
+                return new Request(io.config.localPath + src).load('arraybuffer');
+            }
+            loadBlob(src) {
+                return new Request(io.config.localPath + src).load('blob');
+            }
+        }
+        var globalAssetManager = new FetchingAssetManager();
+        function getAssetManager() {
+            return globalAssetManager;
+        }
+        io.getAssetManager = getAssetManager;
+        function setAssetManager(newManager) {
+            globalAssetManager = newManager;
+        }
+        io.setAssetManager = setAssetManager;
+        class AbstractTask {
+            setLoader(loader) {
+                this.loader = loader;
+            }
+            updateLoaderProgress() {
+                if (this.loader) {
+                    this.loader.updateProgress();
+                }
+            }
+        }
+        io.AbstractTask = AbstractTask;
+        class Request extends AbstractTask {
+            constructor(url) {
+                super();
+                this.url = url;
+                this.aborted = false;
+                this.shouldIgnoreErrors = false;
+                this.workComputable = false;
+                this.totalWork = 0;
+                this.completedWork = 0;
+                this.complete = false;
+                this.status = 0;
+                this.xhr = null;
+            }
+            isComplete() {
+                return this.complete;
+            }
+            isWorkComputable() {
+                return this.workComputable;
+            }
+            getTotalWork() {
+                return this.totalWork;
+            }
+            getCompletedWork() {
+                return this.completedWork;
+            }
+            abort() {
+                this.aborted = true;
+                if (this.xhr) {
+                    this.xhr.abort();
+                }
+            }
+            ignoreErrors() {
+                this.shouldIgnoreErrors = true;
+                return this;
+            }
+            getStatus() {
+                return this.status;
+            }
+            updateProgress(event) {
+                this.workComputable = event.lengthComputable;
+                this.totalWork = event.total;
+                this.completedWork = event.loaded;
+                this.updateLoaderProgress();
+            }
+            _load() {
+                return new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.addEventListener('load', () => {
+                        this.status = xhr.status;
+                        if (Request.acceptableResponseCodes.indexOf(xhr.status) !== -1 || this.shouldIgnoreErrors) {
+                            resolve(xhr.response);
+                        }
+                        else {
+                            reject(new Error(`HTTP Error ${xhr.status} while downloading ${this.url}`));
+                        }
+                    });
+                    xhr.addEventListener('progress', (e) => {
+                        this.updateProgress(e);
+                    });
+                    xhr.addEventListener('loadstart', (e) => {
+                        this.updateProgress(e);
+                    });
+                    xhr.addEventListener('loadend', (e) => {
+                        this.complete = true;
+                        this.updateProgress(e);
+                    });
+                    xhr.addEventListener('error', (err) => {
+                        reject(`Error while downloading ${this.url} (error) (${xhr.status}/${xhr.readyState})`);
+                    });
+                    xhr.addEventListener('abort', (err) => {
+                        this.aborted = true;
+                        reject(`Error while downloading ${this.url} (abort) (${xhr.status}/${xhr.readyState})`);
+                    });
+                    xhr.open('GET', this.url);
+                    xhr.responseType = this.responseType;
+                    this.xhr = xhr;
+                    setTimeout(xhr.send.bind(xhr));
+                });
+            }
+            load(type) {
+                this.responseType = type;
+                return new Promise((resolve, reject) => {
+                    this._load()
+                        .then((response) => resolve(response))
+                        .catch((err) => {
+                        if (this.aborted) {
+                            reject(err);
+                            return;
+                        }
+                        console.warn(`First attempt to download ${this.url} failed, trying again.`, err);
+                        setTimeout(() => {
+                            this._load()
+                                .then((response) => resolve(response))
+                                .catch((err) => reject(err));
+                        }, 250);
+                    });
+                });
+            }
+        }
+        Request.acceptableResponseCodes = [0, 200];
+        io.Request = Request;
+        class Img extends AbstractTask {
+            constructor(src) {
+                super();
+                this.complete = false;
+                this.aborted = false;
+                this.src = src;
+            }
+            load() {
+                return new Promise((resolve, reject) => {
+                    const image = new Image();
+                    image.onload = () => {
+                        this.complete = true;
+                        this.updateLoaderProgress();
+                        resolve(image);
+                    };
+                    image.onerror = (err) => {
+                        reject('Failed to load image: ' + image.src);
+                    };
+                    image.crossOrigin = 'anonymous';
+                    image.src = this.src;
+                });
+            }
+            isComplete() {
+                return this.complete;
+            }
+            isWorkComputable() {
+                return false;
+            }
+            getTotalWork() {
+                return 0;
+            }
+            getCompletedWork() {
+                return 0;
+            }
+            abort() {
+                this.aborted = true;
+            }
+        }
+        io.Img = Img;
+        class Manual extends AbstractTask {
+            constructor() {
+                super(...arguments);
+                this.complete = false;
+                this.aborted = false;
+            }
+            markComplete() {
+                this.complete = true;
+                this.updateLoaderProgress();
+            }
+            isComplete() {
+                return this.complete;
+            }
+            isWorkComputable() {
+                return false;
+            }
+            getTotalWork() {
+                return 0;
+            }
+            getCompletedWork() {
+                return 0;
+            }
+            abort() {
+                this.aborted = true;
+            }
+        }
+        io.Manual = Manual;
+        class PromiseTask extends Manual {
+            constructor(promise) {
+                super();
+                promise.then(() => this.markComplete());
+            }
+        }
+        io.PromiseTask = PromiseTask;
+        class Loader {
+            constructor() {
+                this._tasks = [];
+                this.aborted = false;
+                this.error = false;
+            }
+            calculateProgress() {
+                if (this.aborted) {
+                    return 1;
+                }
+                const totalTasks = this._tasks.length;
+                if (totalTasks === 0) {
+                    return 0;
+                }
+                let totalWork = 0;
+                let completedWork = 0;
+                let finishedTasks = 0;
+                let uncomputable = 0;
+                for (const task of this._tasks) {
+                    if (task.isComplete()) {
+                        finishedTasks++;
+                    }
+                    if (task.isWorkComputable()) {
+                        completedWork += task.getCompletedWork();
+                        totalWork += task.getTotalWork();
+                    }
+                    else {
+                        uncomputable++;
+                    }
+                }
+                if (totalWork === 0) {
+                    return finishedTasks / totalTasks;
+                }
+                if (uncomputable > 0) {
+                    const averageWork = totalWork / (totalTasks - uncomputable) * uncomputable;
+                    totalWork = 0;
+                    completedWork = 0;
+                    for (const task of this._tasks) {
+                        if (task.isWorkComputable()) {
+                            completedWork += task.getCompletedWork();
+                            totalWork += task.getTotalWork();
+                        }
+                        else {
+                            totalWork += averageWork;
+                            if (task.isComplete())
+                                completedWork += averageWork;
+                        }
+                    }
+                }
+                return completedWork / totalWork;
+            }
+            updateProgress() {
+                if (this.error) {
+                    return;
+                }
+                const progress = this.calculateProgress();
+                this.onprogress(progress);
+            }
+            resetTasks() {
+                this._tasks = [];
+                this.updateProgress();
+            }
+            addTask(task) {
+                this._tasks.push(task);
+                task.setLoader(this);
+                return task;
+            }
+            abort() {
+                this.aborted = true;
+                for (const task of this._tasks) {
+                    task.abort();
+                }
+            }
+            onprogress(progress) {
+            }
+        }
+        io.Loader = Loader;
+    })(io = P.io || (P.io = {}));
 })(P || (P = {}));
 var P;
 (function (P) {
@@ -2186,20 +2439,6 @@ var P;
             });
         }
         utils.settled = settled;
-        class Slot {
-            constructor() {
-                this._listeners = [];
-            }
-            subscribe(fn) {
-                this._listeners.push(fn);
-            }
-            emit(value) {
-                for (const listener of this._listeners) {
-                    listener(value);
-                }
-            }
-        }
-        utils.Slot = Slot;
     })(utils = P.utils || (P.utils = {}));
 })(P || (P = {}));
 var P;
@@ -2229,61 +2468,149 @@ var P;
             }
         }
         player_1.ProjectDoesNotExistError = ProjectDoesNotExistError;
+        class LoaderIdentifier {
+            constructor() {
+                this.active = true;
+                this.loader = null;
+            }
+            cancel() {
+                if (!this.active) {
+                    throw new Error('cannot cancel: already cancelled');
+                }
+                this.active = false;
+                if (this.loader) {
+                    this.loader.abort();
+                }
+            }
+            setLoader(loader) {
+                if (!this.active) {
+                    throw new Error('Loading aborted');
+                }
+                this.loader = loader;
+            }
+            isActive() {
+                return this.active;
+            }
+        }
+        class Slot {
+            constructor() {
+                this._listeners = [];
+            }
+            subscribe(fn) {
+                this._listeners.push(fn);
+            }
+            emit(value) {
+                for (const listener of this._listeners) {
+                    listener(value);
+                }
+            }
+        }
+        class LocalProjectMeta {
+            constructor(filename) {
+                this.filename = filename;
+            }
+            load() {
+                return Promise.resolve(this);
+            }
+            getTitle() {
+                return this.filename;
+            }
+            getId() {
+                return null;
+            }
+        }
+        class RemoteProjectMeta {
+            constructor(id) {
+                this.id = id;
+                this.title = null;
+            }
+            load() {
+                return new P.io.Request('https://scratch.garbomuffin.com/proxy/projects/$id'.replace('$id', this.id))
+                    .load('json')
+                    .then((data) => {
+                    if (data.title) {
+                        this.title = data.title;
+                    }
+                    return this;
+                });
+            }
+            getTitle() {
+                return this.title;
+            }
+            getId() {
+                return this.id;
+            }
+        }
         class Player {
             constructor(options = {}) {
-                this.onprogress = new P.utils.Slot();
-                this.onload = new P.utils.Slot();
-                this.onstartload = new P.utils.Slot();
-                this.oncleanup = new P.utils.Slot();
-                this.onthemechange = new P.utils.Slot();
-                this.onerror = new P.utils.Slot();
-                this.onstart = new P.utils.Slot();
-                this.onpause = new P.utils.Slot();
-                this.onturbochange = new P.utils.Slot();
-                this.fullscreen = false;
-                this.fullscreenPadding = 8;
-                this.fullscreenMaxWidth = Infinity;
-                this.stageId = 0;
-                this.projectId = Player.UNKNOWN_ID;
-                this.projectLink = Player.UNKNOWN_LINK;
-                this.projectTitle = Player.UNKNOWN_TITLE;
-                this.flagTouchTimeout = undefined;
+                this.onprogress = new Slot();
+                this.onload = new Slot();
+                this.onstartload = new Slot();
+                this.oncleanup = new Slot();
+                this.onthemechange = new Slot();
+                this.onerror = new Slot();
+                this.onresume = new Slot();
+                this.onpause = new Slot();
+                this.onoptionschange = new Slot();
+                this.MAGIC = {
+                    LARGE_Z_INDEX: '9999999999',
+                    CLOUD_HISTORY_API: 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100',
+                    PROJECT_API: 'https://projects.scratch.mit.edu/$id',
+                };
+                this.projectMeta = null;
+                this.currentLoader = null;
+                this.fullscreenEnabled = false;
+                this.clickToPlayContainer = null;
                 this.root = document.createElement('div');
                 this.root.className = 'player-root';
-                this.player = document.createElement('div');
-                this.player.className = 'player-stage';
-                this.root.appendChild(this.player);
-                this.setTheme(options.theme || 'light');
+                this.playerContainer = document.createElement('div');
+                this.playerContainer.className = 'player-stage';
+                this.root.appendChild(this.playerContainer);
+                this.setOptions(Object.assign(Object.assign({}, options), Player.DEFAULT_OPTIONS));
                 window.addEventListener('resize', () => this.updateFullscreen());
                 document.addEventListener('fullscreenchange', () => this.onfullscreenchange());
                 document.addEventListener('mozfullscreenchange', () => this.onfullscreenchange());
                 document.addEventListener('webkitfullscreenchange', () => this.onfullscreenchange());
                 this.handleError = this.handleError.bind(this);
             }
-            static getProjectType(data) {
-                if (!data)
-                    return null;
-                if ('targets' in data)
-                    return 3;
-                if ('objName' in data)
-                    return 2;
-                return null;
+            enableAttribute(name) {
+                this.root.setAttribute(name, '');
             }
-            static isCloudVariable(variableName) {
-                return variableName.startsWith('☁');
+            disableAttribute(name) {
+                this.root.removeAttribute(name);
             }
-            ;
-            assertStage() {
-                if (!this.stage) {
-                    throw new Error('The player does not currently contain a stage to operate on.');
+            setAttribute(name, enabled) {
+                if (enabled) {
+                    this.enableAttribute(name);
                 }
+                else {
+                    this.disableAttribute(name);
+                }
+            }
+            setOptions(changedOptions) {
+                this.options = Object.assign(Object.assign({}, this.options), changedOptions);
+                if (typeof changedOptions.turbo !== 'undefined') {
+                    this.setAttribute('turbo', changedOptions.turbo);
+                }
+                if (typeof changedOptions.theme !== 'undefined') {
+                    this.root.setAttribute('theme', changedOptions.theme);
+                    this.onthemechange.emit(changedOptions.theme);
+                }
+                if (this.hasStage()) {
+                    this.applyOptionsToStage();
+                }
+                this.onoptionschange.emit(changedOptions);
+            }
+            getOptions() {
+                return this.options;
             }
             addControls(options = {}) {
-                if (this.controlsEl) {
+                if (this.controlsContainer) {
                     throw new Error('This player already has controls.');
                 }
+                let flagTouchTimeout = undefined;
                 const clickStop = (e) => {
-                    this.assertStage();
+                    this.throwWithoutStage();
                     this.stopAll();
                     this.stage.draw();
                     e.preventDefault();
@@ -2292,157 +2619,214 @@ var P;
                     this.toggleRunning();
                 };
                 const clickFullscreen = (e) => {
-                    this.assertStage();
-                    if (this.fullscreen) {
+                    this.throwWithoutStage();
+                    this.setOptions({ fullscreenMode: e.shiftKey ? 'window' : 'full' });
+                    if (this.fullscreenEnabled) {
                         this.exitFullscreen();
                     }
                     else {
-                        this.enterFullscreen(!e.shiftKey);
+                        this.enterFullscreen();
                     }
                 };
                 const clickFlag = (e) => {
-                    if (this.flagTouchTimeout === null) {
+                    if (flagTouchTimeout === null) {
                         return;
                     }
-                    if (this.flagTouchTimeout) {
-                        clearTimeout(this.flagTouchTimeout);
+                    if (flagTouchTimeout) {
+                        clearTimeout(flagTouchTimeout);
                     }
-                    this.assertStage();
+                    this.throwWithoutStage();
                     if (e.shiftKey) {
-                        this.setTurbo(!this.stage.runtime.isTurbo);
+                        this.setOptions({ turbo: !this.options.turbo });
                     }
                     else {
-                        this.start();
-                        this.stage.runtime.stopAll();
-                        this.stage.runtime.triggerGreenFlag();
+                        this.triggerGreenFlag();
                     }
-                    this.stage.focus();
+                    this.focus();
                     e.preventDefault();
                 };
                 const startTouchFlag = (e) => {
-                    this.flagTouchTimeout = setTimeout(() => {
-                        this.flagTouchTimeout = null;
-                        this.setTurbo(!this.stage.runtime.isTurbo);
+                    flagTouchTimeout = setTimeout(() => {
+                        flagTouchTimeout = null;
+                        this.setOptions({ turbo: !this.options.turbo });
                     }, 500);
                 };
                 const preventDefault = (e) => {
                     e.preventDefault();
                 };
-                this.controlsEl = document.createElement('div');
-                this.controlsEl.className = 'player-controls';
+                this.controlsContainer = document.createElement('div');
+                this.controlsContainer.className = 'player-controls';
                 if (options.enableStop !== false) {
-                    this.stopButton = document.createElement('span');
-                    this.stopButton.className = 'player-button player-stop';
-                    this.controlsEl.appendChild(this.stopButton);
-                    this.stopButton.addEventListener('click', clickStop);
-                    this.stopButton.addEventListener('touchend', clickStop);
-                    this.stopButton.addEventListener('touchstart', preventDefault);
+                    var stopButton = document.createElement('span');
+                    stopButton.className = 'player-button player-stop';
+                    this.controlsContainer.appendChild(stopButton);
+                    stopButton.addEventListener('click', clickStop);
+                    stopButton.addEventListener('touchend', clickStop);
+                    stopButton.addEventListener('touchstart', preventDefault);
                 }
                 if (options.enablePause !== false) {
-                    this.pauseButton = document.createElement('span');
-                    this.pauseButton.className = 'player-button player-pause';
-                    this.controlsEl.appendChild(this.pauseButton);
-                    this.pauseButton.addEventListener('click', clickPause);
-                    this.pauseButton.addEventListener('touchend', clickPause);
-                    this.pauseButton.addEventListener('touchstart', preventDefault);
+                    var pauseButton = document.createElement('span');
+                    pauseButton.className = 'player-button player-pause';
+                    this.controlsContainer.appendChild(pauseButton);
+                    pauseButton.addEventListener('click', clickPause);
+                    pauseButton.addEventListener('touchend', clickPause);
+                    pauseButton.addEventListener('touchstart', preventDefault);
                 }
                 if (options.enableFlag !== false) {
-                    this.flagButton = document.createElement('span');
-                    this.flagButton.className = 'player-button player-flag';
-                    this.flagButton.title = P.i18n.translate('player.controls.flag.title');
-                    this.controlsEl.appendChild(this.flagButton);
-                    this.flagButton.addEventListener('click', clickFlag);
-                    this.flagButton.addEventListener('touchend', clickFlag);
-                    this.flagButton.addEventListener('touchstart', startTouchFlag);
-                    this.flagButton.addEventListener('touchstart', preventDefault);
+                    var flagButton = document.createElement('span');
+                    flagButton.className = 'player-button player-flag';
+                    flagButton.title = P.i18n.translate('player.controls.flag.title');
+                    this.controlsContainer.appendChild(flagButton);
+                    flagButton.addEventListener('click', clickFlag);
+                    flagButton.addEventListener('touchend', clickFlag);
+                    flagButton.addEventListener('touchstart', startTouchFlag);
+                    flagButton.addEventListener('touchstart', preventDefault);
                 }
                 if (options.enableTurbo !== false) {
-                    this.turboText = document.createElement('span');
-                    this.turboText.innerText = P.i18n.translate('player.controls.turboIndicator');
-                    this.turboText.className = 'player-label player-turbo';
-                    this.controlsEl.appendChild(this.turboText);
+                    var turboText = document.createElement('span');
+                    turboText.innerText = P.i18n.translate('player.controls.turboIndicator');
+                    turboText.className = 'player-label player-turbo';
+                    this.controlsContainer.appendChild(turboText);
+                    this.onoptionschange.subscribe((options) => {
+                        if (flagButton && typeof options.turbo === 'boolean') {
+                            if (options.turbo) {
+                                flagButton.title = P.i18n.translate('player.controls.flag.title.enabled');
+                            }
+                            else {
+                                flagButton.title = P.i18n.translate('player.controls.flag.title.disabled');
+                            }
+                        }
+                    });
                 }
                 if (options.enableFullscreen !== false) {
-                    this.fullscreenButton = document.createElement('span');
-                    this.fullscreenButton.className = 'player-button player-fullscreen-btn';
-                    this.fullscreenButton.title = P.i18n.translate('player.controls.fullscreen.title');
-                    this.controlsEl.appendChild(this.fullscreenButton);
-                    this.fullscreenButton.addEventListener('click', clickFullscreen);
-                    this.fullscreenButton.addEventListener('touchend', clickFullscreen);
-                    this.fullscreenButton.addEventListener('touchstart', preventDefault);
+                    var fullscreenButton = document.createElement('span');
+                    fullscreenButton.className = 'player-button player-fullscreen-btn';
+                    fullscreenButton.title = P.i18n.translate('player.controls.fullscreen.title');
+                    this.controlsContainer.appendChild(fullscreenButton);
+                    fullscreenButton.addEventListener('click', clickFullscreen);
+                    fullscreenButton.addEventListener('touchend', clickFullscreen);
+                    fullscreenButton.addEventListener('touchstart', preventDefault);
                 }
                 this.root.addEventListener('touchmove', (e) => {
-                    if (this.fullscreen) {
+                    if (this.fullscreenEnabled) {
                         e.preventDefault();
                     }
                 });
-                this.root.insertBefore(this.controlsEl, this.root.firstChild);
+                this.root.insertBefore(this.controlsContainer, this.root.firstChild);
             }
-            setTurbo(turbo) {
-                this.assertStage();
-                this.stage.runtime.isTurbo = turbo;
-                if (turbo) {
-                    this.root.setAttribute('turbo', '');
-                }
-                else {
-                    this.root.removeAttribute('turbo');
-                }
-                if (this.flagButton) {
-                    if (turbo) {
-                        this.flagButton.title = P.i18n.translate('player.controls.flag.title.enabled');
-                    }
-                    else {
-                        this.flagButton.title = P.i18n.translate('player.controls.flag.title.disabled');
+            applyOptionsToStage() {
+                if (this.stage.runtime.framerate !== this.options.fps) {
+                    this.stage.runtime.framerate = this.options.fps;
+                    if (this.isRunning()) {
+                        this.stage.runtime.resetInterval();
                     }
                 }
-                this.onturbochange.emit(turbo);
+                this.stage.username = this.options.username;
+                this.stage.runtime.isTurbo = this.options.turbo;
+                this.stage.renderer.imageSmoothingEnabled = this.options.imageSmoothing;
+            }
+            throwWithoutStage() {
+                if (!this.stage) {
+                    throw new Error('Missing stage.');
+                }
+            }
+            resume() {
+                this.throwWithoutStage();
+                if (this.isRunning()) {
+                    throw new Error('cannot resume: project is already running');
+                }
+                this.stage.runtime.start();
+                this.enableAttribute('running');
+                this.onresume.emit();
             }
             pause() {
-                this.assertStage();
+                this.throwWithoutStage();
+                if (!this.isRunning()) {
+                    throw new Error('cannot pause: project is already paused');
+                }
                 this.stage.runtime.pause();
-                this.root.removeAttribute('running');
+                this.disableAttribute('running');
                 this.onpause.emit();
             }
-            start() {
-                this.assertStage();
-                this.stage.runtime.start();
-                this.root.setAttribute('running', '');
-                this.onstart.emit();
-            }
-            triggerGreenFlag() {
-                this.assertStage();
-                this.stage.runtime.triggerGreenFlag();
-            }
-            stopAll() {
-                this.assertStage();
-                this.pause();
-                this.stage.runtime.stopAll();
-            }
             isRunning() {
-                if (!this.stage) {
+                if (!this.hasStage()) {
                     return false;
                 }
                 return this.stage.runtime.isRunning;
             }
             toggleRunning() {
-                this.assertStage();
-                if (this.isRunning()) {
+                this.throwWithoutStage();
+                if (this.stage.runtime.isRunning) {
                     this.pause();
                 }
                 else {
-                    this.start();
-                    this.stage.focus();
+                    this.resume();
                 }
             }
-            setTheme(theme) {
-                this.theme = theme;
-                this.root.setAttribute('theme', theme);
-                this.onthemechange.emit(theme);
+            stopAll() {
+                this.throwWithoutStage();
+                this.pause();
+                this.stage.runtime.stopAll();
             }
-            enterFullscreen(realFullscreen) {
-                this.previousTheme = this.root.getAttribute('theme');
-                this.setTheme('dark');
-                if (realFullscreen) {
+            triggerGreenFlag() {
+                this.throwWithoutStage();
+                if (!this.isRunning()) {
+                    this.resume();
+                }
+                this.stage.runtime.stopAll();
+                this.stage.runtime.triggerGreenFlag();
+                if (this.clickToPlayContainer) {
+                    this.removeClickToPlayContainer();
+                }
+            }
+            cleanup() {
+                if (this.currentLoader) {
+                    this.currentLoader.cancel();
+                    this.currentLoader = null;
+                }
+                if (this.clickToPlayContainer) {
+                    this.removeClickToPlayContainer();
+                }
+                if (this.fullscreenEnabled) {
+                    this.exitFullscreen();
+                }
+                if (this.stage) {
+                    this.stage.destroy();
+                    this.stage = null;
+                }
+                this.projectMeta = null;
+                while (this.playerContainer.firstChild) {
+                    this.playerContainer.removeChild(this.playerContainer.firstChild);
+                }
+                this.oncleanup.emit();
+            }
+            focus() {
+                this.stage.focus();
+            }
+            hasStage() {
+                return !!this.stage;
+            }
+            getStage() {
+                this.throwWithoutStage();
+                return this.stage;
+            }
+            hasProjectMeta() {
+                return !!this.projectMeta;
+            }
+            getProjectMeta() {
+                if (!this.projectMeta) {
+                    throw new Error('no project meta');
+                }
+                return this.projectMeta;
+            }
+            handleError(error) {
+                console.error(error);
+                this.onerror.emit(error);
+            }
+            enterFullscreen() {
+                this.savedTheme = this.root.getAttribute('theme');
+                this.setOptions({ theme: 'dark' });
+                if (this.options.fullscreenMode === 'full') {
                     if (this.root.requestFullScreenWithKeys) {
                         this.root.requestFullScreenWithKeys();
                     }
@@ -2454,21 +2838,21 @@ var P;
                     }
                 }
                 document.body.classList.add('player-body-fullscreen');
-                this.root.style.zIndex = Player.LARGE_Z_INDEX;
-                this.root.setAttribute('fullscreen', '');
-                this.fullscreen = true;
-                if (this.stage) {
+                this.root.style.zIndex = this.MAGIC.LARGE_Z_INDEX;
+                this.enableAttribute('fullscreen');
+                this.fullscreenEnabled = true;
+                if (this.hasStage()) {
                     if (!this.isRunning()) {
                         this.stage.draw();
                     }
-                    this.stage.focus();
+                    this.focus();
                 }
                 this.updateFullscreen();
             }
             exitFullscreen() {
-                this.setTheme(this.previousTheme);
-                this.root.removeAttribute('fullscreen');
-                this.fullscreen = false;
+                this.setOptions({ theme: this.savedTheme });
+                this.disableAttribute('fullscreen');
+                this.fullscreenEnabled = false;
                 if (document.fullscreenElement === this.root || document.webkitFullscreenElement === this.root) {
                     if (document.exitFullscreen) {
                         document.exitFullscreen();
@@ -2486,269 +2870,52 @@ var P;
                 this.root.style.paddingLeft = '';
                 this.root.style.paddingTop = '';
                 this.root.style.zIndex = '';
-                if (this.controlsEl) {
-                    this.controlsEl.style.width = '';
+                if (this.controlsContainer) {
+                    this.controlsContainer.style.width = '';
                 }
                 document.body.classList.remove('player-body-fullscreen');
                 if (this.stage) {
                     this.stage.setZoom(1);
-                    this.stage.focus();
+                    this.focus();
                 }
             }
             updateFullscreen() {
-                if (!this.stage) {
+                if (!this.fullscreenEnabled) {
                     return;
                 }
-                if (this.fullscreen) {
-                    var controlsHeight = this.controlsEl ? this.controlsEl.offsetHeight : 0;
-                    window.scrollTo(0, 0);
-                    var w = window.innerWidth - this.fullscreenPadding * 2;
-                    var h = window.innerHeight - this.fullscreenPadding - controlsHeight;
-                    w = Math.min(w, h / 0.75);
-                    w = Math.min(w, this.fullscreenMaxWidth);
-                    h = w * 0.75 + controlsHeight;
-                    if (this.controlsEl) {
-                        this.controlsEl.style.width = w + 'px';
-                    }
-                    this.root.style.paddingLeft = (window.innerWidth - w) / 2 + 'px';
-                    this.root.style.paddingTop = (window.innerHeight - h - this.fullscreenPadding) / 2 + 'px';
-                    this.stage.setZoom(w / 480);
+                this.throwWithoutStage();
+                const controlsHeight = this.controlsContainer ? this.controlsContainer.offsetHeight : 0;
+                window.scrollTo(0, 0);
+                let w = window.innerWidth - this.options.fullscreenPadding * 2;
+                let h = window.innerHeight - this.options.fullscreenPadding - controlsHeight;
+                w = Math.min(w, h / 0.75);
+                w = Math.min(w, this.options.fullscreenMaxWidth);
+                h = w * 0.75 + controlsHeight;
+                if (this.controlsContainer) {
+                    this.controlsContainer.style.width = w + 'px';
                 }
+                this.root.style.paddingLeft = (window.innerWidth - w) / 2 + 'px';
+                this.root.style.paddingTop = (window.innerHeight - h - this.options.fullscreenPadding) / 2 + 'px';
+                this.stage.setZoom(w / 480);
             }
             onfullscreenchange() {
-                if (typeof document.fullscreen === 'boolean' && document.fullscreen !== this.fullscreen) {
+                if (typeof document.fullscreen === 'boolean' && document.fullscreen !== this.fullscreenEnabled) {
                     this.exitFullscreen();
                 }
-                else if (typeof document.webkitIsFullScreen === 'boolean' && document.webkitIsFullScreen !== this.fullscreen) {
+                else if (typeof document.webkitIsFullScreen === 'boolean' && document.webkitIsFullScreen !== this.fullscreenEnabled) {
                     this.exitFullscreen();
                 }
             }
-            handleError(error) {
-                console.error(error);
-                this.onerror.emit(error);
-            }
-            cleanup() {
-                this.stageId++;
-                this.projectId = Player.UNKNOWN_ID;
-                this.projectLink = Player.UNKNOWN_LINK;
-                this.projectTitle = Player.UNKNOWN_TITLE;
-                if (this.stage) {
-                    this.stage.destroy();
-                    this.stage = null;
-                }
-                while (this.player.firstChild) {
-                    this.player.removeChild(this.player.firstChild);
-                }
-                if (this.fullscreen) {
-                    this.exitFullscreen();
-                }
-                this.oncleanup.emit();
-            }
-            startLoadingNewProject() {
-                this.cleanup();
-                this.onstartload.emit();
-            }
-            getNewStageId() {
-                this.stageId++;
-                return this.stageId;
-            }
-            isStageActive(id) {
-                return id === this.stageId;
-            }
-            installStage(stage, stageOptions = {}) {
-                if (!stage) {
-                    throw new Error('Cannot run an invalid stage');
-                }
-                this.stage = stage;
-                this.stage.runtime.handleError = this.handleError;
-                if (typeof stageOptions.fps !== 'undefined') {
-                    stage.runtime.framerate = stageOptions.fps;
-                }
-                this.onload.emit(stage);
-                this.start();
-                if (stageOptions.start !== false) {
-                    stage.runtime.triggerGreenFlag();
-                }
-                if (stageOptions.turbo) {
-                    stage.runtime.isTurbo = true;
-                }
-                this.player.appendChild(stage.root);
-                stage.focus();
-            }
-            isScratch1Project(buffer) {
-                const MAGIC = 'ScratchV0';
-                const array = new Uint8Array(buffer);
-                for (var i = 0; i < MAGIC.length; i++) {
-                    if (String.fromCharCode(array[i]) !== MAGIC[i]) {
-                        return false;
-                    }
-                }
-                return true;
-            }
-            _handleScratch3Loader(loader, stageId) {
-                loader.onprogress.subscribe(progress => {
-                    if (this.isStageActive(stageId)) {
-                        this.onprogress.emit(progress);
-                    }
-                    else if (!loader.aborted) {
-                        loader.abort();
-                    }
-                });
-                return loader.load().then(stage => {
-                    if (this.isStageActive(stageId))
-                        return stage;
-                    return null;
-                });
-            }
-            _handleScratch2Loader(stageId, load) {
-                var totalTasks = 0;
-                var finishedTasks = 0;
-                const update = () => {
-                    if (this.isStageActive(stageId)) {
-                        var progress = finishedTasks / totalTasks || 0;
-                        this.onprogress.emit(progress);
-                    }
-                };
-                P.sb2.hooks.newTask = function () {
-                    totalTasks++;
-                    update();
-                };
-                P.sb2.hooks.endTask = function () {
-                    finishedTasks++;
-                    update();
-                };
-                return load().then((stage) => {
-                    if (this.isStageActive(stageId))
-                        return stage;
-                    return null;
-                });
-            }
-            _loadScratch3(stageId, data) {
-                var loader = new P.sb3.Scratch3Loader(data);
-                return this._handleScratch3Loader(loader, stageId);
-            }
-            _loadScratch3File(stageId, buffer) {
-                var loader = new P.sb3.SB3FileLoader(buffer);
-                return this._handleScratch3Loader(loader, stageId);
-            }
-            _loadScratch2(stageId, data) {
-                return this._handleScratch2Loader(stageId, function () {
-                    return P.sb2.loadProject(data);
-                });
-            }
-            _loadScratch2File(stageId, data) {
-                return this._handleScratch2Loader(stageId, function () {
-                    return P.sb2.loadSB2Project(data);
-                });
-            }
-            _fetchProject(id) {
-                var request = new P.IO.BlobRequest(Player.PROJECT_DATA_API.replace('$id', id), { rejectOnError: false });
-                return request.load().then(function (response) {
-                    if (request.xhr.status === 404) {
-                        throw new ProjectDoesNotExistError(id);
-                    }
-                    return response;
-                });
-            }
-            loadProjectId(id, options) {
-                this.startLoadingNewProject();
-                const stageId = this.getNewStageId();
-                this.projectId = '' + id;
-                this.projectLink = Player.PROJECT_LINK.replace('$id', id);
-                let blob;
-                return this._fetchProject(id)
-                    .then((data) => {
-                    blob = data;
-                    return P.IO.readers.toText(blob);
-                })
-                    .then((text) => {
-                    if (!this.isStageActive(stageId)) {
-                        return null;
-                    }
-                    try {
-                        var json = JSON.parse(text);
-                        var type = Player.getProjectType(json);
-                        if (type === 3) {
-                            return this._loadScratch3(stageId, json);
-                        }
-                        else if (type === 2) {
-                            return this._loadScratch2(stageId, json);
-                        }
-                        else {
-                            throw new Error('Project is valid JSON but of unknown type');
-                        }
-                    }
-                    catch (e) {
-                        return P.IO.readers.toArrayBuffer(blob).then((buffer) => {
-                            if (this.isScratch1Project(buffer)) {
-                                throw new ProjectNotSupportedError('.sb / Scratch 1');
-                            }
-                            return P.sb2.loadSB2Project(buffer);
-                        });
-                    }
-                })
-                    .then((stage) => {
-                    if (stage) {
-                        this.installStage(stage, options);
-                        this.addCloudVariables(stage, id);
-                    }
-                })
-                    .catch((error) => {
-                    if (this.isStageActive(stageId)) {
-                        this.handleError(error);
-                    }
-                });
-            }
-            loadProjectBuffer(buffer, type, options) {
-                this.startLoadingNewProject();
-                const stageId = this.getNewStageId();
-                const startLoad = () => {
-                    if (type === 'sb3') {
-                        return this._loadScratch3File(stageId, buffer);
-                    }
-                    else if (type === 'sb2') {
-                        return this._loadScratch2File(stageId, buffer);
-                    }
-                    else {
-                        throw new Error('Unknown type: ' + type);
-                    }
-                };
-                return startLoad()
-                    .then((stage) => {
-                    if (stage) {
-                        this.installStage(stage, options);
-                    }
-                })
-                    .catch((error) => {
-                    if (this.isStageActive(stageId)) {
-                        this.handleError(error);
-                    }
-                });
-            }
-            loadProjectFile(file, options) {
-                var extension = file.name.split('.').pop() || '';
-                if (['sb2', 'sb3'].indexOf(extension) === -1) {
-                    throw new Error('Unrecognized file extension: ' + extension);
-                }
-                this.startLoadingNewProject();
-                this.getNewStageId();
-                this.projectId = file.name;
-                this.projectLink = file.name + '#local';
-                return P.IO.readers.toArrayBuffer(file).then(buffer => {
-                    return this.loadProjectBuffer(buffer, extension, options);
-                });
-            }
-            getProjectTitle(id) {
-                return new P.IO.JSONRequest(Player.PROJECT_API.replace('$id', id), { rejectOnError: false }).load()
-                    .then((data) => data.title || '');
+            isCloudVariable(variableName) {
+                return variableName.startsWith('☁');
             }
             getCloudVariables(id) {
-                return new P.IO.JSONRequest(Player.CLOUD_API.replace('$id', id)).load()
-                    .then((data) => {
+                return __awaiter(this, void 0, void 0, function* () {
+                    const data = yield new P.io.Request(this.MAGIC.CLOUD_HISTORY_API.replace('$id', id)).load('json');
                     const variables = Object.create(null);
                     for (const entry of data.reverse()) {
                         const { verb, name, value } = entry;
-                        if (!Player.isCloudVariable(name)) {
+                        if (!this.isCloudVariable(name)) {
                             console.warn('cloud variable logs affecting non-cloud variable, skipping', name);
                             continue;
                         }
@@ -2773,7 +2940,7 @@ var P;
             }
             addCloudVariables(stage, id) {
                 const variables = Object.keys(stage.vars);
-                const hasCloudVariables = variables.some(Player.isCloudVariable);
+                const hasCloudVariables = variables.some(this.isCloudVariable);
                 if (!hasCloudVariables) {
                     return;
                 }
@@ -2788,15 +2955,204 @@ var P;
                     }
                 });
             }
+            enactAutoplayPolicy(policy) {
+                switch (policy) {
+                    case 'always': {
+                        this.triggerGreenFlag();
+                        break;
+                    }
+                    case 'if-audio-playable': {
+                        if (!P.audio.context || P.audio.context.state === 'running') {
+                            this.triggerGreenFlag();
+                        }
+                        else {
+                            this.showClickToPlayContainer();
+                        }
+                        break;
+                    }
+                    case 'never': {
+                        this.showClickToPlayContainer();
+                        break;
+                    }
+                }
+            }
+            showClickToPlayContainer() {
+                if (this.clickToPlayContainer) {
+                    throw new Error('cannot show click-to-play interface: already shown');
+                }
+                this.clickToPlayContainer = document.createElement('div');
+                this.clickToPlayContainer.className = 'player-click-to-play-container';
+                this.clickToPlayContainer.onclick = () => {
+                    this.removeClickToPlayContainer();
+                    this.triggerGreenFlag();
+                    this.focus();
+                };
+                const content = document.createElement('div');
+                content.className = 'player-click-to-play-icon';
+                this.clickToPlayContainer.appendChild(content);
+                this.stage.ui.appendChild(this.clickToPlayContainer);
+            }
+            removeClickToPlayContainer() {
+                if (this.clickToPlayContainer === null) {
+                    throw new Error('cannot hide click-to-play interface: already hidden');
+                }
+                this.stage.ui.removeChild(this.clickToPlayContainer);
+                this.clickToPlayContainer = null;
+            }
+            beginLoadingProject() {
+                this.cleanup();
+                this.onstartload.emit();
+                const loaderId = new LoaderIdentifier();
+                this.currentLoader = loaderId;
+                return { loaderId };
+            }
+            determineProjectType(data) {
+                if ('objName' in data)
+                    return 'sb2';
+                if ('targets' in data)
+                    return 'sb3';
+                throw new Error('Unknown project type');
+            }
+            isScratch1Project(buffer) {
+                const MAGIC = 'ScratchV0';
+                const array = new Uint8Array(buffer);
+                for (var i = 0; i < MAGIC.length; i++) {
+                    if (String.fromCharCode(array[i]) !== MAGIC[i]) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            fetchProject(id) {
+                const request = new P.io.Request(this.MAGIC.PROJECT_API.replace('$id', id));
+                return request
+                    .ignoreErrors()
+                    .load('blob')
+                    .then(function (response) {
+                    if (request.getStatus() === 404) {
+                        throw new ProjectDoesNotExistError(id);
+                    }
+                    return response;
+                });
+            }
+            setStage(stage) {
+                this.stage = stage;
+                this.stage.runtime.handleError = this.handleError;
+                this.applyOptionsToStage();
+                this.playerContainer.appendChild(stage.root);
+                stage.focus();
+                stage.draw();
+                this.onload.emit(stage);
+                this.enactAutoplayPolicy(this.options.autoplayPolicy);
+            }
+            loadLoader(loaderId, loader) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    loaderId.setLoader(loader);
+                    loader.onprogress = (progress) => {
+                        if (loaderId.isActive()) {
+                            this.onprogress.emit(progress);
+                        }
+                    };
+                    const stage = yield loader.load();
+                    this.setStage(stage);
+                    return stage;
+                });
+            }
+            loadProjectFromBufferWithType(loaderId, buffer, type) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    let loader;
+                    switch (type) {
+                        case 'sb2':
+                            loader = new P.sb2.SB2FileLoader(buffer);
+                            break;
+                        case 'sb3':
+                            loader = new P.sb3.SB3FileLoader(buffer);
+                            break;
+                        default: throw new Error('Unknown type: ' + type);
+                    }
+                    yield this.loadLoader(loaderId, loader);
+                });
+            }
+            loadProjectById(id) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    const { loaderId } = this.beginLoadingProject();
+                    const getLoader = (blob) => __awaiter(this, void 0, void 0, function* () {
+                        const projectText = yield P.io.readers.toText(blob);
+                        try {
+                            const projectJson = JSON.parse(projectText);
+                            switch (this.determineProjectType(projectJson)) {
+                                case 'sb2': return new P.sb2.Scratch2Loader(projectJson);
+                                case 'sb3': return new P.sb3.Scratch3Loader(projectJson);
+                            }
+                        }
+                        catch (e) {
+                            const buffer = yield P.io.readers.toArrayBuffer(blob);
+                            if (this.isScratch1Project(buffer)) {
+                                throw new ProjectNotSupportedError('Scratch 1');
+                            }
+                            return new P.sb2.SB2FileLoader(buffer);
+                        }
+                    });
+                    try {
+                        this.projectMeta = new RemoteProjectMeta(id);
+                        const blob = yield this.fetchProject(id);
+                        const loader = yield getLoader(blob);
+                        const stage = yield this.loadLoader(loaderId, loader);
+                        this.addCloudVariables(stage, id);
+                    }
+                    catch (e) {
+                        if (loaderId.isActive()) {
+                            this.handleError(e);
+                        }
+                    }
+                });
+            }
+            loadProjectFromFile(file) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    const { loaderId } = this.beginLoadingProject();
+                    try {
+                        this.projectMeta = new LocalProjectMeta(file.name);
+                        const extension = file.name.split('.').pop() || '';
+                        const buffer = yield P.io.readers.toArrayBuffer(file);
+                        switch (extension) {
+                            case 'sb2': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb2');
+                            case 'sb3': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb3');
+                            default: throw new Error('Unrecognized file extension: ' + extension);
+                        }
+                    }
+                    catch (e) {
+                        if (loaderId.isActive()) {
+                            this.handleError(e);
+                        }
+                    }
+                });
+            }
+            loadProjectFromBuffer(buffer, type) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    const { loaderId } = this.beginLoadingProject();
+                    try {
+                        return yield this.loadProjectFromBufferWithType(loaderId, buffer, type);
+                    }
+                    catch (e) {
+                        if (loaderId.isActive()) {
+                            this.handleError(e);
+                        }
+                    }
+                });
+            }
         }
-        Player.PROJECT_DATA_API = 'https://projects.scratch.mit.edu/$id';
-        Player.PROJECT_LINK = 'https://scratch.mit.edu/projects/$id';
-        Player.LARGE_Z_INDEX = '9999999999';
-        Player.UNKNOWN_ID = '(no id)';
-        Player.UNKNOWN_LINK = '(no link)';
-        Player.UNKNOWN_TITLE = '(no title)';
-        Player.PROJECT_API = 'https://scratch.garbomuffin.com/proxy/projects/$id';
-        Player.CLOUD_API = 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100';
+        Player.DEFAULT_OPTIONS = {
+            autoplayPolicy: 'always',
+            cloudVariables: 'once',
+            fps: 30,
+            theme: 'light',
+            turbo: false,
+            username: '',
+            fullscreenMode: 'full',
+            fullscreenPadding: 8,
+            fullscreenMaxWidth: Infinity,
+            imageSmoothing: false,
+        };
         player_1.Player = Player;
         class ErrorHandler {
             constructor(player, options = {}) {
@@ -2834,14 +3190,20 @@ var P;
                     .replace('$body', encodeURIComponent(body));
             }
             getBugReportTitle() {
-                if (this.player.projectTitle !== Player.UNKNOWN_TITLE) {
-                    return this.player.projectTitle + ' (' + this.player.projectId + ')';
+                const meta = this.player.getProjectMeta();
+                const title = meta.getTitle();
+                const id = meta.getId();
+                if (title) {
+                    return title;
                 }
-                return this.player.projectLink;
+                if (id) {
+                    return id;
+                }
+                return 'Unknown Project';
             }
             getBugReportMetadata() {
-                var meta = 'Project URL: ' + this.player.projectLink + '\n';
-                meta += 'Project ID: ' + this.player.projectId + '\n';
+                var meta = '';
+                meta += 'Project ID: ' + this.player.getProjectMeta().getId() + '\n';
                 meta += location.href + '\n';
                 meta += navigator.userAgent;
                 return meta;
@@ -2888,11 +3250,11 @@ var P;
                 if (this.errorContainer) {
                     this.errorContainer.appendChild(el);
                 }
-                else if (this.player.stage) {
-                    this.player.stage.ui.appendChild(el);
+                else if (this.player.hasStage()) {
+                    this.player.getStage().ui.appendChild(el);
                 }
                 else {
-                    this.player.player.appendChild(el);
+                    this.player.playerContainer.appendChild(el);
                 }
                 this.errorEl = el;
             }
@@ -2906,7 +3268,7 @@ var P;
                 this.bar = document.createElement('div');
                 this.bar.className = 'player-progress-fill';
                 this.el.appendChild(this.bar);
-                this.setTheme(player.theme);
+                this.setTheme(player.getOptions().theme);
                 player.onthemechange.subscribe((theme) => this.setTheme(theme));
                 player.onprogress.subscribe((progress) => this.setProgress(progress));
                 player.onstartload.subscribe(() => {
@@ -2925,10 +3287,10 @@ var P;
                     this.bar.style.width = '100%';
                 });
                 if (options.position === 'controls' || options.position === undefined) {
-                    if (!player.controlsEl) {
+                    if (!player.controlsContainer) {
                         throw new Error('No controls to put progess bar in.');
                     }
-                    player.controlsEl.appendChild(this.el);
+                    player.controlsContainer.appendChild(this.el);
                 }
                 else {
                     options.position.appendChild(this.el);
@@ -3684,18 +4046,6 @@ var P;
     var sb2;
     (function (sb2) {
         const ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
-        let zipArchive = null;
-        sb2.hooks = {
-            newTask() { },
-            endTask() { },
-        };
-        function promiseTask(pr) {
-            sb2.hooks.newTask();
-            return pr.then((v) => {
-                sb2.hooks.endTask();
-                return v;
-            });
-        }
         class Scratch2VariableWatcher extends P.core.Watcher {
             constructor(stage, targetName, data) {
                 super(stage, targetName);
@@ -4003,189 +4353,284 @@ var P;
             }
         }
         sb2.Scratch2Sprite = Scratch2Sprite;
-        function loadImage(url) {
-            sb2.hooks.newTask();
-            var image = new Image();
-            image.crossOrigin = 'anonymous';
-            return new Promise((resolve, reject) => {
-                image.onload = function () {
-                    sb2.hooks.endTask();
-                    resolve(image);
-                };
-                image.onerror = function (err) {
-                    reject('Failed to load image: ' + image.src);
-                };
-                image.src = url;
-            });
-        }
-        sb2.loadImage = loadImage;
-        function loadSB2Project(arrayBuffer) {
-            return JSZip.loadAsync(arrayBuffer)
-                .then((zip) => {
-                zipArchive = zip;
-                return zip.file('project.json').async('text');
-            })
-                .then((text) => {
-                const project = JSON.parse(text);
-                return loadProject(project);
-            });
-        }
-        sb2.loadSB2Project = loadSB2Project;
-        function loadProject(data) {
-            var children;
-            var stage;
-            zipArchive = null;
-            return loadFonts()
-                .then(() => Promise.all([
-                P.audio.loadSoundbank(sb2.hooks),
-                loadArray(data.children, loadObject).then((c) => children = c),
-                loadBase(data, true).then((s) => stage = s),
-            ]))
-                .then(() => {
-                children = children.filter((i) => i);
-                children.forEach((c) => c.stage = stage);
-                var sprites = children.filter((i) => i instanceof Scratch2Sprite);
-                var watchers = children.filter((i) => i instanceof Scratch2VariableWatcher);
-                stage.children = sprites;
-                stage.allWatchers = watchers;
-                stage.allWatchers.forEach((w) => w.init());
-                P.sb2.compiler.compile(stage);
-                return stage;
-            });
-        }
-        sb2.loadProject = loadProject;
-        function loadBase(data, isStage = false) {
-            var costumes;
-            var sounds;
-            return Promise.all([
-                loadArray(data.costumes, loadCostume).then((c) => costumes = c),
-                loadArray(data.sounds, loadSound).then((s) => sounds = s),
-            ]).then(() => {
-                const variables = {};
-                if (data.variables) {
-                    for (const variable of data.variables) {
-                        if (variable.isPeristent) {
-                            throw new Error('Cloud variables are not supported');
+        class BaseSB2Loader extends P.io.Loader {
+            loadImage(url) {
+                return this.addTask(new P.io.Img(url)).load();
+            }
+            loadFonts() {
+                return Promise.all([
+                    this.addTask(new P.io.PromiseTask((P.utils.settled(P.fonts.loadWebFont('Donegal One'))))),
+                    this.addTask(new P.io.PromiseTask((P.utils.settled(P.fonts.loadWebFont('Gloria Hallelujah'))))),
+                    this.addTask(new P.io.PromiseTask((P.utils.settled(P.fonts.loadWebFont('Mystery Quest'))))),
+                    this.addTask(new P.io.PromiseTask((P.utils.settled(P.fonts.loadWebFont('Permanent Marker'))))),
+                    this.addTask(new P.io.PromiseTask((P.utils.settled(P.fonts.loadWebFont('Scratch'))))),
+                ]).then(() => undefined);
+            }
+            loadBase(data, isStage) {
+                var costumes;
+                var sounds;
+                return Promise.all([
+                    this.loadArray(data.costumes, this.loadCostume.bind(this)).then((c) => costumes = c),
+                    this.loadArray(data.sounds, this.loadSound.bind(this)).then((s) => sounds = s),
+                ]).then(() => {
+                    const variables = {};
+                    if (data.variables) {
+                        for (const variable of data.variables) {
+                            if (variable.isPeristent) {
+                                throw new Error('Cloud variables are not supported');
+                            }
+                            variables[variable.name] = variable.value;
                         }
-                        variables[variable.name] = variable.value;
                     }
-                }
-                const lists = {};
-                if (data.lists) {
-                    for (const list of data.lists) {
-                        if (list.isPeristent) {
-                            throw new Error('Cloud lists are not supported');
+                    const lists = {};
+                    if (data.lists) {
+                        for (const list of data.lists) {
+                            if (list.isPeristent) {
+                                throw new Error('Cloud lists are not supported');
+                            }
+                            lists[list.listName] = list.contents;
                         }
-                        lists[list.listName] = list.contents;
                     }
-                }
-                const object = new (isStage ? Scratch2Stage : Scratch2Sprite)(null);
-                object.name = data.objName;
-                object.vars = variables;
-                object.lists = lists;
-                object.costumes = costumes;
-                object.currentCostumeIndex = data.currentCostumeIndex;
-                sounds.forEach((sound) => sound && object.addSound(sound));
-                if (isStage) {
-                }
-                else {
-                    const sprite = object;
-                    sprite.scratchX = data.scratchX;
-                    sprite.scratchY = data.scratchY;
-                    sprite.direction = data.direction;
-                    sprite.isDraggable = data.isDraggable;
-                    sprite.rotationStyle = P.utils.parseRotationStyle(data.rotationStyle);
-                    sprite.scale = data.scale;
-                    sprite.visible = data.visible;
-                }
-                object.scripts = data.scripts || [];
-                return object;
-            });
-        }
-        sb2.loadBase = loadBase;
-        function loadArray(data, process) {
-            return Promise.all((data || []).map((i, ind) => process(i, ind)));
-        }
-        sb2.loadArray = loadArray;
-        function loadFonts() {
-            return Promise.all([
-                promiseTask(P.utils.settled(P.fonts.loadWebFont('Donegal One'))),
-                promiseTask(P.utils.settled(P.fonts.loadWebFont('Gloria Hallelujah'))),
-                promiseTask(P.utils.settled(P.fonts.loadWebFont('Mystery Quest'))),
-                promiseTask(P.utils.settled(P.fonts.loadWebFont('Permanent Marker'))),
-                promiseTask(P.utils.settled(P.fonts.loadWebFont('Scratch'))),
-            ]).then(() => undefined);
-        }
-        sb2.loadFonts = loadFonts;
-        function loadObject(data) {
-            if (data.cmd) {
-                return loadVariableWatcher(data);
-            }
-            else if (data.listName) {
-            }
-            else {
-                return loadBase(data);
-            }
-        }
-        sb2.loadObject = loadObject;
-        function loadVariableWatcher(data) {
-            const targetName = data.target;
-            const watcher = new Scratch2VariableWatcher(null, targetName, data);
-            return watcher;
-        }
-        sb2.loadVariableWatcher = loadVariableWatcher;
-        function loadCostume(data, index) {
-            const promises = [
-                loadMD5(data.baseLayerMD5, data.baseLayerID)
-                    .then((asset) => data.$image = asset)
-            ];
-            if (data.textLayerMD5) {
-                promises.push(loadMD5(data.textLayerMD5, data.textLayerID)
-                    .then((asset) => data.$text = asset));
-            }
-            return Promise.all(promises)
-                .then((layers) => {
-                var image;
-                if (layers.length > 1) {
-                    image = document.createElement('canvas');
-                    const ctx = image.getContext('2d');
-                    if (!ctx) {
-                        throw new Error('Cannot get 2d rendering context loading costume ' + data.costumeName);
+                    const object = new (isStage ? Scratch2Stage : Scratch2Sprite)(null);
+                    object.name = data.objName;
+                    object.vars = variables;
+                    object.lists = lists;
+                    object.costumes = costumes;
+                    object.currentCostumeIndex = data.currentCostumeIndex;
+                    sounds.forEach((sound) => sound && object.addSound(sound));
+                    if (isStage) {
                     }
-                    image.width = Math.max(layers[0].width, 1);
-                    image.height = Math.max(layers[0].height, 1);
-                    for (const layer of layers) {
-                        ctx.drawImage(layer, 0, 0);
+                    else {
+                        const sprite = object;
+                        sprite.scratchX = data.scratchX;
+                        sprite.scratchY = data.scratchY;
+                        sprite.direction = data.direction;
+                        sprite.isDraggable = data.isDraggable;
+                        sprite.rotationStyle = P.utils.parseRotationStyle(data.rotationStyle);
+                        sprite.scale = data.scale;
+                        sprite.visible = data.visible;
                     }
-                }
-                else {
-                    image = layers[0];
-                }
-                return new P.core.BitmapCostume(image, {
-                    name: data.costumeName,
-                    bitmapResolution: data.bitmapResolution,
-                    rotationCenterX: data.rotationCenterX,
-                    rotationCenterY: data.rotationCenterY,
+                    object.scripts = data.scripts || [];
+                    return object;
                 });
-            });
+            }
+            loadArray(data, process) {
+                return Promise.all((data || []).map((i, ind) => process(i, ind)));
+            }
+            loadObject(data) {
+                if (data.cmd) {
+                    return this.loadVariableWatcher(data);
+                }
+                else if (data.listName) {
+                }
+                else {
+                    return this.loadBase(data, false);
+                }
+            }
+            loadVariableWatcher(data) {
+                const targetName = data.target;
+                const watcher = new Scratch2VariableWatcher(null, targetName, data);
+                return watcher;
+            }
+            loadCostume(data) {
+                const promises = [
+                    this.loadMD5(data.baseLayerMD5, data.baseLayerID)
+                        .then((asset) => data.$image = asset)
+                ];
+                if (data.textLayerMD5) {
+                    promises.push(this.loadMD5(data.textLayerMD5, data.textLayerID)
+                        .then((asset) => data.$text = asset));
+                }
+                return Promise.all(promises)
+                    .then((layers) => {
+                    var image;
+                    if (layers.length > 1) {
+                        image = document.createElement('canvas');
+                        const ctx = image.getContext('2d');
+                        if (!ctx) {
+                            throw new Error('Cannot get 2d rendering context loading costume ' + data.costumeName);
+                        }
+                        image.width = Math.max(layers[0].width, 1);
+                        image.height = Math.max(layers[0].height, 1);
+                        for (const layer of layers) {
+                            ctx.drawImage(layer, 0, 0);
+                        }
+                    }
+                    else {
+                        image = layers[0];
+                    }
+                    return new P.core.BitmapCostume(image, {
+                        name: data.costumeName,
+                        bitmapResolution: data.bitmapResolution,
+                        rotationCenterX: data.rotationCenterX,
+                        rotationCenterY: data.rotationCenterY,
+                    });
+                });
+            }
+            loadSound(data) {
+                return new Promise((resolve, reject) => {
+                    this.loadMD5(data.md5, data.soundID, true)
+                        .then((buffer) => {
+                        resolve(new P.core.Sound({
+                            name: data.soundName,
+                            buffer,
+                        }));
+                    })
+                        .catch((err) => {
+                        resolve(null);
+                        console.warn('Could not load sound: ' + err);
+                    });
+                });
+            }
+            loadSVG(source) {
+                const parser = new DOMParser();
+                var doc = parser.parseFromString(source, 'image/svg+xml');
+                var svg = doc.documentElement;
+                if (!svg.style) {
+                    doc = parser.parseFromString('<body>' + source, 'text/html');
+                    svg = doc.querySelector('svg');
+                }
+                svg.style.visibility = 'hidden';
+                svg.style.position = 'absolute';
+                svg.style.left = '-10000px';
+                svg.style.top = '-10000px';
+                document.body.appendChild(svg);
+                const viewBox = svg.viewBox.baseVal;
+                if (viewBox && (viewBox.x || viewBox.y)) {
+                    svg.width.baseVal.value = viewBox.width - viewBox.x;
+                    svg.height.baseVal.value = viewBox.height - viewBox.y;
+                    viewBox.x = 0;
+                    viewBox.y = 0;
+                    viewBox.width = 0;
+                    viewBox.height = 0;
+                }
+                patchSVG(svg, svg);
+                document.body.removeChild(svg);
+                svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
+                return new Promise((resolve, reject) => {
+                    const canvas = document.createElement('canvas');
+                    canvg(canvas, new XMLSerializer().serializeToString(svg), {
+                        ignoreMouse: true,
+                        ignoreAnimation: true,
+                        ignoreClear: true,
+                        renderCallback: function () {
+                            if (canvas.width === 0 || canvas.height === 0) {
+                                resolve(new Image());
+                                return;
+                            }
+                            resolve(canvas);
+                        }
+                    });
+                });
+            }
+            load() {
+                var children;
+                var stage;
+                return this.loadFonts()
+                    .then(() => Promise.all([
+                    P.audio.loadSoundbankSB2(this),
+                    this.loadArray(this.projectData.children, this.loadObject.bind(this)).then((c) => children = c),
+                    this.loadBase(this.projectData, true).then((s) => stage = s),
+                ]))
+                    .then(() => {
+                    if (this.aborted) {
+                        throw new Error('Loading aborting.');
+                    }
+                    children = children.filter((i) => i);
+                    children.forEach((c) => c.stage = stage);
+                    const sprites = children.filter((i) => i instanceof Scratch2Sprite);
+                    const watchers = children.filter((i) => i instanceof Scratch2VariableWatcher);
+                    stage.children = sprites;
+                    stage.allWatchers = watchers;
+                    stage.allWatchers.forEach((w) => w.init());
+                    P.sb2.compiler.compile(stage);
+                    return stage;
+                });
+            }
         }
-        sb2.loadCostume = loadCostume;
-        function loadSound(data) {
-            return new Promise((resolve, reject) => {
-                loadMD5(data.md5, data.soundID, true)
-                    .then((buffer) => {
-                    resolve(new P.core.Sound({
-                        name: data.soundName,
-                        buffer,
-                    }));
+        sb2.BaseSB2Loader = BaseSB2Loader;
+        class SB2FileLoader extends BaseSB2Loader {
+            constructor(buffer) {
+                super();
+                this.buffer = buffer;
+            }
+            loadMD5(hash, id, isAudio = false) {
+                const f = isAudio ? this.zip.file(id + '.wav') : this.zip.file(id + '.gif') || this.zip.file(id + '.png') || this.zip.file(id + '.jpg') || this.zip.file(id + '.svg');
+                hash = f.name;
+                const ext = hash.split('.').pop();
+                if (ext === 'svg') {
+                    return f.async('text')
+                        .then((text) => this.loadSVG(text));
+                }
+                else if (ext === 'wav') {
+                    return f.async('arrayBuffer')
+                        .then((buffer) => P.audio.decodeAudio(buffer));
+                }
+                else {
+                    return new Promise((resolve, reject) => {
+                        var image = new Image();
+                        image.onload = function () {
+                            resolve(image);
+                        };
+                        f.async('binarystring')
+                            .then((data) => {
+                            image.src = 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(data);
+                        });
+                    });
+                }
+            }
+            load() {
+                return JSZip.loadAsync(this.buffer)
+                    .then((data) => {
+                    this.zip = data;
+                    return this.zip.file('project.json').async('text');
                 })
-                    .catch((err) => {
-                    resolve(null);
-                    console.warn('Could not load sound: ' + err);
-                });
-            });
+                    .then((project) => {
+                    this.projectData = JSON.parse(project);
+                })
+                    .then(() => super.load());
+            }
         }
-        sb2.loadSound = loadSound;
+        sb2.SB2FileLoader = SB2FileLoader;
+        class Scratch2Loader extends BaseSB2Loader {
+            constructor(idOrData) {
+                super();
+                if (typeof idOrData === 'object') {
+                    this.projectData = idOrData;
+                    this.projectId = null;
+                }
+                else {
+                    this.projectId = idOrData;
+                }
+            }
+            loadMD5(hash, id, isAudio = false) {
+                const ext = hash.split('.').pop();
+                if (ext === 'svg') {
+                    return this.addTask(new P.io.Request(ASSET_URL + hash + '/get/')).load('text')
+                        .then((text) => this.loadSVG(text));
+                }
+                else if (ext === 'wav') {
+                    return this.addTask(new P.io.Request(ASSET_URL + hash + '/get/')).load('arraybuffer')
+                        .then((buffer) => P.audio.decodeAudio(buffer));
+                }
+                else {
+                    return this.loadImage(ASSET_URL + hash + '/get/');
+                }
+            }
+            load() {
+                if (this.projectId) {
+                    return this.addTask(new P.io.Request(P.config.PROJECT_API.replace('$id', '' + this.projectId))).load('json')
+                        .then((data) => {
+                        this.projectData = data;
+                        return super.load();
+                    });
+                }
+                else {
+                    return super.load();
+                }
+            }
+        }
+        sb2.Scratch2Loader = Scratch2Loader;
         function patchSVG(svg, element) {
             const FONTS = {
                 '': 'Helvetica',
@@ -4239,94 +4684,6 @@ var P;
             }
             [].forEach.call(element.childNodes, patchSVG.bind(null, svg));
         }
-        sb2.patchSVG = patchSVG;
-        function loadSVG(source) {
-            const parser = new DOMParser();
-            var doc = parser.parseFromString(source, 'image/svg+xml');
-            var svg = doc.documentElement;
-            if (!svg.style) {
-                doc = parser.parseFromString('<body>' + source, 'text/html');
-                svg = doc.querySelector('svg');
-            }
-            svg.style.visibility = 'hidden';
-            svg.style.position = 'absolute';
-            svg.style.left = '-10000px';
-            svg.style.top = '-10000px';
-            document.body.appendChild(svg);
-            const viewBox = svg.viewBox.baseVal;
-            if (viewBox && (viewBox.x || viewBox.y)) {
-                svg.width.baseVal.value = viewBox.width - viewBox.x;
-                svg.height.baseVal.value = viewBox.height - viewBox.y;
-                viewBox.x = 0;
-                viewBox.y = 0;
-                viewBox.width = 0;
-                viewBox.height = 0;
-            }
-            patchSVG(svg, svg);
-            document.body.removeChild(svg);
-            svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
-            return new Promise((resolve, reject) => {
-                const canvas = document.createElement('canvas');
-                canvg(canvas, new XMLSerializer().serializeToString(svg), {
-                    ignoreMouse: true,
-                    ignoreAnimation: true,
-                    ignoreClear: true,
-                    renderCallback: function () {
-                        if (canvas.width === 0 || canvas.height === 0) {
-                            resolve(new Image());
-                            return;
-                        }
-                        resolve(canvas);
-                    }
-                });
-            });
-        }
-        sb2.loadSVG = loadSVG;
-        function loadMD5(hash, id, isAudio = false) {
-            if (zipArchive) {
-                var f = isAudio ? zipArchive.file(id + '.wav') : zipArchive.file(id + '.gif') || zipArchive.file(id + '.png') || zipArchive.file(id + '.jpg') || zipArchive.file(id + '.svg');
-                hash = f.name;
-            }
-            const ext = hash.split('.').pop();
-            if (ext === 'svg') {
-                if (zipArchive) {
-                    return f.async('text')
-                        .then((text) => loadSVG(text));
-                }
-                else {
-                    return promiseTask(new P.IO.TextRequest(ASSET_URL + hash + '/get/').load())
-                        .then((text) => loadSVG(text));
-                }
-            }
-            else if (ext === 'wav') {
-                if (zipArchive) {
-                    return f.async('arrayBuffer')
-                        .then((buffer) => P.audio.decodeAudio(buffer));
-                }
-                else {
-                    return promiseTask(new P.IO.ArrayBufferRequest(ASSET_URL + hash + '/get/').load())
-                        .then((buffer) => P.audio.decodeAudio(buffer));
-                }
-            }
-            else {
-                if (zipArchive) {
-                    return new Promise((resolve, reject) => {
-                        var image = new Image();
-                        image.onload = function () {
-                            resolve(image);
-                        };
-                        f.async('binarystring')
-                            .then((data) => {
-                            image.src = 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(data);
-                        });
-                    });
-                }
-                else {
-                    return loadImage(ASSET_URL + hash + '/get/');
-                }
-            }
-        }
-        sb2.loadMD5 = loadMD5;
     })(sb2 = P.sb2 || (P.sb2 = {}));
 })(P || (P = {}));
 (function (P) {
@@ -5044,11 +5401,13 @@ var P;
                     }
                     else if (block[0] === 'showVariable:' || block[0] === 'hideVariable:') {
                         var isShow = block[0] === 'showVariable:';
-                        if (typeof block[1] !== 'string') {
-                            throw new Error('Dynamic variables are not supported');
+                        if (typeof block[1] === 'string') {
+                            var o = object.vars[block[1]] !== undefined ? 'S' : 'self';
+                            source += o + '.showVariable(' + val(block[1]) + ', ' + isShow + ');\n';
                         }
-                        var o = object.vars[block[1]] !== undefined ? 'S' : 'self';
-                        source += o + '.showVariable(' + val(block[1]) + ', ' + isShow + ');\n';
+                        else {
+                            warn('ignoring dynamic variable');
+                        }
                     }
                     else if (block[0] === 'broadcast:') {
                         source += 'var threads = broadcast(' + val(block[1]) + ');\n';
@@ -5546,6 +5905,9 @@ var P;
                 }
             }
             updateList() {
+                if (!this.visible && this._rowHeight === -1) {
+                    return;
+                }
                 const height = this.list.length * this.getRowHeight();
                 this.endpointEl.style.transform = 'translateY(' + (height * this.stage.zoom) + 'px)';
                 const topVisible = this.scrollTop;
@@ -5746,20 +6108,24 @@ var P;
             }
             P.fonts.addFontRules(svg, usedFonts);
         }
-        class BaseSB3Loader {
-            constructor() {
-                this.totalTasks = 0;
-                this.finishedTasks = 0;
-                this.requests = [];
-                this.aborted = false;
-                this.onprogress = new P.utils.Slot();
+        function fixVectorNamespace(svg) {
+            var newSVG = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            for (const attribute of svg.attributes) {
+                newSVG.setAttribute(attribute.name, attribute.value);
             }
+            newSVG.innerHTML = svg.innerHTML;
+            return newSVG;
+        }
+        class BaseSB3Loader extends P.io.Loader {
             getSVG(path) {
                 return this.getAsText(path)
                     .then((source) => {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(source, 'image/svg+xml');
-                    const svg = doc.documentElement;
+                    let svg = doc.documentElement;
+                    if (svg.namespaceURI !== 'http://www.w3.org/2000/svg') {
+                        svg = fixVectorNamespace(svg);
+                    }
                     patchSVG(svg);
                     return new Promise((resolve, reject) => {
                         const image = new Image();
@@ -5769,7 +6135,7 @@ var P;
                         image.onerror = (e) => {
                             reject('Failed to load SVG: ' + path);
                         };
-                        image.src = 'data:image/svg+xml,' + encodeURIComponent(svg.outerHTML);
+                        image.src = 'data:image/svg+xml,' + encodeURIComponent(new XMLSerializer().serializeToString(svg));
                     });
                 });
             }
@@ -5876,15 +6242,14 @@ var P;
                 ]);
             }
             loadSoundbank() {
-                return P.audio.loadSoundbank({
-                    endTask() { },
-                    newTask() { },
-                });
+                return P.audio.loadSoundbankSB2(this);
             }
             loadFonts() {
                 const promises = [];
                 for (const family in P.fonts.scratch3) {
-                    promises.push(this.promiseTask(P.utils.settled(P.fonts.loadLocalFont(family, P.fonts.scratch3[family]))));
+                    const promise = P.utils.settled(P.fonts.loadLocalFont(family, P.fonts.scratch3[family]));
+                    promises.push(promise);
+                    this.addTask(new P.io.PromiseTask(promise));
                 }
                 return Promise.all(promises);
             }
@@ -5910,7 +6275,10 @@ var P;
                 const targets = this.projectData.targets;
                 targets.sort((a, b) => a.layerOrder - b.layerOrder);
                 return this.loadAssets()
-                    .then(() => Promise.all(targets.map((data) => this.loadTarget(data))))
+                    .then(() => {
+                    this.resetTasks();
+                    return Promise.all(targets.map((data) => this.loadTarget(data)));
+                })
                     .then((targets) => {
                     if (this.aborted) {
                         throw new Error('Loading aborting.');
@@ -5930,41 +6298,6 @@ var P;
                     return stage;
                 });
             }
-            abort() {
-                this.aborted = true;
-                for (const request of this.requests) {
-                    request.abort();
-                }
-            }
-            newTask() {
-                if (this.aborted) {
-                    throw new Error('Loading aborted.');
-                }
-                this.totalTasks++;
-                this.onprogress.emit(this.progress);
-            }
-            endTask() {
-                if (this.aborted) {
-                    throw new Error('Loading aborted.');
-                }
-                this.finishedTasks++;
-                this.onprogress.emit(this.progress);
-            }
-            requestTask(request) {
-                this.requests.push(request.xhr);
-                return this.promiseTask(request.load());
-            }
-            promiseTask(promise) {
-                this.newTask();
-                return promise
-                    .then((value) => {
-                    this.endTask();
-                    return value;
-                });
-            }
-            get progress() {
-                return this.finishedTasks / this.totalTasks || 0;
-            }
         }
         sb3.BaseSB3Loader = BaseSB3Loader;
         class SB3FileLoader extends BaseSB3Loader {
@@ -5973,37 +6306,37 @@ var P;
                 this.buffer = buffer;
             }
             getAsText(path) {
-                this.newTask();
+                const task = this.addTask(new P.io.Manual());
                 return this.zip.file(path).async('text')
                     .then((response) => {
-                    this.endTask();
+                    task.markComplete();
                     return response;
                 });
             }
             getAsArrayBuffer(path) {
-                this.newTask();
+                const task = this.addTask(new P.io.Manual());
                 return this.zip.file(path).async('arrayBuffer')
                     .then((response) => {
-                    this.endTask();
+                    task.markComplete();
                     return response;
                 });
             }
             getAsBase64(path) {
-                this.newTask();
+                const task = this.addTask(new P.io.Manual());
                 return this.zip.file(path).async('base64')
                     .then((response) => {
-                    this.endTask();
+                    task.markComplete();
                     return response;
                 });
             }
             getAsImage(path, format) {
-                this.newTask();
+                const task = this.addTask(new P.io.Manual());
                 return this.getAsBase64(path)
                     .then((imageData) => {
                     return new Promise((resolve, reject) => {
                         const image = new Image();
                         image.onload = () => {
-                            this.endTask();
+                            task.markComplete();
                             resolve(image);
                         };
                         image.onerror = (error) => {
@@ -6038,29 +6371,17 @@ var P;
                 }
             }
             getAsText(path) {
-                return this.requestTask(new P.IO.TextRequest(sb3.ASSETS_API.replace('$md5ext', path)));
+                return this.addTask(new P.io.Request(sb3.ASSETS_API.replace('$md5ext', path))).load('text');
             }
             getAsArrayBuffer(path) {
-                return this.requestTask(new P.IO.ArrayBufferRequest(sb3.ASSETS_API.replace('$md5ext', path)));
+                return this.addTask(new P.io.Request(sb3.ASSETS_API.replace('$md5ext', path))).load('arraybuffer');
             }
             getAsImage(path) {
-                this.newTask();
-                return new Promise((resolve, reject) => {
-                    const image = new Image();
-                    image.onload = () => {
-                        this.endTask();
-                        resolve(image);
-                    };
-                    image.onerror = (err) => {
-                        reject('Failed to load image: ' + image.src);
-                    };
-                    image.crossOrigin = 'anonymous';
-                    image.src = sb3.ASSETS_API.replace('$md5ext', path);
-                });
+                return this.addTask(new P.io.Img(sb3.ASSETS_API.replace('$md5ext', path))).load();
             }
             load() {
                 if (this.projectId) {
-                    return this.requestTask(new P.IO.JSONRequest(P.config.PROJECT_API.replace('$id', '' + this.projectId)))
+                    return this.addTask(new P.io.Request(P.config.PROJECT_API.replace('$id', '' + this.projectId))).load('json')
                         .then((data) => {
                         this.projectData = data;
                         return super.load();
@@ -6577,6 +6898,22 @@ var P;
         util.writeLn('  return;');
         util.writeLn('}');
     };
+    statementLibrary['control_for_each'] = function (util) {
+        const VARIABLE = util.getVariableReference('VARIABLE');
+        const SUBSTACK = util.getSubstack('SUBSTACK');
+        const VALUE = util.getInput('VALUE', 'number');
+        util.writeLn('save();');
+        util.writeLn(`${VARIABLE} = 0;`);
+        util.writeLn(`R.times = ${VALUE};`);
+        const label = util.addLabel();
+        util.writeLn(`if (${VARIABLE} <= R.times) {`);
+        util.writeLn(`  ${VARIABLE} = ${util.asType(VARIABLE, 'number')} + 1;`);
+        util.write(SUBSTACK);
+        util.queue(label);
+        util.writeLn('} else {');
+        util.writeLn('  restore();');
+        util.writeLn('}');
+    };
     statementLibrary['control_forever'] = function (util) {
         const SUBSTACK = util.getSubstack('SUBSTACK');
         if (util.compiler.state.isWarp && !util.substacksQueue) {
@@ -6763,10 +7100,21 @@ var P;
         const scope = util.getVariableScope('VARIABLE');
         util.writeLn(`${scope}.showVariable(${VARIABLE}, true);`);
     };
-    statementLibrary['motion_turnright'] = function (util) {
-        const DEGREES = util.getInput('DEGREES', 'number');
-        util.writeLn(`S.setDirection(S.direction + ${DEGREES});`);
-        util.visual('visible');
+    statementLibrary['event_broadcast'] = function (util) {
+        const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
+        util.writeLn(`var threads = broadcast(${BROADCAST_INPUT});`);
+        util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
+    };
+    statementLibrary['event_broadcastandwait'] = function (util) {
+        const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
+        util.writeLn('save();');
+        util.writeLn(`R.threads = broadcast(${BROADCAST_INPUT});`);
+        util.writeLn('if (R.threads.indexOf(BASE) !== -1) {return;}');
+        const label = util.addLabel();
+        util.writeLn('if (running(R.threads)) {');
+        util.forceQueue(label);
+        util.writeLn('}');
+        util.writeLn('restore();');
     };
     statementLibrary['looks_changeeffectby'] = function (util) {
         const EFFECT = util.sanitizedString(util.getField('EFFECT')).toLowerCase();
@@ -6998,6 +7346,11 @@ var P;
         util.writeLn(`S.setDirection(S.direction - ${DEGREES});`);
         util.visual('visible');
     };
+    statementLibrary['motion_turnright'] = function (util) {
+        const DEGREES = util.getInput('DEGREES', 'number');
+        util.writeLn(`S.setDirection(S.direction + ${DEGREES});`);
+        util.visual('visible');
+    };
     statementLibrary['music_changeTempo'] = function (util) {
         const TEMPO = util.getInput('TEMPO', 'number');
         util.writeLn(`self.tempoBPM += ${TEMPO};`);
@@ -7066,78 +7419,6 @@ var P;
     statementLibrary['music_setInstrument'] = function (util) {
         const INSTRUMENT = util.getInput('INSTRUMENT', 'number');
         util.writeLn(`S.instrument = Math.max(0, Math.min(INSTRUMENTS.length - 1, ${INSTRUMENT} - 1)) | 0;`);
-    };
-    statementLibrary['sound_changeeffectby'] = function (util) {
-        const EFFECT = util.sanitizedString(util.getField('EFFECT'));
-        const VALUE = util.getInput('VALUE', 'number');
-        util.writeLn(`S.changeSoundFilter(${EFFECT}, ${VALUE});`);
-    };
-    statementLibrary['sound_changevolumeby'] = function (util) {
-        const VOLUME = util.getInput('VOLUME', 'number');
-        util.writeLn(`S.volume = Math.max(0, Math.min(1, S.volume + ${VOLUME} / 100));`);
-        util.writeLn('if (S.node) S.node.gain.value = S.volume;');
-    };
-    statementLibrary['sound_cleareffects'] = function (util) {
-        util.writeLn('S.resetSoundFilters();');
-    };
-    statementLibrary['sound_play'] = function (util) {
-        const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
-        if (P.audio.context) {
-            util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
-            util.writeLn('if (sound) startSound(sound);');
-        }
-    };
-    statementLibrary['sound_playuntildone'] = function (util) {
-        const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
-        if (P.audio.context) {
-            util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
-            util.writeLn('if (sound) {');
-            util.writeLn('  save();');
-            util.writeLn('  R.sound = playSound(sound);');
-            util.writeLn('  S.activeSounds.add(R.sound);');
-            util.writeLn('  R.start = runtime.now();');
-            util.writeLn('  R.duration = sound.duration;');
-            util.writeLn('  var first = true;');
-            const label = util.addLabel();
-            util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
-            util.writeLn('    var first;');
-            util.forceQueue(label);
-            util.writeLn('  }');
-            util.writeLn('  S.activeSounds.delete(R.sound);');
-            util.writeLn('  restore();');
-            util.writeLn('}');
-        }
-    };
-    statementLibrary['sound_seteffectto'] = function (util) {
-        const EFFECT = util.sanitizedString(util.getField('EFFECT'));
-        const VALUE = util.getInput('VALUE', 'number');
-        util.writeLn(`S.setSoundFilter(${EFFECT}, ${VALUE});`);
-    };
-    statementLibrary['sound_setvolumeto'] = function (util) {
-        const VOLUME = util.getInput('VOLUME', 'number');
-        util.writeLn(`S.volume = Math.max(0, Math.min(1, ${VOLUME} / 100));`);
-        util.writeLn('if (S.node) S.node.gain.value = S.volume;');
-    };
-    statementLibrary['sound_stopallsounds'] = function (util) {
-        if (P.audio.context) {
-            util.writeLn('self.stopAllSounds();');
-        }
-    };
-    statementLibrary['event_broadcast'] = function (util) {
-        const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
-        util.writeLn(`var threads = broadcast(${BROADCAST_INPUT});`);
-        util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
-    };
-    statementLibrary['event_broadcastandwait'] = function (util) {
-        const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
-        util.writeLn('save();');
-        util.writeLn(`R.threads = broadcast(${BROADCAST_INPUT});`);
-        util.writeLn('if (R.threads.indexOf(BASE) !== -1) {return;}');
-        const label = util.addLabel();
-        util.writeLn('if (running(R.threads)) {');
-        util.forceQueue(label);
-        util.writeLn('}');
-        util.writeLn('restore();');
     };
     statementLibrary['pen_changePenColorParamBy'] = function (util) {
         const COLOR_PARAM = util.getInput('COLOR_PARAM', 'string');
@@ -7224,6 +7505,62 @@ var P;
         }
         util.writeLn(']); return;');
         util.addLabel(label);
+    };
+    statementLibrary['sound_changeeffectby'] = function (util) {
+        const EFFECT = util.sanitizedString(util.getField('EFFECT'));
+        const VALUE = util.getInput('VALUE', 'number');
+        util.writeLn(`S.changeSoundFilter(${EFFECT}, ${VALUE});`);
+    };
+    statementLibrary['sound_changevolumeby'] = function (util) {
+        const VOLUME = util.getInput('VOLUME', 'number');
+        util.writeLn(`S.volume = Math.max(0, Math.min(1, S.volume + ${VOLUME} / 100));`);
+        util.writeLn('if (S.node) S.node.gain.value = S.volume;');
+    };
+    statementLibrary['sound_cleareffects'] = function (util) {
+        util.writeLn('S.resetSoundFilters();');
+    };
+    statementLibrary['sound_play'] = function (util) {
+        const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
+        if (P.audio.context) {
+            util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
+            util.writeLn('if (sound) startSound(sound);');
+        }
+    };
+    statementLibrary['sound_playuntildone'] = function (util) {
+        const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
+        if (P.audio.context) {
+            util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
+            util.writeLn('if (sound) {');
+            util.writeLn('  save();');
+            util.writeLn('  R.sound = playSound(sound);');
+            util.writeLn('  S.activeSounds.add(R.sound);');
+            util.writeLn('  R.start = runtime.now();');
+            util.writeLn('  R.duration = sound.duration;');
+            util.writeLn('  var first = true;');
+            const label = util.addLabel();
+            util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
+            util.writeLn('    var first;');
+            util.forceQueue(label);
+            util.writeLn('  }');
+            util.writeLn('  S.activeSounds.delete(R.sound);');
+            util.writeLn('  restore();');
+            util.writeLn('}');
+        }
+    };
+    statementLibrary['sound_seteffectto'] = function (util) {
+        const EFFECT = util.sanitizedString(util.getField('EFFECT'));
+        const VALUE = util.getInput('VALUE', 'number');
+        util.writeLn(`S.setSoundFilter(${EFFECT}, ${VALUE});`);
+    };
+    statementLibrary['sound_setvolumeto'] = function (util) {
+        const VOLUME = util.getInput('VOLUME', 'number');
+        util.writeLn(`S.volume = Math.max(0, Math.min(1, ${VOLUME} / 100));`);
+        util.writeLn('if (S.node) S.node.gain.value = S.volume;');
+    };
+    statementLibrary['sound_stopallsounds'] = function (util) {
+        if (P.audio.context) {
+            util.writeLn('self.stopAllSounds();');
+        }
     };
     statementLibrary['sensing_askandwait'] = function (util) {
         const QUESTION = util.getInput('QUESTION', 'string');
@@ -7600,6 +7937,17 @@ var P;
     inputLibrary['speech2text_getSpeech'] = function (util) {
         util.stage.initSpeech2Text();
         return util.stringInput('(self.speech2text ? self.speech2text.speech : "")');
+    };
+    inputLibrary['translate_menu_languages'] = function (util) {
+        return util.fieldInput('languages');
+    };
+    inputLibrary['translate_getTranslate'] = function (util) {
+        const WORDS = util.getInput('WORDS', 'string');
+        const LANGUAGE = util.getInput('LANGUAGE', 'string');
+        return WORDS;
+    };
+    inputLibrary['translate_getViewerLanguage'] = function (util) {
+        return util.sanitizedInput('English');
     };
     inputLibrary['videoSensing_menu_VIDEO_STATE'] = function (util) {
         return util.fieldInput('VIDEO_STATE');
@@ -8034,9 +8382,7 @@ var P;
                     this.recognition.continuous = true;
                     this.recognition.onresult = (event) => this.onresult(event);
                     this.recognition.onerror = (event) => {
-                        if (event.error !== 'aborted') {
-                            console.error('speech2text error', event);
-                        }
+                        console.warn('speech2text error', event);
                     };
                     this.recognition.onend = () => {
                         console.warn('speech2text disconnected, reconnecting');
@@ -8133,59 +8479,10 @@ var P;
                 ctx.imageSmoothingEnabled = false;
                 return { canvas, ctx };
             }
-            function rgb2hsv(r, g, b) {
-                var max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min, h, s = (max === 0 ? 0 : d / max), v = max / 255;
-                switch (max) {
-                    case min:
-                        h = 0;
-                        break;
-                    case r:
-                        h = (g - b) + d * (g < b ? 6 : 0);
-                        h /= 6 * d;
-                        break;
-                    case g:
-                        h = (b - r) + d * 2;
-                        h /= 6 * d;
-                        break;
-                    case b:
-                        h = (r - g) + d * 4;
-                        h /= 6 * d;
-                        break;
-                }
-                return [h, s, v];
-            }
-            function hsv2rgb(h, s, v) {
-                var r, g, b, i, f, p, q, t;
-                i = Math.floor(h * 6);
-                f = h * 6 - i;
-                p = v * (1 - s);
-                q = v * (1 - f * s);
-                t = v * (1 - (1 - f) * s);
-                switch (i % 6) {
-                    case 0:
-                        r = v, g = t, b = p;
-                        break;
-                    case 1:
-                        r = q, g = v, b = p;
-                        break;
-                    case 2:
-                        r = p, g = v, b = t;
-                        break;
-                    case 3:
-                        r = p, g = q, b = v;
-                        break;
-                    case 4:
-                        r = t, g = p, b = v;
-                        break;
-                    case 5:
-                        r = v, g = p, b = q;
-                        break;
-                }
-                return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
-            }
             class SpriteRenderer2D {
                 constructor() {
                     this.noEffects = false;
+                    this.imageSmoothingEnabled = false;
                     const { canvas, ctx } = create2dCanvas();
                     this.canvas = canvas;
                     this.ctx = ctx;
@@ -8236,8 +8533,11 @@ var P;
                         }
                         objectScale *= c.scale;
                     }
-                    const lod = costume.get(objectScale * c.stage.zoom);
-                    ctx.imageSmoothingEnabled = false;
+                    if (costume.isScalable) {
+                        costume.requestSize(objectScale * globalScale);
+                    }
+                    ctx.imageSmoothingEnabled = costume.isScalable || this.imageSmoothingEnabled;
+                    const image = costume.getImage();
                     const x = -costume.rotationCenterX * objectScale;
                     const y = -costume.rotationCenterY * objectScale;
                     const w = costume.width * objectScale;
@@ -8246,82 +8546,32 @@ var P;
                         ctx.restore();
                         return;
                     }
-                    ctx.imageSmoothingEnabled = false;
                     if (!this.noEffects) {
                         ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
-                        if (P.config.accurateFilters) {
-                            if (c.filters.brightness !== 0 || c.filters.color !== 0) {
-                                let sourceImage = lod.getImageData();
-                                let destImage = ctx.createImageData(sourceImage.width, sourceImage.height);
-                                if (c.filters.color !== 0) {
-                                    this.applyColorEffect(sourceImage, destImage, c.filters.color / 200);
-                                    sourceImage = destImage;
-                                }
-                                if (c.filters.brightness !== 0) {
-                                    this.applyBrightnessEffect(sourceImage, destImage, c.filters.brightness / 100 * 255);
-                                }
-                                workingRenderer.canvas.width = sourceImage.width;
-                                workingRenderer.canvas.height = sourceImage.height;
-                                workingRenderer.ctx.putImageData(destImage, 0, 0);
-                                ctx.drawImage(workingRenderer.canvas, x, y, w, h);
-                            }
-                            else {
-                                ctx.drawImage(lod.image, x, y, w, h);
-                            }
+                        if (c.filters.brightness === 100) {
+                            workingRenderer.canvas.width = w;
+                            workingRenderer.canvas.height = h;
+                            workingRenderer.ctx.save();
+                            workingRenderer.ctx.translate(0, 0);
+                            workingRenderer.ctx.drawImage(image, 0, 0, w, h);
+                            workingRenderer.ctx.globalCompositeOperation = 'source-in';
+                            workingRenderer.ctx.fillStyle = 'white';
+                            workingRenderer.ctx.fillRect(0, 0, w, h);
+                            ctx.drawImage(workingRenderer.canvas, x, y);
+                            workingRenderer.ctx.restore();
                         }
                         else {
                             const filter = getCSSFilter(c.filters);
                             if (filter !== '') {
                                 ctx.filter = getCSSFilter(c.filters);
                             }
-                            ctx.drawImage(lod.image, x, y, w, h);
+                            ctx.drawImage(image, x, y, w, h);
                         }
                     }
                     else {
-                        ctx.drawImage(lod.image, x, y, w, h);
+                        ctx.drawImage(image, x, y, w, h);
                     }
                     ctx.restore();
-                }
-                applyColorEffect(sourceImage, destImage, hueShift) {
-                    const MIN_VALUE = 0.11 / 2;
-                    const MIN_SATURATION = 0.09;
-                    const colorCache = {};
-                    for (var i = 0; i < sourceImage.data.length; i += 4) {
-                        const r = sourceImage.data[i];
-                        const g = sourceImage.data[i + 1];
-                        const b = sourceImage.data[i + 2];
-                        destImage.data[i + 3] = sourceImage.data[i + 3];
-                        const rgbHash = (r << 16) + (g << 8) + b;
-                        const cachedColor = colorCache[rgbHash];
-                        if (cachedColor !== undefined) {
-                            destImage.data[i] = (0xff0000 & cachedColor) >> 16;
-                            destImage.data[i + 1] = (0x00ff00 & cachedColor) >> 8;
-                            destImage.data[i + 2] = (0x0000ff & cachedColor);
-                            continue;
-                        }
-                        let hsv = rgb2hsv(r, g, b);
-                        if (hsv[2] < MIN_VALUE)
-                            hsv = [0, 1, MIN_VALUE];
-                        else if (hsv[1] < MIN_SATURATION)
-                            hsv = [0, MIN_SATURATION, hsv[2]];
-                        hsv[0] = hsv[0] + hueShift - Math.floor(hsv[0] + hueShift);
-                        if (hsv[0] < 0)
-                            hsv[0] += 1;
-                        const rgb = hsv2rgb(hsv[0], hsv[1], hsv[2]);
-                        colorCache[rgbHash] = (rgb[0] << 16) + (rgb[1] << 8) + rgb[2];
-                        destImage.data[i] = rgb[0];
-                        destImage.data[i + 1] = rgb[1];
-                        destImage.data[i + 2] = rgb[2];
-                    }
-                }
-                applyBrightnessEffect(sourceImage, destImage, brightness) {
-                    const length = sourceImage.data.length;
-                    for (var i = 0; i < length; i += 4) {
-                        destImage.data[i] = sourceImage.data[i] + brightness;
-                        destImage.data[i + 1] = sourceImage.data[i + 1] + brightness;
-                        destImage.data[i + 2] = sourceImage.data[i + 2] + brightness;
-                        destImage.data[i + 3] = sourceImage.data[i + 3];
-                    }
                 }
             }
             canvas2d.SpriteRenderer2D = SpriteRenderer2D;
@@ -8440,7 +8690,7 @@ var P;
                 }
                 spriteTouchesPoint(sprite, x, y) {
                     const bounds = sprite.rotatedBounds();
-                    if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top) {
+                    if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top || sprite.scale === 0) {
                         return false;
                     }
                     const costume = sprite.costumes[sprite.currentCostumeIndex];
@@ -8456,8 +8706,12 @@ var P;
                     else if (sprite.rotationStyle === 1 && sprite.direction < 0) {
                         cx = -cx;
                     }
-                    const positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
-                    const positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
+                    let positionX = Math.round(cx / costume.scale + costume.rotationCenterX);
+                    let positionY = Math.round(cy / costume.scale + costume.rotationCenterY);
+                    if (costume instanceof P.core.VectorCostume) {
+                        positionX *= costume.currentScale;
+                        positionY *= costume.currentScale;
+                    }
                     const data = costume.getContext().getImageData(positionX, positionY, 1, 1).data;
                     return data[3] !== 0;
                 }
@@ -8833,12 +9087,12 @@ var P;
                     this.boundFramebuffer = buffer;
                 }
                 reset(scale) {
-                    this.canvas.width = scale * P.config.scale * 480;
-                    this.canvas.height = scale * P.config.scale * 360;
+                    this.canvas.width = scale * 480;
+                    this.canvas.height = scale * 360;
                     this.resetFramebuffer(scale);
                 }
                 resetFramebuffer(scale) {
-                    this.gl.viewport(0, 0, 480 * scale, 360 * scale);
+                    this.gl.viewport(0, 0, 480, 360);
                     if (this.globalScaleMatrix[0] !== scale) {
                         this.globalScaleMatrix = P.m3.scaling(scale, scale);
                     }
@@ -8851,12 +9105,12 @@ var P;
                 _drawChild(child, shader) {
                     this.gl.useProgram(shader.program);
                     const costume = child.costumes[child.currentCostumeIndex];
-                    const lod = costume.get(P.core.isSprite(child) ? child.scale : 1);
-                    if (!this.costumeTextures.has(lod)) {
-                        const texture = this.convertToTexture(lod.image);
-                        this.costumeTextures.set(lod, texture);
+                    if (!this.costumeTextures.has(costume)) {
+                        const image = costume.getImage();
+                        const texture = this.convertToTexture(image);
+                        this.costumeTextures.set(costume, texture);
                     }
-                    this.gl.bindTexture(this.gl.TEXTURE_2D, this.costumeTextures.get(lod));
+                    this.gl.bindTexture(this.gl.TEXTURE_2D, this.costumeTextures.get(costume));
                     shader.attributeBuffer('a_position', this.quadBuffer);
                     const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
                     P.m3.multiply(matrix, this.globalScaleMatrix);

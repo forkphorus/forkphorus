@@ -42,10 +42,7 @@ namespace P.ext.speech2text {
       this.recognition.continuous = true;
       this.recognition.onresult = (event) => this.onresult(event);
       this.recognition.onerror = (event) => {
-        // Abort is expected when this extension is destroyed.
-        if (event.error !== 'aborted') {
-          console.error('speech2text error', event);
-        }
+        console.warn('speech2text error', event);
       };
       this.recognition.onend = () => {
         console.warn('speech2text disconnected, reconnecting');
