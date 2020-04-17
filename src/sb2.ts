@@ -1881,7 +1881,14 @@ namespace P.sb2.compiler {
       (object.listeners.whenSceneStarts[key] || (object.listeners.whenSceneStarts[key] = [])).push(f);
     } else if (script[0][0] === 'procDef') {
       const warp = script[0][4];
-      object.procedures[script[0][1]] = new Scratch2Procedure(f, warp, inputs);
+      const name = script[0][1];
+      // don't define procedure if it already exists
+      // https://github.com/forkphorus/forkphorus/issues/186
+      if (!object.procedures[name]) {
+        object.procedures[script[0][1]] = new Scratch2Procedure(f, warp, inputs);
+      } else {
+        warn('procedure already exists: ' + name);
+      }
     } else {
       warn('Undefined event: ' + script[0][0]);
     }
