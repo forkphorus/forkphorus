@@ -2,7 +2,7 @@ const playwright = require("playwright");
 const LocalWebServer = require('local-web-server');
 const path = require('path');
 
-const BROWSERS = ['chromium', 'firefox', 'webkit'];
+const BROWSERS = ['chromium', 'firefox'];
 
 // console log messages that match any of these regular expressions will be ignored
 const IGNORE_LOG_MESSAGES = [
