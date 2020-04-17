@@ -1925,10 +1925,10 @@ namespace P.sb3.compiler {
     const SUBSTACK = util.getSubstack('SUBSTACK');
     const VALUE = util.getInput('VALUE', 'number');
     util.writeLn('save();');
-    util.writeLn(`${VARIABLE} = 0;`);
     util.writeLn(`R.times = ${VALUE};`);
+    util.writeLn(`if (R.times > 0) ${VARIABLE} = 0;`);
     const label = util.addLabel();
-    util.writeLn(`if (${VARIABLE} <= R.times) {`);
+    util.writeLn(`if (${VARIABLE} < R.times) {`);
     util.writeLn(`  ${VARIABLE} = ${util.asType(VARIABLE, 'number')} + 1;`);
     util.write(SUBSTACK);
     util.queue(label);
