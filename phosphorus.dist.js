@@ -2056,11 +2056,37 @@ var P;
             }
         }
         io.AbstractTask = AbstractTask;
-        class Request extends AbstractTask {
+        class Retry extends AbstractTask {
+            try(handle) {
+                return new Promise((resolve, reject) => {
+                    handle()
+                        .then((response) => resolve(response))
+                        .catch((err) => {
+                        if (this.aborted) {
+                            reject(err);
+                            return;
+                        }
+                        console.warn(`First attempt to ${this.getRetryWarningDescription()} failed, trying again.`, err);
+                        setTimeout(() => {
+                            handle()
+                                .then((response) => resolve(response))
+                                .catch((err) => reject(err));
+                        }, 250);
+                    });
+                });
+            }
+            getRetryWarningDescription() {
+                return 'complete task';
+            }
+            abort() {
+                this.aborted = true;
+            }
+        }
+        io.Retry = Retry;
+        class Request extends Retry {
             constructor(url) {
                 super();
                 this.url = url;
-                this.aborted = false;
                 this.shouldIgnoreErrors = false;
                 this.workComputable = false;
                 this.totalWork = 0;
@@ -2082,7 +2108,7 @@ var P;
                 return this.completedWork;
             }
             abort() {
-                this.aborted = true;
+                super.abort();
                 if (this.xhr) {
                     this.xhr.abort();
                 }
@@ -2136,35 +2162,36 @@ var P;
                 });
             }
             load(type) {
-                this.responseType = type;
-                return new Promise((resolve, reject) => {
-                    this._load()
-                        .then((response) => resolve(response))
-                        .catch((err) => {
-                        if (this.aborted) {
-                            reject(err);
-                            return;
-                        }
-                        console.warn(`First attempt to download ${this.url} failed, trying again.`, err);
-                        setTimeout(() => {
-                            this._load()
-                                .then((response) => resolve(response))
-                                .catch((err) => reject(err));
-                        }, 250);
-                    });
+                return __awaiter(this, void 0, void 0, function* () {
+                    this.responseType = type;
+                    return this.try(() => this._load());
                 });
+            }
+            getRetryWarningDescription() {
+                return `download ${this.url}`;
             }
         }
         Request.acceptableResponseCodes = [0, 200];
         io.Request = Request;
-        class Img extends AbstractTask {
+        class Img extends Retry {
             constructor(src) {
                 super();
-                this.complete = false;
-                this.aborted = false;
                 this.src = src;
+                this.complete = false;
             }
-            load() {
+            isComplete() {
+                return this.complete;
+            }
+            isWorkComputable() {
+                return false;
+            }
+            getTotalWork() {
+                return 0;
+            }
+            getCompletedWork() {
+                return 0;
+            }
+            _load() {
                 return new Promise((resolve, reject) => {
                     const image = new Image();
                     image.onload = () => {
@@ -2179,20 +2206,11 @@ var P;
                     image.src = this.src;
                 });
             }
-            isComplete() {
-                return this.complete;
+            load() {
+                return this.try(() => this._load());
             }
-            isWorkComputable() {
-                return false;
-            }
-            getTotalWork() {
-                return 0;
-            }
-            getCompletedWork() {
-                return 0;
-            }
-            abort() {
-                this.aborted = true;
+            getRetryWarningDescription() {
+                return `download image ${this.src}`;
             }
         }
         io.Img = Img;

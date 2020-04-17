@@ -154,10 +154,40 @@ namespace P.io {
     abstract abort(): void;
   }
 
-  export class Request extends AbstractTask {
+  export abstract class Retry extends AbstractTask {
+    protected aborted: boolean;
+
+    try<T>(handle: () => Promise<T>): Promise<T> {
+      return new Promise((resolve, reject) => {
+        handle()
+          .then((response) => resolve(response))
+          .catch((err) => {
+            if (this.aborted) {
+              reject(err);
+              return;
+            }
+            console.warn(`First attempt to ${this.getRetryWarningDescription()} failed, trying again.`, err);
+            setTimeout(() => {
+              handle()
+                .then((response) => resolve(response))
+                .catch((err) => reject(err));
+            }, 250);
+          });
+      });
+    }
+
+    protected getRetryWarningDescription(): string {
+      return 'complete task';
+    }
+
+    abort() {
+      this.aborted = true;
+    }
+  }
+
+  export class Request extends Retry {
     private static readonly acceptableResponseCodes = [0, 200];
 
-    private aborted: boolean = false;
     private responseType: XMLHttpRequestResponseType;
     private shouldIgnoreErrors: boolean = false;
     private workComputable: boolean = false;
@@ -188,7 +218,7 @@ namespace P.io {
     }
 
     abort() {
-      this.aborted = true;
+      super.abort();
       if (this.xhr) {
         this.xhr.abort();
       }
@@ -256,54 +286,21 @@ namespace P.io {
     load(type: 'json'): Promise<any>;
     load(type: 'text'): Promise<string>;
     load(type: 'blob'): Promise<Blob>;
-    load(type: XMLHttpRequestResponseType): Promise<any> {
+    async load(type: XMLHttpRequestResponseType): Promise<any> {
       this.responseType = type;
-      return new Promise((resolve, reject) => {
-        // We attempt all requests twice, in case of spurious errors from browsers.
-        this._load()
-          .then((response) => resolve(response))
-          .catch((err) => {
-            // Do not retry after an abort.
-            if (this.aborted) {
-              reject(err);
-              return;
-            }
-            console.warn(`First attempt to download ${this.url} failed, trying again.`, err);
-            // We will wait a little bit before retrying the request.
-            setTimeout(() => {
-              this._load()
-                .then((response) => resolve(response))
-                .catch((err) => reject(err));
-            }, 250);
-          });
-      });
+      return this.try(() => this._load());
+    }
+
+    getRetryWarningDescription() {
+      return `download ${this.url}`;
     }
   }
 
-  export class Img extends AbstractTask {
+  export class Img extends Retry {
     private complete: boolean = false;
-    private aborted: boolean = false;
-    private src: string;
 
-    constructor(src: string) {
+    constructor(private src: string) {
       super();
-      this.src = src;
-    }
-
-    load(): Promise<HTMLImageElement> {
-      return new Promise((resolve, reject) => {
-        const image = new Image();
-        image.onload = () => {
-          this.complete = true;
-          this.updateLoaderProgress();
-          resolve(image);
-        };
-        image.onerror = (err) => {
-          reject('Failed to load image: ' + image.src);
-        };
-        image.crossOrigin = 'anonymous';
-        image.src = this.src;
-      });
     }
 
     isComplete(): boolean {
@@ -322,8 +319,28 @@ namespace P.io {
       return 0;
     }
 
-    abort(): void {
-      this.aborted = true;
+    private _load(): Promise<HTMLImageElement> {
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => {
+          this.complete = true;
+          this.updateLoaderProgress();
+          resolve(image);
+        };
+        image.onerror = (err) => {
+          reject('Failed to load image: ' + image.src);
+        };
+        image.crossOrigin = 'anonymous';
+        image.src = this.src;
+      });
+    }
+
+    load(): Promise<HTMLImageElement> {
+      return this.try(() => this._load());
+    }
+
+    getRetryWarningDescription() {
+      return `download image ${this.src}`;
     }
   }
 
