@@ -1885,7 +1885,7 @@ namespace P.sb2.compiler {
       // don't define procedure if it already exists
       // https://github.com/forkphorus/forkphorus/issues/186
       if (!object.procedures[name]) {
-        object.procedures[script[0][1]] = new Scratch2Procedure(f, warp, inputs);
+        object.procedures[name] = new Scratch2Procedure(f, warp, inputs);
       } else {
         warn('procedure already exists: ' + name);
       }
