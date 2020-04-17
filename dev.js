@@ -14,6 +14,9 @@ const pathUtil = require('path');
 const lstat = promisify(fs.lstat);
 const readFile = promisify(fs.readFile);
 
+// checking for path traversal requires trailing slash
+const webRoot = pathUtil.join(__dirname, '/');
+
 async function run() {
   await checkDependencies();
   startServer();
@@ -60,6 +63,11 @@ function startServer() {
   async function findFile(root, path) {
     const indexes = ['index.html', 'README.md'];
 
+    // check for null bytes, probably not too important but doesn't hurt
+    if (path.indexOf('\0') !== -1) {
+      return null;
+    }
+
     // remove escape codes
     path = unescape(path);
 
@@ -69,6 +77,11 @@ function startServer() {
     }
 
     path = pathUtil.join(root, path);
+
+    // check for path traversal
+    if (!path.startsWith(root)) {
+      return null;
+    }
 
     try {
       if ((await lstat(path)).isDirectory()) {
@@ -96,7 +109,7 @@ function startServer() {
   }
 
   async function handler(req, res) {
-    const path = await findFile(__dirname, req.url || '/');
+    const path = await findFile(webRoot, req.url || '/');
     if (path === null) throw new Http404();
 
     const data = await readFile(path);
