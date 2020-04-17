@@ -30,12 +30,12 @@ function exit(status) {
   const browsersWithErrors = new Set();
   const url = `http://localhost:${PORT}/tests/suite.html?automatedtest&nostart`;
 
-  // If the tests take more than a minute, we can assume something went wrong and need to abort.
-  // In the future this might not be enough time, but for now it's much, much more than required.
+  // If the tests take more than a few minutes, we can assume something went wrong and need to abort.
+  // Eventually this time may need to be increased further.
   setTimeout(function() {
     console.error('[Runner] Test timed out');
     exit(1);
-  }, 1000 * 60);
+  }, 1000 * 60 * 5);
 
   for (const browserType of BROWSERS) {
 
