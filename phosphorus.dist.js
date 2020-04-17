@@ -2162,10 +2162,8 @@ var P;
                 });
             }
             load(type) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    this.responseType = type;
-                    return this.try(() => this._load());
-                });
+                this.responseType = type;
+                return this.try(() => this._load());
             }
             getRetryWarningDescription() {
                 return `download ${this.url}`;

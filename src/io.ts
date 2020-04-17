@@ -286,7 +286,7 @@ namespace P.io {
     load(type: 'json'): Promise<any>;
     load(type: 'text'): Promise<string>;
     load(type: 'blob'): Promise<Blob>;
-    async load(type: XMLHttpRequestResponseType): Promise<any> {
+    load(type: XMLHttpRequestResponseType): Promise<any> {
       this.responseType = type;
       return this.try(() => this._load());
     }
