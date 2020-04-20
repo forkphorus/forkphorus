@@ -303,7 +303,7 @@ namespace P.renderer.webgl {
 
     private boundFramebuffer: WebGLFramebuffer | null = null;
 
-    private costumeTextures: Map<P.core.ImageLOD, WebGLTexture> = new Map();
+    private costumeTextures: Map<P.core.Costume, WebGLTexture> = new Map();
 
     constructor() {
       this.canvas = createCanvas();
@@ -464,8 +464,8 @@ namespace P.renderer.webgl {
      * Reset and resize this renderer.
      */
     reset(scale: number) {
-      this.canvas.width = scale * P.config.scale * 480;
-      this.canvas.height = scale * P.config.scale * 360;
+      this.canvas.width = scale * 480;
+      this.canvas.height = scale * 360;
       this.resetFramebuffer(scale);
     }
 
@@ -474,7 +474,7 @@ namespace P.renderer.webgl {
      * @param scale Zoom level
      */
     protected resetFramebuffer(scale: number) {
-      this.gl.viewport(0, 0, 480 * scale, 360 * scale);
+      this.gl.viewport(0, 0, 480, 360);
       // the first element of the matrix is the x-scale, so we can use that to only recreate the matrix when needed
       if (this.globalScaleMatrix[0] !== scale) {
         this.globalScaleMatrix = P.m3.scaling(scale, scale);
@@ -498,12 +498,12 @@ namespace P.renderer.webgl {
 
       // Create the texture if it doesn't already exist.
       const costume = child.costumes[child.currentCostumeIndex];
-      const lod = costume.get(P.core.isSprite(child) ? child.scale : 1);
-      if (!this.costumeTextures.has(lod)) {
-        const texture = this.convertToTexture(lod.image);
-        this.costumeTextures.set(lod, texture);
+      if (!this.costumeTextures.has(costume)) {
+        const image = costume.getImage();
+        const texture = this.convertToTexture(image);
+        this.costumeTextures.set(costume, texture);
       }
-      this.gl.bindTexture(this.gl.TEXTURE_2D, this.costumeTextures.get(lod)!);
+      this.gl.bindTexture(this.gl.TEXTURE_2D, this.costumeTextures.get(costume)!);
 
       shader.attributeBuffer('a_position', this.quadBuffer);
 

@@ -1416,6 +1416,18 @@ var P;
                     right: 0,
                 };
             }
+            touching(thing) {
+                if (thing == "_mouse_") {
+                    return true;
+                }
+                return false;
+            }
+            touchingColor(color) {
+                return false;
+            }
+            colorTouchingColor(colorA, colorB) {
+                return false;
+            }
             submitPrompt() {
                 if (this.promptId < this.nextPromptId) {
                     this.answer = this.prompt.value;
@@ -1662,103 +1674,124 @@ var P;
             }
         }
         core.Sprite = Sprite;
-        class ImageLOD {
-            constructor(image) {
-                this.image = image;
-                if (image.tagName === 'CANVAS') {
-                    const ctx = image.getContext('2d');
-                    if (!ctx) {
-                        throw new Error('Cannot get 2d rendering context of costume image');
-                    }
-                    this.context = ctx;
-                }
-                else {
-                    this.context = null;
-                }
-                this.width = image.width;
-                this.height = image.height;
-            }
-            getContext() {
-                if (this.context)
-                    return this.context;
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                    throw new Error('cannot get 2d rendering context');
-                }
-                canvas.width = this.width;
-                canvas.height = this.height;
-                ctx.drawImage(this.image, 0, 0);
-                this.context = ctx;
-                return ctx;
-            }
-        }
-        core.ImageLOD = ImageLOD;
         class Costume {
             constructor(costumeData) {
-                this.bitmapResolution = costumeData.bitmapResolution;
-                this.scale = 1 / this.bitmapResolution;
                 this.name = costumeData.name;
+                this.scale = 1 / costumeData.bitmapResolution;
                 this.rotationCenterX = costumeData.rotationCenterX;
                 this.rotationCenterY = costumeData.rotationCenterY;
-            }
-            getContext() {
-                return this.get(1).getContext();
             }
         }
         core.Costume = Costume;
         class BitmapCostume extends Costume {
-            constructor(source, options) {
+            constructor(image, options) {
                 super(options);
-                this.source = new ImageLOD(source);
-                this.width = source.width;
-                this.height = source.height;
+                if (image.tagName === 'CANVAS') {
+                    const ctx = image.getContext('2d');
+                    if (!ctx) {
+                        throw new Error(`Cannot get 2d rendering context of costume image, despite it already being a canvas "${this.name}"`);
+                    }
+                    this.ctx = ctx;
+                }
+                this.image = image;
+                this.width = image.width;
+                this.height = image.height;
+                this.isScalable = false;
             }
-            get(scale) {
-                return this.source;
+            getContext() {
+                if (this.ctx) {
+                    return this.ctx;
+                }
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    throw new Error(`cannot get 2d rendering context in getContext on Bitmap "${this.name}"`);
+                }
+                canvas.width = this.width;
+                canvas.height = this.height;
+                ctx.drawImage(this.image, 0, 0);
+                this.ctx = ctx;
+                return ctx;
+            }
+            getImage() {
+                return this.image;
+            }
+            requestSize(scale) {
+                throw new Error(`requestSize is not implemented on BitmapCostume "${this.name}" isScalable=${this.isScalable}`);
             }
         }
         core.BitmapCostume = BitmapCostume;
         class VectorCostume extends Costume {
             constructor(svg, options) {
                 super(options);
-                this.scales = [];
+                this.currentScale = 1;
                 if (svg.height < 1 || svg.width < 1) {
                     svg = new Image(1, 1);
                 }
+                this.isScalable = true;
                 this.width = svg.width;
                 this.height = svg.height;
-                this.source = svg;
+                this.svg = svg;
+                this.maxScale = this.calculateMaxScale();
             }
-            getScale(scale) {
-                const canvas = document.createElement('canvas');
-                canvas.width = Math.max(1, this.width * scale);
-                canvas.height = Math.max(1, this.height * scale);
-                const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                    for (var i = 0; i < this.scales.length; i++) {
-                        if (this.scales[i]) {
-                            return this.scales[i];
-                        }
+            calculateMaxScale() {
+                if (VectorCostume.MAX_SIZE / this.width < VectorCostume.MAX_SCALE) {
+                    return VectorCostume.MAX_SIZE / this.width;
+                }
+                if (VectorCostume.MAX_SIZE / this.height < VectorCostume.MAX_SCALE) {
+                    return VectorCostume.MAX_SIZE / this.height;
+                }
+                return VectorCostume.MAX_SCALE;
+            }
+            render() {
+                const width = Math.floor(Math.max(1, this.width * this.currentScale));
+                const height = Math.floor(Math.max(1, this.height * this.currentScale));
+                if (!this.canvas) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) {
+                        const fmt = (n) => Math.round(n * 100) / 100;
+                        throw new Error(`cannot get 2d rendering context in initCanvas on Vector "${this.name}" @ ${fmt(this.currentScale)}/${fmt(this.maxScale)} | ${width}x${height}`);
                     }
-                    return new ImageLOD(this.source);
+                    this.canvas = canvas;
+                    this.ctx = ctx;
                 }
-                ctx.drawImage(this.source, 0, 0, canvas.width, canvas.height);
-                return new ImageLOD(canvas);
+                else {
+                    this.canvas.width = width;
+                    this.canvas.height = height;
+                }
+                this.ctx.drawImage(this.svg, 0, 0, width, height);
             }
-            get(scale) {
-                scale = Math.min(VectorCostume.MAX_ZOOM, Math.ceil(scale));
-                const index = scale - 1;
-                if (!this.scales[index]) {
-                    this.scales[index] = this.getScale(scale);
+            requestSize(costumeScale) {
+                const scale = Math.min(Math.ceil(costumeScale), this.maxScale);
+                if (this.currentScale < scale) {
+                    this.currentScale = scale;
+                    this.render();
                 }
-                return this.scales[index];
+            }
+            getContext() {
+                if (this.ctx) {
+                    return this.ctx;
+                }
+                this.render();
+                return this.ctx;
+            }
+            getImage() {
+                if (this.canvas) {
+                    return this.canvas;
+                }
+                this.render();
+                return this.canvas;
             }
         }
-        VectorCostume.MAX_ZOOM = 6;
+        VectorCostume.MAX_SCALE = 8;
+        VectorCostume.MAX_SIZE = 1024;
         core.VectorCostume = VectorCostume;
-        if (/iPhone/.test(navigator.userAgent) || /iPad/.test(navigator.userAgent) || /iPod/.test(navigator.userAgent) || window.safari) {
-            VectorCostume.MAX_ZOOM = 1;
+        if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
+            console.log('Vector scaling is disabled');
+            VectorCostume.MAX_SCALE = 1;
         }
         class Sound {
             constructor(data) {
@@ -2032,11 +2065,37 @@ var P;
             }
         }
         io.AbstractTask = AbstractTask;
-        class Request extends AbstractTask {
+        class Retry extends AbstractTask {
+            try(handle) {
+                return new Promise((resolve, reject) => {
+                    handle()
+                        .then((response) => resolve(response))
+                        .catch((err) => {
+                        if (this.aborted) {
+                            reject(err);
+                            return;
+                        }
+                        console.warn(`First attempt to ${this.getRetryWarningDescription()} failed, trying again.`, err);
+                        setTimeout(() => {
+                            handle()
+                                .then((response) => resolve(response))
+                                .catch((err) => reject(err));
+                        }, 250);
+                    });
+                });
+            }
+            getRetryWarningDescription() {
+                return 'complete task';
+            }
+            abort() {
+                this.aborted = true;
+            }
+        }
+        io.Retry = Retry;
+        class Request extends Retry {
             constructor(url) {
                 super();
                 this.url = url;
-                this.aborted = false;
                 this.shouldIgnoreErrors = false;
                 this.workComputable = false;
                 this.totalWork = 0;
@@ -2058,7 +2117,7 @@ var P;
                 return this.completedWork;
             }
             abort() {
-                this.aborted = true;
+                super.abort();
                 if (this.xhr) {
                     this.xhr.abort();
                 }
@@ -2113,34 +2172,33 @@ var P;
             }
             load(type) {
                 this.responseType = type;
-                return new Promise((resolve, reject) => {
-                    this._load()
-                        .then((response) => resolve(response))
-                        .catch((err) => {
-                        if (this.aborted) {
-                            reject(err);
-                            return;
-                        }
-                        console.warn(`First attempt to download ${this.url} failed, trying again.`, err);
-                        setTimeout(() => {
-                            this._load()
-                                .then((response) => resolve(response))
-                                .catch((err) => reject(err));
-                        }, 250);
-                    });
-                });
+                return this.try(() => this._load());
+            }
+            getRetryWarningDescription() {
+                return `download ${this.url}`;
             }
         }
         Request.acceptableResponseCodes = [0, 200];
         io.Request = Request;
-        class Img extends AbstractTask {
+        class Img extends Retry {
             constructor(src) {
                 super();
-                this.complete = false;
-                this.aborted = false;
                 this.src = src;
+                this.complete = false;
             }
-            load() {
+            isComplete() {
+                return this.complete;
+            }
+            isWorkComputable() {
+                return false;
+            }
+            getTotalWork() {
+                return 0;
+            }
+            getCompletedWork() {
+                return 0;
+            }
+            _load() {
                 return new Promise((resolve, reject) => {
                     const image = new Image();
                     image.onload = () => {
@@ -2155,20 +2213,11 @@ var P;
                     image.src = this.src;
                 });
             }
-            isComplete() {
-                return this.complete;
+            load() {
+                return this.try(() => this._load());
             }
-            isWorkComputable() {
-                return false;
-            }
-            getTotalWork() {
-                return 0;
-            }
-            getCompletedWork() {
-                return 0;
-            }
-            abort() {
-                this.aborted = true;
+            getRetryWarningDescription() {
+                return `download image ${this.src}`;
             }
         }
         io.Img = Img;
@@ -2502,6 +2551,7 @@ var P;
             }
             load() {
                 return new P.io.Request('https://scratch.garbomuffin.com/proxy/projects/$id'.replace('$id', this.id))
+                    .ignoreErrors()
                     .load('json')
                     .then((data) => {
                     if (data.title) {
@@ -5359,11 +5409,13 @@ var P;
                     }
                     else if (block[0] === 'showVariable:' || block[0] === 'hideVariable:') {
                         var isShow = block[0] === 'showVariable:';
-                        if (typeof block[1] !== 'string') {
-                            throw new Error('Dynamic variables are not supported');
+                        if (typeof block[1] === 'string') {
+                            var o = object.vars[block[1]] !== undefined ? 'S' : 'self';
+                            source += o + '.showVariable(' + val(block[1]) + ', ' + isShow + ');\n';
                         }
-                        var o = object.vars[block[1]] !== undefined ? 'S' : 'self';
-                        source += o + '.showVariable(' + val(block[1]) + ', ' + isShow + ');\n';
+                        else {
+                            warn('ignoring dynamic variable');
+                        }
                     }
                     else if (block[0] === 'broadcast:') {
                         source += 'var threads = broadcast(' + val(block[1]) + ');\n';
@@ -5602,7 +5654,13 @@ var P;
                 }
                 else if (script[0][0] === 'procDef') {
                     const warp = script[0][4];
-                    object.procedures[script[0][1]] = new Scratch2Procedure(f, warp, inputs);
+                    const name = script[0][1];
+                    if (!object.procedures[name]) {
+                        object.procedures[name] = new Scratch2Procedure(f, warp, inputs);
+                    }
+                    else {
+                        warn('procedure already exists: ' + name);
+                    }
                 }
                 else {
                     warn('Undefined event: ' + script[0][0]);
@@ -6859,10 +6917,10 @@ var P;
         const SUBSTACK = util.getSubstack('SUBSTACK');
         const VALUE = util.getInput('VALUE', 'number');
         util.writeLn('save();');
-        util.writeLn(`${VARIABLE} = 0;`);
         util.writeLn(`R.times = ${VALUE};`);
+        util.writeLn(`if (R.times > 0) ${VARIABLE} = 0;`);
         const label = util.addLabel();
-        util.writeLn(`if (${VARIABLE} <= R.times) {`);
+        util.writeLn(`if (${VARIABLE} < R.times) {`);
         util.writeLn(`  ${VARIABLE} = ${util.asType(VARIABLE, 'number')} + 1;`);
         util.write(SUBSTACK);
         util.queue(label);
@@ -8490,7 +8548,11 @@ var P;
                         }
                         objectScale *= c.scale;
                     }
-                    const lod = costume.get(objectScale * c.stage.zoom);
+                    if (costume.isScalable) {
+                        costume.requestSize(objectScale * globalScale);
+                    }
+                    ctx.imageSmoothingEnabled = costume.isScalable || this.imageSmoothingEnabled;
+                    const image = costume.getImage();
                     const x = -costume.rotationCenterX * objectScale;
                     const y = -costume.rotationCenterY * objectScale;
                     const w = costume.width * objectScale;
@@ -8499,7 +8561,6 @@ var P;
                         ctx.restore();
                         return;
                     }
-                    ctx.imageSmoothingEnabled = this.imageSmoothingEnabled;
                     if (!this.noEffects) {
                         ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
                         if (c.filters.brightness === 100) {
@@ -8507,10 +8568,10 @@ var P;
                             workingRenderer.canvas.height = h;
                             workingRenderer.ctx.save();
                             workingRenderer.ctx.translate(0, 0);
-                            workingRenderer.ctx.drawImage(lod.image, 0, 0, w, h);
+                            workingRenderer.ctx.drawImage(image, 0, 0, w, h);
                             workingRenderer.ctx.globalCompositeOperation = 'source-in';
                             workingRenderer.ctx.fillStyle = 'white';
-                            workingRenderer.ctx.fillRect(0, 0, 480, 360);
+                            workingRenderer.ctx.fillRect(0, 0, w, h);
                             ctx.drawImage(workingRenderer.canvas, x, y);
                             workingRenderer.ctx.restore();
                         }
@@ -8519,11 +8580,11 @@ var P;
                             if (filter !== '') {
                                 ctx.filter = getCSSFilter(c.filters);
                             }
-                            ctx.drawImage(lod.image, x, y, w, h);
+                            ctx.drawImage(image, x, y, w, h);
                         }
                     }
                     else {
-                        ctx.drawImage(lod.image, x, y, w, h);
+                        ctx.drawImage(image, x, y, w, h);
                     }
                     ctx.restore();
                 }
@@ -8660,8 +8721,15 @@ var P;
                     else if (sprite.rotationStyle === 1 && sprite.direction < 0) {
                         cx = -cx;
                     }
-                    const positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
-                    const positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
+                    let positionX = Math.round(cx / costume.scale + costume.rotationCenterX);
+                    let positionY = Math.round(cy / costume.scale + costume.rotationCenterY);
+                    if (costume instanceof P.core.VectorCostume) {
+                        positionX *= costume.currentScale;
+                        positionY *= costume.currentScale;
+                    }
+                    if (!Number.isFinite(positionX) || !Number.isFinite(positionY)) {
+                        return false;
+                    }
                     const data = costume.getContext().getImageData(positionX, positionY, 1, 1).data;
                     return data[3] !== 0;
                 }
@@ -9038,12 +9106,12 @@ var P;
                     this.boundFramebuffer = buffer;
                 }
                 reset(scale) {
-                    this.canvas.width = scale * P.config.scale * 480;
-                    this.canvas.height = scale * P.config.scale * 360;
+                    this.canvas.width = scale * 480;
+                    this.canvas.height = scale * 360;
                     this.resetFramebuffer(scale);
                 }
                 resetFramebuffer(scale) {
-                    this.gl.viewport(0, 0, 480 * scale, 360 * scale);
+                    this.gl.viewport(0, 0, 480, 360);
                     if (this.globalScaleMatrix[0] !== scale) {
                         this.globalScaleMatrix = P.m3.scaling(scale, scale);
                     }
@@ -9056,12 +9124,12 @@ var P;
                 _drawChild(child, shader) {
                     this.gl.useProgram(shader.program);
                     const costume = child.costumes[child.currentCostumeIndex];
-                    const lod = costume.get(P.core.isSprite(child) ? child.scale : 1);
-                    if (!this.costumeTextures.has(lod)) {
-                        const texture = this.convertToTexture(lod.image);
-                        this.costumeTextures.set(lod, texture);
+                    if (!this.costumeTextures.has(costume)) {
+                        const image = costume.getImage();
+                        const texture = this.convertToTexture(image);
+                        this.costumeTextures.set(costume, texture);
                     }
-                    this.gl.bindTexture(this.gl.TEXTURE_2D, this.costumeTextures.get(lod));
+                    this.gl.bindTexture(this.gl.TEXTURE_2D, this.costumeTextures.get(costume));
                     shader.attributeBuffer('a_position', this.quadBuffer);
                     const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
                     P.m3.multiply(matrix, this.globalScaleMatrix);

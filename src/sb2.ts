@@ -1600,11 +1600,12 @@ namespace P.sb2.compiler {
       } else if (block[0] === 'showVariable:' || block[0] === 'hideVariable:') {
 
         var isShow = block[0] === 'showVariable:';
-        if (typeof block[1] !== 'string') {
-          throw new Error('Dynamic variables are not supported');
+        if (typeof block[1] === 'string') {
+          var o = object.vars[block[1]] !== undefined ? 'S' : 'self';
+          source += o + '.showVariable(' + val(block[1]) + ', ' + isShow + ');\n';
+        } else {
+          warn('ignoring dynamic variable');
         }
-        var o = object.vars[block[1]] !== undefined ? 'S' : 'self';
-        source += o + '.showVariable(' + val(block[1]) + ', ' + isShow + ');\n';
 
       // } else if (block[0] === 'showList:') {
 
@@ -1880,7 +1881,14 @@ namespace P.sb2.compiler {
       (object.listeners.whenSceneStarts[key] || (object.listeners.whenSceneStarts[key] = [])).push(f);
     } else if (script[0][0] === 'procDef') {
       const warp = script[0][4];
-      object.procedures[script[0][1]] = new Scratch2Procedure(f, warp, inputs);
+      const name = script[0][1];
+      // don't define procedure if it already exists
+      // https://github.com/forkphorus/forkphorus/issues/186
+      if (!object.procedures[name]) {
+        object.procedures[name] = new Scratch2Procedure(f, warp, inputs);
+      } else {
+        warn('procedure already exists: ' + name);
+      }
     } else {
       warn('Undefined event: ' + script[0][0]);
     }

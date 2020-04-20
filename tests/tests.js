@@ -19,6 +19,7 @@
     'sb3/70.sb3',
     'sb3/105-contains.sb3',
     'sb3/112.sb3',
+    'sb3/for-each-in.sb3',
   ];
 
   /**
