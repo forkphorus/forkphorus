@@ -1238,8 +1238,8 @@ var P;
                     y = -180;
                 if (y > 180)
                     y = 180;
-                this.mouseX = x;
-                this.mouseY = y;
+                this.mouseX = Math.round(x);
+                this.mouseY = Math.round(y);
             }
             setZoom(zoom) {
                 if (this.zoom === zoom)

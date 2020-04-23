@@ -1091,8 +1091,8 @@ namespace P.core {
       if (x > 240) x = 240;
       if (y < -180) y = -180;
       if (y > 180) y = 180;
-      this.mouseX = x;
-      this.mouseY = y;
+      this.mouseX = Math.round(x);
+      this.mouseY = Math.round(y);
     }
 
     /**
