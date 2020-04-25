@@ -521,7 +521,9 @@ namespace P.core {
       if (this.node) {
         for (const sound of this.activeSounds) {
           sound.stopped = true;
-          sound.node.disconnect();
+          if (sound.node) {
+            sound.node.disconnect();
+          }
         }
         this.activeSounds.clear();
         this.node.disconnect();
@@ -533,7 +535,9 @@ namespace P.core {
       if (this.node) {
         for (const sound of this.activeSounds) {
           if (sound.base !== originBase) {
-            sound.node.disconnect();
+            if (sound.node) {
+              sound.node.disconnect();
+            }
             sound.stopped = true;
             this.activeSounds.delete(sound);
           }
@@ -658,7 +662,9 @@ namespace P.core {
       if (this.node && this.isClone && !this.isStage) {
         // Continue playing sounds started with "start sound" after this sprite has been removed.
         for (const sound of this.activeSounds) {
-          sound.node.disconnect();
+          if (sound.node) {
+            sound.node.disconnect();
+          }
           sound.stopped = true;
         }
         this.activeSounds.clear();

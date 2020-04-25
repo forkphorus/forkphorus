@@ -794,7 +794,9 @@ var P;
                 if (this.node) {
                     for (const sound of this.activeSounds) {
                         sound.stopped = true;
-                        sound.node.disconnect();
+                        if (sound.node) {
+                            sound.node.disconnect();
+                        }
                     }
                     this.activeSounds.clear();
                     this.node.disconnect();
@@ -805,7 +807,9 @@ var P;
                 if (this.node) {
                     for (const sound of this.activeSounds) {
                         if (sound.base !== originBase) {
-                            sound.node.disconnect();
+                            if (sound.node) {
+                                sound.node.disconnect();
+                            }
                             sound.stopped = true;
                             this.activeSounds.delete(sound);
                         }
@@ -916,7 +920,9 @@ var P;
                 }
                 if (this.node && this.isClone && !this.isStage) {
                     for (const sound of this.activeSounds) {
-                        sound.node.disconnect();
+                        if (sound.node) {
+                            sound.node.disconnect();
+                        }
                         sound.stopped = true;
                     }
                     this.activeSounds.clear();
