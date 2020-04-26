@@ -635,7 +635,10 @@ namespace P.player {
         if (!this.isRunning()) {
           this.stage.draw();
         }
-        this.focus();
+        // TODO: remove this temporary fix for #192
+        if (this.options.focusOnLoad) {
+          this.focus();
+        }
       }
 
       this.updateFullscreen();

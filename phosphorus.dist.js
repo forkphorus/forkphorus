@@ -2868,7 +2868,9 @@ var P;
                     if (!this.isRunning()) {
                         this.stage.draw();
                     }
-                    this.focus();
+                    if (this.options.focusOnLoad) {
+                        this.focus();
+                    }
                 }
                 this.updateFullscreen();
             }
