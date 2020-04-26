@@ -474,7 +474,7 @@ namespace P.renderer.webgl {
      * @param scale Zoom level
      */
     protected resetFramebuffer(scale: number) {
-      this.gl.viewport(0, 0, 480, 360);
+      this.gl.viewport(0, 0, scale * 480, scale * 360);
       // the first element of the matrix is the x-scale, so we can use that to only recreate the matrix when needed
       if (this.globalScaleMatrix[0] !== scale) {
         this.globalScaleMatrix = P.m3.scaling(scale, scale);

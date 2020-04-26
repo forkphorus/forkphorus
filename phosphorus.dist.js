@@ -9111,7 +9111,7 @@ var P;
                     this.resetFramebuffer(scale);
                 }
                 resetFramebuffer(scale) {
-                    this.gl.viewport(0, 0, 480, 360);
+                    this.gl.viewport(0, 0, scale * 480, scale * 360);
                     if (this.globalScaleMatrix[0] !== scale) {
                         this.globalScaleMatrix = P.m3.scaling(scale, scale);
                     }
