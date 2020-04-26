@@ -3063,8 +3063,9 @@ var P;
                 this.stage.runtime.handleError = this.handleError;
                 this.applyOptionsToStage();
                 this.playerContainer.appendChild(stage.root);
-                stage.focus();
-                stage.draw();
+                if (this.options.focusOnLoad) {
+                    this.focus();
+                }
                 this.onload.emit(stage);
                 this.enactAutoplayPolicy(this.options.autoplayPolicy);
             }
@@ -3175,6 +3176,7 @@ var P;
             fullscreenPadding: 8,
             fullscreenMaxWidth: Infinity,
             imageSmoothing: false,
+            focusOnLoad: true,
         };
         player_1.Player = Player;
         class ErrorHandler {

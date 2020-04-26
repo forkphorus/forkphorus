@@ -125,6 +125,7 @@ namespace P.player {
     fullscreenPadding: number;
     fullscreenMaxWidth: number;
     imageSmoothing: boolean;
+    focusOnLoad: boolean;
   }
 
   interface ControlsOptions {
@@ -253,6 +254,7 @@ namespace P.player {
       fullscreenPadding: 8,
       fullscreenMaxWidth: Infinity,
       imageSmoothing: false,
+      focusOnLoad: true,
     };
 
     public onprogress = new Slot<number>();
@@ -881,8 +883,9 @@ namespace P.player {
       this.applyOptionsToStage();
 
       this.playerContainer.appendChild(stage.root);
-      stage.focus();
-      stage.draw();
+      if (this.options.focusOnLoad) {
+        this.focus();
+      }
       this.onload.emit(stage);
 
       this.enactAutoplayPolicy(this.options.autoplayPolicy);
