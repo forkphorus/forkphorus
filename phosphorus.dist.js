@@ -6943,14 +6943,14 @@ var P;
         }
     };
     statementLibrary['control_if'] = function (util) {
-        const CONDITION = util.getInput('CONDITION', 'any');
+        const CONDITION = util.getInput('CONDITION', 'boolean');
         const SUBSTACK = util.getSubstack('SUBSTACK');
         util.writeLn(`if (${CONDITION}) {`);
         util.write(SUBSTACK);
         util.writeLn('}');
     };
     statementLibrary['control_if_else'] = function (util) {
-        const CONDITION = util.getInput('CONDITION', 'any');
+        const CONDITION = util.getInput('CONDITION', 'boolean');
         const SUBSTACK = util.getSubstack('SUBSTACK');
         const SUBSTACK2 = util.getSubstack('SUBSTACK2');
         util.writeLn(`if (${CONDITION}) {`);
