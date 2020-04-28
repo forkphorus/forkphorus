@@ -9604,8 +9604,6 @@ var P;
                     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
                     this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.penTexture, 0);
                     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
-                    this.penDotShader = new Shader(this.gl, this.compileProgram(WebGLProjectRenderer.PEN_DOT_VERTEX_SHADER, WebGLProjectRenderer.PEN_DOT_FRAGMENT_SHADER));
-                    this.penLineShader = new Shader(this.gl, this.compileProgram(WebGLProjectRenderer.PEN_LINE_VERTEX_SHADER, WebGLProjectRenderer.PEN_LINE_FRAGMENT_SHADER));
                     this.reset(1);
                 }
                 drawFrame() {
@@ -9915,41 +9913,6 @@ var P;
                     return this.fallbackRenderer.spriteColorTouchesColor(sprite, spriteColor, otherColor);
                 }
             }
-            WebGLProjectRenderer.PEN_DOT_VERTEX_SHADER = `
-    attribute vec2 a_position;
-    varying vec2 v_position;
-    uniform mat3 u_matrix;
-    void main() {
-      gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
-      v_position = a_position;
-    }
-    `;
-            WebGLProjectRenderer.PEN_DOT_FRAGMENT_SHADER = `
-    precision mediump float;
-    uniform vec4 u_color;
-    varying vec2 v_position;
-    void main() {
-      float x = (v_position.x - 0.5) * 2.0;
-      float y = (v_position.y - 0.5) * 2.0;
-      if (sqrt(x * x + y * y) >= 1.0) {
-        discard;
-      }
-      gl_FragColor = u_color;
-    }
-    `;
-            WebGLProjectRenderer.PEN_LINE_VERTEX_SHADER = `
-    attribute vec2 a_position;
-    void main() {
-      gl_Position = vec4(a_position, 0, 1);
-    }
-    `;
-            WebGLProjectRenderer.PEN_LINE_FRAGMENT_SHADER = `
-    precision mediump float;
-    uniform vec4 u_color;
-    void main() {
-      gl_FragColor = u_color;
-    }
-    `;
             webgl.WebGLProjectRenderer = WebGLProjectRenderer;
         })(webgl = renderer.webgl || (renderer.webgl = {}));
     })(renderer = P.renderer || (P.renderer = {}));

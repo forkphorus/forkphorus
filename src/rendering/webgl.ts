@@ -903,42 +903,6 @@ namespace P.renderer.webgl {
   }
 
   export class WebGLProjectRenderer extends WebGLSpriteRenderer implements ProjectRenderer {
-    public static readonly PEN_DOT_VERTEX_SHADER = `
-    attribute vec2 a_position;
-    varying vec2 v_position;
-    uniform mat3 u_matrix;
-    void main() {
-      gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
-      v_position = a_position;
-    }
-    `;
-    public static readonly PEN_DOT_FRAGMENT_SHADER = `
-    precision mediump float;
-    uniform vec4 u_color;
-    varying vec2 v_position;
-    void main() {
-      float x = (v_position.x - 0.5) * 2.0;
-      float y = (v_position.y - 0.5) * 2.0;
-      if (sqrt(x * x + y * y) >= 1.0) {
-        discard;
-      }
-      gl_FragColor = u_color;
-    }
-    `;
-    public static readonly PEN_LINE_VERTEX_SHADER = `
-    attribute vec2 a_position;
-    void main() {
-      gl_Position = vec4(a_position, 0, 1);
-    }
-    `
-    public static readonly PEN_LINE_FRAGMENT_SHADER = `
-    precision mediump float;
-    uniform vec4 u_color;
-    void main() {
-      gl_FragColor = u_color;
-    }
-    `;
-
     public penLayer: HTMLCanvasElement;
     public stageLayer: HTMLCanvasElement;
     public zoom: number = 1;
@@ -965,15 +929,6 @@ namespace P.renderer.webgl {
       this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
       this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.penTexture, 0);
       this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
-
-      this.penDotShader = new Shader(this.gl, this.compileProgram(
-        WebGLProjectRenderer.PEN_DOT_VERTEX_SHADER,
-        WebGLProjectRenderer.PEN_DOT_FRAGMENT_SHADER,
-      ));
-      this.penLineShader = new Shader(this.gl, this.compileProgram(
-        WebGLProjectRenderer.PEN_LINE_VERTEX_SHADER,
-        WebGLProjectRenderer.PEN_LINE_FRAGMENT_SHADER,
-      ));
 
       this.reset(1);
     }
@@ -1278,28 +1233,6 @@ namespace P.renderer.webgl {
         this.penRenderer.penColors[this.penRenderer.penColorsIndex] = a;
         this.penRenderer.penColorsIndex++;
       }
-
-      // this.bindFramebuffer(this.penBuffer);
-
-      // const shader = this.penLineShader;
-      // this.gl.useProgram(shader.program);
-
-      // const buffer = this.gl.createBuffer();
-      // if (buffer === null) {
-      //   throw new Error('buffer is null');
-      // }
-      // this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
-      // this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
-      //   x / 240, y / 180,
-      //   x2 / 240, y2 / 180,
-      // ]), this.gl.STATIC_DRAW);
-      // shader.attributeBuffer('a_position', buffer);
-
-      // const parts = color.toParts();
-      // shader.uniform4f('u_color', parts[0], parts[1], parts[2], parts[3]);
-      // this.gl.drawArrays(this.gl.LINES, 0, 2);
-
-      // this.gl.deleteBuffer(buffer);
     }
 
     penDot(color: P.core.PenColor, size: number, x: number, y: number): void {
@@ -1480,37 +1413,6 @@ namespace P.renderer.webgl {
       }
 
       return false;
-
-  //     this.stage.glCollisionContext.scissor(240 + left, 180 + bottom, Math.max(right - left, 1), Math.max(top - bottom, 1));
-
-  //     this.stage.glCollisionContext.clear(this.stage.glCollisionContext.COLOR_BUFFER_BIT);
-  //     this.stage.glCollisionContext.useTouchingShader = false;
-  //     this.draw(this.stage.glCollisionContext, true);
-      
-  //     this.stage.glCollisionContext.touchingShaderInfo.blendSource = this.stage.glCollisionContext.DST_ALPHA;
-  //     this.stage.glCollisionContext.touchingShaderInfo.blendDest = this.stage.glCollisionContext.ZERO;    
-  //     this.stage.tColor = [0.0, 0.0, 0.0, 0.0]     
-  //     this.stage.glCollisionContext.useTouchingShader = true;
-  //     sprite.draw(this.stage.glCollisionContext, true);
-      
-  //     var data = new Uint8Array(Math.max(right - left, 1) * Math.max(top - bottom, 1) * 4);
-  //     this.stage.glCollisionContext.readPixels(
-  //       240 + left,
-  //       180 + bottom,
-  //       Math.max(right - left, 1),
-  //       Math.max(top - bottom, 1),
-  //       this.stage.glCollisionContext.RGBA,
-  //       this.stage.glCollisionContext.UNSIGNED_BYTE,
-  //       data);
-      
-  //     this.stage.glCollisionContext.scissor(0, 0, 480, 360);
-      
-  //     var length = data.length;
-  //     for (var j = 0; j < length; j += 4) {
-  //       if (data[j + 3]) {
-  //         return true;
-  //       }
-  //     }
     }
 
     spriteTouchesColor(sprite: core.Base, color: number): boolean {
