@@ -345,7 +345,7 @@ namespace P.renderer.webgl {
 
     protected getContextOptions(): WebGLContextAttributes {
       return {
-        alpha: false,
+        alpha: true,
       };
     }
 
@@ -483,7 +483,7 @@ namespace P.renderer.webgl {
       }
 
       // Clear the canvas
-      this.gl.clearColor(255, 255, 255, 0);
+      this.gl.clearColor(0, 0, 0, 0);
       this.gl.clear(this.gl.COLOR_BUFFER_BIT);
     }
 
@@ -825,8 +825,6 @@ namespace P.renderer.webgl {
     constructor() {
       super();
 
-      document.getElementById('project-area').prepend(this.canvas);
-
       this.shader = new Shader(this.gl, this.compileProgram(PenRenderer.vert, PenRenderer.frag));
 
       this.positionBuffer = this.gl.createBuffer()!;
@@ -907,28 +905,17 @@ namespace P.renderer.webgl {
     public stageLayer: HTMLCanvasElement;
     public zoom: number = 1;
 
-    protected penTexture: WebGLTexture;
-    protected penBuffer: WebGLFramebuffer;
-
     protected fallbackRenderer: ProjectRenderer;
     protected shaderOnlyShapeFilters = this.compileVariant(['ONLY_SHAPE_FILTERS']);
-    protected penDotShader: Shader;
-    protected penLineShader: Shader;
 
     private collisionRenderer: CollisionRenderer = new CollisionRenderer();
     private penRenderer: PenRenderer = new PenRenderer();
+    private stageRenderer: SpriteRenderer = new WebGLSpriteRenderer();
 
     constructor(public stage: P.core.Stage) {
       super();
 
       this.fallbackRenderer = new P.renderer.canvas2d.ProjectRenderer2D(stage);
-
-      this.penTexture = this.createTexture();
-      this.penBuffer = this.createFramebuffer();
-      this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 480, 360, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
-      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
-      this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.penTexture, 0);
-      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
 
       this.reset(1);
     }
@@ -939,8 +926,7 @@ namespace P.renderer.webgl {
         this.penRenderer.renderPen();
       }
       this.reset(this.zoom);
-      this.drawChild(this.stage);
-      this.drawTextureOverlay(this.penTexture);
+      this.stageRenderer.drawChild(this.stage);
       for (var i = 0; i < this.stage.children.length; i++) {
         var child = this.stage.children[i];
         if (!child.visible) {
@@ -951,6 +937,8 @@ namespace P.renderer.webgl {
     }
 
     init(root: HTMLElement) {
+      root.appendChild(this.stageRenderer.canvas);
+      root.appendChild(this.penRenderer.canvas);
       root.appendChild(this.canvas);
     }
 

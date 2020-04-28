@@ -9034,7 +9034,7 @@ var P;
                 }
                 getContextOptions() {
                     return {
-                        alpha: false,
+                        alpha: true,
                     };
                 }
                 compileShader(type, source, definitions) {
@@ -9117,7 +9117,7 @@ var P;
                     if (this.globalScaleMatrix[0] !== scale) {
                         this.globalScaleMatrix = P.m3.scaling(scale, scale);
                     }
-                    this.gl.clearColor(255, 255, 255, 0);
+                    this.gl.clearColor(0, 0, 0, 0);
                     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
                 }
                 drawChild(child) {
@@ -9499,7 +9499,6 @@ var P;
                     this.penCoordsIndex = 0;
                     this.penLinesIndex = 0;
                     this.penColorsIndex = 0;
-                    document.getElementById('project-area').prepend(this.canvas);
                     this.shader = new Shader(this.gl, this.compileProgram(PenRenderer.vert, PenRenderer.frag));
                     this.positionBuffer = this.gl.createBuffer();
                     this.lineBuffer = this.gl.createBuffer();
@@ -9597,13 +9596,8 @@ var P;
                     this.shaderOnlyShapeFilters = this.compileVariant(['ONLY_SHAPE_FILTERS']);
                     this.collisionRenderer = new CollisionRenderer();
                     this.penRenderer = new PenRenderer();
+                    this.stageRenderer = new WebGLSpriteRenderer();
                     this.fallbackRenderer = new P.renderer.canvas2d.ProjectRenderer2D(stage);
-                    this.penTexture = this.createTexture();
-                    this.penBuffer = this.createFramebuffer();
-                    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 480, 360, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
-                    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
-                    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.penTexture, 0);
-                    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
                     this.reset(1);
                 }
                 drawFrame() {
@@ -9612,8 +9606,7 @@ var P;
                         this.penRenderer.renderPen();
                     }
                     this.reset(this.zoom);
-                    this.drawChild(this.stage);
-                    this.drawTextureOverlay(this.penTexture);
+                    this.stageRenderer.drawChild(this.stage);
                     for (var i = 0; i < this.stage.children.length; i++) {
                         var child = this.stage.children[i];
                         if (!child.visible) {
@@ -9623,6 +9616,8 @@ var P;
                     }
                 }
                 init(root) {
+                    root.appendChild(this.stageRenderer.canvas);
+                    root.appendChild(this.penRenderer.canvas);
                     root.appendChild(this.canvas);
                 }
                 onStageFiltersChanged() {
