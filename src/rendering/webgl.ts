@@ -307,11 +307,7 @@ namespace P.renderer.webgl {
 
     constructor() {
       this.canvas = createCanvas();
-      const gl = this.canvas.getContext('webgl', {
-        // alpha: true,
-        antialias: false,
-        preserveDrawingBuffer: true
-      });
+      const gl = this.canvas.getContext('webgl', this.getContextOptions());
       if (!gl) {
         throw new Error('cannot get webgl rendering context');
       }
@@ -345,6 +341,12 @@ namespace P.renderer.webgl {
         0, 1,
         1, 1,
       ]), this.gl.STATIC_DRAW);
+    }
+
+    protected getContextOptions(): WebGLContextAttributes {
+      return {
+        alpha: false,
+      };
     }
 
     /**
@@ -836,6 +838,13 @@ namespace P.renderer.webgl {
       this.gl.disable(this.gl.DEPTH_TEST);
 
       this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    }
+
+    protected getContextOptions(): WebGLContextAttributes {
+      return {
+        alpha: true,
+        preserveDrawingBuffer: true,
+      };
     }
 
     renderPen() {

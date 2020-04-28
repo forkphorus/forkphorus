@@ -9004,10 +9004,7 @@ var P;
                     this.boundFramebuffer = null;
                     this.costumeTextures = new Map();
                     this.canvas = createCanvas();
-                    const gl = this.canvas.getContext('webgl', {
-                        antialias: false,
-                        preserveDrawingBuffer: true
-                    });
+                    const gl = this.canvas.getContext('webgl', this.getContextOptions());
                     if (!gl) {
                         throw new Error('cannot get webgl rendering context');
                     }
@@ -9034,6 +9031,11 @@ var P;
                         0, 1,
                         1, 1,
                     ]), this.gl.STATIC_DRAW);
+                }
+                getContextOptions() {
+                    return {
+                        alpha: false,
+                    };
                 }
                 compileShader(type, source, definitions) {
                     if (definitions) {
@@ -9506,6 +9508,12 @@ var P;
                     this.gl.enable(this.gl.BLEND);
                     this.gl.disable(this.gl.DEPTH_TEST);
                     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+                }
+                getContextOptions() {
+                    return {
+                        alpha: true,
+                        preserveDrawingBuffer: true,
+                    };
                 }
                 renderPen() {
                     const gl = this.gl;
