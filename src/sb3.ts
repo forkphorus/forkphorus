@@ -256,6 +256,9 @@ namespace P.sb3 {
       container.dataset.opcode = this.opcode;
       container.style.top = (this.y / 10) + 'em';
       container.style.left = (this.x / 10) + 'em';
+      // fix https://github.com/forkphorus/forkphorus/issues/195
+      container.onmousedown = (e) => e.stopPropagation();
+      container.ontouchstart = (e) => e.stopPropagation();
 
       const value = document.createElement('div');
       value.classList.add('s3-watcher-value');
@@ -565,6 +568,10 @@ namespace P.sb3 {
       this.containerEl.style.height = (this.height / 10) + 'em';
       this.containerEl.style.width = (this.width / 10) + 'em';
       this.containerEl.classList.add('s3-list-container');
+
+      // fix https://github.com/forkphorus/forkphorus/issues/195
+      this.containerEl.onmousedown = (e) => e.stopPropagation();
+      this.containerEl.ontouchstart = (e) => e.stopPropagation();
 
       this.topLabelEl.textContent = this.getTopLabel();
       this.topLabelEl.classList.add('s3-list-top-label');
