@@ -976,6 +976,7 @@ var P;
                         color = +color;
                     }
                 }
+                debugger;
                 this.penColor.setRGBA(color);
             }
         }

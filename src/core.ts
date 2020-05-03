@@ -1299,14 +1299,19 @@ namespace P.core {
     }
 
     moveTo() {
-      // do nothing -- stage cannot be moved
+      // no-op
     }
 
     forward() {
-      // do nothing -- stage cannot be moved
+      // no-op
+    }
+
+    setDirection(direction: number) {
+      // no-op
     }
 
     rotatedBounds() {
+      // no-op
       return {
         top: 0,
         bottom: 0,
@@ -1323,10 +1328,12 @@ namespace P.core {
     }
 
     touchingColor(color: number) {
+      // no-op
       return false;
     }
 
     colorTouchingColor(colorA: number, colorB: number) {
+      // no-op
       return false;
     }
 
