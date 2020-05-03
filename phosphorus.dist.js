@@ -976,7 +976,6 @@ var P;
                         color = +color;
                     }
                 }
-                debugger;
                 this.penColor.setRGBA(color);
             }
         }
@@ -1414,6 +1413,8 @@ var P;
             moveTo() {
             }
             forward() {
+            }
+            setDirection(direction) {
             }
             rotatedBounds() {
                 return {
