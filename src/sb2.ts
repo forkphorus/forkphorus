@@ -706,20 +706,23 @@ namespace P.sb2 {
         element.setAttribute('font-size', size = 18);
       }
       var bb = element.getBBox();
-      var x = 4 - .6 * element.transform.baseVal.consolidate().matrix.a;
-      var y = (element.getAttribute('y') - bb.y) * 1.1;
-      element.setAttribute('x', x);
-      element.setAttribute('y', y);
-      var lines = element.textContent.split('\n');
-      if (lines.length > 1) {
-        element.textContent = lines[0];
-        var lineHeight = LINE_HEIGHTS[font] || 1;
-        for (var i = 1, l = lines.length; i < l; i++) {
-          var tspan = document.createElementNS(null, 'tspan');
-          tspan.textContent = lines[i];
-          tspan.setAttribute('x', '' + x);
-          tspan.setAttribute('y', '' + (y + size * i * lineHeight));
-          element.appendChild(tspan);
+      var transform = element.transform.baseVal.consolidate();
+      if (transform) {
+        var x = 4 - .6 * transform.matrix.a;
+        var y = (element.getAttribute('y') - bb.y) * 1.1;
+        element.setAttribute('x', x);
+        element.setAttribute('y', y);
+        var lines = element.textContent.split('\n');
+        if (lines.length > 1) {
+          element.textContent = lines[0];
+          var lineHeight = LINE_HEIGHTS[font] || 1;
+          for (var i = 1, l = lines.length; i < l; i++) {
+            var tspan = document.createElementNS(null, 'tspan');
+            tspan.textContent = lines[i];
+            tspan.setAttribute('x', '' + x);
+            tspan.setAttribute('y', '' + (y + size * i * lineHeight));
+            element.appendChild(tspan);
+          }
         }
       }
     } else if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
