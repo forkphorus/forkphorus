@@ -1933,10 +1933,10 @@ namespace P.sb3.compiler {
     const VALUE = util.getInput('VALUE', 'number');
     util.writeLn('save();');
     util.writeLn(`R.times = ${VALUE};`);
-    util.writeLn(`if (R.times > 0) ${VARIABLE} = 0;`);
+    util.writeLn('R.current = 0;');
     const label = util.addLabel();
-    util.writeLn(`if (${VARIABLE} < R.times) {`);
-    util.writeLn(`  ${VARIABLE} = ${util.asType(VARIABLE, 'number')} + 1;`);
+    util.writeLn(`if (R.current < R.times) {`);
+    util.writeLn(`  ${VARIABLE} = ++R.current;`);
     util.write(SUBSTACK);
     util.queue(label);
     util.writeLn('} else {');
