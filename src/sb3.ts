@@ -2198,12 +2198,14 @@ namespace P.sb3.compiler {
   statementLibrary['looks_say'] = function(util) {
     const MESSAGE = util.getInput('MESSAGE', 'any');
     util.writeLn(`S.say(${MESSAGE}, false);`);
+    util.visual('visible');
   };
   statementLibrary['looks_sayforsecs'] = function(util) {
     const MESSAGE = util.getInput('MESSAGE', 'any');
     const SECS = util.getInput('SECS', 'number');
     util.writeLn('save();');
     util.writeLn(`R.id = S.say(${MESSAGE}, false);`);
+    util.visual('visible');
     util.writeLn('R.start = runtime.now();');
     util.writeLn(`R.duration = ${SECS};`);
     const label = util.addLabel();
@@ -2214,7 +2216,6 @@ namespace P.sb3.compiler {
     util.writeLn('  S.say("");');
     util.writeLn('}');
     util.writeLn('restore();');
-    util.visual('visible');
   };
   statementLibrary['looks_seteffectto'] = function(util) {
     const EFFECT = util.sanitizedString(util.getField('EFFECT')).toLowerCase();
@@ -2254,6 +2255,7 @@ namespace P.sb3.compiler {
     const SECS = util.getInput('SECS', 'number');
     util.writeLn('save();');
     util.writeLn(`R.id = S.say(${MESSAGE}, true);`);
+    util.visual('visible');
     util.writeLn('R.start = runtime.now();');
     util.writeLn(`R.duration = ${SECS};`);
     const label = util.addLabel();
@@ -2264,7 +2266,6 @@ namespace P.sb3.compiler {
     util.writeLn('  S.say("");');
     util.writeLn('}');
     util.writeLn('restore();');
-    util.visual('visible');
   };
   statementLibrary['motion_changexby'] = function(util) {
     const DX = util.getInput('DX', 'number');
