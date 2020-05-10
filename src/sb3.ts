@@ -3061,7 +3061,11 @@ namespace P.sb3.compiler {
           util.target.listeners.whenKeyPressed[i].push(util.startingFunction);
         }
       } else {
-        util.target.listeners.whenKeyPressed[P.runtime.getKeyCode(KEY_OPTION)].push(util.startingFunction);
+        const keyCode = P.runtime.getKeyCode(KEY_OPTION);
+        if (!util.target.listeners.whenKeyPressed[keyCode]) {
+          util.target.listeners.whenKeyPressed[keyCode] = [];
+        }
+        util.target.listeners.whenKeyPressed[keyCode].push(util.startingFunction);
       }
     },
   };
@@ -3080,17 +3084,20 @@ namespace P.sb3.compiler {
       const KEY = util.getInput('KEY', 'string');
       try {
         const value = P.runtime.scopedEval(KEY.source);
-        var keycode = P.runtime.getKeyCode(value);
+        var keyCode = P.runtime.getKeyCode(value);
       } catch (e) {
         util.compiler.warn('makeymakey key generation error', e);
         return;
       }
-      if (keycode === 'any') {
+      if (keyCode === 'any') {
         for (var i = 128; i--;) {
           util.target.listeners.whenKeyPressed[i].push(util.startingFunction);
         }
       } else {
-        util.target.listeners.whenKeyPressed[keycode].push(util.startingFunction);
+        if (!util.target.listeners.whenKeyPressed[keyCode]) {
+          util.target.listeners.whenKeyPressed[keyCode] = [];
+        }
+        util.target.listeners.whenKeyPressed[keyCode].push(util.startingFunction);
       }
     },
   };
