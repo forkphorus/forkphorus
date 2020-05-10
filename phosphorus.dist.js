@@ -3418,6 +3418,18 @@ var P;
             }
             return false;
         };
+        var numEqualExperimental = function (nx, y) {
+            var ny = +y;
+            return ny === ny && nx === ny;
+        };
+        var numLessExperimental = function (nx, y) {
+            var ny = +y;
+            return ny === ny && nx < y;
+        };
+        var numGreaterExperimental = function (nx, y) {
+            var ny = +y;
+            return ny === ny && nx > y;
+        };
         var strEqual = function (a, b) {
             return (a + '').toLowerCase() === (b + '').toLowerCase();
         };
@@ -7778,10 +7790,10 @@ var P;
         }
         if (P.config.experimentalOptimizations) {
             if (OPERAND1.type === 'number') {
-                return util.booleanInput(`numEqual(${OPERAND1}, ${OPERAND2})`);
+                return util.booleanInput(`numEqualExperimental(${OPERAND1}, ${OPERAND2})`);
             }
             if (OPERAND2.type === 'number') {
-                return util.booleanInput(`numEqual(${OPERAND2}, ${OPERAND1})`);
+                return util.booleanInput(`numEqualExperimental(${OPERAND2}, ${OPERAND1})`);
             }
         }
         return util.booleanInput(`equal(${OPERAND1}, ${OPERAND2})`);
@@ -7789,6 +7801,11 @@ var P;
     inputLibrary['operator_gt'] = function (util) {
         const OPERAND1 = util.getInput('OPERAND1', 'any');
         const OPERAND2 = util.getInput('OPERAND2', 'any');
+        if (P.config.experimentalOptimizations) {
+            if (OPERAND1.type === 'number') {
+                return util.booleanInput(`numGreaterExperimental(${OPERAND1}, ${OPERAND2})`);
+            }
+        }
         return util.booleanInput(`(compare(${OPERAND1}, ${OPERAND2}) === 1)`);
     };
     inputLibrary['operator_join'] = function (util) {
@@ -7808,6 +7825,11 @@ var P;
     inputLibrary['operator_lt'] = function (util) {
         const OPERAND1 = util.getInput('OPERAND1', 'any');
         const OPERAND2 = util.getInput('OPERAND2', 'any');
+        if (P.config.experimentalOptimizations) {
+            if (OPERAND1.type === 'number') {
+                return util.booleanInput(`numLessExperimental(${OPERAND1}, ${OPERAND2})`);
+            }
+        }
         return util.booleanInput(`(compare(${OPERAND1}, ${OPERAND2}) === -1)`);
     };
     inputLibrary['operator_mathop'] = function (util) {

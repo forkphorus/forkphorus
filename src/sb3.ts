@@ -2782,18 +2782,18 @@ namespace P.sb3.compiler {
   inputLibrary['operator_equals'] = function(util) {
     const OPERAND1 = util.getInput('OPERAND1', 'any');
     const OPERAND2 = util.getInput('OPERAND2', 'any');
-    // If we know at compile-time that either input cannot be a number, we will use the faster strEqual
+    // If we know at compile-time that either input cannot be a number, we will use the faster strEqual.
     if (!OPERAND1.potentialNumber || !OPERAND2.potentialNumber) {
       return util.booleanInput(`strEqual(${OPERAND1}, ${OPERAND2})`);
     }
     if (P.config.experimentalOptimizations) {
-      // If we know at compile-time that an input is going to be a number, we will use the faster numEqual method.
+      // If we know at compile-time that an input is a number, we will use the faster numEqual method.
       // The first argument to numEqual must be a number, the other will be converted if necessary.
       if (OPERAND1.type === 'number') {
-        return util.booleanInput(`numEqual(${OPERAND1}, ${OPERAND2})`);
+        return util.booleanInput(`numEqualExperimental(${OPERAND1}, ${OPERAND2})`);
       }
       if (OPERAND2.type === 'number') {
-        return util.booleanInput(`numEqual(${OPERAND2}, ${OPERAND1})`);
+        return util.booleanInput(`numEqualExperimental(${OPERAND2}, ${OPERAND1})`);
       }
     }
     return util.booleanInput(`equal(${OPERAND1}, ${OPERAND2})`);
@@ -2801,7 +2801,11 @@ namespace P.sb3.compiler {
   inputLibrary['operator_gt'] = function(util) {
     const OPERAND1 = util.getInput('OPERAND1', 'any');
     const OPERAND2 = util.getInput('OPERAND2', 'any');
-    // TODO: use numGreater?
+    if (P.config.experimentalOptimizations) {
+      if (OPERAND1.type === 'number') {
+        return util.booleanInput(`numGreaterExperimental(${OPERAND1}, ${OPERAND2})`);
+      }
+    }
     return util.booleanInput(`(compare(${OPERAND1}, ${OPERAND2}) === 1)`);
   };
   inputLibrary['operator_join'] = function(util) {
@@ -2822,7 +2826,11 @@ namespace P.sb3.compiler {
   inputLibrary['operator_lt'] = function(util) {
     const OPERAND1 = util.getInput('OPERAND1', 'any');
     const OPERAND2 = util.getInput('OPERAND2', 'any');
-    // TODO: use numLess?
+    if (P.config.experimentalOptimizations) {
+      if (OPERAND1.type === 'number') {
+        return util.booleanInput(`numLessExperimental(${OPERAND1}, ${OPERAND2})`);
+      }
+    }
     return util.booleanInput(`(compare(${OPERAND1}, ${OPERAND2}) === -1)`);
   };
   inputLibrary['operator_mathop'] = function(util) {

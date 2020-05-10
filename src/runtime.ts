@@ -105,6 +105,21 @@ namespace P.runtime {
     return false;
   };
 
+  var numEqualExperimental = function(nx: number, y: any) {
+    var ny = +y;
+    return ny === ny && nx === ny;
+  };
+
+  var numLessExperimental = function(nx: number, y: any) {
+    var ny = +y;
+    return ny === ny && nx < y;
+  };
+
+  var numGreaterExperimental = function(nx: number, y: any) {
+    var ny = +y;
+    return ny === ny && nx > y;
+  };
+
   // Equality testing optimized for either argument never being number-like.
   var strEqual = function(a: any, b: any) {
     return (a + '').toLowerCase() === (b + '').toLowerCase();
