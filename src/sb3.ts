@@ -449,7 +449,7 @@ namespace P.sb3 {
       if (!this.visible && this._rowHeight === -1) {
         return;
       }
-      
+
       const height = this.list.length * this.getRowHeight();
       this.endpointEl.style.transform = 'translateY(' + (height * this.stage.zoom) + 'px)';
 
@@ -2381,8 +2381,8 @@ namespace P.sb3.compiler {
     util.writeLn(`self.tempoBPM += ${TEMPO};`)
   };
   statementLibrary['music_playDrumForBeats'] = function(util) {
-    const BEATS = util.getInput('BEATS', 'any');
-    const DRUM = util.getInput('DRUM', 'any');
+    const BEATS = util.getInput('BEATS', 'number');
+    const DRUM = util.getInput('DRUM', 'number');
 
     util.writeLn('save();');
     util.writeLn('R.start = runtime.now();');
@@ -2405,9 +2405,9 @@ namespace P.sb3.compiler {
     util.writeLn('restore();');
   };
   statementLibrary['music_playNoteForBeats'] = function(util) {
-    const BEATS = util.getInput('BEATS', 'any');
-    const NOTE = util.getInput('NOTE', 'any');
-    
+    const BEATS = util.getInput('BEATS', 'number');
+    const NOTE = util.getInput('NOTE', 'number');
+
     util.writeLn('save();');
     util.writeLn('R.start = runtime.now();');
     util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);

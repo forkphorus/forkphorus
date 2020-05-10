@@ -7390,8 +7390,8 @@ var P;
         util.writeLn(`self.tempoBPM += ${TEMPO};`);
     };
     statementLibrary['music_playDrumForBeats'] = function (util) {
-        const BEATS = util.getInput('BEATS', 'any');
-        const DRUM = util.getInput('DRUM', 'any');
+        const BEATS = util.getInput('BEATS', 'number');
+        const DRUM = util.getInput('DRUM', 'number');
         util.writeLn('save();');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
@@ -7412,8 +7412,8 @@ var P;
         util.writeLn('restore();');
     };
     statementLibrary['music_playNoteForBeats'] = function (util) {
-        const BEATS = util.getInput('BEATS', 'any');
-        const NOTE = util.getInput('NOTE', 'any');
+        const BEATS = util.getInput('BEATS', 'number');
+        const NOTE = util.getInput('NOTE', 'number');
         util.writeLn('save();');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
