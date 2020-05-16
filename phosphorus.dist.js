@@ -9100,8 +9100,8 @@ var P;
                         throw new Error('cannot get webgl rendering context');
                     }
                     this.gl = gl;
-                    this.noFiltersShader = this.compileVariant([]);
-                    this.allFiltersShader = this.compileVariant([
+                    this.noFiltersShader = this.createShader(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, []);
+                    this.allFiltersShader = this.createShader(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, [
                         'ENABLE_BRIGHTNESS',
                         'ENABLE_COLOR',
                         'ENABLE_GHOST',
@@ -9111,7 +9111,6 @@ var P;
                     ]);
                     this.gl.enable(this.gl.BLEND);
                     this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
-                    this.gl.disable(this.gl.DEPTH_TEST);
                     this.quadBuffer = this.gl.createBuffer();
                     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
                     this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
@@ -9122,6 +9121,7 @@ var P;
                         0, 1,
                         1, 1,
                     ]), this.gl.STATIC_DRAW);
+                    this.reset(1);
                 }
                 getContextOptions() {
                     return {
@@ -9164,8 +9164,8 @@ var P;
                     }
                     return program;
                 }
-                compileVariant(definitions) {
-                    const program = this.compileProgram(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, definitions);
+                createShader(vs, fs, definitions) {
+                    const program = this.compileProgram(vs, fs, definitions);
                     return new Shader(this.gl, program);
                 }
                 convertToTexture(canvas) {
@@ -9180,13 +9180,6 @@ var P;
                     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
                     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
                     return texture;
-                }
-                createFramebuffer() {
-                    const frameBuffer = this.gl.createFramebuffer();
-                    if (!frameBuffer) {
-                        throw new Error('cannot create frame buffer');
-                    }
-                    return frameBuffer;
                 }
                 reset(scale) {
                     scale = scale * P.config.scale;
@@ -9377,9 +9370,11 @@ var P;
       #endif
 
       vec4 color = texture2D(u_texture, texcoord);
+      #ifndef DISABLE_MINIMUM_ALPHA
       if (color.a < minimumAlpha) {
         discard;
       }
+      #endif
 
       #ifdef ENABLE_GHOST
         color.a *= u_opacity;
@@ -9416,7 +9411,12 @@ var P;
                     super();
                     this.gl.enable(this.gl.SCISSOR_TEST);
                     this.gl.scissor(0, 0, 480, 360);
-                    this.touchingShader = new Shader(this.gl, this.compileProgram(CollisionRenderer.touchingVertex, CollisionRenderer.touchingFragment));
+                    this.touchingShader = this.createShader(CollisionRenderer.touchingVertex, WebGLSpriteRenderer.fragmentShader, ['DISABLE_MINIMUM_ALPHA']);
+                }
+                getContextOptions() {
+                    return {
+                        alpha: true
+                    };
                 }
                 drawChild(sprite) {
                     this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
@@ -9438,137 +9438,6 @@ var P;
       gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
       v_texcoord = a_position;
     }`;
-            CollisionRenderer.touchingFragment = `
-    precision mediump float;
-
-    varying vec2 v_texcoord;
-
-    uniform sampler2D u_texture;
-
-    #ifdef ENABLE_BRIGHTNESS
-      uniform float u_brightness;
-    #endif
-    #ifdef ENABLE_COLOR
-      uniform float u_color;
-    #endif
-    #ifdef ENABLE_GHOST
-      uniform float u_opacity;
-    #endif
-    #ifdef ENABLE_MOSAIC
-      uniform float u_mosaic;
-    #endif
-    #ifdef ENABLE_WHIRL
-      uniform float u_whirl;
-    #endif
-    #ifdef ENABLE_FISHEYE
-      uniform float u_fisheye;
-    #endif
-    #ifdef ENABLE_PIXELATE
-      uniform float u_pixelate;
-      uniform vec2 u_size;
-    #endif
-
-    const float minimumAlpha = 1.0 / 250.0;
-    const vec2 vecCenter = vec2(0.5, 0.5);
-
-    // http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl
-    vec3 rgb2hsv(vec3 c) {
-      vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
-      vec4 p = c.g < c.b ? vec4(c.bg, K.wz) : vec4(c.gb, K.xy);
-      vec4 q = c.r < p.x ? vec4(p.xyw, c.r) : vec4(c.r, p.yzx);
-      float d = q.x - min(q.w, q.y);
-      float e = 1.0e-10;
-      return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
-    }
-    vec3 hsv2rgb(vec3 c) {
-      vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-      vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-      return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
-    }
-
-    void main() {
-      // varyings cannot be modified
-      vec2 texcoord = v_texcoord;
-
-      #ifdef ENABLE_MOSAIC
-        texcoord = fract(u_mosaic * v_texcoord);
-      #endif
-
-      #ifdef ENABLE_PIXELATE
-      if (u_pixelate != 0.0) {
-        vec2 texelSize = u_size / u_pixelate;
-        texcoord = (floor(texcoord * texelSize) + vecCenter) / texelSize;
-      }
-      #endif
-
-      #ifdef ENABLE_WHIRL
-      {
-        const float radius = 0.5;
-        vec2 offset = texcoord - vecCenter;
-        float offsetMagnitude = length(offset);
-        float whirlFactor = max(1.0 - (offsetMagnitude / radius), 0.0);
-        float whirlActual = u_whirl * whirlFactor * whirlFactor;
-        float sinWhirl = sin(whirlActual);
-        float cosWhirl = cos(whirlActual);
-        mat2 rotationMatrix = mat2(
-          cosWhirl, -sinWhirl,
-          sinWhirl, cosWhirl
-        );
-        texcoord = rotationMatrix * offset + vecCenter;
-      }
-      #endif
-
-      #ifdef ENABLE_FISHEYE
-      {
-        vec2 vec = (texcoord - vecCenter) / vecCenter;
-        float vecLength = length(vec);
-        float r = pow(min(vecLength, 1.0), u_fisheye) * max(1.0, vecLength);
-        vec2 unit = vec / vecLength;
-        texcoord = vecCenter + r * unit * vecCenter;
-      }
-      #endif
-
-      vec4 color = texture2D(u_texture, texcoord);
-      // if (color.a < minimumAlpha) {
-      //   discard;
-      // }
-
-      #ifdef ENABLE_GHOST
-        color.a *= u_opacity;
-      #endif
-
-      #ifdef ENABLE_COLOR
-      if (u_color != 0.0) {
-        vec3 hsv = rgb2hsv(color.rgb);
-        // hsv.x = hue
-        // hsv.y = saturation
-        // hsv.z = value
-
-        // scratch forces all colors to have some minimal amount saturation so there is a visual change
-        const float minValue = 0.11 / 2.0;
-        const float minSaturation = 0.09;
-        if (hsv.z < minValue) hsv = vec3(0.0, 1.0, minValue);
-        else if (hsv.y < minSaturation) hsv = vec3(0.0, minSaturation, hsv.z);
-
-        hsv.x = mod(hsv.x + u_color, 1.0);
-        if (hsv.x < 0.0) hsv.x += 1.0;
-        color = vec4(hsv2rgb(hsv), color.a);
-      }
-      #endif
-
-      #ifdef ENABLE_BRIGHTNESS
-        color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
-      #endif
-
-      if (color.a > 0.0) {
-        color = vec4(1.0, 1.0, 1.0, 1.0);
-      } else {
-        color = vec4(0.0, 0.0, 0.0, 0.0);
-      }
-
-      gl_FragColor = color;
-    }
-    `;
             class PenRenderer extends WebGLSpriteRenderer {
                 constructor() {
                     super();
@@ -9579,13 +9448,10 @@ var P;
                     this.penCoordsIndex = 0;
                     this.penLinesIndex = 0;
                     this.penColorsIndex = 0;
-                    this.shader = new Shader(this.gl, this.compileProgram(PenRenderer.PEN_VERTEX_SHADER, PenRenderer.PEN_FRAGMENT_SHADER));
+                    this.shader = this.createShader(PenRenderer.PEN_VERTEX_SHADER, PenRenderer.PEN_FRAGMENT_SHADER);
                     this.positionBuffer = this.gl.createBuffer();
                     this.lineBuffer = this.gl.createBuffer();
                     this.colorBuffer = this.gl.createBuffer();
-                    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
-                    this.gl.enable(this.gl.BLEND);
-                    this.gl.disable(this.gl.DEPTH_TEST);
                     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
                 }
                 getContextOptions() {
@@ -9850,6 +9716,7 @@ var P;
                     this.drawChild(sprite);
                 }
                 penClear() {
+                    this.gl.clearColor(0, 0, 0, 0);
                     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
                 }
             }
@@ -9903,22 +9770,21 @@ var P;
                     super();
                     this.stage = stage;
                     this.zoom = 1;
-                    this.shaderOnlyShapeFilters = this.compileVariant(['ONLY_SHAPE_FILTERS']);
+                    this.shaderOnlyShapeFilters = this.createShader(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, ['ONLY_SHAPE_FILTERS']);
                     this.collisionRenderer = new CollisionRenderer();
                     this.penRenderer = new PenRenderer();
                     this.fallbackRenderer = new P.renderer.canvas2d.ProjectRenderer2D(stage);
-                    this.reset(1);
                 }
                 drawFrame() {
                     if (this.penRenderer.pendingPenOperations()) {
                         this.penRenderer.drawPen();
                     }
-                    this.reset(this.zoom);
-                    this.drawChild(this.stage);
                     if (this.penRenderer.dirty) {
                         this.updatePenTexture();
                         this.penRenderer.dirty = false;
                     }
+                    this.reset(this.zoom);
+                    this.drawChild(this.stage);
                     if (this.penTexture) {
                         this.drawTextureOverlay(this.penTexture);
                     }
@@ -9949,9 +9815,12 @@ var P;
                 }
                 updatePenTexture() {
                     if (this.penTexture) {
-                        this.gl.deleteTexture(this.penTexture);
+                        this.gl.bindTexture(this.gl.TEXTURE_2D, this.penTexture);
+                        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.penRenderer.canvas);
                     }
-                    this.penTexture = this.convertToTexture(this.penRenderer.canvas);
+                    else {
+                        this.penTexture = this.convertToTexture(this.penRenderer.canvas);
+                    }
                 }
                 resize(scale) {
                     this.zoom = scale;
