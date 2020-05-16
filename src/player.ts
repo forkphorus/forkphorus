@@ -891,6 +891,8 @@ namespace P.player {
       }
       this.onload.emit(stage);
 
+      this.stage.draw();
+
       this.enactAutoplayPolicy(this.options.autoplayPolicy);
     }
 

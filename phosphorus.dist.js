@@ -3080,6 +3080,7 @@ var P;
                     this.focus();
                 }
                 this.onload.emit(stage);
+                this.stage.draw();
                 this.enactAutoplayPolicy(this.options.autoplayPolicy);
             }
             loadLoader(loaderId, loader) {
