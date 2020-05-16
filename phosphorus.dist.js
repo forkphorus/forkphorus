@@ -530,8 +530,11 @@ var P;
                         const rgb = P.utils.hsvToRGB(this.x / 360, this.y / 100, this.z / 100);
                         return [rgb[0], rgb[1], rgb[2], this.a];
                     }
+                    case 1: {
+                        const rgb = P.utils.hslToRGB(this.x / 360, this.y / 100, this.z / 100);
+                        return [rgb[0], rgb[1], rgb[2], this.a];
+                    }
                 }
-                return [255, 0, 0, 1];
             }
             toCSS() {
                 switch (this.mode) {
@@ -544,7 +547,6 @@ var P;
                         return 'rgba(' + rgb[0] + ', ' + rgb[1] + ', ' + rgb[2] + ', ' + this.a + ')';
                     }
                 }
-                throw new Error('Unknown pen color mode: ' + this.mode);
             }
             setParam(param, value) {
                 this.toHSVA();
@@ -2448,6 +2450,34 @@ var P;
             return [r * 255, g * 255, b * 255];
         }
         utils.hsvToRGB = hsvToRGB;
+        function hslToRGB(h, s, l) {
+            var r, g, b;
+            if (s == 0) {
+                r = g = b = l;
+            }
+            else {
+                function hue2rgb(p, q, t) {
+                    if (t < 0)
+                        t += 1;
+                    if (t > 1)
+                        t -= 1;
+                    if (t < 1 / 6)
+                        return p + (q - p) * 6 * t;
+                    if (t < 1 / 2)
+                        return q;
+                    if (t < 2 / 3)
+                        return p + (q - p) * (2 / 3 - t) * 6;
+                    return p;
+                }
+                var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                var p = 2 * l - q;
+                r = hue2rgb(p, q, h + 1 / 3);
+                g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1 / 3);
+            }
+            return [r * 255, g * 255, b * 255];
+        }
+        utils.hslToRGB = hslToRGB;
         function hslToHSV(h, s, l) {
             var v = l + s * Math.min(l, 1 - l);
             var s = v === 0 ? 0 : 2 - 2 * l / v;

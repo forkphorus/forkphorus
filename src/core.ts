@@ -152,8 +152,11 @@ namespace P.core {
           const rgb = P.utils.hsvToRGB(this.x / 360, this.y / 100, this.z / 100);
           return [rgb[0], rgb[1], rgb[2], this.a];
         }
+        case PenMode.HSLA: {
+          const rgb = P.utils.hslToRGB(this.x / 360, this.y / 100, this.z / 100);
+          return [rgb[0], rgb[1], rgb[2], this.a];
+        }
       }
-      return [255, 0, 0, 1];
     }
 
     /**
@@ -170,7 +173,6 @@ namespace P.core {
           return 'rgba(' + rgb[0] + ', ' + rgb[1] + ', ' + rgb[2] + ', ' + this.a + ')';
         }
       }
-      throw new Error('Unknown pen color mode: ' + this.mode);
     }
 
     setParam(param: string, value: number) {
