@@ -45,7 +45,6 @@ var P;
     (function (config) {
         const features = location.search.replace('?', '').split('&');
         config.debug = features.indexOf('debug') > -1;
-        config.useWebGL = features.indexOf('webgl') > -1;
         config.supportVideoSensing = features.indexOf('video') > -1;
         config.experimentalOptimizations = features.indexOf('opt') > -1;
         config.scale = window.devicePixelRatio || 1;
@@ -1010,10 +1009,11 @@ var P;
                 this.keys.any = 0;
                 this.root = document.createElement('div');
                 this.root.classList.add('forkphorus-root');
-                if (P.config.useWebGL) {
+                try {
                     this.renderer = new P.renderer.webgl.WebGLProjectRenderer(this);
                 }
-                else {
+                catch (e) {
+                    console.warn('unable to create WebGL renderer, falling back to 2d', e);
                     this.renderer = new P.renderer.canvas2d.ProjectRenderer2D(this);
                 }
                 this.renderer.resize(1);

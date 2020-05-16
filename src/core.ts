@@ -832,9 +832,10 @@ namespace P.core {
       this.root = document.createElement('div');
       this.root.classList.add('forkphorus-root');
 
-      if (P.config.useWebGL) {
+      try {
         this.renderer = new P.renderer.webgl.WebGLProjectRenderer(this);
-      } else {
+      } catch (e) {
+        console.warn('unable to create WebGL renderer, falling back to 2d', e);
         this.renderer = new P.renderer.canvas2d.ProjectRenderer2D(this);
       }
       this.renderer.resize(1);
