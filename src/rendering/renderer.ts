@@ -3,15 +3,11 @@
 namespace P.renderer {
   // Abstract definition for renderers.
 
-  export interface SpriteRenderer {
-    canvas: HTMLCanvasElement;
+  export interface ProjectRenderer {
     /**
-     * Draws a Sprite or Stage on this renderer
+     * The canvas used by this renderer.
      */
-    drawChild(child: P.core.Base): void;
-  }
-
-  export interface ProjectRenderer extends SpriteRenderer {
+    canvas: HTMLCanvasElement;
     /**
      * The stage that this renderer is used by.
      * This renderer must only be used by this stage and with sprites within this stage.

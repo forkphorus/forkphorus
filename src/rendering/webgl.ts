@@ -151,7 +151,7 @@ namespace P.renderer.webgl {
     }
   }
 
-  class WebGLSpriteRenderer implements SpriteRenderer {
+  class WebGLSpriteRenderer {
     public static vertexShader: string = `
     attribute vec2 a_position;
 
@@ -1225,7 +1225,7 @@ namespace P.renderer.webgl {
 
     private collisionRenderer: CollisionRenderer = new CollisionRenderer();
     private penRenderer: PenRenderer = new PenRenderer();
-    private stageRenderer: SpriteRenderer = new WebGLSpriteRenderer();
+    private stageRenderer = new WebGLSpriteRenderer();
 
     constructor(public stage: P.core.Stage) {
       super();

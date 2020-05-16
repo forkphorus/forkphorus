@@ -32,7 +32,7 @@ namespace P.renderer.canvas2d {
     return { canvas, ctx };
   }
 
-  export class SpriteRenderer2D implements SpriteRenderer {
+  export class SpriteRenderer2D {
     public ctx: CanvasRenderingContext2D;
     public canvas: HTMLCanvasElement;
 
