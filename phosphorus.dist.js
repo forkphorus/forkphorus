@@ -2690,6 +2690,16 @@ var P;
                 };
                 this.controlsContainer = document.createElement('div');
                 this.controlsContainer.className = 'player-controls';
+                this.controlsContainer.onmousedown = (e) => {
+                    if (e.target !== this.controlsContainer) {
+                        e.stopPropagation();
+                    }
+                };
+                this.controlsContainer.ontouchstart = (e) => {
+                    if (e.target !== this.controlsContainer) {
+                        e.stopPropagation();
+                    }
+                };
                 if (options.enableStop !== false) {
                     var stopButton = document.createElement('span');
                     stopButton.className = 'player-button player-stop';

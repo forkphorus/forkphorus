@@ -408,6 +408,19 @@ namespace P.player {
       this.controlsContainer = document.createElement('div');
       this.controlsContainer.className = 'player-controls';
 
+      // prevent click events from firing on the project when using controls
+      // only prevent if clicking on a button and not empty space
+      this.controlsContainer.onmousedown = (e) => {
+        if (e.target !== this.controlsContainer) {
+          e.stopPropagation();
+        }
+      };
+      this.controlsContainer.ontouchstart = (e) => {
+        if (e.target !== this.controlsContainer) {
+          e.stopPropagation();
+        }
+      };
+
       if (options.enableStop !== false) {
         var stopButton = document.createElement('span');
         stopButton.className = 'player-button player-stop';
