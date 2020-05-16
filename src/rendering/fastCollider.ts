@@ -19,13 +19,13 @@ namespace P.renderer.fastCollider {
       const imageData = this.getImageData(costume);
 
       var cx = (x - sprite.scratchX) / sprite.scale;
-      var cy = (sprite.scratchY - y) / sprite.scale;
       cx = Math.floor(cx / costume.scale + costume.rotationCenterX);
-      cy = Math.floor(cy / costume.scale + costume.rotationCenterY);
-
       if (cx < 0) return false;
-      if (cy < 0) return false;
       if (cx >= imageData.width) return false;
+
+      var cy = (sprite.scratchY - y) / sprite.scale;
+      cy = Math.floor(cy / costume.scale + costume.rotationCenterY);
+      if (cy < 0) return false;
       if (cy >= imageData.height) return false;
 
       const alpha = imageData.data[4 * (cy * imageData.width + cx) + 3];
@@ -79,13 +79,13 @@ namespace P.renderer.fastCollider {
             for (const s of otherCollidables) {
 
               var cx = (x - s.sprite.scratchX) / s.sprite.scale;
-              var cy = (s.sprite.scratchY - y) / s.sprite.scale;
               cx = Math.floor(cx / s.costume.scale + s.costume.rotationCenterX);
-              cy = Math.floor(cy / s.costume.scale + s.costume.rotationCenterY);
-
               if (cx < 0) continue;
-              if (cy < 0) continue;
               if (cx >= s.imageData.width) continue;
+
+              var cy = (s.sprite.scratchY - y) / s.sprite.scale;
+              cy = Math.floor(cy / s.costume.scale + s.costume.rotationCenterY);
+              if (cy < 0) continue;
               if (cy >= s.imageData.height) continue;
 
               const alpha = s.imageData.data[4 * (cy * s.imageData.width + cx) + 3];

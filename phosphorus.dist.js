@@ -8843,14 +8843,14 @@ var P;
                     const costume = sprite.costumes[sprite.currentCostumeIndex];
                     const imageData = this.getImageData(costume);
                     var cx = (x - sprite.scratchX) / sprite.scale;
-                    var cy = (sprite.scratchY - y) / sprite.scale;
                     cx = Math.floor(cx / costume.scale + costume.rotationCenterX);
-                    cy = Math.floor(cy / costume.scale + costume.rotationCenterY);
                     if (cx < 0)
                         return false;
-                    if (cy < 0)
-                        return false;
                     if (cx >= imageData.width)
+                        return false;
+                    var cy = (sprite.scratchY - y) / sprite.scale;
+                    cy = Math.floor(cy / costume.scale + costume.rotationCenterY);
+                    if (cy < 0)
                         return false;
                     if (cy >= imageData.height)
                         return false;
@@ -8885,14 +8885,14 @@ var P;
                             if (this.spriteTouchesPoint(spriteA, x, y)) {
                                 for (const s of otherCollidables) {
                                     var cx = (x - s.sprite.scratchX) / s.sprite.scale;
-                                    var cy = (s.sprite.scratchY - y) / s.sprite.scale;
                                     cx = Math.floor(cx / s.costume.scale + s.costume.rotationCenterX);
-                                    cy = Math.floor(cy / s.costume.scale + s.costume.rotationCenterY);
                                     if (cx < 0)
                                         continue;
-                                    if (cy < 0)
-                                        continue;
                                     if (cx >= s.imageData.width)
+                                        continue;
+                                    var cy = (s.sprite.scratchY - y) / s.sprite.scale;
+                                    cy = Math.floor(cy / s.costume.scale + s.costume.rotationCenterY);
+                                    if (cy < 0)
                                         continue;
                                     if (cy >= s.imageData.height)
                                         continue;
