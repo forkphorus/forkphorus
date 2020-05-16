@@ -414,30 +414,20 @@ namespace P.renderer.webgl {
     }
 
     /**
-     * Creates a new texture without inserting data.
-     * Texture will be bound to TEXTURE_2D, so you can texImage2D() on it
+     * Converts a canvas to a WebGL texture
+     * @param canvas The source canvas. Dimensions do not matter.
      */
-    protected createTexture(): WebGLTexture {
+    protected convertToTexture(canvas: HTMLImageElement | HTMLCanvasElement): WebGLTexture {
       const texture = this.gl.createTexture();
       if (!texture) {
         throw new Error('Cannot create texture');
       }
       this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
-
+      this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
       this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
       this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
-      this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
-
-      return texture;
-    }
-
-    /**
-     * Converts a canvas to a WebGL texture
-     * @param canvas The source canvas. Dimensions do not matter.
-     */
-    protected convertToTexture(canvas: HTMLImageElement | HTMLCanvasElement): WebGLTexture {
-      const texture = this.createTexture();
-      this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
+      this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
+      this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
       return texture;
     }
 
@@ -456,6 +446,7 @@ namespace P.renderer.webgl {
      * Reset and resize this renderer.
      */
     reset(scale: number) {
+      scale = scale * P.config.scale;
       this.canvas.width = scale * 480;
       this.canvas.height = scale * 360;
       this.gl.viewport(0, 0, scale * 480, scale * 360);
