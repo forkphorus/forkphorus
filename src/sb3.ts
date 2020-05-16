@@ -121,7 +121,7 @@ namespace P.sb3 {
 
   // Implements a Scratch 3 Sprite.
   export class Scratch3Sprite extends P.core.Sprite {
-    public sb3data: any;
+    public sb3data: SB3Target;
     public listIds: ObjectMap<string> = {};
 
     _clone() {
