@@ -301,8 +301,6 @@ namespace P.renderer.webgl {
     protected allFiltersShader: Shader;
     protected noFiltersShader: Shader;
 
-    private boundFramebuffer: WebGLFramebuffer | null = null;
-
     private costumeTextures: Map<P.core.Costume, WebGLTexture> = new Map();
 
     constructor() {
@@ -452,14 +450,6 @@ namespace P.renderer.webgl {
         throw new Error('cannot create frame buffer');
       }
       return frameBuffer;
-    }
-
-    protected bindFramebuffer(buffer: WebGLFramebuffer | null) {
-      if (buffer === this.boundFramebuffer) {
-        return;
-      }
-      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, buffer);
-      this.boundFramebuffer = buffer;
     }
 
     /**
@@ -1239,7 +1229,6 @@ namespace P.renderer.webgl {
     }
 
     drawFrame() {
-      this.bindFramebuffer(null);
       if (this.penRenderer.pendingPenOperations()) {
         this.penRenderer.drawPen();
       }
