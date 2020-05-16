@@ -1188,6 +1188,7 @@ namespace P.renderer.webgl {
     }
 
     penStamp(sprite: P.core.Sprite): void {
+      this.dirty = true;
       if (this.penCoordsIndex) {
         this.drawPen();
       }

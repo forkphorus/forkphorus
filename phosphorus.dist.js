@@ -9805,6 +9805,7 @@ var P;
                     }
                 }
                 penStamp(sprite) {
+                    this.dirty = true;
                     if (this.penCoordsIndex) {
                         this.drawPen();
                     }
