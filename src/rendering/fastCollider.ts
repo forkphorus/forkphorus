@@ -1,15 +1,24 @@
 namespace P.renderer.fastCollider {
+  class FastImageData implements ImageData {
+    public readonly width: number;
+    public readonly height: number;
+    public readonly data: Uint8ClampedArray;
+
+    constructor(imageData: ImageData) {
+      this.width = imageData.width;
+      this.height = imageData.height;
+      this.data = imageData.data;
+    }
+  }
+
   export class FastCollider {
     private imageData: Map<P.core.Costume, ImageData> = new Map();
 
     getImageData(costume: P.core.Costume): ImageData {
       if (!this.imageData.has(costume)) {
-        // if (costume instanceof P.core.BitmapCostume) {
         const ctx = costume.getContext();
-        this.imageData.set(costume, ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height));
-        // } else {
-        //   throw new Error('Unsupported costume');
-        // }
+        const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+        this.imageData.set(costume, new FastImageData(imageData));
       }
       return this.imageData.get(costume)!;
     }
@@ -28,25 +37,7 @@ namespace P.renderer.fastCollider {
       if (cy < 0) return false;
       if (cy >= imageData.height) return false;
 
-      const alpha = imageData.data[4 * (cy * imageData.width + cx) + 3];
-      // const alpha = imageData.data[(cy * (imageData.width * 4)) + (cx * 4) + 3];
-
-      if (alpha !== 0){
-        // window.e=window.e||[];
-        // window.e.push([sprite.name, cx, cy, 4 * (cy * imageData.width + cx) + 3, imageData.data.length, alpha]);
-        // if(sprite.name==='Sprite2'){
-          // var p = document.createElement('div');
-          // p.style.width='1px';
-          // p.style.height='1px';
-          // p.style.background='red';
-          // p.style.position='absolute';
-          // p.style.left = (240 + x) + 'px';
-          // p.style.top = (180 - y) + 'px';
-          // sprite.stage.ui.appendChild(p);
-        // }
-      }
-
-      return alpha !== 0;
+      return imageData.data[4 * (cy * imageData.width + cx) + 3] !== 0;
     }
 
     spritesIntersect(spriteA: P.core.Sprite, otherSprites: P.core.Sprite[]) {
@@ -105,9 +96,7 @@ namespace P.renderer.fastCollider {
               if (cy < 0) continue;
               if (cy >= s.imageData.height) continue;
 
-              const alpha = s.imageData.data[4 * (cy * s.imageData.width + cx) + 3];
-
-              if (alpha !== 0) {
+              if (s.imageData.data[4 * (cy * s.imageData.width + cx) + 3] !== 0) {
                 return true;
               }
             }

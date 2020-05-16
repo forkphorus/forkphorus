@@ -8828,6 +8828,13 @@ var P;
     (function (renderer) {
         var fastCollider;
         (function (fastCollider) {
+            class FastImageData {
+                constructor(imageData) {
+                    this.width = imageData.width;
+                    this.height = imageData.height;
+                    this.data = imageData.data;
+                }
+            }
             class FastCollider {
                 constructor() {
                     this.imageData = new Map();
@@ -8835,7 +8842,8 @@ var P;
                 getImageData(costume) {
                     if (!this.imageData.has(costume)) {
                         const ctx = costume.getContext();
-                        this.imageData.set(costume, ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height));
+                        const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+                        this.imageData.set(costume, new FastImageData(imageData));
                     }
                     return this.imageData.get(costume);
                 }
@@ -8854,10 +8862,7 @@ var P;
                         return false;
                     if (cy >= imageData.height)
                         return false;
-                    const alpha = imageData.data[4 * (cy * imageData.width + cx) + 3];
-                    if (alpha !== 0) {
-                    }
-                    return alpha !== 0;
+                    return imageData.data[4 * (cy * imageData.width + cx) + 3] !== 0;
                 }
                 spritesIntersect(spriteA, otherSprites) {
                     const rb = spriteA.rotatedBounds();
@@ -8915,8 +8920,7 @@ var P;
                                         continue;
                                     if (cy >= s.imageData.height)
                                         continue;
-                                    const alpha = s.imageData.data[4 * (cy * s.imageData.width + cx) + 3];
-                                    if (alpha !== 0) {
+                                    if (s.imageData.data[4 * (cy * s.imageData.width + cx) + 3] !== 0) {
                                         return true;
                                     }
                                 }
