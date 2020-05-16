@@ -139,11 +139,21 @@ namespace P.core {
     }
 
     /**
-     * Convert this color to its RGBA parts, each from 0-1
+     * Convert this color to its RGBA parts
+     * R, G, B [0-255]
+     * A [0-1]
      */
     toParts(): [number, number, number, number] {
-      // TODO, not important for now
-      return [1, 0, 0, 1];
+      switch (this.mode) {
+        case PenMode.RGBA: {
+          return [this.x, this.y, this.z, this.a];
+        }
+        case PenMode.HSVA: {
+          const rgb = P.utils.hsvToRGB(this.x / 360, this.y / 100, this.z / 100);
+          return [rgb[0], rgb[1], rgb[2], this.a];
+        }
+      }
+      return [255, 0, 0, 1];
     }
 
     /**
@@ -521,7 +531,9 @@ namespace P.core {
       if (this.node) {
         for (const sound of this.activeSounds) {
           sound.stopped = true;
-          sound.node.disconnect();
+          if (sound.node) {
+            sound.node.disconnect();
+          }
         }
         this.activeSounds.clear();
         this.node.disconnect();
@@ -533,7 +545,9 @@ namespace P.core {
       if (this.node) {
         for (const sound of this.activeSounds) {
           if (sound.base !== originBase) {
-            sound.node.disconnect();
+            if (sound.node) {
+              sound.node.disconnect();
+            }
             sound.stopped = true;
             this.activeSounds.delete(sound);
           }
@@ -658,7 +672,9 @@ namespace P.core {
       if (this.node && this.isClone && !this.isStage) {
         // Continue playing sounds started with "start sound" after this sprite has been removed.
         for (const sound of this.activeSounds) {
-          sound.node.disconnect();
+          if (sound.node) {
+            sound.node.disconnect();
+          }
           sound.stopped = true;
         }
         this.activeSounds.clear();
@@ -1091,8 +1107,8 @@ namespace P.core {
       if (x > 240) x = 240;
       if (y < -180) y = -180;
       if (y > 180) y = 180;
-      this.mouseX = x;
-      this.mouseY = y;
+      this.mouseX = Math.round(x);
+      this.mouseY = Math.round(y);
     }
 
     /**
@@ -1283,14 +1299,19 @@ namespace P.core {
     }
 
     moveTo() {
-      // do nothing -- stage cannot be moved
+      // no-op
     }
 
     forward() {
-      // do nothing -- stage cannot be moved
+      // no-op
+    }
+
+    setDirection(direction: number) {
+      // no-op
     }
 
     rotatedBounds() {
+      // no-op
       return {
         top: 0,
         bottom: 0,
@@ -1307,10 +1328,12 @@ namespace P.core {
     }
 
     touchingColor(color: number) {
+      // no-op
       return false;
     }
 
     colorTouchingColor(colorA: number, colorB: number) {
+      // no-op
       return false;
     }
 

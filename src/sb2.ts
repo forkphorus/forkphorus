@@ -706,20 +706,23 @@ namespace P.sb2 {
         element.setAttribute('font-size', size = 18);
       }
       var bb = element.getBBox();
-      var x = 4 - .6 * element.transform.baseVal.consolidate().matrix.a;
-      var y = (element.getAttribute('y') - bb.y) * 1.1;
-      element.setAttribute('x', x);
-      element.setAttribute('y', y);
-      var lines = element.textContent.split('\n');
-      if (lines.length > 1) {
-        element.textContent = lines[0];
-        var lineHeight = LINE_HEIGHTS[font] || 1;
-        for (var i = 1, l = lines.length; i < l; i++) {
-          var tspan = document.createElementNS(null, 'tspan');
-          tspan.textContent = lines[i];
-          tspan.setAttribute('x', '' + x);
-          tspan.setAttribute('y', '' + (y + size * i * lineHeight));
-          element.appendChild(tspan);
+      var transform = element.transform.baseVal.consolidate();
+      if (transform) {
+        var x = 4 - .6 * transform.matrix.a;
+        var y = (element.getAttribute('y') - bb.y) * 1.1;
+        element.setAttribute('x', x);
+        element.setAttribute('y', y);
+        var lines = element.textContent.split('\n');
+        if (lines.length > 1) {
+          element.textContent = lines[0];
+          var lineHeight = LINE_HEIGHTS[font] || 1;
+          for (var i = 1, l = lines.length; i < l; i++) {
+            var tspan = document.createElementNS(null, 'tspan');
+            tspan.textContent = lines[i];
+            tspan.setAttribute('x', '' + x);
+            tspan.setAttribute('y', '' + (y + size * i * lineHeight));
+            element.appendChild(tspan);
+          }
         }
       }
     } else if ((element.hasAttribute('x') || element.hasAttribute('y')) && element.hasAttribute('transform')) {
@@ -1881,7 +1884,14 @@ namespace P.sb2.compiler {
       (object.listeners.whenSceneStarts[key] || (object.listeners.whenSceneStarts[key] = [])).push(f);
     } else if (script[0][0] === 'procDef') {
       const warp = script[0][4];
-      object.procedures[script[0][1]] = new Scratch2Procedure(f, warp, inputs);
+      const name = script[0][1];
+      // don't define procedure if it already exists
+      // https://github.com/forkphorus/forkphorus/issues/186
+      if (!object.procedures[name]) {
+        object.procedures[name] = new Scratch2Procedure(f, warp, inputs);
+      } else {
+        warn('procedure already exists: ' + name);
+      }
     } else {
       warn('Undefined event: ' + script[0][0]);
     }

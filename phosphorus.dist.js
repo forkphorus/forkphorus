@@ -522,7 +522,16 @@ var P;
                 }
             }
             toParts() {
-                return [1, 0, 0, 1];
+                switch (this.mode) {
+                    case 0: {
+                        return [this.x, this.y, this.z, this.a];
+                    }
+                    case 2: {
+                        const rgb = P.utils.hsvToRGB(this.x / 360, this.y / 100, this.z / 100);
+                        return [rgb[0], rgb[1], rgb[2], this.a];
+                    }
+                }
+                return [255, 0, 0, 1];
             }
             toCSS() {
                 switch (this.mode) {
@@ -794,7 +803,9 @@ var P;
                 if (this.node) {
                     for (const sound of this.activeSounds) {
                         sound.stopped = true;
-                        sound.node.disconnect();
+                        if (sound.node) {
+                            sound.node.disconnect();
+                        }
                     }
                     this.activeSounds.clear();
                     this.node.disconnect();
@@ -805,7 +816,9 @@ var P;
                 if (this.node) {
                     for (const sound of this.activeSounds) {
                         if (sound.base !== originBase) {
-                            sound.node.disconnect();
+                            if (sound.node) {
+                                sound.node.disconnect();
+                            }
                             sound.stopped = true;
                             this.activeSounds.delete(sound);
                         }
@@ -916,7 +929,9 @@ var P;
                 }
                 if (this.node && this.isClone && !this.isStage) {
                     for (const sound of this.activeSounds) {
-                        sound.node.disconnect();
+                        if (sound.node) {
+                            sound.node.disconnect();
+                        }
                         sound.stopped = true;
                     }
                     this.activeSounds.clear();
@@ -1238,8 +1253,8 @@ var P;
                     y = -180;
                 if (y > 180)
                     y = 180;
-                this.mouseX = x;
-                this.mouseY = y;
+                this.mouseX = Math.round(x);
+                this.mouseY = Math.round(y);
             }
             setZoom(zoom) {
                 if (this.zoom === zoom)
@@ -1398,6 +1413,8 @@ var P;
             moveTo() {
             }
             forward() {
+            }
+            setDirection(direction) {
             }
             rotatedBounds() {
                 return {
@@ -2056,11 +2073,37 @@ var P;
             }
         }
         io.AbstractTask = AbstractTask;
-        class Request extends AbstractTask {
+        class Retry extends AbstractTask {
+            try(handle) {
+                return new Promise((resolve, reject) => {
+                    handle()
+                        .then((response) => resolve(response))
+                        .catch((err) => {
+                        if (this.aborted) {
+                            reject(err);
+                            return;
+                        }
+                        console.warn(`First attempt to ${this.getRetryWarningDescription()} failed, trying again.`, err);
+                        setTimeout(() => {
+                            handle()
+                                .then((response) => resolve(response))
+                                .catch((err) => reject(err));
+                        }, 250);
+                    });
+                });
+            }
+            getRetryWarningDescription() {
+                return 'complete task';
+            }
+            abort() {
+                this.aborted = true;
+            }
+        }
+        io.Retry = Retry;
+        class Request extends Retry {
             constructor(url) {
                 super();
                 this.url = url;
-                this.aborted = false;
                 this.shouldIgnoreErrors = false;
                 this.workComputable = false;
                 this.totalWork = 0;
@@ -2082,7 +2125,7 @@ var P;
                 return this.completedWork;
             }
             abort() {
-                this.aborted = true;
+                super.abort();
                 if (this.xhr) {
                     this.xhr.abort();
                 }
@@ -2137,34 +2180,33 @@ var P;
             }
             load(type) {
                 this.responseType = type;
-                return new Promise((resolve, reject) => {
-                    this._load()
-                        .then((response) => resolve(response))
-                        .catch((err) => {
-                        if (this.aborted) {
-                            reject(err);
-                            return;
-                        }
-                        console.warn(`First attempt to download ${this.url} failed, trying again.`, err);
-                        setTimeout(() => {
-                            this._load()
-                                .then((response) => resolve(response))
-                                .catch((err) => reject(err));
-                        }, 250);
-                    });
-                });
+                return this.try(() => this._load());
+            }
+            getRetryWarningDescription() {
+                return `download ${this.url}`;
             }
         }
         Request.acceptableResponseCodes = [0, 200];
         io.Request = Request;
-        class Img extends AbstractTask {
+        class Img extends Retry {
             constructor(src) {
                 super();
-                this.complete = false;
-                this.aborted = false;
                 this.src = src;
+                this.complete = false;
             }
-            load() {
+            isComplete() {
+                return this.complete;
+            }
+            isWorkComputable() {
+                return false;
+            }
+            getTotalWork() {
+                return 0;
+            }
+            getCompletedWork() {
+                return 0;
+            }
+            _load() {
                 return new Promise((resolve, reject) => {
                     const image = new Image();
                     image.onload = () => {
@@ -2179,20 +2221,11 @@ var P;
                     image.src = this.src;
                 });
             }
-            isComplete() {
-                return this.complete;
+            load() {
+                return this.try(() => this._load());
             }
-            isWorkComputable() {
-                return false;
-            }
-            getTotalWork() {
-                return 0;
-            }
-            getCompletedWork() {
-                return 0;
-            }
-            abort() {
-                this.aborted = true;
+            getRetryWarningDescription() {
+                return `download image ${this.src}`;
             }
         }
         io.Img = Img;
@@ -2526,6 +2559,7 @@ var P;
             }
             load() {
                 return new P.io.Request('https://scratch.garbomuffin.com/proxy/projects/$id'.replace('$id', this.id))
+                    .ignoreErrors()
                     .load('json')
                     .then((data) => {
                     if (data.title) {
@@ -2845,7 +2879,9 @@ var P;
                     if (!this.isRunning()) {
                         this.stage.draw();
                     }
-                    this.focus();
+                    if (this.options.focusOnLoad) {
+                        this.focus();
+                    }
                 }
                 this.updateFullscreen();
             }
@@ -3040,8 +3076,9 @@ var P;
                 this.stage.runtime.handleError = this.handleError;
                 this.applyOptionsToStage();
                 this.playerContainer.appendChild(stage.root);
-                stage.focus();
-                stage.draw();
+                if (this.options.focusOnLoad) {
+                    this.focus();
+                }
                 this.onload.emit(stage);
                 this.enactAutoplayPolicy(this.options.autoplayPolicy);
             }
@@ -3152,6 +3189,7 @@ var P;
             fullscreenPadding: 8,
             fullscreenMaxWidth: Infinity,
             imageSmoothing: false,
+            focusOnLoad: true,
         };
         player_1.Player = Player;
         class ErrorHandler {
@@ -3379,6 +3417,18 @@ var P;
                 return ny === ny && nx === ny;
             }
             return false;
+        };
+        var numEqualExperimental = function (nx, y) {
+            var ny = +y;
+            return ny === ny && nx === ny;
+        };
+        var numLessExperimental = function (nx, y) {
+            var ny = +y;
+            return ny === ny && nx < y;
+        };
+        var numGreaterExperimental = function (nx, y) {
+            var ny = +y;
+            return ny === ny && nx > y;
         };
         var strEqual = function (a, b) {
             return (a + '').toLowerCase() === (b + '').toLowerCase();
@@ -4661,20 +4711,23 @@ var P;
                     element.setAttribute('font-size', size = 18);
                 }
                 var bb = element.getBBox();
-                var x = 4 - .6 * element.transform.baseVal.consolidate().matrix.a;
-                var y = (element.getAttribute('y') - bb.y) * 1.1;
-                element.setAttribute('x', x);
-                element.setAttribute('y', y);
-                var lines = element.textContent.split('\n');
-                if (lines.length > 1) {
-                    element.textContent = lines[0];
-                    var lineHeight = LINE_HEIGHTS[font] || 1;
-                    for (var i = 1, l = lines.length; i < l; i++) {
-                        var tspan = document.createElementNS(null, 'tspan');
-                        tspan.textContent = lines[i];
-                        tspan.setAttribute('x', '' + x);
-                        tspan.setAttribute('y', '' + (y + size * i * lineHeight));
-                        element.appendChild(tspan);
+                var transform = element.transform.baseVal.consolidate();
+                if (transform) {
+                    var x = 4 - .6 * transform.matrix.a;
+                    var y = (element.getAttribute('y') - bb.y) * 1.1;
+                    element.setAttribute('x', x);
+                    element.setAttribute('y', y);
+                    var lines = element.textContent.split('\n');
+                    if (lines.length > 1) {
+                        element.textContent = lines[0];
+                        var lineHeight = LINE_HEIGHTS[font] || 1;
+                        for (var i = 1, l = lines.length; i < l; i++) {
+                            var tspan = document.createElementNS(null, 'tspan');
+                            tspan.textContent = lines[i];
+                            tspan.setAttribute('x', '' + x);
+                            tspan.setAttribute('y', '' + (y + size * i * lineHeight));
+                            element.appendChild(tspan);
+                        }
                     }
                 }
             }
@@ -5646,7 +5699,13 @@ var P;
                 }
                 else if (script[0][0] === 'procDef') {
                     const warp = script[0][4];
-                    object.procedures[script[0][1]] = new Scratch2Procedure(f, warp, inputs);
+                    const name = script[0][1];
+                    if (!object.procedures[name]) {
+                        object.procedures[name] = new Scratch2Procedure(f, warp, inputs);
+                    }
+                    else {
+                        warn('procedure already exists: ' + name);
+                    }
                 }
                 else {
                     warn('Undefined event: ' + script[0][0]);
@@ -5774,6 +5833,8 @@ var P;
                 container.dataset.opcode = this.opcode;
                 container.style.top = (this.y / 10) + 'em';
                 container.style.left = (this.x / 10) + 'em';
+                container.onmousedown = (e) => e.stopPropagation();
+                container.ontouchstart = (e) => e.stopPropagation();
                 const value = document.createElement('div');
                 value.classList.add('s3-watcher-value');
                 value.textContent = this.getValue();
@@ -6008,6 +6069,8 @@ var P;
                 this.containerEl.style.height = (this.height / 10) + 'em';
                 this.containerEl.style.width = (this.width / 10) + 'em';
                 this.containerEl.classList.add('s3-list-container');
+                this.containerEl.onmousedown = (e) => e.stopPropagation();
+                this.containerEl.ontouchstart = (e) => e.stopPropagation();
                 this.topLabelEl.textContent = this.getTopLabel();
                 this.topLabelEl.classList.add('s3-list-top-label');
                 this.bottomLabelEl.textContent = this.getBottomLabel();
@@ -6903,11 +6966,11 @@ var P;
         const SUBSTACK = util.getSubstack('SUBSTACK');
         const VALUE = util.getInput('VALUE', 'number');
         util.writeLn('save();');
-        util.writeLn(`${VARIABLE} = 0;`);
         util.writeLn(`R.times = ${VALUE};`);
+        util.writeLn('R.current = 0;');
         const label = util.addLabel();
-        util.writeLn(`if (${VARIABLE} <= R.times) {`);
-        util.writeLn(`  ${VARIABLE} = ${util.asType(VARIABLE, 'number')} + 1;`);
+        util.writeLn(`if (R.current < R.times) {`);
+        util.writeLn(`  ${VARIABLE} = ++R.current;`);
         util.write(SUBSTACK);
         util.queue(label);
         util.writeLn('} else {');
@@ -6928,14 +6991,14 @@ var P;
         }
     };
     statementLibrary['control_if'] = function (util) {
-        const CONDITION = util.getInput('CONDITION', 'any');
+        const CONDITION = util.getInput('CONDITION', 'boolean');
         const SUBSTACK = util.getSubstack('SUBSTACK');
         util.writeLn(`if (${CONDITION}) {`);
         util.write(SUBSTACK);
         util.writeLn('}');
     };
     statementLibrary['control_if_else'] = function (util) {
-        const CONDITION = util.getInput('CONDITION', 'any');
+        const CONDITION = util.getInput('CONDITION', 'boolean');
         const SUBSTACK = util.getSubstack('SUBSTACK');
         const SUBSTACK2 = util.getSubstack('SUBSTACK2');
         util.writeLn(`if (${CONDITION}) {`);
@@ -7175,12 +7238,14 @@ var P;
     statementLibrary['looks_say'] = function (util) {
         const MESSAGE = util.getInput('MESSAGE', 'any');
         util.writeLn(`S.say(${MESSAGE}, false);`);
+        util.visual('visible');
     };
     statementLibrary['looks_sayforsecs'] = function (util) {
         const MESSAGE = util.getInput('MESSAGE', 'any');
         const SECS = util.getInput('SECS', 'number');
         util.writeLn('save();');
         util.writeLn(`R.id = S.say(${MESSAGE}, false);`);
+        util.visual('visible');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${SECS};`);
         const label = util.addLabel();
@@ -7191,7 +7256,6 @@ var P;
         util.writeLn('  S.say("");');
         util.writeLn('}');
         util.writeLn('restore();');
-        util.visual('visible');
     };
     statementLibrary['looks_seteffectto'] = function (util) {
         const EFFECT = util.sanitizedString(util.getField('EFFECT')).toLowerCase();
@@ -7231,6 +7295,7 @@ var P;
         const SECS = util.getInput('SECS', 'number');
         util.writeLn('save();');
         util.writeLn(`R.id = S.say(${MESSAGE}, true);`);
+        util.visual('visible');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${SECS};`);
         const label = util.addLabel();
@@ -7241,7 +7306,6 @@ var P;
         util.writeLn('  S.say("");');
         util.writeLn('}');
         util.writeLn('restore();');
-        util.visual('visible');
     };
     statementLibrary['motion_changexby'] = function (util) {
         const DX = util.getInput('DX', 'number');
@@ -7356,8 +7420,8 @@ var P;
         util.writeLn(`self.tempoBPM += ${TEMPO};`);
     };
     statementLibrary['music_playDrumForBeats'] = function (util) {
-        const BEATS = util.getInput('BEATS', 'any');
-        const DRUM = util.getInput('DRUM', 'any');
+        const BEATS = util.getInput('BEATS', 'number');
+        const DRUM = util.getInput('DRUM', 'number');
         util.writeLn('save();');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
@@ -7378,8 +7442,8 @@ var P;
         util.writeLn('restore();');
     };
     statementLibrary['music_playNoteForBeats'] = function (util) {
-        const BEATS = util.getInput('BEATS', 'any');
-        const NOTE = util.getInput('NOTE', 'any');
+        const BEATS = util.getInput('BEATS', 'number');
+        const NOTE = util.getInput('NOTE', 'number');
         util.writeLn('save();');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
@@ -7744,10 +7808,10 @@ var P;
         }
         if (P.config.experimentalOptimizations) {
             if (OPERAND1.type === 'number') {
-                return util.booleanInput(`numEqual(${OPERAND1}, ${OPERAND2})`);
+                return util.booleanInput(`numEqualExperimental(${OPERAND1}, ${OPERAND2})`);
             }
             if (OPERAND2.type === 'number') {
-                return util.booleanInput(`numEqual(${OPERAND2}, ${OPERAND1})`);
+                return util.booleanInput(`numEqualExperimental(${OPERAND2}, ${OPERAND1})`);
             }
         }
         return util.booleanInput(`equal(${OPERAND1}, ${OPERAND2})`);
@@ -7755,6 +7819,11 @@ var P;
     inputLibrary['operator_gt'] = function (util) {
         const OPERAND1 = util.getInput('OPERAND1', 'any');
         const OPERAND2 = util.getInput('OPERAND2', 'any');
+        if (P.config.experimentalOptimizations) {
+            if (OPERAND1.type === 'number') {
+                return util.booleanInput(`numGreaterExperimental(${OPERAND1}, ${OPERAND2})`);
+            }
+        }
         return util.booleanInput(`(compare(${OPERAND1}, ${OPERAND2}) === 1)`);
     };
     inputLibrary['operator_join'] = function (util) {
@@ -7774,6 +7843,11 @@ var P;
     inputLibrary['operator_lt'] = function (util) {
         const OPERAND1 = util.getInput('OPERAND1', 'any');
         const OPERAND2 = util.getInput('OPERAND2', 'any');
+        if (P.config.experimentalOptimizations) {
+            if (OPERAND1.type === 'number') {
+                return util.booleanInput(`numLessExperimental(${OPERAND1}, ${OPERAND2})`);
+            }
+        }
         return util.booleanInput(`(compare(${OPERAND1}, ${OPERAND2}) === -1)`);
     };
     inputLibrary['operator_mathop'] = function (util) {
@@ -7993,7 +8067,11 @@ var P;
                 }
             }
             else {
-                util.target.listeners.whenKeyPressed[P.runtime.getKeyCode(KEY_OPTION)].push(util.startingFunction);
+                const keyCode = P.runtime.getKeyCode(KEY_OPTION);
+                if (!util.target.listeners.whenKeyPressed[keyCode]) {
+                    util.target.listeners.whenKeyPressed[keyCode] = [];
+                }
+                util.target.listeners.whenKeyPressed[keyCode].push(util.startingFunction);
             }
         },
     };
@@ -8012,19 +8090,22 @@ var P;
             const KEY = util.getInput('KEY', 'string');
             try {
                 const value = P.runtime.scopedEval(KEY.source);
-                var keycode = P.runtime.getKeyCode(value);
+                var keyCode = P.runtime.getKeyCode(value);
             }
             catch (e) {
                 util.compiler.warn('makeymakey key generation error', e);
                 return;
             }
-            if (keycode === 'any') {
+            if (keyCode === 'any') {
                 for (var i = 128; i--;) {
                     util.target.listeners.whenKeyPressed[i].push(util.startingFunction);
                 }
             }
             else {
-                util.target.listeners.whenKeyPressed[keycode].push(util.startingFunction);
+                if (!util.target.listeners.whenKeyPressed[keyCode]) {
+                    util.target.listeners.whenKeyPressed[keyCode] = [];
+                }
+                util.target.listeners.whenKeyPressed[keyCode].push(util.startingFunction);
             }
         },
     };
@@ -8712,6 +8793,9 @@ var P;
                         positionX *= costume.currentScale;
                         positionY *= costume.currentScale;
                     }
+                    if (!Number.isFinite(positionX) || !Number.isFinite(positionY)) {
+                        return false;
+                    }
                     const data = costume.getContext().getImageData(positionX, positionY, 1, 1).data;
                     return data[3] !== 0;
                 }
@@ -8908,7 +8992,7 @@ var P;
                     filters.whirl !== 0;
             }
             const horizontalInvertMatrix = P.m3.scaling(-1, 1);
-            class ShaderVariant {
+            class Shader {
                 constructor(gl, program) {
                     this.gl = gl;
                     this.program = program;
@@ -8986,10 +9070,7 @@ var P;
                     this.boundFramebuffer = null;
                     this.costumeTextures = new Map();
                     this.canvas = createCanvas();
-                    const gl = this.canvas.getContext('webgl', {
-                        alpha: false,
-                        antialias: false,
-                    });
+                    const gl = this.canvas.getContext('webgl', this.getContextOptions());
                     if (!gl) {
                         throw new Error('cannot get webgl rendering context');
                     }
@@ -9005,6 +9086,7 @@ var P;
                     ]);
                     this.gl.enable(this.gl.BLEND);
                     this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+                    this.gl.disable(this.gl.DEPTH_TEST);
                     this.quadBuffer = this.gl.createBuffer();
                     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
                     this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
@@ -9015,6 +9097,11 @@ var P;
                         0, 1,
                         1, 1,
                     ]), this.gl.STATIC_DRAW);
+                }
+                getContextOptions() {
+                    return {
+                        alpha: true,
+                    };
                 }
                 compileShader(type, source, definitions) {
                     if (definitions) {
@@ -9054,7 +9141,7 @@ var P;
                 }
                 compileVariant(definitions) {
                     const program = this.compileProgram(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, definitions);
-                    return new ShaderVariant(this.gl, program);
+                    return new Shader(this.gl, program);
                 }
                 createTexture() {
                     const texture = this.gl.createTexture();
@@ -9092,11 +9179,11 @@ var P;
                     this.resetFramebuffer(scale);
                 }
                 resetFramebuffer(scale) {
-                    this.gl.viewport(0, 0, 480, 360);
+                    this.gl.viewport(0, 0, scale * 480, scale * 360);
                     if (this.globalScaleMatrix[0] !== scale) {
                         this.globalScaleMatrix = P.m3.scaling(scale, scale);
                     }
-                    this.gl.clearColor(255, 255, 255, 0);
+                    this.gl.clearColor(0, 0, 0, 0);
                     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
                 }
                 drawChild(child) {
@@ -9311,29 +9398,509 @@ var P;
       gl_FragColor = color;
     }
     `;
-            webgl.WebGLSpriteRenderer = WebGLSpriteRenderer;
+            class CollisionRenderer extends WebGLSpriteRenderer {
+                constructor() {
+                    super();
+                    this.gl.enable(this.gl.SCISSOR_TEST);
+                    this.gl.scissor(0, 0, 480, 360);
+                    this.touchingShader = new Shader(this.gl, this.compileProgram(CollisionRenderer.touchingVertex, CollisionRenderer.touchingFragment));
+                }
+                drawChild(sprite) {
+                    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+                    super.drawChild(sprite);
+                }
+                drawChildTouching(sprite) {
+                    this.gl.blendFunc(this.gl.DST_ALPHA, this.gl.ZERO);
+                    this._drawChild(sprite, this.touchingShader);
+                }
+            }
+            CollisionRenderer.touchingVertex = `
+    attribute vec2 a_position;
+
+    uniform mat3 u_matrix;
+
+    varying vec2 v_texcoord;
+
+    void main() {
+      gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
+      v_texcoord = a_position;
+    }`;
+            CollisionRenderer.touchingFragment = `
+    precision mediump float;
+
+    varying vec2 v_texcoord;
+
+    uniform sampler2D u_texture;
+
+    #ifdef ENABLE_BRIGHTNESS
+      uniform float u_brightness;
+    #endif
+    #ifdef ENABLE_COLOR
+      uniform float u_color;
+    #endif
+    #ifdef ENABLE_GHOST
+      uniform float u_opacity;
+    #endif
+    #ifdef ENABLE_MOSAIC
+      uniform float u_mosaic;
+    #endif
+    #ifdef ENABLE_WHIRL
+      uniform float u_whirl;
+    #endif
+    #ifdef ENABLE_FISHEYE
+      uniform float u_fisheye;
+    #endif
+    #ifdef ENABLE_PIXELATE
+      uniform float u_pixelate;
+      uniform vec2 u_size;
+    #endif
+
+    const float minimumAlpha = 1.0 / 250.0;
+    const vec2 vecCenter = vec2(0.5, 0.5);
+
+    // http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl
+    vec3 rgb2hsv(vec3 c) {
+      vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+      vec4 p = c.g < c.b ? vec4(c.bg, K.wz) : vec4(c.gb, K.xy);
+      vec4 q = c.r < p.x ? vec4(p.xyw, c.r) : vec4(c.r, p.yzx);
+      float d = q.x - min(q.w, q.y);
+      float e = 1.0e-10;
+      return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+    }
+    vec3 hsv2rgb(vec3 c) {
+      vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+      vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+      return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+    }
+
+    void main() {
+      // varyings cannot be modified
+      vec2 texcoord = v_texcoord;
+
+      #ifdef ENABLE_MOSAIC
+        texcoord = fract(u_mosaic * v_texcoord);
+      #endif
+
+      #ifdef ENABLE_PIXELATE
+      if (u_pixelate != 0.0) {
+        vec2 texelSize = u_size / u_pixelate;
+        texcoord = (floor(texcoord * texelSize) + vecCenter) / texelSize;
+      }
+      #endif
+
+      #ifdef ENABLE_WHIRL
+      {
+        const float radius = 0.5;
+        vec2 offset = texcoord - vecCenter;
+        float offsetMagnitude = length(offset);
+        float whirlFactor = max(1.0 - (offsetMagnitude / radius), 0.0);
+        float whirlActual = u_whirl * whirlFactor * whirlFactor;
+        float sinWhirl = sin(whirlActual);
+        float cosWhirl = cos(whirlActual);
+        mat2 rotationMatrix = mat2(
+          cosWhirl, -sinWhirl,
+          sinWhirl, cosWhirl
+        );
+        texcoord = rotationMatrix * offset + vecCenter;
+      }
+      #endif
+
+      #ifdef ENABLE_FISHEYE
+      {
+        vec2 vec = (texcoord - vecCenter) / vecCenter;
+        float vecLength = length(vec);
+        float r = pow(min(vecLength, 1.0), u_fisheye) * max(1.0, vecLength);
+        vec2 unit = vec / vecLength;
+        texcoord = vecCenter + r * unit * vecCenter;
+      }
+      #endif
+
+      vec4 color = texture2D(u_texture, texcoord);
+      // if (color.a < minimumAlpha) {
+      //   discard;
+      // }
+
+      #ifdef ENABLE_GHOST
+        color.a *= u_opacity;
+      #endif
+
+      #ifdef ENABLE_COLOR
+      if (u_color != 0.0) {
+        vec3 hsv = rgb2hsv(color.rgb);
+        // hsv.x = hue
+        // hsv.y = saturation
+        // hsv.z = value
+
+        // scratch forces all colors to have some minimal amount saturation so there is a visual change
+        const float minValue = 0.11 / 2.0;
+        const float minSaturation = 0.09;
+        if (hsv.z < minValue) hsv = vec3(0.0, 1.0, minValue);
+        else if (hsv.y < minSaturation) hsv = vec3(0.0, minSaturation, hsv.z);
+
+        hsv.x = mod(hsv.x + u_color, 1.0);
+        if (hsv.x < 0.0) hsv.x += 1.0;
+        color = vec4(hsv2rgb(hsv), color.a);
+      }
+      #endif
+
+      #ifdef ENABLE_BRIGHTNESS
+        color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
+      #endif
+
+      if (color.a > 0.0) {
+        color = vec4(1.0, 1.0, 1.0, 1.0);
+      } else {
+        color = vec4(0.0, 0.0, 0.0, 0.0);
+      }
+
+      gl_FragColor = color;
+    }
+    `;
+            class PenRenderer extends WebGLSpriteRenderer {
+                constructor() {
+                    super();
+                    this.penCoords = new Float32Array(65536);
+                    this.penLines = new Float32Array(32768);
+                    this.penColors = new Float32Array(65536);
+                    this.penCoordsIndex = 0;
+                    this.penLinesIndex = 0;
+                    this.penColorsIndex = 0;
+                    this.shader = new Shader(this.gl, this.compileProgram(PenRenderer.PEN_VERTEX_SHADER, PenRenderer.PEN_FRAGMENT_SHADER));
+                    this.positionBuffer = this.gl.createBuffer();
+                    this.lineBuffer = this.gl.createBuffer();
+                    this.colorBuffer = this.gl.createBuffer();
+                    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+                    this.gl.enable(this.gl.BLEND);
+                    this.gl.disable(this.gl.DEPTH_TEST);
+                    this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+                }
+                getContextOptions() {
+                    return {
+                        alpha: true,
+                        preserveDrawingBuffer: true,
+                    };
+                }
+                pendingPenOperations() {
+                    return this.penLinesIndex > 0;
+                }
+                drawPen() {
+                    const gl = this.gl;
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+                    gl.bufferData(gl.ARRAY_BUFFER, this.penCoords, gl.STREAM_DRAW);
+                    gl.vertexAttribPointer(this.shader.getAttribute('vertexData'), 4, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(this.shader.getAttribute('vertexData'));
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.lineBuffer);
+                    gl.bufferData(gl.ARRAY_BUFFER, this.penLines, gl.STREAM_DRAW);
+                    gl.vertexAttribPointer(this.shader.getAttribute('lineData'), 2, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(this.shader.getAttribute('lineData'));
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer);
+                    gl.bufferData(gl.ARRAY_BUFFER, this.penColors, gl.STREAM_DRAW);
+                    gl.vertexAttribPointer(this.shader.getAttribute('colorData'), 4, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(this.shader.getAttribute('colorData'));
+                    gl.useProgram(this.shader.program);
+                    gl.drawArrays(gl.TRIANGLES, 0, (this.penCoordsIndex + 1) / 4);
+                    this.penCoordsIndex = 0;
+                    this.penLinesIndex = 0;
+                    this.penColorsIndex = 0;
+                }
+                buffersFull(size) {
+                    return this.penCoordsIndex + size > this.penCoords.length;
+                }
+                getCircleResolution(size) {
+                    return Math.max(Math.ceil(size), 3);
+                }
+                penLine(color, size, x1, y1, x2, y2) {
+                    const circleRes = this.getCircleResolution(size);
+                    if (this.buffersFull(24 * (circleRes + 1))) {
+                        this.drawPen();
+                    }
+                    this.penCoords[this.penCoordsIndex] = x1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = x2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y2;
+                    this.penCoordsIndex++;
+                    this.penLines[this.penLinesIndex] = -Math.PI / 2;
+                    this.penLinesIndex++;
+                    this.penLines[this.penLinesIndex] = size / 2;
+                    this.penLinesIndex++;
+                    this.penCoords[this.penCoordsIndex] = x2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = x1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y1;
+                    this.penCoordsIndex++;
+                    this.penLines[this.penLinesIndex] = Math.PI / 2;
+                    this.penLinesIndex++;
+                    this.penLines[this.penLinesIndex] = size / 2;
+                    this.penLinesIndex++;
+                    this.penCoords[this.penCoordsIndex] = x1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = x2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y2;
+                    this.penCoordsIndex++;
+                    this.penLines[this.penLinesIndex] = Math.PI / 2;
+                    this.penLinesIndex++;
+                    this.penLines[this.penLinesIndex] = size / 2;
+                    this.penLinesIndex++;
+                    this.penCoords[this.penCoordsIndex] = x1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = x2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y2;
+                    this.penCoordsIndex++;
+                    this.penLines[this.penLinesIndex] = Math.PI / 2;
+                    this.penLinesIndex++;
+                    this.penLines[this.penLinesIndex] = size / 2;
+                    this.penLinesIndex++;
+                    this.penCoords[this.penCoordsIndex] = x2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = x1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y1;
+                    this.penCoordsIndex++;
+                    this.penLines[this.penLinesIndex] = -Math.PI / 2;
+                    this.penLinesIndex++;
+                    this.penLines[this.penLinesIndex] = size / 2;
+                    this.penLinesIndex++;
+                    this.penCoords[this.penCoordsIndex] = x2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = x1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y1;
+                    this.penCoordsIndex++;
+                    this.penLines[this.penLinesIndex] = Math.PI / 2;
+                    this.penLinesIndex++;
+                    this.penLines[this.penLinesIndex] = size / 2;
+                    this.penLinesIndex++;
+                    for (var i = 0; i < circleRes; i++) {
+                        this.penCoords[this.penCoordsIndex] = x2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y1;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = 0;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = 0;
+                        this.penLinesIndex++;
+                        this.penCoords[this.penCoordsIndex] = x2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y1;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = Math.PI / 2 + i / circleRes * Math.PI;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = size / 2;
+                        this.penLinesIndex++;
+                        this.penCoords[this.penCoordsIndex] = x2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y1;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = Math.PI / 2 + (i + 1) / circleRes * Math.PI;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = size / 2;
+                        this.penLinesIndex++;
+                        this.penCoords[this.penCoordsIndex] = x1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y2;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = 0;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = 0;
+                        this.penLinesIndex++;
+                        this.penCoords[this.penCoordsIndex] = x1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y2;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = Math.PI / 2 + i / circleRes * Math.PI;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = size / 2;
+                        this.penLinesIndex++;
+                        this.penCoords[this.penCoordsIndex] = x1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y2;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = Math.PI / 2 + (i + 1) / circleRes * Math.PI;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = size / 2;
+                        this.penLinesIndex++;
+                    }
+                    const [r, g, b, a] = color.toParts();
+                    for (var i = 0; i < circleRes * 6 + 6; i++) {
+                        this.penColors[this.penColorsIndex] = r;
+                        this.penColorsIndex++;
+                        this.penColors[this.penColorsIndex] = g;
+                        this.penColorsIndex++;
+                        this.penColors[this.penColorsIndex] = b;
+                        this.penColorsIndex++;
+                        this.penColors[this.penColorsIndex] = a;
+                        this.penColorsIndex++;
+                    }
+                }
+                penDot(color, size, x, y) {
+                    const circleRes = this.getCircleResolution(size);
+                    if (this.buffersFull(12 * circleRes)) {
+                        this.drawPen();
+                    }
+                    for (var i = 0; i < circleRes; i++) {
+                        this.penCoords[this.penCoordsIndex] = x;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = 0;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = 0;
+                        this.penLinesIndex++;
+                        this.penCoords[this.penCoordsIndex] = x;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x + 1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y + 1;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = Math.PI / 2 + i / circleRes * 2 * Math.PI;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = size / 2;
+                        this.penLinesIndex++;
+                        this.penCoords[this.penCoordsIndex] = x;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x + 1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y + 1;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = Math.PI / 2 + (i + 1) / circleRes * 2 * Math.PI;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = size / 2;
+                        this.penLinesIndex++;
+                    }
+                    const [r, g, b, a] = color.toParts();
+                    for (var i = 0; i < circleRes * 3; i++) {
+                        this.penColors[this.penColorsIndex] = r;
+                        this.penColorsIndex++;
+                        this.penColors[this.penColorsIndex] = g;
+                        this.penColorsIndex++;
+                        this.penColors[this.penColorsIndex] = b;
+                        this.penColorsIndex++;
+                        this.penColors[this.penColorsIndex] = a;
+                        this.penColorsIndex++;
+                    }
+                }
+                penStamp(sprite) {
+                    if (this.penCoordsIndex) {
+                        this.drawPen();
+                    }
+                    this.drawChild(sprite);
+                }
+                penClear() {
+                    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                }
+            }
+            PenRenderer.PEN_VERTEX_SHADER = `
+    precision mediump float;
+
+    // [0] = x1
+    // [1] = y1
+    // [2] = x2
+    // [3] = y2
+    attribute vec4 vertexData;
+    // [0] = thickened vertex direction
+    // [1] = thickened vertex distance
+    attribute vec2 lineData;
+    // [0] = red
+    // [1] = green
+    // [2] = blue
+    // [3] = alpha
+    attribute vec4 colorData;
+
+    varying vec4 fragColor;
+
+    void main(){
+
+      vec2 lineDir = normalize(vertexData.zw - vertexData.xy);
+
+      mat2 rot;
+      rot[0] = vec2(cos(lineData.x), sin(lineData.x));
+      rot[1] = vec2(-sin(lineData.x), cos(lineData.x));
+
+      lineDir *= rot * lineData.y;
+
+      vec2 p = (vertexData.xy + lineDir);
+      p.x /= 240.0;
+      p.y /= 180.0;
+
+      gl_Position = vec4(p, 0.0, 1.0);
+      fragColor = colorData;
+    }
+  `;
+            PenRenderer.PEN_FRAGMENT_SHADER = `
+    precision mediump float;
+    varying vec4 fragColor;
+    void main(){
+
+      gl_FragColor = vec4(fragColor.xyz / 255.0, fragColor.w);
+    }
+    `;
             class WebGLProjectRenderer extends WebGLSpriteRenderer {
                 constructor(stage) {
                     super();
                     this.stage = stage;
                     this.zoom = 1;
                     this.shaderOnlyShapeFilters = this.compileVariant(['ONLY_SHAPE_FILTERS']);
+                    this.collisionRenderer = new CollisionRenderer();
+                    this.penRenderer = new PenRenderer();
+                    this.stageRenderer = new WebGLSpriteRenderer();
                     this.fallbackRenderer = new P.renderer.canvas2d.ProjectRenderer2D(stage);
-                    this.penTexture = this.createTexture();
-                    this.penBuffer = this.createFramebuffer();
-                    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 480, 360, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
-                    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
-                    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.penTexture, 0);
-                    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
-                    this.penDotShader = new ShaderVariant(this.gl, this.compileProgram(WebGLProjectRenderer.PEN_DOT_VERTEX_SHADER, WebGLProjectRenderer.PEN_DOT_FRAGMENT_SHADER));
-                    this.penLineShader = new ShaderVariant(this.gl, this.compileProgram(WebGLProjectRenderer.PEN_LINE_VERTEX_SHADER, WebGLProjectRenderer.PEN_LINE_FRAGMENT_SHADER));
                     this.reset(1);
                 }
                 drawFrame() {
                     this.bindFramebuffer(null);
+                    if (this.penRenderer.pendingPenOperations()) {
+                        this.penRenderer.drawPen();
+                    }
                     this.reset(this.zoom);
-                    this.drawChild(this.stage);
-                    this.drawTextureOverlay(this.penTexture);
+                    this.stageRenderer.drawChild(this.stage);
                     for (var i = 0; i < this.stage.children.length; i++) {
                         var child = this.stage.children[i];
                         if (!child.visible) {
@@ -9343,50 +9910,23 @@ var P;
                     }
                 }
                 init(root) {
+                    root.appendChild(this.stageRenderer.canvas);
+                    root.appendChild(this.penRenderer.canvas);
                     root.appendChild(this.canvas);
                 }
                 onStageFiltersChanged() {
                 }
-                penLine(color, size, x, y, x2, y2) {
-                    this.bindFramebuffer(this.penBuffer);
-                    const shader = this.penLineShader;
-                    this.gl.useProgram(shader.program);
-                    const buffer = this.gl.createBuffer();
-                    if (buffer === null) {
-                        throw new Error('buffer is null');
-                    }
-                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
-                    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
-                        x / 240, y / 180,
-                        x2 / 240, y2 / 180,
-                    ]), this.gl.STATIC_DRAW);
-                    shader.attributeBuffer('a_position', buffer);
-                    const parts = color.toParts();
-                    shader.uniform4f('u_color', parts[0], parts[1], parts[2], parts[3]);
-                    this.gl.drawArrays(this.gl.LINES, 0, 2);
-                    this.gl.deleteBuffer(buffer);
+                penLine(color, size, x1, y1, x2, y2) {
+                    this.penRenderer.penLine(color, size, x1, y1, x2, y2);
                 }
                 penDot(color, size, x, y) {
-                    this.bindFramebuffer(this.penBuffer);
-                    const shader = this.penDotShader;
-                    this.gl.useProgram(shader.program);
-                    shader.attributeBuffer('a_position', this.quadBuffer);
-                    const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
-                    P.m3.multiply(matrix, P.m3.translation(240 + x - size / 2 | 0, 180 - y - size / 2 | 0));
-                    P.m3.multiply(matrix, P.m3.scaling(size, size));
-                    shader.uniformMatrix3('u_matrix', matrix);
-                    const parts = color.toParts();
-                    shader.uniform4f('u_color', parts[0], parts[1], parts[2], parts[3]);
-                    this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+                    this.penRenderer.penDot(color, size, x, y);
                 }
                 penStamp(sprite) {
-                    this.bindFramebuffer(this.penBuffer);
-                    this.drawChild(sprite);
+                    this.penRenderer.penStamp(sprite);
                 }
                 penClear() {
-                    this.bindFramebuffer(this.penBuffer);
-                    this.gl.clearColor(255, 255, 255, 0);
-                    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                    this.penRenderer.penClear();
                 }
                 resize(scale) {
                     this.zoom = scale;
@@ -9407,7 +9947,36 @@ var P;
                     return result[3] !== 0;
                 }
                 spritesIntersect(spriteA, otherSprites) {
-                    return this.fallbackRenderer.spritesIntersect(spriteA, otherSprites);
+                    const mb = spriteA.rotatedBounds();
+                    for (const spriteB of otherSprites) {
+                        if (!spriteB.visible || spriteA === spriteB) {
+                            continue;
+                        }
+                        const ob = spriteB.rotatedBounds();
+                        if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
+                            continue;
+                        }
+                        const left = Math.max(mb.left, ob.left);
+                        const top = Math.min(mb.top, ob.top);
+                        const right = Math.min(mb.right, ob.right);
+                        const bottom = Math.max(mb.bottom, ob.bottom);
+                        const width = Math.max(right - left, 1);
+                        const height = Math.max(top - bottom, 1);
+                        this.collisionRenderer.gl.scissor(240 + left, 180 + bottom, width, height);
+                        this.collisionRenderer.gl.clear(this.collisionRenderer.gl.COLOR_BUFFER_BIT);
+                        this.collisionRenderer.drawChild(spriteA);
+                        this.collisionRenderer.drawChildTouching(spriteB);
+                        var data = new Uint8Array(width * height * 4);
+                        this.collisionRenderer.gl.readPixels(240 + left, 180 + bottom, width, height, this.collisionRenderer.gl.RGBA, this.collisionRenderer.gl.UNSIGNED_BYTE, data);
+                        this.collisionRenderer.gl.scissor(0, 0, 480, 360);
+                        var length = data.length;
+                        for (var j = 0; j < length; j += 4) {
+                            if (data[j + 3]) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
                 }
                 spriteTouchesColor(sprite, color) {
                     return this.fallbackRenderer.spriteTouchesColor(sprite, color);
@@ -9416,41 +9985,6 @@ var P;
                     return this.fallbackRenderer.spriteColorTouchesColor(sprite, spriteColor, otherColor);
                 }
             }
-            WebGLProjectRenderer.PEN_DOT_VERTEX_SHADER = `
-    attribute vec2 a_position;
-    varying vec2 v_position;
-    uniform mat3 u_matrix;
-    void main() {
-      gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
-      v_position = a_position;
-    }
-    `;
-            WebGLProjectRenderer.PEN_DOT_FRAGMENT_SHADER = `
-    precision mediump float;
-    uniform vec4 u_color;
-    varying vec2 v_position;
-    void main() {
-      float x = (v_position.x - 0.5) * 2.0;
-      float y = (v_position.y - 0.5) * 2.0;
-      if (sqrt(x * x + y * y) >= 1.0) {
-        discard;
-      }
-      gl_FragColor = u_color;
-    }
-    `;
-            WebGLProjectRenderer.PEN_LINE_VERTEX_SHADER = `
-    attribute vec2 a_position;
-    void main() {
-      gl_Position = vec4(a_position, 0, 1);
-    }
-    `;
-            WebGLProjectRenderer.PEN_LINE_FRAGMENT_SHADER = `
-    precision mediump float;
-    uniform vec4 u_color;
-    void main() {
-      gl_FragColor = u_color;
-    }
-    `;
             webgl.WebGLProjectRenderer = WebGLProjectRenderer;
         })(webgl = renderer.webgl || (renderer.webgl = {}));
     })(renderer = P.renderer || (P.renderer = {}));

@@ -143,6 +143,11 @@
       }
     });
 
+    // do not focus the stage when embedded
+    if (window.parent) {
+      player.setOptions({ focusOnLoad: false });
+    }
+
     player.setOptions({
       fullscreenMode: 'window',
       autoplayPolicy: 'if-audio-playable',
