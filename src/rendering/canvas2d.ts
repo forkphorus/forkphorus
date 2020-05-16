@@ -318,6 +318,7 @@ namespace P.renderer.canvas2d {
     }
 
     spritesIntersect(spriteA: core.Base, otherSprites: core.Base[]) {
+      // @ts-ignore
       return this.fastCollider.spritesIntersect(spriteA, otherSprites);
       // const mb = spriteA.rotatedBounds();
 
