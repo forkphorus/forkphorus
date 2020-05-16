@@ -9086,7 +9086,7 @@ var P;
                 }
                 getContextOptions() {
                     return {
-                        alpha: true,
+                        alpha: false,
                     };
                 }
                 compileShader(type, source, definitions) {
@@ -9169,7 +9169,7 @@ var P;
                     if (this.globalScaleMatrix[0] !== scale) {
                         this.globalScaleMatrix = P.m3.scaling(scale, scale);
                     }
-                    this.gl.clearColor(0, 0, 0, 0);
+                    this.gl.clearColor(1, 1, 1, 1);
                     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
                 }
                 drawChild(child) {
@@ -9240,7 +9240,7 @@ var P;
                     const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
                     P.m3.multiply(matrix, this.globalScaleMatrix);
                     P.m3.multiply(matrix, P.m3.translation(240, 180));
-                    P.m3.multiply(matrix, P.m3.scaling(1, -1));
+                    P.m3.multiply(matrix, P.m3.scaling(1, 1));
                     P.m3.multiply(matrix, P.m3.translation(-240, -180));
                     P.m3.multiply(matrix, P.m3.scaling(480, 360));
                     shader.uniformMatrix3('u_matrix', matrix);
@@ -9545,6 +9545,7 @@ var P;
             class PenRenderer extends WebGLSpriteRenderer {
                 constructor() {
                     super();
+                    this.dirty = false;
                     this.penCoords = new Float32Array(65536);
                     this.penLines = new Float32Array(32768);
                     this.penColors = new Float32Array(65536);
@@ -9571,6 +9572,7 @@ var P;
                 }
                 drawPen() {
                     const gl = this.gl;
+                    this.dirty = true;
                     gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
                     gl.bufferData(gl.ARRAY_BUFFER, this.penCoords, gl.STREAM_DRAW);
                     gl.vertexAttribPointer(this.shader.getAttribute('vertexData'), 4, gl.FLOAT, false, 0, 0);
@@ -9859,7 +9861,7 @@ var P;
       gl_Position = vec4(p, 0.0, 1.0);
       fragColor = colorData;
     }
-  `;
+    `;
             PenRenderer.PEN_FRAGMENT_SHADER = `
     precision mediump float;
     varying vec4 fragColor;
@@ -9876,7 +9878,6 @@ var P;
                     this.shaderOnlyShapeFilters = this.compileVariant(['ONLY_SHAPE_FILTERS']);
                     this.collisionRenderer = new CollisionRenderer();
                     this.penRenderer = new PenRenderer();
-                    this.stageRenderer = new WebGLSpriteRenderer();
                     this.fallbackRenderer = new P.renderer.canvas2d.ProjectRenderer2D(stage);
                     this.reset(1);
                 }
@@ -9886,7 +9887,14 @@ var P;
                         this.penRenderer.drawPen();
                     }
                     this.reset(this.zoom);
-                    this.stageRenderer.drawChild(this.stage);
+                    this.drawChild(this.stage);
+                    if (this.penRenderer.dirty) {
+                        this.updatePenTexture();
+                        this.penRenderer.dirty = false;
+                    }
+                    if (this.penTexture) {
+                        this.drawTextureOverlay(this.penTexture);
+                    }
                     for (var i = 0; i < this.stage.children.length; i++) {
                         var child = this.stage.children[i];
                         if (!child.visible) {
@@ -9896,8 +9904,6 @@ var P;
                     }
                 }
                 init(root) {
-                    root.appendChild(this.stageRenderer.canvas);
-                    root.appendChild(this.penRenderer.canvas);
                     root.appendChild(this.canvas);
                 }
                 onStageFiltersChanged() {
@@ -9913,6 +9919,12 @@ var P;
                 }
                 penClear() {
                     this.penRenderer.penClear();
+                }
+                updatePenTexture() {
+                    if (this.penTexture) {
+                        this.gl.deleteTexture(this.penTexture);
+                    }
+                    this.penTexture = this.convertToTexture(this.penRenderer.canvas);
                 }
                 resize(scale) {
                     this.zoom = scale;

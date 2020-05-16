@@ -345,7 +345,7 @@ namespace P.renderer.webgl {
 
     protected getContextOptions(): WebGLContextAttributes {
       return {
-        alpha: true,
+        alpha: false,
       };
     }
 
@@ -483,7 +483,7 @@ namespace P.renderer.webgl {
       }
 
       // Clear the canvas
-      this.gl.clearColor(0, 0, 0, 0);
+      this.gl.clearColor(1, 1, 1, 1);
       this.gl.clear(this.gl.COLOR_BUFFER_BIT);
     }
 
@@ -576,7 +576,7 @@ namespace P.renderer.webgl {
       const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
       P.m3.multiply(matrix, this.globalScaleMatrix);
       P.m3.multiply(matrix, P.m3.translation(240, 180));
-      P.m3.multiply(matrix, P.m3.scaling(1, -1));
+      P.m3.multiply(matrix, P.m3.scaling(1, 1));
       P.m3.multiply(matrix, P.m3.translation(-240, -180));
       P.m3.multiply(matrix, P.m3.scaling(480, 360));
 
@@ -790,7 +790,7 @@ namespace P.renderer.webgl {
       gl_Position = vec4(p, 0.0, 1.0);
       fragColor = colorData;
     }
-  `;
+    `;
 
     static PEN_FRAGMENT_SHADER = `
     precision mediump float;
@@ -799,7 +799,9 @@ namespace P.renderer.webgl {
 
       gl_FragColor = vec4(fragColor.xyz / 255.0, fragColor.w);
     }
-    `
+    `;
+
+    public dirty: boolean = false;
 
     private penCoords: Float32Array = new Float32Array(65536);
     private penLines: Float32Array = new Float32Array(32768);
@@ -842,6 +844,7 @@ namespace P.renderer.webgl {
 
     drawPen() {
       const gl = this.gl;
+      this.dirty = true;
 
       // Upload position data
       gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
@@ -1225,7 +1228,7 @@ namespace P.renderer.webgl {
 
     private collisionRenderer: CollisionRenderer = new CollisionRenderer();
     private penRenderer: PenRenderer = new PenRenderer();
-    private stageRenderer = new WebGLSpriteRenderer();
+    private penTexture: WebGLTexture;
 
     constructor(public stage: P.core.Stage) {
       super();
@@ -1241,7 +1244,14 @@ namespace P.renderer.webgl {
         this.penRenderer.drawPen();
       }
       this.reset(this.zoom);
-      this.stageRenderer.drawChild(this.stage);
+      this.drawChild(this.stage);
+      if (this.penRenderer.dirty) {
+        this.updatePenTexture();
+        this.penRenderer.dirty = false;
+      }
+      if (this.penTexture) {
+        this.drawTextureOverlay(this.penTexture);
+      }
       for (var i = 0; i < this.stage.children.length; i++) {
         var child = this.stage.children[i];
         if (!child.visible) {
@@ -1252,8 +1262,6 @@ namespace P.renderer.webgl {
     }
 
     init(root: HTMLElement) {
-      root.appendChild(this.stageRenderer.canvas);
-      root.appendChild(this.penRenderer.canvas);
       root.appendChild(this.canvas);
     }
 
@@ -1275,6 +1283,13 @@ namespace P.renderer.webgl {
 
     penClear(): void {
       this.penRenderer.penClear();
+    }
+
+    private updatePenTexture() {
+      if (this.penTexture) {
+        this.gl.deleteTexture(this.penTexture);
+      }
+      this.penTexture = this.convertToTexture(this.penRenderer.canvas);
     }
 
     resize(scale: number): void {
