@@ -9154,9 +9154,6 @@ var P;
                 reset(scale) {
                     this.canvas.width = scale * 480;
                     this.canvas.height = scale * 360;
-                    this.resetFramebuffer(scale);
-                }
-                resetFramebuffer(scale) {
                     this.gl.viewport(0, 0, scale * 480, scale * 360);
                     if (this.globalScaleMatrix[0] !== scale) {
                         this.globalScaleMatrix = P.m3.scaling(scale, scale);
@@ -9924,7 +9921,7 @@ var P;
                     if (!filtersAffectShape(sprite.filters)) {
                         return this.fallbackRenderer.spriteTouchesPoint(sprite, x, y);
                     }
-                    this.resetFramebuffer(1);
+                    this.reset(1);
                     this._drawChild(sprite, this.shaderOnlyShapeFilters);
                     const result = new Uint8Array(4);
                     this.gl.readPixels(240 + x | 0, 180 + y | 0, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, result);
