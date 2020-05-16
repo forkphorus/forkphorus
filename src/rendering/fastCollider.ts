@@ -57,13 +57,20 @@ namespace P.renderer.fastCollider {
       const startY = rb.bottom | 0;
       const endY = rb.top | 0;
 
+      const primarySprite = {
+        sprite: spriteA,
+        imageData: this.getImageData(spriteA.costumes[spriteA.currentCostumeIndex]),
+        costume: spriteA.costumes[spriteA.currentCostumeIndex],
+      };
+
       const otherCollidables = otherSprites
         .filter((s) => {
+          if (!s.visible) return false;
           const ob = s.rotatedBounds();
           if (rb.bottom >= ob.top || ob.bottom >= rb.top || rb.left >= ob.right || ob.left >= rb.right) {
             return false;
           }
-          return s.visible;
+          return true;
         })
         .map((s) => {
           return {
@@ -75,7 +82,17 @@ namespace P.renderer.fastCollider {
 
       for (var x = startX; x < endX; x++) {
         for (var y = startY; y < endY; y++) {
-          if (this.spriteTouchesPoint(spriteA, x, y)) {
+          var cx = (x - spriteA.scratchX) / spriteA.scale;
+          cx = Math.floor(cx / primarySprite.costume.scale + primarySprite.costume.rotationCenterX);
+          if (cx < 0) continue;
+          if (cx >= primarySprite.imageData.width) continue;
+
+          var cy = (spriteA.scratchY - y) / spriteA.scale;
+          cy = Math.floor(cy / primarySprite.costume.scale + primarySprite.costume.rotationCenterY);
+          if (cy < 0) continue;
+          if (cy >= primarySprite.imageData.height) continue;
+
+          if (primarySprite.imageData.data[4 * (cy * primarySprite.imageData.width + cx) + 3] !== 0) {
             for (const s of otherCollidables) {
 
               var cx = (x - s.sprite.scratchX) / s.sprite.scale;
