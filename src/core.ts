@@ -1766,7 +1766,7 @@ namespace P.core {
 
   export class VectorCostume extends Costume {
     /** Maximum scale factor of a Vector costume. */
-    public static MAX_SCALE = 8;
+    public static MAX_SCALE = 1;
     /** Maximum width or height of a Vector costume. Overrides MAX_SCALE. */
     public static MAX_SIZE = 1024;
 

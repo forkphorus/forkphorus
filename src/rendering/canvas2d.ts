@@ -161,6 +161,7 @@ namespace P.renderer.canvas2d {
     private penZoom: number = 1;
 
     private stageCostumeIndex: number = -1;
+    private fastCollider: P.renderer.fastCollider.FastCollider = new P.renderer.fastCollider.FastCollider();
 
     constructor(public stage: P.core.Stage) {
       super();
@@ -283,93 +284,95 @@ namespace P.renderer.canvas2d {
     }
 
     spriteTouchesPoint(sprite: P.core.Sprite, x: number, y: number) {
-      const bounds = sprite.rotatedBounds();
-      if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top || sprite.scale === 0) {
-        return false;
-      }
+      return this.fastCollider.spriteTouchesPoint(sprite, x, y);
+      // const bounds = sprite.rotatedBounds();
+      // if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top || sprite.scale === 0) {
+      //   return false;
+      // }
 
-      const costume = sprite.costumes[sprite.currentCostumeIndex];
-      var cx = (x - sprite.scratchX) / sprite.scale;
-      var cy = (sprite.scratchY - y) / sprite.scale;
-      if (sprite.rotationStyle === RotationStyle.Normal && sprite.direction !== 90) {
-        const d = (90 - sprite.direction) * Math.PI / 180;
-        const ox = cx;
-        const s = Math.sin(d), c = Math.cos(d);
-        cx = c * ox - s * cy;
-        cy = s * ox + c * cy;
-      } else if (sprite.rotationStyle === RotationStyle.LeftRight && sprite.direction < 0) {
-        cx = -cx;
-      }
+      // const costume = sprite.costumes[sprite.currentCostumeIndex];
+      // var cx = (x - sprite.scratchX) / sprite.scale;
+      // var cy = (sprite.scratchY - y) / sprite.scale;
+      // if (sprite.rotationStyle === RotationStyle.Normal && sprite.direction !== 90) {
+      //   const d = (90 - sprite.direction) * Math.PI / 180;
+      //   const ox = cx;
+      //   const s = Math.sin(d), c = Math.cos(d);
+      //   cx = c * ox - s * cy;
+      //   cy = s * ox + c * cy;
+      // } else if (sprite.rotationStyle === RotationStyle.LeftRight && sprite.direction < 0) {
+      //   cx = -cx;
+      // }
 
-      let positionX = Math.round(cx / costume.scale + costume.rotationCenterX);
-      let positionY = Math.round(cy / costume.scale + costume.rotationCenterY);
-      // Temporary hack: https://github.com/forkphorus/forkphorus/issues/187
-      if (costume instanceof P.core.VectorCostume) {
-        positionX *= costume.currentScale;
-        positionY *= costume.currentScale;
-      }
-      if (!Number.isFinite(positionX) || !Number.isFinite(positionY)) {
-        return false;
-      }
-      const data = costume.getContext().getImageData(positionX, positionY, 1, 1).data;
-      return data[3] !== 0;
+      // let positionX = Math.round(cx / costume.scale + costume.rotationCenterX);
+      // let positionY = Math.round(cy / costume.scale + costume.rotationCenterY);
+      // // Temporary hack: https://github.com/forkphorus/forkphorus/issues/187
+      // if (costume instanceof P.core.VectorCostume) {
+      //   positionX *= costume.currentScale;
+      //   positionY *= costume.currentScale;
+      // }
+      // if (!Number.isFinite(positionX) || !Number.isFinite(positionY)) {
+      //   return false;
+      // }
+      // const data = costume.getContext().getImageData(positionX, positionY, 1, 1).data;
+      // return data[3] !== 0;
     }
 
     spritesIntersect(spriteA: core.Base, otherSprites: core.Base[]) {
-      const mb = spriteA.rotatedBounds();
+      return this.fastCollider.spritesIntersect(spriteA, otherSprites);
+      // const mb = spriteA.rotatedBounds();
 
-      for (var i = 0; i < otherSprites.length; i++) {
-        const spriteB = otherSprites[i];
-        // Invisible sprites are ignored.
-        // Sprites cannot intersect with themselves.
-        if (!spriteB.visible || spriteA === spriteB) {
-          continue;
-        }
+      // for (var i = 0; i < otherSprites.length; i++) {
+      //   const spriteB = otherSprites[i];
+      //   // Invisible sprites are ignored.
+      //   // Sprites cannot intersect with themselves.
+      //   if (!spriteB.visible || spriteA === spriteB) {
+      //     continue;
+      //   }
 
-        const ob = spriteB.rotatedBounds();
+      //   const ob = spriteB.rotatedBounds();
 
-        if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
-          continue;
-        }
+      //   if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
+      //     continue;
+      //   }
 
-        const left = Math.max(mb.left, ob.left);
-        const top = Math.min(mb.top, ob.top);
-        const right = Math.min(mb.right, ob.right);
-        const bottom = Math.max(mb.bottom, ob.bottom);
+      //   const left = Math.max(mb.left, ob.left);
+      //   const top = Math.min(mb.top, ob.top);
+      //   const right = Math.min(mb.right, ob.right);
+      //   const bottom = Math.max(mb.bottom, ob.bottom);
 
-        const width = right - left;
-        const height = top - bottom;
+      //   const width = right - left;
+      //   const height = top - bottom;
 
-        // dimensions that are less than 1 or are NaN will throw when we try to get image data
-        if (width < 1 || height < 1 || width !== width || height !== height) {
-          continue;
-        }
+      //   // dimensions that are less than 1 or are NaN will throw when we try to get image data
+      //   if (width < 1 || height < 1 || width !== width || height !== height) {
+      //     continue;
+      //   }
 
-        workingRenderer.canvas.width = width;
-        workingRenderer.canvas.height = height;
+      //   workingRenderer.canvas.width = width;
+      //   workingRenderer.canvas.height = height;
 
-        workingRenderer.ctx.save();
-        workingRenderer.noEffects = true;
+      //   workingRenderer.ctx.save();
+      //   workingRenderer.noEffects = true;
 
-        workingRenderer.ctx.translate(-(left + 240), -(180 - top));
-        workingRenderer.drawChild(spriteA);
-        workingRenderer.ctx.globalCompositeOperation = 'source-in';
-        workingRenderer.drawChild(spriteB);
+      //   workingRenderer.ctx.translate(-(left + 240), -(180 - top));
+      //   workingRenderer.drawChild(spriteA);
+      //   workingRenderer.ctx.globalCompositeOperation = 'source-in';
+      //   workingRenderer.drawChild(spriteB);
 
-        workingRenderer.noEffects = false;
-        workingRenderer.ctx.restore();
+      //   workingRenderer.noEffects = false;
+      //   workingRenderer.ctx.restore();
 
-        const data = workingRenderer.ctx.getImageData(0, 0, width, height).data;
-        const length = data.length;
+      //   const data = workingRenderer.ctx.getImageData(0, 0, width, height).data;
+      //   const length = data.length;
 
-        for (var j = 0; j < length; j += 4) {
-          // check for the opacity byte being a non-zero number
-          if (data[j + 3]) {
-            return true;
-          }
-        }
-      }
-      return false;
+      //   for (var j = 0; j < length; j += 4) {
+      //     // check for the opacity byte being a non-zero number
+      //     if (data[j + 3]) {
+      //       return true;
+      //     }
+      //   }
+      // }
+      // return false;
     }
 
     spriteTouchesColor(sprite: P.core.Base, color: number) {

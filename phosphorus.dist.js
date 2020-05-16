@@ -1794,7 +1794,7 @@ var P;
                 return this.canvas;
             }
         }
-        VectorCostume.MAX_SCALE = 8;
+        VectorCostume.MAX_SCALE = 1;
         VectorCostume.MAX_SIZE = 1024;
         core.VectorCostume = VectorCostume;
         if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
@@ -8651,6 +8651,7 @@ var P;
                     this.penTargetZoom = -1;
                     this.penZoom = 1;
                     this.stageCostumeIndex = -1;
+                    this.fastCollider = new P.renderer.fastCollider.FastCollider();
                     const { ctx: stageContext, canvas: stageLayer } = create2dCanvas();
                     this.stageContext = stageContext;
                     this.stageLayer = stageLayer;
@@ -8753,74 +8754,10 @@ var P;
                     this._drawChild(sprite, this.penContext);
                 }
                 spriteTouchesPoint(sprite, x, y) {
-                    const bounds = sprite.rotatedBounds();
-                    if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top || sprite.scale === 0) {
-                        return false;
-                    }
-                    const costume = sprite.costumes[sprite.currentCostumeIndex];
-                    var cx = (x - sprite.scratchX) / sprite.scale;
-                    var cy = (sprite.scratchY - y) / sprite.scale;
-                    if (sprite.rotationStyle === 0 && sprite.direction !== 90) {
-                        const d = (90 - sprite.direction) * Math.PI / 180;
-                        const ox = cx;
-                        const s = Math.sin(d), c = Math.cos(d);
-                        cx = c * ox - s * cy;
-                        cy = s * ox + c * cy;
-                    }
-                    else if (sprite.rotationStyle === 1 && sprite.direction < 0) {
-                        cx = -cx;
-                    }
-                    let positionX = Math.round(cx / costume.scale + costume.rotationCenterX);
-                    let positionY = Math.round(cy / costume.scale + costume.rotationCenterY);
-                    if (costume instanceof P.core.VectorCostume) {
-                        positionX *= costume.currentScale;
-                        positionY *= costume.currentScale;
-                    }
-                    if (!Number.isFinite(positionX) || !Number.isFinite(positionY)) {
-                        return false;
-                    }
-                    const data = costume.getContext().getImageData(positionX, positionY, 1, 1).data;
-                    return data[3] !== 0;
+                    return this.fastCollider.spriteTouchesPoint(sprite, x, y);
                 }
                 spritesIntersect(spriteA, otherSprites) {
-                    const mb = spriteA.rotatedBounds();
-                    for (var i = 0; i < otherSprites.length; i++) {
-                        const spriteB = otherSprites[i];
-                        if (!spriteB.visible || spriteA === spriteB) {
-                            continue;
-                        }
-                        const ob = spriteB.rotatedBounds();
-                        if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
-                            continue;
-                        }
-                        const left = Math.max(mb.left, ob.left);
-                        const top = Math.min(mb.top, ob.top);
-                        const right = Math.min(mb.right, ob.right);
-                        const bottom = Math.max(mb.bottom, ob.bottom);
-                        const width = right - left;
-                        const height = top - bottom;
-                        if (width < 1 || height < 1 || width !== width || height !== height) {
-                            continue;
-                        }
-                        workingRenderer.canvas.width = width;
-                        workingRenderer.canvas.height = height;
-                        workingRenderer.ctx.save();
-                        workingRenderer.noEffects = true;
-                        workingRenderer.ctx.translate(-(left + 240), -(180 - top));
-                        workingRenderer.drawChild(spriteA);
-                        workingRenderer.ctx.globalCompositeOperation = 'source-in';
-                        workingRenderer.drawChild(spriteB);
-                        workingRenderer.noEffects = false;
-                        workingRenderer.ctx.restore();
-                        const data = workingRenderer.ctx.getImageData(0, 0, width, height).data;
-                        const length = data.length;
-                        for (var j = 0; j < length; j += 4) {
-                            if (data[j + 3]) {
-                                return true;
-                            }
-                        }
-                    }
-                    return false;
+                    return this.fastCollider.spritesIntersect(spriteA, otherSprites);
                 }
                 spriteTouchesColor(sprite, color) {
                     const b = sprite.rotatedBounds();
@@ -8883,6 +8820,95 @@ var P;
             }
             canvas2d.ProjectRenderer2D = ProjectRenderer2D;
         })(canvas2d = renderer_1.canvas2d || (renderer_1.canvas2d = {}));
+    })(renderer = P.renderer || (P.renderer = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
+    var renderer;
+    (function (renderer) {
+        var fastCollider;
+        (function (fastCollider) {
+            class FastCollider {
+                constructor() {
+                    this.imageData = new Map();
+                }
+                getImageData(costume) {
+                    if (!this.imageData.has(costume)) {
+                        const ctx = costume.getContext();
+                        this.imageData.set(costume, ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height));
+                    }
+                    return this.imageData.get(costume);
+                }
+                spriteTouchesPoint(sprite, x, y) {
+                    const costume = sprite.costumes[sprite.currentCostumeIndex];
+                    const imageData = this.getImageData(costume);
+                    var cx = (x - sprite.scratchX) / sprite.scale;
+                    var cy = (sprite.scratchY - y) / sprite.scale;
+                    cx = Math.floor(cx / costume.scale + costume.rotationCenterX);
+                    cy = Math.floor(cy / costume.scale + costume.rotationCenterY);
+                    if (cx < 0)
+                        return false;
+                    if (cy < 0)
+                        return false;
+                    if (cx >= imageData.width)
+                        return false;
+                    if (cy >= imageData.height)
+                        return false;
+                    const alpha = imageData.data[4 * (cy * imageData.width + cx) + 3];
+                    if (alpha !== 0) {
+                    }
+                    return alpha !== 0;
+                }
+                spritesIntersect(spriteA, otherSprites) {
+                    const rb = spriteA.rotatedBounds();
+                    const startX = rb.left | 0;
+                    const endX = rb.right | 0;
+                    const startY = rb.bottom | 0;
+                    const endY = rb.top | 0;
+                    const otherCollidables = otherSprites
+                        .filter((s) => {
+                        const ob = s.rotatedBounds();
+                        if (rb.bottom >= ob.top || ob.bottom >= rb.top || rb.left >= ob.right || ob.left >= rb.right) {
+                            return false;
+                        }
+                        return s.visible;
+                    })
+                        .map((s) => {
+                        return {
+                            sprite: s,
+                            imageData: this.getImageData(s.costumes[s.currentCostumeIndex]),
+                            costume: s.costumes[s.currentCostumeIndex],
+                        };
+                    });
+                    for (var x = startX; x < endX; x++) {
+                        for (var y = startY; y < endY; y++) {
+                            if (this.spriteTouchesPoint(spriteA, x, y)) {
+                                for (const s of otherCollidables) {
+                                    var cx = (x - s.sprite.scratchX) / s.sprite.scale;
+                                    var cy = (s.sprite.scratchY - y) / s.sprite.scale;
+                                    cx = Math.floor(cx / s.costume.scale + s.costume.rotationCenterX);
+                                    cy = Math.floor(cy / s.costume.scale + s.costume.rotationCenterY);
+                                    if (cx < 0)
+                                        continue;
+                                    if (cy < 0)
+                                        continue;
+                                    if (cx >= s.imageData.width)
+                                        continue;
+                                    if (cy >= s.imageData.height)
+                                        continue;
+                                    const alpha = s.imageData.data[4 * (cy * s.imageData.width + cx) + 3];
+                                    if (alpha !== 0) {
+                                        return true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    return false;
+                }
+            }
+            fastCollider.FastCollider = FastCollider;
+        })(fastCollider = renderer.fastCollider || (renderer.fastCollider = {}));
     })(renderer = P.renderer || (P.renderer = {}));
 })(P || (P = {}));
 var P;
