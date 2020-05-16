@@ -1289,9 +1289,6 @@ namespace P.renderer.webgl {
         return this.fallbackRenderer.spriteTouchesPoint(sprite, x, y);
       }
 
-      const texture = this.createTexture();
-      const framebuffer = this.createFramebuffer();
-      this.bindFramebuffer(framebuffer);
       this.resetFramebuffer(1);
 
       this._drawChild(sprite, this.shaderOnlyShapeFilters);
@@ -1301,10 +1298,6 @@ namespace P.renderer.webgl {
       // Coordinates are in pixels from the lower left corner
       // We only care about 1 pixel, the pixel at the mouse cursor.
       this.gl.readPixels(240 + x | 0, 180 + y | 0, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, result);
-
-      // I don't know if it's necessary to delete these
-      this.gl.deleteTexture(texture);
-      this.gl.deleteFramebuffer(framebuffer);
 
       // Just look for a non-zero alpha channel
       return result[3] !== 0;

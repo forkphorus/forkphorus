@@ -9920,15 +9920,10 @@ var P;
                     if (!filtersAffectShape(sprite.filters)) {
                         return this.fallbackRenderer.spriteTouchesPoint(sprite, x, y);
                     }
-                    const texture = this.createTexture();
-                    const framebuffer = this.createFramebuffer();
-                    this.bindFramebuffer(framebuffer);
                     this.resetFramebuffer(1);
                     this._drawChild(sprite, this.shaderOnlyShapeFilters);
                     const result = new Uint8Array(4);
                     this.gl.readPixels(240 + x | 0, 180 + y | 0, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, result);
-                    this.gl.deleteTexture(texture);
-                    this.gl.deleteFramebuffer(framebuffer);
                     return result[3] !== 0;
                 }
                 spritesIntersect(spriteA, otherSprites) {
