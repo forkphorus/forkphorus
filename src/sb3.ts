@@ -2293,6 +2293,7 @@ namespace P.sb3.compiler {
     util.writeLn('var f = (runtime.now() - R.start) / (R.duration * 1000);');
     util.writeLn('if (f > 1 || isNaN(f)) f = 1;');
     util.writeLn('S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
+    util.visual('drawing');
     util.writeLn('if (f < 1) {');
     util.forceQueue(label);
     util.writeLn('}');
@@ -2315,6 +2316,7 @@ namespace P.sb3.compiler {
     util.writeLn('  var f = (runtime.now() - R.start) / (R.duration * 1000);');
     util.writeLn('  if (f > 1 || isNaN(f)) f = 1;');
     util.writeLn('  S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
+    util.visual('drawing');
     util.writeLn('  if (f < 1) {');
     util.forceQueue(label);
     util.writeLn('  }');
