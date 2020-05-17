@@ -135,7 +135,7 @@ h1, p {
 h1 {
   font-size: 24px;
   line-height: 32px;
-  font-weight: 300;
+  font-weight: normal;
   margin: 16px 0 0;
 }
 h1.title {
