@@ -9509,6 +9509,7 @@ var P;
                 drawPendingOperations() {
                     const gl = this.gl;
                     this.dirty = true;
+                    this.useShader(this.penShader);
                     gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
                     gl.bufferData(gl.ARRAY_BUFFER, this.penCoords, gl.STREAM_DRAW);
                     gl.vertexAttribPointer(this.penShader.getAttribute('a_vertexData'), 4, gl.FLOAT, false, 0, 0);
@@ -9521,7 +9522,6 @@ var P;
                     gl.bufferData(gl.ARRAY_BUFFER, this.penColors, gl.STREAM_DRAW);
                     gl.vertexAttribPointer(this.penShader.getAttribute('a_color'), 4, gl.FLOAT, false, 0, 0);
                     gl.enableVertexAttribArray(this.penShader.getAttribute('a_color'));
-                    gl.useProgram(this.penShader.program);
                     gl.drawArrays(gl.TRIANGLES, 0, (this.penCoordsIndex + 1) / 4);
                     this.penCoordsIndex = 0;
                     this.penLinesIndex = 0;
@@ -9753,7 +9753,7 @@ var P;
                 }
                 penStamp(sprite) {
                     this.dirty = true;
-                    if (this.penCoordsIndex) {
+                    if (this.pendingPenOperations()) {
                         this.drawPendingOperations();
                     }
                     this.useShader(this.allFiltersShader);
@@ -9829,6 +9829,7 @@ var P;
                     this.drawChild(this.stage);
                     if (this.penTexture) {
                         this.drawTextureOverlay(this.penTexture);
+                        this.useShader(this.allFiltersShader);
                     }
                     for (var i = 0; i < this.stage.children.length; i++) {
                         var child = this.stage.children[i];
