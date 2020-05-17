@@ -9019,12 +9019,6 @@ var P;
                 canvas.height = 360;
                 return canvas;
             }
-            function filtersAffectShape(filters) {
-                return filters.fisheye !== 0 ||
-                    filters.mosaic !== 0 ||
-                    filters.pixelate !== 0 ||
-                    filters.whirl !== 0;
-            }
             const horizontalInvertMatrix = P.m3.scaling(-1, 1);
             class Shader {
                 constructor(gl, program) {
@@ -9206,11 +9200,11 @@ var P;
                     this.gl.clearColor(1, 1, 1, 1);
                     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
                 }
-                drawChild(child) {
-                    this._drawChild(child, this.allFiltersShader);
-                }
-                _drawChild(child, shader) {
+                useShader(shader) {
                     this.gl.useProgram(shader.program);
+                    this.shader = shader;
+                }
+                drawChild(child) {
                     const costume = child.costumes[child.currentCostumeIndex];
                     if (!this.costumeTextures.has(costume)) {
                         const image = costume.getImage();
@@ -9218,7 +9212,7 @@ var P;
                         this.costumeTextures.set(costume, texture);
                     }
                     this.gl.bindTexture(this.gl.TEXTURE_2D, this.costumeTextures.get(costume));
-                    shader.attributeBuffer('a_position', this.quadBuffer);
+                    this.shader.attributeBuffer('a_position', this.quadBuffer);
                     const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
                     P.m3.multiply(matrix, this.globalScaleMatrix);
                     P.m3.multiply(matrix, P.m3.translation(240 + child.scratchX | 0, 180 - child.scratchY | 0));
@@ -9238,31 +9232,31 @@ var P;
                     }
                     P.m3.multiply(matrix, P.m3.translation(-costume.rotationCenterX, -costume.rotationCenterY));
                     P.m3.multiply(matrix, P.m3.scaling(costume.width, costume.height));
-                    shader.uniformMatrix3('u_matrix', matrix);
-                    if (shader.hasUniform('u_opacity')) {
-                        shader.uniform1f('u_opacity', 1 - child.filters.ghost / 100);
+                    this.shader.uniformMatrix3('u_matrix', matrix);
+                    if (this.shader.hasUniform('u_opacity')) {
+                        this.shader.uniform1f('u_opacity', 1 - child.filters.ghost / 100);
                     }
-                    if (shader.hasUniform('u_brightness')) {
-                        shader.uniform1f('u_brightness', child.filters.brightness / 100);
+                    if (this.shader.hasUniform('u_brightness')) {
+                        this.shader.uniform1f('u_brightness', child.filters.brightness / 100);
                     }
-                    if (shader.hasUniform('u_color')) {
-                        shader.uniform1f('u_color', child.filters.color / 200);
+                    if (this.shader.hasUniform('u_color')) {
+                        this.shader.uniform1f('u_color', child.filters.color / 200);
                     }
-                    if (shader.hasUniform('u_mosaic')) {
+                    if (this.shader.hasUniform('u_mosaic')) {
                         const mosaic = Math.round((Math.abs(child.filters.mosaic) + 10) / 10);
-                        shader.uniform1f('u_mosaic', P.utils.clamp(mosaic, 1, 512));
+                        this.shader.uniform1f('u_mosaic', P.utils.clamp(mosaic, 1, 512));
                     }
-                    if (shader.hasUniform('u_whirl')) {
-                        shader.uniform1f('u_whirl', child.filters.whirl * Math.PI / -180);
+                    if (this.shader.hasUniform('u_whirl')) {
+                        this.shader.uniform1f('u_whirl', child.filters.whirl * Math.PI / -180);
                     }
-                    if (shader.hasUniform('u_fisheye')) {
-                        shader.uniform1f('u_fisheye', Math.max(0, (child.filters.fisheye + 100) / 100));
+                    if (this.shader.hasUniform('u_fisheye')) {
+                        this.shader.uniform1f('u_fisheye', Math.max(0, (child.filters.fisheye + 100) / 100));
                     }
-                    if (shader.hasUniform('u_pixelate')) {
-                        shader.uniform1f('u_pixelate', Math.abs(child.filters.pixelate) / 10);
+                    if (this.shader.hasUniform('u_pixelate')) {
+                        this.shader.uniform1f('u_pixelate', Math.abs(child.filters.pixelate) / 10);
                     }
-                    if (shader.hasUniform('u_size')) {
-                        shader.uniform2f('u_size', costume.width, costume.height);
+                    if (this.shader.hasUniform('u_size')) {
+                        this.shader.uniform2f('u_size', costume.width, costume.height);
                     }
                     this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
                 }
@@ -9425,33 +9419,68 @@ var P;
                     super();
                     this.gl.enable(this.gl.SCISSOR_TEST);
                     this.gl.scissor(0, 0, 480, 360);
-                    this.touchingShader = this.createShader(CollisionRenderer.touchingVertex, WebGLSpriteRenderer.fragmentShader, ['DISABLE_MINIMUM_ALPHA']);
+                    this.gl.clearColor(0, 0, 0, 0);
+                    this.touchingShader = this.createShader(CollisionRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, ['DISABLE_MINIMUM_ALPHA']);
+                    this.shapeFiltersShader = this.createShader(CollisionRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, [
+                        'ENABLE_FISHEYE',
+                        'ENABLE_PIXELATE',
+                        'ENABLE_MOSAIC',
+                    ]);
                 }
                 getContextOptions() {
                     return {
                         alpha: true
                     };
                 }
-                drawChild(sprite) {
-                    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
-                    super.drawChild(sprite);
+                spritesIntersect(spriteA, otherSprites) {
+                    const mb = spriteA.rotatedBounds();
+                    for (const spriteB of otherSprites) {
+                        if (!spriteB.visible || spriteA === spriteB) {
+                            continue;
+                        }
+                        const ob = spriteB.rotatedBounds();
+                        if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
+                            continue;
+                        }
+                        const left = Math.max(mb.left, ob.left);
+                        const top = Math.min(mb.top, ob.top);
+                        const right = Math.min(mb.right, ob.right);
+                        const bottom = Math.max(mb.bottom, ob.bottom);
+                        const width = Math.max(right - left, 1);
+                        const height = Math.max(top - bottom, 1);
+                        this.gl.scissor(240 + left, 180 + bottom, width, height);
+                        this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                        this.useShader(this.allFiltersShader);
+                        this.drawChild(spriteA);
+                        this.gl.blendFunc(this.gl.DST_ALPHA, this.gl.ZERO);
+                        this.useShader(this.touchingShader);
+                        this.drawChild(spriteB);
+                        this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+                        var data = new Uint8Array(width * height * 4);
+                        this.gl.readPixels(240 + left, 180 + bottom, width, height, this.gl.RGBA, this.gl.UNSIGNED_BYTE, data);
+                        this.gl.scissor(0, 0, 480, 360);
+                        var length = data.length;
+                        for (var j = 0; j < length; j += 4) {
+                            if (data[j + 3]) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
                 }
-                drawChildTouching(sprite) {
-                    this.gl.blendFunc(this.gl.DST_ALPHA, this.gl.ZERO);
-                    this._drawChild(sprite, this.touchingShader);
+                spriteTouchesPoint(sprite, x, y) {
+                    const cx = 240 + x | 0;
+                    const cy = 180 + y | 0;
+                    this.gl.scissor(cx, cy, 1, 1);
+                    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                    this.useShader(this.shapeFiltersShader);
+                    this.drawChild(sprite);
+                    const result = new Uint8Array(4);
+                    this.gl.readPixels(cx, cy, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, result);
+                    this.gl.scissor(0, 0, 480, 360);
+                    return result[3] !== 0;
                 }
             }
-            CollisionRenderer.touchingVertex = `
-    attribute vec2 a_position;
-
-    uniform mat3 u_matrix;
-
-    varying vec2 v_texcoord;
-
-    void main() {
-      gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
-      v_texcoord = a_position;
-    }`;
             class PenRenderer extends WebGLSpriteRenderer {
                 constructor() {
                     super();
@@ -9462,7 +9491,7 @@ var P;
                     this.penCoordsIndex = 0;
                     this.penLinesIndex = 0;
                     this.penColorsIndex = 0;
-                    this.shader = this.createShader(PenRenderer.PEN_VERTEX_SHADER, PenRenderer.PEN_FRAGMENT_SHADER);
+                    this.penShader = this.createShader(PenRenderer.PEN_VERTEX_SHADER, PenRenderer.PEN_FRAGMENT_SHADER);
                     this.positionBuffer = this.gl.createBuffer();
                     this.lineBuffer = this.gl.createBuffer();
                     this.colorBuffer = this.gl.createBuffer();
@@ -9477,22 +9506,22 @@ var P;
                 pendingPenOperations() {
                     return this.penLinesIndex > 0;
                 }
-                drawPen() {
+                drawPendingOperations() {
                     const gl = this.gl;
                     this.dirty = true;
                     gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
                     gl.bufferData(gl.ARRAY_BUFFER, this.penCoords, gl.STREAM_DRAW);
-                    gl.vertexAttribPointer(this.shader.getAttribute('a_vertexData'), 4, gl.FLOAT, false, 0, 0);
-                    gl.enableVertexAttribArray(this.shader.getAttribute('a_vertexData'));
+                    gl.vertexAttribPointer(this.penShader.getAttribute('a_vertexData'), 4, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(this.penShader.getAttribute('a_vertexData'));
                     gl.bindBuffer(gl.ARRAY_BUFFER, this.lineBuffer);
                     gl.bufferData(gl.ARRAY_BUFFER, this.penLines, gl.STREAM_DRAW);
-                    gl.vertexAttribPointer(this.shader.getAttribute('a_lineData'), 2, gl.FLOAT, false, 0, 0);
-                    gl.enableVertexAttribArray(this.shader.getAttribute('a_lineData'));
+                    gl.vertexAttribPointer(this.penShader.getAttribute('a_lineData'), 2, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(this.penShader.getAttribute('a_lineData'));
                     gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer);
                     gl.bufferData(gl.ARRAY_BUFFER, this.penColors, gl.STREAM_DRAW);
-                    gl.vertexAttribPointer(this.shader.getAttribute('a_color'), 4, gl.FLOAT, false, 0, 0);
-                    gl.enableVertexAttribArray(this.shader.getAttribute('a_color'));
-                    gl.useProgram(this.shader.program);
+                    gl.vertexAttribPointer(this.penShader.getAttribute('a_color'), 4, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(this.penShader.getAttribute('a_color'));
+                    gl.useProgram(this.penShader.program);
                     gl.drawArrays(gl.TRIANGLES, 0, (this.penCoordsIndex + 1) / 4);
                     this.penCoordsIndex = 0;
                     this.penLinesIndex = 0;
@@ -9507,7 +9536,7 @@ var P;
                 penLine(color, size, x1, y1, x2, y2) {
                     const circleRes = this.getCircleResolution(size);
                     if (this.buffersFull(24 * (circleRes + 1))) {
-                        this.drawPen();
+                        this.drawPendingOperations();
                     }
                     this.penCoords[this.penCoordsIndex] = x1;
                     this.penCoordsIndex++;
@@ -9670,7 +9699,7 @@ var P;
                 penDot(color, size, x, y) {
                     const circleRes = this.getCircleResolution(size);
                     if (this.buffersFull(12 * circleRes)) {
-                        this.drawPen();
+                        this.drawPendingOperations();
                     }
                     for (var i = 0; i < circleRes; i++) {
                         this.penCoords[this.penCoordsIndex] = x;
@@ -9725,8 +9754,9 @@ var P;
                 penStamp(sprite) {
                     this.dirty = true;
                     if (this.penCoordsIndex) {
-                        this.drawPen();
+                        this.drawPendingOperations();
                     }
+                    this.useShader(this.allFiltersShader);
                     this.drawChild(sprite);
                 }
                 penClear() {
@@ -9782,20 +9812,20 @@ var P;
                     super();
                     this.stage = stage;
                     this.zoom = 1;
-                    this.shaderOnlyShapeFilters = this.createShader(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, ['ONLY_SHAPE_FILTERS']);
                     this.collisionRenderer = new CollisionRenderer();
                     this.penRenderer = new PenRenderer();
                     this.fallbackRenderer = new P.renderer.canvas2d.ProjectRenderer2D(stage);
                 }
                 drawFrame() {
                     if (this.penRenderer.pendingPenOperations()) {
-                        this.penRenderer.drawPen();
+                        this.penRenderer.drawPendingOperations();
                     }
                     if (this.penRenderer.dirty) {
                         this.updatePenTexture();
                         this.penRenderer.dirty = false;
                     }
                     this.reset(this.zoom);
+                    this.useShader(this.allFiltersShader);
                     this.drawChild(this.stage);
                     if (this.penTexture) {
                         this.drawTextureOverlay(this.penTexture);
@@ -9844,46 +9874,10 @@ var P;
                     this.zoom = scale;
                 }
                 spriteTouchesPoint(sprite, x, y) {
-                    if (!filtersAffectShape(sprite.filters)) {
-                        return this.fallbackRenderer.spriteTouchesPoint(sprite, x, y);
-                    }
-                    this.reset(1);
-                    this._drawChild(sprite, this.shaderOnlyShapeFilters);
-                    const result = new Uint8Array(4);
-                    this.gl.readPixels(240 + x | 0, 180 + y | 0, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, result);
-                    return result[3] !== 0;
+                    return this.collisionRenderer.spriteTouchesPoint(sprite, x, y);
                 }
                 spritesIntersect(spriteA, otherSprites) {
-                    const mb = spriteA.rotatedBounds();
-                    for (const spriteB of otherSprites) {
-                        if (!spriteB.visible || spriteA === spriteB) {
-                            continue;
-                        }
-                        const ob = spriteB.rotatedBounds();
-                        if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
-                            continue;
-                        }
-                        const left = Math.max(mb.left, ob.left);
-                        const top = Math.min(mb.top, ob.top);
-                        const right = Math.min(mb.right, ob.right);
-                        const bottom = Math.max(mb.bottom, ob.bottom);
-                        const width = Math.max(right - left, 1);
-                        const height = Math.max(top - bottom, 1);
-                        this.collisionRenderer.gl.scissor(240 + left, 180 + bottom, width, height);
-                        this.collisionRenderer.gl.clear(this.collisionRenderer.gl.COLOR_BUFFER_BIT);
-                        this.collisionRenderer.drawChild(spriteA);
-                        this.collisionRenderer.drawChildTouching(spriteB);
-                        var data = new Uint8Array(width * height * 4);
-                        this.collisionRenderer.gl.readPixels(240 + left, 180 + bottom, width, height, this.collisionRenderer.gl.RGBA, this.collisionRenderer.gl.UNSIGNED_BYTE, data);
-                        this.collisionRenderer.gl.scissor(0, 0, 480, 360);
-                        var length = data.length;
-                        for (var j = 0; j < length; j += 4) {
-                            if (data[j + 3]) {
-                                return true;
-                            }
-                        }
-                    }
-                    return false;
+                    return this.collisionRenderer.spritesIntersect(spriteA, otherSprites);
                 }
                 spriteTouchesColor(sprite, color) {
                     return this.fallbackRenderer.spriteTouchesColor(sprite, color);

@@ -12,13 +12,6 @@ namespace P.renderer.webgl {
     return canvas;
   }
 
-  function filtersAffectShape(filters: P.core.Filters): boolean {
-    return filters.fisheye !== 0 ||
-      filters.mosaic !== 0 ||
-      filters.pixelate !== 0 ||
-      filters.whirl !== 0;
-  }
-
   const horizontalInvertMatrix = P.m3.scaling(-1, 1);
 
   class Shader {
@@ -300,6 +293,8 @@ namespace P.renderer.webgl {
 
     protected globalScaleMatrix: P.m3.Matrix3 = P.m3.scaling(1, 1);
 
+    protected shader: Shader;
+
     protected allFiltersShader: Shader;
     protected noFiltersShader: Shader;
 
@@ -460,17 +455,16 @@ namespace P.renderer.webgl {
       this.gl.clear(this.gl.COLOR_BUFFER_BIT);
     }
 
-    drawChild(child: P.core.Base) {
-      this._drawChild(child, this.allFiltersShader);
+    protected useShader(shader: Shader) {
+      this.gl.useProgram(shader.program);
+      this.shader = shader;
     }
 
     /**
-     * Real implementation of drawChild()
-     * @param child The child to draw
+     * Draw a sprite. Shader should be set with useShader()
+     * @param child The sprite or stage to draw
      */
-    protected _drawChild(child: P.core.Base, shader: Shader) {
-      this.gl.useProgram(shader.program);
-
+    protected drawChild(child: P.core.Base) {
       // Create the texture if it doesn't already exist.
       const costume = child.costumes[child.currentCostumeIndex];
       if (!this.costumeTextures.has(costume)) {
@@ -480,7 +474,7 @@ namespace P.renderer.webgl {
       }
       this.gl.bindTexture(this.gl.TEXTURE_2D, this.costumeTextures.get(costume)!);
 
-      shader.attributeBuffer('a_position', this.quadBuffer);
+      this.shader.attributeBuffer('a_position', this.quadBuffer);
 
       // TODO: optimize
       const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
@@ -502,33 +496,33 @@ namespace P.renderer.webgl {
       P.m3.multiply(matrix, P.m3.translation(-costume.rotationCenterX, -costume.rotationCenterY));
       P.m3.multiply(matrix, P.m3.scaling(costume.width, costume.height));
 
-      shader.uniformMatrix3('u_matrix', matrix);
+      this.shader.uniformMatrix3('u_matrix', matrix);
 
       // Effects
-      if (shader.hasUniform('u_opacity')) {
-        shader.uniform1f('u_opacity', 1 - child.filters.ghost / 100);
+      if (this.shader.hasUniform('u_opacity')) {
+        this.shader.uniform1f('u_opacity', 1 - child.filters.ghost / 100);
       }
-      if (shader.hasUniform('u_brightness')) {
-        shader.uniform1f('u_brightness', child.filters.brightness / 100);
+      if (this.shader.hasUniform('u_brightness')) {
+        this.shader.uniform1f('u_brightness', child.filters.brightness / 100);
       }
-      if (shader.hasUniform('u_color')) {
-        shader.uniform1f('u_color', child.filters.color / 200);
+      if (this.shader.hasUniform('u_color')) {
+        this.shader.uniform1f('u_color', child.filters.color / 200);
       }
-      if (shader.hasUniform('u_mosaic')) {
+      if (this.shader.hasUniform('u_mosaic')) {
         const mosaic = Math.round((Math.abs(child.filters.mosaic) + 10) / 10);
-        shader.uniform1f('u_mosaic', P.utils.clamp(mosaic, 1, 512));
+        this.shader.uniform1f('u_mosaic', P.utils.clamp(mosaic, 1, 512));
       }
-      if (shader.hasUniform('u_whirl')) {
-        shader.uniform1f('u_whirl', child.filters.whirl * Math.PI / -180);
+      if (this.shader.hasUniform('u_whirl')) {
+        this.shader.uniform1f('u_whirl', child.filters.whirl * Math.PI / -180);
       }
-      if (shader.hasUniform('u_fisheye')) {
-        shader.uniform1f('u_fisheye', Math.max(0, (child.filters.fisheye + 100) / 100));
+      if (this.shader.hasUniform('u_fisheye')) {
+        this.shader.uniform1f('u_fisheye', Math.max(0, (child.filters.fisheye + 100) / 100));
       }
-      if (shader.hasUniform('u_pixelate')) {
-        shader.uniform1f('u_pixelate', Math.abs(child.filters.pixelate) / 10);
+      if (this.shader.hasUniform('u_pixelate')) {
+        this.shader.uniform1f('u_pixelate', Math.abs(child.filters.pixelate) / 10);
       }
-      if (shader.hasUniform('u_size')) {
-        shader.uniform2f('u_size', costume.width, costume.height);
+      if (this.shader.hasUniform('u_size')) {
+        this.shader.uniform2f('u_size', costume.width, costume.height);
       }
 
       this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
@@ -560,19 +554,8 @@ namespace P.renderer.webgl {
   }
 
   class CollisionRenderer extends WebGLSpriteRenderer {
-    private static touchingVertex = `
-    attribute vec2 a_position;
-
-    uniform mat3 u_matrix;
-
-    varying vec2 v_texcoord;
-
-    void main() {
-      gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
-      v_texcoord = a_position;
-    }`;
-
     private touchingShader: Shader;
+    private shapeFiltersShader: Shader;
 
     constructor() {
       super();
@@ -580,7 +563,14 @@ namespace P.renderer.webgl {
       this.gl.enable(this.gl.SCISSOR_TEST);
       this.gl.scissor(0, 0, 480, 360);
 
-      this.touchingShader = this.createShader(CollisionRenderer.touchingVertex, WebGLSpriteRenderer.fragmentShader, ['DISABLE_MINIMUM_ALPHA']);
+      this.gl.clearColor(0, 0, 0, 0);
+
+      this.touchingShader = this.createShader(CollisionRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, ['DISABLE_MINIMUM_ALPHA']);
+      this.shapeFiltersShader = this.createShader(CollisionRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, [
+        'ENABLE_FISHEYE',
+        'ENABLE_PIXELATE',
+        'ENABLE_MOSAIC',
+      ]);
     }
 
     getContextOptions() {
@@ -589,14 +579,80 @@ namespace P.renderer.webgl {
       };
     }
 
-    drawChild(sprite: P.core.Base) {
-      this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
-      super.drawChild(sprite);
+    spritesIntersect(spriteA: core.Sprite, otherSprites: core.Base[]): boolean {
+      const mb = spriteA.rotatedBounds();
+
+      for (const spriteB of otherSprites) {
+        if (!spriteB.visible || spriteA === spriteB) {
+          continue;
+        }
+
+        const ob = spriteB.rotatedBounds();
+        if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
+          continue;
+        }
+
+        const left = Math.max(mb.left, ob.left);
+        const top = Math.min(mb.top, ob.top);
+        const right = Math.min(mb.right, ob.right);
+        const bottom = Math.max(mb.bottom, ob.bottom);
+
+        const width = Math.max(right - left, 1);
+        const height = Math.max(top - bottom, 1);
+
+        this.gl.scissor(240 + left, 180 + bottom, width, height);
+        this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+
+        this.useShader(this.allFiltersShader);
+        this.drawChild(spriteA);
+
+        this.gl.blendFunc(this.gl.DST_ALPHA, this.gl.ZERO);
+        this.useShader(this.touchingShader);
+        this.drawChild(spriteB);
+        this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+  
+        var data = new Uint8Array(width * height * 4);
+        this.gl.readPixels(
+          240 + left,
+          180 + bottom,
+          width,
+          height,
+          this.gl.RGBA,
+          this.gl.UNSIGNED_BYTE,
+          data
+        );
+
+        this.gl.scissor(0, 0, 480, 360);
+
+        var length = data.length;
+        for (var j = 0; j < length; j += 4) {
+          if (data[j + 3]) {
+            return true;
+          }
+        }
+      }
+
+      return false;
     }
 
-    drawChildTouching(sprite: P.core.Base) {
-      this.gl.blendFunc(this.gl.DST_ALPHA, this.gl.ZERO);
-      this._drawChild(sprite, this.touchingShader);
+    spriteTouchesPoint(sprite: core.Sprite, x: number, y: number): boolean {
+      // We will render one pixel of the sprite, and see if it has a non-zero alpha.
+      const cx = 240 + x | 0;
+      const cy = 180 + y | 0;
+      this.gl.scissor(cx, cy, 1, 1);
+
+      this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+
+      this.useShader(this.shapeFiltersShader);
+      this.drawChild(sprite);
+
+      // Allocate 4 bytes to store 1 RGBA pixel
+      const result = new Uint8Array(4);
+      this.gl.readPixels(cx, cy, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, result);
+
+      this.gl.scissor(0, 0, 480, 360);
+
+      return result[3] !== 0;
     }
   }
 
@@ -659,12 +715,12 @@ namespace P.renderer.webgl {
     private lineBuffer: WebGLBuffer;
     private colorBuffer: WebGLBuffer;
 
-    private shader: Shader;
+    private penShader: Shader;
 
     constructor() {
       super();
 
-      this.shader = this.createShader(PenRenderer.PEN_VERTEX_SHADER, PenRenderer.PEN_FRAGMENT_SHADER);
+      this.penShader = this.createShader(PenRenderer.PEN_VERTEX_SHADER, PenRenderer.PEN_FRAGMENT_SHADER);
 
       this.positionBuffer = this.gl.createBuffer()!;
       this.lineBuffer = this.gl.createBuffer()!;
@@ -684,29 +740,29 @@ namespace P.renderer.webgl {
       return this.penLinesIndex > 0;
     }
 
-    drawPen() {
+    drawPendingOperations() {
       const gl = this.gl;
       this.dirty = true;
 
       // Upload position data
       gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
       gl.bufferData(gl.ARRAY_BUFFER, this.penCoords, gl.STREAM_DRAW);
-      gl.vertexAttribPointer(this.shader.getAttribute('a_vertexData'), 4, gl.FLOAT, false, 0, 0);
-      gl.enableVertexAttribArray(this.shader.getAttribute('a_vertexData'));
+      gl.vertexAttribPointer(this.penShader.getAttribute('a_vertexData'), 4, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(this.penShader.getAttribute('a_vertexData'));
 
       // Upload line info data
       gl.bindBuffer(gl.ARRAY_BUFFER, this.lineBuffer);
       gl.bufferData(gl.ARRAY_BUFFER, this.penLines, gl.STREAM_DRAW);
-      gl.vertexAttribPointer(this.shader.getAttribute('a_lineData'), 2, gl.FLOAT, false, 0, 0);
-      gl.enableVertexAttribArray(this.shader.getAttribute('a_lineData'));
+      gl.vertexAttribPointer(this.penShader.getAttribute('a_lineData'), 2, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(this.penShader.getAttribute('a_lineData'));
 
       // Upload color data
       gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer);
       gl.bufferData(gl.ARRAY_BUFFER, this.penColors, gl.STREAM_DRAW);
-      gl.vertexAttribPointer(this.shader.getAttribute('a_color'), 4, gl.FLOAT, false, 0, 0);
-      gl.enableVertexAttribArray(this.shader.getAttribute('a_color'));
+      gl.vertexAttribPointer(this.penShader.getAttribute('a_color'), 4, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(this.penShader.getAttribute('a_color'));
 
-      gl.useProgram(this.shader.program);
+      gl.useProgram(this.penShader.program);
       gl.drawArrays(gl.TRIANGLES, 0, (this.penCoordsIndex + 1) / 4);
 
       this.penCoordsIndex = 0;
@@ -727,7 +783,7 @@ namespace P.renderer.webgl {
 
       // Redraw when array is full.
       if (this.buffersFull(24 * (circleRes + 1))) {
-        this.drawPen();
+        this.drawPendingOperations();
       }
 
       // draw line
@@ -973,7 +1029,7 @@ namespace P.renderer.webgl {
 
       // Redraw when array is full.
       if (this.buffersFull(12 * circleRes)) {
-        this.drawPen();
+        this.drawPendingOperations();
       }
 
       for (var i = 0; i < circleRes; i++) {
@@ -1051,8 +1107,9 @@ namespace P.renderer.webgl {
     penStamp(sprite: P.core.Sprite): void {
       this.dirty = true;
       if (this.penCoordsIndex) {
-        this.drawPen();
+        this.drawPendingOperations();
       }
+      this.useShader(this.allFiltersShader);
       this.drawChild(sprite);
     }
 
@@ -1068,8 +1125,6 @@ namespace P.renderer.webgl {
     public zoom: number = 1;
 
     protected fallbackRenderer: ProjectRenderer;
-    // TODO: move to CollisionRenderer
-    protected shaderOnlyShapeFilters = this.createShader(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, ['ONLY_SHAPE_FILTERS']);
 
     private collisionRenderer: CollisionRenderer = new CollisionRenderer();
     private penRenderer: PenRenderer = new PenRenderer();
@@ -1083,7 +1138,7 @@ namespace P.renderer.webgl {
     drawFrame() {
       // Flush pen operations
       if (this.penRenderer.pendingPenOperations()) {
-        this.penRenderer.drawPen();
+        this.penRenderer.drawPendingOperations();
       }
       // Update the pen texture if it is outdated
       if (this.penRenderer.dirty) {
@@ -1095,6 +1150,7 @@ namespace P.renderer.webgl {
       //  - Stage
       //  - Pen (might not exist)
       //  - Sprites
+      this.useShader(this.allFiltersShader);
       this.drawChild(this.stage);
       if (this.penTexture) {
         this.drawTextureOverlay(this.penTexture);
@@ -1158,77 +1214,11 @@ namespace P.renderer.webgl {
     }
 
     spriteTouchesPoint(sprite: core.Sprite, x: number, y: number): boolean {
-      // TODO: move to CollisionRenderer
-
-      // If filters will not change the shape of the sprite, it would be faster
-      // to avoid going to the GPU
-      if (!filtersAffectShape(sprite.filters)) {
-        return this.fallbackRenderer.spriteTouchesPoint(sprite, x, y);
-      }
-
-      this.reset(1);
-
-      this._drawChild(sprite, this.shaderOnlyShapeFilters);
-
-      // Allocate 4 bytes to store 1 RGBA pixel
-      const result = new Uint8Array(4);
-      // Coordinates are in pixels from the lower left corner
-      // We only care about 1 pixel, the pixel at the mouse cursor.
-      this.gl.readPixels(240 + x | 0, 180 + y | 0, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, result);
-
-      // Just look for a non-zero alpha channel
-      return result[3] !== 0;
+      return this.collisionRenderer.spriteTouchesPoint(sprite, x, y);
     }
 
     spritesIntersect(spriteA: core.Sprite, otherSprites: core.Base[]): boolean {
-      const mb = spriteA.rotatedBounds();
-
-      for (const spriteB of otherSprites) {
-        if (!spriteB.visible || spriteA === spriteB) {
-          continue;
-        }
-
-        const ob = spriteB.rotatedBounds();
-        if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
-          continue;
-        }
-
-        const left = Math.max(mb.left, ob.left);
-        const top = Math.min(mb.top, ob.top);
-        const right = Math.min(mb.right, ob.right);
-        const bottom = Math.max(mb.bottom, ob.bottom);
-
-        const width = Math.max(right - left, 1);
-        const height = Math.max(top - bottom, 1);
-
-        this.collisionRenderer.gl.scissor(240 + left, 180 + bottom, width, height);
-        this.collisionRenderer.gl.clear(this.collisionRenderer.gl.COLOR_BUFFER_BIT);
-
-        this.collisionRenderer.drawChild(spriteA);
-        this.collisionRenderer.drawChildTouching(spriteB);
-
-        var data = new Uint8Array(width * height * 4);
-        this.collisionRenderer.gl.readPixels(
-          240 + left,
-          180 + bottom,
-          width,
-          height,
-          this.collisionRenderer.gl.RGBA,
-          this.collisionRenderer.gl.UNSIGNED_BYTE,
-          data
-        );
-
-        this.collisionRenderer.gl.scissor(0, 0, 480, 360);
-
-        var length = data.length;
-        for (var j = 0; j < length; j += 4) {
-          if (data[j + 3]) {
-            return true;
-          }
-        }
-      }
-
-      return false;
+      return this.collisionRenderer.spritesIntersect(spriteA, otherSprites);
     }
 
     spriteTouchesColor(sprite: core.Base, color: number): boolean {
