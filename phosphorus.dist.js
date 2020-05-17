@@ -9482,16 +9482,16 @@ var P;
                     this.dirty = true;
                     gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
                     gl.bufferData(gl.ARRAY_BUFFER, this.penCoords, gl.STREAM_DRAW);
-                    gl.vertexAttribPointer(this.shader.getAttribute('vertexData'), 4, gl.FLOAT, false, 0, 0);
-                    gl.enableVertexAttribArray(this.shader.getAttribute('vertexData'));
+                    gl.vertexAttribPointer(this.shader.getAttribute('a_vertexData'), 4, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(this.shader.getAttribute('a_vertexData'));
                     gl.bindBuffer(gl.ARRAY_BUFFER, this.lineBuffer);
                     gl.bufferData(gl.ARRAY_BUFFER, this.penLines, gl.STREAM_DRAW);
-                    gl.vertexAttribPointer(this.shader.getAttribute('lineData'), 2, gl.FLOAT, false, 0, 0);
-                    gl.enableVertexAttribArray(this.shader.getAttribute('lineData'));
+                    gl.vertexAttribPointer(this.shader.getAttribute('a_lineData'), 2, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(this.shader.getAttribute('a_lineData'));
                     gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer);
                     gl.bufferData(gl.ARRAY_BUFFER, this.penColors, gl.STREAM_DRAW);
-                    gl.vertexAttribPointer(this.shader.getAttribute('colorData'), 4, gl.FLOAT, false, 0, 0);
-                    gl.enableVertexAttribArray(this.shader.getAttribute('colorData'));
+                    gl.vertexAttribPointer(this.shader.getAttribute('a_color'), 4, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(this.shader.getAttribute('a_color'));
                     gl.useProgram(this.shader.program);
                     gl.drawArrays(gl.TRIANGLES, 0, (this.penCoordsIndex + 1) / 4);
                     this.penCoordsIndex = 0;
@@ -9741,44 +9741,42 @@ var P;
     // [1] = y1
     // [2] = x2
     // [3] = y2
-    attribute vec4 vertexData;
+    attribute vec4 a_vertexData;
     // [0] = thickened vertex direction
     // [1] = thickened vertex distance
-    attribute vec2 lineData;
+    attribute vec2 a_lineData;
     // [0] = red
     // [1] = green
     // [2] = blue
     // [3] = alpha
-    attribute vec4 colorData;
+    attribute vec4 a_color;
 
-    varying vec4 fragColor;
+    varying vec4 v_color;
 
-    void main(){
-
-      vec2 lineDir = normalize(vertexData.zw - vertexData.xy);
+    void main() {
+      vec2 lineDir = normalize(a_vertexData.zw - a_vertexData.xy);
 
       mat2 rot;
-      rot[0] = vec2(cos(lineData.x), sin(lineData.x));
-      rot[1] = vec2(-sin(lineData.x), cos(lineData.x));
+      rot[0] = vec2(cos(a_lineData.x), sin(a_lineData.x));
+      rot[1] = vec2(-sin(a_lineData.x), cos(a_lineData.x));
 
-      lineDir *= rot * lineData.y;
+      lineDir *= rot * a_lineData.y;
 
-      vec2 p = (vertexData.xy + lineDir);
+      vec2 p = (a_vertexData.xy + lineDir);
       p.x /= 240.0;
       p.y /= 180.0;
 
       gl_Position = vec4(p, 0.0, 1.0);
-      fragColor = colorData;
-    }
-    `;
+      v_color = vec4(a_color.xyz / 255.0, a_color.w);
+    }`;
             PenRenderer.PEN_FRAGMENT_SHADER = `
     precision mediump float;
-    varying vec4 fragColor;
-    void main(){
 
-      gl_FragColor = vec4(fragColor.xyz / 255.0, fragColor.w);
-    }
-    `;
+    varying vec4 v_color;
+
+    void main() {
+      gl_FragColor = v_color;
+    }`;
             class WebGLProjectRenderer extends WebGLSpriteRenderer {
                 constructor(stage) {
                     super();
