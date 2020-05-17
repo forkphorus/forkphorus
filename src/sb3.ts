@@ -485,7 +485,7 @@ namespace P.sb3 {
         let row = this.rows[rowIndex];
         row.setIndex(listIndex);
         row.setValue(this.list[listIndex]);
-        row.setY(listIndex * this._rowHeight * this.stage.zoom);
+        row.setY(listIndex * this._rowHeight);
         row.setVisible(true);
       }
       while (rowIndex < this.rows.length) {
