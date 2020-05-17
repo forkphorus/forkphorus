@@ -1221,6 +1221,7 @@ var P;
                 for (const extension of this.extensions) {
                     extension.destroy();
                 }
+                this.renderer.destroy();
                 this.removeEventListeners();
             }
             pauseExtensions() {
@@ -8718,6 +8719,8 @@ var P;
                     root.appendChild(this.penLayer);
                     root.appendChild(this.canvas);
                 }
+                destroy() {
+                }
                 drawFrame() {
                     this.reset(this.zoom);
                     this.drawObjects(this.stage.children);
@@ -9185,6 +9188,12 @@ var P;
                     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
                     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
                     return texture;
+                }
+                destroy() {
+                    const extension = this.gl.getExtension('WEBGL_lose_context');
+                    if (extension) {
+                        extension.loseContext();
+                    }
                 }
                 reset(scale) {
                     scale = scale * P.config.scale;
@@ -9803,6 +9812,11 @@ var P;
                 }
                 init(root) {
                     root.appendChild(this.canvas);
+                }
+                destroy() {
+                    super.destroy();
+                    this.penRenderer.destroy();
+                    this.collisionRenderer.destroy();
                 }
                 onStageFiltersChanged() {
                 }

@@ -343,6 +343,9 @@ namespace P.renderer.webgl {
       this.reset(1);
     }
 
+    /**
+     * These options will be passed to getContext()
+     */
     protected getContextOptions(): WebGLContextAttributes {
       return {
         alpha: false,
@@ -430,6 +433,14 @@ namespace P.renderer.webgl {
       this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
       this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
       return texture;
+    }
+
+    destroy(): void {
+      // Explicitly drop the context
+      const extension = this.gl.getExtension('WEBGL_lose_context');
+      if (extension) {
+        extension.loseContext();
+      }
     }
 
     /**
@@ -1101,6 +1112,12 @@ namespace P.renderer.webgl {
 
     init(root: HTMLElement) {
       root.appendChild(this.canvas);
+    }
+
+    destroy() {
+      super.destroy();
+      this.penRenderer.destroy();
+      this.collisionRenderer.destroy();
     }
 
     onStageFiltersChanged() {

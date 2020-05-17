@@ -188,6 +188,10 @@ namespace P.renderer.canvas2d {
       root.appendChild(this.canvas);
     }
 
+    destroy() {
+      // Do nothing
+    }
+
     drawFrame() {
       this.reset(this.zoom);
       this.drawObjects(this.stage.children);

@@ -1073,6 +1073,7 @@ namespace P.core {
       for (const extension of this.extensions) {
         extension.destroy();
       }
+      this.renderer.destroy();
       this.removeEventListeners();
     }
 

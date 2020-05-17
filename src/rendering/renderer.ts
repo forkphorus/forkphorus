@@ -22,6 +22,10 @@ namespace P.renderer {
      */
     init(root: HTMLElement): void;
     /**
+     * Delete this renderer.
+     */
+    destroy(): void;
+    /**
      * Called when the filters on the stage have changed.
      */
     onStageFiltersChanged(): void;
