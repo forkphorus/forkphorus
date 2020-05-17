@@ -604,6 +604,8 @@
       loadProjectId(initialId);
     } else {
       player.setOptions({ autoplayPolicy: 'always' });
+      urlInput.focus();
+      urlInput.setSelectionRange(urlInput.value.length, urlInput.value.length);
     }
 
   }());
