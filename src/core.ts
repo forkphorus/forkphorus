@@ -791,8 +791,10 @@ namespace P.core {
 
     public zoom: number = 1;
 
+    // rawMouseX/rawMouseY = mouse x/y, in Scratch coordinate space, before clamping or rounding
     public rawMouseX: number = 0;
     public rawMouseY: number = 0;
+    // mouseX/mouseY = mouse x/y, in Scratch coordinate space, rounded and clamped to the stage bounds
     public mouseX: number = 0;
     public mouseY: number = 0;
     public mousePressed: boolean = false;
