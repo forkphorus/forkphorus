@@ -506,7 +506,9 @@ namespace P.sb3 {
       }
       this.list = this.target.lists[listName] as Scratch3List;
       this.target.listWatchers[listName] = this;
-      this.updateLayout();
+      if (this.visible) {
+        this.updateLayout();
+      }
     }
 
     getTopLabel(): string {
@@ -546,6 +548,10 @@ namespace P.sb3 {
 
     updateLayout() {
       if (!this.containerEl) {
+        if (!this.visible) {
+          // if the element doesn't exist, we have no reason to create it
+          return;
+        }
         this.createLayout();
       }
       this.containerEl.style.display = this.visible ? '' : 'none';
