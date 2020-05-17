@@ -9809,6 +9809,7 @@ var P;
                         }
                         this.drawChild(child);
                     }
+                    this.gl.flush();
                 }
                 init(root) {
                     root.appendChild(this.canvas);

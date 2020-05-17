@@ -1108,6 +1108,10 @@ namespace P.renderer.webgl {
         }
         this.drawChild(child);
       }
+      // We flush to ensure that the GPU finishes rendering as quickly as possible.
+      // This is especially important as we do not use requestAnimationFrame.
+      // Unlike finish(), flush() does not block the main thread. This is important.
+      this.gl.flush();
     }
 
     init(root: HTMLElement) {
