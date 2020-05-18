@@ -32,11 +32,11 @@ namespace P.renderer.canvas2d {
     return { canvas, ctx };
   }
 
-  // RGB colors will use this to determine whether colors are "close enough"
-  // These are the only bits we care about when comparing colors.
-  // Note that the inconsistent pattern (blue pattern ignores more bits) is intentional.
-  // Based on: https://github.com/LLK/scratch-render/blob/d73aeb1ac13d8b263abdfb189a6d2ee305688fa2/src/RenderWebGL.js#L46-L59
+  // These are the only bits we care about when comparing colors, everything else is ignored.
+  // Note that the inconsistent pattern is intentional.
+  // Based on: https://github.com/LLK/scratch-render/blob/d73aeb1ac13d8b263abdfb189a6d2ee305688fa2/src/RenderWebGL.js#L61-L75
   const COLOR_MASK = 0b111110001111100011110000;
+  //                   RRRRRRRRGGGGGGGGBBBBBBBB
 
   export class SpriteRenderer2D {
     public ctx: CanvasRenderingContext2D;
