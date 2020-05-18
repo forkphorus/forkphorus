@@ -1776,7 +1776,7 @@ namespace P.core {
     public static MAX_SIZE = 1024;
 
     private svg: HTMLImageElement;
-    public currentScale: number = 1;
+    public currentScale: number;
     public maxScale: number;
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
@@ -1791,6 +1791,7 @@ namespace P.core {
       this.height = svg.height;
       this.svg = svg;
       this.maxScale = this.calculateMaxScale();
+      this.currentScale = Math.min(1, this.maxScale);
     }
 
     private calculateMaxScale(): number {

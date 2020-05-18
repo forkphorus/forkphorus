@@ -1735,7 +1735,6 @@ var P;
         class VectorCostume extends Costume {
             constructor(svg, options) {
                 super(options);
-                this.currentScale = 1;
                 if (svg.height < 1 || svg.width < 1) {
                     svg = new Image(1, 1);
                 }
@@ -1744,6 +1743,7 @@ var P;
                 this.height = svg.height;
                 this.svg = svg;
                 this.maxScale = this.calculateMaxScale();
+                this.currentScale = Math.min(1, this.maxScale);
             }
             calculateMaxScale() {
                 if (VectorCostume.MAX_SIZE / this.width < VectorCostume.MAX_SCALE) {
