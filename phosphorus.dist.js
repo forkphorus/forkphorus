@@ -9190,7 +9190,6 @@ var P;
                     }
                 }
                 reset(scale) {
-                    scale = scale * P.config.scale;
                     this.canvas.width = scale * 480;
                     this.canvas.height = scale * 360;
                     this.gl.viewport(0, 0, scale * 480, scale * 360);
@@ -9316,6 +9315,9 @@ var P;
       uniform float u_pixelate;
       uniform vec2 u_size;
     #endif
+    #ifdef ENABLE_COLOR_TEST
+      uniform vec3 u_colorTest;
+    #endif
 
     const float minimumAlpha = 1.0 / 250.0;
     const vec2 vecCenter = vec2(0.5, 0.5);
@@ -9411,6 +9413,12 @@ var P;
         color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
       #endif
 
+      #ifdef ENABLE_COLOR_TEST
+        if (color.rgb != u_colorTest) {
+          color = vec4(0.0, 0.0, 0.0, 0.0);
+        }
+      #endif
+
       gl_FragColor = color;
     }
     `;
@@ -9425,6 +9433,10 @@ var P;
                         'ENABLE_FISHEYE',
                         'ENABLE_PIXELATE',
                         'ENABLE_MOSAIC',
+                    ]);
+                    this.touchingColorShader = this.createShader(CollisionRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, [
+                        'DISABLE_MINIMUM_ALPHA',
+                        'ENABLE_COLOR_TEST',
                     ]);
                 }
                 getContextOptions() {
@@ -9527,7 +9539,7 @@ var P;
                     this.penLinesIndex = 0;
                     this.penColorsIndex = 0;
                 }
-                buffersFull(size) {
+                buffersCanFit(size) {
                     return this.penCoordsIndex + size > this.penCoords.length;
                 }
                 getCircleResolution(size) {
@@ -9535,7 +9547,7 @@ var P;
                 }
                 penLine(color, size, x1, y1, x2, y2) {
                     const circleRes = this.getCircleResolution(size);
-                    if (this.buffersFull(24 * (circleRes + 1))) {
+                    if (this.buffersCanFit(24 * (circleRes + 1))) {
                         this.drawPendingOperations();
                     }
                     this.penCoords[this.penCoordsIndex] = x1;
@@ -9698,7 +9710,7 @@ var P;
                 }
                 penDot(color, size, x, y) {
                     const circleRes = this.getCircleResolution(size);
-                    if (this.buffersFull(12 * circleRes)) {
+                    if (this.buffersCanFit(12 * circleRes)) {
                         this.drawPendingOperations();
                     }
                     for (var i = 0; i < circleRes; i++) {
@@ -9872,7 +9884,7 @@ var P;
                     }
                 }
                 resize(scale) {
-                    this.zoom = scale;
+                    this.zoom = scale * P.config.scale;
                 }
                 spriteTouchesPoint(sprite, x, y) {
                     return this.collisionRenderer.spriteTouchesPoint(sprite, x, y);
