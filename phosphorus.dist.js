@@ -8592,6 +8592,7 @@ var P;
                 ctx.imageSmoothingEnabled = false;
                 return { canvas, ctx };
             }
+            const COLOR_MASK = 0b111110001111100011110000;
             class SpriteRenderer2D {
                 constructor() {
                     this.noEffects = false;
@@ -8891,10 +8892,10 @@ var P;
                     workingRenderer.noEffects = false;
                     workingRenderer.ctx.restore();
                     const data = workingRenderer.ctx.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
-                    color = color & 0xffffff;
+                    color = color & COLOR_MASK;
                     const length = (b.right - b.left) * (b.top - b.bottom) * 4;
                     for (var i = 0; i < length; i += 4) {
-                        if ((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) === color && data[i + 3]) {
+                        if (((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) & COLOR_MASK) === color && data[i + 3]) {
                             return true;
                         }
                     }
@@ -8919,12 +8920,12 @@ var P;
                     workingRenderer2.ctx.restore();
                     var dataA = workingRenderer.ctx.getImageData(0, 0, width, height).data;
                     var dataB = workingRenderer2.ctx.getImageData(0, 0, width, height).data;
-                    spriteColor = spriteColor & 0xffffff;
-                    otherColor = otherColor & 0xffffff;
+                    spriteColor = spriteColor & COLOR_MASK;
+                    otherColor = otherColor & COLOR_MASK;
                     var length = dataA.length;
                     for (var i = 0; i < length; i += 4) {
-                        var touchesSource = (dataB[i] << 16 | dataB[i + 1] << 8 | dataB[i + 2]) === spriteColor && dataB[i + 3];
-                        var touchesOther = (dataA[i] << 16 | dataA[i + 1] << 8 | dataA[i + 2]) === otherColor && dataA[i + 3];
+                        var touchesSource = ((dataB[i] << 16 | dataB[i + 1] << 8 | dataB[i + 2]) & COLOR_MASK) === spriteColor && dataB[i + 3];
+                        var touchesOther = ((dataA[i] << 16 | dataA[i + 1] << 8 | dataA[i + 2]) & COLOR_MASK) === otherColor && dataA[i + 3];
                         if (touchesSource && touchesOther) {
                             return true;
                         }
