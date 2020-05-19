@@ -1,7 +1,7 @@
 'use strict';
 
-// Common helpers for the index.html, app.html, embed.html etc.
-// This should be loaded after phosphorus.
+// Common helpers for index.html, app.html, embed.html etc.
+// This should be loaded after phosphorus.dist.js
 
 // @ts-ignore
 window.uiCommon = (function() {
@@ -23,9 +23,11 @@ window.uiCommon = (function() {
   }
 
   function parseOptions() {
-    var options = {};
+    var playerOptions = {};
+    var projectId = null;
+
     parseSearch(function(key, value) {
-      function setOption(name, value) {
+      function setPlayerOption(name, value) {
         // Check that this option exists
         if (!DEFAULT_OPTIONS.hasOwnProperty(name)) {
           throw new Error('Unknown option: ' + name);
@@ -56,29 +58,44 @@ window.uiCommon = (function() {
           }
         }
   
-        options[name] = value;
+        playerOptions[name] = value;
       }
   
-      function setFlagOption(name, value) {
-        setOption(name, value || 'true');
+      function setPlayerFlag(name, value) {
+        setPlayerOption(name, value || 'true');
       }
   
       switch (key) {
         case 'fps':
-          setOption('fps', value);
+          setPlayerOption('fps', value);
           break;
         case 'username':
-          setOption('username', value);
+          setPlayerOption('username', value);
           break;
         case 'turbo':
-          setFlagOption('turbo', value);
+          setPlayerFlag('turbo', value);
           break;
         case 'imageSmoothing':
-          setFlagOption('imageSmoothing', value);
+          setPlayerFlag('imageSmoothing', value);
+          break;
+        case 'id':
+          projectId = value;
           break;
       }
     });
-    return options;
+
+    // Check hash for project ID if not specified in search string
+    if (projectId === null) {
+      var hash = location.hash.substr(1);
+      if (/^\d+$/.test(hash)) {
+        projectId = hash;
+      }
+    }
+
+    return {
+      projectId: projectId,
+      playerOptions: playerOptions,
+    };
   }
 
   return {

@@ -239,10 +239,9 @@
     });
     playerArea.appendChild(player.root);
 
-    var initialId = location.hash.substr(1);
-    if (!/^\d+$/.test(initialId)) {
-      initialId = '';
-    }
+    var options = uiCommon.parseOptions();
+    var initialId = options.projectId || '';
+    player.setOptions(options.playerOptions);
 
     playerArea.style.height = projectArea.style.height = 'auto';
     var titleAreaHeight = titleArea.offsetHeight;
