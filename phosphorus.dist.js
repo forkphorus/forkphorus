@@ -43,11 +43,10 @@ var P;
 (function (P) {
     var config;
     (function (config) {
-        const features = location.search.replace('?', '').split('&');
-        config.debug = features.indexOf('debug') > -1;
-        config.useWebGL = features.indexOf('webgl') > -1;
-        config.supportVideoSensing = features.indexOf('video') > -1;
-        config.experimentalOptimizations = features.indexOf('opt') > -1;
+        config.debug = false;
+        config.useWebGL = false;
+        config.supportVideoSensing = false;
+        config.experimentalOptimizations = false;
         config.scale = window.devicePixelRatio || 1;
         config.PROJECT_API = 'https://projects.scratch.mit.edu/$id';
     })(config = P.config || (P.config = {}));

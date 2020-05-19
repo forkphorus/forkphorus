@@ -3,9 +3,11 @@
 // Common helpers for index.html, app.html, embed.html etc.
 // This should be loaded after phosphorus.dist.js
 
+/** @type {any} */
+var P;
+
 // @ts-ignore
 window.uiCommon = (function() {
-  // @ts-ignore
   var DEFAULT_OPTIONS = P.player.Player.DEFAULT_OPTIONS;
   // "truthy" values
   var TRUE = ['true', 'yes', 'on', '1'];
@@ -22,84 +24,93 @@ window.uiCommon = (function() {
     });
   }
 
-  function parseOptions() {
-    var playerOptions = {};
-    var projectId = null;
+  var playerOptions = {};
+  var projectId = null;
 
-    parseSearch(function(key, value) {
-      function setPlayerOption(name, value) {
-        // Check that this option exists
-        if (!DEFAULT_OPTIONS.hasOwnProperty(name)) {
-          throw new Error('Unknown option: ' + name);
-        }
-  
-        // Get the default value and type
-        var defaultValue = DEFAULT_OPTIONS[name];
-        var expectedType = typeof defaultValue;
-  
-        // Convert the input value to the correct type
-        if (expectedType === 'number') {
-          value = +value;
-          if (Number.isNaN(value)) {
-            console.warn('Value for ' + name + ' is an invalid number, skipping.');
-            return;
-          }
-        }
-  
-        if (expectedType === 'boolean') {
-          value = value.toLowerCase();
-          if (TRUE.indexOf(value) > -1) {
-            value = true;
-          } else if (FALSE.indexOf(value) > -1) {
-            value = false;
-          } else {
-            console.warn('Value for ' + name + ' is an invalid boolean(-like), skipping.');
-            return;
-          }
-        }
-  
-        playerOptions[name] = value;
+  parseSearch(function(key, value) {
+    function setPlayerOption(name, value) {
+      // Check that this option exists
+      if (!DEFAULT_OPTIONS.hasOwnProperty(name)) {
+        throw new Error('Unknown option: ' + name);
       }
-  
-      function setPlayerFlag(name, value) {
-        setPlayerOption(name, value || 'true');
-      }
-  
-      switch (key) {
-        case 'fps':
-          setPlayerOption('fps', value);
-          break;
-        case 'username':
-          setPlayerOption('username', value);
-          break;
-        case 'turbo':
-          setPlayerFlag('turbo', value);
-          break;
-        case 'imageSmoothing':
-          setPlayerFlag('imageSmoothing', value);
-          break;
-        case 'id':
-          projectId = value;
-          break;
-      }
-    });
 
-    // Check hash for project ID if not specified in search string
-    if (projectId === null) {
-      var hash = location.hash.substr(1);
-      if (/^\d+$/.test(hash)) {
-        projectId = hash;
+      // Get the default value and type
+      var defaultValue = DEFAULT_OPTIONS[name];
+      var expectedType = typeof defaultValue;
+
+      // Convert the input value to the correct type
+      if (expectedType === 'number') {
+        value = +value;
+        if (Number.isNaN(value)) {
+          console.warn('Value for ' + name + ' is an invalid number, skipping.');
+          return;
+        }
       }
+
+      if (expectedType === 'boolean') {
+        value = value.toLowerCase();
+        if (TRUE.indexOf(value) > -1) {
+          value = true;
+        } else if (FALSE.indexOf(value) > -1) {
+          value = false;
+        } else {
+          console.warn('Value for ' + name + ' is an invalid boolean(-like), skipping.');
+          return;
+        }
+      }
+
+      playerOptions[name] = value;
     }
 
-    return {
-      projectId: projectId,
-      playerOptions: playerOptions,
-    };
+    function setPlayerFlag(name, value) {
+      setPlayerOption(name, value || 'true');
+    }
+
+    switch (key) {
+      // Player options
+      case 'fps':
+        setPlayerOption('fps', value);
+        break;
+      case 'username':
+        setPlayerOption('username', value);
+        break;
+      case 'turbo':
+        setPlayerFlag('turbo', value);
+        break;
+      case 'imageSmoothing':
+        setPlayerFlag('imageSmoothing', value);
+        break;
+      // Project ID
+      case 'id':
+        projectId = value;
+        break;
+      // P.config feature flags
+      case 'webgl':
+        P.config.useWebGL = true;
+        break;
+      case 'debug':
+        P.config.debug = true;
+        break;
+      case 'video':
+        P.config.supportVideoSensing = true;
+        break;
+      case 'opt':
+        P.config.experimentalOptimizations = true;
+        break;
+    }
+  });
+
+  // Check hash for project ID if not specified in search string
+  if (projectId === null) {
+    var hash = location.hash.substr(1);
+    if (/^\d+$/.test(hash)) {
+      projectId = hash;
+    }
   }
 
   return {
     parseSearch: parseSearch,
-    parseOptions: parseOptions,
+    playerOptions: playerOptions,
+    projectId: projectId,
   };
 }());

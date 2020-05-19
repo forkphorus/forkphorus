@@ -134,15 +134,14 @@
       player.setOptions({ focusOnLoad: false });
     }
 
-    var options = uiCommon.parseOptions();
-    player.setOptions(options.playerOptions);
+    player.setOptions(uiCommon.playerOptions);
 
     player.setOptions({
       fullscreenMode: 'window',
       autoplayPolicy: 'if-audio-playable',
     });
 
-    player.loadProjectById(options.projectId)
+    player.loadProjectById(uiCommon.projectId)
       .then(function() {
         player.enterFullscreen();
         splash.style.display = 'none';
