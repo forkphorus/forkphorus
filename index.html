@@ -139,7 +139,7 @@
   <script src="lib/rgbcolor.js"></script>
   <script src="lib/canvg.min.js"></script>
   <script src="phosphorus.dist.js"></script>
-  <script src="uicommon.js"></script>
+  <script src="common.js"></script>
   <script src="studioview/studioview.js"></script>
 
   <script>
@@ -239,8 +239,8 @@
     });
     playerArea.appendChild(player.root);
 
-    var initialId = uiCommon.projectId || '';
-    player.setOptions(uiCommon.playerOptions);
+    var initialId = Common.projectId || '';
+    player.setOptions(Common.playerOptions);
 
     playerArea.style.height = projectArea.style.height = 'auto';
     var titleAreaHeight = titleArea.offsetHeight;

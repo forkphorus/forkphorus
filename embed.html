@@ -36,7 +36,7 @@
   <script src="lib/rgbcolor.js"></script>
   <script src="lib/canvg.min.js"></script>
   <script src="phosphorus.dist.js"></script>
-  <script src="uicommon.js"></script>
+  <script src="common.js"></script>
 
   <script>
   (function() {
@@ -45,7 +45,7 @@
     var player = new P.player.Player();
 
     var hasUI = true;
-    uiCommon.parseSearch(function(key, value) {
+    Common.parseSearch(function(key, value) {
       switch (key) {
         case 'auto-start':
           if (value === 'true') {
@@ -69,7 +69,7 @@
 
     var width = window.innerWidth;
 
-    player.setOptions(uiCommon.playerOptions);
+    player.setOptions(Common.playerOptions);
     player.setOptions({ focusOnLoad: false });
 
     if (hasUI) {
@@ -102,7 +102,7 @@
     });
 
     // Implement Embed -> Parent API
-    var id = Math.random().toString().substr(2, 5) + '-' + options.projectId + '-' + Date.now();
+    var id = Math.random().toString().substr(2, 5) + '-' + Common.projectId + '-' + Date.now();
     function postMessage(type, data) {
       if (window.parent && window.parent !== window && window.parent.postMessage) {
         var data = Object.assign({
@@ -129,7 +129,7 @@
     });
     postMessage('hello', { version: 1 });
 
-    player.loadProjectById(uiCommon.projectId)
+    player.loadProjectById(Common.projectId)
       .then(function() {
         player.stage.setZoom(width / 480);
       });

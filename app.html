@@ -89,7 +89,7 @@
   <script src="lib/rgbcolor.js"></script>
   <script src="lib/canvg.min.js"></script>
   <script src="phosphorus.dist.js"></script>
-  <script src="uicommon.js"></script>
+  <script src="common.js"></script>
 
   <script>
   (function () {
@@ -117,7 +117,7 @@
       e.preventDefault();
     });
 
-    uiCommon.parseSearch(function(key, value) {
+    Common.parseSearch(function(key, value) {
       switch (key) {
         case 'full-screen':
           // legacy value
@@ -134,14 +134,14 @@
       player.setOptions({ focusOnLoad: false });
     }
 
-    player.setOptions(uiCommon.playerOptions);
+    player.setOptions(Common.playerOptions);
 
     player.setOptions({
       fullscreenMode: 'window',
       autoplayPolicy: 'if-audio-playable',
     });
 
-    player.loadProjectById(uiCommon.projectId)
+    player.loadProjectById(Common.projectId)
       .then(function() {
         player.enterFullscreen();
         splash.style.display = 'none';

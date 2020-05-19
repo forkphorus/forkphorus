@@ -1,13 +1,13 @@
 'use strict';
 
-// Common helpers for index.html, app.html, embed.html etc.
+// Common code shared between index.html, app.html, embed.html etc.
 // This should be loaded after phosphorus.dist.js
 
 /** @type {any} */
 var P;
 
 // @ts-ignore
-window.uiCommon = (function() {
+var Common = (function() {
   var DEFAULT_OPTIONS = P.player.Player.DEFAULT_OPTIONS;
   // "truthy" values
   var TRUE = ['true', 'yes', 'on', '1'];
