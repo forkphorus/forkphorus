@@ -196,15 +196,6 @@
       return el;
     }
 
-    // Shallowly clones an object (member values are not cloned)
-    function shallowClone(obj) {
-      var result = {};
-      for (var k in obj) {
-        result[k] = obj[k];
-      }
-      return result;
-    }
-
     /** i18n */
     document.title = P.i18n.translate('index.document.title');
     StudioView.AUTHOR_ATTRIBUTION = P.i18n.translate('studioview.authorAttribution');
