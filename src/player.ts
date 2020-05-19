@@ -815,6 +815,10 @@ namespace P.player {
       this.clickToPlayContainer = document.createElement('div');
       this.clickToPlayContainer.className = 'player-click-to-play-container';
       this.clickToPlayContainer.onclick = () => {
+        // As we are in a user gesture handler, we may as well try to resume the AudioContext.
+        if (P.audio.context && P.audio.context.state !== 'running') {
+          P.audio.context.resume();
+        }
         this.removeClickToPlayContainer();
         this.triggerGreenFlag();
         this.focus();

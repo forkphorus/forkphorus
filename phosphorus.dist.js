@@ -3060,6 +3060,9 @@ var P;
                 this.clickToPlayContainer = document.createElement('div');
                 this.clickToPlayContainer.className = 'player-click-to-play-container';
                 this.clickToPlayContainer.onclick = () => {
+                    if (P.audio.context && P.audio.context.state !== 'running') {
+                        P.audio.context.resume();
+                    }
                     this.removeClickToPlayContainer();
                     this.triggerGreenFlag();
                     this.focus();
