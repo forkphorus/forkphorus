@@ -438,21 +438,25 @@
       embedOtherWidth.disabled = embedOtherHeight.disabled = !embedOther.checked;
 
       if (player.getProjectMeta().getId()) {
-        var source = location.protocol + '//' + location.host + location.pathname + 'embed.js?id=' + player.getProjectMeta().getId();
+        var source = location.protocol + '//' + location.host + location.pathname + 'embed.html?id=' + player.getProjectMeta().getId();
         if (embedHideControls.checked) {
           source += '&ui=false';
         } else {
           source += '&auto-start=' + embedAutoStart.checked;
           source += '&light-content=' + embedLightContent.checked;
         }
+        var width = 480;
+        var height = 360;
         if (embedOther.checked) {
-          source += '&w=' + embedOtherWidth.value;
-          source += '&h=' + embedOtherHeight.value;
-        } else {
-          source += '&w=480&h=360';
+          width = +embedOtherWidth.value;
+          height = +embedOtherHeight.value;
         }
-        // We need to break up the closing script tag, otherwise things break.
-        embedCode.value = '<script src="' + source + '"></scrip' + 't>';
+        if (!embedHideControls.checked) {
+          // Space for controls and player border
+          width += 2;
+          height += 33;
+        }
+        embedCode.value = '<iframe src="' + source + '" width="' + width + '" height="' + height + '" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>';
       } else {
         embedCode.value = '';
       }
