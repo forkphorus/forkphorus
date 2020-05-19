@@ -3786,7 +3786,12 @@ var P;
                     if (VISUAL) {
                         for (var i = CALLS.length, j = 5; i-- && j--;) {
                             if (CALLS[i].base === procedure.fn) {
-                                runtime.queue[THREAD] = new Thread(S, BASE, procedure.fn, CALLS);
+                                runtime.queue[THREAD] = {
+                                    sprite: S,
+                                    base: BASE,
+                                    fn: procedure.fn,
+                                    calls: CALLS,
+                                };
                                 return;
                             }
                         }
@@ -3833,16 +3838,13 @@ var P;
             }
         };
         var forceQueue = function (id) {
-            runtime.queue[THREAD] = new Thread(S, BASE, S.fns[id], CALLS);
+            runtime.queue[THREAD] = {
+                sprite: S,
+                base: BASE,
+                fn: S.fns[id],
+                calls: CALLS,
+            };
         };
-        class Thread {
-            constructor(sprite, base, fn, calls) {
-                this.sprite = sprite;
-                this.base = base;
-                this.fn = fn;
-                this.calls = calls;
-            }
-        }
         class Runtime {
             constructor(stage) {
                 this.stage = stage;
@@ -3857,10 +3859,15 @@ var P;
                 this.step = this.step.bind(this);
             }
             startThread(sprite, base) {
-                const thread = new Thread(sprite, base, base, [{
-                        args: [],
-                        stack: [{}],
-                    }]);
+                const thread = {
+                    sprite: sprite,
+                    base: base,
+                    fn: base,
+                    calls: [{
+                            args: [],
+                            stack: [{}],
+                        }],
+                };
                 for (let i = 0; i < this.queue.length; i++) {
                     const q = this.queue[i];
                     if (q && q.sprite === sprite && q.base === base) {
