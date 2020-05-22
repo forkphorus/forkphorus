@@ -952,8 +952,8 @@ namespace P.player {
 
         const projectText = await P.io.readers.toText(blob);
         try {
-          // JSON.parse will fail if this is not a JSON project
-          const projectJson = JSON.parse(projectText);
+          // This will error if this is not a JSON project
+          const projectJson = P.json.parse(projectText);
 
           switch (this.determineProjectType(projectJson)) {
             case 'sb2': return new P.sb2.Scratch2Loader(projectJson);

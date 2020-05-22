@@ -627,7 +627,7 @@ namespace P.sb2 {
           return this.zip.file('project.json').async('text');
         })
         .then((project) => {
-          this.projectData = JSON.parse(project);
+          this.projectData = P.json.parse(project);
         })
         .then(() => super.load());
     }

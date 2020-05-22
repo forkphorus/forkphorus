@@ -2346,6 +2346,254 @@ var P;
 })(P || (P = {}));
 var P;
 (function (P) {
+    var json;
+    (function (json) {
+        class JSONParser {
+            constructor(source) {
+                this.source = source;
+                this.index = 0;
+            }
+            parse() {
+                return this.parseValue();
+            }
+            lineInfo() {
+                let line = 0;
+                let column = 0;
+                for (var i = 0; i < this.index; i++) {
+                    if (this.source[i] === '\n') {
+                        line++;
+                        column = 0;
+                    }
+                    else {
+                        column++;
+                    }
+                }
+                return { line: line + 1, column: column + 1 };
+            }
+            error(message) {
+                const { line, column } = this.lineInfo();
+                throw new Error(`JSONParser: ${message} (Line ${line} Column ${column})`);
+            }
+            char() {
+                return this.charAt(this.index);
+            }
+            charAt(index) {
+                if (index >= this.source.length) {
+                    this.error('Unexpected end of input');
+                }
+                return this.source[index];
+            }
+            next() {
+                this.index++;
+            }
+            expect(char) {
+                if (this.char() !== char) {
+                    this.error(`Expected '${char}' but found '${this.char()}'`);
+                }
+                this.next();
+            }
+            peek(length = 1, offset = 1) {
+                if (length === 1)
+                    return this.charAt(this.index + offset);
+                let result = '';
+                for (var i = 0; i < length; i++) {
+                    result += this.charAt(this.index + offset + i);
+                }
+                return result;
+            }
+            skipWhitespace() {
+                while (/\s/.test(this.char())) {
+                    this.next();
+                }
+            }
+            parseValue() {
+                this.skipWhitespace();
+                const char = this.char();
+                switch (char) {
+                    case '"': return this.parseString();
+                    case '{': return this.parseObject();
+                    case '[': return this.parseList();
+                    case 't':
+                    case 'f': return this.parseBoolean();
+                    case '0':
+                    case '1':
+                    case '2':
+                    case '3':
+                    case '4':
+                    case '5':
+                    case '6':
+                    case '7':
+                    case '8':
+                    case '9':
+                    case '-':
+                        return this.parseNumber();
+                    default: return this.parseWord();
+                }
+            }
+            parseWord() {
+                if (this.peek(4, 0) === 'null') {
+                    for (var i = 0; i < 4; i++)
+                        this.next();
+                    return Infinity;
+                }
+                if (this.peek(8, 0) === 'Infinity') {
+                    for (var i = 0; i < 8; i++)
+                        this.next();
+                    return Infinity;
+                }
+                if (this.peek(3, 0) === 'NaN') {
+                    for (var i = 0; i < 3; i++)
+                        this.next();
+                    return NaN;
+                }
+                this.error(`Unknown word (starts with ${this.char()})`);
+            }
+            parseNumber() {
+                let number = '';
+                while (true) {
+                    number += this.char();
+                    if (/[\d\.e+-]/.test(this.peek())) {
+                        this.next();
+                    }
+                    else {
+                        break;
+                    }
+                }
+                this.next();
+                const value = +number;
+                if (Number.isNaN(value)) {
+                    this.error('Not a number: ' + number);
+                }
+                return value;
+            }
+            parseBoolean() {
+                if (this.peek(4, 0) === 'true') {
+                    for (var i = 0; i < 4; i++)
+                        this.next();
+                    return true;
+                }
+                else if (this.peek(5, 0) === 'false') {
+                    for (var i = 0; i < 5; i++)
+                        this.next();
+                    return false;
+                }
+                else {
+                    this.error('Unknown boolean: ' + this.char());
+                }
+            }
+            parseString() {
+                this.expect('"');
+                let result = '';
+                if (this.char() === '"') {
+                    this.next();
+                    return '';
+                }
+                while (true) {
+                    const char = this.char();
+                    if (char === '\\') {
+                        this.next();
+                        switch (this.char()) {
+                            case 'r':
+                                result += '\r';
+                                break;
+                            case 'n':
+                                result += '\n';
+                                break;
+                            case 't':
+                                result += '\t';
+                                break;
+                            case '/':
+                                result += '/';
+                                break;
+                            case '\\':
+                                result += '\\';
+                                break;
+                            default: this.error('Some escape codes are not supported by this JSON parser.');
+                        }
+                    }
+                    else {
+                        result += char;
+                    }
+                    if (this.peek() === '"') {
+                        break;
+                    }
+                    this.next();
+                }
+                this.next();
+                this.expect('"');
+                return result;
+            }
+            parseList() {
+                this.expect('[');
+                this.skipWhitespace();
+                if (this.char() === ']') {
+                    this.next();
+                    return [];
+                }
+                const result = [];
+                while (true) {
+                    this.skipWhitespace();
+                    const value = this.parseValue();
+                    result.push(value);
+                    this.skipWhitespace();
+                    if (this.char() === ']') {
+                        break;
+                    }
+                    this.expect(',');
+                }
+                this.expect(']');
+                return result;
+            }
+            parseObject() {
+                this.expect('{');
+                this.skipWhitespace();
+                if (this.char() === '}') {
+                    this.next();
+                    return {};
+                }
+                const result = {};
+                while (true) {
+                    this.skipWhitespace();
+                    const key = this.parseString();
+                    this.skipWhitespace();
+                    this.expect(':');
+                    this.skipWhitespace();
+                    const value = this.parseValue();
+                    result[key] = value;
+                    this.skipWhitespace();
+                    if (this.char() === '}') {
+                        break;
+                    }
+                    this.expect(',');
+                }
+                this.expect('}');
+                return result;
+            }
+        }
+        function parse(source) {
+            if (!/^\s*{/.test(source)) {
+                throw new Error('The input does not seem to be a JSON object');
+            }
+            try {
+                return JSON.parse(source);
+            }
+            catch (firstError) {
+                console.warn('JSON.parse failed. Trying alternative parser', firstError);
+                const parser = new JSONParser(source);
+                try {
+                    return parser.parse();
+                }
+                catch (secondError) {
+                    console.warn('Alternative parser failed', secondError);
+                    throw firstError;
+                }
+            }
+        }
+        json.parse = parse;
+    })(json = P.json || (P.json = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
     var utils;
     (function (utils) {
         function parseRotationStyle(style) {
@@ -3160,7 +3408,7 @@ var P;
                     const getLoader = (blob) => __awaiter(this, void 0, void 0, function* () {
                         const projectText = yield P.io.readers.toText(blob);
                         try {
-                            const projectJson = JSON.parse(projectText);
+                            const projectJson = P.json.parse(projectText);
                             switch (this.determineProjectType(projectJson)) {
                                 case 'sb2': return new P.sb2.Scratch2Loader(projectJson);
                                 case 'sb3': return new P.sb3.Scratch3Loader(projectJson);
@@ -4669,7 +4917,7 @@ var P;
                     return this.zip.file('project.json').async('text');
                 })
                     .then((project) => {
-                    this.projectData = JSON.parse(project);
+                    this.projectData = P.json.parse(project);
                 })
                     .then(() => super.load());
             }
