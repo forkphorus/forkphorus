@@ -2579,8 +2579,8 @@ var P;
             }
             catch (firstError) {
                 console.warn('JSON.parse failed. Trying alternative parser', firstError);
-                const parser = new JSONParser(source);
                 try {
+                    const parser = new JSONParser(source);
                     return parser.parse();
                 }
                 catch (secondError) {

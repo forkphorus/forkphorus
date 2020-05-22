@@ -1,7 +1,8 @@
 namespace P.json {
   /**
    * This is a custom JSON parser to support certain older Scratch projects with non-standard JSON files.
-   * This parser is not particularly fast, bug tested, or standards compliant. Always prefer JSON.parse
+   * This parser is not particularly fast, bug tested, or standards compliant.
+   * Use JSON.parse first.
    * 
    * Non-standard extensions:
    *  - Support for Infinity
@@ -239,21 +240,19 @@ namespace P.json {
   }
 
   /**
-   * Parse a JSON string. Has special support for some of the non-standard things that some older Scratch projects contain.
+   * Parse a JSON string. Has special support for the non-standard things that some Scratch 2 Scratch projects contain.
    * @param source JSON-like string
    */
   export function parse(source: string): any {
     if (!/^\s*{/.test(source)) {
-      // The file does not look like JSON so don't attempt to parse it
       throw new Error('The input does not seem to be a JSON object');
     }
     try {
-      // Try JSON.parse
       return JSON.parse(source);
     } catch (firstError) {
       console.warn('JSON.parse failed. Trying alternative parser', firstError);
-      const parser = new JSONParser(source);
       try {
+        const parser = new JSONParser(source);
         return parser.parse();
       } catch (secondError) {
         console.warn('Alternative parser failed', secondError);
