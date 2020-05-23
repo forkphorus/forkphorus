@@ -4,6 +4,8 @@ namespace P.json {
    * This parser is not particularly fast, bug tested, or standards compliant.
    * Use JSON.parse first.
    * 
+   * The choice not to use `eval()` here is intentional.
+   * 
    * Non-standard extensions:
    *  - Support for Infinity
    *  - Support for NaN
@@ -83,8 +85,6 @@ namespace P.json {
         case '"': return this.parseString();
         case '{': return this.parseObject();
         case '[': return this.parseList();
-        case 't':
-        case 'f': return this.parseBoolean();
         case '0': case '1': case '2': case '3': case '4': case '5':
         case '6': case '7': case '8': case '9': case '-':
           return this.parseNumber();
@@ -96,6 +96,14 @@ namespace P.json {
       if (this.peek(4, 0) === 'null') {
         for (var i = 0; i < 4; i++) this.next();
         return Infinity;
+      }
+      if (this.peek(4, 0) === 'true') {
+        for (var i = 0; i < 4; i++) this.next();
+        return true;
+      }
+      if (this.peek(5, 0) === 'false') {
+        for (var i = 0; i < 5; i++) this.next();
+        return false;
       }
 
       // Non-standard extensions
@@ -115,7 +123,7 @@ namespace P.json {
       let number = '';
       while (true) {
         number += this.char();
-        if (/[\d\.e+-]/.test(this.peek())) {
+        if (/[\d\.e+-]/i.test(this.peek())) {
           this.next();
         } else {
           break;
@@ -129,18 +137,6 @@ namespace P.json {
       }
 
       return value;
-    }
-
-    private parseBoolean(): boolean {
-      if (this.peek(4, 0) === 'true') {
-        for (var i = 0; i < 4; i++) this.next();
-        return true;
-      } else if (this.peek(5, 0) === 'false') {
-        for (var i = 0; i < 5; i++) this.next();
-        return false;
-      } else {
-        this.error('Unknown boolean: ' + this.char());
-      }
     }
 
     private parseString(): string {
@@ -157,12 +153,30 @@ namespace P.json {
         if (char === '\\') {
           this.next();
           switch (this.char()) {
-            case 'r': result += '\r'; break;
-            case 'n': result += '\n'; break;
-            case 't': result += '\t'; break;
+            case '"': result += '"'; break;
             case '/': result += '/'; break;
             case '\\': result += '\\'; break;
-            default: this.error('Some escape codes are not supported by this JSON parser.');
+            case 'b': result += '\b'; break;
+            case 'f': result += '\f'; break;
+            case 'n': result += '\n'; break;
+            case 'r': result += '\r'; break;
+            case 't': result += '\t'; break;
+            case 'u': {
+              let hexString = '';
+              for (var i = 0; i < 4; i++) {
+                this.next();
+                const char = this.char();
+                if (!/[0-9a-f]/i.test(char)) {
+                  this.error('Invalid hex code: ' + char);
+                }
+                hexString += char;
+              }
+              const hexNumber = Number.parseInt(hexString, 16);
+              const letter = String.fromCharCode(hexNumber);
+              result += letter;
+              break;
+            }
+            default: this.error('Invalid escape code: \\' + this.char());
           }
         } else {
           result += char;
@@ -214,14 +228,13 @@ namespace P.json {
         return {};
       }
       
-      const result = {};
+      const result = Object.create(null);
       while (true) {
         this.skipWhitespace();
         const key = this.parseString();
 
         this.skipWhitespace();
         this.expect(':');
-        this.skipWhitespace();
 
         const value = this.parseValue();
         result[key] = value;
