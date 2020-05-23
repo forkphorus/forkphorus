@@ -116,13 +116,13 @@ namespace P.sb3 {
   // Implements a Scratch 3 Stage.
   export class Scratch3Stage extends P.core.Stage {
     public sb3data: SB3Target;
-    public listIds: ObjectMap<string> = Object.create(null);
+    public listIds: ObjectMap<string> = {};
   }
 
   // Implements a Scratch 3 Sprite.
   export class Scratch3Sprite extends P.core.Sprite {
     public sb3data: SB3Target;
-    public listIds: ObjectMap<string> = Object.create(null);
+    public listIds: ObjectMap<string> = {};
 
     _clone() {
       return new Scratch3Sprite(this.stage);

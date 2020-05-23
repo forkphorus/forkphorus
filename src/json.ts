@@ -225,7 +225,7 @@ namespace P.json {
       this.skipWhitespace();
       if (this.char() === '}') {
         this.next();
-        return Object.create(null);
+        return {};
       }
       
       const result = Object.create(null);

@@ -611,7 +611,7 @@ var P;
                 this.costumes = [];
                 this.currentCostumeIndex = 0;
                 this.sounds = [];
-                this.soundRefs = Object.create(null);
+                this.soundRefs = {};
                 this.instrument = 0;
                 this.volume = 1;
                 this.node = null;
@@ -2566,7 +2566,7 @@ var P;
                 this.skipWhitespace();
                 if (this.char() === '}') {
                     this.next();
-                    return Object.create(null);
+                    return {};
                 }
                 const result = Object.create(null);
                 while (true) {
@@ -6037,14 +6037,14 @@ var P;
         class Scratch3Stage extends P.core.Stage {
             constructor() {
                 super(...arguments);
-                this.listIds = Object.create(null);
+                this.listIds = {};
             }
         }
         sb3.Scratch3Stage = Scratch3Stage;
         class Scratch3Sprite extends P.core.Sprite {
             constructor() {
                 super(...arguments);
-                this.listIds = Object.create(null);
+                this.listIds = {};
             }
             _clone() {
                 return new Scratch3Sprite(this.stage);
