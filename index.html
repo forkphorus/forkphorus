@@ -87,6 +87,8 @@
           <a href="#" target="_blank" id="package-link" data-i18n="index.package.button">Package</a>
           <input type="checkbox" id="package-turbo">
           <label for="package-turbo" data-i18n="index.package.turbo">Turbo mode</label>
+          <input type="checkbox" id="package-controls">
+          <label for="package-controls" data-i18n="index.package.controls">Controls</label>
           <span>
             <input type="radio" name="package-resolution" id="package-full-screen" checked>
             <label for="package-full-screen" data-i18n="index.package.fullscreen">Full screen</label>
@@ -157,6 +159,7 @@
       'index.studio.view': 'View studio on Scratch.',
       'index.package.button': 'Package',
       'index.package.turbo': 'Turbo mode',
+      'index.package.controls': 'Controls',
       'index.package.fullscreen': 'Full screen',
       'index.package.480': '480\u00D7360',
       'index.package.custom': 'Other:',
@@ -371,6 +374,7 @@
     var packageOther = querySelector('#package-other');
     var packageOtherWidth = querySelector('#package-other-width');
     var packageOtherHeight = querySelector('#package-other-height');
+    var packageControls = querySelector('#package-controls');
 
     // Bind two inputs together so that changes to one reflect a change in the other.
     function bindInputs(first, other, multiplier) {
@@ -393,6 +397,9 @@
         } else {
           url += '&w=' + packageOtherWidth.value;
         }
+        if (packageControls.checked) {
+          url += '&controls';
+        }
         packageLink.href = url;
       } else {
         packageLink.href = 'about:blank';
@@ -405,6 +412,7 @@
     packageOther.addEventListener('change', updatePackageLink);
     packageOtherHeight.addEventListener('change', updatePackageLink);
     packageOtherWidth.addEventListener('change', updatePackageLink);
+    packageControls.addEventListener('change', updatePackageLink);
 
     /** Embedding **/
     var embedCode = querySelector('#embed-code');

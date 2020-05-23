@@ -126,6 +126,9 @@
         case 'w':
           player.setOptions({ fullscreenMaxWidth: Number(value) || 480 });
           break;
+        case 'controls':
+          player.addControls({ enableFullscreen: false });
+          break;
       }
     });
 
