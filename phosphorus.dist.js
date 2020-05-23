@@ -4379,8 +4379,7 @@ var P;
                 }
             }
             result += '})';
-            const fn = scopedEval(result);
-            return fn;
+            return scopedEval(result);
         }
         runtime_1.createContinuation = createContinuation;
         function scopedEval(source) {
