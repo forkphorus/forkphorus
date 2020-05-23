@@ -282,7 +282,7 @@ namespace P.core {
     /**
      * Maps the names of sounds to the corresponding Sound
      */
-    public soundRefs: ObjectMap<Sound> = {};
+    public soundRefs: ObjectMap<Sound> = Object.create(null);
     /**
      * Currently selected instrument
      */
