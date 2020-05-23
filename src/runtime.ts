@@ -842,7 +842,8 @@ namespace P.runtime {
       }
     }
     result += '})';
-    return scopedEval(result);
+    const fn = scopedEval(result);
+    return fn;
   }
 
   // Evaluate JavaScript within the scope of the runtime.

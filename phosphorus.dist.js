@@ -4379,7 +4379,8 @@ var P;
                 }
             }
             result += '})';
-            return scopedEval(result);
+            const fn = scopedEval(result);
+            return fn;
         }
         runtime_1.createContinuation = createContinuation;
         function scopedEval(source) {
@@ -7228,6 +7229,7 @@ var P;
                         const hat = this.blocks[hatId];
                         this.compileHat(hat);
                     }
+                    this.target.sb3data = null;
                 }
             }
             compiler_1.Compiler = Compiler;

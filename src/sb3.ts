@@ -1894,6 +1894,9 @@ namespace P.sb3.compiler {
         const hat = this.blocks[hatId];
         this.compileHat(hat);
       }
+
+      // Remove data that is now unused
+      this.target.sb3data = null as any;
     }
   }
 }
