@@ -7,8 +7,8 @@
     "test": "node runner.js"
   },
   "dependencies": {
-    "local-web-server": "^4.0.0",
-    "playwright": "^0.13.0"
+    "local-web-server": "^4.1.0",
+    "playwright": "^1.0.2"
   },
   "repository": {
     "type": "git",
