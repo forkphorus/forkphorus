@@ -302,23 +302,23 @@ namespace P.core {
     /**
      * Variable watchers that this object owns.
      */
-    public watchers: ObjectMap<Watcher> = Object.create(null);
+    public watchers: ObjectMap<Watcher> = {};
     /**
      * List watchers that this object owns.
      */
-    public listWatchers: ObjectMap<Watcher> = Object.create(null);
+    public listWatchers: ObjectMap<Watcher> = {};
     /**
      * Variables of this object.
      * Maps variable names (or ids) to their value.
      * Values can be of any type and should likely be converted first.
      */
-    public vars: ObjectMap<any> = Object.create(null);
+    public vars: ObjectMap<any> = {};
     /**
      * Lists of this object.
      * Maps list names (or ids) to their list.
      * Each list can contain objects of any type, and should be converted first.
      */
-    public lists: ObjectMap<Array<any>> = Object.create(null);
+    public lists: ObjectMap<Array<any>> = {};
     /**
      * Is this object saying something?
      */
@@ -337,15 +337,15 @@ namespace P.core {
     /**
      * Maps procedure names (usually includes parameters) to the Procedure object
      */
-    public procedures: ObjectMap<Procedure> = Object.create(null);
+    public procedures: ObjectMap<Procedure> = {};
     public listeners: Listeners = {
       whenClicked: [],
       whenCloned: [],
       whenGreenFlag: [],
-      whenIReceive: Object.create(null),
+      whenIReceive: {},
       whenKeyPressed: [],
-      whenBackdropChanges: Object.create(null),
-      whenSceneStarts: Object.create(null),
+      whenBackdropChanges: {},
+      whenSceneStarts: {},
     };
     public fns: P.runtime.Fn[] = [];
     public filters: Filters = {
