@@ -6661,6 +6661,7 @@ var P;
                         .filter((i) => i && i.valid);
                     stage.allWatchers.forEach((watcher) => watcher.init());
                     this.compileTargets(targets, stage);
+                    this.projectData = null;
                     return stage;
                 });
             }

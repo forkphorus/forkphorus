@@ -934,6 +934,9 @@ namespace P.sb3 {
 
           this.compileTargets(targets, stage);
 
+          // projectData can be removed. This reduces memory usage.
+          this.projectData = null as any;
+
           return stage;
         });
     }
