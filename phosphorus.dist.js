@@ -2338,6 +2338,12 @@ var P;
                     task.abort();
                 }
             }
+            cleanup() {
+                for (const task of this._tasks) {
+                    task.setLoader(null);
+                }
+                this._tasks.length = 0;
+            }
             onprogress(progress) {
             }
         }
@@ -3400,6 +3406,8 @@ var P;
                     };
                     const stage = yield loader.load();
                     this.setStage(stage);
+                    this.currentLoader = null;
+                    loader.cleanup();
                     return stage;
                 });
             }

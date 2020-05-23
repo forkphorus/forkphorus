@@ -927,6 +927,8 @@ namespace P.player {
       };
       const stage = await loader.load();
       this.setStage(stage);
+      this.currentLoader = null;
+      loader.cleanup();
       return stage;
     }
 

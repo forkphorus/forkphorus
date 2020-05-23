@@ -466,6 +466,13 @@ namespace P.io {
       }
     }
 
+    cleanup() {
+      for (const task of this._tasks) {
+        task.setLoader(null as any);
+      }
+      this._tasks.length = 0;
+    }
+
     onprogress(progress: number) {
       // Users of the Loader class are expected to override this method.
     }
