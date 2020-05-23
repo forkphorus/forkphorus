@@ -4854,20 +4854,17 @@ var P;
                 patchSVG(svg, svg);
                 document.body.removeChild(svg);
                 svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
-                return new Promise((resolve, reject) => {
-                    const canvas = document.createElement('canvas');
-                    canvg(canvas, new XMLSerializer().serializeToString(svg), {
-                        ignoreMouse: true,
-                        ignoreAnimation: true,
-                        ignoreClear: true,
-                        renderCallback: function () {
-                            if (canvas.width === 0 || canvas.height === 0) {
-                                resolve(new Image());
-                                return;
-                            }
-                            resolve(canvas);
-                        }
-                    });
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                return canvg.Canvg.from(ctx, new XMLSerializer().serializeToString(svg), {
+                    ignoreMouse: true,
+                    ignoreAnimation: true,
+                    ignoreClear: true,
+                })
+                    .then((v) => {
+                    return v.render();
+                }).then(() => {
+                    return canvas;
                 });
             }
             load() {
