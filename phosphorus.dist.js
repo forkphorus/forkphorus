@@ -43,11 +43,10 @@ var P;
 (function (P) {
     var config;
     (function (config) {
-        const features = location.search.replace('?', '').split('&');
-        config.debug = features.indexOf('debug') > -1;
-        config.useWebGL = features.indexOf('webgl') > -1;
-        config.supportVideoSensing = features.indexOf('video') > -1;
-        config.experimentalOptimizations = features.indexOf('opt') > -1;
+        config.debug = false;
+        config.useWebGL = false;
+        config.supportVideoSensing = false;
+        config.experimentalOptimizations = false;
         config.scale = window.devicePixelRatio || 1;
         config.PROJECT_API = 'https://projects.scratch.mit.edu/$id';
     })(config = P.config || (P.config = {}));
@@ -522,7 +521,19 @@ var P;
                 }
             }
             toParts() {
-                return [1, 0, 0, 1];
+                switch (this.mode) {
+                    case 0: {
+                        return [this.x, this.y, this.z, this.a];
+                    }
+                    case 2: {
+                        const rgb = P.utils.hsvToRGB(this.x / 360, this.y / 100, this.z / 100);
+                        return [rgb[0], rgb[1], rgb[2], this.a];
+                    }
+                    case 1: {
+                        const rgb = P.utils.hslToRGB(this.x / 360, this.y / 100, this.z / 100);
+                        return [rgb[0], rgb[1], rgb[2], this.a];
+                    }
+                }
             }
             toCSS() {
                 switch (this.mode) {
@@ -535,7 +546,6 @@ var P;
                         return 'rgba(' + rgb[0] + ', ' + rgb[1] + ', ' + rgb[2] + ', ' + this.a + ')';
                     }
                 }
-                throw new Error('Unknown pen color mode: ' + this.mode);
             }
             setParam(param, value) {
                 this.toHSVA();
@@ -601,7 +611,7 @@ var P;
                 this.costumes = [];
                 this.currentCostumeIndex = 0;
                 this.sounds = [];
-                this.soundRefs = {};
+                this.soundRefs = Object.create(null);
                 this.instrument = 0;
                 this.volume = 1;
                 this.node = null;
@@ -794,7 +804,9 @@ var P;
                 if (this.node) {
                     for (const sound of this.activeSounds) {
                         sound.stopped = true;
-                        sound.node.disconnect();
+                        if (sound.node) {
+                            sound.node.disconnect();
+                        }
                     }
                     this.activeSounds.clear();
                     this.node.disconnect();
@@ -805,7 +817,9 @@ var P;
                 if (this.node) {
                     for (const sound of this.activeSounds) {
                         if (sound.base !== originBase) {
-                            sound.node.disconnect();
+                            if (sound.node) {
+                                sound.node.disconnect();
+                            }
                             sound.stopped = true;
                             this.activeSounds.delete(sound);
                         }
@@ -916,7 +930,9 @@ var P;
                 }
                 if (this.node && this.isClone && !this.isStage) {
                     for (const sound of this.activeSounds) {
-                        sound.node.disconnect();
+                        if (sound.node) {
+                            sound.node.disconnect();
+                        }
                         sound.stopped = true;
                     }
                     this.activeSounds.clear();
@@ -1204,6 +1220,7 @@ var P;
                 for (const extension of this.extensions) {
                     extension.destroy();
                 }
+                this.renderer.destroy();
                 this.removeEventListeners();
             }
             pauseExtensions() {
@@ -1238,8 +1255,8 @@ var P;
                     y = -180;
                 if (y > 180)
                     y = 180;
-                this.mouseX = x;
-                this.mouseY = y;
+                this.mouseX = Math.round(x);
+                this.mouseY = Math.round(y);
             }
             setZoom(zoom) {
                 if (this.zoom === zoom)
@@ -1398,6 +1415,8 @@ var P;
             moveTo() {
             }
             forward() {
+            }
+            setDirection(direction) {
             }
             rotatedBounds() {
                 return {
@@ -1715,7 +1734,6 @@ var P;
         class VectorCostume extends Costume {
             constructor(svg, options) {
                 super(options);
-                this.currentScale = 1;
                 if (svg.height < 1 || svg.width < 1) {
                     svg = new Image(1, 1);
                 }
@@ -1724,6 +1742,7 @@ var P;
                 this.height = svg.height;
                 this.svg = svg;
                 this.maxScale = this.calculateMaxScale();
+                this.currentScale = Math.min(1, this.maxScale);
             }
             calculateMaxScale() {
                 if (VectorCostume.MAX_SIZE / this.width < VectorCostume.MAX_SCALE) {
@@ -2056,11 +2075,37 @@ var P;
             }
         }
         io.AbstractTask = AbstractTask;
-        class Request extends AbstractTask {
+        class Retry extends AbstractTask {
+            try(handle) {
+                return new Promise((resolve, reject) => {
+                    handle()
+                        .then((response) => resolve(response))
+                        .catch((err) => {
+                        if (this.aborted) {
+                            reject(err);
+                            return;
+                        }
+                        console.warn(`First attempt to ${this.getRetryWarningDescription()} failed, trying again.`, err);
+                        setTimeout(() => {
+                            handle()
+                                .then((response) => resolve(response))
+                                .catch((err) => reject(err));
+                        }, 250);
+                    });
+                });
+            }
+            getRetryWarningDescription() {
+                return 'complete task';
+            }
+            abort() {
+                this.aborted = true;
+            }
+        }
+        io.Retry = Retry;
+        class Request extends Retry {
             constructor(url) {
                 super();
                 this.url = url;
-                this.aborted = false;
                 this.shouldIgnoreErrors = false;
                 this.workComputable = false;
                 this.totalWork = 0;
@@ -2082,7 +2127,7 @@ var P;
                 return this.completedWork;
             }
             abort() {
-                this.aborted = true;
+                super.abort();
                 if (this.xhr) {
                     this.xhr.abort();
                 }
@@ -2137,34 +2182,33 @@ var P;
             }
             load(type) {
                 this.responseType = type;
-                return new Promise((resolve, reject) => {
-                    this._load()
-                        .then((response) => resolve(response))
-                        .catch((err) => {
-                        if (this.aborted) {
-                            reject(err);
-                            return;
-                        }
-                        console.warn(`First attempt to download ${this.url} failed, trying again.`, err);
-                        setTimeout(() => {
-                            this._load()
-                                .then((response) => resolve(response))
-                                .catch((err) => reject(err));
-                        }, 250);
-                    });
-                });
+                return this.try(() => this._load());
+            }
+            getRetryWarningDescription() {
+                return `download ${this.url}`;
             }
         }
         Request.acceptableResponseCodes = [0, 200];
         io.Request = Request;
-        class Img extends AbstractTask {
+        class Img extends Retry {
             constructor(src) {
                 super();
-                this.complete = false;
-                this.aborted = false;
                 this.src = src;
+                this.complete = false;
             }
-            load() {
+            isComplete() {
+                return this.complete;
+            }
+            isWorkComputable() {
+                return false;
+            }
+            getTotalWork() {
+                return 0;
+            }
+            getCompletedWork() {
+                return 0;
+            }
+            _load() {
                 return new Promise((resolve, reject) => {
                     const image = new Image();
                     image.onload = () => {
@@ -2179,20 +2223,11 @@ var P;
                     image.src = this.src;
                 });
             }
-            isComplete() {
-                return this.complete;
+            load() {
+                return this.try(() => this._load());
             }
-            isWorkComputable() {
-                return false;
-            }
-            getTotalWork() {
-                return 0;
-            }
-            getCompletedWork() {
-                return 0;
-            }
-            abort() {
-                this.aborted = true;
+            getRetryWarningDescription() {
+                return `download image ${this.src}`;
             }
         }
         io.Img = Img;
@@ -2311,6 +2346,270 @@ var P;
 })(P || (P = {}));
 var P;
 (function (P) {
+    var json;
+    (function (json) {
+        class JSONParser {
+            constructor(source) {
+                this.source = source;
+                this.index = 0;
+            }
+            parse() {
+                return this.parseValue();
+            }
+            lineInfo() {
+                let line = 0;
+                let column = 0;
+                for (var i = 0; i < this.index; i++) {
+                    if (this.source[i] === '\n') {
+                        line++;
+                        column = 0;
+                    }
+                    else {
+                        column++;
+                    }
+                }
+                return { line: line + 1, column: column + 1 };
+            }
+            error(message) {
+                const { line, column } = this.lineInfo();
+                throw new Error(`JSONParser: ${message} (Line ${line} Column ${column})`);
+            }
+            char() {
+                return this.charAt(this.index);
+            }
+            charAt(index) {
+                if (index >= this.source.length) {
+                    this.error('Unexpected end of input');
+                }
+                return this.source[index];
+            }
+            next() {
+                this.index++;
+            }
+            expect(char) {
+                if (this.char() !== char) {
+                    this.error(`Expected '${char}' but found '${this.char()}'`);
+                }
+                this.next();
+            }
+            peek(length = 1, offset = 1) {
+                if (length === 1)
+                    return this.charAt(this.index + offset);
+                let result = '';
+                for (var i = 0; i < length; i++) {
+                    result += this.charAt(this.index + offset + i);
+                }
+                return result;
+            }
+            skipWhitespace() {
+                while (/\s/.test(this.char())) {
+                    this.next();
+                }
+            }
+            parseValue() {
+                this.skipWhitespace();
+                const char = this.char();
+                switch (char) {
+                    case '"': return this.parseString();
+                    case '{': return this.parseObject();
+                    case '[': return this.parseList();
+                    case '0':
+                    case '1':
+                    case '2':
+                    case '3':
+                    case '4':
+                    case '5':
+                    case '6':
+                    case '7':
+                    case '8':
+                    case '9':
+                    case '-':
+                        return this.parseNumber();
+                    default: return this.parseWord();
+                }
+            }
+            parseWord() {
+                if (this.peek(4, 0) === 'null') {
+                    for (var i = 0; i < 4; i++)
+                        this.next();
+                    return Infinity;
+                }
+                if (this.peek(4, 0) === 'true') {
+                    for (var i = 0; i < 4; i++)
+                        this.next();
+                    return true;
+                }
+                if (this.peek(5, 0) === 'false') {
+                    for (var i = 0; i < 5; i++)
+                        this.next();
+                    return false;
+                }
+                if (this.peek(8, 0) === 'Infinity') {
+                    for (var i = 0; i < 8; i++)
+                        this.next();
+                    return Infinity;
+                }
+                if (this.peek(3, 0) === 'NaN') {
+                    for (var i = 0; i < 3; i++)
+                        this.next();
+                    return NaN;
+                }
+                this.error(`Unknown word (starts with ${this.char()})`);
+            }
+            parseNumber() {
+                let number = '';
+                while (true) {
+                    number += this.char();
+                    if (/[\d\.e+-]/i.test(this.peek())) {
+                        this.next();
+                    }
+                    else {
+                        break;
+                    }
+                }
+                this.next();
+                const value = +number;
+                if (Number.isNaN(value)) {
+                    this.error('Not a number: ' + number);
+                }
+                return value;
+            }
+            parseString() {
+                this.expect('"');
+                let result = '';
+                if (this.char() === '"') {
+                    this.next();
+                    return '';
+                }
+                while (true) {
+                    const char = this.char();
+                    if (char === '\\') {
+                        this.next();
+                        switch (this.char()) {
+                            case '"':
+                                result += '"';
+                                break;
+                            case '/':
+                                result += '/';
+                                break;
+                            case '\\':
+                                result += '\\';
+                                break;
+                            case 'b':
+                                result += '\b';
+                                break;
+                            case 'f':
+                                result += '\f';
+                                break;
+                            case 'n':
+                                result += '\n';
+                                break;
+                            case 'r':
+                                result += '\r';
+                                break;
+                            case 't':
+                                result += '\t';
+                                break;
+                            case 'u': {
+                                let hexString = '';
+                                for (var i = 0; i < 4; i++) {
+                                    this.next();
+                                    const char = this.char();
+                                    if (!/[0-9a-f]/i.test(char)) {
+                                        this.error('Invalid hex code: ' + char);
+                                    }
+                                    hexString += char;
+                                }
+                                const hexNumber = Number.parseInt(hexString, 16);
+                                const letter = String.fromCharCode(hexNumber);
+                                result += letter;
+                                break;
+                            }
+                            default: this.error('Invalid escape code: \\' + this.char());
+                        }
+                    }
+                    else {
+                        result += char;
+                    }
+                    if (this.peek() === '"') {
+                        break;
+                    }
+                    this.next();
+                }
+                this.next();
+                this.expect('"');
+                return result;
+            }
+            parseList() {
+                this.expect('[');
+                this.skipWhitespace();
+                if (this.char() === ']') {
+                    this.next();
+                    return [];
+                }
+                const result = [];
+                while (true) {
+                    this.skipWhitespace();
+                    const value = this.parseValue();
+                    result.push(value);
+                    this.skipWhitespace();
+                    if (this.char() === ']') {
+                        break;
+                    }
+                    this.expect(',');
+                }
+                this.expect(']');
+                return result;
+            }
+            parseObject() {
+                this.expect('{');
+                this.skipWhitespace();
+                if (this.char() === '}') {
+                    this.next();
+                    return Object.create(null);
+                }
+                const result = Object.create(null);
+                while (true) {
+                    this.skipWhitespace();
+                    const key = this.parseString();
+                    this.skipWhitespace();
+                    this.expect(':');
+                    const value = this.parseValue();
+                    result[key] = value;
+                    this.skipWhitespace();
+                    if (this.char() === '}') {
+                        break;
+                    }
+                    this.expect(',');
+                }
+                this.expect('}');
+                return result;
+            }
+        }
+        function parse(source) {
+            if (!/^\s*{/.test(source)) {
+                throw new Error('The input does not seem to be a JSON object');
+            }
+            try {
+                return JSON.parse(source);
+            }
+            catch (firstError) {
+                console.warn('JSON.parse failed. Trying alternative parser', firstError);
+                try {
+                    const parser = new JSONParser(source);
+                    return parser.parse();
+                }
+                catch (secondError) {
+                    console.warn('Alternative parser failed', secondError);
+                    throw firstError;
+                }
+            }
+        }
+        json.parse = parse;
+    })(json = P.json || (P.json = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
     var utils;
     (function (utils) {
         function parseRotationStyle(style) {
@@ -2415,6 +2714,34 @@ var P;
             return [r * 255, g * 255, b * 255];
         }
         utils.hsvToRGB = hsvToRGB;
+        function hslToRGB(h, s, l) {
+            var r, g, b;
+            if (s == 0) {
+                r = g = b = l;
+            }
+            else {
+                function hue2rgb(p, q, t) {
+                    if (t < 0)
+                        t += 1;
+                    if (t > 1)
+                        t -= 1;
+                    if (t < 1 / 6)
+                        return p + (q - p) * 6 * t;
+                    if (t < 1 / 2)
+                        return q;
+                    if (t < 2 / 3)
+                        return p + (q - p) * (2 / 3 - t) * 6;
+                    return p;
+                }
+                var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                var p = 2 * l - q;
+                r = hue2rgb(p, q, h + 1 / 3);
+                g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1 / 3);
+            }
+            return [r * 255, g * 255, b * 255];
+        }
+        utils.hslToRGB = hslToRGB;
         function hslToHSV(h, s, l) {
             var v = l + s * Math.min(l, 1 - l);
             var s = v === 0 ? 0 : 2 - 2 * l / v;
@@ -2526,6 +2853,7 @@ var P;
             }
             load() {
                 return new P.io.Request('https://scratch.garbomuffin.com/proxy/projects/$id'.replace('$id', this.id))
+                    .ignoreErrors()
                     .load('json')
                     .then((data) => {
                     if (data.title) {
@@ -2656,6 +2984,16 @@ var P;
                 };
                 this.controlsContainer = document.createElement('div');
                 this.controlsContainer.className = 'player-controls';
+                this.controlsContainer.onmousedown = (e) => {
+                    if (e.target !== this.controlsContainer) {
+                        e.stopPropagation();
+                    }
+                };
+                this.controlsContainer.ontouchstart = (e) => {
+                    if (e.target !== this.controlsContainer) {
+                        e.stopPropagation();
+                    }
+                };
                 if (options.enableStop !== false) {
                     var stopButton = document.createElement('span');
                     stopButton.className = 'player-button player-stop';
@@ -2845,7 +3183,9 @@ var P;
                     if (!this.isRunning()) {
                         this.stage.draw();
                     }
-                    this.focus();
+                    if (this.options.focusOnLoad) {
+                        this.focus();
+                    }
                 }
                 this.updateFullscreen();
             }
@@ -2983,6 +3323,9 @@ var P;
                 this.clickToPlayContainer = document.createElement('div');
                 this.clickToPlayContainer.className = 'player-click-to-play-container';
                 this.clickToPlayContainer.onclick = () => {
+                    if (P.audio.context && P.audio.context.state !== 'running') {
+                        P.audio.context.resume();
+                    }
                     this.removeClickToPlayContainer();
                     this.triggerGreenFlag();
                     this.focus();
@@ -3040,9 +3383,11 @@ var P;
                 this.stage.runtime.handleError = this.handleError;
                 this.applyOptionsToStage();
                 this.playerContainer.appendChild(stage.root);
-                stage.focus();
-                stage.draw();
+                if (this.options.focusOnLoad) {
+                    this.focus();
+                }
                 this.onload.emit(stage);
+                this.stage.draw();
                 this.enactAutoplayPolicy(this.options.autoplayPolicy);
             }
             loadLoader(loaderId, loader) {
@@ -3079,7 +3424,7 @@ var P;
                     const getLoader = (blob) => __awaiter(this, void 0, void 0, function* () {
                         const projectText = yield P.io.readers.toText(blob);
                         try {
-                            const projectJson = JSON.parse(projectText);
+                            const projectJson = P.json.parse(projectText);
                             switch (this.determineProjectType(projectJson)) {
                                 case 'sb2': return new P.sb2.Scratch2Loader(projectJson);
                                 case 'sb3': return new P.sb3.Scratch3Loader(projectJson);
@@ -3152,6 +3497,7 @@ var P;
             fullscreenPadding: 8,
             fullscreenMaxWidth: Infinity,
             imageSmoothing: false,
+            focusOnLoad: true,
         };
         player_1.Player = Player;
         class ErrorHandler {
@@ -3379,6 +3725,18 @@ var P;
                 return ny === ny && nx === ny;
             }
             return false;
+        };
+        var numEqualExperimental = function (nx, y) {
+            var ny = +y;
+            return ny === ny && nx === ny;
+        };
+        var numLessExperimental = function (nx, y) {
+            var ny = +y;
+            return ny === ny && nx < y;
+        };
+        var numGreaterExperimental = function (nx, y) {
+            var ny = +y;
+            return ny === ny && nx > y;
         };
         var strEqual = function (a, b) {
             return (a + '').toLowerCase() === (b + '').toLowerCase();
@@ -3694,7 +4052,12 @@ var P;
                     if (VISUAL) {
                         for (var i = CALLS.length, j = 5; i-- && j--;) {
                             if (CALLS[i].base === procedure.fn) {
-                                runtime.queue[THREAD] = new Thread(S, BASE, procedure.fn, CALLS);
+                                runtime.queue[THREAD] = {
+                                    sprite: S,
+                                    base: BASE,
+                                    fn: procedure.fn,
+                                    calls: CALLS,
+                                };
                                 return;
                             }
                         }
@@ -3741,16 +4104,13 @@ var P;
             }
         };
         var forceQueue = function (id) {
-            runtime.queue[THREAD] = new Thread(S, BASE, S.fns[id], CALLS);
+            runtime.queue[THREAD] = {
+                sprite: S,
+                base: BASE,
+                fn: S.fns[id],
+                calls: CALLS,
+            };
         };
-        class Thread {
-            constructor(sprite, base, fn, calls) {
-                this.sprite = sprite;
-                this.base = base;
-                this.fn = fn;
-                this.calls = calls;
-            }
-        }
         class Runtime {
             constructor(stage) {
                 this.stage = stage;
@@ -3765,10 +4125,15 @@ var P;
                 this.step = this.step.bind(this);
             }
             startThread(sprite, base) {
-                const thread = new Thread(sprite, base, base, [{
-                        args: [],
-                        stack: [{}],
-                    }]);
+                const thread = {
+                    sprite: sprite,
+                    base: base,
+                    fn: base,
+                    calls: [{
+                            args: [],
+                            stack: [{}],
+                        }],
+                };
                 for (let i = 0; i < this.queue.length; i++) {
                     const q = this.queue[i];
                     if (q && q.sprite === sprite && q.base === base) {
@@ -4568,7 +4933,7 @@ var P;
                     return this.zip.file('project.json').async('text');
                 })
                     .then((project) => {
-                    this.projectData = JSON.parse(project);
+                    this.projectData = P.json.parse(project);
                 })
                     .then(() => super.load());
             }
@@ -4643,20 +5008,23 @@ var P;
                     element.setAttribute('font-size', size = 18);
                 }
                 var bb = element.getBBox();
-                var x = 4 - .6 * element.transform.baseVal.consolidate().matrix.a;
-                var y = (element.getAttribute('y') - bb.y) * 1.1;
-                element.setAttribute('x', x);
-                element.setAttribute('y', y);
-                var lines = element.textContent.split('\n');
-                if (lines.length > 1) {
-                    element.textContent = lines[0];
-                    var lineHeight = LINE_HEIGHTS[font] || 1;
-                    for (var i = 1, l = lines.length; i < l; i++) {
-                        var tspan = document.createElementNS(null, 'tspan');
-                        tspan.textContent = lines[i];
-                        tspan.setAttribute('x', '' + x);
-                        tspan.setAttribute('y', '' + (y + size * i * lineHeight));
-                        element.appendChild(tspan);
+                var transform = element.transform.baseVal.consolidate();
+                if (transform) {
+                    var x = 4 - .6 * transform.matrix.a;
+                    var y = (element.getAttribute('y') - bb.y) * 1.1;
+                    element.setAttribute('x', x);
+                    element.setAttribute('y', y);
+                    var lines = element.textContent.split('\n');
+                    if (lines.length > 1) {
+                        element.textContent = lines[0];
+                        var lineHeight = LINE_HEIGHTS[font] || 1;
+                        for (var i = 1, l = lines.length; i < l; i++) {
+                            var tspan = document.createElementNS(null, 'tspan');
+                            tspan.textContent = lines[i];
+                            tspan.setAttribute('x', '' + x);
+                            tspan.setAttribute('y', '' + (y + size * i * lineHeight));
+                            element.appendChild(tspan);
+                        }
                     }
                 }
             }
@@ -5628,7 +5996,13 @@ var P;
                 }
                 else if (script[0][0] === 'procDef') {
                     const warp = script[0][4];
-                    object.procedures[script[0][1]] = new Scratch2Procedure(f, warp, inputs);
+                    const name = script[0][1];
+                    if (!object.procedures[name]) {
+                        object.procedures[name] = new Scratch2Procedure(f, warp, inputs);
+                    }
+                    else {
+                        warn('procedure already exists: ' + name);
+                    }
                 }
                 else {
                     warn('Undefined event: ' + script[0][0]);
@@ -5663,14 +6037,14 @@ var P;
         class Scratch3Stage extends P.core.Stage {
             constructor() {
                 super(...arguments);
-                this.listIds = {};
+                this.listIds = Object.create(null);
             }
         }
         sb3.Scratch3Stage = Scratch3Stage;
         class Scratch3Sprite extends P.core.Sprite {
             constructor() {
                 super(...arguments);
-                this.listIds = {};
+                this.listIds = Object.create(null);
             }
             _clone() {
                 return new Scratch3Sprite(this.stage);
@@ -5756,6 +6130,8 @@ var P;
                 container.dataset.opcode = this.opcode;
                 container.style.top = (this.y / 10) + 'em';
                 container.style.left = (this.x / 10) + 'em';
+                container.onmousedown = (e) => e.stopPropagation();
+                container.ontouchstart = (e) => e.stopPropagation();
                 const value = document.createElement('div');
                 value.classList.add('s3-watcher-value');
                 value.textContent = this.getValue();
@@ -5919,7 +6295,7 @@ var P;
                     let row = this.rows[rowIndex];
                     row.setIndex(listIndex);
                     row.setValue(this.list[listIndex]);
-                    row.setY(listIndex * this._rowHeight * this.stage.zoom);
+                    row.setY(listIndex * this._rowHeight);
                     row.setVisible(true);
                 }
                 while (rowIndex < this.rows.length) {
@@ -5937,7 +6313,9 @@ var P;
                 }
                 this.list = this.target.lists[listName];
                 this.target.listWatchers[listName] = this;
-                this.updateLayout();
+                if (this.visible) {
+                    this.updateLayout();
+                }
             }
             getTopLabel() {
                 if (this.target.isStage) {
@@ -5971,6 +6349,9 @@ var P;
             }
             updateLayout() {
                 if (!this.containerEl) {
+                    if (!this.visible) {
+                        return;
+                    }
                     this.createLayout();
                 }
                 this.containerEl.style.display = this.visible ? '' : 'none';
@@ -5990,6 +6371,8 @@ var P;
                 this.containerEl.style.height = (this.height / 10) + 'em';
                 this.containerEl.style.width = (this.width / 10) + 'em';
                 this.containerEl.classList.add('s3-list-container');
+                this.containerEl.onmousedown = (e) => e.stopPropagation();
+                this.containerEl.ontouchstart = (e) => e.stopPropagation();
                 this.topLabelEl.textContent = this.getTopLabel();
                 this.topLabelEl.classList.add('s3-list-top-label');
                 this.bottomLabelEl.textContent = this.getBottomLabel();
@@ -6886,10 +7269,10 @@ var P;
         const VALUE = util.getInput('VALUE', 'number');
         util.writeLn('save();');
         util.writeLn(`R.times = ${VALUE};`);
-        util.writeLn(`if (R.times > 0) ${VARIABLE} = 0;`);
+        util.writeLn('R.current = 0;');
         const label = util.addLabel();
-        util.writeLn(`if (${VARIABLE} < R.times) {`);
-        util.writeLn(`  ${VARIABLE} = ${util.asType(VARIABLE, 'number')} + 1;`);
+        util.writeLn(`if (R.current < R.times) {`);
+        util.writeLn(`  ${VARIABLE} = ++R.current;`);
         util.write(SUBSTACK);
         util.queue(label);
         util.writeLn('} else {');
@@ -6910,14 +7293,14 @@ var P;
         }
     };
     statementLibrary['control_if'] = function (util) {
-        const CONDITION = util.getInput('CONDITION', 'any');
+        const CONDITION = util.getInput('CONDITION', 'boolean');
         const SUBSTACK = util.getSubstack('SUBSTACK');
         util.writeLn(`if (${CONDITION}) {`);
         util.write(SUBSTACK);
         util.writeLn('}');
     };
     statementLibrary['control_if_else'] = function (util) {
-        const CONDITION = util.getInput('CONDITION', 'any');
+        const CONDITION = util.getInput('CONDITION', 'boolean');
         const SUBSTACK = util.getSubstack('SUBSTACK');
         const SUBSTACK2 = util.getSubstack('SUBSTACK2');
         util.writeLn(`if (${CONDITION}) {`);
@@ -7157,12 +7540,14 @@ var P;
     statementLibrary['looks_say'] = function (util) {
         const MESSAGE = util.getInput('MESSAGE', 'any');
         util.writeLn(`S.say(${MESSAGE}, false);`);
+        util.visual('visible');
     };
     statementLibrary['looks_sayforsecs'] = function (util) {
         const MESSAGE = util.getInput('MESSAGE', 'any');
         const SECS = util.getInput('SECS', 'number');
         util.writeLn('save();');
         util.writeLn(`R.id = S.say(${MESSAGE}, false);`);
+        util.visual('visible');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${SECS};`);
         const label = util.addLabel();
@@ -7173,7 +7558,6 @@ var P;
         util.writeLn('  S.say("");');
         util.writeLn('}');
         util.writeLn('restore();');
-        util.visual('visible');
     };
     statementLibrary['looks_seteffectto'] = function (util) {
         const EFFECT = util.sanitizedString(util.getField('EFFECT')).toLowerCase();
@@ -7213,6 +7597,7 @@ var P;
         const SECS = util.getInput('SECS', 'number');
         util.writeLn('save();');
         util.writeLn(`R.id = S.say(${MESSAGE}, true);`);
+        util.visual('visible');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${SECS};`);
         const label = util.addLabel();
@@ -7223,7 +7608,6 @@ var P;
         util.writeLn('  S.say("");');
         util.writeLn('}');
         util.writeLn('restore();');
-        util.visual('visible');
     };
     statementLibrary['motion_changexby'] = function (util) {
         const DX = util.getInput('DX', 'number');
@@ -7251,6 +7635,7 @@ var P;
         util.writeLn('var f = (runtime.now() - R.start) / (R.duration * 1000);');
         util.writeLn('if (f > 1 || isNaN(f)) f = 1;');
         util.writeLn('S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
+        util.visual('drawing');
         util.writeLn('if (f < 1) {');
         util.forceQueue(label);
         util.writeLn('}');
@@ -7273,6 +7658,7 @@ var P;
         util.writeLn('  var f = (runtime.now() - R.start) / (R.duration * 1000);');
         util.writeLn('  if (f > 1 || isNaN(f)) f = 1;');
         util.writeLn('  S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
+        util.visual('drawing');
         util.writeLn('  if (f < 1) {');
         util.forceQueue(label);
         util.writeLn('  }');
@@ -7338,8 +7724,8 @@ var P;
         util.writeLn(`self.tempoBPM += ${TEMPO};`);
     };
     statementLibrary['music_playDrumForBeats'] = function (util) {
-        const BEATS = util.getInput('BEATS', 'any');
-        const DRUM = util.getInput('DRUM', 'any');
+        const BEATS = util.getInput('BEATS', 'number');
+        const DRUM = util.getInput('DRUM', 'number');
         util.writeLn('save();');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
@@ -7360,8 +7746,8 @@ var P;
         util.writeLn('restore();');
     };
     statementLibrary['music_playNoteForBeats'] = function (util) {
-        const BEATS = util.getInput('BEATS', 'any');
-        const NOTE = util.getInput('NOTE', 'any');
+        const BEATS = util.getInput('BEATS', 'number');
+        const NOTE = util.getInput('NOTE', 'number');
         util.writeLn('save();');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
@@ -7726,10 +8112,10 @@ var P;
         }
         if (P.config.experimentalOptimizations) {
             if (OPERAND1.type === 'number') {
-                return util.booleanInput(`numEqual(${OPERAND1}, ${OPERAND2})`);
+                return util.booleanInput(`numEqualExperimental(${OPERAND1}, ${OPERAND2})`);
             }
             if (OPERAND2.type === 'number') {
-                return util.booleanInput(`numEqual(${OPERAND2}, ${OPERAND1})`);
+                return util.booleanInput(`numEqualExperimental(${OPERAND2}, ${OPERAND1})`);
             }
         }
         return util.booleanInput(`equal(${OPERAND1}, ${OPERAND2})`);
@@ -7737,6 +8123,11 @@ var P;
     inputLibrary['operator_gt'] = function (util) {
         const OPERAND1 = util.getInput('OPERAND1', 'any');
         const OPERAND2 = util.getInput('OPERAND2', 'any');
+        if (P.config.experimentalOptimizations) {
+            if (OPERAND1.type === 'number') {
+                return util.booleanInput(`numGreaterExperimental(${OPERAND1}, ${OPERAND2})`);
+            }
+        }
         return util.booleanInput(`(compare(${OPERAND1}, ${OPERAND2}) === 1)`);
     };
     inputLibrary['operator_join'] = function (util) {
@@ -7756,6 +8147,11 @@ var P;
     inputLibrary['operator_lt'] = function (util) {
         const OPERAND1 = util.getInput('OPERAND1', 'any');
         const OPERAND2 = util.getInput('OPERAND2', 'any');
+        if (P.config.experimentalOptimizations) {
+            if (OPERAND1.type === 'number') {
+                return util.booleanInput(`numLessExperimental(${OPERAND1}, ${OPERAND2})`);
+            }
+        }
         return util.booleanInput(`(compare(${OPERAND1}, ${OPERAND2}) === -1)`);
     };
     inputLibrary['operator_mathop'] = function (util) {
@@ -7975,7 +8371,11 @@ var P;
                 }
             }
             else {
-                util.target.listeners.whenKeyPressed[P.runtime.getKeyCode(KEY_OPTION)].push(util.startingFunction);
+                const keyCode = P.runtime.getKeyCode(KEY_OPTION);
+                if (!util.target.listeners.whenKeyPressed[keyCode]) {
+                    util.target.listeners.whenKeyPressed[keyCode] = [];
+                }
+                util.target.listeners.whenKeyPressed[keyCode].push(util.startingFunction);
             }
         },
     };
@@ -7994,19 +8394,22 @@ var P;
             const KEY = util.getInput('KEY', 'string');
             try {
                 const value = P.runtime.scopedEval(KEY.source);
-                var keycode = P.runtime.getKeyCode(value);
+                var keyCode = P.runtime.getKeyCode(value);
             }
             catch (e) {
                 util.compiler.warn('makeymakey key generation error', e);
                 return;
             }
-            if (keycode === 'any') {
+            if (keyCode === 'any') {
                 for (var i = 128; i--;) {
                     util.target.listeners.whenKeyPressed[i].push(util.startingFunction);
                 }
             }
             else {
-                util.target.listeners.whenKeyPressed[keycode].push(util.startingFunction);
+                if (!util.target.listeners.whenKeyPressed[keyCode]) {
+                    util.target.listeners.whenKeyPressed[keyCode] = [];
+                }
+                util.target.listeners.whenKeyPressed[keyCode].push(util.startingFunction);
             }
         },
     };
@@ -8462,6 +8865,7 @@ var P;
                 ctx.imageSmoothingEnabled = false;
                 return { canvas, ctx };
             }
+            const COLOR_MASK = 0b111110001111100011110000;
             class SpriteRenderer2D {
                 constructor() {
                     this.noEffects = false;
@@ -8589,6 +8993,8 @@ var P;
                     root.appendChild(this.penLayer);
                     root.appendChild(this.canvas);
                 }
+                destroy() {
+                }
                 drawFrame() {
                     this.reset(this.zoom);
                     this.drawObjects(this.stage.children);
@@ -8695,6 +9101,9 @@ var P;
                         positionX *= costume.currentScale;
                         positionY *= costume.currentScale;
                     }
+                    if (!Number.isFinite(positionX) || !Number.isFinite(positionY)) {
+                        return false;
+                    }
                     const data = costume.getContext().getImageData(positionX, positionY, 1, 1).data;
                     return data[3] !== 0;
                 }
@@ -8756,10 +9165,10 @@ var P;
                     workingRenderer.noEffects = false;
                     workingRenderer.ctx.restore();
                     const data = workingRenderer.ctx.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
-                    color = color & 0xffffff;
+                    color = color & COLOR_MASK;
                     const length = (b.right - b.left) * (b.top - b.bottom) * 4;
                     for (var i = 0; i < length; i += 4) {
-                        if ((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) === color && data[i + 3]) {
+                        if (((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) & COLOR_MASK) === color && data[i + 3]) {
                             return true;
                         }
                     }
@@ -8784,12 +9193,12 @@ var P;
                     workingRenderer2.ctx.restore();
                     var dataA = workingRenderer.ctx.getImageData(0, 0, width, height).data;
                     var dataB = workingRenderer2.ctx.getImageData(0, 0, width, height).data;
-                    spriteColor = spriteColor & 0xffffff;
-                    otherColor = otherColor & 0xffffff;
+                    spriteColor = spriteColor & COLOR_MASK;
+                    otherColor = otherColor & COLOR_MASK;
                     var length = dataA.length;
                     for (var i = 0; i < length; i += 4) {
-                        var touchesSource = (dataB[i] << 16 | dataB[i + 1] << 8 | dataB[i + 2]) === spriteColor && dataB[i + 3];
-                        var touchesOther = (dataA[i] << 16 | dataA[i + 1] << 8 | dataA[i + 2]) === otherColor && dataA[i + 3];
+                        var touchesSource = ((dataB[i] << 16 | dataB[i + 1] << 8 | dataB[i + 2]) & COLOR_MASK) === spriteColor && dataB[i + 3];
+                        var touchesOther = ((dataA[i] << 16 | dataA[i + 1] << 8 | dataA[i + 2]) & COLOR_MASK) === otherColor && dataA[i + 3];
                         if (touchesSource && touchesOther) {
                             return true;
                         }
@@ -8884,14 +9293,8 @@ var P;
                 canvas.height = 360;
                 return canvas;
             }
-            function filtersAffectShape(filters) {
-                return filters.fisheye !== 0 ||
-                    filters.mosaic !== 0 ||
-                    filters.pixelate !== 0 ||
-                    filters.whirl !== 0;
-            }
             const horizontalInvertMatrix = P.m3.scaling(-1, 1);
-            class ShaderVariant {
+            class Shader {
                 constructor(gl, program) {
                     this.gl = gl;
                     this.program = program;
@@ -8966,19 +9369,15 @@ var P;
             class WebGLSpriteRenderer {
                 constructor() {
                     this.globalScaleMatrix = P.m3.scaling(1, 1);
-                    this.boundFramebuffer = null;
                     this.costumeTextures = new Map();
                     this.canvas = createCanvas();
-                    const gl = this.canvas.getContext('webgl', {
-                        alpha: false,
-                        antialias: false,
-                    });
+                    const gl = this.canvas.getContext('webgl', this.getContextOptions());
                     if (!gl) {
                         throw new Error('cannot get webgl rendering context');
                     }
                     this.gl = gl;
-                    this.noFiltersShader = this.compileVariant([]);
-                    this.allFiltersShader = this.compileVariant([
+                    this.noFiltersShader = this.createShader(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, []);
+                    this.allFiltersShader = this.createShader(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, [
                         'ENABLE_BRIGHTNESS',
                         'ENABLE_COLOR',
                         'ENABLE_GHOST',
@@ -8998,6 +9397,12 @@ var P;
                         0, 1,
                         1, 1,
                     ]), this.gl.STATIC_DRAW);
+                    this.reset(1);
+                }
+                getContextOptions() {
+                    return {
+                        alpha: false,
+                    };
                 }
                 compileShader(type, source, definitions) {
                     if (definitions) {
@@ -9035,58 +9440,44 @@ var P;
                     }
                     return program;
                 }
-                compileVariant(definitions) {
-                    const program = this.compileProgram(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, definitions);
-                    return new ShaderVariant(this.gl, program);
+                createShader(vs, fs, definitions) {
+                    const program = this.compileProgram(vs, fs, definitions);
+                    return new Shader(this.gl, program);
                 }
-                createTexture() {
+                convertToTexture(canvas) {
                     const texture = this.gl.createTexture();
                     if (!texture) {
                         throw new Error('Cannot create texture');
                     }
                     this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+                    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
                     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
                     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
-                    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+                    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
+                    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
                     return texture;
                 }
-                convertToTexture(canvas) {
-                    const texture = this.createTexture();
-                    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
-                    return texture;
-                }
-                createFramebuffer() {
-                    const frameBuffer = this.gl.createFramebuffer();
-                    if (!frameBuffer) {
-                        throw new Error('cannot create frame buffer');
+                destroy() {
+                    const extension = this.gl.getExtension('WEBGL_lose_context');
+                    if (extension) {
+                        extension.loseContext();
                     }
-                    return frameBuffer;
-                }
-                bindFramebuffer(buffer) {
-                    if (buffer === this.boundFramebuffer) {
-                        return;
-                    }
-                    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, buffer);
-                    this.boundFramebuffer = buffer;
                 }
                 reset(scale) {
                     this.canvas.width = scale * 480;
                     this.canvas.height = scale * 360;
-                    this.resetFramebuffer(scale);
-                }
-                resetFramebuffer(scale) {
-                    this.gl.viewport(0, 0, 480, 360);
+                    this.gl.viewport(0, 0, scale * 480, scale * 360);
                     if (this.globalScaleMatrix[0] !== scale) {
                         this.globalScaleMatrix = P.m3.scaling(scale, scale);
                     }
-                    this.gl.clearColor(255, 255, 255, 0);
+                    this.gl.clearColor(1, 1, 1, 1);
                     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
                 }
-                drawChild(child) {
-                    this._drawChild(child, this.allFiltersShader);
-                }
-                _drawChild(child, shader) {
+                useShader(shader) {
                     this.gl.useProgram(shader.program);
+                    this.shader = shader;
+                }
+                drawChild(child) {
                     const costume = child.costumes[child.currentCostumeIndex];
                     if (!this.costumeTextures.has(costume)) {
                         const image = costume.getImage();
@@ -9094,7 +9485,7 @@ var P;
                         this.costumeTextures.set(costume, texture);
                     }
                     this.gl.bindTexture(this.gl.TEXTURE_2D, this.costumeTextures.get(costume));
-                    shader.attributeBuffer('a_position', this.quadBuffer);
+                    this.shader.attributeBuffer('a_position', this.quadBuffer);
                     const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
                     P.m3.multiply(matrix, this.globalScaleMatrix);
                     P.m3.multiply(matrix, P.m3.translation(240 + child.scratchX | 0, 180 - child.scratchY | 0));
@@ -9114,31 +9505,31 @@ var P;
                     }
                     P.m3.multiply(matrix, P.m3.translation(-costume.rotationCenterX, -costume.rotationCenterY));
                     P.m3.multiply(matrix, P.m3.scaling(costume.width, costume.height));
-                    shader.uniformMatrix3('u_matrix', matrix);
-                    if (shader.hasUniform('u_opacity')) {
-                        shader.uniform1f('u_opacity', 1 - child.filters.ghost / 100);
+                    this.shader.uniformMatrix3('u_matrix', matrix);
+                    if (this.shader.hasUniform('u_opacity')) {
+                        this.shader.uniform1f('u_opacity', 1 - child.filters.ghost / 100);
                     }
-                    if (shader.hasUniform('u_brightness')) {
-                        shader.uniform1f('u_brightness', child.filters.brightness / 100);
+                    if (this.shader.hasUniform('u_brightness')) {
+                        this.shader.uniform1f('u_brightness', child.filters.brightness / 100);
                     }
-                    if (shader.hasUniform('u_color')) {
-                        shader.uniform1f('u_color', child.filters.color / 200);
+                    if (this.shader.hasUniform('u_color')) {
+                        this.shader.uniform1f('u_color', child.filters.color / 200);
                     }
-                    if (shader.hasUniform('u_mosaic')) {
+                    if (this.shader.hasUniform('u_mosaic')) {
                         const mosaic = Math.round((Math.abs(child.filters.mosaic) + 10) / 10);
-                        shader.uniform1f('u_mosaic', P.utils.clamp(mosaic, 1, 512));
+                        this.shader.uniform1f('u_mosaic', P.utils.clamp(mosaic, 1, 512));
                     }
-                    if (shader.hasUniform('u_whirl')) {
-                        shader.uniform1f('u_whirl', child.filters.whirl * Math.PI / -180);
+                    if (this.shader.hasUniform('u_whirl')) {
+                        this.shader.uniform1f('u_whirl', child.filters.whirl * Math.PI / -180);
                     }
-                    if (shader.hasUniform('u_fisheye')) {
-                        shader.uniform1f('u_fisheye', Math.max(0, (child.filters.fisheye + 100) / 100));
+                    if (this.shader.hasUniform('u_fisheye')) {
+                        this.shader.uniform1f('u_fisheye', Math.max(0, (child.filters.fisheye + 100) / 100));
                     }
-                    if (shader.hasUniform('u_pixelate')) {
-                        shader.uniform1f('u_pixelate', Math.abs(child.filters.pixelate) / 10);
+                    if (this.shader.hasUniform('u_pixelate')) {
+                        this.shader.uniform1f('u_pixelate', Math.abs(child.filters.pixelate) / 10);
                     }
-                    if (shader.hasUniform('u_size')) {
-                        shader.uniform2f('u_size', costume.width, costume.height);
+                    if (this.shader.hasUniform('u_size')) {
+                        this.shader.uniform2f('u_size', costume.width, costume.height);
                     }
                     this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
                 }
@@ -9150,7 +9541,7 @@ var P;
                     const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
                     P.m3.multiply(matrix, this.globalScaleMatrix);
                     P.m3.multiply(matrix, P.m3.translation(240, 180));
-                    P.m3.multiply(matrix, P.m3.scaling(1, -1));
+                    P.m3.multiply(matrix, P.m3.scaling(1, 1));
                     P.m3.multiply(matrix, P.m3.translation(-240, -180));
                     P.m3.multiply(matrix, P.m3.scaling(480, 360));
                     shader.uniformMatrix3('u_matrix', matrix);
@@ -9197,6 +9588,9 @@ var P;
     #ifdef ENABLE_PIXELATE
       uniform float u_pixelate;
       uniform vec2 u_size;
+    #endif
+    #ifdef ENABLE_COLOR_TEST
+      uniform vec3 u_colorTest;
     #endif
 
     const float minimumAlpha = 1.0 / 250.0;
@@ -9260,9 +9654,11 @@ var P;
       #endif
 
       vec4 color = texture2D(u_texture, texcoord);
+      #ifndef DISABLE_MINIMUM_ALPHA
       if (color.a < minimumAlpha) {
         discard;
       }
+      #endif
 
       #ifdef ENABLE_GHOST
         color.a *= u_opacity;
@@ -9291,32 +9687,436 @@ var P;
         color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
       #endif
 
+      #ifdef ENABLE_COLOR_TEST
+        if (color.rgb != u_colorTest) {
+          color = vec4(0.0, 0.0, 0.0, 0.0);
+        }
+      #endif
+
       gl_FragColor = color;
     }
     `;
-            webgl.WebGLSpriteRenderer = WebGLSpriteRenderer;
+            class CollisionRenderer extends WebGLSpriteRenderer {
+                constructor() {
+                    super();
+                    this.gl.enable(this.gl.SCISSOR_TEST);
+                    this.gl.scissor(0, 0, 480, 360);
+                    this.gl.clearColor(0, 0, 0, 0);
+                    this.touchingShader = this.createShader(CollisionRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, ['DISABLE_MINIMUM_ALPHA']);
+                    this.shapeFiltersShader = this.createShader(CollisionRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, [
+                        'ENABLE_FISHEYE',
+                        'ENABLE_PIXELATE',
+                        'ENABLE_MOSAIC',
+                    ]);
+                    this.touchingColorShader = this.createShader(CollisionRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, [
+                        'DISABLE_MINIMUM_ALPHA',
+                        'ENABLE_COLOR_TEST',
+                    ]);
+                }
+                getContextOptions() {
+                    return {
+                        alpha: true
+                    };
+                }
+                spritesIntersect(spriteA, otherSprites) {
+                    const mb = spriteA.rotatedBounds();
+                    for (const spriteB of otherSprites) {
+                        if (!spriteB.visible || spriteA === spriteB) {
+                            continue;
+                        }
+                        const ob = spriteB.rotatedBounds();
+                        if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
+                            continue;
+                        }
+                        const left = Math.max(mb.left, ob.left);
+                        const top = Math.min(mb.top, ob.top);
+                        const right = Math.min(mb.right, ob.right);
+                        const bottom = Math.max(mb.bottom, ob.bottom);
+                        const width = Math.max(right - left, 1);
+                        const height = Math.max(top - bottom, 1);
+                        this.gl.scissor(240 + left, 180 + bottom, width, height);
+                        this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                        this.useShader(this.allFiltersShader);
+                        this.drawChild(spriteA);
+                        this.gl.blendFunc(this.gl.DST_ALPHA, this.gl.ZERO);
+                        this.useShader(this.touchingShader);
+                        this.drawChild(spriteB);
+                        this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+                        var data = new Uint8Array(width * height * 4);
+                        this.gl.readPixels(240 + left, 180 + bottom, width, height, this.gl.RGBA, this.gl.UNSIGNED_BYTE, data);
+                        this.gl.scissor(0, 0, 480, 360);
+                        var length = data.length;
+                        for (var j = 0; j < length; j += 4) {
+                            if (data[j + 3]) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                }
+                spriteTouchesPoint(sprite, x, y) {
+                    const cx = 240 + x | 0;
+                    const cy = 180 + y | 0;
+                    this.gl.scissor(cx, cy, 1, 1);
+                    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                    this.useShader(this.shapeFiltersShader);
+                    this.drawChild(sprite);
+                    const result = new Uint8Array(4);
+                    this.gl.readPixels(cx, cy, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, result);
+                    this.gl.scissor(0, 0, 480, 360);
+                    return result[3] !== 0;
+                }
+            }
+            class PenRenderer extends WebGLSpriteRenderer {
+                constructor() {
+                    super();
+                    this.dirty = false;
+                    this.penCoords = new Float32Array(65536);
+                    this.penLines = new Float32Array(32768);
+                    this.penColors = new Float32Array(65536);
+                    this.penCoordsIndex = 0;
+                    this.penLinesIndex = 0;
+                    this.penColorsIndex = 0;
+                    this.penShader = this.createShader(PenRenderer.PEN_VERTEX_SHADER, PenRenderer.PEN_FRAGMENT_SHADER);
+                    this.positionBuffer = this.gl.createBuffer();
+                    this.lineBuffer = this.gl.createBuffer();
+                    this.colorBuffer = this.gl.createBuffer();
+                    this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+                }
+                getContextOptions() {
+                    return {
+                        alpha: true,
+                        preserveDrawingBuffer: true,
+                    };
+                }
+                pendingPenOperations() {
+                    return this.penLinesIndex > 0;
+                }
+                drawPendingOperations() {
+                    const gl = this.gl;
+                    this.dirty = true;
+                    this.useShader(this.penShader);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+                    gl.bufferData(gl.ARRAY_BUFFER, this.penCoords, gl.STREAM_DRAW);
+                    gl.vertexAttribPointer(this.penShader.getAttribute('a_vertexData'), 4, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(this.penShader.getAttribute('a_vertexData'));
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.lineBuffer);
+                    gl.bufferData(gl.ARRAY_BUFFER, this.penLines, gl.STREAM_DRAW);
+                    gl.vertexAttribPointer(this.penShader.getAttribute('a_lineData'), 2, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(this.penShader.getAttribute('a_lineData'));
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer);
+                    gl.bufferData(gl.ARRAY_BUFFER, this.penColors, gl.STREAM_DRAW);
+                    gl.vertexAttribPointer(this.penShader.getAttribute('a_color'), 4, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(this.penShader.getAttribute('a_color'));
+                    gl.drawArrays(gl.TRIANGLES, 0, (this.penCoordsIndex + 1) / 4);
+                    this.penCoordsIndex = 0;
+                    this.penLinesIndex = 0;
+                    this.penColorsIndex = 0;
+                }
+                buffersCanFit(size) {
+                    return this.penCoordsIndex + size > this.penCoords.length;
+                }
+                getCircleResolution(size) {
+                    return Math.max(Math.ceil(size), 3);
+                }
+                penLine(color, size, x1, y1, x2, y2) {
+                    const circleRes = this.getCircleResolution(size);
+                    if (this.buffersCanFit(24 * (circleRes + 1))) {
+                        this.drawPendingOperations();
+                    }
+                    this.penCoords[this.penCoordsIndex] = x1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = x2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y2;
+                    this.penCoordsIndex++;
+                    this.penLines[this.penLinesIndex] = -Math.PI / 2;
+                    this.penLinesIndex++;
+                    this.penLines[this.penLinesIndex] = size / 2;
+                    this.penLinesIndex++;
+                    this.penCoords[this.penCoordsIndex] = x2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = x1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y1;
+                    this.penCoordsIndex++;
+                    this.penLines[this.penLinesIndex] = Math.PI / 2;
+                    this.penLinesIndex++;
+                    this.penLines[this.penLinesIndex] = size / 2;
+                    this.penLinesIndex++;
+                    this.penCoords[this.penCoordsIndex] = x1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = x2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y2;
+                    this.penCoordsIndex++;
+                    this.penLines[this.penLinesIndex] = Math.PI / 2;
+                    this.penLinesIndex++;
+                    this.penLines[this.penLinesIndex] = size / 2;
+                    this.penLinesIndex++;
+                    this.penCoords[this.penCoordsIndex] = x1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = x2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y2;
+                    this.penCoordsIndex++;
+                    this.penLines[this.penLinesIndex] = Math.PI / 2;
+                    this.penLinesIndex++;
+                    this.penLines[this.penLinesIndex] = size / 2;
+                    this.penLinesIndex++;
+                    this.penCoords[this.penCoordsIndex] = x2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = x1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y1;
+                    this.penCoordsIndex++;
+                    this.penLines[this.penLinesIndex] = -Math.PI / 2;
+                    this.penLinesIndex++;
+                    this.penLines[this.penLinesIndex] = size / 2;
+                    this.penLinesIndex++;
+                    this.penCoords[this.penCoordsIndex] = x2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = x1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y1;
+                    this.penCoordsIndex++;
+                    this.penLines[this.penLinesIndex] = Math.PI / 2;
+                    this.penLinesIndex++;
+                    this.penLines[this.penLinesIndex] = size / 2;
+                    this.penLinesIndex++;
+                    for (var i = 0; i < circleRes; i++) {
+                        this.penCoords[this.penCoordsIndex] = x2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y1;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = 0;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = 0;
+                        this.penLinesIndex++;
+                        this.penCoords[this.penCoordsIndex] = x2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y1;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = Math.PI / 2 + i / circleRes * Math.PI;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = size / 2;
+                        this.penLinesIndex++;
+                        this.penCoords[this.penCoordsIndex] = x2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y1;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = Math.PI / 2 + (i + 1) / circleRes * Math.PI;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = size / 2;
+                        this.penLinesIndex++;
+                        this.penCoords[this.penCoordsIndex] = x1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y2;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = 0;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = 0;
+                        this.penLinesIndex++;
+                        this.penCoords[this.penCoordsIndex] = x1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y2;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = Math.PI / 2 + i / circleRes * Math.PI;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = size / 2;
+                        this.penLinesIndex++;
+                        this.penCoords[this.penCoordsIndex] = x1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y2;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = Math.PI / 2 + (i + 1) / circleRes * Math.PI;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = size / 2;
+                        this.penLinesIndex++;
+                    }
+                    const [r, g, b, a] = color.toParts();
+                    for (var i = 0; i < circleRes * 6 + 6; i++) {
+                        this.penColors[this.penColorsIndex] = r;
+                        this.penColorsIndex++;
+                        this.penColors[this.penColorsIndex] = g;
+                        this.penColorsIndex++;
+                        this.penColors[this.penColorsIndex] = b;
+                        this.penColorsIndex++;
+                        this.penColors[this.penColorsIndex] = a;
+                        this.penColorsIndex++;
+                    }
+                }
+                penDot(color, size, x, y) {
+                    const circleRes = this.getCircleResolution(size);
+                    if (this.buffersCanFit(12 * circleRes)) {
+                        this.drawPendingOperations();
+                    }
+                    for (var i = 0; i < circleRes; i++) {
+                        this.penCoords[this.penCoordsIndex] = x;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = 0;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = 0;
+                        this.penLinesIndex++;
+                        this.penCoords[this.penCoordsIndex] = x;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x + 1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y + 1;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = Math.PI / 2 + i / circleRes * 2 * Math.PI;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = size / 2;
+                        this.penLinesIndex++;
+                        this.penCoords[this.penCoordsIndex] = x;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x + 1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y + 1;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = Math.PI / 2 + (i + 1) / circleRes * 2 * Math.PI;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = size / 2;
+                        this.penLinesIndex++;
+                    }
+                    const [r, g, b, a] = color.toParts();
+                    for (var i = 0; i < circleRes * 3; i++) {
+                        this.penColors[this.penColorsIndex] = r;
+                        this.penColorsIndex++;
+                        this.penColors[this.penColorsIndex] = g;
+                        this.penColorsIndex++;
+                        this.penColors[this.penColorsIndex] = b;
+                        this.penColorsIndex++;
+                        this.penColors[this.penColorsIndex] = a;
+                        this.penColorsIndex++;
+                    }
+                }
+                penStamp(sprite) {
+                    this.dirty = true;
+                    if (this.pendingPenOperations()) {
+                        this.drawPendingOperations();
+                    }
+                    this.useShader(this.allFiltersShader);
+                    this.drawChild(sprite);
+                }
+                penClear() {
+                    this.gl.clearColor(0, 0, 0, 0);
+                    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                }
+            }
+            PenRenderer.PEN_VERTEX_SHADER = `
+    precision mediump float;
+
+    // [0] = x1
+    // [1] = y1
+    // [2] = x2
+    // [3] = y2
+    attribute vec4 a_vertexData;
+    // [0] = thickened vertex direction
+    // [1] = thickened vertex distance
+    attribute vec2 a_lineData;
+    // [0] = red
+    // [1] = green
+    // [2] = blue
+    // [3] = alpha
+    attribute vec4 a_color;
+
+    varying vec4 v_color;
+
+    void main() {
+      vec2 lineDir = normalize(a_vertexData.zw - a_vertexData.xy);
+
+      mat2 rot;
+      rot[0] = vec2(cos(a_lineData.x), sin(a_lineData.x));
+      rot[1] = vec2(-sin(a_lineData.x), cos(a_lineData.x));
+
+      lineDir *= rot * a_lineData.y;
+
+      vec2 p = (a_vertexData.xy + lineDir);
+      p.x /= 240.0;
+      p.y /= 180.0;
+
+      gl_Position = vec4(p, 0.0, 1.0);
+      v_color = vec4(a_color.xyz / 255.0, a_color.w);
+    }`;
+            PenRenderer.PEN_FRAGMENT_SHADER = `
+    precision mediump float;
+
+    varying vec4 v_color;
+
+    void main() {
+      gl_FragColor = v_color;
+    }`;
             class WebGLProjectRenderer extends WebGLSpriteRenderer {
                 constructor(stage) {
                     super();
                     this.stage = stage;
                     this.zoom = 1;
-                    this.shaderOnlyShapeFilters = this.compileVariant(['ONLY_SHAPE_FILTERS']);
+                    this.collisionRenderer = new CollisionRenderer();
+                    this.penRenderer = new PenRenderer();
                     this.fallbackRenderer = new P.renderer.canvas2d.ProjectRenderer2D(stage);
-                    this.penTexture = this.createTexture();
-                    this.penBuffer = this.createFramebuffer();
-                    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 480, 360, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
-                    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
-                    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.penTexture, 0);
-                    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
-                    this.penDotShader = new ShaderVariant(this.gl, this.compileProgram(WebGLProjectRenderer.PEN_DOT_VERTEX_SHADER, WebGLProjectRenderer.PEN_DOT_FRAGMENT_SHADER));
-                    this.penLineShader = new ShaderVariant(this.gl, this.compileProgram(WebGLProjectRenderer.PEN_LINE_VERTEX_SHADER, WebGLProjectRenderer.PEN_LINE_FRAGMENT_SHADER));
-                    this.reset(1);
                 }
                 drawFrame() {
-                    this.bindFramebuffer(null);
+                    if (this.penRenderer.pendingPenOperations()) {
+                        this.penRenderer.drawPendingOperations();
+                    }
+                    if (this.penRenderer.dirty) {
+                        this.updatePenTexture();
+                        this.penRenderer.dirty = false;
+                    }
                     this.reset(this.zoom);
+                    this.useShader(this.allFiltersShader);
                     this.drawChild(this.stage);
-                    this.drawTextureOverlay(this.penTexture);
+                    if (this.penTexture) {
+                        this.drawTextureOverlay(this.penTexture);
+                        this.useShader(this.allFiltersShader);
+                    }
                     for (var i = 0; i < this.stage.children.length; i++) {
                         var child = this.stage.children[i];
                         if (!child.visible) {
@@ -9324,73 +10124,47 @@ var P;
                         }
                         this.drawChild(child);
                     }
+                    this.gl.flush();
                 }
                 init(root) {
                     root.appendChild(this.canvas);
                 }
+                destroy() {
+                    super.destroy();
+                    this.penRenderer.destroy();
+                    this.collisionRenderer.destroy();
+                }
                 onStageFiltersChanged() {
                 }
-                penLine(color, size, x, y, x2, y2) {
-                    this.bindFramebuffer(this.penBuffer);
-                    const shader = this.penLineShader;
-                    this.gl.useProgram(shader.program);
-                    const buffer = this.gl.createBuffer();
-                    if (buffer === null) {
-                        throw new Error('buffer is null');
-                    }
-                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
-                    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
-                        x / 240, y / 180,
-                        x2 / 240, y2 / 180,
-                    ]), this.gl.STATIC_DRAW);
-                    shader.attributeBuffer('a_position', buffer);
-                    const parts = color.toParts();
-                    shader.uniform4f('u_color', parts[0], parts[1], parts[2], parts[3]);
-                    this.gl.drawArrays(this.gl.LINES, 0, 2);
-                    this.gl.deleteBuffer(buffer);
+                penLine(color, size, x1, y1, x2, y2) {
+                    this.penRenderer.penLine(color, size, x1, y1, x2, y2);
                 }
                 penDot(color, size, x, y) {
-                    this.bindFramebuffer(this.penBuffer);
-                    const shader = this.penDotShader;
-                    this.gl.useProgram(shader.program);
-                    shader.attributeBuffer('a_position', this.quadBuffer);
-                    const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
-                    P.m3.multiply(matrix, P.m3.translation(240 + x - size / 2 | 0, 180 - y - size / 2 | 0));
-                    P.m3.multiply(matrix, P.m3.scaling(size, size));
-                    shader.uniformMatrix3('u_matrix', matrix);
-                    const parts = color.toParts();
-                    shader.uniform4f('u_color', parts[0], parts[1], parts[2], parts[3]);
-                    this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+                    this.penRenderer.penDot(color, size, x, y);
                 }
                 penStamp(sprite) {
-                    this.bindFramebuffer(this.penBuffer);
-                    this.drawChild(sprite);
+                    this.penRenderer.penStamp(sprite);
                 }
                 penClear() {
-                    this.bindFramebuffer(this.penBuffer);
-                    this.gl.clearColor(255, 255, 255, 0);
-                    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                    this.penRenderer.penClear();
+                }
+                updatePenTexture() {
+                    if (this.penTexture) {
+                        this.gl.bindTexture(this.gl.TEXTURE_2D, this.penTexture);
+                        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.penRenderer.canvas);
+                    }
+                    else {
+                        this.penTexture = this.convertToTexture(this.penRenderer.canvas);
+                    }
                 }
                 resize(scale) {
-                    this.zoom = scale;
+                    this.zoom = scale * P.config.scale;
                 }
                 spriteTouchesPoint(sprite, x, y) {
-                    if (!filtersAffectShape(sprite.filters)) {
-                        return this.fallbackRenderer.spriteTouchesPoint(sprite, x, y);
-                    }
-                    const texture = this.createTexture();
-                    const framebuffer = this.createFramebuffer();
-                    this.bindFramebuffer(framebuffer);
-                    this.resetFramebuffer(1);
-                    this._drawChild(sprite, this.shaderOnlyShapeFilters);
-                    const result = new Uint8Array(4);
-                    this.gl.readPixels(240 + x | 0, 180 + y | 0, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, result);
-                    this.gl.deleteTexture(texture);
-                    this.gl.deleteFramebuffer(framebuffer);
-                    return result[3] !== 0;
+                    return this.collisionRenderer.spriteTouchesPoint(sprite, x, y);
                 }
                 spritesIntersect(spriteA, otherSprites) {
-                    return this.fallbackRenderer.spritesIntersect(spriteA, otherSprites);
+                    return this.collisionRenderer.spritesIntersect(spriteA, otherSprites);
                 }
                 spriteTouchesColor(sprite, color) {
                     return this.fallbackRenderer.spriteTouchesColor(sprite, color);
@@ -9399,41 +10173,6 @@ var P;
                     return this.fallbackRenderer.spriteColorTouchesColor(sprite, spriteColor, otherColor);
                 }
             }
-            WebGLProjectRenderer.PEN_DOT_VERTEX_SHADER = `
-    attribute vec2 a_position;
-    varying vec2 v_position;
-    uniform mat3 u_matrix;
-    void main() {
-      gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
-      v_position = a_position;
-    }
-    `;
-            WebGLProjectRenderer.PEN_DOT_FRAGMENT_SHADER = `
-    precision mediump float;
-    uniform vec4 u_color;
-    varying vec2 v_position;
-    void main() {
-      float x = (v_position.x - 0.5) * 2.0;
-      float y = (v_position.y - 0.5) * 2.0;
-      if (sqrt(x * x + y * y) >= 1.0) {
-        discard;
-      }
-      gl_FragColor = u_color;
-    }
-    `;
-            WebGLProjectRenderer.PEN_LINE_VERTEX_SHADER = `
-    attribute vec2 a_position;
-    void main() {
-      gl_Position = vec4(a_position, 0, 1);
-    }
-    `;
-            WebGLProjectRenderer.PEN_LINE_FRAGMENT_SHADER = `
-    precision mediump float;
-    uniform vec4 u_color;
-    void main() {
-      gl_FragColor = u_color;
-    }
-    `;
             webgl.WebGLProjectRenderer = WebGLProjectRenderer;
         })(webgl = renderer.webgl || (renderer.webgl = {}));
     })(renderer = P.renderer || (P.renderer = {}));

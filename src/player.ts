@@ -125,6 +125,7 @@ namespace P.player {
     fullscreenPadding: number;
     fullscreenMaxWidth: number;
     imageSmoothing: boolean;
+    focusOnLoad: boolean;
   }
 
   interface ControlsOptions {
@@ -218,6 +219,7 @@ namespace P.player {
 
     load() {
       return new P.io.Request('https://scratch.garbomuffin.com/proxy/projects/$id'.replace('$id', this.id))
+        .ignoreErrors()
         .load('json')
         .then((data) => {
           if (data.title) {
@@ -252,6 +254,7 @@ namespace P.player {
       fullscreenPadding: 8,
       fullscreenMaxWidth: Infinity,
       imageSmoothing: false,
+      focusOnLoad: true,
     };
 
     public onprogress = new Slot<number>();
@@ -404,6 +407,19 @@ namespace P.player {
 
       this.controlsContainer = document.createElement('div');
       this.controlsContainer.className = 'player-controls';
+
+      // prevent click events from firing on the project when using controls
+      // only prevent if clicking on a button and not empty space
+      this.controlsContainer.onmousedown = (e) => {
+        if (e.target !== this.controlsContainer) {
+          e.stopPropagation();
+        }
+      };
+      this.controlsContainer.ontouchstart = (e) => {
+        if (e.target !== this.controlsContainer) {
+          e.stopPropagation();
+        }
+      };
 
       if (options.enableStop !== false) {
         var stopButton = document.createElement('span');
@@ -632,7 +648,10 @@ namespace P.player {
         if (!this.isRunning()) {
           this.stage.draw();
         }
-        this.focus();
+        // TODO: remove this temporary fix for #192
+        if (this.options.focusOnLoad) {
+          this.focus();
+        }
       }
 
       this.updateFullscreen();
@@ -796,6 +815,10 @@ namespace P.player {
       this.clickToPlayContainer = document.createElement('div');
       this.clickToPlayContainer.className = 'player-click-to-play-container';
       this.clickToPlayContainer.onclick = () => {
+        // As we are in a user gesture handler, we may as well try to resume the AudioContext.
+        if (P.audio.context && P.audio.context.state !== 'running') {
+          P.audio.context.resume();
+        }
         this.removeClickToPlayContainer();
         this.triggerGreenFlag();
         this.focus();
@@ -880,9 +903,12 @@ namespace P.player {
       this.applyOptionsToStage();
 
       this.playerContainer.appendChild(stage.root);
-      stage.focus();
-      stage.draw();
+      if (this.options.focusOnLoad) {
+        this.focus();
+      }
       this.onload.emit(stage);
+
+      this.stage.draw();
 
       this.enactAutoplayPolicy(this.options.autoplayPolicy);
     }
@@ -926,8 +952,8 @@ namespace P.player {
 
         const projectText = await P.io.readers.toText(blob);
         try {
-          // JSON.parse will fail if this is not a JSON project
-          const projectJson = JSON.parse(projectText);
+          // This will error if this is not a JSON project
+          const projectJson = P.json.parse(projectText);
 
           switch (this.determineProjectType(projectJson)) {
             case 'sb2': return new P.sb2.Scratch2Loader(projectJson);

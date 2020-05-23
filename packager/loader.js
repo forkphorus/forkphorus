@@ -10,6 +10,38 @@
 window.SBDL = (function() {
   'use strict';
 
+  /**
+   * Wrapper around XmlHttpRequest.
+   * @param {string} url
+   * @param {XMLHttpRequestResponseType} type Response type
+   */
+  function request(url, type) {
+    const attempt = () => {
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.onload = () => resolve(xhr.response);
+        xhr.onerror = () => reject('Failed to load: ' + url);
+        xhr.open('GET', url);
+        xhr.responseType = type;
+        setTimeout(xhr.send.bind(xhr));
+      });
+    }
+
+    return new Promise((resolve, reject) => {
+      attempt()
+        .then((result) => resolve(result))
+        .catch((err) => {
+          // try again once
+          console.warn('First attempt to load ' + url + ' failed. Trying again.', err);
+          setTimeout(() => {
+            attempt()
+              .then((result) => resolve(result))
+              .catch((err) => reject(err));
+          }, 500);
+        });
+    });
+  }
+
   // Customizable hooks that can be overridden by other scripts to measure progress.
   const progressHooks = {
     // Indicates a loader has just started
@@ -46,7 +78,7 @@ window.SBDL = (function() {
       return nameA.localeCompare(nameB);
     });
   }
-  
+
   // Loads a Scratch 1 project
   function loadScratch1Project(id) {
     const PROJECTS_API = 'https://projects.scratch.mit.edu/internalapi/project/$id/get/';
@@ -61,8 +93,7 @@ window.SBDL = (function() {
       buffer: null,
     };
 
-    return fetch(PROJECTS_API.replace('$id', id))
-      .then((data) => data.arrayBuffer())
+    return request(PROJECTS_API.replace('$id', id), 'arraybuffer')
       .then((buffer) => {
 
         // Check that the header matches that of a Scratch 1 project.
@@ -92,8 +123,7 @@ window.SBDL = (function() {
     let blob;
 
     // The fetch routine is rather complicated because we have to determine which type of project we are looking at.
-    return fetch(PROJECTS_API.replace('$id', id))
-      .then((request) => request.blob())
+    return request(PROJECTS_API.replace('$id', id), 'blob')
       .then((b) => {
         blob = b;
         return new Promise((resolve, reject) => {
@@ -200,8 +230,7 @@ window.SBDL = (function() {
         }
       }
 
-      return fetch(ASSETS_API.replace('$path', md5))
-        .then((request) => request.arrayBuffer())
+      return request(ASSETS_API.replace('$path', md5), 'arraybuffer')
         .then((buffer) => {
           result.files.push({
             path: path,
@@ -264,8 +293,7 @@ window.SBDL = (function() {
     function addFile(data) {
       progressHooks.newTask();
       const path = data.md5ext || data.assetId + '.' + data.dataFormat;
-      return fetch(ASSETS_API.replace('$path', path))
-        .then((request) => request.arrayBuffer())
+      return request(ASSETS_API.replace('$path', path), 'arraybuffer')
         .then((buffer) => {
           result.files.push({path: path, data: buffer});
           progressHooks.finishTask();
@@ -292,8 +320,7 @@ window.SBDL = (function() {
     progressHooks.start();
     progressHooks.newTask();
 
-    return fetch(PROJECTS_API.replace('$id', id))
-      .then((request) => request.json())
+    return request(PROJECTS_API.replace('$id', id), 'json')
       .then((projectData) => {
         if (typeof projectData.objName === 'string') {
           throw new Error('Not a Scratch 3 project, found objName (probably a Scratch 2 project)');

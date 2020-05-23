@@ -139,11 +139,24 @@ namespace P.core {
     }
 
     /**
-     * Convert this color to its RGBA parts, each from 0-1
+     * Convert this color to its RGBA parts
+     * R, G, B [0-255]
+     * A [0-1]
      */
     toParts(): [number, number, number, number] {
-      // TODO, not important for now
-      return [1, 0, 0, 1];
+      switch (this.mode) {
+        case PenMode.RGBA: {
+          return [this.x, this.y, this.z, this.a];
+        }
+        case PenMode.HSVA: {
+          const rgb = P.utils.hsvToRGB(this.x / 360, this.y / 100, this.z / 100);
+          return [rgb[0], rgb[1], rgb[2], this.a];
+        }
+        case PenMode.HSLA: {
+          const rgb = P.utils.hslToRGB(this.x / 360, this.y / 100, this.z / 100);
+          return [rgb[0], rgb[1], rgb[2], this.a];
+        }
+      }
     }
 
     /**
@@ -160,7 +173,6 @@ namespace P.core {
           return 'rgba(' + rgb[0] + ', ' + rgb[1] + ', ' + rgb[2] + ', ' + this.a + ')';
         }
       }
-      throw new Error('Unknown pen color mode: ' + this.mode);
     }
 
     setParam(param: string, value: number) {
@@ -270,7 +282,7 @@ namespace P.core {
     /**
      * Maps the names of sounds to the corresponding Sound
      */
-    public soundRefs: ObjectMap<Sound> = {};
+    public soundRefs: ObjectMap<Sound> = Object.create(null);
     /**
      * Currently selected instrument
      */
@@ -521,7 +533,9 @@ namespace P.core {
       if (this.node) {
         for (const sound of this.activeSounds) {
           sound.stopped = true;
-          sound.node.disconnect();
+          if (sound.node) {
+            sound.node.disconnect();
+          }
         }
         this.activeSounds.clear();
         this.node.disconnect();
@@ -533,7 +547,9 @@ namespace P.core {
       if (this.node) {
         for (const sound of this.activeSounds) {
           if (sound.base !== originBase) {
-            sound.node.disconnect();
+            if (sound.node) {
+              sound.node.disconnect();
+            }
             sound.stopped = true;
             this.activeSounds.delete(sound);
           }
@@ -658,7 +674,9 @@ namespace P.core {
       if (this.node && this.isClone && !this.isStage) {
         // Continue playing sounds started with "start sound" after this sprite has been removed.
         for (const sound of this.activeSounds) {
-          sound.node.disconnect();
+          if (sound.node) {
+            sound.node.disconnect();
+          }
           sound.stopped = true;
         }
         this.activeSounds.clear();
@@ -773,8 +791,10 @@ namespace P.core {
 
     public zoom: number = 1;
 
+    // rawMouseX/rawMouseY = mouse x/y, in Scratch coordinate space, before clamping or rounding
     public rawMouseX: number = 0;
     public rawMouseY: number = 0;
+    // mouseX/mouseY = mouse x/y, in Scratch coordinate space, rounded and clamped to the stage bounds
     public mouseX: number = 0;
     public mouseY: number = 0;
     public mousePressed: boolean = false;
@@ -1055,6 +1075,7 @@ namespace P.core {
       for (const extension of this.extensions) {
         extension.destroy();
       }
+      this.renderer.destroy();
       this.removeEventListeners();
     }
 
@@ -1091,8 +1112,8 @@ namespace P.core {
       if (x > 240) x = 240;
       if (y < -180) y = -180;
       if (y > 180) y = 180;
-      this.mouseX = x;
-      this.mouseY = y;
+      this.mouseX = Math.round(x);
+      this.mouseY = Math.round(y);
     }
 
     /**
@@ -1283,14 +1304,19 @@ namespace P.core {
     }
 
     moveTo() {
-      // do nothing -- stage cannot be moved
+      // no-op
     }
 
     forward() {
-      // do nothing -- stage cannot be moved
+      // no-op
+    }
+
+    setDirection(direction: number) {
+      // no-op
     }
 
     rotatedBounds() {
+      // no-op
       return {
         top: 0,
         bottom: 0,
@@ -1307,10 +1333,12 @@ namespace P.core {
     }
 
     touchingColor(color: number) {
+      // no-op
       return false;
     }
 
     colorTouchingColor(colorA: number, colorB: number) {
+      // no-op
       return false;
     }
 
@@ -1748,7 +1776,7 @@ namespace P.core {
     public static MAX_SIZE = 1024;
 
     private svg: HTMLImageElement;
-    public currentScale: number = 1;
+    public currentScale: number;
     public maxScale: number;
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
@@ -1763,6 +1791,7 @@ namespace P.core {
       this.height = svg.height;
       this.svg = svg;
       this.maxScale = this.calculateMaxScale();
+      this.currentScale = Math.min(1, this.maxScale);
     }
 
     private calculateMaxScale(): number {

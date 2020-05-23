@@ -1,3 +1,6 @@
+// NOTE: embed.js is deprecated and only exists for compatibility reasons.
+// Please use a direct <iframe> of embed.html instead!
+
 (function() {
   'use strict';
 

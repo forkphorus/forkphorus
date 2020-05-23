@@ -116,13 +116,13 @@ namespace P.sb3 {
   // Implements a Scratch 3 Stage.
   export class Scratch3Stage extends P.core.Stage {
     public sb3data: SB3Target;
-    public listIds: ObjectMap<string> = {};
+    public listIds: ObjectMap<string> = Object.create(null);
   }
 
   // Implements a Scratch 3 Sprite.
   export class Scratch3Sprite extends P.core.Sprite {
-    public sb3data: any;
-    public listIds: ObjectMap<string> = {};
+    public sb3data: SB3Target;
+    public listIds: ObjectMap<string> = Object.create(null);
 
     _clone() {
       return new Scratch3Sprite(this.stage);
@@ -256,6 +256,9 @@ namespace P.sb3 {
       container.dataset.opcode = this.opcode;
       container.style.top = (this.y / 10) + 'em';
       container.style.left = (this.x / 10) + 'em';
+      // fix https://github.com/forkphorus/forkphorus/issues/195
+      container.onmousedown = (e) => e.stopPropagation();
+      container.ontouchstart = (e) => e.stopPropagation();
 
       const value = document.createElement('div');
       value.classList.add('s3-watcher-value');
@@ -446,7 +449,7 @@ namespace P.sb3 {
       if (!this.visible && this._rowHeight === -1) {
         return;
       }
-      
+
       const height = this.list.length * this.getRowHeight();
       this.endpointEl.style.transform = 'translateY(' + (height * this.stage.zoom) + 'px)';
 
@@ -482,7 +485,7 @@ namespace P.sb3 {
         let row = this.rows[rowIndex];
         row.setIndex(listIndex);
         row.setValue(this.list[listIndex]);
-        row.setY(listIndex * this._rowHeight * this.stage.zoom);
+        row.setY(listIndex * this._rowHeight);
         row.setVisible(true);
       }
       while (rowIndex < this.rows.length) {
@@ -503,7 +506,9 @@ namespace P.sb3 {
       }
       this.list = this.target.lists[listName] as Scratch3List;
       this.target.listWatchers[listName] = this;
-      this.updateLayout();
+      if (this.visible) {
+        this.updateLayout();
+      }
     }
 
     getTopLabel(): string {
@@ -543,6 +548,10 @@ namespace P.sb3 {
 
     updateLayout() {
       if (!this.containerEl) {
+        if (!this.visible) {
+          // if the element doesn't exist, we have no reason to create it
+          return;
+        }
         this.createLayout();
       }
       this.containerEl.style.display = this.visible ? '' : 'none';
@@ -565,6 +574,10 @@ namespace P.sb3 {
       this.containerEl.style.height = (this.height / 10) + 'em';
       this.containerEl.style.width = (this.width / 10) + 'em';
       this.containerEl.classList.add('s3-list-container');
+
+      // fix https://github.com/forkphorus/forkphorus/issues/195
+      this.containerEl.onmousedown = (e) => e.stopPropagation();
+      this.containerEl.ontouchstart = (e) => e.stopPropagation();
 
       this.topLabelEl.textContent = this.getTopLabel();
       this.topLabelEl.classList.add('s3-list-top-label');
@@ -1926,10 +1939,10 @@ namespace P.sb3.compiler {
     const VALUE = util.getInput('VALUE', 'number');
     util.writeLn('save();');
     util.writeLn(`R.times = ${VALUE};`);
-    util.writeLn(`if (R.times > 0) ${VARIABLE} = 0;`);
+    util.writeLn('R.current = 0;');
     const label = util.addLabel();
-    util.writeLn(`if (${VARIABLE} < R.times) {`);
-    util.writeLn(`  ${VARIABLE} = ${util.asType(VARIABLE, 'number')} + 1;`);
+    util.writeLn(`if (R.current < R.times) {`);
+    util.writeLn(`  ${VARIABLE} = ++R.current;`);
     util.write(SUBSTACK);
     util.queue(label);
     util.writeLn('} else {');
@@ -1949,14 +1962,14 @@ namespace P.sb3.compiler {
     }
   };
   statementLibrary['control_if'] = function(util) {
-    const CONDITION = util.getInput('CONDITION', 'any');
+    const CONDITION = util.getInput('CONDITION', 'boolean');
     const SUBSTACK = util.getSubstack('SUBSTACK');
     util.writeLn(`if (${CONDITION}) {`);
     util.write(SUBSTACK);
     util.writeLn('}');
   };
   statementLibrary['control_if_else'] = function(util) {
-    const CONDITION = util.getInput('CONDITION', 'any');
+    const CONDITION = util.getInput('CONDITION', 'boolean');
     const SUBSTACK = util.getSubstack('SUBSTACK');
     const SUBSTACK2 = util.getSubstack('SUBSTACK2');
     util.writeLn(`if (${CONDITION}) {`);
@@ -2191,12 +2204,14 @@ namespace P.sb3.compiler {
   statementLibrary['looks_say'] = function(util) {
     const MESSAGE = util.getInput('MESSAGE', 'any');
     util.writeLn(`S.say(${MESSAGE}, false);`);
+    util.visual('visible');
   };
   statementLibrary['looks_sayforsecs'] = function(util) {
     const MESSAGE = util.getInput('MESSAGE', 'any');
     const SECS = util.getInput('SECS', 'number');
     util.writeLn('save();');
     util.writeLn(`R.id = S.say(${MESSAGE}, false);`);
+    util.visual('visible');
     util.writeLn('R.start = runtime.now();');
     util.writeLn(`R.duration = ${SECS};`);
     const label = util.addLabel();
@@ -2207,7 +2222,6 @@ namespace P.sb3.compiler {
     util.writeLn('  S.say("");');
     util.writeLn('}');
     util.writeLn('restore();');
-    util.visual('visible');
   };
   statementLibrary['looks_seteffectto'] = function(util) {
     const EFFECT = util.sanitizedString(util.getField('EFFECT')).toLowerCase();
@@ -2247,6 +2261,7 @@ namespace P.sb3.compiler {
     const SECS = util.getInput('SECS', 'number');
     util.writeLn('save();');
     util.writeLn(`R.id = S.say(${MESSAGE}, true);`);
+    util.visual('visible');
     util.writeLn('R.start = runtime.now();');
     util.writeLn(`R.duration = ${SECS};`);
     const label = util.addLabel();
@@ -2257,7 +2272,6 @@ namespace P.sb3.compiler {
     util.writeLn('  S.say("");');
     util.writeLn('}');
     util.writeLn('restore();');
-    util.visual('visible');
   };
   statementLibrary['motion_changexby'] = function(util) {
     const DX = util.getInput('DX', 'number');
@@ -2285,6 +2299,7 @@ namespace P.sb3.compiler {
     util.writeLn('var f = (runtime.now() - R.start) / (R.duration * 1000);');
     util.writeLn('if (f > 1 || isNaN(f)) f = 1;');
     util.writeLn('S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
+    util.visual('drawing');
     util.writeLn('if (f < 1) {');
     util.forceQueue(label);
     util.writeLn('}');
@@ -2307,6 +2322,7 @@ namespace P.sb3.compiler {
     util.writeLn('  var f = (runtime.now() - R.start) / (R.duration * 1000);');
     util.writeLn('  if (f > 1 || isNaN(f)) f = 1;');
     util.writeLn('  S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
+    util.visual('drawing');
     util.writeLn('  if (f < 1) {');
     util.forceQueue(label);
     util.writeLn('  }');
@@ -2373,8 +2389,8 @@ namespace P.sb3.compiler {
     util.writeLn(`self.tempoBPM += ${TEMPO};`)
   };
   statementLibrary['music_playDrumForBeats'] = function(util) {
-    const BEATS = util.getInput('BEATS', 'any');
-    const DRUM = util.getInput('DRUM', 'any');
+    const BEATS = util.getInput('BEATS', 'number');
+    const DRUM = util.getInput('DRUM', 'number');
 
     util.writeLn('save();');
     util.writeLn('R.start = runtime.now();');
@@ -2397,9 +2413,9 @@ namespace P.sb3.compiler {
     util.writeLn('restore();');
   };
   statementLibrary['music_playNoteForBeats'] = function(util) {
-    const BEATS = util.getInput('BEATS', 'any');
-    const NOTE = util.getInput('NOTE', 'any');
-    
+    const BEATS = util.getInput('BEATS', 'number');
+    const NOTE = util.getInput('NOTE', 'number');
+
     util.writeLn('save();');
     util.writeLn('R.start = runtime.now();');
     util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
@@ -2774,18 +2790,18 @@ namespace P.sb3.compiler {
   inputLibrary['operator_equals'] = function(util) {
     const OPERAND1 = util.getInput('OPERAND1', 'any');
     const OPERAND2 = util.getInput('OPERAND2', 'any');
-    // If we know at compile-time that either input cannot be a number, we will use the faster strEqual
+    // If we know at compile-time that either input cannot be a number, we will use the faster strEqual.
     if (!OPERAND1.potentialNumber || !OPERAND2.potentialNumber) {
       return util.booleanInput(`strEqual(${OPERAND1}, ${OPERAND2})`);
     }
     if (P.config.experimentalOptimizations) {
-      // If we know at compile-time that an input is going to be a number, we will use the faster numEqual method.
+      // If we know at compile-time that an input is a number, we will use the faster numEqual method.
       // The first argument to numEqual must be a number, the other will be converted if necessary.
       if (OPERAND1.type === 'number') {
-        return util.booleanInput(`numEqual(${OPERAND1}, ${OPERAND2})`);
+        return util.booleanInput(`numEqualExperimental(${OPERAND1}, ${OPERAND2})`);
       }
       if (OPERAND2.type === 'number') {
-        return util.booleanInput(`numEqual(${OPERAND2}, ${OPERAND1})`);
+        return util.booleanInput(`numEqualExperimental(${OPERAND2}, ${OPERAND1})`);
       }
     }
     return util.booleanInput(`equal(${OPERAND1}, ${OPERAND2})`);
@@ -2793,7 +2809,11 @@ namespace P.sb3.compiler {
   inputLibrary['operator_gt'] = function(util) {
     const OPERAND1 = util.getInput('OPERAND1', 'any');
     const OPERAND2 = util.getInput('OPERAND2', 'any');
-    // TODO: use numGreater?
+    if (P.config.experimentalOptimizations) {
+      if (OPERAND1.type === 'number') {
+        return util.booleanInput(`numGreaterExperimental(${OPERAND1}, ${OPERAND2})`);
+      }
+    }
     return util.booleanInput(`(compare(${OPERAND1}, ${OPERAND2}) === 1)`);
   };
   inputLibrary['operator_join'] = function(util) {
@@ -2814,7 +2834,11 @@ namespace P.sb3.compiler {
   inputLibrary['operator_lt'] = function(util) {
     const OPERAND1 = util.getInput('OPERAND1', 'any');
     const OPERAND2 = util.getInput('OPERAND2', 'any');
-    // TODO: use numLess?
+    if (P.config.experimentalOptimizations) {
+      if (OPERAND1.type === 'number') {
+        return util.booleanInput(`numLessExperimental(${OPERAND1}, ${OPERAND2})`);
+      }
+    }
     return util.booleanInput(`(compare(${OPERAND1}, ${OPERAND2}) === -1)`);
   };
   inputLibrary['operator_mathop'] = function(util) {
@@ -3045,7 +3069,11 @@ namespace P.sb3.compiler {
           util.target.listeners.whenKeyPressed[i].push(util.startingFunction);
         }
       } else {
-        util.target.listeners.whenKeyPressed[P.runtime.getKeyCode(KEY_OPTION)].push(util.startingFunction);
+        const keyCode = P.runtime.getKeyCode(KEY_OPTION);
+        if (!util.target.listeners.whenKeyPressed[keyCode]) {
+          util.target.listeners.whenKeyPressed[keyCode] = [];
+        }
+        util.target.listeners.whenKeyPressed[keyCode].push(util.startingFunction);
       }
     },
   };
@@ -3064,17 +3092,20 @@ namespace P.sb3.compiler {
       const KEY = util.getInput('KEY', 'string');
       try {
         const value = P.runtime.scopedEval(KEY.source);
-        var keycode = P.runtime.getKeyCode(value);
+        var keyCode = P.runtime.getKeyCode(value);
       } catch (e) {
         util.compiler.warn('makeymakey key generation error', e);
         return;
       }
-      if (keycode === 'any') {
+      if (keyCode === 'any') {
         for (var i = 128; i--;) {
           util.target.listeners.whenKeyPressed[i].push(util.startingFunction);
         }
       } else {
-        util.target.listeners.whenKeyPressed[keycode].push(util.startingFunction);
+        if (!util.target.listeners.whenKeyPressed[keyCode]) {
+          util.target.listeners.whenKeyPressed[keyCode] = [];
+        }
+        util.target.listeners.whenKeyPressed[keyCode].push(util.startingFunction);
       }
     },
   };
