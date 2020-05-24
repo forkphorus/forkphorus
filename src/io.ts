@@ -171,7 +171,7 @@ namespace P.io {
               handle()
                 .then((response) => resolve(response))
                 .catch((err) => reject(err));
-            }, 250);
+            }, 2000);
           });
       });
     }
