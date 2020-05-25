@@ -2220,7 +2220,9 @@ var P;
                         reject('Failed to load image: ' + image.src);
                     };
                     image.crossOrigin = 'anonymous';
-                    image.src = this.src;
+                    setTimeout(() => {
+                        image.src = this.src;
+                    });
                 });
             }
             load() {
