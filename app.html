@@ -133,7 +133,7 @@
     });
 
     // do not focus the stage when embedded
-    if (window.parent && window.parent !== window) {
+    if (!window.parent || window.parent !== window) {
       player.setOptions({ focusOnLoad: false });
     }
 
