@@ -2090,7 +2090,7 @@ var P;
                             handle()
                                 .then((response) => resolve(response))
                                 .catch((err) => reject(err));
-                        }, 250);
+                        }, 2000);
                     });
                 });
             }
