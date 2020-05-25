@@ -267,12 +267,12 @@ namespace P.io {
         });
 
         xhr.addEventListener('error', (err) => {
-          reject(`Error while downloading ${this.url} (error) (${xhr.status}/${xhr.readyState})`);
+          reject(`Error while downloading ${this.url} (error) (${xhr.status}/${xhr.statusText}/${this.aborted}/${xhr.readyState})`);
         });
 
         xhr.addEventListener('abort', (err) => {
           this.aborted = true;
-          reject(`Error while downloading ${this.url} (abort) (${xhr.status}/${xhr.readyState})`);
+          reject(`Error while downloading ${this.url} (abort) (${xhr.status}/${xhr.statusText}/${xhr.readyState})`);
         });
 
         xhr.open('GET', this.url);
