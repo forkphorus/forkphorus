@@ -6492,6 +6492,10 @@ var P;
             return newSVG;
         }
         class BaseSB3Loader extends P.io.Loader {
+            constructor() {
+                super(...arguments);
+                this.needsMusic = false;
+            }
             getSVG(path) {
                 return this.getAsText(path)
                     .then((source) => {
@@ -6610,9 +6614,8 @@ var P;
                     return target;
                 });
             }
-            loadAssets() {
+            loadRequiredAssets() {
                 return Promise.all([
-                    this.loadSoundbank(),
                     this.loadFonts(),
                 ]);
             }
@@ -6635,26 +6638,27 @@ var P;
                 for (const target of targets) {
                     const compiler = new P.sb3.compiler.Compiler(target);
                     compiler.compile();
+                    if (compiler.needsMusic) {
+                        this.needsMusic = true;
+                    }
                 }
                 if (P.config.debug) {
                     console.timeEnd('Scratch 3 compile');
                 }
             }
             load() {
-                if (!this.projectData) {
-                    throw new Error('Project data is missing or invalid');
-                }
-                if (!Array.isArray(this.projectData.targets)) {
-                    throw new Error('Invalid project data: missing targets');
-                }
-                const targets = this.projectData.targets;
-                targets.sort((a, b) => a.layerOrder - b.layerOrder);
-                return this.loadAssets()
-                    .then(() => {
+                return __awaiter(this, void 0, void 0, function* () {
+                    if (!this.projectData) {
+                        throw new Error('Project data is missing or invalid');
+                    }
+                    if (!Array.isArray(this.projectData.targets)) {
+                        throw new Error('Invalid project data: missing targets');
+                    }
+                    yield this.loadRequiredAssets();
                     this.resetTasks();
-                    return Promise.all(targets.map((data) => this.loadTarget(data)));
-                })
-                    .then((targets) => {
+                    const targets = yield Promise.all(this.projectData.targets
+                        .sort((a, b) => a.layerOrder - b.layerOrder)
+                        .map((data) => this.loadTarget(data)));
                     if (this.aborted) {
                         throw new Error('Loading aborting.');
                     }
@@ -6670,6 +6674,9 @@ var P;
                         .filter((i) => i && i.valid);
                     stage.allWatchers.forEach((watcher) => watcher.init());
                     this.compileTargets(targets, stage);
+                    if (this.needsMusic) {
+                        yield this.loadSoundbank();
+                    }
                     this.projectData = null;
                     return stage;
                 });
@@ -6926,6 +6933,7 @@ var P;
             class Compiler {
                 constructor(target) {
                     this.labelCount = 0;
+                    this.needsMusic = false;
                     this.target = target;
                     this.data = target.sb3data;
                     this.blocks = this.data.blocks;
@@ -7738,6 +7746,7 @@ var P;
     statementLibrary['music_playDrumForBeats'] = function (util) {
         const BEATS = util.getInput('BEATS', 'number');
         const DRUM = util.getInput('DRUM', 'number');
+        util.compiler.needsMusic = true;
         util.writeLn('save();');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
@@ -7760,6 +7769,7 @@ var P;
     statementLibrary['music_playNoteForBeats'] = function (util) {
         const BEATS = util.getInput('BEATS', 'number');
         const NOTE = util.getInput('NOTE', 'number');
+        util.compiler.needsMusic = true;
         util.writeLn('save();');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);

@@ -717,9 +717,7 @@ namespace P.sb3 {
   // Implementations are expected to set `this.projectData` to something before calling super.load()
   export abstract class BaseSB3Loader extends P.io.Loader<P.core.Stage> {
     protected projectData: SB3Project;
-    // private totalTasks: number = 0;
-    // private finishedTasks: number = 0;
-    // private requests: XMLHttpRequest[] = [];
+    private needsMusic: boolean = false;
 
     protected abstract getAsText(path: string): Promise<string>;
     protected abstract getAsArrayBuffer(path: string): Promise<ArrayBuffer>;
@@ -864,9 +862,8 @@ namespace P.sb3 {
         });
     }
 
-    loadAssets() {
+    loadRequiredAssets() {
       return Promise.all([
-        this.loadSoundbank(),
         this.loadFonts(),
       ]);
     }
@@ -892,13 +889,16 @@ namespace P.sb3 {
       for (const target of targets) {
         const compiler = new P.sb3.compiler.Compiler(target);
         compiler.compile();
+        if (compiler.needsMusic) {
+          this.needsMusic = true;
+        }
       }
       if (P.config.debug) {
         console.timeEnd('Scratch 3 compile');
       }
     }
 
-    load() {
+    async load() {
       if (!this.projectData) {
         throw new Error('Project data is missing or invalid');
       }
@@ -906,39 +906,41 @@ namespace P.sb3 {
         throw new Error('Invalid project data: missing targets');
       }
 
-      const targets = this.projectData.targets;
-      // sort targets by their layerOrder to match how they will display
-      targets.sort((a, b) => a.layerOrder - b.layerOrder);
+      await this.loadRequiredAssets();
 
-      return this.loadAssets()
-        .then(() => {
-          this.resetTasks();
-          return Promise.all(targets.map((data) => this.loadTarget(data)));
-        })
-        .then((targets: any) => {
-          if (this.aborted) {
-            throw new Error('Loading aborting.');
-          }
-          const stage = targets.filter((i) => i.isStage)[0] as Scratch3Stage;
-          if (!stage) {
-            throw new Error('Project does not have a Stage');
-          }
-          const sprites = targets.filter((i) => i.isSprite) as Scratch3Sprite[];
-          sprites.forEach((sprite) => sprite.stage = stage);
-          stage.children = sprites;
+      this.resetTasks();
+      const targets = await Promise.all(this.projectData.targets
+        .sort((a, b) => a.layerOrder - b.layerOrder)
+        .map((data) => this.loadTarget(data))
+      );
 
-          stage.allWatchers = this.projectData.monitors
-            .map((data) => this.loadWatcher(data, stage))
-            .filter((i) => i && i.valid);
-          stage.allWatchers.forEach((watcher) => watcher.init());
+      if (this.aborted) {
+        throw new Error('Loading aborting.');
+      }
 
-          this.compileTargets(targets, stage);
+      const stage = targets.filter((i) => i.isStage)[0] as Scratch3Stage;
+      if (!stage) {
+        throw new Error('Project does not have a Stage');
+      }
+      const sprites = targets.filter((i) => i.isSprite) as Scratch3Sprite[];
+      sprites.forEach((sprite) => sprite.stage = stage);
+      stage.children = sprites;
 
-          // projectData can be removed. This reduces memory usage.
-          this.projectData = null as any;
+      stage.allWatchers = this.projectData.monitors
+        .map((data) => this.loadWatcher(data, stage))
+        .filter((i) => i && i.valid);
+      stage.allWatchers.forEach((watcher) => watcher.init());
 
-          return stage;
-        });
+      this.compileTargets(targets, stage);
+
+      if (this.needsMusic) {
+        await this.loadSoundbank();
+      }
+
+      // projectData is now unused and can be removed. This reduces memory usage
+      this.projectData = null as any;
+
+      return stage;
     }
   }
 
@@ -1404,6 +1406,7 @@ namespace P.sb3.compiler {
      */
     public labelCount: number = 0;
     public state: CompilerState;
+    public needsMusic: boolean = false;
 
     constructor(target: Target) {
       this.target = target;
@@ -2398,6 +2401,8 @@ namespace P.sb3.compiler {
     const BEATS = util.getInput('BEATS', 'number');
     const DRUM = util.getInput('DRUM', 'number');
 
+    util.compiler.needsMusic = true;
+
     util.writeLn('save();');
     util.writeLn('R.start = runtime.now();');
     util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
@@ -2421,6 +2426,8 @@ namespace P.sb3.compiler {
   statementLibrary['music_playNoteForBeats'] = function(util) {
     const BEATS = util.getInput('BEATS', 'number');
     const NOTE = util.getInput('NOTE', 'number');
+
+    util.compiler.needsMusic = true;
 
     util.writeLn('save();');
     util.writeLn('R.start = runtime.now();');
