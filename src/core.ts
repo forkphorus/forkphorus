@@ -1775,6 +1775,9 @@ namespace P.core {
     /** Maximum width or height of a Vector costume. Overrides MAX_SCALE. */
     public static MAX_SIZE = 1024;
 
+    /** This is temporary, used to debug some VectorCostume errors. */
+    private static AB_TEST = Math.random() > 0.5;
+
     private svg: HTMLImageElement;
     public currentScale: number;
     public maxScale: number;
@@ -1792,6 +1795,11 @@ namespace P.core {
       this.svg = svg;
       this.maxScale = this.calculateMaxScale();
       this.currentScale = Math.min(1, this.maxScale);
+
+      // Temporary A/B test: see if eagerly creating the <canvas> helps initCanvas errors.
+      if (VectorCostume.AB_TEST) {
+        this.canvas = document.createElement('canvas');
+      }
     }
 
     private calculateMaxScale(): number {
@@ -1808,14 +1816,14 @@ namespace P.core {
       const width = Math.floor(Math.max(1, this.width * this.currentScale));
       const height = Math.floor(Math.max(1, this.height * this.currentScale));
 
-      if (!this.canvas) {
-        const canvas = document.createElement('canvas');
+      if (!this.canvas || !this.ctx) {
+        const canvas = this.canvas || document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
         canvas.width = width;
         canvas.height = height;
-        const ctx = canvas.getContext('2d');
         if (!ctx) {
           const fmt = (n: number) => Math.round(n * 100) / 100;
-          throw new Error(`cannot get 2d rendering context in initCanvas on Vector "${this.name}" @ ${fmt(this.currentScale)}/${fmt(this.maxScale)} | ${width}x${height}`);
+          throw new Error(`cannot get 2d rendering context in initCanvas on Vector "${this.name}" @ ${fmt(this.currentScale)}/${fmt(this.maxScale)} | ${width}x${height} % ${VectorCostume.AB_TEST}`);
         }
         this.canvas = canvas;
         this.ctx = ctx;
@@ -1844,7 +1852,7 @@ namespace P.core {
     }
 
     getImage() {
-      if (this.canvas) {
+      if (this.canvas && this.ctx) {
         return this.canvas;
       }
       this.render();
