@@ -1743,9 +1743,6 @@ var P;
                 this.svg = svg;
                 this.maxScale = this.calculateMaxScale();
                 this.currentScale = Math.min(1, this.maxScale);
-                if (VectorCostume.AB_TEST) {
-                    this.canvas = document.createElement('canvas');
-                }
             }
             calculateMaxScale() {
                 if (VectorCostume.MAX_SIZE / this.width < VectorCostume.MAX_SCALE) {
@@ -1759,14 +1756,14 @@ var P;
             render() {
                 const width = Math.floor(Math.max(1, this.width * this.currentScale));
                 const height = Math.floor(Math.max(1, this.height * this.currentScale));
-                if (!this.canvas || !this.ctx) {
-                    const canvas = this.canvas || document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
+                if (!this.canvas) {
+                    const canvas = document.createElement('canvas');
                     canvas.width = width;
                     canvas.height = height;
+                    const ctx = canvas.getContext('2d');
                     if (!ctx) {
                         const fmt = (n) => Math.round(n * 100) / 100;
-                        throw new Error(`cannot get 2d rendering context in initCanvas on Vector "${this.name}" @ ${fmt(this.currentScale)}/${fmt(this.maxScale)} | ${width}x${height} % ${VectorCostume.AB_TEST}`);
+                        throw new Error(`cannot get 2d rendering context in initCanvas on Vector "${this.name}" @ ${fmt(this.currentScale)}/${fmt(this.maxScale)} | ${width}x${height}`);
                     }
                     this.canvas = canvas;
                     this.ctx = ctx;
@@ -1792,7 +1789,7 @@ var P;
                 return this.ctx;
             }
             getImage() {
-                if (this.canvas && this.ctx) {
+                if (this.canvas) {
                     return this.canvas;
                 }
                 this.render();
@@ -1801,7 +1798,6 @@ var P;
         }
         VectorCostume.MAX_SCALE = 8;
         VectorCostume.MAX_SIZE = 1024;
-        VectorCostume.AB_TEST = Math.random() > 0.5;
         core.VectorCostume = VectorCostume;
         if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
             console.log('Vector scaling is disabled');
