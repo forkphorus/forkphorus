@@ -742,7 +742,7 @@ namespace P.sb3 {
               resolve(image);
             };
             image.onerror = (e) => {
-              reject('Failed to load SVG: ' + path);
+              reject(new Error('Failed to load SVG: ' + path));
             };
             image.src = 'data:image/svg+xml,' + encodeURIComponent(new XMLSerializer().serializeToString(svg));
           });
@@ -992,7 +992,7 @@ namespace P.sb3 {
               resolve(image);
             };
             image.onerror = (error) => {
-              reject('Failed to load image: ' + path + '.' + format);
+              reject(new Error('Failed to load image: ' + path + '.' + format));
             };
             image.src = 'data:image/' + format + ';base64,' + imageData;
           });

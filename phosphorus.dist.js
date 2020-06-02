@@ -439,7 +439,7 @@ var P;
         }
         function decodeAudio(ab) {
             if (!audio.context) {
-                return Promise.reject('No audio context');
+                return Promise.reject(new Error('No audio context'));
             }
             return new Promise((resolve, reject) => {
                 decodeADPCMAudio(ab, function (err1, buffer) {
@@ -2009,7 +2009,7 @@ var P;
                         resolve(fileReader.result);
                     };
                     fileReader.onerror = function (err) {
-                        reject('Could not read object');
+                        reject(new Error('Could not read object as ArrayBuffer'));
                     };
                     fileReader.readAsArrayBuffer(object);
                 });
@@ -2022,7 +2022,7 @@ var P;
                         resolve(fileReader.result);
                     };
                     fileReader.onerror = function (err) {
-                        reject('Could not read object');
+                        reject(new Error('Could not read object as data: URL'));
                     };
                     fileReader.readAsDataURL(object);
                 });
@@ -2035,7 +2035,7 @@ var P;
                         resolve(fileReader.result);
                     };
                     fileReader.onerror = function (err) {
-                        reject('Could not read object');
+                        reject(new Error('Could not read object as text'));
                     };
                     fileReader.readAsText(object);
                 });
@@ -2080,6 +2080,10 @@ var P;
         }
         io.AbstractTask = AbstractTask;
         class Retry extends AbstractTask {
+            constructor() {
+                super(...arguments);
+                this.aborted = false;
+            }
             try(handle) {
                 return new Promise((resolve, reject) => {
                     handle()
@@ -2172,11 +2176,11 @@ var P;
                         this.updateProgress(e);
                     });
                     xhr.addEventListener('error', (err) => {
-                        reject(`Error while downloading ${this.url} (error) (${xhr.status}/${xhr.statusText}/${this.aborted}/${xhr.readyState})`);
+                        reject(new Error(`Error while downloading ${this.url} (error) (${xhr.status}/${xhr.statusText}/${this.aborted}/${xhr.readyState})`));
                     });
                     xhr.addEventListener('abort', (err) => {
                         this.aborted = true;
-                        reject(`Error while downloading ${this.url} (abort) (${xhr.status}/${xhr.statusText}/${xhr.readyState})`);
+                        reject(new Error(`Error while downloading ${this.url} (abort) (${xhr.status}/${xhr.statusText}/${xhr.readyState})`));
                     });
                     xhr.open('GET', this.url);
                     xhr.responseType = this.responseType;
@@ -2221,7 +2225,7 @@ var P;
                         resolve(image);
                     };
                     image.onerror = (err) => {
-                        reject('Failed to load image: ' + image.src);
+                        reject(new Error('Failed to load image: ' + image.src));
                     };
                     image.crossOrigin = 'anonymous';
                     setTimeout(() => {
@@ -6516,7 +6520,7 @@ var P;
                             resolve(image);
                         };
                         image.onerror = (e) => {
-                            reject('Failed to load SVG: ' + path);
+                            reject(new Error('Failed to load SVG: ' + path));
                         };
                         image.src = 'data:image/svg+xml,' + encodeURIComponent(new XMLSerializer().serializeToString(svg));
                     });
@@ -6727,7 +6731,7 @@ var P;
                             resolve(image);
                         };
                         image.onerror = (error) => {
-                            reject('Failed to load image: ' + path + '.' + format);
+                            reject(new Error('Failed to load image: ' + path + '.' + format));
                         };
                         image.src = 'data:image/' + format + ';base64,' + imageData;
                     });

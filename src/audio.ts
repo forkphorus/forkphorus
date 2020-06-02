@@ -462,7 +462,7 @@ namespace P.audio {
 
   export function decodeAudio(ab: ArrayBuffer): Promise<AudioBuffer> {
     if (!context) {
-      return Promise.reject('No audio context');
+      return Promise.reject(new Error('No audio context'));
     }
 
     return new Promise((resolve, reject) => {

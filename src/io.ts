@@ -32,7 +32,7 @@ namespace P.io {
           resolve(fileReader.result as ArrayBuffer);
         };
         fileReader.onerror = function(err) {
-          reject('Could not read object');
+          reject(new Error('Could not read object as ArrayBuffer'));
         };
         fileReader.readAsArrayBuffer(object);
       });
@@ -45,7 +45,7 @@ namespace P.io {
           resolve(fileReader.result as string);
         };
         fileReader.onerror = function(err) {
-          reject('Could not read object');
+          reject(new Error('Could not read object as data: URL'));
         };
         fileReader.readAsDataURL(object);
       });
@@ -58,7 +58,7 @@ namespace P.io {
           resolve(fileReader.result as string);
         };
         fileReader.onerror = function(err) {
-          reject('Could not read object');
+          reject(new Error('Could not read object as text'));
         };
         fileReader.readAsText(object);
       });
@@ -155,7 +155,7 @@ namespace P.io {
   }
 
   export abstract class Retry extends AbstractTask {
-    protected aborted: boolean;
+    protected aborted: boolean = false;
 
     try<T>(handle: () => Promise<T>): Promise<T> {
       return new Promise((resolve, reject) => {
@@ -267,12 +267,12 @@ namespace P.io {
         });
 
         xhr.addEventListener('error', (err) => {
-          reject(`Error while downloading ${this.url} (error) (${xhr.status}/${xhr.statusText}/${this.aborted}/${xhr.readyState})`);
+          reject(new Error(`Error while downloading ${this.url} (error) (${xhr.status}/${xhr.statusText}/${this.aborted}/${xhr.readyState})`));
         });
 
         xhr.addEventListener('abort', (err) => {
           this.aborted = true;
-          reject(`Error while downloading ${this.url} (abort) (${xhr.status}/${xhr.statusText}/${xhr.readyState})`);
+          reject(new Error(`Error while downloading ${this.url} (abort) (${xhr.status}/${xhr.statusText}/${xhr.readyState})`));
         });
 
         xhr.open('GET', this.url);
@@ -328,7 +328,7 @@ namespace P.io {
           resolve(image);
         };
         image.onerror = (err) => {
-          reject('Failed to load image: ' + image.src);
+          reject(new Error('Failed to load image: ' + image.src));
         };
         image.crossOrigin = 'anonymous';
         setTimeout(() => {
