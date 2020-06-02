@@ -1775,6 +1775,9 @@ var P;
                 this.ctx.drawImage(this.svg, 0, 0, width, height);
             }
             requestSize(costumeScale) {
+                if (VectorCostume.DISABLE_RASTERIZE) {
+                    return;
+                }
                 const scale = Math.min(Math.ceil(costumeScale), this.maxScale);
                 if (this.currentScale < scale) {
                     this.currentScale = scale;
@@ -1789,6 +1792,9 @@ var P;
                 return this.ctx;
             }
             getImage() {
+                if (VectorCostume.DISABLE_RASTERIZE) {
+                    return this.svg;
+                }
                 if (this.canvas) {
                     return this.canvas;
                 }
@@ -1798,10 +1804,11 @@ var P;
         }
         VectorCostume.MAX_SCALE = 8;
         VectorCostume.MAX_SIZE = 1024;
+        VectorCostume.DISABLE_RASTERIZE = false;
         core.VectorCostume = VectorCostume;
         if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
-            console.log('Vector scaling is disabled');
-            VectorCostume.MAX_SCALE = 1;
+            console.log('Vector rasterization is disabled. This may affect performance.');
+            VectorCostume.DISABLE_RASTERIZE = true;
         }
         class Sound {
             constructor(data) {

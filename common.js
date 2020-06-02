@@ -82,11 +82,13 @@ var Common = (function() {
         break;
       // Project ID
       case 'id':
+        // projectId is also read from location.hash if not found here.
         projectId = value;
         break;
-      // P.config feature flags
+      // Feature flags
       case 'webgl':
         P.config.useWebGL = true;
+        P.core.VectorCostume.DISABLE_RASTERIZE = false; // temporary
         break;
       case 'debug':
         P.config.debug = true;
