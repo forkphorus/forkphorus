@@ -2866,7 +2866,7 @@ var P;
                 return this.filename;
             }
             getId() {
-                return null;
+                return this.filename;
             }
         }
         class RemoteProjectMeta {
@@ -2907,6 +2907,7 @@ var P;
                     LARGE_Z_INDEX: '9999999999',
                     CLOUD_HISTORY_API: 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100',
                     PROJECT_API: 'https://projects.scratch.mit.edu/$id',
+                    CLOUD_DATA_SERVER: 'ws://localhost:9080',
                 };
                 this.projectMeta = null;
                 this.currentLoader = null;
@@ -3269,19 +3270,12 @@ var P;
                     this.exitFullscreen();
                 }
             }
-            isCloudVariable(variableName) {
-                return variableName.startsWith('☁');
-            }
-            getCloudVariables(id) {
+            getCloudVariablesFromLogs(id) {
                 return __awaiter(this, void 0, void 0, function* () {
                     const data = yield new P.io.Request(this.MAGIC.CLOUD_HISTORY_API.replace('$id', id)).load('json');
                     const variables = Object.create(null);
                     for (const entry of data.reverse()) {
                         const { verb, name, value } = entry;
-                        if (!this.isCloudVariable(name)) {
-                            console.warn('cloud variable logs affecting non-cloud variable, skipping', name);
-                            continue;
-                        }
                         switch (verb) {
                             case 'create_var':
                             case 'set_var':
@@ -3302,14 +3296,9 @@ var P;
                 });
             }
             applyCloudVariablesOnce(stage, id) {
-                const variables = Object.keys(stage.vars);
-                const hasCloudVariables = variables.some(this.isCloudVariable);
-                if (!hasCloudVariables) {
-                    return;
-                }
-                this.getCloudVariables(id).then((variables) => {
+                this.getCloudVariablesFromLogs(id).then((variables) => {
                     for (const name of Object.keys(variables)) {
-                        if (name in stage.vars) {
+                        if (stage.cloudVariables.indexOf(name) > -1) {
                             stage.vars[name] = variables[name];
                         }
                         else {
@@ -3319,15 +3308,28 @@ var P;
                 });
             }
             applyCloudVariablesSocket(stage, id) {
-                const handler = new P.ext.cloud.WebSocketCloudHandler(stage, 'ws://localhost:9080', id);
+                const handler = new P.ext.cloud.WebSocketCloudHandler(stage, this.MAGIC.CLOUD_DATA_SERVER, id);
+                stage.setCloudHandler(handler);
+            }
+            applyCloudVariablesLocalStorage(stage, id) {
+                const handler = new P.ext.cloud.LocalStorageCloudHandler(stage, id);
                 stage.setCloudHandler(handler);
             }
             applyCloudVariables(policy, stage, id) {
-                if (policy === 'once') {
-                    this.applyCloudVariablesOnce(stage, id);
+                const hasCloudVariables = stage.cloudVariables.length > 0;
+                if (!hasCloudVariables) {
+                    return;
                 }
-                else if (policy === 'ws') {
-                    this.applyCloudVariablesSocket(stage, id);
+                switch (policy) {
+                    case 'once':
+                        this.applyCloudVariablesOnce(stage, id);
+                        break;
+                    case 'ws':
+                        this.applyCloudVariablesSocket(stage, id);
+                        break;
+                    case 'localStorage':
+                        this.applyCloudVariablesLocalStorage(stage, id);
+                        break;
                 }
             }
             applyAutoplayPolicy(policy) {
@@ -8721,6 +8723,14 @@ var P;
         var cloud;
         (function (cloud) {
             const UPDATE_INTERVAL = 100;
+            function getAllCloudVariables(stage) {
+                const result = {};
+                for (const variable of stage.cloudVariables) {
+                    result[variable] = stage.vars[variable] + '';
+                }
+                return result;
+            }
+            cloud.getAllCloudVariables = getAllCloudVariables;
             class WebSocketCloudHandler extends P.ext.Extension {
                 constructor(stage, host, id) {
                     super(stage);
@@ -8743,7 +8753,6 @@ var P;
                     }
                     const variableName = this.queuedVariableChanges.shift();
                     const value = this.getVariable(variableName);
-                    console.log('sent variable set');
                     this.send({
                         kind: 'set',
                         var: variableName,
@@ -8761,13 +8770,6 @@ var P;
                 setVariable(name, value) {
                     this.stage.vars[name] = value;
                 }
-                createVariableMap() {
-                    const result = {};
-                    for (const variable of this.stage.cloudVariables) {
-                        result[variable] = this.getVariable(variable);
-                    }
-                    return result;
-                }
                 connect() {
                     if (this.ws !== null) {
                         return;
@@ -8778,7 +8780,7 @@ var P;
                             kind: 'connect',
                             id: this.id,
                             username: 'player' + Math.random().toString().substr(4, 7),
-                            variables: this.createVariableMap(),
+                            variables: getAllCloudVariables(this.stage),
                         });
                     };
                     this.ws.onmessage = (e) => {
@@ -8838,6 +8840,43 @@ var P;
                 }
             }
             cloud.WebSocketCloudHandler = WebSocketCloudHandler;
+            class LocalStorageCloudHandler extends P.ext.Extension {
+                constructor(stage, id) {
+                    super(stage);
+                    this.storageKey = 'cloud-data:' + id;
+                    this.load();
+                    this.save = this.save.bind(this);
+                }
+                variableChanged(name) {
+                    this.save();
+                }
+                load() {
+                    try {
+                        const savedData = localStorage.getItem(this.storageKey);
+                        if (savedData === null) {
+                            return;
+                        }
+                        const parsedData = JSON.parse(savedData);
+                        for (const key of Object.keys(parsedData)) {
+                            if (this.stage.cloudVariables.indexOf(key) > -1) {
+                                this.stage.vars[key] = parsedData[key];
+                            }
+                        }
+                    }
+                    catch (e) {
+                        console.warn('cannot read from localStorage', e);
+                    }
+                }
+                save() {
+                    try {
+                        localStorage.setItem(this.storageKey, JSON.stringify(getAllCloudVariables(this.stage)));
+                    }
+                    catch (e) {
+                        console.warn('cannot save to localStorage', e);
+                    }
+                }
+            }
+            cloud.LocalStorageCloudHandler = LocalStorageCloudHandler;
         })(cloud = ext.cloud || (ext.cloud = {}));
     })(ext = P.ext || (P.ext = {}));
 })(P || (P = {}));

@@ -8,6 +8,14 @@ namespace P.ext.cloud {
 
   const UPDATE_INTERVAL = 100;
 
+  export function getAllCloudVariables(stage: P.core.Stage) {
+    const result = {};
+    for (const variable of stage.cloudVariables) {
+      result[variable] = stage.vars[variable] + '';
+    }
+    return result;
+  }
+
   export class WebSocketCloudHandler extends P.ext.Extension implements CloudHandler {
     private interval: number | null = null;
     private queuedVariableChanges: string[] = [];
@@ -32,7 +40,6 @@ namespace P.ext.cloud {
       }
       const variableName = this.queuedVariableChanges.shift()!;
       const value = this.getVariable(variableName);
-      console.log('sent variable set');
       this.send({
         kind: 'set',
         var: variableName,
@@ -49,16 +56,8 @@ namespace P.ext.cloud {
       return this.stage.vars[name] + '';
     }
 
-    private setVariable(name: string, value: string): string {
+    private setVariable(name: string, value: string): void {
       this.stage.vars[name] = value;
-    }
-
-    private createVariableMap(): { [s: string]: string; } {
-      const result = {};
-      for (const variable of this.stage.cloudVariables) {
-        result[variable] = this.getVariable(variable);
-      }
-      return result;
     }
 
     private connect() {
@@ -72,7 +71,7 @@ namespace P.ext.cloud {
           kind: 'connect',
           id: this.id,
           username: 'player' + Math.random().toString().substr(4, 7),
-          variables: this.createVariableMap(),
+          variables: getAllCloudVariables(this.stage),
         });
       };
       this.ws.onmessage = (e) => {
@@ -132,6 +131,51 @@ namespace P.ext.cloud {
       this.stopInterval();
       if (this.ws) {
         this.ws.close();
+      }
+    }
+  }
+
+  export class LocalStorageCloudHandler extends P.ext.Extension implements CloudHandler {
+    private storageKey: string;
+
+    // In some browser configurations, localStorage does not exist or accessing it results in an error.
+    // To accommodate these scenarios, all localStorage operations MUST be wrapped in a try/catch
+
+    constructor(stage: P.core.Stage, id: string) {
+      super(stage);
+      this.storageKey = 'cloud-data:' + id;
+      this.load();
+      this.save = this.save.bind(this);
+    }
+
+    variableChanged(name: string): void {
+      // TODO: don't save immediately, that's probably bad for performance
+      this.save();
+    }
+
+    private load() {
+      try {
+        const savedData = localStorage.getItem(this.storageKey);
+        if (savedData === null) {
+          // no saved data, that's fine, ignore
+          return;
+        }
+        const parsedData = JSON.parse(savedData);
+        for (const key of Object.keys(parsedData)) {
+          if (this.stage.cloudVariables.indexOf(key) > -1) {
+            this.stage.vars[key] = parsedData[key];
+          }
+        }
+      } catch (e) {
+        console.warn('cannot read from localStorage', e);
+      }
+    }
+
+    private save() {
+      try {
+        localStorage.setItem(this.storageKey, JSON.stringify(getAllCloudVariables(this.stage)));
+      } catch (e) {
+        console.warn('cannot save to localStorage', e);
       }
     }
   }

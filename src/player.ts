@@ -112,7 +112,7 @@ namespace P.player {
 
   type Theme = 'light' | 'dark';
   type AutoplayPolicy = 'always' | 'if-audio-playable' | 'never';
-  type CloudVariables = 'once' | 'ws' | 'off';
+  type CloudVariables = 'once' | 'ws' | 'localStorage' | 'off';
   type FullscreenMode = 'full' | 'window';
   interface PlayerOptions {
     theme: Theme;
@@ -147,7 +147,8 @@ namespace P.player {
     getTitle(): string | null;
     /**
      * Returns the project ID, if any.
-     * ID, in this context, refers to project IDs of scratch.mit.edu
+     * A project ID is a unique identifier for a project.
+     * Usually this is a project ID from scratch.mit.edu, but it could be anything, such as a filename.
      */
     getId(): string | null;
   }
@@ -199,6 +200,7 @@ namespace P.player {
     }
 
     load() {
+      // No data to load
       return Promise.resolve(this);
     }
 
@@ -207,19 +209,20 @@ namespace P.player {
     }
 
     getId() {
-      return null;
+      return this.filename;
     }
   }
 
   class RemoteProjectMeta implements ProjectMeta {
     private title: string | null = null;
+
     constructor(private id: string) {
 
     }
 
     load() {
       return new P.io.Request('https://scratch.garbomuffin.com/proxy/projects/$id'.replace('$id', this.id))
-        .ignoreErrors()
+        .ignoreErrors() // errors are common for this request due to unshared projects (P.io.Request throws if 404), and project meta is not critical regardless
         .load('json')
         .then((data) => {
           if (data.title) {
@@ -279,6 +282,9 @@ namespace P.player {
       CLOUD_HISTORY_API: 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100',
       // $id is replaced with the project's ID
       PROJECT_API: 'https://projects.scratch.mit.edu/$id',
+      // TODO: put this on a server
+      // TODO: wss://
+      CLOUD_DATA_SERVER: 'ws://localhost:9080',
     };
 
     private options: Readonly<PlayerOptions>;
@@ -490,7 +496,7 @@ namespace P.player {
      * Apply local options to a stage
      */
     private applyOptionsToStage(): void {
-      // Changing FPS involved restarting an interval, which may cause a noticable interruption.
+      // Changing FPS involves restarting an interval, which may cause a noticeable interruption, so we only apply when necessary
       if (this.stage.runtime.framerate !== this.options.fps) {
         this.stage.runtime.framerate = this.options.fps;
         if (this.isRunning()) {
@@ -617,7 +623,7 @@ namespace P.player {
       return this.projectMeta;
     }
 
-    handleError(error: any) {
+    private handleError(error: any) {
       console.error(error);
       this.onerror.emit(error);
     }
@@ -729,22 +735,13 @@ namespace P.player {
 
     // CLOUD VARIABLES
 
-    private isCloudVariable(variableName: string): boolean {
-      return variableName.startsWith('☁');
-    }
-
-    private async getCloudVariables(id: string): Promise<ObjectMap<any>> {
+    private async getCloudVariablesFromLogs(id: string): Promise<ObjectMap<any>> {
       // To get the cloud variables of a project, we will fetch the history logs and essentially replay the latest changes.
       // This is primarily designed so that highscores in projects can remain up-to-date, and nothing more than that.
       const data = await new P.io.Request(this.MAGIC.CLOUD_HISTORY_API.replace('$id', id)).load('json');
       const variables = Object.create(null);
       for (const entry of data.reverse()) {
         const { verb, name, value } = entry;
-        // Make sure that the cloud logs are only affecting cloud variables and not regular variables
-        if (!this.isCloudVariable(name)) {
-          console.warn('cloud variable logs affecting non-cloud variable, skipping', name);
-          continue;
-        }
         switch (verb) {
           case 'create_var':
           case 'set_var':
@@ -765,15 +762,10 @@ namespace P.player {
     }
 
     private applyCloudVariablesOnce(stage: P.core.Stage, id: string) {
-      const variables = Object.keys(stage.vars);
-      const hasCloudVariables = variables.some(this.isCloudVariable);
-      if (!hasCloudVariables) {
-        return;
-      }
-      this.getCloudVariables(id).then((variables) => {
+      this.getCloudVariablesFromLogs(id).then((variables) => {
         for (const name of Object.keys(variables)) {
-          // Ensure that the variables we are setting are known to the stage before setting them.
-          if (name in stage.vars) {
+          // check that the variables are actually cloud variables before setting
+          if (stage.cloudVariables.indexOf(name) > -1) {
             stage.vars[name] = variables[name];
           } else {
             console.warn('not applying unknown cloud variable:', name);
@@ -783,15 +775,31 @@ namespace P.player {
     }
 
     private applyCloudVariablesSocket(stage: P.core.Stage, id: string) {
-      const handler = new P.ext.cloud.WebSocketCloudHandler(stage, 'ws://localhost:9080', id);
+      const handler = new P.ext.cloud.WebSocketCloudHandler(stage, this.MAGIC.CLOUD_DATA_SERVER, id);
+      stage.setCloudHandler(handler);
+    }
+
+    private applyCloudVariablesLocalStorage(stage: P.core.Stage, id: string) {
+      const handler = new P.ext.cloud.LocalStorageCloudHandler(stage, id);
       stage.setCloudHandler(handler);
     }
 
     private applyCloudVariables(policy: CloudVariables, stage: P.core.Stage, id: string) {
-      if (policy === 'once') {
-        this.applyCloudVariablesOnce(stage, id);
-      } else if (policy === 'ws') {
-        this.applyCloudVariablesSocket(stage, id);
+      const hasCloudVariables = stage.cloudVariables.length > 0;
+      if (!hasCloudVariables) {
+        // if there are no cloud variables, none of the handlers will do anything anyways
+        return;
+      }
+      switch (policy) {
+        case 'once':
+          this.applyCloudVariablesOnce(stage, id);
+          break;
+        case 'ws':
+          this.applyCloudVariablesSocket(stage, id);
+          break;
+        case 'localStorage':
+          this.applyCloudVariablesLocalStorage(stage, id);
+          break;
       }
     }
 
