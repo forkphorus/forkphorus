@@ -506,6 +506,13 @@
       .description('Framerate in frames per second.')
       .add(playerOptionsSection);
     
+    const cloudVariables = new Section('Cloud Variables (BETA)');
+    cloudVariables.storeInLocalStorage = new Option()
+      .label('Store Cloud Variables')
+      .input({ type: 'checkbox' })
+      .description('Stores Cloud Variables in the browser\'s localStorage.')
+      .add(cloudVariables);
+    
     const loadingScreen = new Section('Loading Screen Options');
     loadingScreen.text = new Option()
       .label('Loading screen text')
@@ -676,6 +683,7 @@
         packager.playerOptions.autoplayPolicy = autoplay.value;
         packager.playerOptions.username = username.value;
         packager.playerOptions.fps = fps.value;
+        packager.playerOptions.cloudVariables = cloudVariables.storeInLocalStorage.value ? 'localStorage' : 'off';
         if (showControls.value) {
           packager.controlsOptions = { enableFullscreen: false };
         }

@@ -150,7 +150,11 @@ namespace P.player {
      * A project ID is a unique identifier for a project.
      * Usually this is a project ID from scratch.mit.edu, but it could be anything, such as a filename.
      */
-    getId(): string | null;
+    getId(): string;
+    /**
+     * Whether this project was loaded from scratch.mit.edu
+     */
+    isFromScratch(): boolean;
   }
 
   class LoaderIdentifier {
@@ -211,6 +215,29 @@ namespace P.player {
     getId() {
       return this.filename;
     }
+
+    isFromScratch() {
+      return false;
+    }
+  }
+
+  class BinaryProjectMeta implements ProjectMeta {
+    load() {
+      // No data to load
+      return Promise.resolve(this);
+    }
+
+    getTitle() {
+      return null;
+    }
+
+    getId() {
+      return '#buffer#';
+    }
+
+    isFromScratch() {
+      return false;
+    }
   }
 
   class RemoteProjectMeta implements ProjectMeta {
@@ -238,6 +265,10 @@ namespace P.player {
 
     getId() {
       return this.id;
+    }
+
+    isFromScratch() {
+      return true;
     }
   }
 
@@ -784,21 +815,31 @@ namespace P.player {
       stage.setCloudHandler(handler);
     }
 
-    private applyCloudVariables(policy: CloudVariables, stage: P.core.Stage, id: string) {
+    private applyCloudVariables(policy: CloudVariables) {
+      const stage = this.stage;
+      const meta = this.projectMeta;
+      if (!meta) {
+        throw new Error('cannot apply cloud variable settings without projectMeta');
+      }
+
       const hasCloudVariables = stage.cloudVariables.length > 0;
       if (!hasCloudVariables) {
         // if there are no cloud variables, none of the handlers will do anything anyways
         return;
       }
+
       switch (policy) {
         case 'once':
-          this.applyCloudVariablesOnce(stage, id);
+          this.applyCloudVariablesOnce(stage, meta.getId());
           break;
         case 'ws':
-          this.applyCloudVariablesSocket(stage, id);
+          if (!meta.isFromScratch()) {
+            throw new Error('ws cloudVariables does not work with projects not from scratch.mit.edu');
+          }
+          this.applyCloudVariablesSocket(stage, meta.getId());
           break;
         case 'localStorage':
-          this.applyCloudVariablesLocalStorage(stage, id);
+          this.applyCloudVariablesLocalStorage(stage, meta.getId());
           break;
       }
     }
@@ -932,6 +973,7 @@ namespace P.player {
       this.stage.draw();
 
       this.applyAutoplayPolicy(this.options.autoplayPolicy);
+      this.applyCloudVariables(this.options.cloudVariables);
     }
 
     /**
@@ -953,16 +995,6 @@ namespace P.player {
       return stage;
     }
 
-    private async loadProjectFromBufferWithType(loaderId: LoaderIdentifier, buffer: ArrayBuffer, type: 'sb2' | 'sb3'): Promise<void> {
-      let loader: P.io.Loader<P.core.Stage>;
-      switch (type) {
-        case 'sb2': loader = new P.sb2.SB2FileLoader(buffer); break;
-        case 'sb3': loader = new P.sb3.SB3FileLoader(buffer); break;
-        default: throw new Error('Unknown type: ' + type);
-      }
-      await this.loadLoader(loaderId, loader);
-    }
-
     async loadProjectById(id: string): Promise<void> {
       const { loaderId } = this.beginLoadingProject();
 
@@ -973,9 +1005,10 @@ namespace P.player {
         // 2. "Binary projects" which are full binary .sb or .sb2 files.
         //    As an example: https://scratch.mit.edu/projects/250740608/
 
-        const projectText = await P.io.readers.toText(blob);
         try {
-          // This will error if this is not a JSON project
+          // We will try to read the project as JSON text.
+          // This will error if this is not a JSON project.
+          const projectText = await P.io.readers.toText(blob);
           const projectJson = P.json.parse(projectText);
 
           switch (this.determineProjectType(projectJson)) {
@@ -999,13 +1032,22 @@ namespace P.player {
         this.projectMeta = new RemoteProjectMeta(id);
         const blob = await this.fetchProject(id);
         const loader = await getLoader(blob);
-        const stage = await this.loadLoader(loaderId, loader);
-        this.applyCloudVariables(this.options.cloudVariables, stage, id);
+        await this.loadLoader(loaderId, loader);
       } catch (e) {
         if (loaderId.isActive()) {
           this.handleError(e);
         }
       }
+    }
+
+    private async loadProjectFromBufferWithType(loaderId: LoaderIdentifier, buffer: ArrayBuffer, type: 'sb2' | 'sb3'): Promise<void> {
+      let loader: P.io.Loader<P.core.Stage>;
+      switch (type) {
+        case 'sb2': loader = new P.sb2.SB2FileLoader(buffer); break;
+        case 'sb3': loader = new P.sb3.SB3FileLoader(buffer); break;
+        default: throw new Error('Unknown type: ' + type);
+      }
+      await this.loadLoader(loaderId, loader);
     }
 
     async loadProjectFromFile(file: File): Promise<void> {
@@ -1032,6 +1074,7 @@ namespace P.player {
       const { loaderId } = this.beginLoadingProject();
 
       try {
+        this.projectMeta = new BinaryProjectMeta();
         return await this.loadProjectFromBufferWithType(loaderId, buffer, type);
       } catch (e) {
         if (loaderId.isActive()) {

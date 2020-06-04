@@ -82,7 +82,7 @@ namespace P.ext.cloud {
           }
           
           switch (data.kind) {
-            case 'set':
+            case 'set': {
               const variableName = data.var;
               const value = data.value;
               if (typeof variableName !== 'string' || this.stage.cloudVariables.indexOf(variableName) === -1) throw new Error('invalid variable name');
@@ -90,8 +90,9 @@ namespace P.ext.cloud {
               this.setVariable(variableName, value);
               break;
             }
+          }
         } catch (e) {
-          console.warn('invalid message', e);
+          console.warn('error parsing cloud server message', e);
           return;
         }
       };

@@ -2868,6 +2868,23 @@ var P;
             getId() {
                 return this.filename;
             }
+            isFromScratch() {
+                return false;
+            }
+        }
+        class BinaryProjectMeta {
+            load() {
+                return Promise.resolve(this);
+            }
+            getTitle() {
+                return null;
+            }
+            getId() {
+                return '#buffer#';
+            }
+            isFromScratch() {
+                return false;
+            }
         }
         class RemoteProjectMeta {
             constructor(id) {
@@ -2890,6 +2907,9 @@ var P;
             }
             getId() {
                 return this.id;
+            }
+            isFromScratch() {
+                return true;
             }
         }
         class Player {
@@ -3315,20 +3335,28 @@ var P;
                 const handler = new P.ext.cloud.LocalStorageCloudHandler(stage, id);
                 stage.setCloudHandler(handler);
             }
-            applyCloudVariables(policy, stage, id) {
+            applyCloudVariables(policy) {
+                const stage = this.stage;
+                const meta = this.projectMeta;
+                if (!meta) {
+                    throw new Error('cannot apply cloud variable settings without projectMeta');
+                }
                 const hasCloudVariables = stage.cloudVariables.length > 0;
                 if (!hasCloudVariables) {
                     return;
                 }
                 switch (policy) {
                     case 'once':
-                        this.applyCloudVariablesOnce(stage, id);
+                        this.applyCloudVariablesOnce(stage, meta.getId());
                         break;
                     case 'ws':
-                        this.applyCloudVariablesSocket(stage, id);
+                        if (!meta.isFromScratch()) {
+                            throw new Error('ws cloudVariables does not work with projects not from scratch.mit.edu');
+                        }
+                        this.applyCloudVariablesSocket(stage, meta.getId());
                         break;
                     case 'localStorage':
-                        this.applyCloudVariablesLocalStorage(stage, id);
+                        this.applyCloudVariablesLocalStorage(stage, meta.getId());
                         break;
                 }
             }
@@ -3426,6 +3454,7 @@ var P;
                 this.onload.emit(stage);
                 this.stage.draw();
                 this.applyAutoplayPolicy(this.options.autoplayPolicy);
+                this.applyCloudVariables(this.options.cloudVariables);
             }
             loadLoader(loaderId, loader) {
                 return __awaiter(this, void 0, void 0, function* () {
@@ -3442,27 +3471,12 @@ var P;
                     return stage;
                 });
             }
-            loadProjectFromBufferWithType(loaderId, buffer, type) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    let loader;
-                    switch (type) {
-                        case 'sb2':
-                            loader = new P.sb2.SB2FileLoader(buffer);
-                            break;
-                        case 'sb3':
-                            loader = new P.sb3.SB3FileLoader(buffer);
-                            break;
-                        default: throw new Error('Unknown type: ' + type);
-                    }
-                    yield this.loadLoader(loaderId, loader);
-                });
-            }
             loadProjectById(id) {
                 return __awaiter(this, void 0, void 0, function* () {
                     const { loaderId } = this.beginLoadingProject();
                     const getLoader = (blob) => __awaiter(this, void 0, void 0, function* () {
-                        const projectText = yield P.io.readers.toText(blob);
                         try {
+                            const projectText = yield P.io.readers.toText(blob);
                             const projectJson = P.json.parse(projectText);
                             switch (this.determineProjectType(projectJson)) {
                                 case 'sb2': return new P.sb2.Scratch2Loader(projectJson);
@@ -3481,14 +3495,28 @@ var P;
                         this.projectMeta = new RemoteProjectMeta(id);
                         const blob = yield this.fetchProject(id);
                         const loader = yield getLoader(blob);
-                        const stage = yield this.loadLoader(loaderId, loader);
-                        this.applyCloudVariables(this.options.cloudVariables, stage, id);
+                        yield this.loadLoader(loaderId, loader);
                     }
                     catch (e) {
                         if (loaderId.isActive()) {
                             this.handleError(e);
                         }
                     }
+                });
+            }
+            loadProjectFromBufferWithType(loaderId, buffer, type) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    let loader;
+                    switch (type) {
+                        case 'sb2':
+                            loader = new P.sb2.SB2FileLoader(buffer);
+                            break;
+                        case 'sb3':
+                            loader = new P.sb3.SB3FileLoader(buffer);
+                            break;
+                        default: throw new Error('Unknown type: ' + type);
+                    }
+                    yield this.loadLoader(loaderId, loader);
                 });
             }
             loadProjectFromFile(file) {
@@ -3515,6 +3543,7 @@ var P;
                 return __awaiter(this, void 0, void 0, function* () {
                     const { loaderId } = this.beginLoadingProject();
                     try {
+                        this.projectMeta = new BinaryProjectMeta();
                         return yield this.loadProjectFromBufferWithType(loaderId, buffer, type);
                     }
                     catch (e) {
@@ -8790,7 +8819,7 @@ var P;
                                 throw new Error('invalid object');
                             }
                             switch (data.kind) {
-                                case 'set':
+                                case 'set': {
                                     const variableName = data.var;
                                     const value = data.value;
                                     if (typeof variableName !== 'string' || this.stage.cloudVariables.indexOf(variableName) === -1)
@@ -8799,10 +8828,11 @@ var P;
                                         throw new Error('invalid value');
                                     this.setVariable(variableName, value);
                                     break;
+                                }
                             }
                         }
                         catch (e) {
-                            console.warn('invalid message', e);
+                            console.warn('error parsing cloud server message', e);
                             return;
                         }
                     };
