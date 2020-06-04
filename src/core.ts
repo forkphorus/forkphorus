@@ -818,6 +818,9 @@ namespace P.core {
     public promptButton: HTMLElement;
     public mouseSprite: Sprite | undefined;
 
+    public cloudHandler: P.ext.cloud.CloudHandler | null = null;
+    public cloudVariables: string[] = [];
+
     private videoElement: HTMLVideoElement;
     public speech2text: P.ext.speech2text.SpeechToTextExtension | null = null;
     public microphone: P.ext.microphone.MicrophoneExtension | null = null;
@@ -1282,6 +1285,11 @@ namespace P.core {
         this.microphone = new P.ext.microphone.MicrophoneExtension(this);
         this.addExtension(this.microphone);
       }
+    }
+
+    setCloudHandler(cloudHandler: P.ext.cloud.CloudHandler) {
+      this.cloudHandler = cloudHandler;
+      this.addExtension(cloudHandler);
     }
 
     stopAllSounds() {

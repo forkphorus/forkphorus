@@ -104,14 +104,14 @@ namespace P.sb3 {
   }
 
   /**
-   * Tuple of name and initial value
+   * Tuple of name, value
    */
   type SB3List = [string, any[]];
 
   /**
-   * Tuple of name and initial value
+   * Tuple of name, value, and sometimes cloud.
    */
-  type SB3Variable = [string, any];
+  type SB3Variable = [string, any, boolean?];
 
   // Implements a Scratch 3 Stage.
   export class Scratch3Stage extends P.core.Stage {
@@ -809,6 +809,16 @@ namespace P.sb3 {
         const variable = data.variables[id];
         const name = variable[0];
         const value = variable[1];
+        if (variable.length > 2) {
+          const cloud = variable[2];
+          if (cloud) {
+            if (data.isStage) {
+              (target as Scratch3Stage).cloudVariables.push(name);
+            } else {
+              console.warn('Cloud variable found on a non-stage object. Skipping.');
+            }
+          }
+        }
         target.vars[name] = value;
       }
 
@@ -1212,6 +1222,13 @@ namespace P.sb3.compiler {
      */
     getVariableScope(field: string): string {
       return this.compiler.getVariableScope(this.getField(field));
+    }
+
+    /**
+     * Determine whether a variable is a cloud variable.
+     */
+    isCloudVariable(field: string): boolean {
+      return this.target.stage.cloudVariables.indexOf(this.getField(field)) > -1;
     }
 
     /**
@@ -2092,6 +2109,9 @@ namespace P.sb3.compiler {
     const VARIABLE = util.getVariableReference('VARIABLE');
     const VALUE = util.getInput('VALUE', 'number');
     util.writeLn(`${VARIABLE} = (${util.asType(VARIABLE, 'number')} + ${VALUE});`);
+    if (util.isCloudVariable('VARIABLE')) {
+      util.writeLn(`cloudVariableChanged(${util.sanitizedString(util.getField('VARIABLE'))})`);
+    }
   };
   statementLibrary['data_deletealloflist'] = function(util) {
     const LIST = util.getListReference('LIST');
@@ -2128,6 +2148,9 @@ namespace P.sb3.compiler {
     const VARIABLE = util.getVariableReference('VARIABLE');
     const VALUE = util.getInput('VALUE', 'any');
     util.writeLn(`${VARIABLE} = ${VALUE};`);
+    if (util.isCloudVariable('VARIABLE')) {
+      util.writeLn(`cloudVariableChanged(${util.sanitizedString(util.getField('VARIABLE'))})`);
+    }
   };
   statementLibrary['data_showlist'] = function(util) {
     const LIST = util.sanitizedString(util.getField('LIST'));

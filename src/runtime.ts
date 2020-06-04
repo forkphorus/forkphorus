@@ -483,6 +483,12 @@ namespace P.runtime {
     }
   };
 
+  var cloudVariableChanged = function(name) {
+    if (self.cloudHandler) {
+      self.cloudHandler.variableChanged(name);
+    }
+  };
+
   var sceneChange = function() {
     return runtime.trigger('whenSceneStarts', self.getCostumeName());
   };

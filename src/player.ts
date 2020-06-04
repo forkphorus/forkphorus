@@ -112,7 +112,7 @@ namespace P.player {
 
   type Theme = 'light' | 'dark';
   type AutoplayPolicy = 'always' | 'if-audio-playable' | 'never';
-  type CloudVariables = 'once' | 'off';
+  type CloudVariables = 'once' | 'ws' | 'off';
   type FullscreenMode = 'full' | 'window';
   interface PlayerOptions {
     theme: Theme;
@@ -764,7 +764,7 @@ namespace P.player {
       return variables;
     }
 
-    private addCloudVariables(stage: P.core.Stage, id: string) {
+    private applyCloudVariablesOnce(stage: P.core.Stage, id: string) {
       const variables = Object.keys(stage.vars);
       const hasCloudVariables = variables.some(this.isCloudVariable);
       if (!hasCloudVariables) {
@@ -782,12 +782,25 @@ namespace P.player {
       });
     }
 
+    private applyCloudVariablesSocket(stage: P.core.Stage, id: string) {
+      const handler = new P.ext.cloud.WebSocketCloudHandler(stage, 'ws://localhost:9080', id);
+      stage.setCloudHandler(handler);
+    }
+
+    private applyCloudVariables(policy: CloudVariables, stage: P.core.Stage, id: string) {
+      if (policy === 'once') {
+        this.applyCloudVariablesOnce(stage, id);
+      } else if (policy === 'ws') {
+        this.applyCloudVariablesSocket(stage, id);
+      }
+    }
+
     // AUTOPLAY POLICY
 
     /**
      * Apply an autoplay policy to the current stage.
      */
-    private enactAutoplayPolicy(policy: AutoplayPolicy) {
+    private applyAutoplayPolicy(policy: AutoplayPolicy) {
       switch (policy) {
         case 'always': {
           this.triggerGreenFlag();
@@ -910,7 +923,7 @@ namespace P.player {
 
       this.stage.draw();
 
-      this.enactAutoplayPolicy(this.options.autoplayPolicy);
+      this.applyAutoplayPolicy(this.options.autoplayPolicy);
     }
 
     /**
@@ -979,7 +992,7 @@ namespace P.player {
         const blob = await this.fetchProject(id);
         const loader = await getLoader(blob);
         const stage = await this.loadLoader(loaderId, loader);
-        this.addCloudVariables(stage, id);
+        this.applyCloudVariables(this.options.cloudVariables, stage, id);
       } catch (e) {
         if (loaderId.isActive()) {
           this.handleError(e);

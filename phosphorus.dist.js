@@ -1001,6 +1001,8 @@ var P;
                 this.tempoBPM = 60;
                 this.username = '';
                 this.counter = 0;
+                this.cloudHandler = null;
+                this.cloudVariables = [];
                 this.speech2text = null;
                 this.microphone = null;
                 this.extensions = [];
@@ -1394,6 +1396,10 @@ var P;
                     this.microphone = new P.ext.microphone.MicrophoneExtension(this);
                     this.addExtension(this.microphone);
                 }
+            }
+            setCloudHandler(cloudHandler) {
+                this.cloudHandler = cloudHandler;
+                this.addExtension(cloudHandler);
             }
             stopAllSounds() {
                 for (var children = this.children, i = children.length; i--;) {
@@ -3295,7 +3301,7 @@ var P;
                     return variables;
                 });
             }
-            addCloudVariables(stage, id) {
+            applyCloudVariablesOnce(stage, id) {
                 const variables = Object.keys(stage.vars);
                 const hasCloudVariables = variables.some(this.isCloudVariable);
                 if (!hasCloudVariables) {
@@ -3312,7 +3318,19 @@ var P;
                     }
                 });
             }
-            enactAutoplayPolicy(policy) {
+            applyCloudVariablesSocket(stage, id) {
+                const handler = new P.ext.cloud.WebSocketCloudHandler(stage, 'ws://localhost:9080', id);
+                stage.setCloudHandler(handler);
+            }
+            applyCloudVariables(policy, stage, id) {
+                if (policy === 'once') {
+                    this.applyCloudVariablesOnce(stage, id);
+                }
+                else if (policy === 'ws') {
+                    this.applyCloudVariablesSocket(stage, id);
+                }
+            }
+            applyAutoplayPolicy(policy) {
                 switch (policy) {
                     case 'always': {
                         this.triggerGreenFlag();
@@ -3405,7 +3423,7 @@ var P;
                 }
                 this.onload.emit(stage);
                 this.stage.draw();
-                this.enactAutoplayPolicy(this.options.autoplayPolicy);
+                this.applyAutoplayPolicy(this.options.autoplayPolicy);
             }
             loadLoader(loaderId, loader) {
                 return __awaiter(this, void 0, void 0, function* () {
@@ -3462,7 +3480,7 @@ var P;
                         const blob = yield this.fetchProject(id);
                         const loader = yield getLoader(blob);
                         const stage = yield this.loadLoader(loaderId, loader);
-                        this.addCloudVariables(stage, id);
+                        this.applyCloudVariables(this.options.cloudVariables, stage, id);
                     }
                     catch (e) {
                         if (loaderId.isActive()) {
@@ -4096,6 +4114,11 @@ var P;
                 C = CALLS.pop();
                 STACK = C.stack;
                 R = STACK.pop();
+            }
+        };
+        var cloudVariableChanged = function (name) {
+            if (self.cloudHandler) {
+                self.cloudHandler.variableChanged(name);
             }
         };
         var sceneChange = function () {
@@ -6581,6 +6604,17 @@ var P;
                     const variable = data.variables[id];
                     const name = variable[0];
                     const value = variable[1];
+                    if (variable.length > 2) {
+                        const cloud = variable[2];
+                        if (cloud) {
+                            if (data.isStage) {
+                                target.cloudVariables.push(name);
+                            }
+                            else {
+                                console.warn('Cloud variable found on a non-stage object. Skipping.');
+                            }
+                        }
+                    }
                     target.vars[name] = value;
                 }
                 for (const id of Object.keys(data.lists)) {
@@ -6845,6 +6879,9 @@ var P;
                 }
                 getVariableScope(field) {
                     return this.compiler.getVariableScope(this.getField(field));
+                }
+                isCloudVariable(field) {
+                    return this.target.stage.cloudVariables.indexOf(this.getField(field)) > -1;
                 }
                 getListScope(field) {
                     return this.compiler.getListScope(this.getField(field));
@@ -7447,6 +7484,9 @@ var P;
         const VARIABLE = util.getVariableReference('VARIABLE');
         const VALUE = util.getInput('VALUE', 'number');
         util.writeLn(`${VARIABLE} = (${util.asType(VARIABLE, 'number')} + ${VALUE});`);
+        if (util.isCloudVariable('VARIABLE')) {
+            util.writeLn(`cloudVariableChanged(${util.sanitizedString(util.getField('VARIABLE'))})`);
+        }
     };
     statementLibrary['data_deletealloflist'] = function (util) {
         const LIST = util.getListReference('LIST');
@@ -7483,6 +7523,9 @@ var P;
         const VARIABLE = util.getVariableReference('VARIABLE');
         const VALUE = util.getInput('VALUE', 'any');
         util.writeLn(`${VARIABLE} = ${VALUE};`);
+        if (util.isCloudVariable('VARIABLE')) {
+            util.writeLn(`cloudVariableChanged(${util.sanitizedString(util.getField('VARIABLE'))})`);
+        }
     };
     statementLibrary['data_showlist'] = function (util) {
         const LIST = util.sanitizedString(util.getField('LIST'));
@@ -8669,6 +8712,133 @@ var P;
             }
         }
         ext.Extension = Extension;
+    })(ext = P.ext || (P.ext = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
+    var ext;
+    (function (ext) {
+        var cloud;
+        (function (cloud) {
+            const UPDATE_INTERVAL = 100;
+            class WebSocketCloudHandler extends P.ext.Extension {
+                constructor(stage, host, id) {
+                    super(stage);
+                    this.host = host;
+                    this.id = id;
+                    this.interval = null;
+                    this.queuedVariableChanges = [];
+                    this.ws = null;
+                    this.update = this.update.bind(this);
+                }
+                variableChanged(name) {
+                    if (this.queuedVariableChanges.indexOf(name) > -1) {
+                        return;
+                    }
+                    this.queuedVariableChanges.push(name);
+                }
+                update() {
+                    if (this.queuedVariableChanges.length === 0) {
+                        return;
+                    }
+                    const variableName = this.queuedVariableChanges.shift();
+                    const value = this.getVariable(variableName);
+                    console.log('sent variable set');
+                    this.send({
+                        kind: 'set',
+                        var: variableName,
+                        value: value,
+                    });
+                }
+                send(data) {
+                    if (!this.ws)
+                        throw new Error('not connected');
+                    this.ws.send(JSON.stringify(data));
+                }
+                getVariable(name) {
+                    return this.stage.vars[name] + '';
+                }
+                setVariable(name, value) {
+                    this.stage.vars[name] = value;
+                }
+                createVariableMap() {
+                    const result = {};
+                    for (const variable of this.stage.cloudVariables) {
+                        result[variable] = this.getVariable(variable);
+                    }
+                    return result;
+                }
+                connect() {
+                    if (this.ws !== null) {
+                        return;
+                    }
+                    this.ws = new WebSocket(this.host);
+                    this.ws.onopen = () => {
+                        this.send({
+                            kind: 'connect',
+                            id: this.id,
+                            username: 'player' + Math.random().toString().substr(4, 7),
+                            variables: this.createVariableMap(),
+                        });
+                    };
+                    this.ws.onmessage = (e) => {
+                        try {
+                            const data = JSON.parse(e.data);
+                            if (typeof data !== 'object' || !data) {
+                                throw new Error('invalid object');
+                            }
+                            switch (data.kind) {
+                                case 'set':
+                                    const variableName = data.var;
+                                    const value = data.value;
+                                    if (typeof variableName !== 'string' || this.stage.cloudVariables.indexOf(variableName) === -1)
+                                        throw new Error('invalid variable name');
+                                    if (typeof value !== 'string')
+                                        throw new Error('invalid value');
+                                    this.setVariable(variableName, value);
+                                    break;
+                            }
+                        }
+                        catch (e) {
+                            console.warn('invalid message', e);
+                            return;
+                        }
+                    };
+                    this.ws.onclose = (e) => {
+                        console.warn('ws closed', e);
+                    };
+                    this.ws.onerror = (e) => {
+                        console.warn('ws error', e);
+                    };
+                }
+                startInterval() {
+                    if (this.interval !== null) {
+                        return;
+                    }
+                    this.connect();
+                    this.interval = setInterval(this.update, UPDATE_INTERVAL);
+                }
+                stopInterval() {
+                    if (this.interval !== null) {
+                        clearInterval(this.interval);
+                        this.interval = null;
+                    }
+                }
+                onstart() {
+                    this.startInterval();
+                }
+                onpause() {
+                    this.stopInterval();
+                }
+                destroy() {
+                    this.stopInterval();
+                    if (this.ws) {
+                        this.ws.close();
+                    }
+                }
+            }
+            cloud.WebSocketCloudHandler = WebSocketCloudHandler;
+        })(cloud = ext.cloud || (ext.cloud = {}));
     })(ext = P.ext || (P.ext = {}));
 })(P || (P = {}));
 /*!
