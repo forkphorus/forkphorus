@@ -450,8 +450,8 @@ namespace P.sb3 {
         return;
       }
 
-      const height = this.list.length * this.getRowHeight();
-      this.endpointEl.style.transform = 'translateY(' + (height * this.stage.zoom) + 'px)';
+      const height = this.list.length * this.getRowHeight() * this.stage.zoom;
+      this.endpointEl.style.transform = 'translateY(' + height + 'px)';
 
       const topVisible = this.scrollTop;
       const bottomVisible = topVisible + this.getContentHeight();
@@ -480,12 +480,11 @@ namespace P.sb3 {
       while (this.rows.length <= visibleRows) {
         this.addRow();
       }
-
       for (var listIndex = startingIndex, rowIndex = 0; listIndex <= endingIndex; listIndex++, rowIndex++) {
         let row = this.rows[rowIndex];
         row.setIndex(listIndex);
         row.setValue(this.list[listIndex]);
-        row.setY(listIndex * this._rowHeight);
+        row.setY(listIndex * this._rowHeight * this.stage.zoom);
         row.setVisible(true);
       }
       while (rowIndex < this.rows.length) {

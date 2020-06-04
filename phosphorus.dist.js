@@ -1266,11 +1266,9 @@ var P;
                 this.root.style.height = (360 * zoom | 0) + 'px';
                 this.root.style.fontSize = (zoom * 10) + 'px';
                 this.zoom = zoom;
-                if (!this.runtime.isRunning) {
-                    for (const watcher of this.allWatchers) {
-                        if (watcher instanceof P.sb3.Scratch3ListWatcher) {
-                            watcher.updateList();
-                        }
+                for (const watcher of this.allWatchers) {
+                    if (watcher instanceof P.sb3.Scratch3ListWatcher) {
+                        watcher.updateList();
                     }
                 }
             }
@@ -6287,8 +6285,8 @@ var P;
                 if (!this.visible && this._rowHeight === -1) {
                     return;
                 }
-                const height = this.list.length * this.getRowHeight();
-                this.endpointEl.style.transform = 'translateY(' + (height * this.stage.zoom) + 'px)';
+                const height = this.list.length * this.getRowHeight() * this.stage.zoom;
+                this.endpointEl.style.transform = 'translateY(' + height + 'px)';
                 const topVisible = this.scrollTop;
                 const bottomVisible = topVisible + this.getContentHeight();
                 let startingIndex = Math.floor(topVisible / this.getRowHeight());
@@ -6316,7 +6314,7 @@ var P;
                     let row = this.rows[rowIndex];
                     row.setIndex(listIndex);
                     row.setValue(this.list[listIndex]);
-                    row.setY(listIndex * this._rowHeight);
+                    row.setY(listIndex * this._rowHeight * this.stage.zoom);
                     row.setVisible(true);
                 }
                 while (rowIndex < this.rows.length) {
