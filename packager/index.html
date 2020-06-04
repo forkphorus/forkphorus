@@ -113,11 +113,11 @@
       <div id="click-disabler" title="please wait for the packager to finish..."></div>
       <!-- JS injects options into here -->
     </div>
-  
+
     <section>
       <button id="package-html">Package Project</button>
     </section>
-  
+
     <section id="loading-section">
       <!-- JS injects progress bars here -->
     </section>
@@ -505,14 +505,14 @@
       .input({ type: 'number', value: 30 })
       .description('Framerate in frames per second.')
       .add(playerOptionsSection);
-    
-    const cloudVariables = new Section('Cloud Variables (BETA)');
+
+    const cloudVariables = new Section('Cloud Variable Options (BETA)');
     cloudVariables.storeInLocalStorage = new Option()
       .label('Store Cloud Variables')
       .input({ type: 'checkbox' })
-      .description('Stores Cloud Variables in the browser\'s localStorage.')
+      .description('Stores Cloud Variables in the browser\'s localStorage. This means that they will be remembered even after closing the app. Note: This is in beta, and has not been fully tested. Please test it yourself (and let us know if it works)')
       .add(cloudVariables);
-    
+
     const loadingScreen = new Section('Loading Screen Options');
     loadingScreen.text = new Option()
       .label('Loading screen text')

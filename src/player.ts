@@ -313,9 +313,8 @@ namespace P.player {
       CLOUD_HISTORY_API: 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100',
       // $id is replaced with the project's ID
       PROJECT_API: 'https://projects.scratch.mit.edu/$id',
-      // TODO: put this on a server
-      // TODO: wss://
-      CLOUD_DATA_SERVER: 'ws://localhost:9080',
+      // an instance of https://github.com/forkphorus/cloud-server
+      CLOUD_DATA_SERVER: 'wss://stratus.garbomuffin.com',
     };
 
     private options: Readonly<PlayerOptions>;

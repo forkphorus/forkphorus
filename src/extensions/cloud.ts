@@ -80,7 +80,7 @@ namespace P.ext.cloud {
           if (typeof data !== 'object' || !data) {
             throw new Error('invalid object');
           }
-          
+
           switch (data.kind) {
             case 'set': {
               const variableName = data.var;
