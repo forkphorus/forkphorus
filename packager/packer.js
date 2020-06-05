@@ -39,7 +39,7 @@ window.Packer = (function() {
         resolve(/** @type {string} */ (fileReader.result));
       };
       fileReader.onerror = (e) => {
-        reject('Error reading file');
+        reject(new Error('Error reading file'));
       };
       fileReader.readAsDataURL(blob);
     });
@@ -115,7 +115,7 @@ window.Packer = (function() {
       if (file.inlineSources) {
         for (const source of file.inlineSources) {
           const sourceData = await this._loadInlineSource(source);
-          // string.replace only does the first occurence, but a source may appear multiple times in the file
+          // string.replace only does the first occurrence, but a source may appear multiple times in the file
           while (body.includes(source)) {
             body = body.replace(source, sourceData);
           }
@@ -253,16 +253,16 @@ window.Packer = (function() {
         try {
           const blob = await responseClone.blob();
           const zip = await JSZip.loadAsync(blob);
-          // if loadAsync doesnt reject, this is valid zip, and is probably a Scratch 2 project
+          // if loadAsync doesn't reject, this is valid zip, and is probably a Scratch 2 project
           return 'sb2';
         } catch (e) {
-          throw new Error('Binary projects not supported (' + e + ')');
+          throw new Error('Project type (probably Scratch 1) is not supported.');
         }
       }
 
       if ('targets' in data) return 'sb3';
       if ('objName' in data) return 'sb2';
-      throw new Error('unknown project type');
+      throw new Error('Unknown project type');
     }
 
     /**
@@ -304,7 +304,7 @@ window.Packer = (function() {
           resolve();
         };
         fileReader.onerror = () => {
-          reject('cannot read file');
+          reject(new Error('cannot read file'));
         };
         fileReader.readAsDataURL(file);
       });
