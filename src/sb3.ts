@@ -642,11 +642,53 @@ namespace P.sb3 {
     return list;
   }
 
+  const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
+
   /**
-   * Patches and modifies an SVG element in-place to make it function properly in the forkphorus environment.
-   * Fixes fonts and viewBox.
+   * Convert an SVG with an improper or missing namespace to a proper namespaced SVG
+   * @param svg An SVG with an improper or missing namespace
    */
-  function patchSVG(svg: SVGElement): void {
+  function fixSVGNamespace(svg: SVGSVGElement): SVGSVGElement {
+    // To fix the namespace, we create a new SVG and copy its content.
+    const newSVG = document.createElementNS(SVG_NAMESPACE, 'svg');
+    for (const attribute of svg.attributes) {
+      newSVG.setAttribute(attribute.name, attribute.value);
+    }
+    newSVG.innerHTML = svg.innerHTML;
+    return newSVG;
+  }
+
+  /**
+   * Patches and modifies an SVG element to make it function properly in the forkphorus environment.
+   */
+  function patchSVG(svg: SVGSVGElement, costumeOptions: P.core.CostumeOptions): SVGSVGElement {
+    // Fix missing namespace
+    const invalidNamespace = svg.namespaceURI !== SVG_NAMESPACE;
+    if (invalidNamespace) {
+      svg = fixSVGNamespace(svg);
+
+      // fix some edge case SVGs
+      // this could apply to any SVG with or without a namespace, but right now we only do this on projects that are missing a namespace
+      // (they tend to be more likely to be invalid)
+      // https://github.com/forkphorus/forkphorus/issues/210
+      // https://forkphorus.github.io/#374570920
+      if (svg.firstElementChild && svg.firstElementChild.tagName !== 'g') {
+        // create a new <g> (group) and transform
+        const group = document.createElementNS(SVG_NAMESPACE, 'g');
+        const transform = svg.createSVGTransform();
+        // move the children to the new group
+        for (const el of svg.children) {
+          group.appendChild(el);
+        }
+        // translate the SVG to fix the center
+        transform.setTranslate(-svg.width.baseVal.value / 2, svg.height.baseVal.value / 2);
+        group.transform.baseVal.appendItem(transform);
+        costumeOptions.rotationCenterX -= svg.width.baseVal.value / 2;
+        costumeOptions.rotationCenterY += svg.height.baseVal.value / 2;
+        svg.appendChild(group);
+      }
+    }
+
     // Special treatment for the viewBox attribute
     if (svg.hasAttribute('viewBox')) {
       const viewBox = svg.getAttribute('viewBox')!.split(/ |,/).map((i) => +i);
@@ -661,6 +703,7 @@ namespace P.sb3 {
       svg.removeAttribute('viewBox');
     }
 
+    // Search for used fonts
     const textElements = svg.querySelectorAll('text');
     const usedFonts: string[] = [];
     const addFont = (font: string) => {
@@ -668,7 +711,6 @@ namespace P.sb3 {
         usedFonts.push(font);
       }
     };
-
     for (var i = 0; i < textElements.length; i++) {
       const el = textElements[i];
       let fonts = (el.getAttribute('font-family') || '')
@@ -683,6 +725,7 @@ namespace P.sb3 {
         } else if (family === 'sans-serif') {
           found = true;
           // We let the system handle their respective 'sans-serif' fonts
+          // This is different from Scratch's 'Sans Serif' font.
           // https://scratch.mit.edu/projects/319138929/
           break;
         }
@@ -694,21 +737,9 @@ namespace P.sb3 {
         el.setAttribute('font-family', font);
       }
     }
-
     P.fonts.addFontRules(svg, usedFonts);
-  }
 
-  /**
-   * Convert an SVG with an improper or missing namespace to a proper namespaced SVG
-   * @param svg An SVG with an improper or missing namespace
-   */
-  function fixVectorNamespace(svg: SVGSVGElement): SVGSVGElement {
-    var newSVG = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    for (const attribute of svg.attributes) {
-      newSVG.setAttribute(attribute.name, attribute.value);
-    }
-    newSVG.innerHTML = svg.innerHTML;
-    return newSVG;
+    return svg;
   }
 
   // Implements base SB3 loading logic.
@@ -722,18 +753,12 @@ namespace P.sb3 {
     protected abstract getAsArrayBuffer(path: string): Promise<ArrayBuffer>;
     protected abstract getAsImage(path: string, format: string): Promise<HTMLImageElement>;
 
-    getSVG(path: string): Promise<HTMLImageElement> {
+    getSVG(path: string, costumeOptions: P.core.CostumeOptions): Promise<HTMLImageElement> {
       return this.getAsText(path)
         .then((source) => {
           const parser = new DOMParser();
           const doc = parser.parseFromString(source, 'image/svg+xml');
-
-          let svg = doc.documentElement as any;
-          if (svg.namespaceURI !== 'http://www.w3.org/2000/svg') {
-            svg = fixVectorNamespace(svg);
-          }
-
-          patchSVG(svg);
+          const svg = patchSVG(doc.documentElement as any, costumeOptions);
 
           return new Promise((resolve, reject) => {
             const image = new Image();
@@ -761,7 +786,7 @@ namespace P.sb3 {
         rotationCenterY: data.rotationCenterY,
       };
       if (data.dataFormat === 'svg') {
-        return this.getSVG(path)
+        return this.getSVG(path, costumeOptions)
           .then((svg) => new P.core.VectorCostume(svg, costumeOptions));
       } else {
         return this.getBitmapImage(path, data.dataFormat)

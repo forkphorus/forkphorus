@@ -1686,7 +1686,7 @@ namespace P.core {
     }
   }
 
-  interface CostumeOptions {
+  export interface CostumeOptions {
     name: string;
     bitmapResolution: number;
     rotationCenterX: number;
