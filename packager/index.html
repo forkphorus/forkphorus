@@ -510,7 +510,7 @@
     cloudVariables.storeInLocalStorage = new Option()
       .label('Store Cloud Variables')
       .input({ type: 'checkbox' })
-      .description('Stores Cloud Variables in the browser\'s localStorage. This means that they will be remembered even after closing the app. Note: This is in beta, and has not been fully tested. Please test it yourself (and let us know if it works)')
+      .description('Stores Cloud Variables in the browser\'s localStorage. This means that they will be remembered even after closing and reopening the app. Note: This is in beta, and has not been fully tested. Please test it yourself (and let us know if it works)')
       .add(cloudVariables);
 
     const loadingScreen = new Section('Loading Screen Options');
