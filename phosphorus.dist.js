@@ -3453,8 +3453,8 @@ var P;
                 }
                 this.onload.emit(stage);
                 this.stage.draw();
-                this.applyAutoplayPolicy(this.options.autoplayPolicy);
                 this.applyCloudVariables(this.options.cloudVariables);
+                this.applyAutoplayPolicy(this.options.autoplayPolicy);
             }
             loadLoader(loaderId, loader) {
                 return __awaiter(this, void 0, void 0, function* () {
@@ -8774,6 +8774,15 @@ var P;
                 return result;
             }
             cloud.getAllCloudVariables = getAllCloudVariables;
+            function isCloudDataMessage(data) {
+                if (typeof data !== 'object' || !data) {
+                    return false;
+                }
+                return typeof data.kind === 'string';
+            }
+            function isCloudSetMessage(data) {
+                return isCloudDataMessage(data) && typeof data.var === 'string' && typeof data.value === 'string';
+            }
             class WebSocketCloudHandler extends P.ext.Extension {
                 constructor(stage, host, id) {
                     super(stage);
@@ -8828,25 +8837,14 @@ var P;
                     };
                     this.ws.onmessage = (e) => {
                         try {
-                            const data = JSON.parse(e.data);
-                            if (typeof data !== 'object' || !data) {
-                                throw new Error('invalid object');
-                            }
-                            switch (data.kind) {
-                                case 'set': {
-                                    const variableName = data.var;
-                                    const value = data.value;
-                                    if (typeof variableName !== 'string' || this.stage.cloudVariables.indexOf(variableName) === -1)
-                                        throw new Error('invalid variable name');
-                                    if (typeof value !== 'string')
-                                        throw new Error('invalid value');
-                                    this.setVariable(variableName, value);
-                                    break;
-                                }
+                            const lines = e.data.split('\n');
+                            for (const line of lines) {
+                                const data = JSON.parse(line);
+                                this.handleMessage(data);
                             }
                         }
                         catch (e) {
-                            console.warn('error parsing cloud server message', e);
+                            console.warn('error parsing cloud server message', e.data, e);
                             return;
                         }
                     };
@@ -8856,6 +8854,16 @@ var P;
                     this.ws.onerror = (e) => {
                         console.warn('ws error', e);
                     };
+                }
+                handleMessage(data) {
+                    if (!isCloudSetMessage(data)) {
+                        return;
+                    }
+                    const { var: variableName, value } = data;
+                    if (this.stage.cloudVariables.indexOf(variableName) === -1) {
+                        throw new Error('invalid variable name');
+                    }
+                    this.setVariable(variableName, value);
                 }
                 startInterval() {
                     if (this.interval !== null) {

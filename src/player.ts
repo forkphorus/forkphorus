@@ -971,8 +971,8 @@ namespace P.player {
 
       this.stage.draw();
 
-      this.applyAutoplayPolicy(this.options.autoplayPolicy);
       this.applyCloudVariables(this.options.cloudVariables);
+      this.applyAutoplayPolicy(this.options.autoplayPolicy);
     }
 
     /**

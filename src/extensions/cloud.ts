@@ -16,6 +16,27 @@ namespace P.ext.cloud {
     return result;
   }
 
+  interface CloudDataMessage {
+    kind: string;
+  }
+
+  interface CloudSetMessage {
+    kind: 'set';
+    var: string;
+    value: string;
+  }
+
+  function isCloudDataMessage(data: unknown): data is CloudDataMessage {
+    if (typeof data !== 'object' || !data) {
+      return false;
+    }
+    return typeof (data as CloudDataMessage).kind === 'string';
+  }
+
+  function isCloudSetMessage(data: unknown): data is CloudSetMessage {
+    return isCloudDataMessage(data) && typeof (data as CloudSetMessage).var === 'string' && typeof (data as CloudSetMessage).value === 'string';
+  }
+
   export class WebSocketCloudHandler extends P.ext.Extension implements CloudHandler {
     private interval: number | null = null;
     private queuedVariableChanges: string[] = [];
@@ -76,23 +97,14 @@ namespace P.ext.cloud {
       };
       this.ws.onmessage = (e) => {
         try {
-          const data = JSON.parse(e.data);
-          if (typeof data !== 'object' || !data) {
-            throw new Error('invalid object');
-          }
-
-          switch (data.kind) {
-            case 'set': {
-              const variableName = data.var;
-              const value = data.value;
-              if (typeof variableName !== 'string' || this.stage.cloudVariables.indexOf(variableName) === -1) throw new Error('invalid variable name');
-              if (typeof value !== 'string') throw new Error('invalid value');
-              this.setVariable(variableName, value);
-              break;
-            }
+          // Each line of the message is treated as a separate message.
+          const lines = e.data.split('\n');
+          for (const line of lines) {
+            const data = JSON.parse(line);
+            this.handleMessage(data);
           }
         } catch (e) {
-          console.warn('error parsing cloud server message', e);
+          console.warn('error parsing cloud server message', e.data, e);
           return;
         }
       };
@@ -102,6 +114,17 @@ namespace P.ext.cloud {
       this.ws.onerror = (e) => {
         console.warn('ws error', e);
       };
+    }
+
+    private handleMessage(data: unknown) {
+      if (!isCloudSetMessage(data)) {
+        return;
+      }
+      const { var: variableName, value } = data;
+      if (this.stage.cloudVariables.indexOf(variableName) === -1) {
+        throw new Error('invalid variable name');
+      }
+      this.setVariable(variableName, value);
     }
 
     private startInterval() {
