@@ -334,7 +334,7 @@
       showPlayerArea();
       player.loadProjectFromFile(file);
       updateLinks();
-      resetTitle();
+      setTitleToProjectTitle();
     }
     function updateLinks() {
       bugLink.href = errorHandler.createBugReportLink(P.i18n.translate('index.report.instructions'));
