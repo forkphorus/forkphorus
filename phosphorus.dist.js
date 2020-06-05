@@ -4793,28 +4793,29 @@ var P;
                     this.loadArray(data.costumes, this.loadCostume.bind(this)).then((c) => costumes = c),
                     this.loadArray(data.sounds, this.loadSound.bind(this)).then((s) => sounds = s),
                 ]).then(() => {
-                    const variables = {};
+                    const object = new (isStage ? Scratch2Stage : Scratch2Sprite)(null);
                     if (data.variables) {
                         for (const variable of data.variables) {
-                            if (variable.isPeristent) {
-                                throw new Error('Cloud variables are not supported');
+                            if (variable.isPersistent) {
+                                if (object.isStage) {
+                                    object.cloudVariables.push(variable.name);
+                                }
+                                else {
+                                    console.warn('Cloud variable found on a non-stage object. Skipping.');
+                                }
                             }
-                            variables[variable.name] = variable.value;
+                            object.vars[variable.name] = variable.value;
                         }
                     }
-                    const lists = {};
                     if (data.lists) {
                         for (const list of data.lists) {
-                            if (list.isPeristent) {
-                                throw new Error('Cloud lists are not supported');
+                            if (list.isPersistent) {
+                                console.warn('Cloud lists are not supported');
                             }
-                            lists[list.listName] = list.contents;
+                            object.lists[list.listName] = list.contents;
                         }
                     }
-                    const object = new (isStage ? Scratch2Stage : Scratch2Sprite)(null);
                     object.name = data.objName;
-                    object.vars = variables;
-                    object.lists = lists;
                     object.costumes = costumes;
                     object.currentCostumeIndex = data.currentCostumeIndex;
                     sounds.forEach((sound) => sound && object.addSound(sound));
@@ -5114,6 +5115,7 @@ var P;
     (function (sb2) {
         var compiler;
         (function (compiler) {
+            const CLOUD = '☁ ';
             var LOG_PRIMITIVES;
             class Scratch2Procedure extends P.core.Procedure {
                 call(inputs) {
@@ -5177,6 +5179,12 @@ var P;
                     }
                     var o = object.stage.vars[name] !== undefined ? 'self' : 'S';
                     return o + '.vars[' + val(name) + ']';
+                };
+                var isCloudVar = function (name) {
+                    if (typeof name !== 'string') {
+                        return false;
+                    }
+                    return name.startsWith(CLOUD) && object.stage.vars[name] !== undefined && object.stage.cloudVariables.indexOf(name) > -1;
                 };
                 var listRef = function (name) {
                     if (typeof name !== 'string') {
@@ -5805,10 +5813,16 @@ var P;
                     }
                     else if (block[0] === 'setVar:to:') {
                         source += varRef(block[1]) + ' = ' + val(block[2]) + ';\n';
+                        if (isCloudVar(block[1])) {
+                            source += 'cloudVariableChanged(' + val(block[1]) + ');\n';
+                        }
                     }
                     else if (block[0] === 'changeVar:by:') {
                         var ref = varRef(block[1]);
                         source += ref + ' = (+' + ref + ' || 0) + ' + num(block[2]) + ';\n';
+                        if (isCloudVar(block[1])) {
+                            source += 'cloudVariableChanged(' + val(block[1]) + ');\n';
+                        }
                     }
                     else if (block[0] === 'append:toList:') {
                         source += 'appendToList(' + listRef(block[2]) + ', ' + val(block[1]) + ');\n';
