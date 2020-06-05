@@ -252,17 +252,11 @@
 
     var timeout;
     urlInput.addEventListener('input', function() {
-      var ss = urlInput.selectionStart;
-      var se = urlInput.selectionEnd;
       var url = urlInput.value;
-      var id = url.match(/\d+/g) || [''];
       var pid = player.hasProjectMeta() ? player.getProjectMeta().getId() : -1;
-      while (id.length > 1 && id.indexOf(pid) > -1) {
-        id.splice(id.indexOf(pid), 1);
-      }
+      var id = url.match(/\d+/g) || [''];
       id = id[0];
       urlInput.value = url = PROJECT_PREFIX + id;
-      urlInput.selectionStart = urlInput.selectionEnd = Math.max(PROJECT_PREFIX.length, ss);
       clearTimeout(timeout);
       if (pid !== id) {
         timeout = setTimeout(function() {
@@ -338,9 +332,12 @@
     }
     function updateLinks() {
       bugLink.href = errorHandler.createBugReportLink(P.i18n.translate('index.report.instructions'));
-      if (player.getProjectMeta().getId()) {
+      if (player.getProjectMeta().isFromScratch()) {
         projectLink.href = 'https://scratch.mit.edu/projects/' + player.getProjectMeta().getId();
         htmlPackagerLink.href = 'packager/#' + player.getProjectMeta().getId();
+      } else {
+        projectLink.href = 'https://scratch.mit.edu/';
+        htmlPackagerLink.href = 'packager';
       }
       updatePackageLink();
       updateEmbedCode();
@@ -387,7 +384,7 @@
     }
     function updatePackageLink() {
       packageOtherWidth.disabled = packageOtherHeight.disabled = !packageOther.checked;
-      if (player.getProjectMeta().getId()) {
+      if (player.getProjectMeta().isFromScratch()) {
         var url = location.origin + location.pathname + 'app.html?id=' + player.getProjectMeta().getId();
         if (packageTurbo.checked) url += '&turbo';
         if (packageFullScreen.checked) {
@@ -434,7 +431,7 @@
       }
       embedOtherWidth.disabled = embedOtherHeight.disabled = !embedOther.checked;
 
-      if (player.getProjectMeta().getId()) {
+      if (player.getProjectMeta().isFromScratch()) {
         var source = location.protocol + '//' + location.host + location.pathname + 'embed.html?id=' + player.getProjectMeta().getId();
         if (embedHideControls.checked) {
           source += '&ui=false';
