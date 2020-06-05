@@ -8820,7 +8820,7 @@ var P;
                     this.ws = new WebSocket(this.host);
                     this.ws.onopen = () => {
                         this.send({
-                            kind: 'connect',
+                            kind: 'handshake',
                             id: this.id,
                             username: 'player' + Math.random().toString().substr(4, 7),
                             variables: getAllCloudVariables(this.stage),
