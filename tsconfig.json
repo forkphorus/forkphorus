@@ -12,6 +12,6 @@
     "strictNullChecks": true
   },
   "include": [
-    "phosphorus/**/*"
+    "src/**/*"
   ]
 }

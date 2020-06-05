@@ -6,9 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="robots" content="noindex">
   <title>forkphorus</title>
   <link rel="stylesheet" href="phosphorus.css">
-  <link rel="stylesheet" href="player.css">
 
   <style>
     body {
@@ -89,52 +89,21 @@
   <script src="lib/rgbcolor.js"></script>
   <script src="lib/canvg.min.js"></script>
   <script src="phosphorus.dist.js"></script>
-  <script src="i18n.js"></script>
-  <script src="player.js"></script>
+  <script src="common.js"></script>
 
   <script>
   (function () {
     'use strict';
 
-    var projectId = 17088932;
-    var turbo = false;
-    var maxWidth = Infinity;
-    var fps = 30;
-
-    var params = location.search.substr(1).split('&');
-    params.forEach(function(p) {
-      var parts = p.split('=');
-      switch (parts[0]) {
-        case 'id':
-          projectId = Number(parts[1]);
-          break;
-        case 'turbo':
-          turbo = parts[1] !== 'false';
-          break;
-        case 'full-screen':
-          // legacy value
-          maxWidth = parts[1] !== 'false' ? Infinity : 480;
-          break;
-        case 'w':
-          maxWidth = Number(parts[1]) || 480;
-          break;
-        case 'fps':
-          fps = Number(parts[1]);
-          break;
-        default:
-          console.warn('unknown search param', parts);
-      }
-    });
-
+    var player = new P.player.Player();
     var splash = document.querySelector('.splash');
     var error = document.querySelector('.error');
     var progressBar = document.querySelector('.progress');
     var progressBarFill = document.querySelector('.progress-bar');
 
-    var player = new P.Player();
-    var errorHandler = new P.Player.ErrorHandler(player, {
+    var errorHandler = new P.player.ErrorHandler(player, {
       container: document.querySelector('.error-report'),
-    });
+    });    
     player.onprogress.subscribe(function(progress) {
       progressBarFill.style.width = (10 + progress * 90) + '%';
     });
@@ -148,13 +117,44 @@
       e.preventDefault();
     });
 
-    player.loadProjectId(projectId, { turbo: turbo, fps: fps })
+    Common.parseSearch(function(key, value) {
+      switch (key) {
+        case 'full-screen':
+          // legacy value
+          player.setOptions({ fullscreenMaxWidth: value !== 'false' ? Infinity : 480 });
+          break;
+        case 'w':
+          player.setOptions({ fullscreenMaxWidth: Number(value) || 480 });
+          break;
+        case 'controls':
+          player.addControls({ enableFullscreen: false });
+          break;
+      }
+    });
+
+    // do not focus the stage when embedded
+    if (!window.parent || window.parent === window) {
+      player.setOptions({ focusOnLoad: false });
+    }
+
+    player.setOptions(Common.playerOptions);
+
+    player.setOptions({
+      fullscreenMode: 'window',
+      autoplayPolicy: 'if-audio-playable',
+    });
+
+    player.loadProjectById(Common.projectId)
       .then(function() {
-        player.fullscreenPadding = 0;
-        player.fullscreenMaxWidth = maxWidth;
-        player.enterFullscreen(false);
+        player.enterFullscreen();
         splash.style.display = 'none';
       });
+
+    player.getProjectMeta().load().then((meta) => {
+      if (meta.getTitle()) {
+        document.title = meta.getTitle();
+      }
+    });
   }());
 
   </script>

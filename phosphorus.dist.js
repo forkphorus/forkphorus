@@ -1,15 +1,23 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 /*!
-Forkphorus: A JavaScript compiler for Scratch 2 and 3 projects.
-(A fork of phosphorus)
+=== NOTE ===
+This file is generated from source files in https://github.com/forkphorus/forkphorus
+Please see the README for more information.
 
-Note: phosphorus.dist.js is automatically generated from the `phosphorus` folder.
-See the README for more information.
-
+=== LICENSE ===
 The MIT License (MIT)
 
 Copyright (c) 2013-2017 Nathan Dinsmore
-Copyright (c) 2019 Thomas Weber
+Copyright (c) 2019-2020 Thomas Weber
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
@@ -35,10 +43,10 @@ var P;
 (function (P) {
     var config;
     (function (config) {
-        const features = location.search.replace('?', '').split('&');
-        config.debug = features.indexOf('debug') > -1;
-        config.useWebGL = features.indexOf('webgl') > -1;
-        config.experimentalOptimizations = features.indexOf('opt') > -1;
+        config.debug = false;
+        config.useWebGL = false;
+        config.supportVideoSensing = false;
+        config.experimentalOptimizations = false;
         config.scale = window.devicePixelRatio || 1;
         config.PROJECT_API = 'https://projects.scratch.mit.edu/$id';
     })(config = P.config || (P.config = {}));
@@ -195,102 +203,101 @@ var P;
                 { top: 128, name: 'SynthPad_C6', baseRatio: 2.3820424708835755, loop: true, loopStart: 0.11678004535147392, loopEnd: 0.41732426303854875, attackEnd: 0, holdEnd: 0, decayEnd: 0 }
             ]
         ];
-        const SOUNDBANK_URL = '/soundbank/';
-        const SOUNDBANK_FILES = {
-            'AcousticGuitar_F3': 'instruments/AcousticGuitar_F3_22k.wav',
-            'AcousticPiano_As3': 'instruments/AcousticPiano(5)_A%233_22k.wav',
-            'AcousticPiano_C4': 'instruments/AcousticPiano(5)_C4_22k.wav',
-            'AcousticPiano_G4': 'instruments/AcousticPiano(5)_G4_22k.wav',
-            'AcousticPiano_F5': 'instruments/AcousticPiano(5)_F5_22k.wav',
-            'AcousticPiano_C6': 'instruments/AcousticPiano(5)_C6_22k.wav',
-            'AcousticPiano_Ds6': 'instruments/AcousticPiano(5)_D%236_22k.wav',
-            'AcousticPiano_D7': 'instruments/AcousticPiano(5)_D7_22k.wav',
-            'AltoSax_A3': 'instruments/AltoSax_A3_22K.wav',
-            'AltoSax_C6': 'instruments/AltoSax(3)_C6_22k.wav',
-            'Bassoon_C3': 'instruments/Bassoon_C3_22k.wav',
-            'BassTrombone_A2_2': 'instruments/BassTrombone_A2(2)_22k.wav',
-            'BassTrombone_A2_3': 'instruments/BassTrombone_A2(3)_22k.wav',
-            'Cello_C2': 'instruments/Cello(3b)_C2_22k.wav',
-            'Cello_As2': 'instruments/Cello(3)_A%232_22k.wav',
-            'Choir_F3': 'instruments/Choir(4)_F3_22k.wav',
-            'Choir_F4': 'instruments/Choir(4)_F4_22k.wav',
-            'Choir_F5': 'instruments/Choir(4)_F5_22k.wav',
-            'Clarinet_C4': 'instruments/Clarinet_C4_22k.wav',
-            'ElectricBass_G1': 'instruments/ElectricBass(2)_G1_22k.wav',
-            'ElectricGuitar_F3': 'instruments/ElectricGuitar(2)_F3(1)_22k.wav',
-            'ElectricPiano_C2': 'instruments/ElectricPiano_C2_22k.wav',
-            'ElectricPiano_C4': 'instruments/ElectricPiano_C4_22k.wav',
-            'EnglishHorn_D4': 'instruments/EnglishHorn(1)_D4_22k.wav',
-            'EnglishHorn_F3': 'instruments/EnglishHorn(1)_F3_22k.wav',
-            'Flute_B5_1': 'instruments/Flute(3)_B5(1)_22k.wav',
-            'Flute_B5_2': 'instruments/Flute(3)_B5(2)_22k.wav',
-            'Marimba_C4': 'instruments/Marimba_C4_22k.wav',
-            'MusicBox_C4': 'instruments/MusicBox_C4_22k.wav',
-            'Organ_G2': 'instruments/Organ(2)_G2_22k.wav',
-            'Pizz_A3': 'instruments/Pizz(2)_A3_22k.wav',
-            'Pizz_E4': 'instruments/Pizz(2)_E4_22k.wav',
-            'Pizz_G2': 'instruments/Pizz(2)_G2_22k.wav',
-            'SteelDrum_D5': 'instruments/SteelDrum_D5_22k.wav',
-            'SynthLead_C4': 'instruments/SynthLead(6)_C4_22k.wav',
-            'SynthLead_C6': 'instruments/SynthLead(6)_C6_22k.wav',
-            'SynthPad_A3': 'instruments/SynthPad(2)_A3_22k.wav',
-            'SynthPad_C6': 'instruments/SynthPad(2)_C6_22k.wav',
-            'TenorSax_C3': 'instruments/TenorSax(1)_C3_22k.wav',
-            'Trombone_B3': 'instruments/Trombone_B3_22k.wav',
-            'Trumpet_E5': 'instruments/Trumpet_E5_22k.wav',
-            'Vibraphone_C3': 'instruments/Vibraphone_C3_22k.wav',
-            'Violin_D4': 'instruments/Violin(2)_D4_22K.wav',
-            'Violin_A4': 'instruments/Violin(3)_A4_22k.wav',
-            'Violin_E5': 'instruments/Violin(3b)_E5_22k.wav',
-            'WoodenFlute_C5': 'instruments/WoodenFlute_C5_22k.wav',
-            'BassDrum': 'drums/BassDrum(1b)_22k.wav',
-            'Bongo': 'drums/Bongo_22k.wav',
-            'Cabasa': 'drums/Cabasa(1)_22k.wav',
-            'Clap': 'drums/Clap(1)_22k.wav',
-            'Claves': 'drums/Claves(1)_22k.wav',
-            'Conga': 'drums/Conga(1)_22k.wav',
-            'Cowbell': 'drums/Cowbell(3)_22k.wav',
-            'Crash': 'drums/Crash(2)_22k.wav',
-            'Cuica': 'drums/Cuica(2)_22k.wav',
-            'GuiroLong': 'drums/GuiroLong(1)_22k.wav',
-            'GuiroShort': 'drums/GuiroShort(1)_22k.wav',
-            'HiHatClosed': 'drums/HiHatClosed(1)_22k.wav',
-            'HiHatOpen': 'drums/HiHatOpen(2)_22k.wav',
-            'HiHatPedal': 'drums/HiHatPedal(1)_22k.wav',
-            'Maracas': 'drums/Maracas(1)_22k.wav',
-            'SideStick': 'drums/SideStick(1)_22k.wav',
-            'SnareDrum': 'drums/SnareDrum(1)_22k.wav',
-            'Tambourine': 'drums/Tambourine(3)_22k.wav',
-            'Tom': 'drums/Tom(1)_22k.wav',
-            'Triangle': 'drums/Triangle(1)_22k.wav',
-            'Vibraslap': 'drums/Vibraslap(1)_22k.wav',
-            'WoodBlock': 'drums/WoodBlock(1)_22k.wav'
+        const SB2_SOUNDBANK_FILES = {
+            'AcousticGuitar_F3': 'sb2/instruments/AcousticGuitar_F3_22k.wav',
+            'AcousticPiano_As3': 'sb2/instruments/AcousticPiano(5)_A%233_22k.wav',
+            'AcousticPiano_C4': 'sb2/instruments/AcousticPiano(5)_C4_22k.wav',
+            'AcousticPiano_G4': 'sb2/instruments/AcousticPiano(5)_G4_22k.wav',
+            'AcousticPiano_F5': 'sb2/instruments/AcousticPiano(5)_F5_22k.wav',
+            'AcousticPiano_C6': 'sb2/instruments/AcousticPiano(5)_C6_22k.wav',
+            'AcousticPiano_Ds6': 'sb2/instruments/AcousticPiano(5)_D%236_22k.wav',
+            'AcousticPiano_D7': 'sb2/instruments/AcousticPiano(5)_D7_22k.wav',
+            'AltoSax_A3': 'sb2/instruments/AltoSax_A3_22K.wav',
+            'AltoSax_C6': 'sb2/instruments/AltoSax(3)_C6_22k.wav',
+            'Bassoon_C3': 'sb2/instruments/Bassoon_C3_22k.wav',
+            'BassTrombone_A2_2': 'sb2/instruments/BassTrombone_A2(2)_22k.wav',
+            'BassTrombone_A2_3': 'sb2/instruments/BassTrombone_A2(3)_22k.wav',
+            'Cello_C2': 'sb2/instruments/Cello(3b)_C2_22k.wav',
+            'Cello_As2': 'sb2/instruments/Cello(3)_A%232_22k.wav',
+            'Choir_F3': 'sb2/instruments/Choir(4)_F3_22k.wav',
+            'Choir_F4': 'sb2/instruments/Choir(4)_F4_22k.wav',
+            'Choir_F5': 'sb2/instruments/Choir(4)_F5_22k.wav',
+            'Clarinet_C4': 'sb2/instruments/Clarinet_C4_22k.wav',
+            'ElectricBass_G1': 'sb2/instruments/ElectricBass(2)_G1_22k.wav',
+            'ElectricGuitar_F3': 'sb2/instruments/ElectricGuitar(2)_F3(1)_22k.wav',
+            'ElectricPiano_C2': 'sb2/instruments/ElectricPiano_C2_22k.wav',
+            'ElectricPiano_C4': 'sb2/instruments/ElectricPiano_C4_22k.wav',
+            'EnglishHorn_D4': 'sb2/instruments/EnglishHorn(1)_D4_22k.wav',
+            'EnglishHorn_F3': 'sb2/instruments/EnglishHorn(1)_F3_22k.wav',
+            'Flute_B5_1': 'sb2/instruments/Flute(3)_B5(1)_22k.wav',
+            'Flute_B5_2': 'sb2/instruments/Flute(3)_B5(2)_22k.wav',
+            'Marimba_C4': 'sb2/instruments/Marimba_C4_22k.wav',
+            'MusicBox_C4': 'sb2/instruments/MusicBox_C4_22k.wav',
+            'Organ_G2': 'sb2/instruments/Organ(2)_G2_22k.wav',
+            'Pizz_A3': 'sb2/instruments/Pizz(2)_A3_22k.wav',
+            'Pizz_E4': 'sb2/instruments/Pizz(2)_E4_22k.wav',
+            'Pizz_G2': 'sb2/instruments/Pizz(2)_G2_22k.wav',
+            'SteelDrum_D5': 'sb2/instruments/SteelDrum_D5_22k.wav',
+            'SynthLead_C4': 'sb2/instruments/SynthLead(6)_C4_22k.wav',
+            'SynthLead_C6': 'sb2/instruments/SynthLead(6)_C6_22k.wav',
+            'SynthPad_A3': 'sb2/instruments/SynthPad(2)_A3_22k.wav',
+            'SynthPad_C6': 'sb2/instruments/SynthPad(2)_C6_22k.wav',
+            'TenorSax_C3': 'sb2/instruments/TenorSax(1)_C3_22k.wav',
+            'Trombone_B3': 'sb2/instruments/Trombone_B3_22k.wav',
+            'Trumpet_E5': 'sb2/instruments/Trumpet_E5_22k.wav',
+            'Vibraphone_C3': 'sb2/instruments/Vibraphone_C3_22k.wav',
+            'Violin_D4': 'sb2/instruments/Violin(2)_D4_22K.wav',
+            'Violin_A4': 'sb2/instruments/Violin(3)_A4_22k.wav',
+            'Violin_E5': 'sb2/instruments/Violin(3b)_E5_22k.wav',
+            'WoodenFlute_C5': 'sb2/instruments/WoodenFlute_C5_22k.wav',
+            'BassDrum': 'sb2/drums/BassDrum(1b)_22k.wav',
+            'Bongo': 'sb2/drums/Bongo_22k.wav',
+            'Cabasa': 'sb2/drums/Cabasa(1)_22k.wav',
+            'Clap': 'sb2/drums/Clap(1)_22k.wav',
+            'Claves': 'sb2/drums/Claves(1)_22k.wav',
+            'Conga': 'sb2/drums/Conga(1)_22k.wav',
+            'Cowbell': 'sb2/drums/Cowbell(3)_22k.wav',
+            'Crash': 'sb2/drums/Crash(2)_22k.wav',
+            'Cuica': 'sb2/drums/Cuica(2)_22k.wav',
+            'GuiroLong': 'sb2/drums/GuiroLong(1)_22k.wav',
+            'GuiroShort': 'sb2/drums/GuiroShort(1)_22k.wav',
+            'HiHatClosed': 'sb2/drums/HiHatClosed(1)_22k.wav',
+            'HiHatOpen': 'sb2/drums/HiHatOpen(2)_22k.wav',
+            'HiHatPedal': 'sb2/drums/HiHatPedal(1)_22k.wav',
+            'Maracas': 'sb2/drums/Maracas(1)_22k.wav',
+            'SideStick': 'sb2/drums/SideStick(1)_22k.wav',
+            'SnareDrum': 'sb2/drums/SnareDrum(1)_22k.wav',
+            'Tambourine': 'sb2/drums/Tambourine(3)_22k.wav',
+            'Tom': 'sb2/drums/Tom(1)_22k.wav',
+            'Triangle': 'sb2/drums/Triangle(1)_22k.wav',
+            'Vibraslap': 'sb2/drums/Vibraslap(1)_22k.wav',
+            'WoodBlock': 'sb2/drums/WoodBlock(1)_22k.wav'
         };
         const soundbank = {};
-        function loadSB2Soundbank(hooks) {
+        function loadSoundbankSB2(loader) {
             if (!audio.context)
                 return Promise.resolve();
             const promises = [];
-            for (const name in SOUNDBANK_FILES) {
+            for (const name in SB2_SOUNDBANK_FILES) {
                 if (!soundbank[name]) {
-                    hooks.newTask();
-                    promises.push(loadSoundbankBuffer(name).then((v) => {
-                        hooks.endTask();
-                        return v;
-                    }));
+                    const promise = P.utils.settled(loadSoundbankBuffer(name));
+                    promises.push(promise);
+                    if (loader) {
+                        loader.addTask(new P.io.PromiseTask(promise));
+                    }
                 }
             }
             return Promise.all(promises);
         }
-        audio.loadSB2Soundbank = loadSB2Soundbank;
+        audio.loadSoundbankSB2 = loadSoundbankSB2;
         function loadSoundbankBuffer(name) {
-            return new P.IO.ArrayBufferRequest(SOUNDBANK_URL + SOUNDBANK_FILES[name], { local: true }).load()
+            return P.io.getAssetManager().loadSoundbankFile(SB2_SOUNDBANK_FILES[name])
                 .then((buffer) => P.audio.decodeAudio(buffer))
                 .then((sound) => soundbank[name] = sound);
         }
         function playSpan(span, key, duration, connection) {
             if (!audio.context) {
-                throw new Error('Cannot playSpawn without an AudioContext');
+                throw new Error('Cannot playSpan without an AudioContext');
             }
             const buffer = soundbank[span.name];
             if (!buffer) {
@@ -432,7 +439,7 @@ var P;
         }
         function decodeAudio(ab) {
             if (!audio.context) {
-                return Promise.reject('No audio context');
+                return Promise.reject(new Error('No audio context'));
             }
             return new Promise((resolve, reject) => {
                 decodeADPCMAudio(ab, function (err1, buffer) {
@@ -450,987 +457,6 @@ var P;
         }
         audio.decodeAudio = decodeAudio;
     })(audio = P.audio || (P.audio = {}));
-})(P || (P = {}));
-var P;
-(function (P) {
-    var m3;
-    (function (m3) {
-        function multiply(out, other) {
-            const a0 = out[0];
-            const a1 = out[1];
-            const a2 = out[2];
-            const a3 = out[3];
-            const a4 = out[4];
-            const a5 = out[5];
-            const a6 = out[6];
-            const a7 = out[7];
-            const a8 = out[8];
-            const b0 = other[0];
-            const b1 = other[1];
-            const b2 = other[2];
-            const b3 = other[3];
-            const b4 = other[4];
-            const b5 = other[5];
-            const b6 = other[6];
-            const b7 = other[7];
-            const b8 = other[8];
-            out[0] = b0 * a0 + b1 * a3 + b2 * a6;
-            out[1] = b0 * a1 + b1 * a4 + b2 * a7;
-            out[2] = b0 * a2 + b1 * a5 + b2 * a8;
-            out[3] = b3 * a0 + b4 * a3 + b5 * a6;
-            out[4] = b3 * a1 + b4 * a4 + b5 * a7;
-            out[5] = b3 * a2 + b4 * a5 + b5 * a8;
-            out[6] = b6 * a0 + b7 * a3 + b8 * a6;
-            out[7] = b6 * a1 + b7 * a4 + b8 * a7;
-            out[8] = b6 * a2 + b7 * a5 + b8 * a8;
-        }
-        m3.multiply = multiply;
-        function translation(x, y) {
-            return [
-                1, 0, 0,
-                0, 1, 0,
-                x, y, 1,
-            ];
-        }
-        m3.translation = translation;
-        function rotation(degrees) {
-            const radians = degrees * Math.PI / 180;
-            const cos = Math.cos(radians);
-            const sin = Math.sin(radians);
-            return [
-                cos, -sin, 0,
-                sin, cos, 0,
-                0, 0, 1,
-            ];
-        }
-        m3.rotation = rotation;
-        function scaling(x, y) {
-            return [
-                x, 0, 0,
-                0, y, 0,
-                0, 0, 1,
-            ];
-        }
-        m3.scaling = scaling;
-        function projection(width, height) {
-            return [
-                2 / width, 0, 0,
-                0, -2 / height, 0,
-                -1, 1, 1,
-            ];
-        }
-        m3.projection = projection;
-    })(m3 = P.m3 || (P.m3 = {}));
-})(P || (P = {}));
-var P;
-(function (P) {
-    var renderer;
-    (function (renderer_1) {
-        function createCanvas() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 480;
-            canvas.height = 360;
-            return canvas;
-        }
-        function create2dCanvas() {
-            const canvas = createCanvas();
-            const ctx = canvas.getContext('2d');
-            if (!ctx) {
-                throw new Error('Cannot get 2d rendering context in create2dCanvas');
-            }
-            ctx.imageSmoothingEnabled = false;
-            return { canvas, ctx };
-        }
-        function filtersAffectShape(filters) {
-            return filters.fisheye !== 0 ||
-                filters.mosaic !== 0 ||
-                filters.pixelate !== 0 ||
-                filters.whirl !== 0;
-        }
-        const horizontalInvertMatrix = P.m3.scaling(-1, 1);
-        class ShaderVariant {
-            constructor(gl, program) {
-                this.gl = gl;
-                this.program = program;
-                this.uniformLocations = {};
-                this.attributeLocations = {};
-                const activeUniforms = gl.getProgramParameter(program, this.gl.ACTIVE_UNIFORMS);
-                for (let index = 0; index < activeUniforms; index++) {
-                    const info = gl.getActiveUniform(program, index);
-                    if (!info) {
-                        throw new Error('uniform at index ' + index + ' does not exist');
-                    }
-                    const name = info.name;
-                    const location = gl.getUniformLocation(program, name);
-                    if (!location) {
-                        throw new Error('uniform named ' + name + ' does not exist');
-                    }
-                    this.uniformLocations[name] = location;
-                }
-                const activeAttributes = gl.getProgramParameter(program, this.gl.ACTIVE_ATTRIBUTES);
-                for (let index = 0; index < activeAttributes; index++) {
-                    const info = gl.getActiveAttrib(program, index);
-                    if (!info) {
-                        throw new Error('attribute at index ' + index + ' does not exist');
-                    }
-                    this.attributeLocations[info.name] = index;
-                }
-            }
-            uniform1f(name, value) {
-                const location = this.getUniform(name);
-                this.gl.uniform1f(location, value);
-            }
-            uniform2f(name, a, b) {
-                const location = this.getUniform(name);
-                this.gl.uniform2f(location, a, b);
-            }
-            uniform4f(name, a, b, c, d) {
-                const location = this.getUniform(name);
-                this.gl.uniform4f(location, a, b, c, d);
-            }
-            uniformMatrix3(name, value) {
-                const location = this.getUniform(name);
-                this.gl.uniformMatrix3fv(location, false, value);
-            }
-            hasUniform(name) {
-                return this.uniformLocations.hasOwnProperty(name);
-            }
-            getUniform(name) {
-                if (!this.hasUniform(name)) {
-                    throw new Error('uniform of name ' + name + ' does not exist');
-                }
-                return this.uniformLocations[name];
-            }
-            attributeBuffer(name, value) {
-                if (!this.hasAttribute(name)) {
-                    throw new Error('attribute of name ' + name + ' does not exist');
-                }
-                const location = this.attributeLocations[name];
-                this.gl.enableVertexAttribArray(location);
-                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, value);
-                this.gl.vertexAttribPointer(location, 2, this.gl.FLOAT, false, 0, 0);
-            }
-            hasAttribute(name) {
-                return this.attributeLocations.hasOwnProperty(name);
-            }
-            getAttribute(name) {
-                if (!this.hasAttribute(name)) {
-                    throw new Error('attribute of name ' + name + ' does not exist');
-                }
-                return this.attributeLocations[name];
-            }
-        }
-        class WebGLSpriteRenderer {
-            constructor() {
-                this.globalScaleMatrix = P.m3.scaling(1, 1);
-                this.boundFramebuffer = null;
-                this.canvas = createCanvas();
-                const gl = this.canvas.getContext('webgl', {
-                    alpha: false,
-                    antialias: false,
-                });
-                if (!gl) {
-                    throw new Error('cannot get webgl rendering context');
-                }
-                this.gl = gl;
-                this.renderingShader = this.compileVariant([]);
-                this.gl.enable(this.gl.BLEND);
-                this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
-                this.quadBuffer = this.gl.createBuffer();
-                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
-                this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
-                    0, 0,
-                    0, 1,
-                    1, 0,
-                    1, 0,
-                    0, 1,
-                    1, 1,
-                ]), this.gl.STATIC_DRAW);
-            }
-            compileShader(type, source, definitions) {
-                const addDefinition = (def) => {
-                    source = '#define ' + def + '\n' + source;
-                };
-                if (definitions) {
-                    for (const def of definitions) {
-                        addDefinition(def);
-                    }
-                }
-                const shader = this.gl.createShader(type);
-                if (!shader) {
-                    throw new Error('Cannot create shader');
-                }
-                this.gl.shaderSource(shader, source);
-                this.gl.compileShader(shader);
-                if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
-                    const error = this.gl.getShaderInfoLog(shader);
-                    this.gl.deleteShader(shader);
-                    throw new Error('Shader compilation error: ' + error);
-                }
-                return shader;
-            }
-            compileProgram(vs, fs, definitions) {
-                const vertexShader = this.compileShader(this.gl.VERTEX_SHADER, vs, definitions);
-                const fragmentShader = this.compileShader(this.gl.FRAGMENT_SHADER, fs, definitions);
-                const program = this.gl.createProgram();
-                if (!program) {
-                    throw new Error('Cannot create program');
-                }
-                this.gl.attachShader(program, vertexShader);
-                this.gl.attachShader(program, fragmentShader);
-                this.gl.linkProgram(program);
-                if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
-                    const error = this.gl.getProgramInfoLog(program);
-                    this.gl.deleteProgram(program);
-                    throw new Error('Program compilation error: ' + error);
-                }
-                return program;
-            }
-            compileVariant(definitions) {
-                const program = this.compileProgram(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, definitions);
-                return new ShaderVariant(this.gl, program);
-            }
-            createTexture() {
-                const texture = this.gl.createTexture();
-                if (!texture) {
-                    throw new Error('Cannot create texture');
-                }
-                this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
-                this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
-                this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
-                this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
-                return texture;
-            }
-            convertToTexture(canvas) {
-                const texture = this.createTexture();
-                this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
-                return texture;
-            }
-            createFramebuffer() {
-                const frameBuffer = this.gl.createFramebuffer();
-                if (!frameBuffer) {
-                    throw new Error('cannot create frame buffer');
-                }
-                return frameBuffer;
-            }
-            bindFramebuffer(buffer) {
-                if (buffer === this.boundFramebuffer) {
-                    return;
-                }
-                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, buffer);
-                this.boundFramebuffer = buffer;
-            }
-            reset(scale) {
-                this.canvas.width = scale * P.config.scale * 480;
-                this.canvas.height = scale * P.config.scale * 360;
-                this.resetFramebuffer(scale);
-            }
-            resetFramebuffer(scale) {
-                this.gl.viewport(0, 0, 480 * scale, 360 * scale);
-                if (this.globalScaleMatrix[0] !== scale) {
-                    this.globalScaleMatrix = P.m3.scaling(scale, scale);
-                }
-                this.gl.clearColor(255, 255, 255, 0);
-                this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-            }
-            drawChild(child) {
-                this._drawChild(child, this.renderingShader);
-            }
-            _drawChild(child, shader) {
-                this.gl.useProgram(shader.program);
-                const costume = child.costumes[child.currentCostumeIndex];
-                if (!costume._glTexture) {
-                    const texture = this.convertToTexture(costume.get(1));
-                    costume._glTexture = texture;
-                }
-                this.gl.bindTexture(this.gl.TEXTURE_2D, costume._glTexture);
-                shader.attributeBuffer('a_position', this.quadBuffer);
-                const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
-                P.m3.multiply(matrix, this.globalScaleMatrix);
-                P.m3.multiply(matrix, P.m3.translation(240 + child.scratchX | 0, 180 - child.scratchY | 0));
-                if (P.core.isSprite(child)) {
-                    if (child.rotationStyle === 0 && child.direction !== 90) {
-                        P.m3.multiply(matrix, P.m3.rotation(90 - child.direction));
-                    }
-                    else if (child.rotationStyle === 1 && child.direction < 0) {
-                        P.m3.multiply(matrix, horizontalInvertMatrix);
-                    }
-                    if (child.scale !== 1) {
-                        P.m3.multiply(matrix, P.m3.scaling(child.scale, child.scale));
-                    }
-                }
-                if (costume.scale !== 1) {
-                    P.m3.multiply(matrix, P.m3.scaling(costume.scale, costume.scale));
-                }
-                P.m3.multiply(matrix, P.m3.translation(-costume.rotationCenterX, -costume.rotationCenterY));
-                P.m3.multiply(matrix, P.m3.scaling(costume.width, costume.height));
-                shader.uniformMatrix3('u_matrix', matrix);
-                if (shader.hasUniform('u_opacity')) {
-                    shader.uniform1f('u_opacity', 1 - child.filters.ghost / 100);
-                }
-                if (shader.hasUniform('u_brightness')) {
-                    shader.uniform1f('u_brightness', child.filters.brightness / 100);
-                }
-                if (shader.hasUniform('u_color')) {
-                    shader.uniform1f('u_color', child.filters.color / 200);
-                }
-                if (shader.hasUniform('u_mosaic')) {
-                    const mosaic = Math.round((Math.abs(child.filters.mosaic) + 10) / 10);
-                    shader.uniform1f('u_mosaic', P.utils.clamp(mosaic, 1, 512));
-                }
-                if (shader.hasUniform('u_whirl')) {
-                    shader.uniform1f('u_whirl', child.filters.whirl * Math.PI / -180);
-                }
-                if (shader.hasUniform('u_fisheye')) {
-                    shader.uniform1f('u_fisheye', Math.max(0, (child.filters.fisheye + 100) / 100));
-                }
-                if (shader.hasUniform('u_pixelate')) {
-                    shader.uniform1f('u_pixelate', Math.abs(child.filters.pixelate) / 10);
-                }
-                if (shader.hasUniform('u_size')) {
-                    shader.uniform2f('u_size', costume.width, costume.height);
-                }
-                this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
-            }
-            drawTextureOverlay(texture) {
-                const shader = this.renderingShader;
-                this.gl.useProgram(shader.program);
-                this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
-                shader.attributeBuffer('a_position', this.quadBuffer);
-                const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
-                P.m3.multiply(matrix, this.globalScaleMatrix);
-                P.m3.multiply(matrix, P.m3.translation(240, 180));
-                P.m3.multiply(matrix, P.m3.scaling(1, -1));
-                P.m3.multiply(matrix, P.m3.translation(-240, -180));
-                P.m3.multiply(matrix, P.m3.scaling(480, 360));
-                shader.uniformMatrix3('u_matrix', matrix);
-                if (shader.hasUniform('u_opacity'))
-                    shader.uniform1f('u_opacity', 1);
-                if (shader.hasUniform('u_brightness'))
-                    shader.uniform1f('u_brightness', 0);
-                if (shader.hasUniform('u_color'))
-                    shader.uniform1f('u_color', 0);
-                if (shader.hasUniform('u_mosaic'))
-                    shader.uniform1f('u_mosaic', 1);
-                if (shader.hasUniform('u_whirl'))
-                    shader.uniform1f('u_whirl', 0);
-                if (shader.hasUniform('u_fisheye'))
-                    shader.uniform1f('u_fisheye', 1);
-                if (shader.hasUniform('u_pixelate'))
-                    shader.uniform1f('u_pixelate', 0);
-                if (shader.hasUniform('u_size'))
-                    shader.uniform2f('u_size', this.canvas.width, this.canvas.height);
-                this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
-            }
-        }
-        WebGLSpriteRenderer.vertexShader = `
-    attribute vec2 a_position;
-
-    uniform mat3 u_matrix;
-
-    varying vec2 v_texcoord;
-
-    void main() {
-      gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
-      v_texcoord = a_position;
-    }
-    `;
-        WebGLSpriteRenderer.fragmentShader = `
-    precision mediump float;
-
-    varying vec2 v_texcoord;
-
-    uniform sampler2D u_texture;
-    #ifndef ONLY_SHAPE_FILTERS
-      uniform float u_brightness;
-      uniform float u_color;
-    #endif
-    uniform float u_opacity;
-    uniform float u_mosaic;
-    uniform float u_whirl;
-    uniform float u_fisheye;
-    uniform float u_pixelate;
-    uniform vec2 u_size;
-
-    const float minimumAlpha = 1.0 / 250.0;
-    const vec2 vecCenter = vec2(0.5, 0.5);
-
-    // http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl
-    vec3 rgb2hsv(vec3 c) {
-      vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
-      vec4 p = c.g < c.b ? vec4(c.bg, K.wz) : vec4(c.gb, K.xy);
-      vec4 q = c.r < p.x ? vec4(p.xyw, c.r) : vec4(c.r, p.yzx);
-      float d = q.x - min(q.w, q.y);
-      float e = 1.0e-10;
-      return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
-    }
-    vec3 hsv2rgb(vec3 c) {
-      vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-      vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-      return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
-    }
-
-    void main() {
-      // varyings cannot be modified
-      vec2 texcoord = v_texcoord;
-
-      // apply mosaic
-      {
-        texcoord = fract(u_mosaic * v_texcoord);
-      }
-
-      // apply pixelate
-      if (u_pixelate != 0.0) {
-        vec2 texelSize = u_size / u_pixelate;
-        texcoord = (floor(texcoord * texelSize) + vecCenter) / texelSize;
-      }
-
-      // apply whirl
-      {
-        const float radius = 0.5;
-        vec2 offset = texcoord - vecCenter;
-        float offsetMagnitude = length(offset);
-        float whirlFactor = max(1.0 - (offsetMagnitude / radius), 0.0);
-        float whirlActual = u_whirl * whirlFactor * whirlFactor;
-        float sinWhirl = sin(whirlActual);
-        float cosWhirl = cos(whirlActual);
-        mat2 rotationMatrix = mat2(
-          cosWhirl, -sinWhirl,
-          sinWhirl, cosWhirl
-        );
-        texcoord = rotationMatrix * offset + vecCenter;
-      }
-
-      // apply fisheye
-      {
-        vec2 vec = (texcoord - vecCenter) / vecCenter;
-        float vecLength = length(vec);
-        float r = pow(min(vecLength, 1.0), u_fisheye) * max(1.0, vecLength);
-        vec2 unit = vec / vecLength;
-        texcoord = vecCenter + r * unit * vecCenter;
-      }
-
-      vec4 color = texture2D(u_texture, texcoord);
-      if (color.a < minimumAlpha) {
-        discard;
-      }
-
-      // apply ghost effect
-      color.a *= u_opacity;
-
-      // apply brightness effect
-      #ifndef ONLY_SHAPE_FILTERS
-        color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
-      #endif
-
-      // The color effect is rather complicated. See:
-      // https://github.com/LLK/scratch-render/blob/008dc5b15b30961301e6b9a08628a063b967a001/src/shaders/sprite.frag#L175-L189
-      #ifndef ONLY_SHAPE_FILTERS
-      if (u_color != 0.0) {
-        vec3 hsv = rgb2hsv(color.rgb);
-        // hsv.x = hue
-        // hsv.y = saturation
-        // hsv.z = value
-
-        // scratch forces all colors to have some minimal amount saturation so there is a visual change
-        const float minValue = 0.11 / 2.0;
-        const float minSaturation = 0.09;
-        if (hsv.z < minValue) hsv = vec3(0.0, 1.0, minValue);
-        else if (hsv.y < minSaturation) hsv = vec3(0.0, minSaturation, hsv.z);
-
-        hsv.x = mod(hsv.x + u_color, 1.0);
-        if (hsv.x < 0.0) hsv.x += 1.0;
-        color = vec4(hsv2rgb(hsv), color.a);
-      }
-      #endif
-
-      gl_FragColor = color;
-    }
-    `;
-        renderer_1.WebGLSpriteRenderer = WebGLSpriteRenderer;
-        class WebGLProjectRenderer extends WebGLSpriteRenderer {
-            constructor(stage) {
-                super();
-                this.stage = stage;
-                this.zoom = 1;
-                this.shaderOnlyShapeFilters = this.compileVariant(['ONLY_SHAPE_FILTERS']);
-                this.fallbackRenderer = new ProjectRenderer2D(stage);
-                this.penTexture = this.createTexture();
-                this.penBuffer = this.createFramebuffer();
-                this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 480, 360, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
-                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.penBuffer);
-                this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.penTexture, 0);
-                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
-                this.penDotShader = new ShaderVariant(this.gl, this.compileProgram(WebGLProjectRenderer.PEN_DOT_VERTEX_SHADER, WebGLProjectRenderer.PEN_DOT_FRAGMENT_SHADER));
-                this.penLineShader = new ShaderVariant(this.gl, this.compileProgram(WebGLProjectRenderer.PEN_LINE_VERTEX_SHADER, WebGLProjectRenderer.PEN_LINE_FRAGMENT_SHADER));
-                this.reset(1);
-            }
-            drawFrame() {
-                this.bindFramebuffer(null);
-                this.reset(this.zoom);
-                this.drawChild(this.stage);
-                this.drawTextureOverlay(this.penTexture);
-                for (var i = 0; i < this.stage.children.length; i++) {
-                    var child = this.stage.children[i];
-                    if (!child.visible) {
-                        continue;
-                    }
-                    this.drawChild(child);
-                }
-            }
-            init(root) {
-                root.appendChild(this.canvas);
-            }
-            onStageFiltersChanged() {
-            }
-            penLine(color, size, x, y, x2, y2) {
-                this.bindFramebuffer(this.penBuffer);
-                const shader = this.penLineShader;
-                this.gl.useProgram(shader.program);
-                const buffer = this.gl.createBuffer();
-                if (buffer === null) {
-                    throw new Error('buffer is null');
-                }
-                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
-                this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
-                    x / 240, y / 180,
-                    x2 / 240, y2 / 180,
-                ]), this.gl.STATIC_DRAW);
-                shader.attributeBuffer('a_position', buffer);
-                const parts = color.toParts();
-                shader.uniform4f('u_color', parts[0], parts[1], parts[2], parts[3]);
-                this.gl.drawArrays(this.gl.LINES, 0, 2);
-            }
-            penDot(color, size, x, y) {
-                this.bindFramebuffer(this.penBuffer);
-                const shader = this.penDotShader;
-                this.gl.useProgram(shader.program);
-                shader.attributeBuffer('a_position', this.quadBuffer);
-                const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
-                P.m3.multiply(matrix, P.m3.translation(240 + x - size / 2 | 0, 180 - y - size / 2 | 0));
-                P.m3.multiply(matrix, P.m3.scaling(size, size));
-                shader.uniformMatrix3('u_matrix', matrix);
-                const parts = color.toParts();
-                shader.uniform4f('u_color', parts[0], parts[1], parts[2], parts[3]);
-                this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
-            }
-            penStamp(sprite) {
-                this.bindFramebuffer(this.penBuffer);
-                this.drawChild(sprite);
-            }
-            penClear() {
-                this.bindFramebuffer(this.penBuffer);
-                this.gl.clearColor(255, 255, 255, 0);
-                this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-            }
-            resize(scale) {
-                this.zoom = scale;
-            }
-            spriteTouchesPoint(sprite, x, y) {
-                if (!filtersAffectShape(sprite.filters)) {
-                    return this.fallbackRenderer.spriteTouchesPoint(sprite, x, y);
-                }
-                const texture = this.createTexture();
-                const framebuffer = this.createFramebuffer();
-                this.bindFramebuffer(framebuffer);
-                this.resetFramebuffer(1);
-                this._drawChild(sprite, this.shaderOnlyShapeFilters);
-                const result = new Uint8Array(4);
-                this.gl.readPixels(240 + x | 0, 180 + y | 0, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, result);
-                this.gl.deleteTexture(texture);
-                this.gl.deleteFramebuffer(framebuffer);
-                return result[3] !== 0;
-            }
-            spritesIntersect(spriteA, otherSprites) {
-                return this.fallbackRenderer.spritesIntersect(spriteA, otherSprites);
-            }
-            spriteTouchesColor(sprite, color) {
-                return this.fallbackRenderer.spriteTouchesColor(sprite, color);
-            }
-            spriteColorTouchesColor(sprite, spriteColor, otherColor) {
-                return this.fallbackRenderer.spriteColorTouchesColor(sprite, spriteColor, otherColor);
-            }
-        }
-        WebGLProjectRenderer.PEN_DOT_VERTEX_SHADER = `
-    attribute vec2 a_position;
-    varying vec2 v_position;
-    uniform mat3 u_matrix;
-    void main() {
-      gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
-      v_position = a_position;
-    }
-    `;
-        WebGLProjectRenderer.PEN_DOT_FRAGMENT_SHADER = `
-    precision mediump float;
-    uniform vec4 u_color;
-    varying vec2 v_position;
-    void main() {
-      float x = (v_position.x - 0.5) * 2.0;
-      float y = (v_position.y - 0.5) * 2.0;
-      if (sqrt(x * x + y * y) >= 1.0) {
-        discard;
-      }
-      gl_FragColor = u_color;
-    }
-    `;
-        WebGLProjectRenderer.PEN_LINE_VERTEX_SHADER = `
-    attribute vec2 a_position;
-    void main() {
-      gl_Position = vec4(a_position, 0, 1);
-    }
-    `;
-        WebGLProjectRenderer.PEN_LINE_FRAGMENT_SHADER = `
-    precision mediump float;
-    uniform vec4 u_color;
-    void main() {
-      gl_FragColor = u_color;
-    }
-    `;
-        renderer_1.WebGLProjectRenderer = WebGLProjectRenderer;
-        function getCSSFilter(filters) {
-            let filter = '';
-            if (filters.brightness) {
-                filter += 'brightness(' + (100 + filters.brightness) + '%) ';
-            }
-            if (filters.color) {
-                filter += 'hue-rotate(' + (filters.color / 200 * 360) + 'deg) ';
-            }
-            return filter;
-        }
-        class SpriteRenderer2D {
-            constructor() {
-                this.noEffects = false;
-                const { canvas, ctx } = create2dCanvas();
-                this.canvas = canvas;
-                this.ctx = ctx;
-            }
-            reset(scale) {
-                this._reset(this.ctx, scale);
-            }
-            drawChild(c) {
-                this._drawChild(c, this.ctx);
-            }
-            drawObjects(children) {
-                for (var i = 0; i < children.length; i++) {
-                    var child = children[i];
-                    if (!child.visible) {
-                        continue;
-                    }
-                    this.drawChild(child);
-                }
-            }
-            _reset(ctx, scale) {
-                const effectiveScale = scale * P.config.scale;
-                const width = 480 * effectiveScale;
-                const height = 360 * effectiveScale;
-                if (ctx.canvas.width !== width || ctx.canvas.height !== height) {
-                    ctx.canvas.width = width;
-                    ctx.canvas.height = height;
-                    ctx.scale(effectiveScale, effectiveScale);
-                }
-                else {
-                    ctx.clearRect(0, 0, 480, 360);
-                }
-            }
-            _drawChild(c, ctx) {
-                const costume = c.costumes[c.currentCostumeIndex];
-                if (!costume) {
-                    return;
-                }
-                ctx.save();
-                const globalScale = c.stage.zoom * P.config.scale;
-                ctx.translate(((c.scratchX + 240) * globalScale | 0) / globalScale, ((180 - c.scratchY) * globalScale | 0) / globalScale);
-                let objectScale = costume.scale;
-                if (P.core.isSprite(c)) {
-                    if (c.rotationStyle === 0) {
-                        ctx.rotate((c.direction - 90) * Math.PI / 180);
-                    }
-                    else if (c.rotationStyle === 1 && c.direction < 0) {
-                        ctx.scale(-1, 1);
-                    }
-                    objectScale *= c.scale;
-                }
-                const image = costume.get(objectScale * c.stage.zoom);
-                const x = -costume.rotationCenterX * objectScale;
-                const y = -costume.rotationCenterY * objectScale;
-                const w = costume.width * objectScale;
-                const h = costume.height * objectScale;
-                if (w < 1 || h < 1) {
-                    ctx.restore();
-                    return;
-                }
-                ctx.imageSmoothingEnabled = false;
-                if (!this.noEffects) {
-                    if (c.filters.brightness === 100) {
-                        workingRenderer.canvas.width = w;
-                        workingRenderer.canvas.height = h;
-                        workingRenderer.ctx.save();
-                        workingRenderer.ctx.translate(0, 0);
-                        workingRenderer.ctx.drawImage(image, 0, 0, w, h);
-                        workingRenderer.ctx.globalCompositeOperation = 'source-in';
-                        workingRenderer.ctx.fillStyle = 'white';
-                        workingRenderer.ctx.fillRect(0, 0, 480, 360);
-                        ctx.drawImage(workingRenderer.canvas, x, y);
-                        workingRenderer.ctx.restore();
-                    }
-                    else {
-                        ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
-                        const filter = getCSSFilter(c.filters);
-                        if (filter !== '') {
-                            ctx.filter = filter;
-                        }
-                        ctx.drawImage(image, x, y, w, h);
-                    }
-                }
-                else {
-                    ctx.drawImage(image, x, y, w, h);
-                }
-                ctx.restore();
-            }
-        }
-        renderer_1.SpriteRenderer2D = SpriteRenderer2D;
-        const workingRenderer = new SpriteRenderer2D();
-        const workingRenderer2 = new SpriteRenderer2D();
-        class ProjectRenderer2D extends SpriteRenderer2D {
-            constructor(stage) {
-                super();
-                this.stage = stage;
-                this.zoom = 1;
-                this.penModified = false;
-                this.penTargetZoom = -1;
-                this.penZoom = 1;
-                this.stageCostumeIndex = -1;
-                const { ctx: stageContext, canvas: stageLayer } = create2dCanvas();
-                this.stageContext = stageContext;
-                this.stageLayer = stageLayer;
-                const { ctx: penContext, canvas: penLayer } = create2dCanvas();
-                this.penContext = penContext;
-                this.penLayer = penLayer;
-            }
-            onStageFiltersChanged() {
-                const filter = getCSSFilter(this.stage.filters);
-                if (this.stageLayer.style.filter !== filter) {
-                    this.stageLayer.style.filter = filter;
-                }
-                this.stageLayer.style.opacity = '' + Math.max(0, Math.min(1, 1 - this.stage.filters.ghost / 100));
-            }
-            renderStageCostume(scale) {
-                this._reset(this.stageContext, scale);
-                this.noEffects = true;
-                this._drawChild(this.stage, this.stageContext);
-                this.noEffects = false;
-            }
-            init(root) {
-                root.appendChild(this.stageLayer);
-                root.appendChild(this.penLayer);
-                root.appendChild(this.canvas);
-            }
-            drawFrame() {
-                this.reset(this.zoom);
-                this.drawObjects(this.stage.children);
-                if (this.stage.currentCostumeIndex !== this.stageCostumeIndex) {
-                    this.stageCostumeIndex = this.stage.currentCostumeIndex;
-                    this.renderStageCostume(this.zoom);
-                }
-            }
-            drawAllExcept(renderer, skip) {
-                renderer.drawChild(this.stage);
-                renderer.ctx.drawImage(this.penLayer, 0, 0, this.canvas.width, this.canvas.height);
-                for (var i = 0; i < this.stage.children.length; i++) {
-                    var child = this.stage.children[i];
-                    if (!child.visible || child === skip) {
-                        continue;
-                    }
-                    renderer.drawChild(child);
-                }
-            }
-            resize(zoom) {
-                this.zoom = zoom;
-                this.resizePen(zoom);
-                this.renderStageCostume(this.zoom);
-            }
-            resizePen(zoom) {
-                if (zoom > this.penZoom) {
-                    this.penZoom = zoom;
-                    const cachedCanvas = document.createElement('canvas');
-                    cachedCanvas.width = this.penLayer.width;
-                    cachedCanvas.height = this.penLayer.height;
-                    const cachedCanvasCtx = cachedCanvas.getContext('2d');
-                    if (!cachedCanvasCtx) {
-                        throw new Error('cannot get 2d rendering context while resizing pen layer');
-                    }
-                    cachedCanvasCtx.drawImage(this.penLayer, 0, 0);
-                    this._reset(this.penContext, zoom);
-                    this.penContext.drawImage(cachedCanvas, 0, 0, 480, 360);
-                }
-                else if (!this.penModified) {
-                    this.penZoom = zoom;
-                    this._reset(this.penContext, zoom);
-                }
-                else {
-                    this.penTargetZoom = zoom;
-                }
-            }
-            penClear() {
-                this.penModified = false;
-                if (this.penTargetZoom !== -1) {
-                    this._reset(this.penContext, this.penTargetZoom);
-                    this.penZoom = this.penTargetZoom;
-                    this.penTargetZoom = -1;
-                }
-                this.penContext.clearRect(0, 0, 480, 360);
-            }
-            penDot(color, size, x, y) {
-                this.penModified = true;
-                this.penContext.fillStyle = color.toCSS();
-                this.penContext.beginPath();
-                this.penContext.arc(240 + x, 180 - y, size / 2, 0, 2 * Math.PI, false);
-                this.penContext.fill();
-            }
-            penLine(color, size, x1, y1, x2, y2) {
-                this.penModified = true;
-                this.penContext.lineCap = 'round';
-                if (this.penZoom === 1) {
-                    if (size % 2 > .5 && size % 2 < 1.5) {
-                        x1 -= .5;
-                        y1 -= .5;
-                        x2 -= .5;
-                        y2 -= .5;
-                    }
-                }
-                this.penContext.strokeStyle = color.toCSS();
-                this.penContext.lineWidth = size;
-                this.penContext.beginPath();
-                this.penContext.moveTo(240 + x1, 180 - y1);
-                this.penContext.lineTo(240 + x2, 180 - y2);
-                this.penContext.stroke();
-            }
-            penStamp(sprite) {
-                this.penModified = true;
-                this._drawChild(sprite, this.penContext);
-            }
-            spriteTouchesPoint(sprite, x, y) {
-                const bounds = sprite.rotatedBounds();
-                if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top) {
-                    return false;
-                }
-                const costume = sprite.costumes[sprite.currentCostumeIndex];
-                var cx = (x - sprite.scratchX) / sprite.scale;
-                var cy = (sprite.scratchY - y) / sprite.scale;
-                if (sprite.rotationStyle === 0 && sprite.direction !== 90) {
-                    const d = (90 - sprite.direction) * Math.PI / 180;
-                    const ox = cx;
-                    const s = Math.sin(d), c = Math.cos(d);
-                    cx = c * ox - s * cy;
-                    cy = s * ox + c * cy;
-                }
-                else if (sprite.rotationStyle === 1 && sprite.direction < 0) {
-                    cx = -cx;
-                }
-                const positionX = Math.round(cx * costume.bitmapResolution + costume.rotationCenterX);
-                const positionY = Math.round(cy * costume.bitmapResolution + costume.rotationCenterY);
-                const data = costume.getContext().getImageData(positionX, positionY, 1, 1).data;
-                return data[3] !== 0;
-            }
-            spritesIntersect(spriteA, otherSprites) {
-                const mb = spriteA.rotatedBounds();
-                for (var i = 0; i < otherSprites.length; i++) {
-                    const spriteB = otherSprites[i];
-                    if (!spriteB.visible) {
-                        continue;
-                    }
-                    const ob = spriteB.rotatedBounds();
-                    if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
-                        continue;
-                    }
-                    const left = Math.max(mb.left, ob.left);
-                    const top = Math.min(mb.top, ob.top);
-                    const right = Math.min(mb.right, ob.right);
-                    const bottom = Math.max(mb.bottom, ob.bottom);
-                    const width = right - left;
-                    const height = top - bottom;
-                    if (width < 1 || height < 1 || width !== width || height !== height) {
-                        continue;
-                    }
-                    workingRenderer.canvas.width = width;
-                    workingRenderer.canvas.height = height;
-                    workingRenderer.ctx.save();
-                    workingRenderer.noEffects = true;
-                    workingRenderer.ctx.translate(-(left + 240), -(180 - top));
-                    workingRenderer.drawChild(spriteA);
-                    workingRenderer.ctx.globalCompositeOperation = 'source-in';
-                    workingRenderer.drawChild(spriteB);
-                    workingRenderer.noEffects = false;
-                    workingRenderer.ctx.restore();
-                    const data = workingRenderer.ctx.getImageData(0, 0, width, height).data;
-                    const length = data.length;
-                    for (var j = 0; j < length; j += 4) {
-                        if (data[j + 3]) {
-                            return true;
-                        }
-                    }
-                }
-                return false;
-            }
-            spriteTouchesColor(sprite, color) {
-                const b = sprite.rotatedBounds();
-                const width = b.right - b.left;
-                const height = b.top - b.bottom;
-                if (width < 1 || height < 1 || width !== width || height !== height) {
-                    return false;
-                }
-                workingRenderer.canvas.width = width;
-                workingRenderer.canvas.height = height;
-                workingRenderer.ctx.save();
-                workingRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
-                this.drawAllExcept(workingRenderer, sprite);
-                workingRenderer.ctx.globalCompositeOperation = 'destination-in';
-                workingRenderer.drawChild(sprite);
-                workingRenderer.ctx.restore();
-                const data = workingRenderer.ctx.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
-                color = color & 0xffffff;
-                const length = (b.right - b.left) * (b.top - b.bottom) * 4;
-                for (var i = 0; i < length; i += 4) {
-                    if ((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) === color && data[i + 3]) {
-                        return true;
-                    }
-                }
-                return false;
-            }
-            spriteColorTouchesColor(sprite, spriteColor, otherColor) {
-                var rb = sprite.rotatedBounds();
-                const width = rb.right - rb.left;
-                const height = rb.top - rb.bottom;
-                if (width < 1 || height < 1 || width !== width || height !== height) {
-                    return false;
-                }
-                workingRenderer.canvas.width = workingRenderer2.canvas.width = width;
-                workingRenderer.canvas.height = workingRenderer2.canvas.height = height;
-                workingRenderer.ctx.save();
-                workingRenderer2.ctx.save();
-                workingRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
-                workingRenderer2.ctx.translate(-(240 + rb.left), -(180 - rb.top));
-                this.drawAllExcept(workingRenderer, sprite);
-                workingRenderer2.drawChild(sprite);
-                workingRenderer.ctx.restore();
-                workingRenderer2.ctx.restore();
-                var dataA = workingRenderer.ctx.getImageData(0, 0, width, height).data;
-                var dataB = workingRenderer2.ctx.getImageData(0, 0, width, height).data;
-                spriteColor = spriteColor & 0xffffff;
-                otherColor = otherColor & 0xffffff;
-                var length = dataA.length;
-                for (var i = 0; i < length; i += 4) {
-                    var touchesSource = (dataB[i] << 16 | dataB[i + 1] << 8 | dataB[i + 2]) === spriteColor && dataB[i + 3];
-                    var touchesOther = (dataA[i] << 16 | dataA[i + 1] << 8 | dataA[i + 2]) === otherColor && dataA[i + 3];
-                    if (touchesSource && touchesOther) {
-                        return true;
-                    }
-                }
-                return false;
-            }
-        }
-        renderer_1.ProjectRenderer2D = ProjectRenderer2D;
-    })(renderer = P.renderer || (P.renderer = {}));
 })(P || (P = {}));
 var P;
 (function (P) {
@@ -1495,26 +521,39 @@ var P;
                 }
             }
             toParts() {
-                return [1, 0, 0, 1];
+                switch (this.mode) {
+                    case 0: {
+                        return [this.x, this.y, this.z, this.a];
+                    }
+                    case 2: {
+                        const rgb = P.utils.hsvToRGB(this.x / 360, this.y / 100, this.z / 100);
+                        return [rgb[0], rgb[1], rgb[2], this.a];
+                    }
+                    case 1: {
+                        const rgb = P.utils.hslToRGB(this.x / 360, this.y / 100, this.z / 100);
+                        return [rgb[0], rgb[1], rgb[2], this.a];
+                    }
+                }
             }
             toCSS() {
                 switch (this.mode) {
                     case 0:
                         return this.css;
                     case 1:
-                        return 'hsla(' + this.x + 'deg,' + this.y + '%,' + (this.z > 100 ? 200 - this.z : this.z) + '%, ' + this.a + ')';
+                        return 'hsla(' + this.x + ',' + this.y + '%,' + (this.z > 100 ? 200 - this.z : this.z) + '%,' + this.a + ')';
                     case 2: {
                         const rgb = P.utils.hsvToRGB(this.x / 360, this.y / 100, this.z / 100);
                         return 'rgba(' + rgb[0] + ', ' + rgb[1] + ', ' + rgb[2] + ', ' + this.a + ')';
                     }
                 }
-                throw new Error('Unknown pen color mode: ' + this.mode);
             }
             setParam(param, value) {
                 this.toHSVA();
                 switch (param) {
                     case 'color':
-                        this.x = value * 360 / 100;
+                        this.x = (value * 360 / 100) % 360;
+                        if (this.x < 0)
+                            this.x += 360;
                         break;
                     case 'saturation':
                         this.y = P.utils.clamp(value, 0, 100);
@@ -1535,7 +574,9 @@ var P;
                 this.toHSVA();
                 switch (param) {
                     case 'color':
-                        this.x += value * 360 / 100;
+                        this.x = (this.x + value * 360 / 100) % 360;
+                        if (this.x < 0)
+                            this.x += 360;
                         break;
                     case 'saturation':
                         this.y = P.utils.clamp(this.y + value, 0, 100);
@@ -1575,22 +616,22 @@ var P;
                 this.volume = 1;
                 this.node = null;
                 this.activeSounds = new Set();
-                this.watchers = Object.create(null);
-                this.listWatchers = Object.create(null);
-                this.vars = Object.create(null);
-                this.lists = Object.create(null);
+                this.watchers = {};
+                this.listWatchers = {};
+                this.vars = {};
+                this.lists = {};
                 this.saying = false;
                 this.thinking = false;
                 this.sayId = 0;
-                this.procedures = Object.create(null);
+                this.procedures = {};
                 this.listeners = {
                     whenClicked: [],
                     whenCloned: [],
                     whenGreenFlag: [],
-                    whenIReceive: Object.create(null),
+                    whenIReceive: {},
                     whenKeyPressed: [],
-                    whenBackdropChanges: Object.create(null),
-                    whenSceneStarts: Object.create(null),
+                    whenBackdropChanges: {},
+                    whenSceneStarts: {},
                 };
                 this.fns = [];
                 this.filters = {
@@ -1675,7 +716,7 @@ var P;
                         this.showPreviousCostume();
                         return;
                     }
-                    if (!isFinite(costume)) {
+                    if (!isFinite(costume) || !/\d/.test(costume)) {
                         return;
                     }
                 }
@@ -1701,6 +742,9 @@ var P;
                             value = 100;
                         break;
                     case 'color':
+                        if (value === Infinity) {
+                            break;
+                        }
                         value = value % 200;
                         if (value < 0)
                             value += 200;
@@ -1760,7 +804,9 @@ var P;
                 if (this.node) {
                     for (const sound of this.activeSounds) {
                         sound.stopped = true;
-                        sound.node.disconnect();
+                        if (sound.node) {
+                            sound.node.disconnect();
+                        }
                     }
                     this.activeSounds.clear();
                     this.node.disconnect();
@@ -1771,7 +817,9 @@ var P;
                 if (this.node) {
                     for (const sound of this.activeSounds) {
                         if (sound.base !== originBase) {
-                            sound.node.disconnect();
+                            if (sound.node) {
+                                sound.node.disconnect();
+                            }
                             sound.stopped = true;
                             this.activeSounds.delete(sound);
                         }
@@ -1851,7 +899,10 @@ var P;
                 const height = this.bubbleContainer.offsetHeight / this.stage.zoom;
                 this.bubblePointer.style.top = ((height - 6) / 14) + 'em';
                 if (left + width + 2 > 480) {
-                    this.bubbleContainer.style.right = ((240 - b.left) / 14) + 'em';
+                    var d = (240 - b.left) / 14;
+                    if (d > 25)
+                        d = 25;
+                    this.bubbleContainer.style.right = d + 'em';
                     this.bubbleContainer.style.left = 'auto';
                     this.bubblePointer.style.right = (3 / 14) + 'em';
                     this.bubblePointer.style.left = 'auto';
@@ -1879,7 +930,9 @@ var P;
                 }
                 if (this.node && this.isClone && !this.isStage) {
                     for (const sound of this.activeSounds) {
-                        sound.node.disconnect();
+                        if (sound.node) {
+                            sound.node.disconnect();
+                        }
                         sound.stopped = true;
                     }
                     this.activeSounds.clear();
@@ -1948,6 +1001,8 @@ var P;
                 this.tempoBPM = 60;
                 this.username = '';
                 this.counter = 0;
+                this.cloudHandler = null;
+                this.cloudVariables = [];
                 this.speech2text = null;
                 this.microphone = null;
                 this.videosensing = null;
@@ -1958,10 +1013,10 @@ var P;
                 this.root = document.createElement('div');
                 this.root.classList.add('forkphorus-root');
                 if (P.config.useWebGL) {
-                    this.renderer = new P.renderer.WebGLProjectRenderer(this);
+                    this.renderer = new P.renderer.webgl.WebGLProjectRenderer(this);
                 }
                 else {
-                    this.renderer = new P.renderer.ProjectRenderer2D(this);
+                    this.renderer = new P.renderer.canvas2d.ProjectRenderer2D(this);
                 }
                 this.renderer.resize(1);
                 this.renderer.init(this.root);
@@ -2058,10 +1113,24 @@ var P;
                     this.runtime.trigger('whenKeyPressed', 38);
                 }
             }
+            keyEventToCode(e) {
+                const key = e.key;
+                switch (key) {
+                    case 'Enter': return 13;
+                    case 'ArrowLeft': return 37;
+                    case 'ArrowUp': return 38;
+                    case 'ArrowRight': return 39;
+                    case 'ArrowDown': return 40;
+                }
+                if (key.length !== 1) {
+                    return -1;
+                }
+                return key.toUpperCase().charCodeAt(0);
+            }
             _onkeyup(e) {
-                var c = e.keyCode;
-                if (c >= 128)
-                    c = P.runtime.getKeyCode(e.key);
+                const c = this.keyEventToCode(e);
+                if (c === -1)
+                    return;
                 if (this.keys[c])
                     this.keys.any--;
                 this.keys[c] = false;
@@ -2071,9 +1140,9 @@ var P;
                 }
             }
             _onkeydown(e) {
-                var c = e.keyCode;
-                if (c >= 128 && e.key.length === 1)
-                    c = P.runtime.getKeyCode(e.key);
+                const c = this.keyEventToCode(e);
+                if (c === -1)
+                    return;
                 if (!this.keys[c])
                     this.keys.any++;
                 this.keys[c] = true;
@@ -2154,14 +1223,15 @@ var P;
                 for (const extension of this.extensions) {
                     extension.destroy();
                 }
+                this.renderer.destroy();
                 this.removeEventListeners();
             }
-            pause() {
+            pauseExtensions() {
                 for (const extension of this.extensions) {
                     extension.onpause();
                 }
             }
-            start() {
+            startExtensions() {
                 for (const extension of this.extensions) {
                     extension.onstart();
                 }
@@ -2188,8 +1258,8 @@ var P;
                     y = -180;
                 if (y > 180)
                     y = 180;
-                this.mouseX = x;
-                this.mouseY = y;
+                this.mouseX = Math.round(x);
+                this.mouseY = Math.round(y);
             }
             setZoom(zoom) {
                 if (this.zoom === zoom)
@@ -2199,11 +1269,9 @@ var P;
                 this.root.style.height = (360 * zoom | 0) + 'px';
                 this.root.style.fontSize = (zoom * 10) + 'px';
                 this.zoom = zoom;
-                if (!this.runtime.isRunning) {
-                    for (const watcher of this.allWatchers) {
-                        if (watcher instanceof P.sb3.Scratch3ListWatcher) {
-                            watcher.updateList();
-                        }
+                for (const watcher of this.allWatchers) {
+                    if (watcher instanceof P.sb3.Scratch3ListWatcher) {
+                        watcher.updateList();
                     }
                 }
             }
@@ -2320,6 +1388,10 @@ var P;
                     this.addExtension(this.videosensing);
                 }
             }
+            setCloudHandler(cloudHandler) {
+                this.cloudHandler = cloudHandler;
+                this.addExtension(cloudHandler);
+            }
             stopAllSounds() {
                 for (var children = this.children, i = children.length; i--;) {
                     children[i].stopSounds();
@@ -2339,6 +1411,8 @@ var P;
             }
             forward() {
             }
+            setDirection(direction) {
+            }
             rotatedBounds() {
                 return {
                     top: 0,
@@ -2346,6 +1420,18 @@ var P;
                     left: 0,
                     right: 0,
                 };
+            }
+            touching(thing) {
+                if (thing == "_mouse_") {
+                    return true;
+                }
+                return false;
+            }
+            touchingColor(color) {
+                return false;
+            }
+            colorTouchingColor(colorA, colorB) {
+                return false;
             }
             submitPrompt() {
                 if (this.promptId < this.nextPromptId) {
@@ -2595,101 +1681,130 @@ var P;
         core.Sprite = Sprite;
         class Costume {
             constructor(costumeData) {
-                this.bitmapResolution = costumeData.bitmapResolution;
-                this.scale = 1 / this.bitmapResolution;
                 this.name = costumeData.name;
+                this.scale = 1 / costumeData.bitmapResolution;
                 this.rotationCenterX = costumeData.rotationCenterX;
                 this.rotationCenterY = costumeData.rotationCenterY;
             }
         }
         core.Costume = Costume;
         class BitmapCostume extends Costume {
-            constructor(source, options) {
+            constructor(image, options) {
                 super(options);
-                this.source = source;
-                if (source.tagName === 'CANVAS') {
-                    const ctx = source.getContext('2d');
+                if (image.tagName === 'CANVAS') {
+                    const ctx = image.getContext('2d');
                     if (!ctx) {
-                        throw new Error('Cannot get 2d rendering context of costume source');
+                        throw new Error(`Cannot get 2d rendering context of costume image, despite it already being a canvas "${this.name}"`);
                     }
-                    this._context = ctx;
+                    this.ctx = ctx;
                 }
-                else {
-                    this._context = null;
-                }
-                this.width = source.width;
-                this.height = source.height;
-            }
-            get(scale) {
-                return this.source;
+                this.image = image;
+                this.width = image.width;
+                this.height = image.height;
+                this.isScalable = false;
             }
             getContext() {
-                if (this._context)
-                    return this._context;
+                if (this.ctx) {
+                    return this.ctx;
+                }
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
                 if (!ctx) {
-                    throw new Error('cannot get 2d rendering context for BitmapCustome ' + this.name);
+                    throw new Error(`cannot get 2d rendering context in getContext on Bitmap "${this.name}"`);
                 }
                 canvas.width = this.width;
                 canvas.height = this.height;
-                ctx.drawImage(this.source, 0, 0);
-                this._context = ctx;
+                ctx.drawImage(this.image, 0, 0);
+                this.ctx = ctx;
                 return ctx;
+            }
+            getImage() {
+                return this.image;
+            }
+            requestSize(scale) {
+                throw new Error(`requestSize is not implemented on BitmapCostume "${this.name}" isScalable=${this.isScalable}`);
             }
         }
         core.BitmapCostume = BitmapCostume;
         class VectorCostume extends Costume {
             constructor(svg, options) {
                 super(options);
-                this.scales = [];
                 if (svg.height < 1 || svg.width < 1) {
                     svg = new Image(1, 1);
                 }
+                this.isScalable = true;
                 this.width = svg.width;
                 this.height = svg.height;
-                this.source = svg;
-                this.scales[0] = this.getScale(1);
+                this.svg = svg;
+                this.maxScale = this.calculateMaxScale();
+                this.currentScale = Math.min(1, this.maxScale);
             }
-            getScale(scale) {
-                const canvas = document.createElement('canvas');
-                canvas.width = Math.max(1, this.width * scale);
-                canvas.height = Math.max(1, this.height * scale);
-                const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                    if (this.scales[0]) {
-                        return this.scales[0];
+            calculateMaxScale() {
+                if (VectorCostume.MAX_SIZE / this.width < VectorCostume.MAX_SCALE) {
+                    return VectorCostume.MAX_SIZE / this.width;
+                }
+                if (VectorCostume.MAX_SIZE / this.height < VectorCostume.MAX_SCALE) {
+                    return VectorCostume.MAX_SIZE / this.height;
+                }
+                return VectorCostume.MAX_SCALE;
+            }
+            render() {
+                const width = Math.floor(Math.max(1, this.width * this.currentScale));
+                const height = Math.floor(Math.max(1, this.height * this.currentScale));
+                if (!this.canvas) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) {
+                        const fmt = (n) => Math.round(n * 100) / 100;
+                        throw new Error(`cannot get 2d rendering context in initCanvas on Vector "${this.name}" @ ${fmt(this.currentScale)}/${fmt(this.maxScale)} | ${width}x${height}`);
                     }
-                    throw new Error('cannot get 2d rendering context while rendering VectorCostume ' + this.name + ' at scale ' + scale);
+                    this.canvas = canvas;
+                    this.ctx = ctx;
                 }
-                ctx.drawImage(this.source, 0, 0, canvas.width, canvas.height);
-                return canvas;
+                else {
+                    this.canvas.width = width;
+                    this.canvas.height = height;
+                }
+                this.ctx.drawImage(this.svg, 0, 0, width, height);
             }
-            get(scale) {
-                scale = Math.min(VectorCostume.MAX_ZOOM, Math.ceil(scale));
-                const index = scale - 1;
-                if (!this.scales[index]) {
-                    this.scales[index] = this.getScale(scale);
+            requestSize(costumeScale) {
+                if (VectorCostume.DISABLE_RASTERIZE) {
+                    return;
                 }
-                return this.scales[index];
+                const scale = Math.min(Math.ceil(costumeScale), this.maxScale);
+                if (this.currentScale < scale) {
+                    this.currentScale = scale;
+                    this.render();
+                }
             }
             getContext() {
-                if (this._context)
-                    return this._context;
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                    throw new Error('cannot get 2d rendering context for VectorCostume ' + this.name);
+                if (this.ctx) {
+                    return this.ctx;
                 }
-                canvas.width = this.width;
-                canvas.height = this.height;
-                ctx.drawImage(this.source, 0, 0);
-                this._context = ctx;
-                return ctx;
+                this.render();
+                return this.ctx;
+            }
+            getImage() {
+                if (VectorCostume.DISABLE_RASTERIZE) {
+                    return this.svg;
+                }
+                if (this.canvas) {
+                    return this.canvas;
+                }
+                this.render();
+                return this.canvas;
             }
         }
-        VectorCostume.MAX_ZOOM = 6;
+        VectorCostume.MAX_SCALE = 8;
+        VectorCostume.MAX_SIZE = 1024;
+        VectorCostume.DISABLE_RASTERIZE = false;
         core.VectorCostume = VectorCostume;
+        if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
+            console.log('Vector rasterization is disabled. This may affect performance.');
+            VectorCostume.DISABLE_RASTERIZE = true;
+        }
         class Sound {
             constructor(data) {
                 this.source = null;
@@ -2753,14 +1868,13 @@ var P;
             'Curly': 'fonts/Griffy-Regular.woff',
             'Serif': 'fonts/SourceSerifPro-Regular.woff',
             'Sans Serif': 'fonts/NotoSans-Regular.woff',
-            'Scratch': 'fonts/Scratch.ttf',
         };
         function loadLocalFont(fontFamily, src) {
             if (fontFamilyCache[fontFamily]) {
                 return Promise.resolve(fontFamilyCache[fontFamily]);
             }
-            return new P.IO.BlobRequest(src, { local: true }).load()
-                .then((blob) => P.IO.readers.toDataURL(blob))
+            return P.io.getAssetManager().loadFont(src)
+                .then((blob) => P.io.readers.toDataURL(blob))
                 .then((url) => {
                 fontFamilyCache[fontFamily] = url;
                 return url;
@@ -2803,90 +1917,87 @@ var P;
 })(P || (P = {}));
 var P;
 (function (P) {
-    var IO;
-    (function (IO) {
-        IO.config = {
+    var i18n;
+    (function (i18n) {
+        'use strict';
+        const SUPPORTED_LANGUAGES = ['en', 'es'];
+        const DEFAULT_LANGUAGE = 'en';
+        function getLanguage() {
+            let language = navigator.language;
+            if (language.indexOf('-') > -1) {
+                language = language.substring(0, language.indexOf('-'));
+            }
+            if (SUPPORTED_LANGUAGES.indexOf(language) === -1) {
+                language = DEFAULT_LANGUAGE;
+            }
+            return language;
+        }
+        const translations = {};
+        const defaultTranslations = {};
+        const language = getLanguage();
+        function translate(messageId) {
+            if (translations[messageId]) {
+                return translations[messageId];
+            }
+            if (defaultTranslations[messageId]) {
+                return defaultTranslations[messageId];
+            }
+            console.warn('Missing translation:', messageId);
+            return '## ' + messageId + ' ##';
+        }
+        i18n.translate = translate;
+        function translateElement(element) {
+            const translatable = element.querySelectorAll('[data-i18n]');
+            for (var i = 0; i < translatable.length; i++) {
+                const el = translatable[i];
+                const messageId = el.getAttribute('data-i18n');
+                if (messageId === null)
+                    continue;
+                const result = translate(messageId);
+                el.textContent = result;
+            }
+        }
+        i18n.translateElement = translateElement;
+        function merge(into, source) {
+            for (const key of Object.keys(source)) {
+                into[key] = source[key];
+            }
+        }
+        function addTranslations(importedLanguage, importedTranslations) {
+            if (importedLanguage === language) {
+                merge(translations, importedTranslations);
+            }
+            else if (importedLanguage === DEFAULT_LANGUAGE) {
+                merge(defaultTranslations, importedTranslations);
+            }
+        }
+        i18n.addTranslations = addTranslations;
+        addTranslations('en', {
+            'player.controls.turboIndicator': 'Turbo Mode',
+            'player.controls.fullscreen.title': 'Click to fullscreen player, Shift+click to just maximize.',
+            'player.controls.flag.title': 'Shift+click to enable turbo mode.',
+            'player.controls.flag.title.enabled': 'Turbo mode is enabled. Shift+click to disable turbo mode.',
+            'player.controls.flag.title.disabled': 'Turbo mode is disabled. Shift+click to enable turbo mode.',
+            'player.errorhandler.error': 'An internal error occurred. <a $attrs>Click here</a> to file a bug report.',
+            'player.errorhandler.error.unsupported': 'This project type ($type) is not supported. For more information and workarounds, <a href="https://github.com/forkphorus/forkphorus/wiki/On-Scratch-1-Projects" target="_blank" rel="noopener">visit this help page</a>.',
+            'player.errorhandler.error.doesnotexist': 'There is no project with ID $id (Project was probably deleted, never existed, or you made a typo.)',
+            'player.errorhandler.instructions': 'Describe what you were doing to cause this error:',
+        });
+        addTranslations('es', {
+            'player.controls.turboIndicator': 'Modo Turbo',
+        });
+    })(i18n = P.i18n || (P.i18n = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
+    var io;
+    (function (io) {
+        io.config = {
             localPath: '',
         };
         if (['http:', 'https:'].indexOf(location.protocol) === -1) {
-            IO.config.localPath = 'https://forkphorus.github.io';
+            io.config.localPath = 'https://forkphorus.github.io';
         }
-        class Request {
-            constructor(url, options = {}) {
-                if (options.local) {
-                    if (url.indexOf('data:') !== 0) {
-                        url = IO.config.localPath + url;
-                    }
-                }
-                this.rejectOnError = options.rejectOnError !== false;
-                this.url = url;
-            }
-            load() {
-                return new Promise((resolve, reject) => {
-                    const attempt = (errorCallback) => {
-                        this._load()
-                            .then((response) => {
-                            resolve(response);
-                        })
-                            .catch((err) => {
-                            errorCallback(err);
-                        });
-                    };
-                    attempt((err) => {
-                        console.warn(`First attempt to download ${this.url} failed, trying again (${err})`);
-                        setTimeout(function () {
-                            attempt((err) => {
-                                reject(err);
-                            });
-                        }, 250);
-                    });
-                });
-            }
-        }
-        IO.Request = Request;
-        class XHRRequest extends Request {
-            _load() {
-                return new Promise((resolve, reject) => {
-                    const xhr = new XMLHttpRequest();
-                    this.xhr = xhr;
-                    xhr.addEventListener('load', () => {
-                        if (XHRRequest.acceptableResponseCodes.indexOf(xhr.status) !== -1 || !this.rejectOnError) {
-                            resolve(xhr.response);
-                        }
-                        else {
-                            reject(new Error(`HTTP Error ${xhr.status} while downloading ${this.url}`));
-                        }
-                    });
-                    xhr.addEventListener('error', (err) => {
-                        reject(`Error while downloading ${this.url} (error) (${xhr.status})`);
-                    });
-                    xhr.addEventListener('abort', (err) => {
-                        reject(`Error while downloading ${this.url} (abort) (${xhr.status})`);
-                    });
-                    xhr.open('GET', this.url);
-                    xhr.responseType = this.type;
-                    setTimeout(xhr.send.bind(xhr));
-                });
-            }
-        }
-        XHRRequest.acceptableResponseCodes = [0, 200];
-        IO.XHRRequest = XHRRequest;
-        class ArrayBufferRequest extends XHRRequest {
-            get type() { return 'arraybuffer'; }
-        }
-        IO.ArrayBufferRequest = ArrayBufferRequest;
-        class BlobRequest extends XHRRequest {
-            get type() { return 'blob'; }
-        }
-        IO.BlobRequest = BlobRequest;
-        class TextRequest extends XHRRequest {
-            get type() { return 'text'; }
-        }
-        IO.TextRequest = TextRequest;
-        class JSONRequest extends XHRRequest {
-            get type() { return 'json'; }
-        }
-        IO.JSONRequest = JSONRequest;
         let readers;
         (function (readers) {
             function toArrayBuffer(object) {
@@ -2896,9 +2007,7 @@ var P;
                         resolve(fileReader.result);
                     };
                     fileReader.onerror = function (err) {
-                        reject('Could not read object');
-                    };
-                    fileReader.onprogress = function (progress) {
+                        reject(new Error('Could not read object as ArrayBuffer'));
                     };
                     fileReader.readAsArrayBuffer(object);
                 });
@@ -2911,9 +2020,7 @@ var P;
                         resolve(fileReader.result);
                     };
                     fileReader.onerror = function (err) {
-                        reject('Could not read object');
-                    };
-                    fileReader.onprogress = function (progress) {
+                        reject(new Error('Could not read object as data: URL'));
                     };
                     fileReader.readAsDataURL(object);
                 });
@@ -2926,16 +2033,1683 @@ var P;
                         resolve(fileReader.result);
                     };
                     fileReader.onerror = function (err) {
-                        reject('Could not read object');
-                    };
-                    fileReader.onprogress = function (progress) {
+                        reject(new Error('Could not read object as text'));
                     };
                     fileReader.readAsText(object);
                 });
             }
             readers.toText = toText;
-        })(readers = IO.readers || (IO.readers = {}));
-    })(IO = P.IO || (P.IO = {}));
+        })(readers = io.readers || (io.readers = {}));
+        class FetchingAssetManager {
+            constructor() {
+                this.soundbankSource = 'soundbank/';
+            }
+            loadSoundbankFile(src) {
+                return this.loadArrayBuffer(this.soundbankSource + src);
+            }
+            loadFont(src) {
+                return this.loadBlob(src);
+            }
+            loadArrayBuffer(src) {
+                return new Request(io.config.localPath + src).load('arraybuffer');
+            }
+            loadBlob(src) {
+                return new Request(io.config.localPath + src).load('blob');
+            }
+        }
+        var globalAssetManager = new FetchingAssetManager();
+        function getAssetManager() {
+            return globalAssetManager;
+        }
+        io.getAssetManager = getAssetManager;
+        function setAssetManager(newManager) {
+            globalAssetManager = newManager;
+        }
+        io.setAssetManager = setAssetManager;
+        class AbstractTask {
+            setLoader(loader) {
+                this.loader = loader;
+            }
+            updateLoaderProgress() {
+                if (this.loader) {
+                    this.loader.updateProgress();
+                }
+            }
+        }
+        io.AbstractTask = AbstractTask;
+        class Retry extends AbstractTask {
+            constructor() {
+                super(...arguments);
+                this.aborted = false;
+            }
+            try(handle) {
+                return new Promise((resolve, reject) => {
+                    handle()
+                        .then((response) => resolve(response))
+                        .catch((err) => {
+                        if (this.aborted) {
+                            reject(err);
+                            return;
+                        }
+                        console.warn(`First attempt to ${this.getRetryWarningDescription()} failed, trying again.`, err);
+                        setTimeout(() => {
+                            handle()
+                                .then((response) => resolve(response))
+                                .catch((err) => reject(err));
+                        }, 2000);
+                    });
+                });
+            }
+            getRetryWarningDescription() {
+                return 'complete task';
+            }
+            abort() {
+                this.aborted = true;
+            }
+        }
+        io.Retry = Retry;
+        class Request extends Retry {
+            constructor(url) {
+                super();
+                this.url = url;
+                this.shouldIgnoreErrors = false;
+                this.workComputable = false;
+                this.totalWork = 0;
+                this.completedWork = 0;
+                this.complete = false;
+                this.status = 0;
+                this.xhr = null;
+            }
+            isComplete() {
+                return this.complete;
+            }
+            isWorkComputable() {
+                return this.workComputable;
+            }
+            getTotalWork() {
+                return this.totalWork;
+            }
+            getCompletedWork() {
+                return this.completedWork;
+            }
+            abort() {
+                super.abort();
+                if (this.xhr) {
+                    this.xhr.abort();
+                }
+            }
+            ignoreErrors() {
+                this.shouldIgnoreErrors = true;
+                return this;
+            }
+            getStatus() {
+                return this.status;
+            }
+            updateProgress(event) {
+                this.workComputable = event.lengthComputable;
+                this.totalWork = event.total;
+                this.completedWork = event.loaded;
+                this.updateLoaderProgress();
+            }
+            _load() {
+                return new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.addEventListener('load', () => {
+                        this.status = xhr.status;
+                        if (Request.acceptableResponseCodes.indexOf(xhr.status) !== -1 || this.shouldIgnoreErrors) {
+                            resolve(xhr.response);
+                        }
+                        else {
+                            reject(new Error(`HTTP Error ${xhr.status} while downloading ${this.url}`));
+                        }
+                    });
+                    xhr.addEventListener('progress', (e) => {
+                        this.updateProgress(e);
+                    });
+                    xhr.addEventListener('loadstart', (e) => {
+                        this.updateProgress(e);
+                    });
+                    xhr.addEventListener('loadend', (e) => {
+                        this.complete = true;
+                        this.updateProgress(e);
+                    });
+                    xhr.addEventListener('error', (err) => {
+                        reject(new Error(`Error while downloading ${this.url} (error) (${xhr.status}/${xhr.statusText}/${this.aborted}/${xhr.readyState})`));
+                    });
+                    xhr.addEventListener('abort', (err) => {
+                        this.aborted = true;
+                        reject(new Error(`Error while downloading ${this.url} (abort) (${xhr.status}/${xhr.statusText}/${xhr.readyState})`));
+                    });
+                    xhr.open('GET', this.url);
+                    xhr.responseType = this.responseType;
+                    this.xhr = xhr;
+                    setTimeout(xhr.send.bind(xhr));
+                });
+            }
+            load(type) {
+                this.responseType = type;
+                return this.try(() => this._load());
+            }
+            getRetryWarningDescription() {
+                return `download ${this.url}`;
+            }
+        }
+        Request.acceptableResponseCodes = [0, 200];
+        io.Request = Request;
+        class Img extends Retry {
+            constructor(src) {
+                super();
+                this.src = src;
+                this.complete = false;
+            }
+            isComplete() {
+                return this.complete;
+            }
+            isWorkComputable() {
+                return false;
+            }
+            getTotalWork() {
+                return 0;
+            }
+            getCompletedWork() {
+                return 0;
+            }
+            _load() {
+                return new Promise((resolve, reject) => {
+                    const image = new Image();
+                    image.onload = () => {
+                        this.complete = true;
+                        this.updateLoaderProgress();
+                        resolve(image);
+                    };
+                    image.onerror = (err) => {
+                        reject(new Error('Failed to load image: ' + image.src));
+                    };
+                    image.crossOrigin = 'anonymous';
+                    setTimeout(() => {
+                        image.src = this.src;
+                    });
+                });
+            }
+            load() {
+                return this.try(() => this._load());
+            }
+            getRetryWarningDescription() {
+                return `download image ${this.src}`;
+            }
+        }
+        io.Img = Img;
+        class Manual extends AbstractTask {
+            constructor() {
+                super(...arguments);
+                this.complete = false;
+                this.aborted = false;
+            }
+            markComplete() {
+                this.complete = true;
+                this.updateLoaderProgress();
+            }
+            isComplete() {
+                return this.complete;
+            }
+            isWorkComputable() {
+                return false;
+            }
+            getTotalWork() {
+                return 0;
+            }
+            getCompletedWork() {
+                return 0;
+            }
+            abort() {
+                this.aborted = true;
+            }
+        }
+        io.Manual = Manual;
+        class PromiseTask extends Manual {
+            constructor(promise) {
+                super();
+                promise.then(() => this.markComplete());
+            }
+        }
+        io.PromiseTask = PromiseTask;
+        class Loader {
+            constructor() {
+                this._tasks = [];
+                this.aborted = false;
+                this.error = false;
+            }
+            calculateProgress() {
+                if (this.aborted) {
+                    return 1;
+                }
+                const totalTasks = this._tasks.length;
+                if (totalTasks === 0) {
+                    return 0;
+                }
+                let totalWork = 0;
+                let completedWork = 0;
+                let finishedTasks = 0;
+                let uncomputable = 0;
+                for (const task of this._tasks) {
+                    if (task.isComplete()) {
+                        finishedTasks++;
+                    }
+                    if (task.isWorkComputable()) {
+                        completedWork += task.getCompletedWork();
+                        totalWork += task.getTotalWork();
+                    }
+                    else {
+                        uncomputable++;
+                    }
+                }
+                if (totalWork === 0) {
+                    return finishedTasks / totalTasks;
+                }
+                if (uncomputable > 0) {
+                    const averageWork = totalWork / (totalTasks - uncomputable) * uncomputable;
+                    totalWork = 0;
+                    completedWork = 0;
+                    for (const task of this._tasks) {
+                        if (task.isWorkComputable()) {
+                            completedWork += task.getCompletedWork();
+                            totalWork += task.getTotalWork();
+                        }
+                        else {
+                            totalWork += averageWork;
+                            if (task.isComplete())
+                                completedWork += averageWork;
+                        }
+                    }
+                }
+                return completedWork / totalWork;
+            }
+            updateProgress() {
+                if (this.error) {
+                    return;
+                }
+                const progress = this.calculateProgress();
+                this.onprogress(progress);
+            }
+            resetTasks() {
+                this._tasks = [];
+                this.updateProgress();
+            }
+            addTask(task) {
+                this._tasks.push(task);
+                task.setLoader(this);
+                return task;
+            }
+            abort() {
+                this.aborted = true;
+                for (const task of this._tasks) {
+                    task.abort();
+                }
+            }
+            cleanup() {
+                for (const task of this._tasks) {
+                    task.setLoader(null);
+                }
+                this._tasks.length = 0;
+            }
+            onprogress(progress) {
+            }
+        }
+        io.Loader = Loader;
+    })(io = P.io || (P.io = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
+    var json;
+    (function (json) {
+        class JSONParser {
+            constructor(source) {
+                this.source = source;
+                this.index = 0;
+            }
+            parse() {
+                return this.parseValue();
+            }
+            lineInfo() {
+                let line = 0;
+                let column = 0;
+                for (var i = 0; i < this.index; i++) {
+                    if (this.source[i] === '\n') {
+                        line++;
+                        column = 0;
+                    }
+                    else {
+                        column++;
+                    }
+                }
+                return { line: line + 1, column: column + 1 };
+            }
+            error(message) {
+                const { line, column } = this.lineInfo();
+                throw new Error(`JSONParser: ${message} (Line ${line} Column ${column})`);
+            }
+            char() {
+                return this.charAt(this.index);
+            }
+            charAt(index) {
+                if (index >= this.source.length) {
+                    this.error('Unexpected end of input');
+                }
+                return this.source[index];
+            }
+            next() {
+                this.index++;
+            }
+            expect(char) {
+                if (this.char() !== char) {
+                    this.error(`Expected '${char}' but found '${this.char()}'`);
+                }
+                this.next();
+            }
+            peek(length = 1, offset = 1) {
+                if (length === 1)
+                    return this.charAt(this.index + offset);
+                let result = '';
+                for (var i = 0; i < length; i++) {
+                    result += this.charAt(this.index + offset + i);
+                }
+                return result;
+            }
+            skipWhitespace() {
+                while (/\s/.test(this.char())) {
+                    this.next();
+                }
+            }
+            parseValue() {
+                this.skipWhitespace();
+                const char = this.char();
+                switch (char) {
+                    case '"': return this.parseString();
+                    case '{': return this.parseObject();
+                    case '[': return this.parseList();
+                    case '0':
+                    case '1':
+                    case '2':
+                    case '3':
+                    case '4':
+                    case '5':
+                    case '6':
+                    case '7':
+                    case '8':
+                    case '9':
+                    case '-':
+                        return this.parseNumber();
+                    default: return this.parseWord();
+                }
+            }
+            parseWord() {
+                if (this.peek(4, 0) === 'null') {
+                    for (var i = 0; i < 4; i++)
+                        this.next();
+                    return Infinity;
+                }
+                if (this.peek(4, 0) === 'true') {
+                    for (var i = 0; i < 4; i++)
+                        this.next();
+                    return true;
+                }
+                if (this.peek(5, 0) === 'false') {
+                    for (var i = 0; i < 5; i++)
+                        this.next();
+                    return false;
+                }
+                if (this.peek(8, 0) === 'Infinity') {
+                    for (var i = 0; i < 8; i++)
+                        this.next();
+                    return Infinity;
+                }
+                if (this.peek(3, 0) === 'NaN') {
+                    for (var i = 0; i < 3; i++)
+                        this.next();
+                    return NaN;
+                }
+                this.error(`Unknown word (starts with ${this.char()})`);
+            }
+            parseNumber() {
+                let number = '';
+                while (true) {
+                    number += this.char();
+                    if (/[\d\.e+-]/i.test(this.peek())) {
+                        this.next();
+                    }
+                    else {
+                        break;
+                    }
+                }
+                this.next();
+                const value = +number;
+                if (Number.isNaN(value)) {
+                    this.error('Not a number: ' + number);
+                }
+                return value;
+            }
+            parseString() {
+                this.expect('"');
+                let result = '';
+                if (this.char() === '"') {
+                    this.next();
+                    return '';
+                }
+                while (true) {
+                    const char = this.char();
+                    if (char === '\\') {
+                        this.next();
+                        switch (this.char()) {
+                            case '"':
+                                result += '"';
+                                break;
+                            case '/':
+                                result += '/';
+                                break;
+                            case '\\':
+                                result += '\\';
+                                break;
+                            case 'b':
+                                result += '\b';
+                                break;
+                            case 'f':
+                                result += '\f';
+                                break;
+                            case 'n':
+                                result += '\n';
+                                break;
+                            case 'r':
+                                result += '\r';
+                                break;
+                            case 't':
+                                result += '\t';
+                                break;
+                            case 'u': {
+                                let hexString = '';
+                                for (var i = 0; i < 4; i++) {
+                                    this.next();
+                                    const char = this.char();
+                                    if (!/[0-9a-f]/i.test(char)) {
+                                        this.error('Invalid hex code: ' + char);
+                                    }
+                                    hexString += char;
+                                }
+                                const hexNumber = Number.parseInt(hexString, 16);
+                                const letter = String.fromCharCode(hexNumber);
+                                result += letter;
+                                break;
+                            }
+                            default: this.error('Invalid escape code: \\' + this.char());
+                        }
+                    }
+                    else {
+                        result += char;
+                    }
+                    if (this.peek() === '"') {
+                        break;
+                    }
+                    this.next();
+                }
+                this.next();
+                this.expect('"');
+                return result;
+            }
+            parseList() {
+                this.expect('[');
+                this.skipWhitespace();
+                if (this.char() === ']') {
+                    this.next();
+                    return [];
+                }
+                const result = [];
+                while (true) {
+                    this.skipWhitespace();
+                    const value = this.parseValue();
+                    result.push(value);
+                    this.skipWhitespace();
+                    if (this.char() === ']') {
+                        break;
+                    }
+                    this.expect(',');
+                }
+                this.expect(']');
+                return result;
+            }
+            parseObject() {
+                this.expect('{');
+                this.skipWhitespace();
+                if (this.char() === '}') {
+                    this.next();
+                    return {};
+                }
+                const result = Object.create(null);
+                while (true) {
+                    this.skipWhitespace();
+                    const key = this.parseString();
+                    this.skipWhitespace();
+                    this.expect(':');
+                    const value = this.parseValue();
+                    result[key] = value;
+                    this.skipWhitespace();
+                    if (this.char() === '}') {
+                        break;
+                    }
+                    this.expect(',');
+                }
+                this.expect('}');
+                return result;
+            }
+        }
+        function parse(source) {
+            if (!/^\s*{/.test(source)) {
+                throw new Error('The input does not seem to be a JSON object');
+            }
+            try {
+                return JSON.parse(source);
+            }
+            catch (firstError) {
+                console.warn('JSON.parse failed. Trying alternative parser', firstError);
+                try {
+                    const parser = new JSONParser(source);
+                    return parser.parse();
+                }
+                catch (secondError) {
+                    console.warn('Alternative parser failed', secondError);
+                    throw firstError;
+                }
+            }
+        }
+        json.parse = parse;
+    })(json = P.json || (P.json = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
+    var utils;
+    (function (utils) {
+        function parseRotationStyle(style) {
+            switch (style) {
+                case 'leftRight':
+                case 'left-right':
+                    return 1;
+                case 'none':
+                case 'don\'t rotate':
+                    return 2;
+                case 'normal':
+                case 'all around':
+                    return 0;
+            }
+            console.warn('unknown rotation style', style);
+            return 0;
+        }
+        utils.parseRotationStyle = parseRotationStyle;
+        function rgbToHSL(r, g, b) {
+            r /= 255;
+            g /= 255;
+            b /= 255;
+            var min = Math.min(r, g, b);
+            var max = Math.max(r, g, b);
+            if (min === max) {
+                return [0, 0, r];
+            }
+            var c = max - min;
+            var l = (min + max) / 2;
+            var s = c / (1 - Math.abs(2 * l - 1));
+            var h;
+            switch (max) {
+                case r:
+                    h = ((g - b) / c + 6) % 6;
+                    break;
+                case g:
+                    h = (b - r) / c + 2;
+                    break;
+                case b:
+                    h = (r - g) / c + 4;
+                    break;
+            }
+            h *= 60;
+            return [h, s, l];
+        }
+        utils.rgbToHSL = rgbToHSL;
+        function rgbToHSV(r, g, b) {
+            r /= 255;
+            g /= 255;
+            b /= 255;
+            var max = Math.max(r, g, b), min = Math.min(r, g, b);
+            var h, s, v = max;
+            var d = max - min;
+            s = max == 0 ? 0 : d / max;
+            if (max == min) {
+                h = 0;
+            }
+            else {
+                switch (max) {
+                    case r:
+                        h = (g - b) / d + (g < b ? 6 : 0);
+                        break;
+                    case g:
+                        h = (b - r) / d + 2;
+                        break;
+                    case b:
+                        h = (r - g) / d + 4;
+                        break;
+                }
+                h /= 6;
+            }
+            return [h * 360, s, v];
+        }
+        utils.rgbToHSV = rgbToHSV;
+        function hsvToRGB(h, s, v) {
+            var r, g, b;
+            var i = Math.floor(h * 6);
+            var f = h * 6 - i;
+            var p = v * (1 - s);
+            var q = v * (1 - f * s);
+            var t = v * (1 - (1 - f) * s);
+            switch (i % 6) {
+                case 0:
+                    r = v, g = t, b = p;
+                    break;
+                case 1:
+                    r = q, g = v, b = p;
+                    break;
+                case 2:
+                    r = p, g = v, b = t;
+                    break;
+                case 3:
+                    r = p, g = q, b = v;
+                    break;
+                case 4:
+                    r = t, g = p, b = v;
+                    break;
+                case 5:
+                    r = v, g = p, b = q;
+                    break;
+            }
+            return [r * 255, g * 255, b * 255];
+        }
+        utils.hsvToRGB = hsvToRGB;
+        function hslToRGB(h, s, l) {
+            var r, g, b;
+            if (s == 0) {
+                r = g = b = l;
+            }
+            else {
+                function hue2rgb(p, q, t) {
+                    if (t < 0)
+                        t += 1;
+                    if (t > 1)
+                        t -= 1;
+                    if (t < 1 / 6)
+                        return p + (q - p) * 6 * t;
+                    if (t < 1 / 2)
+                        return q;
+                    if (t < 2 / 3)
+                        return p + (q - p) * (2 / 3 - t) * 6;
+                    return p;
+                }
+                var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                var p = 2 * l - q;
+                r = hue2rgb(p, q, h + 1 / 3);
+                g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1 / 3);
+            }
+            return [r * 255, g * 255, b * 255];
+        }
+        utils.hslToRGB = hslToRGB;
+        function hslToHSV(h, s, l) {
+            var v = l + s * Math.min(l, 1 - l);
+            var s = v === 0 ? 0 : 2 - 2 * l / v;
+            return [h, s, v];
+        }
+        utils.hslToHSV = hslToHSV;
+        function hsvToHSL(h, s, v) {
+            var l = v - v * s / 2;
+            var s = l === 0 ? 0 : (v - l) / Math.min(2 - 2 * l / v);
+            return [h, s, l];
+        }
+        utils.hsvToHSL = hsvToHSL;
+        function clamp(number, min, max) {
+            return Math.min(max, Math.max(min, number));
+        }
+        utils.clamp = clamp;
+        function settled(promise) {
+            return new Promise((resolve, _reject) => {
+                promise
+                    .then(() => resolve())
+                    .catch(() => resolve());
+            });
+        }
+        utils.settled = settled;
+    })(utils = P.utils || (P.utils = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
+    var player;
+    (function (player_1) {
+        class PlayerError extends Error {
+            constructor() {
+                super(...arguments);
+                this.handledByPlayer = true;
+            }
+        }
+        player_1.PlayerError = PlayerError;
+        class ProjectNotSupportedError extends PlayerError {
+            constructor(type) {
+                super('Project type (' + type + ') is not supported');
+                this.type = type;
+                this.name = 'ProjectNotSupportedError';
+            }
+        }
+        player_1.ProjectNotSupportedError = ProjectNotSupportedError;
+        class ProjectDoesNotExistError extends PlayerError {
+            constructor(id) {
+                super('Project with ID ' + id + ' does not exist');
+                this.id = id;
+                this.name = 'ProjectDoesNotExistError';
+            }
+        }
+        player_1.ProjectDoesNotExistError = ProjectDoesNotExistError;
+        class LoaderIdentifier {
+            constructor() {
+                this.active = true;
+                this.loader = null;
+            }
+            cancel() {
+                if (!this.active) {
+                    throw new Error('cannot cancel: already cancelled');
+                }
+                this.active = false;
+                if (this.loader) {
+                    this.loader.abort();
+                }
+            }
+            setLoader(loader) {
+                if (!this.active) {
+                    throw new Error('Loading aborted');
+                }
+                this.loader = loader;
+            }
+            isActive() {
+                return this.active;
+            }
+        }
+        class Slot {
+            constructor() {
+                this._listeners = [];
+            }
+            subscribe(fn) {
+                this._listeners.push(fn);
+            }
+            emit(value) {
+                for (const listener of this._listeners) {
+                    listener(value);
+                }
+            }
+        }
+        class LocalProjectMeta {
+            constructor(filename) {
+                this.filename = filename;
+            }
+            load() {
+                return Promise.resolve(this);
+            }
+            getTitle() {
+                return this.filename;
+            }
+            getId() {
+                return this.filename;
+            }
+            isFromScratch() {
+                return false;
+            }
+        }
+        class BinaryProjectMeta {
+            load() {
+                return Promise.resolve(this);
+            }
+            getTitle() {
+                return null;
+            }
+            getId() {
+                return '#buffer#';
+            }
+            isFromScratch() {
+                return false;
+            }
+        }
+        class RemoteProjectMeta {
+            constructor(id) {
+                this.id = id;
+                this.title = null;
+            }
+            load() {
+                return new P.io.Request('https://scratch.garbomuffin.com/proxy/projects/$id'.replace('$id', this.id))
+                    .ignoreErrors()
+                    .load('json')
+                    .then((data) => {
+                    if (data.title) {
+                        this.title = data.title;
+                    }
+                    return this;
+                });
+            }
+            getTitle() {
+                return this.title;
+            }
+            getId() {
+                return this.id;
+            }
+            isFromScratch() {
+                return true;
+            }
+        }
+        class Player {
+            constructor(options = {}) {
+                this.onprogress = new Slot();
+                this.onload = new Slot();
+                this.onstartload = new Slot();
+                this.oncleanup = new Slot();
+                this.onthemechange = new Slot();
+                this.onerror = new Slot();
+                this.onresume = new Slot();
+                this.onpause = new Slot();
+                this.onoptionschange = new Slot();
+                this.MAGIC = {
+                    LARGE_Z_INDEX: '9999999999',
+                    CLOUD_HISTORY_API: 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100',
+                    PROJECT_API: 'https://projects.scratch.mit.edu/$id',
+                    CLOUD_DATA_SERVER: 'wss://stratus.garbomuffin.com',
+                };
+                this.projectMeta = null;
+                this.currentLoader = null;
+                this.fullscreenEnabled = false;
+                this.clickToPlayContainer = null;
+                this.root = document.createElement('div');
+                this.root.className = 'player-root';
+                this.playerContainer = document.createElement('div');
+                this.playerContainer.className = 'player-stage';
+                this.root.appendChild(this.playerContainer);
+                this.setOptions(Object.assign(Object.assign({}, options), Player.DEFAULT_OPTIONS));
+                window.addEventListener('resize', () => this.updateFullscreen());
+                document.addEventListener('fullscreenchange', () => this.onfullscreenchange());
+                document.addEventListener('mozfullscreenchange', () => this.onfullscreenchange());
+                document.addEventListener('webkitfullscreenchange', () => this.onfullscreenchange());
+                this.handleError = this.handleError.bind(this);
+            }
+            enableAttribute(name) {
+                this.root.setAttribute(name, '');
+            }
+            disableAttribute(name) {
+                this.root.removeAttribute(name);
+            }
+            setAttribute(name, enabled) {
+                if (enabled) {
+                    this.enableAttribute(name);
+                }
+                else {
+                    this.disableAttribute(name);
+                }
+            }
+            setOptions(changedOptions) {
+                this.options = Object.assign(Object.assign({}, this.options), changedOptions);
+                if (typeof changedOptions.turbo !== 'undefined') {
+                    this.setAttribute('turbo', changedOptions.turbo);
+                }
+                if (typeof changedOptions.theme !== 'undefined') {
+                    this.root.setAttribute('theme', changedOptions.theme);
+                    this.onthemechange.emit(changedOptions.theme);
+                }
+                if (this.hasStage()) {
+                    this.applyOptionsToStage();
+                }
+                this.onoptionschange.emit(changedOptions);
+            }
+            getOptions() {
+                return this.options;
+            }
+            addControls(options = {}) {
+                if (this.controlsContainer) {
+                    throw new Error('This player already has controls.');
+                }
+                let flagTouchTimeout = undefined;
+                const clickStop = (e) => {
+                    this.throwWithoutStage();
+                    this.stopAll();
+                    this.stage.draw();
+                    e.preventDefault();
+                };
+                const clickPause = (e) => {
+                    this.toggleRunning();
+                };
+                const clickFullscreen = (e) => {
+                    this.throwWithoutStage();
+                    this.setOptions({ fullscreenMode: e.shiftKey ? 'window' : 'full' });
+                    if (this.fullscreenEnabled) {
+                        this.exitFullscreen();
+                    }
+                    else {
+                        this.enterFullscreen();
+                    }
+                };
+                const clickFlag = (e) => {
+                    if (flagTouchTimeout === null) {
+                        return;
+                    }
+                    if (flagTouchTimeout) {
+                        clearTimeout(flagTouchTimeout);
+                    }
+                    this.throwWithoutStage();
+                    if (e.shiftKey) {
+                        this.setOptions({ turbo: !this.options.turbo });
+                    }
+                    else {
+                        this.triggerGreenFlag();
+                    }
+                    this.focus();
+                    e.preventDefault();
+                };
+                const startTouchFlag = (e) => {
+                    flagTouchTimeout = setTimeout(() => {
+                        flagTouchTimeout = null;
+                        this.setOptions({ turbo: !this.options.turbo });
+                    }, 500);
+                };
+                const preventDefault = (e) => {
+                    e.preventDefault();
+                };
+                this.controlsContainer = document.createElement('div');
+                this.controlsContainer.className = 'player-controls';
+                this.controlsContainer.onmousedown = (e) => {
+                    if (e.target !== this.controlsContainer) {
+                        e.stopPropagation();
+                    }
+                };
+                this.controlsContainer.ontouchstart = (e) => {
+                    if (e.target !== this.controlsContainer) {
+                        e.stopPropagation();
+                    }
+                };
+                if (options.enableStop !== false) {
+                    var stopButton = document.createElement('span');
+                    stopButton.className = 'player-button player-stop';
+                    this.controlsContainer.appendChild(stopButton);
+                    stopButton.addEventListener('click', clickStop);
+                    stopButton.addEventListener('touchend', clickStop);
+                    stopButton.addEventListener('touchstart', preventDefault);
+                }
+                if (options.enablePause !== false) {
+                    var pauseButton = document.createElement('span');
+                    pauseButton.className = 'player-button player-pause';
+                    this.controlsContainer.appendChild(pauseButton);
+                    pauseButton.addEventListener('click', clickPause);
+                    pauseButton.addEventListener('touchend', clickPause);
+                    pauseButton.addEventListener('touchstart', preventDefault);
+                }
+                if (options.enableFlag !== false) {
+                    var flagButton = document.createElement('span');
+                    flagButton.className = 'player-button player-flag';
+                    flagButton.title = P.i18n.translate('player.controls.flag.title');
+                    this.controlsContainer.appendChild(flagButton);
+                    flagButton.addEventListener('click', clickFlag);
+                    flagButton.addEventListener('touchend', clickFlag);
+                    flagButton.addEventListener('touchstart', startTouchFlag);
+                    flagButton.addEventListener('touchstart', preventDefault);
+                }
+                if (options.enableTurbo !== false) {
+                    var turboText = document.createElement('span');
+                    turboText.innerText = P.i18n.translate('player.controls.turboIndicator');
+                    turboText.className = 'player-label player-turbo';
+                    this.controlsContainer.appendChild(turboText);
+                    this.onoptionschange.subscribe((options) => {
+                        if (flagButton && typeof options.turbo === 'boolean') {
+                            if (options.turbo) {
+                                flagButton.title = P.i18n.translate('player.controls.flag.title.enabled');
+                            }
+                            else {
+                                flagButton.title = P.i18n.translate('player.controls.flag.title.disabled');
+                            }
+                        }
+                    });
+                }
+                if (options.enableFullscreen !== false) {
+                    var fullscreenButton = document.createElement('span');
+                    fullscreenButton.className = 'player-button player-fullscreen-btn';
+                    fullscreenButton.title = P.i18n.translate('player.controls.fullscreen.title');
+                    this.controlsContainer.appendChild(fullscreenButton);
+                    fullscreenButton.addEventListener('click', clickFullscreen);
+                    fullscreenButton.addEventListener('touchend', clickFullscreen);
+                    fullscreenButton.addEventListener('touchstart', preventDefault);
+                }
+                this.root.addEventListener('touchmove', (e) => {
+                    if (this.fullscreenEnabled) {
+                        e.preventDefault();
+                    }
+                });
+                this.root.insertBefore(this.controlsContainer, this.root.firstChild);
+            }
+            applyOptionsToStage() {
+                if (this.stage.runtime.framerate !== this.options.fps) {
+                    this.stage.runtime.framerate = this.options.fps;
+                    if (this.isRunning()) {
+                        this.stage.runtime.resetInterval();
+                    }
+                }
+                this.stage.username = this.options.username;
+                this.stage.runtime.isTurbo = this.options.turbo;
+                this.stage.renderer.imageSmoothingEnabled = this.options.imageSmoothing;
+            }
+            throwWithoutStage() {
+                if (!this.stage) {
+                    throw new Error('Missing stage.');
+                }
+            }
+            resume() {
+                this.throwWithoutStage();
+                if (this.isRunning()) {
+                    throw new Error('cannot resume: project is already running');
+                }
+                this.stage.runtime.start();
+                this.enableAttribute('running');
+                this.onresume.emit();
+            }
+            pause() {
+                this.throwWithoutStage();
+                if (!this.isRunning()) {
+                    throw new Error('cannot pause: project is already paused');
+                }
+                this.stage.runtime.pause();
+                this.disableAttribute('running');
+                this.onpause.emit();
+            }
+            isRunning() {
+                if (!this.hasStage()) {
+                    return false;
+                }
+                return this.stage.runtime.isRunning;
+            }
+            toggleRunning() {
+                this.throwWithoutStage();
+                if (this.stage.runtime.isRunning) {
+                    this.pause();
+                }
+                else {
+                    this.resume();
+                }
+            }
+            stopAll() {
+                this.throwWithoutStage();
+                this.pause();
+                this.stage.runtime.stopAll();
+            }
+            triggerGreenFlag() {
+                this.throwWithoutStage();
+                if (!this.isRunning()) {
+                    this.resume();
+                }
+                this.stage.runtime.stopAll();
+                this.stage.runtime.triggerGreenFlag();
+                if (this.clickToPlayContainer) {
+                    this.removeClickToPlayContainer();
+                }
+            }
+            cleanup() {
+                if (this.currentLoader) {
+                    this.currentLoader.cancel();
+                    this.currentLoader = null;
+                }
+                if (this.clickToPlayContainer) {
+                    this.removeClickToPlayContainer();
+                }
+                if (this.fullscreenEnabled) {
+                    this.exitFullscreen();
+                }
+                if (this.stage) {
+                    this.stage.destroy();
+                    this.stage = null;
+                }
+                this.projectMeta = null;
+                while (this.playerContainer.firstChild) {
+                    this.playerContainer.removeChild(this.playerContainer.firstChild);
+                }
+                this.oncleanup.emit();
+            }
+            focus() {
+                this.stage.focus();
+            }
+            hasStage() {
+                return !!this.stage;
+            }
+            getStage() {
+                this.throwWithoutStage();
+                return this.stage;
+            }
+            hasProjectMeta() {
+                return !!this.projectMeta;
+            }
+            getProjectMeta() {
+                if (!this.projectMeta) {
+                    throw new Error('no project meta');
+                }
+                return this.projectMeta;
+            }
+            handleError(error) {
+                console.error(error);
+                this.onerror.emit(error);
+            }
+            enterFullscreen() {
+                this.savedTheme = this.root.getAttribute('theme');
+                this.setOptions({ theme: 'dark' });
+                if (this.options.fullscreenMode === 'full') {
+                    if (this.root.requestFullScreenWithKeys) {
+                        this.root.requestFullScreenWithKeys();
+                    }
+                    else if (this.root.webkitRequestFullScreen) {
+                        this.root.webkitRequestFullScreen(Element.ALLOW_KEYBOARD_INPUT);
+                    }
+                    else if (this.root.requestFullscreen) {
+                        this.root.requestFullscreen();
+                    }
+                }
+                document.body.classList.add('player-body-fullscreen');
+                this.root.style.zIndex = this.MAGIC.LARGE_Z_INDEX;
+                this.enableAttribute('fullscreen');
+                this.fullscreenEnabled = true;
+                if (this.hasStage()) {
+                    if (!this.isRunning()) {
+                        this.stage.draw();
+                    }
+                    if (this.options.focusOnLoad) {
+                        this.focus();
+                    }
+                }
+                this.updateFullscreen();
+            }
+            exitFullscreen() {
+                this.setOptions({ theme: this.savedTheme });
+                this.disableAttribute('fullscreen');
+                this.fullscreenEnabled = false;
+                if (document.fullscreenElement === this.root || document.webkitFullscreenElement === this.root) {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    }
+                    else if (document.mozCancelFullScreen) {
+                        document.mozCancelFullScreen();
+                    }
+                    else if (document.webkitCancelFullScreen) {
+                        document.webkitCancelFullScreen();
+                    }
+                    else if (document.webkitExitFullscreen) {
+                        document.webkitExitFullscreen();
+                    }
+                }
+                this.root.style.paddingLeft = '';
+                this.root.style.paddingTop = '';
+                this.root.style.zIndex = '';
+                if (this.controlsContainer) {
+                    this.controlsContainer.style.width = '';
+                }
+                document.body.classList.remove('player-body-fullscreen');
+                if (this.stage) {
+                    this.stage.setZoom(1);
+                    this.focus();
+                }
+            }
+            updateFullscreen() {
+                if (!this.fullscreenEnabled) {
+                    return;
+                }
+                this.throwWithoutStage();
+                const controlsHeight = this.controlsContainer ? this.controlsContainer.offsetHeight : 0;
+                window.scrollTo(0, 0);
+                let w = window.innerWidth - this.options.fullscreenPadding * 2;
+                let h = window.innerHeight - this.options.fullscreenPadding - controlsHeight;
+                w = Math.min(w, h / 0.75);
+                w = Math.min(w, this.options.fullscreenMaxWidth);
+                h = w * 0.75 + controlsHeight;
+                if (this.controlsContainer) {
+                    this.controlsContainer.style.width = w + 'px';
+                }
+                this.root.style.paddingLeft = (window.innerWidth - w) / 2 + 'px';
+                this.root.style.paddingTop = (window.innerHeight - h - this.options.fullscreenPadding) / 2 + 'px';
+                this.stage.setZoom(w / 480);
+            }
+            onfullscreenchange() {
+                if (typeof document.fullscreen === 'boolean' && document.fullscreen !== this.fullscreenEnabled) {
+                    this.exitFullscreen();
+                }
+                else if (typeof document.webkitIsFullScreen === 'boolean' && document.webkitIsFullScreen !== this.fullscreenEnabled) {
+                    this.exitFullscreen();
+                }
+            }
+            getCloudVariablesFromLogs(id) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    const data = yield new P.io.Request(this.MAGIC.CLOUD_HISTORY_API.replace('$id', id)).load('json');
+                    const variables = Object.create(null);
+                    for (const entry of data.reverse()) {
+                        const { verb, name, value } = entry;
+                        switch (verb) {
+                            case 'create_var':
+                            case 'set_var':
+                                variables[name] = value;
+                                break;
+                            case 'del_var':
+                                delete variables[name];
+                                break;
+                            case 'rename_var':
+                                variables[value] = variables[name];
+                                delete variables[name];
+                                break;
+                            default:
+                                console.warn('unknown cloud variable log verb', verb);
+                        }
+                    }
+                    return variables;
+                });
+            }
+            applyCloudVariablesOnce(stage, id) {
+                this.getCloudVariablesFromLogs(id).then((variables) => {
+                    for (const name of Object.keys(variables)) {
+                        if (stage.cloudVariables.indexOf(name) > -1) {
+                            stage.vars[name] = variables[name];
+                        }
+                        else {
+                            console.warn('not applying unknown cloud variable:', name);
+                        }
+                    }
+                });
+            }
+            applyCloudVariablesSocket(stage, id) {
+                const handler = new P.ext.cloud.WebSocketCloudHandler(stage, this.MAGIC.CLOUD_DATA_SERVER, id);
+                stage.setCloudHandler(handler);
+            }
+            applyCloudVariablesLocalStorage(stage, id) {
+                const handler = new P.ext.cloud.LocalStorageCloudHandler(stage, id);
+                stage.setCloudHandler(handler);
+            }
+            applyCloudVariables(policy) {
+                const stage = this.stage;
+                const meta = this.projectMeta;
+                if (!meta) {
+                    throw new Error('cannot apply cloud variable settings without projectMeta');
+                }
+                const hasCloudVariables = stage.cloudVariables.length > 0;
+                if (!hasCloudVariables) {
+                    return;
+                }
+                switch (policy) {
+                    case 'once':
+                        this.applyCloudVariablesOnce(stage, meta.getId());
+                        break;
+                    case 'ws':
+                        if (!meta.isFromScratch()) {
+                            throw new Error('ws cloudVariables does not work with projects not from scratch.mit.edu');
+                        }
+                        this.applyCloudVariablesSocket(stage, meta.getId());
+                        break;
+                    case 'localStorage':
+                        this.applyCloudVariablesLocalStorage(stage, meta.getId());
+                        break;
+                }
+            }
+            applyAutoplayPolicy(policy) {
+                switch (policy) {
+                    case 'always': {
+                        this.triggerGreenFlag();
+                        break;
+                    }
+                    case 'if-audio-playable': {
+                        if (!P.audio.context || P.audio.context.state === 'running') {
+                            this.triggerGreenFlag();
+                        }
+                        else {
+                            this.showClickToPlayContainer();
+                        }
+                        break;
+                    }
+                    case 'never': {
+                        this.showClickToPlayContainer();
+                        break;
+                    }
+                }
+            }
+            showClickToPlayContainer() {
+                if (this.clickToPlayContainer) {
+                    throw new Error('cannot show click-to-play interface: already shown');
+                }
+                this.clickToPlayContainer = document.createElement('div');
+                this.clickToPlayContainer.className = 'player-click-to-play-container';
+                this.clickToPlayContainer.onclick = () => {
+                    if (P.audio.context && P.audio.context.state !== 'running') {
+                        P.audio.context.resume();
+                    }
+                    this.removeClickToPlayContainer();
+                    this.triggerGreenFlag();
+                    this.focus();
+                };
+                const content = document.createElement('div');
+                content.className = 'player-click-to-play-icon';
+                this.clickToPlayContainer.appendChild(content);
+                this.stage.ui.appendChild(this.clickToPlayContainer);
+            }
+            removeClickToPlayContainer() {
+                if (this.clickToPlayContainer === null) {
+                    throw new Error('cannot hide click-to-play interface: already hidden');
+                }
+                this.stage.ui.removeChild(this.clickToPlayContainer);
+                this.clickToPlayContainer = null;
+            }
+            beginLoadingProject() {
+                this.cleanup();
+                this.onstartload.emit();
+                const loaderId = new LoaderIdentifier();
+                this.currentLoader = loaderId;
+                return { loaderId };
+            }
+            determineProjectType(data) {
+                if ('objName' in data)
+                    return 'sb2';
+                if ('targets' in data)
+                    return 'sb3';
+                throw new Error('Unknown project type');
+            }
+            isScratch1Project(buffer) {
+                const MAGIC = 'ScratchV0';
+                const array = new Uint8Array(buffer);
+                for (var i = 0; i < MAGIC.length; i++) {
+                    if (String.fromCharCode(array[i]) !== MAGIC[i]) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            fetchProject(id) {
+                const request = new P.io.Request(this.MAGIC.PROJECT_API.replace('$id', id));
+                return request
+                    .ignoreErrors()
+                    .load('blob')
+                    .then(function (response) {
+                    if (request.getStatus() === 404) {
+                        throw new ProjectDoesNotExistError(id);
+                    }
+                    return response;
+                });
+            }
+            setStage(stage) {
+                this.stage = stage;
+                this.stage.runtime.handleError = this.handleError;
+                this.applyOptionsToStage();
+                this.playerContainer.appendChild(stage.root);
+                if (this.options.focusOnLoad) {
+                    this.focus();
+                }
+                this.onload.emit(stage);
+                this.stage.draw();
+                this.applyCloudVariables(this.options.cloudVariables);
+                this.applyAutoplayPolicy(this.options.autoplayPolicy);
+            }
+            loadLoader(loaderId, loader) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    loaderId.setLoader(loader);
+                    loader.onprogress = (progress) => {
+                        if (loaderId.isActive()) {
+                            this.onprogress.emit(progress);
+                        }
+                    };
+                    const stage = yield loader.load();
+                    this.setStage(stage);
+                    this.currentLoader = null;
+                    loader.cleanup();
+                    return stage;
+                });
+            }
+            loadProjectById(id) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    const { loaderId } = this.beginLoadingProject();
+                    const getLoader = (blob) => __awaiter(this, void 0, void 0, function* () {
+                        try {
+                            const projectText = yield P.io.readers.toText(blob);
+                            const projectJson = P.json.parse(projectText);
+                            switch (this.determineProjectType(projectJson)) {
+                                case 'sb2': return new P.sb2.Scratch2Loader(projectJson);
+                                case 'sb3': return new P.sb3.Scratch3Loader(projectJson);
+                            }
+                        }
+                        catch (e) {
+                            const buffer = yield P.io.readers.toArrayBuffer(blob);
+                            if (this.isScratch1Project(buffer)) {
+                                throw new ProjectNotSupportedError('Scratch 1');
+                            }
+                            return new P.sb2.SB2FileLoader(buffer);
+                        }
+                    });
+                    try {
+                        this.projectMeta = new RemoteProjectMeta(id);
+                        const blob = yield this.fetchProject(id);
+                        const loader = yield getLoader(blob);
+                        yield this.loadLoader(loaderId, loader);
+                    }
+                    catch (e) {
+                        if (loaderId.isActive()) {
+                            this.handleError(e);
+                        }
+                    }
+                });
+            }
+            loadProjectFromBufferWithType(loaderId, buffer, type) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    let loader;
+                    switch (type) {
+                        case 'sb2':
+                            loader = new P.sb2.SB2FileLoader(buffer);
+                            break;
+                        case 'sb3':
+                            loader = new P.sb3.SB3FileLoader(buffer);
+                            break;
+                        default: throw new Error('Unknown type: ' + type);
+                    }
+                    yield this.loadLoader(loaderId, loader);
+                });
+            }
+            loadProjectFromFile(file) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    const { loaderId } = this.beginLoadingProject();
+                    try {
+                        this.projectMeta = new LocalProjectMeta(file.name);
+                        const extension = file.name.split('.').pop() || '';
+                        const buffer = yield P.io.readers.toArrayBuffer(file);
+                        switch (extension) {
+                            case 'sb2': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb2');
+                            case 'sb3': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb3');
+                            default: throw new Error('Unrecognized file extension: ' + extension);
+                        }
+                    }
+                    catch (e) {
+                        if (loaderId.isActive()) {
+                            this.handleError(e);
+                        }
+                    }
+                });
+            }
+            loadProjectFromBuffer(buffer, type) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    const { loaderId } = this.beginLoadingProject();
+                    try {
+                        this.projectMeta = new BinaryProjectMeta();
+                        return yield this.loadProjectFromBufferWithType(loaderId, buffer, type);
+                    }
+                    catch (e) {
+                        if (loaderId.isActive()) {
+                            this.handleError(e);
+                        }
+                    }
+                });
+            }
+        }
+        Player.DEFAULT_OPTIONS = {
+            autoplayPolicy: 'always',
+            cloudVariables: 'once',
+            fps: 30,
+            theme: 'light',
+            turbo: false,
+            username: '',
+            fullscreenMode: 'full',
+            fullscreenPadding: 8,
+            fullscreenMaxWidth: Infinity,
+            imageSmoothing: false,
+            focusOnLoad: true,
+        };
+        player_1.Player = Player;
+        class ErrorHandler {
+            constructor(player, options = {}) {
+                this.player = player;
+                this.player = player;
+                player.onerror.subscribe(this.onerror.bind(this));
+                player.oncleanup.subscribe(this.oncleanup.bind(this));
+                this.errorEl = null;
+                if (options.container) {
+                    this.errorContainer = options.container;
+                }
+                else {
+                    this.errorContainer = null;
+                }
+            }
+            stringifyError(error) {
+                if (!error) {
+                    return 'unknown error';
+                }
+                if (error.stack) {
+                    return 'Message: ' + error.message + '\nStack:\n' + error.stack;
+                }
+                return error.toString();
+            }
+            createBugReportLink(bodyBefore, bodyAfter) {
+                var title = this.getBugReportTitle();
+                bodyAfter = bodyAfter || '';
+                var body = bodyBefore +
+                    '\n\n\n-----\n' +
+                    this.getBugReportMetadata() +
+                    '\n' +
+                    bodyAfter;
+                return ErrorHandler.BUG_REPORT_LINK
+                    .replace('$title', encodeURIComponent(title))
+                    .replace('$body', encodeURIComponent(body));
+            }
+            getBugReportTitle() {
+                const meta = this.player.getProjectMeta();
+                const title = meta.getTitle();
+                const id = meta.getId();
+                if (title) {
+                    return title;
+                }
+                if (id) {
+                    return id;
+                }
+                return 'Unknown Project';
+            }
+            getBugReportMetadata() {
+                var meta = '';
+                meta += 'Project ID: ' + this.player.getProjectMeta().getId() + '\n';
+                meta += location.href + '\n';
+                meta += navigator.userAgent;
+                return meta;
+            }
+            createErrorLink(error) {
+                var body = P.i18n.translate('player.errorhandler.instructions');
+                return this.createBugReportLink(body, '```\n' + this.stringifyError(error) + '\n```');
+            }
+            oncleanup() {
+                if (this.errorEl && this.errorEl.parentNode) {
+                    this.errorEl.parentNode.removeChild(this.errorEl);
+                    this.errorEl = null;
+                }
+            }
+            handleError(error) {
+                var el = document.createElement('div');
+                var errorLink = this.createErrorLink(error);
+                var attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
+                el.innerHTML = P.i18n.translate('player.errorhandler.error').replace('$attrs', attributes);
+                return el;
+            }
+            handleNotSupportedError(error) {
+                var el = document.createElement('div');
+                el.innerHTML = P.i18n.translate('player.errorhandler.error.unsupported').replace('$type', error.type);
+                return el;
+            }
+            handleDoesNotExistError(error) {
+                var el = document.createElement('div');
+                el.textContent = P.i18n.translate('player.errorhandler.error.doesnotexist').replace('$id', error.id);
+                return el;
+            }
+            onerror(error) {
+                var el = document.createElement('div');
+                el.className = 'player-error';
+                if (error instanceof ProjectNotSupportedError) {
+                    el.appendChild(this.handleNotSupportedError(error));
+                }
+                else if (error instanceof ProjectDoesNotExistError) {
+                    el.appendChild(this.handleDoesNotExistError(error));
+                }
+                else {
+                    el.appendChild(this.handleError(error));
+                }
+                if (this.errorContainer) {
+                    this.errorContainer.appendChild(el);
+                }
+                else if (this.player.hasStage()) {
+                    this.player.getStage().ui.appendChild(el);
+                }
+                else {
+                    this.player.playerContainer.appendChild(el);
+                }
+                this.errorEl = el;
+            }
+        }
+        ErrorHandler.BUG_REPORT_LINK = 'https://github.com/forkphorus/forkphorus/issues/new?title=$title&body=$body';
+        player_1.ErrorHandler = ErrorHandler;
+        class ProgressBar {
+            constructor(player, options = {}) {
+                this.el = document.createElement('div');
+                this.el.className = 'player-progress';
+                this.bar = document.createElement('div');
+                this.bar.className = 'player-progress-fill';
+                this.el.appendChild(this.bar);
+                this.setTheme(player.getOptions().theme);
+                player.onthemechange.subscribe((theme) => this.setTheme(theme));
+                player.onprogress.subscribe((progress) => this.setProgress(progress));
+                player.onstartload.subscribe(() => {
+                    this.el.setAttribute('state', 'loading');
+                    this.setProgress(0);
+                });
+                player.onload.subscribe(() => {
+                    this.el.setAttribute('state', 'loaded');
+                });
+                player.oncleanup.subscribe(() => {
+                    this.el.setAttribute('state', '');
+                    this.bar.style.width = '0%';
+                });
+                player.onerror.subscribe(() => {
+                    this.el.setAttribute('state', 'error');
+                    this.bar.style.width = '100%';
+                });
+                if (options.position === 'controls' || options.position === undefined) {
+                    if (!player.controlsContainer) {
+                        throw new Error('No controls to put progess bar in.');
+                    }
+                    player.controlsContainer.appendChild(this.el);
+                }
+                else {
+                    options.position.appendChild(this.el);
+                }
+            }
+            setTheme(theme) {
+                this.el.setAttribute('theme', theme);
+            }
+            setProgress(progress) {
+                this.bar.style.width = 10 + progress * 90 + '%';
+            }
+        }
+        player_1.ProgressBar = ProgressBar;
+    })(player = P.player || (P.player = {}));
 })(P || (P = {}));
 var P;
 (function (P) {
@@ -3011,6 +3785,18 @@ var P;
             }
             return false;
         };
+        var numEqualExperimental = function (nx, y) {
+            var ny = +y;
+            return ny === ny && nx === ny;
+        };
+        var numLessExperimental = function (nx, y) {
+            var ny = +y;
+            return ny === ny && nx < y;
+        };
+        var numGreaterExperimental = function (nx, y) {
+            var ny = +y;
+            return ny === ny && nx > y;
+        };
         var strEqual = function (a, b) {
             return (a + '').toLowerCase() === (b + '').toLowerCase();
         };
@@ -3041,11 +3827,8 @@ var P;
         };
         var clone = function (name) {
             const parent = name === '_myself_' ? S : self.getObject(name);
-            if (!parent) {
-                throw new Error('Cannot find object to clone');
-            }
-            if (!P.core.isSprite(parent)) {
-                throw new Error('Cannot clone non-sprite object');
+            if (!parent || !P.core.isSprite(parent)) {
+                return;
             }
             const c = parent.clone();
             self.children.splice(self.children.indexOf(parent), 0, c);
@@ -3236,6 +4019,7 @@ var P;
             return 0;
         };
         function getKeyCode(keyName) {
+            keyName = keyName + '';
             switch (keyName.toLowerCase()) {
                 case 'space': return 32;
                 case 'left arrow': return 37;
@@ -3247,6 +4031,18 @@ var P;
             return keyName.toUpperCase().charCodeAt(0);
         }
         runtime_1.getKeyCode = getKeyCode;
+        var getKeyCode3 = function (keyName) {
+            switch (keyName.toLowerCase()) {
+                case 'space': return 32;
+                case 'left arrow': return 37;
+                case 'up arrow': return 38;
+                case 'right arrow': return 39;
+                case 'down arrow': return 40;
+                case 'enter': return 13;
+                case 'any': return 'any';
+            }
+            return keyName.toUpperCase().charCodeAt(0);
+        };
         const audioContext = P.audio.context;
         if (audioContext) {
             var playNote = function (key, duration) {
@@ -3315,7 +4111,12 @@ var P;
                     if (VISUAL) {
                         for (var i = CALLS.length, j = 5; i-- && j--;) {
                             if (CALLS[i].base === procedure.fn) {
-                                runtime.queue[THREAD] = new Thread(S, BASE, procedure.fn, CALLS);
+                                runtime.queue[THREAD] = {
+                                    sprite: S,
+                                    base: BASE,
+                                    fn: procedure.fn,
+                                    calls: CALLS,
+                                };
                                 return;
                             }
                         }
@@ -3335,6 +4136,11 @@ var P;
                 C = CALLS.pop();
                 STACK = C.stack;
                 R = STACK.pop();
+            }
+        };
+        var cloudVariableChanged = function (name) {
+            if (self.cloudHandler) {
+                self.cloudHandler.variableChanged(name);
             }
         };
         var sceneChange = function () {
@@ -3362,16 +4168,13 @@ var P;
             }
         };
         var forceQueue = function (id) {
-            runtime.queue[THREAD] = new Thread(S, BASE, S.fns[id], CALLS);
+            runtime.queue[THREAD] = {
+                sprite: S,
+                base: BASE,
+                fn: S.fns[id],
+                calls: CALLS,
+            };
         };
-        class Thread {
-            constructor(sprite, base, fn, calls) {
-                this.sprite = sprite;
-                this.base = base;
-                this.fn = fn;
-                this.calls = calls;
-            }
-        }
         class Runtime {
             constructor(stage) {
                 this.stage = stage;
@@ -3386,10 +4189,15 @@ var P;
                 this.step = this.step.bind(this);
             }
             startThread(sprite, base) {
-                const thread = new Thread(sprite, base, base, [{
-                        args: [],
-                        stack: [{}],
-                    }]);
+                const thread = {
+                    sprite: sprite,
+                    base: base,
+                    fn: base,
+                    calls: [{
+                            args: [],
+                            stack: [{}],
+                        }],
+                };
                 for (let i = 0; i < this.queue.length; i++) {
                     const q = this.queue[i];
                     if (q && q.sprite === sprite && q.base === base) {
@@ -3453,7 +4261,7 @@ var P;
                 this.interval = setInterval(this.step, 1000 / this.framerate);
                 if (audioContext)
                     audioContext.resume();
-                this.stage.start();
+                this.stage.startExtensions();
             }
             pause() {
                 if (this.interval) {
@@ -3463,7 +4271,7 @@ var P;
                     window.removeEventListener('error', this.onError);
                     if (audioContext)
                         audioContext.suspend();
-                    this.stage.pause();
+                    this.stage.pauseExtensions();
                 }
                 this.isRunning = false;
             }
@@ -3646,167 +4454,9 @@ var P;
 })(P || (P = {}));
 var P;
 (function (P) {
-    var utils;
-    (function (utils) {
-        function parseRotationStyle(style) {
-            switch (style) {
-                case 'leftRight':
-                case 'left-right':
-                    return 1;
-                case 'none':
-                case 'don\'t rotate':
-                    return 2;
-                case 'normal':
-                case 'all around':
-                    return 0;
-            }
-            console.warn('unknown rotation style', style);
-            return 0;
-        }
-        utils.parseRotationStyle = parseRotationStyle;
-        function rgbToHSL(r, g, b) {
-            r /= 255;
-            g /= 255;
-            b /= 255;
-            var min = Math.min(r, g, b);
-            var max = Math.max(r, g, b);
-            if (min === max) {
-                return [0, 0, r];
-            }
-            var c = max - min;
-            var l = (min + max) / 2;
-            var s = c / (1 - Math.abs(2 * l - 1));
-            var h;
-            switch (max) {
-                case r:
-                    h = ((g - b) / c + 6) % 6;
-                    break;
-                case g:
-                    h = (b - r) / c + 2;
-                    break;
-                case b:
-                    h = (r - g) / c + 4;
-                    break;
-            }
-            h *= 60;
-            return [h, s, l];
-        }
-        utils.rgbToHSL = rgbToHSL;
-        function rgbToHSV(r, g, b) {
-            r /= 255;
-            g /= 255;
-            b /= 255;
-            var max = Math.max(r, g, b), min = Math.min(r, g, b);
-            var h, s, v = max;
-            var d = max - min;
-            s = max == 0 ? 0 : d / max;
-            if (max == min) {
-                h = 0;
-            }
-            else {
-                switch (max) {
-                    case r:
-                        h = (g - b) / d + (g < b ? 6 : 0);
-                        break;
-                    case g:
-                        h = (b - r) / d + 2;
-                        break;
-                    case b:
-                        h = (r - g) / d + 4;
-                        break;
-                }
-                h /= 6;
-            }
-            return [h * 360, s, v];
-        }
-        utils.rgbToHSV = rgbToHSV;
-        function hsvToRGB(h, s, v) {
-            var r, g, b;
-            var i = Math.floor(h * 6);
-            var f = h * 6 - i;
-            var p = v * (1 - s);
-            var q = v * (1 - f * s);
-            var t = v * (1 - (1 - f) * s);
-            switch (i % 6) {
-                case 0:
-                    r = v, g = t, b = p;
-                    break;
-                case 1:
-                    r = q, g = v, b = p;
-                    break;
-                case 2:
-                    r = p, g = v, b = t;
-                    break;
-                case 3:
-                    r = p, g = q, b = v;
-                    break;
-                case 4:
-                    r = t, g = p, b = v;
-                    break;
-                case 5:
-                    r = v, g = p, b = q;
-                    break;
-            }
-            return [r * 255, g * 255, b * 255];
-        }
-        utils.hsvToRGB = hsvToRGB;
-        function hslToHSV(h, s, l) {
-            var v = l + s * Math.min(l, 1 - l);
-            var s = v === 0 ? 0 : 2 - 2 * l / v;
-            return [h, s, v];
-        }
-        utils.hslToHSV = hslToHSV;
-        function hsvToHSL(h, s, v) {
-            var l = v - v * s / 2;
-            var s = l === 0 ? 0 : (v - l) / Math.min(2 - 2 * l / v);
-            return [h, s, l];
-        }
-        utils.hsvToHSL = hsvToHSL;
-        function clamp(number, min, max) {
-            return Math.min(max, Math.max(min, number));
-        }
-        utils.clamp = clamp;
-        function settled(promise) {
-            return new Promise((resolve, _reject) => {
-                promise
-                    .then(() => resolve())
-                    .catch(() => resolve());
-            });
-        }
-        utils.settled = settled;
-        class Slot {
-            constructor() {
-                this._listeners = [];
-            }
-            subscribe(fn) {
-                this._listeners.push(fn);
-            }
-            emit(value) {
-                for (const listener of this._listeners) {
-                    listener(value);
-                }
-            }
-        }
-        utils.Slot = Slot;
-    })(utils = P.utils || (P.utils = {}));
-})(P || (P = {}));
-var P;
-(function (P) {
     var sb2;
     (function (sb2) {
         const ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
-        let zipArchive;
-        sb2.hooks = {
-            newTask() { },
-            endTask() { },
-        };
-        function promiseTask(pr) {
-            sb2.hooks.newTask();
-            return pr.then((v) => {
-                sb2.hooks.endTask();
-                return v;
-            });
-        }
         class Scratch2VariableWatcher extends P.core.Watcher {
             constructor(stage, targetName, data) {
                 super(stage, targetName);
@@ -4114,188 +4764,285 @@ var P;
             }
         }
         sb2.Scratch2Sprite = Scratch2Sprite;
-        function loadImage(url) {
-            sb2.hooks.newTask();
-            var image = new Image();
-            image.crossOrigin = 'anonymous';
-            return new Promise((resolve, reject) => {
-                image.onload = function () {
-                    sb2.hooks.endTask();
-                    resolve(image);
-                };
-                image.onerror = function (err) {
-                    reject('Failed to load image: ' + image.src);
-                };
-                image.src = url;
-            });
-        }
-        sb2.loadImage = loadImage;
-        function loadSB2Project(arrayBuffer) {
-            return JSZip.loadAsync(arrayBuffer)
-                .then((zip) => {
-                zipArchive = zip;
-                return zip.file('project.json').async('text');
-            })
-                .then((text) => {
-                const project = JSON.parse(text);
-                return loadProject(project);
-            });
-        }
-        sb2.loadSB2Project = loadSB2Project;
-        function loadProject(data) {
-            var children;
-            var stage;
-            return loadFonts()
-                .then(() => Promise.all([
-                P.audio.loadSB2Soundbank(sb2.hooks),
-                loadArray(data.children, loadObject).then((c) => children = c),
-                loadBase(data, true).then((s) => stage = s),
-            ]))
-                .then(() => {
-                children = children.filter((i) => i);
-                children.forEach((c) => c.stage = stage);
-                var sprites = children.filter((i) => i instanceof Scratch2Sprite);
-                var watchers = children.filter((i) => i instanceof Scratch2VariableWatcher);
-                stage.children = sprites;
-                stage.allWatchers = watchers;
-                stage.allWatchers.forEach((w) => w.init());
-                P.sb2.compiler.compile(stage);
-                return stage;
-            });
-        }
-        sb2.loadProject = loadProject;
-        function loadBase(data, isStage = false) {
-            var costumes;
-            var sounds;
-            return Promise.all([
-                loadArray(data.costumes, loadCostume).then((c) => costumes = c),
-                loadArray(data.sounds, loadSound).then((s) => sounds = s),
-            ]).then(() => {
-                const variables = {};
-                if (data.variables) {
-                    for (const variable of data.variables) {
-                        if (variable.isPeristent) {
-                            throw new Error('Cloud variables are not supported');
+        class BaseSB2Loader extends P.io.Loader {
+            loadImage(url) {
+                return this.addTask(new P.io.Img(url)).load();
+            }
+            loadFonts() {
+                return Promise.all([
+                    this.addTask(new P.io.PromiseTask((P.utils.settled(P.fonts.loadWebFont('Donegal One'))))),
+                    this.addTask(new P.io.PromiseTask((P.utils.settled(P.fonts.loadWebFont('Gloria Hallelujah'))))),
+                    this.addTask(new P.io.PromiseTask((P.utils.settled(P.fonts.loadWebFont('Mystery Quest'))))),
+                    this.addTask(new P.io.PromiseTask((P.utils.settled(P.fonts.loadWebFont('Permanent Marker'))))),
+                    this.addTask(new P.io.PromiseTask((P.utils.settled(P.fonts.loadWebFont('Scratch'))))),
+                ]).then(() => undefined);
+            }
+            loadBase(data, isStage) {
+                var costumes;
+                var sounds;
+                return Promise.all([
+                    this.loadArray(data.costumes, this.loadCostume.bind(this)).then((c) => costumes = c),
+                    this.loadArray(data.sounds, this.loadSound.bind(this)).then((s) => sounds = s),
+                ]).then(() => {
+                    const object = new (isStage ? Scratch2Stage : Scratch2Sprite)(null);
+                    if (data.variables) {
+                        for (const variable of data.variables) {
+                            if (variable.isPersistent) {
+                                if (object.isStage) {
+                                    object.cloudVariables.push(variable.name);
+                                }
+                                else {
+                                    console.warn('Cloud variable found on a non-stage object. Skipping.');
+                                }
+                            }
+                            object.vars[variable.name] = variable.value;
                         }
-                        variables[variable.name] = variable.value;
                     }
-                }
-                const lists = {};
-                if (data.lists) {
-                    for (const list of data.lists) {
-                        if (list.isPeristent) {
-                            throw new Error('Cloud lists are not supported');
+                    if (data.lists) {
+                        for (const list of data.lists) {
+                            if (list.isPersistent) {
+                                console.warn('Cloud lists are not supported');
+                            }
+                            object.lists[list.listName] = list.contents;
                         }
-                        lists[list.listName] = list.contents;
                     }
-                }
-                const object = new (isStage ? Scratch2Stage : Scratch2Sprite)(null);
-                object.name = data.objName;
-                object.vars = variables;
-                object.lists = lists;
-                object.costumes = costumes;
-                object.currentCostumeIndex = data.currentCostumeIndex;
-                sounds.forEach((sound) => sound && object.addSound(sound));
-                if (isStage) {
-                }
-                else {
-                    const sprite = object;
-                    sprite.scratchX = data.scratchX;
-                    sprite.scratchY = data.scratchY;
-                    sprite.direction = data.direction;
-                    sprite.isDraggable = data.isDraggable;
-                    sprite.rotationStyle = P.utils.parseRotationStyle(data.rotationStyle);
-                    sprite.scale = data.scale;
-                    sprite.visible = data.visible;
-                }
-                object.scripts = data.scripts || [];
-                return object;
-            });
-        }
-        sb2.loadBase = loadBase;
-        function loadArray(data, process) {
-            return Promise.all((data || []).map((i, ind) => process(i, ind)));
-        }
-        sb2.loadArray = loadArray;
-        function loadFonts() {
-            return Promise.all([
-                promiseTask(P.utils.settled(P.fonts.loadWebFont('Donegal One'))),
-                promiseTask(P.utils.settled(P.fonts.loadWebFont('Gloria Hallelujah'))),
-                promiseTask(P.utils.settled(P.fonts.loadWebFont('Mystery Quest'))),
-                promiseTask(P.utils.settled(P.fonts.loadWebFont('Permanent Marker'))),
-                promiseTask(P.utils.settled(P.fonts.loadWebFont('Scratch'))),
-            ]).then(() => undefined);
-        }
-        sb2.loadFonts = loadFonts;
-        function loadObject(data) {
-            if (data.cmd) {
-                return loadVariableWatcher(data);
-            }
-            else if (data.listName) {
-            }
-            else {
-                return loadBase(data);
-            }
-        }
-        sb2.loadObject = loadObject;
-        function loadVariableWatcher(data) {
-            const targetName = data.target;
-            const watcher = new Scratch2VariableWatcher(null, targetName, data);
-            return watcher;
-        }
-        sb2.loadVariableWatcher = loadVariableWatcher;
-        function loadCostume(data, index) {
-            const promises = [
-                loadMD5(data.baseLayerMD5, data.baseLayerID)
-                    .then((asset) => data.$image = asset)
-            ];
-            if (data.textLayerMD5) {
-                promises.push(loadMD5(data.textLayerMD5, data.textLayerID)
-                    .then((asset) => data.$text = asset));
-            }
-            return Promise.all(promises)
-                .then((layers) => {
-                var image;
-                if (layers.length > 1) {
-                    image = document.createElement('canvas');
-                    const ctx = image.getContext('2d');
-                    if (!ctx) {
-                        throw new Error('Cannot get 2d rendering context loading costume ' + data.costumeName);
+                    object.name = data.objName;
+                    object.costumes = costumes;
+                    object.currentCostumeIndex = data.currentCostumeIndex;
+                    sounds.forEach((sound) => sound && object.addSound(sound));
+                    if (isStage) {
                     }
-                    image.width = Math.max(layers[0].width, 1);
-                    image.height = Math.max(layers[0].height, 1);
-                    for (const layer of layers) {
-                        ctx.drawImage(layer, 0, 0);
+                    else {
+                        const sprite = object;
+                        sprite.scratchX = data.scratchX;
+                        sprite.scratchY = data.scratchY;
+                        sprite.direction = data.direction;
+                        sprite.isDraggable = data.isDraggable;
+                        sprite.rotationStyle = P.utils.parseRotationStyle(data.rotationStyle);
+                        sprite.scale = data.scale;
+                        sprite.visible = data.visible;
                     }
-                }
-                else {
-                    image = layers[0];
-                }
-                return new P.core.BitmapCostume(image, {
-                    name: data.costumeName,
-                    bitmapResolution: data.bitmapResolution,
-                    rotationCenterX: data.rotationCenterX,
-                    rotationCenterY: data.rotationCenterY,
+                    object.scripts = data.scripts || [];
+                    return object;
                 });
-            });
+            }
+            loadArray(data, process) {
+                return Promise.all((data || []).map((i, ind) => process(i, ind)));
+            }
+            loadObject(data) {
+                if (data.cmd) {
+                    return this.loadVariableWatcher(data);
+                }
+                else if (data.listName) {
+                }
+                else {
+                    return this.loadBase(data, false);
+                }
+            }
+            loadVariableWatcher(data) {
+                const targetName = data.target;
+                const watcher = new Scratch2VariableWatcher(null, targetName, data);
+                return watcher;
+            }
+            loadCostume(data) {
+                const promises = [
+                    this.loadMD5(data.baseLayerMD5, data.baseLayerID)
+                        .then((asset) => data.$image = asset)
+                ];
+                if (data.textLayerMD5) {
+                    promises.push(this.loadMD5(data.textLayerMD5, data.textLayerID)
+                        .then((asset) => data.$text = asset));
+                }
+                return Promise.all(promises)
+                    .then((layers) => {
+                    var image;
+                    if (layers.length > 1) {
+                        image = document.createElement('canvas');
+                        const ctx = image.getContext('2d');
+                        if (!ctx) {
+                            throw new Error('Cannot get 2d rendering context loading costume ' + data.costumeName);
+                        }
+                        image.width = Math.max(layers[0].width, 1);
+                        image.height = Math.max(layers[0].height, 1);
+                        for (const layer of layers) {
+                            ctx.drawImage(layer, 0, 0);
+                        }
+                    }
+                    else {
+                        image = layers[0];
+                    }
+                    return new P.core.BitmapCostume(image, {
+                        name: data.costumeName,
+                        bitmapResolution: data.bitmapResolution,
+                        rotationCenterX: data.rotationCenterX,
+                        rotationCenterY: data.rotationCenterY,
+                    });
+                });
+            }
+            loadSound(data) {
+                return new Promise((resolve, reject) => {
+                    this.loadMD5(data.md5, data.soundID, true)
+                        .then((buffer) => {
+                        resolve(new P.core.Sound({
+                            name: data.soundName,
+                            buffer,
+                        }));
+                    })
+                        .catch((err) => {
+                        resolve(null);
+                        console.warn('Could not load sound: ' + err);
+                    });
+                });
+            }
+            loadSVG(source) {
+                const parser = new DOMParser();
+                var doc = parser.parseFromString(source, 'image/svg+xml');
+                var svg = doc.documentElement;
+                if (!svg.style) {
+                    doc = parser.parseFromString('<body>' + source, 'text/html');
+                    svg = doc.querySelector('svg');
+                }
+                svg.style.visibility = 'hidden';
+                svg.style.position = 'absolute';
+                svg.style.left = '-10000px';
+                svg.style.top = '-10000px';
+                document.body.appendChild(svg);
+                const viewBox = svg.viewBox.baseVal;
+                if (viewBox && (viewBox.x || viewBox.y)) {
+                    svg.width.baseVal.value = viewBox.width - viewBox.x;
+                    svg.height.baseVal.value = viewBox.height - viewBox.y;
+                    viewBox.x = 0;
+                    viewBox.y = 0;
+                    viewBox.width = 0;
+                    viewBox.height = 0;
+                }
+                patchSVG(svg, svg);
+                document.body.removeChild(svg);
+                svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
+                return new Promise((resolve, reject) => {
+                    const canvas = document.createElement('canvas');
+                    canvg(canvas, new XMLSerializer().serializeToString(svg), {
+                        ignoreMouse: true,
+                        ignoreAnimation: true,
+                        ignoreClear: true,
+                        renderCallback: function () {
+                            if (canvas.width === 0 || canvas.height === 0) {
+                                resolve(new Image());
+                                return;
+                            }
+                            resolve(canvas);
+                        }
+                    });
+                });
+            }
+            load() {
+                var children;
+                var stage;
+                return this.loadFonts()
+                    .then(() => Promise.all([
+                    P.audio.loadSoundbankSB2(this),
+                    this.loadArray(this.projectData.children, this.loadObject.bind(this)).then((c) => children = c),
+                    this.loadBase(this.projectData, true).then((s) => stage = s),
+                ]))
+                    .then(() => {
+                    if (this.aborted) {
+                        throw new Error('Loading aborting.');
+                    }
+                    children = children.filter((i) => i);
+                    children.forEach((c) => c.stage = stage);
+                    const sprites = children.filter((i) => i instanceof Scratch2Sprite);
+                    const watchers = children.filter((i) => i instanceof Scratch2VariableWatcher);
+                    stage.children = sprites;
+                    stage.allWatchers = watchers;
+                    stage.allWatchers.forEach((w) => w.init());
+                    P.sb2.compiler.compile(stage);
+                    return stage;
+                });
+            }
         }
-        sb2.loadCostume = loadCostume;
-        function loadSound(data) {
-            return new Promise((resolve, reject) => {
-                loadMD5(data.md5, data.soundID, true)
-                    .then((buffer) => {
-                    resolve(new P.core.Sound({
-                        name: data.soundName,
-                        buffer,
-                    }));
+        sb2.BaseSB2Loader = BaseSB2Loader;
+        class SB2FileLoader extends BaseSB2Loader {
+            constructor(buffer) {
+                super();
+                this.buffer = buffer;
+            }
+            loadMD5(hash, id, isAudio = false) {
+                const f = isAudio ? this.zip.file(id + '.wav') : this.zip.file(id + '.gif') || this.zip.file(id + '.png') || this.zip.file(id + '.jpg') || this.zip.file(id + '.svg');
+                hash = f.name;
+                const ext = hash.split('.').pop();
+                if (ext === 'svg') {
+                    return f.async('text')
+                        .then((text) => this.loadSVG(text));
+                }
+                else if (ext === 'wav') {
+                    return f.async('arrayBuffer')
+                        .then((buffer) => P.audio.decodeAudio(buffer));
+                }
+                else {
+                    return new Promise((resolve, reject) => {
+                        var image = new Image();
+                        image.onload = function () {
+                            resolve(image);
+                        };
+                        f.async('binarystring')
+                            .then((data) => {
+                            image.src = 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(data);
+                        });
+                    });
+                }
+            }
+            load() {
+                return JSZip.loadAsync(this.buffer)
+                    .then((data) => {
+                    this.zip = data;
+                    return this.zip.file('project.json').async('text');
                 })
-                    .catch((err) => {
-                    resolve(null);
-                    console.warn('Could not load sound: ' + err);
-                });
-            });
+                    .then((project) => {
+                    this.projectData = P.json.parse(project);
+                })
+                    .then(() => super.load());
+            }
         }
-        sb2.loadSound = loadSound;
+        sb2.SB2FileLoader = SB2FileLoader;
+        class Scratch2Loader extends BaseSB2Loader {
+            constructor(idOrData) {
+                super();
+                if (typeof idOrData === 'object') {
+                    this.projectData = idOrData;
+                    this.projectId = null;
+                }
+                else {
+                    this.projectId = idOrData;
+                }
+            }
+            loadMD5(hash, id, isAudio = false) {
+                const ext = hash.split('.').pop();
+                if (ext === 'svg') {
+                    return this.addTask(new P.io.Request(ASSET_URL + hash + '/get/')).load('text')
+                        .then((text) => this.loadSVG(text));
+                }
+                else if (ext === 'wav') {
+                    return this.addTask(new P.io.Request(ASSET_URL + hash + '/get/')).load('arraybuffer')
+                        .then((buffer) => P.audio.decodeAudio(buffer));
+                }
+                else {
+                    return this.loadImage(ASSET_URL + hash + '/get/');
+                }
+            }
+            load() {
+                if (this.projectId) {
+                    return this.addTask(new P.io.Request(P.config.PROJECT_API.replace('$id', '' + this.projectId))).load('json')
+                        .then((data) => {
+                        this.projectData = data;
+                        return super.load();
+                    });
+                }
+                else {
+                    return super.load();
+                }
+            }
+        }
+        sb2.Scratch2Loader = Scratch2Loader;
         function patchSVG(svg, element) {
             const FONTS = {
                 '': 'Helvetica',
@@ -4326,20 +5073,23 @@ var P;
                     element.setAttribute('font-size', size = 18);
                 }
                 var bb = element.getBBox();
-                var x = 4 - .6 * element.transform.baseVal.consolidate().matrix.a;
-                var y = (element.getAttribute('y') - bb.y) * 1.1;
-                element.setAttribute('x', x);
-                element.setAttribute('y', y);
-                var lines = element.textContent.split('\n');
-                if (lines.length > 1) {
-                    element.textContent = lines[0];
-                    var lineHeight = LINE_HEIGHTS[font] || 1;
-                    for (var i = 1, l = lines.length; i < l; i++) {
-                        var tspan = document.createElementNS(null, 'tspan');
-                        tspan.textContent = lines[i];
-                        tspan.setAttribute('x', '' + x);
-                        tspan.setAttribute('y', '' + (y + size * i * lineHeight));
-                        element.appendChild(tspan);
+                var transform = element.transform.baseVal.consolidate();
+                if (transform) {
+                    var x = 4 - .6 * transform.matrix.a;
+                    var y = (element.getAttribute('y') - bb.y) * 1.1;
+                    element.setAttribute('x', x);
+                    element.setAttribute('y', y);
+                    var lines = element.textContent.split('\n');
+                    if (lines.length > 1) {
+                        element.textContent = lines[0];
+                        var lineHeight = LINE_HEIGHTS[font] || 1;
+                        for (var i = 1, l = lines.length; i < l; i++) {
+                            var tspan = document.createElementNS(null, 'tspan');
+                            tspan.textContent = lines[i];
+                            tspan.setAttribute('x', '' + x);
+                            tspan.setAttribute('y', '' + (y + size * i * lineHeight));
+                            element.appendChild(tspan);
+                        }
                     }
                 }
             }
@@ -4349,94 +5099,6 @@ var P;
             }
             [].forEach.call(element.childNodes, patchSVG.bind(null, svg));
         }
-        sb2.patchSVG = patchSVG;
-        function loadSVG(source) {
-            const parser = new DOMParser();
-            var doc = parser.parseFromString(source, 'image/svg+xml');
-            var svg = doc.documentElement;
-            if (!svg.style) {
-                doc = parser.parseFromString('<body>' + source, 'text/html');
-                svg = doc.querySelector('svg');
-            }
-            svg.style.visibility = 'hidden';
-            svg.style.position = 'absolute';
-            svg.style.left = '-10000px';
-            svg.style.top = '-10000px';
-            document.body.appendChild(svg);
-            const viewBox = svg.viewBox.baseVal;
-            if (viewBox && (viewBox.x || viewBox.y)) {
-                svg.width.baseVal.value = viewBox.width - viewBox.x;
-                svg.height.baseVal.value = viewBox.height - viewBox.y;
-                viewBox.x = 0;
-                viewBox.y = 0;
-                viewBox.width = 0;
-                viewBox.height = 0;
-            }
-            patchSVG(svg, svg);
-            document.body.removeChild(svg);
-            svg.style.visibility = svg.style.position = svg.style.left = svg.style.top = '';
-            return new Promise((resolve, reject) => {
-                const canvas = document.createElement('canvas');
-                canvg(canvas, new XMLSerializer().serializeToString(svg), {
-                    ignoreMouse: true,
-                    ignoreAnimation: true,
-                    ignoreClear: true,
-                    renderCallback: function () {
-                        if (canvas.width === 0 || canvas.height === 0) {
-                            resolve(new Image());
-                            return;
-                        }
-                        resolve(canvas);
-                    }
-                });
-            });
-        }
-        sb2.loadSVG = loadSVG;
-        function loadMD5(hash, id, isAudio = false) {
-            if (zipArchive) {
-                var f = isAudio ? zipArchive.file(id + '.wav') : zipArchive.file(id + '.gif') || zipArchive.file(id + '.png') || zipArchive.file(id + '.jpg') || zipArchive.file(id + '.svg');
-                hash = f.name;
-            }
-            const ext = hash.split('.').pop();
-            if (ext === 'svg') {
-                if (zipArchive) {
-                    return f.async('text')
-                        .then((text) => loadSVG(text));
-                }
-                else {
-                    return promiseTask(new P.IO.TextRequest(ASSET_URL + hash + '/get/').load())
-                        .then((text) => loadSVG(text));
-                }
-            }
-            else if (ext === 'wav') {
-                if (zipArchive) {
-                    return f.async('arrayBuffer')
-                        .then((buffer) => P.audio.decodeAudio(buffer));
-                }
-                else {
-                    return promiseTask(new P.IO.ArrayBufferRequest(ASSET_URL + hash + '/get/').load())
-                        .then((buffer) => P.audio.decodeAudio(buffer));
-                }
-            }
-            else {
-                if (zipArchive) {
-                    return new Promise((resolve, reject) => {
-                        var image = new Image();
-                        image.onload = function () {
-                            resolve(image);
-                        };
-                        f.async('binarystring')
-                            .then((data) => {
-                            image.src = 'data:image/' + (ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + btoa(data);
-                        });
-                    });
-                }
-                else {
-                    return loadImage(ASSET_URL + hash + '/get/');
-                }
-            }
-        }
-        sb2.loadMD5 = loadMD5;
     })(sb2 = P.sb2 || (P.sb2 = {}));
 })(P || (P = {}));
 (function (P) {
@@ -4444,6 +5106,7 @@ var P;
     (function (sb2) {
         var compiler;
         (function (compiler) {
+            const CLOUD = '☁ ';
             var LOG_PRIMITIVES;
             class Scratch2Procedure extends P.core.Procedure {
                 call(inputs) {
@@ -4507,6 +5170,12 @@ var P;
                     }
                     var o = object.stage.vars[name] !== undefined ? 'self' : 'S';
                     return o + '.vars[' + val(name) + ']';
+                };
+                var isCloudVar = function (name) {
+                    if (typeof name !== 'string') {
+                        return false;
+                    }
+                    return name.startsWith(CLOUD) && object.stage.vars[name] !== undefined && object.stage.cloudVariables.indexOf(name) > -1;
                 };
                 var listRef = function (name) {
                     if (typeof name !== 'string') {
@@ -4587,7 +5256,7 @@ var P;
                 };
                 var val = function (e, usenum, usebool) {
                     var v;
-                    if (typeof e === 'number' || typeof e === 'boolean') {
+                    if (typeof e === 'number' || typeof e === 'boolean' || e === null) {
                         return '' + e;
                     }
                     else if (typeof e === 'string') {
@@ -4721,6 +5390,7 @@ var P;
                         return 'S.distanceTo(' + val(e[1]) + ')';
                     }
                     else if (e[0] === 'soundLevel') {
+                        object.stage.initLoudness();
                         return 'self.microphone.getLoudness()';
                     }
                     else if (e[0] === 'timestamp') {
@@ -5134,10 +5804,16 @@ var P;
                     }
                     else if (block[0] === 'setVar:to:') {
                         source += varRef(block[1]) + ' = ' + val(block[2]) + ';\n';
+                        if (isCloudVar(block[1])) {
+                            source += 'cloudVariableChanged(' + val(block[1]) + ');\n';
+                        }
                     }
                     else if (block[0] === 'changeVar:by:') {
                         var ref = varRef(block[1]);
                         source += ref + ' = (+' + ref + ' || 0) + ' + num(block[2]) + ';\n';
+                        if (isCloudVar(block[1])) {
+                            source += 'cloudVariableChanged(' + val(block[1]) + ');\n';
+                        }
                     }
                     else if (block[0] === 'append:toList:') {
                         source += 'appendToList(' + listRef(block[2]) + ', ' + val(block[1]) + ');\n';
@@ -5153,11 +5829,13 @@ var P;
                     }
                     else if (block[0] === 'showVariable:' || block[0] === 'hideVariable:') {
                         var isShow = block[0] === 'showVariable:';
-                        if (typeof block[1] !== 'string') {
-                            throw new Error('Dynamic variables are not supported');
+                        if (typeof block[1] === 'string') {
+                            var o = object.vars[block[1]] !== undefined ? 'S' : 'self';
+                            source += o + '.showVariable(' + val(block[1]) + ', ' + isShow + ');\n';
                         }
-                        var o = object.vars[block[1]] !== undefined ? 'S' : 'self';
-                        source += o + '.showVariable(' + val(block[1]) + ', ' + isShow + ');\n';
+                        else {
+                            warn('ignoring dynamic variable');
+                        }
                     }
                     else if (block[0] === 'broadcast:') {
                         source += 'var threads = broadcast(' + val(block[1]) + ');\n';
@@ -5396,7 +6074,13 @@ var P;
                 }
                 else if (script[0][0] === 'procDef') {
                     const warp = script[0][4];
-                    object.procedures[script[0][1]] = new Scratch2Procedure(f, warp, inputs);
+                    const name = script[0][1];
+                    if (!object.procedures[name]) {
+                        object.procedures[name] = new Scratch2Procedure(f, warp, inputs);
+                    }
+                    else {
+                        warn('procedure already exists: ' + name);
+                    }
                 }
                 else {
                     warn('Undefined event: ' + script[0][0]);
@@ -5524,6 +6208,8 @@ var P;
                 container.dataset.opcode = this.opcode;
                 container.style.top = (this.y / 10) + 'em';
                 container.style.left = (this.x / 10) + 'em';
+                container.onmousedown = (e) => e.stopPropagation();
+                container.ontouchstart = (e) => e.stopPropagation();
                 const value = document.createElement('div');
                 value.classList.add('s3-watcher-value');
                 value.textContent = this.getValue();
@@ -5655,8 +6341,11 @@ var P;
                 }
             }
             updateList() {
-                const height = this.list.length * this.getRowHeight();
-                this.endpointEl.style.transform = 'translateY(' + (height * this.stage.zoom) + 'px)';
+                if (!this.visible && this._rowHeight === -1) {
+                    return;
+                }
+                const height = this.list.length * this.getRowHeight() * this.stage.zoom;
+                this.endpointEl.style.transform = 'translateY(' + height + 'px)';
                 const topVisible = this.scrollTop;
                 const bottomVisible = topVisible + this.getContentHeight();
                 let startingIndex = Math.floor(topVisible / this.getRowHeight());
@@ -5702,7 +6391,9 @@ var P;
                 }
                 this.list = this.target.lists[listName];
                 this.target.listWatchers[listName] = this;
-                this.updateLayout();
+                if (this.visible) {
+                    this.updateLayout();
+                }
             }
             getTopLabel() {
                 if (this.target.isStage) {
@@ -5736,6 +6427,9 @@ var P;
             }
             updateLayout() {
                 if (!this.containerEl) {
+                    if (!this.visible) {
+                        return;
+                    }
                     this.createLayout();
                 }
                 this.containerEl.style.display = this.visible ? '' : 'none';
@@ -5755,6 +6449,8 @@ var P;
                 this.containerEl.style.height = (this.height / 10) + 'em';
                 this.containerEl.style.width = (this.width / 10) + 'em';
                 this.containerEl.classList.add('s3-list-container');
+                this.containerEl.onmousedown = (e) => e.stopPropagation();
+                this.containerEl.ontouchstart = (e) => e.stopPropagation();
                 this.topLabelEl.textContent = this.getTopLabel();
                 this.topLabelEl.classList.add('s3-list-top-label');
                 this.bottomLabelEl.textContent = this.getBottomLabel();
@@ -5855,20 +6551,28 @@ var P;
             }
             P.fonts.addFontRules(svg, usedFonts);
         }
-        class BaseSB3Loader {
+        function fixVectorNamespace(svg) {
+            var newSVG = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            for (const attribute of svg.attributes) {
+                newSVG.setAttribute(attribute.name, attribute.value);
+            }
+            newSVG.innerHTML = svg.innerHTML;
+            return newSVG;
+        }
+        class BaseSB3Loader extends P.io.Loader {
             constructor() {
-                this.totalTasks = 0;
-                this.finishedTasks = 0;
-                this.requests = [];
-                this.aborted = false;
-                this.onprogress = new P.utils.Slot();
+                super(...arguments);
+                this.needsMusic = false;
             }
             getSVG(path) {
                 return this.getAsText(path)
                     .then((source) => {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(source, 'image/svg+xml');
-                    const svg = doc.documentElement;
+                    let svg = doc.documentElement;
+                    if (svg.namespaceURI !== 'http://www.w3.org/2000/svg') {
+                        svg = fixVectorNamespace(svg);
+                    }
                     patchSVG(svg);
                     return new Promise((resolve, reject) => {
                         const image = new Image();
@@ -5876,9 +6580,9 @@ var P;
                             resolve(image);
                         };
                         image.onerror = (e) => {
-                            reject(e);
+                            reject(new Error('Failed to load SVG: ' + path));
                         };
-                        image.src = 'data:image/svg+xml,' + encodeURIComponent(svg.outerHTML);
+                        image.src = 'data:image/svg+xml,' + encodeURIComponent(new XMLSerializer().serializeToString(svg));
                     });
                 });
             }
@@ -5936,6 +6640,17 @@ var P;
                     const variable = data.variables[id];
                     const name = variable[0];
                     const value = variable[1];
+                    if (variable.length > 2) {
+                        const cloud = variable[2];
+                        if (cloud) {
+                            if (data.isStage) {
+                                target.cloudVariables.push(name);
+                            }
+                            else {
+                                console.warn('Cloud variable found on a non-stage object. Skipping.');
+                            }
+                        }
+                    }
                     target.vars[name] = value;
                 }
                 for (const id of Object.keys(data.lists)) {
@@ -5978,10 +6693,20 @@ var P;
                     return target;
                 });
             }
+            loadRequiredAssets() {
+                return Promise.all([
+                    this.loadFonts(),
+                ]);
+            }
+            loadSoundbank() {
+                return P.audio.loadSoundbankSB2(this);
+            }
             loadFonts() {
                 const promises = [];
                 for (const family in P.fonts.scratch3) {
-                    promises.push(this.promiseTask(P.utils.settled(P.fonts.loadLocalFont(family, P.fonts.scratch3[family]))));
+                    const promise = P.utils.settled(P.fonts.loadLocalFont(family, P.fonts.scratch3[family]));
+                    promises.push(promise);
+                    this.addTask(new P.io.PromiseTask(promise));
                 }
                 return Promise.all(promises);
             }
@@ -5992,23 +6717,27 @@ var P;
                 for (const target of targets) {
                     const compiler = new P.sb3.compiler.Compiler(target);
                     compiler.compile();
+                    if (compiler.needsMusic) {
+                        this.needsMusic = true;
+                    }
                 }
                 if (P.config.debug) {
                     console.timeEnd('Scratch 3 compile');
                 }
             }
             load() {
-                if (!this.projectData) {
-                    throw new Error('Project data is missing or invalid');
-                }
-                if (!Array.isArray(this.projectData.targets)) {
-                    throw new Error('Invalid project data: missing targets');
-                }
-                const targets = this.projectData.targets;
-                targets.sort((a, b) => a.layerOrder - b.layerOrder);
-                return this.loadFonts()
-                    .then(() => Promise.all(targets.map((data) => this.loadTarget(data))))
-                    .then((targets) => {
+                return __awaiter(this, void 0, void 0, function* () {
+                    if (!this.projectData) {
+                        throw new Error('Project data is missing or invalid');
+                    }
+                    if (!Array.isArray(this.projectData.targets)) {
+                        throw new Error('Invalid project data: missing targets');
+                    }
+                    yield this.loadRequiredAssets();
+                    this.resetTasks();
+                    const targets = yield Promise.all(this.projectData.targets
+                        .sort((a, b) => a.layerOrder - b.layerOrder)
+                        .map((data) => this.loadTarget(data)));
                     if (this.aborted) {
                         throw new Error('Loading aborting.');
                     }
@@ -6024,43 +6753,12 @@ var P;
                         .filter((i) => i && i.valid);
                     stage.allWatchers.forEach((watcher) => watcher.init());
                     this.compileTargets(targets, stage);
+                    if (this.needsMusic) {
+                        yield this.loadSoundbank();
+                    }
+                    this.projectData = null;
                     return stage;
                 });
-            }
-            abort() {
-                this.aborted = true;
-                for (const request of this.requests) {
-                    request.abort();
-                }
-            }
-            newTask() {
-                if (this.aborted) {
-                    throw new Error('Loading aborted.');
-                }
-                this.totalTasks++;
-                this.onprogress.emit(this.progress);
-            }
-            endTask() {
-                if (this.aborted) {
-                    throw new Error('Loading aborted.');
-                }
-                this.finishedTasks++;
-                this.onprogress.emit(this.progress);
-            }
-            requestTask(request) {
-                this.requests.push(request.xhr);
-                return this.promiseTask(request.load());
-            }
-            promiseTask(promise) {
-                this.newTask();
-                return promise
-                    .then((value) => {
-                    this.endTask();
-                    return value;
-                });
-            }
-            get progress() {
-                return this.finishedTasks / this.totalTasks || 0;
             }
         }
         sb3.BaseSB3Loader = BaseSB3Loader;
@@ -6070,41 +6768,41 @@ var P;
                 this.buffer = buffer;
             }
             getAsText(path) {
-                this.newTask();
+                const task = this.addTask(new P.io.Manual());
                 return this.zip.file(path).async('text')
                     .then((response) => {
-                    this.endTask();
+                    task.markComplete();
                     return response;
                 });
             }
             getAsArrayBuffer(path) {
-                this.newTask();
+                const task = this.addTask(new P.io.Manual());
                 return this.zip.file(path).async('arrayBuffer')
                     .then((response) => {
-                    this.endTask();
+                    task.markComplete();
                     return response;
                 });
             }
             getAsBase64(path) {
-                this.newTask();
+                const task = this.addTask(new P.io.Manual());
                 return this.zip.file(path).async('base64')
                     .then((response) => {
-                    this.endTask();
+                    task.markComplete();
                     return response;
                 });
             }
             getAsImage(path, format) {
-                this.newTask();
+                const task = this.addTask(new P.io.Manual());
                 return this.getAsBase64(path)
                     .then((imageData) => {
                     return new Promise((resolve, reject) => {
                         const image = new Image();
                         image.onload = () => {
-                            this.endTask();
+                            task.markComplete();
                             resolve(image);
                         };
                         image.onerror = (error) => {
-                            reject('Failed to load image: ' + path + '.' + format);
+                            reject(new Error('Failed to load image: ' + path + '.' + format));
                         };
                         image.src = 'data:image/' + format + ';base64,' + imageData;
                     });
@@ -6135,29 +6833,17 @@ var P;
                 }
             }
             getAsText(path) {
-                return this.requestTask(new P.IO.TextRequest(sb3.ASSETS_API.replace('$md5ext', path)));
+                return this.addTask(new P.io.Request(sb3.ASSETS_API.replace('$md5ext', path))).load('text');
             }
             getAsArrayBuffer(path) {
-                return this.requestTask(new P.IO.ArrayBufferRequest(sb3.ASSETS_API.replace('$md5ext', path)));
+                return this.addTask(new P.io.Request(sb3.ASSETS_API.replace('$md5ext', path))).load('arraybuffer');
             }
             getAsImage(path) {
-                this.newTask();
-                return new Promise((resolve, reject) => {
-                    const image = new Image();
-                    image.onload = () => {
-                        this.endTask();
-                        resolve(image);
-                    };
-                    image.onerror = (err) => {
-                        reject('Failed to load image: ' + image.src);
-                    };
-                    image.crossOrigin = 'anonymous';
-                    image.src = sb3.ASSETS_API.replace('$md5ext', path);
-                });
+                return this.addTask(new P.io.Img(sb3.ASSETS_API.replace('$md5ext', path))).load();
             }
             load() {
                 if (this.projectId) {
-                    return this.requestTask(new P.IO.JSONRequest(P.config.PROJECT_API.replace('$id', '' + this.projectId)))
+                    return this.addTask(new P.io.Request(P.config.PROJECT_API.replace('$id', '' + this.projectId))).load('json')
                         .then((data) => {
                         this.projectData = data;
                         return super.load();
@@ -6229,6 +6915,9 @@ var P;
                 }
                 getVariableScope(field) {
                     return this.compiler.getVariableScope(this.getField(field));
+                }
+                isCloudVariable(field) {
+                    return this.target.stage.cloudVariables.indexOf(this.getField(field)) > -1;
                 }
                 getListScope(field) {
                     return this.compiler.getListScope(this.getField(field));
@@ -6326,6 +7015,7 @@ var P;
             class Compiler {
                 constructor(target) {
                     this.labelCount = 0;
+                    this.needsMusic = false;
                     this.target = target;
                     this.data = target.sb3data;
                     this.blocks = this.data.blocks;
@@ -6390,10 +7080,6 @@ var P;
                     return stringInput(this.sanitizedString(string));
                 }
                 sanitizedString(string) {
-                    if (typeof string !== 'string') {
-                        console.warn('sanitizedString got a non-string object', string);
-                        string = string + '';
-                    }
                     string = string
                         .replace(/\\/g, '\\\\')
                         .replace(/'/g, '\\\'')
@@ -6452,7 +7138,7 @@ var P;
                         case 8: {
                             const number = +native[1];
                             if (isNaN(number) || desiredType === 'string') {
-                                return this.sanitizedInput(native[1]);
+                                return this.sanitizedInput('' + native[1]);
                             }
                             else {
                                 return numberInput(number.toString());
@@ -6460,7 +7146,7 @@ var P;
                         }
                         case 10: {
                             const value = native[1];
-                            if (desiredType !== 'string' && /\d/.test(value)) {
+                            if (desiredType !== 'string' && /\d|Infinity/.test(value)) {
                                 const number = +value;
                                 if (number.toString() === value) {
                                     if (!isNaN(number)) {
@@ -6528,7 +7214,7 @@ var P;
                         this.warn('missing field', fieldName);
                         return '';
                     }
-                    return value[0];
+                    return '' + value[0];
                 }
                 compileSubstackInput(block, substackName) {
                     if (!block.inputs[substackName]) {
@@ -6643,6 +7329,7 @@ var P;
                         const hat = this.blocks[hatId];
                         this.compileHat(hat);
                     }
+                    this.target.sb3data = null;
                 }
             }
             compiler_1.Compiler = Compiler;
@@ -6678,6 +7365,22 @@ var P;
         util.writeLn('  return;');
         util.writeLn('}');
     };
+    statementLibrary['control_for_each'] = function (util) {
+        const VARIABLE = util.getVariableReference('VARIABLE');
+        const SUBSTACK = util.getSubstack('SUBSTACK');
+        const VALUE = util.getInput('VALUE', 'number');
+        util.writeLn('save();');
+        util.writeLn(`R.times = ${VALUE};`);
+        util.writeLn('R.current = 0;');
+        const label = util.addLabel();
+        util.writeLn(`if (R.current < R.times) {`);
+        util.writeLn(`  ${VARIABLE} = ++R.current;`);
+        util.write(SUBSTACK);
+        util.queue(label);
+        util.writeLn('} else {');
+        util.writeLn('  restore();');
+        util.writeLn('}');
+    };
     statementLibrary['control_forever'] = function (util) {
         const SUBSTACK = util.getSubstack('SUBSTACK');
         if (util.compiler.state.isWarp && !util.substacksQueue) {
@@ -6692,14 +7395,14 @@ var P;
         }
     };
     statementLibrary['control_if'] = function (util) {
-        const CONDITION = util.getInput('CONDITION', 'any');
+        const CONDITION = util.getInput('CONDITION', 'boolean');
         const SUBSTACK = util.getSubstack('SUBSTACK');
         util.writeLn(`if (${CONDITION}) {`);
         util.write(SUBSTACK);
         util.writeLn('}');
     };
     statementLibrary['control_if_else'] = function (util) {
-        const CONDITION = util.getInput('CONDITION', 'any');
+        const CONDITION = util.getInput('CONDITION', 'boolean');
         const SUBSTACK = util.getSubstack('SUBSTACK');
         const SUBSTACK2 = util.getSubstack('SUBSTACK2');
         util.writeLn(`if (${CONDITION}) {`);
@@ -6817,6 +7520,9 @@ var P;
         const VARIABLE = util.getVariableReference('VARIABLE');
         const VALUE = util.getInput('VALUE', 'number');
         util.writeLn(`${VARIABLE} = (${util.asType(VARIABLE, 'number')} + ${VALUE});`);
+        if (util.isCloudVariable('VARIABLE')) {
+            util.writeLn(`cloudVariableChanged(${util.sanitizedString(util.getField('VARIABLE'))})`);
+        }
     };
     statementLibrary['data_deletealloflist'] = function (util) {
         const LIST = util.getListReference('LIST');
@@ -6853,6 +7559,9 @@ var P;
         const VARIABLE = util.getVariableReference('VARIABLE');
         const VALUE = util.getInput('VALUE', 'any');
         util.writeLn(`${VARIABLE} = ${VALUE};`);
+        if (util.isCloudVariable('VARIABLE')) {
+            util.writeLn(`cloudVariableChanged(${util.sanitizedString(util.getField('VARIABLE'))})`);
+        }
     };
     statementLibrary['data_showlist'] = function (util) {
         const LIST = util.sanitizedString(util.getField('LIST'));
@@ -6864,10 +7573,21 @@ var P;
         const scope = util.getVariableScope('VARIABLE');
         util.writeLn(`${scope}.showVariable(${VARIABLE}, true);`);
     };
-    statementLibrary['motion_turnright'] = function (util) {
-        const DEGREES = util.getInput('DEGREES', 'number');
-        util.writeLn(`S.setDirection(S.direction + ${DEGREES});`);
-        util.visual('visible');
+    statementLibrary['event_broadcast'] = function (util) {
+        const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
+        util.writeLn(`var threads = broadcast(${BROADCAST_INPUT});`);
+        util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
+    };
+    statementLibrary['event_broadcastandwait'] = function (util) {
+        const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
+        util.writeLn('save();');
+        util.writeLn(`R.threads = broadcast(${BROADCAST_INPUT});`);
+        util.writeLn('if (R.threads.indexOf(BASE) !== -1) {return;}');
+        const label = util.addLabel();
+        util.writeLn('if (running(R.threads)) {');
+        util.forceQueue(label);
+        util.writeLn('}');
+        util.writeLn('restore();');
     };
     statementLibrary['looks_changeeffectby'] = function (util) {
         const EFFECT = util.sanitizedString(util.getField('EFFECT')).toLowerCase();
@@ -6928,12 +7648,14 @@ var P;
     statementLibrary['looks_say'] = function (util) {
         const MESSAGE = util.getInput('MESSAGE', 'any');
         util.writeLn(`S.say(${MESSAGE}, false);`);
+        util.visual('visible');
     };
     statementLibrary['looks_sayforsecs'] = function (util) {
         const MESSAGE = util.getInput('MESSAGE', 'any');
         const SECS = util.getInput('SECS', 'number');
         util.writeLn('save();');
         util.writeLn(`R.id = S.say(${MESSAGE}, false);`);
+        util.visual('visible');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${SECS};`);
         const label = util.addLabel();
@@ -6944,7 +7666,6 @@ var P;
         util.writeLn('  S.say("");');
         util.writeLn('}');
         util.writeLn('restore();');
-        util.visual('visible');
     };
     statementLibrary['looks_seteffectto'] = function (util) {
         const EFFECT = util.sanitizedString(util.getField('EFFECT')).toLowerCase();
@@ -6984,6 +7705,7 @@ var P;
         const SECS = util.getInput('SECS', 'number');
         util.writeLn('save();');
         util.writeLn(`R.id = S.say(${MESSAGE}, true);`);
+        util.visual('visible');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${SECS};`);
         const label = util.addLabel();
@@ -6994,7 +7716,6 @@ var P;
         util.writeLn('  S.say("");');
         util.writeLn('}');
         util.writeLn('restore();');
-        util.visual('visible');
     };
     statementLibrary['motion_changexby'] = function (util) {
         const DX = util.getInput('DX', 'number');
@@ -7020,8 +7741,9 @@ var P;
         util.writeLn(`R.deltaY = ${Y} - S.scratchY;`);
         const label = util.addLabel();
         util.writeLn('var f = (runtime.now() - R.start) / (R.duration * 1000);');
-        util.writeLn('if (f > 1) f = 1;');
+        util.writeLn('if (f > 1 || isNaN(f)) f = 1;');
         util.writeLn('S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
+        util.visual('drawing');
         util.writeLn('if (f < 1) {');
         util.forceQueue(label);
         util.writeLn('}');
@@ -7044,6 +7766,7 @@ var P;
         util.writeLn('  var f = (runtime.now() - R.start) / (R.duration * 1000);');
         util.writeLn('  if (f > 1 || isNaN(f)) f = 1;');
         util.writeLn('  S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
+        util.visual('drawing');
         util.writeLn('  if (f < 1) {');
         util.forceQueue(label);
         util.writeLn('  }');
@@ -7099,85 +7822,81 @@ var P;
         util.writeLn(`S.setDirection(S.direction - ${DEGREES});`);
         util.visual('visible');
     };
+    statementLibrary['motion_turnright'] = function (util) {
+        const DEGREES = util.getInput('DEGREES', 'number');
+        util.writeLn(`S.setDirection(S.direction + ${DEGREES});`);
+        util.visual('visible');
+    };
     statementLibrary['music_changeTempo'] = function (util) {
         const TEMPO = util.getInput('TEMPO', 'number');
         util.writeLn(`self.tempoBPM += ${TEMPO};`);
+    };
+    statementLibrary['music_playDrumForBeats'] = function (util) {
+        const BEATS = util.getInput('BEATS', 'number');
+        const DRUM = util.getInput('DRUM', 'number');
+        util.compiler.needsMusic = true;
+        util.writeLn('save();');
+        util.writeLn('R.start = runtime.now();');
+        util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
+        util.writeLn(`var first = true;`);
+        if (P.audio.context) {
+            util.writeLn(`R.sound = playSpan(DRUMS[Math.round(${DRUM}) - 1] || DRUMS[2], 60, 10);`);
+        }
+        else {
+            util.writeLn('R.sound = { stopped: false };');
+        }
+        const id = util.addLabel();
+        util.writeLn('S.activeSounds.add(R.sound);');
+        util.writeLn('if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
+        util.writeLn('  var first;');
+        util.forceQueue(id);
+        util.writeLn('}');
+        util.writeLn('S.activeSounds.delete(R.sound);');
+        util.writeLn('restore();');
+    };
+    statementLibrary['music_playNoteForBeats'] = function (util) {
+        const BEATS = util.getInput('BEATS', 'number');
+        const NOTE = util.getInput('NOTE', 'number');
+        util.compiler.needsMusic = true;
+        util.writeLn('save();');
+        util.writeLn('R.start = runtime.now();');
+        util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
+        util.writeLn(`var first = true;`);
+        if (P.audio.context) {
+            util.writeLn(`R.sound = playNote(${NOTE}, R.duration);`);
+        }
+        else {
+            util.writeLn('R.sound = { stopped: false };');
+        }
+        const id = util.addLabel();
+        util.writeLn('S.activeSounds.add(R.sound);');
+        util.writeLn('if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
+        util.writeLn('  var first;');
+        util.forceQueue(id);
+        util.writeLn('}');
+        util.writeLn('S.activeSounds.delete(R.sound);');
+        util.writeLn('restore();');
+    };
+    statementLibrary['music_restForBeats'] = function (util) {
+        const BEATS = util.getInput('BEATS', 'number');
+        util.writeLn('save();');
+        util.writeLn('R.start = runtime.now();');
+        util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
+        util.writeLn(`var first = true;`);
+        const id = util.addLabel();
+        util.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
+        util.writeLn('  var first;');
+        util.forceQueue(id);
+        util.writeLn('}');
+        util.writeLn('restore();');
     };
     statementLibrary['music_setTempo'] = function (util) {
         const TEMPO = util.getInput('TEMPO', 'number');
         util.writeLn(`self.tempoBPM = ${TEMPO};`);
     };
-    statementLibrary['sound_changeeffectby'] = function (util) {
-        const EFFECT = util.sanitizedString(util.getField('EFFECT'));
-        const VALUE = util.getInput('VALUE', 'number');
-        util.writeLn(`S.changeSoundFilter(${EFFECT}, ${VALUE});`);
-    };
-    statementLibrary['sound_changevolumeby'] = function (util) {
-        const VOLUME = util.getInput('VOLUME', 'number');
-        util.writeLn(`S.volume = Math.max(0, Math.min(1, S.volume + ${VOLUME} / 100));`);
-        util.writeLn('if (S.node) S.node.gain.value = S.volume;');
-    };
-    statementLibrary['sound_cleareffects'] = function (util) {
-        util.writeLn('S.resetSoundFilters();');
-    };
-    statementLibrary['sound_play'] = function (util) {
-        const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
-        if (P.audio.context) {
-            util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
-            util.writeLn('if (sound) startSound(sound);');
-        }
-    };
-    statementLibrary['sound_playuntildone'] = function (util) {
-        const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
-        if (P.audio.context) {
-            util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
-            util.writeLn('if (sound) {');
-            util.writeLn('  save();');
-            util.writeLn('  R.sound = playSound(sound);');
-            util.writeLn('  S.activeSounds.add(R.sound);');
-            util.writeLn('  R.start = runtime.now();');
-            util.writeLn('  R.duration = sound.duration;');
-            util.writeLn('  var first = true;');
-            const label = util.addLabel();
-            util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
-            util.writeLn('    var first;');
-            util.forceQueue(label);
-            util.writeLn('  }');
-            util.writeLn('  S.activeSounds.delete(R.sound);');
-            util.writeLn('  restore();');
-            util.writeLn('}');
-        }
-    };
-    statementLibrary['sound_seteffectto'] = function (util) {
-        const EFFECT = util.sanitizedString(util.getField('EFFECT'));
-        const VALUE = util.getInput('VALUE', 'number');
-        util.writeLn(`S.setSoundFilter(${EFFECT}, ${VALUE});`);
-    };
-    statementLibrary['sound_setvolumeto'] = function (util) {
-        const VOLUME = util.getInput('VOLUME', 'number');
-        util.writeLn(`S.volume = Math.max(0, Math.min(1, ${VOLUME} / 100));`);
-        util.writeLn('if (S.node) S.node.gain.value = S.volume;');
-    };
-    statementLibrary['sound_stopallsounds'] = function (util) {
-        if (P.audio.context) {
-            util.writeLn('self.stopAllSounds();');
-        }
-    };
-    statementLibrary['event_broadcast'] = function (util) {
-        const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
-        util.writeLn(`var threads = broadcast(${BROADCAST_INPUT});`);
-        util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
-    };
-    statementLibrary['event_broadcastandwait'] = function (util) {
-        const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
-        util.writeLn('save();');
-        util.writeLn(`R.threads = broadcast(${BROADCAST_INPUT});`);
-        util.writeLn('if (R.threads.indexOf(BASE) !== -1) {return;}');
-        const label = util.addLabel();
-        util.writeLn('if (running(R.threads)) {');
-        util.forceQueue(label);
-        util.writeLn('}');
-        util.writeLn('restore();');
+    statementLibrary['music_setInstrument'] = function (util) {
+        const INSTRUMENT = util.getInput('INSTRUMENT', 'number');
+        util.writeLn(`S.instrument = Math.max(0, Math.min(INSTRUMENTS.length - 1, ${INSTRUMENT} - 1)) | 0;`);
     };
     statementLibrary['pen_changePenColorParamBy'] = function (util) {
         const COLOR_PARAM = util.getInput('COLOR_PARAM', 'string');
@@ -7246,9 +7965,15 @@ var P;
     statementLibrary['procedures_call'] = function (util) {
         const mutation = util.block.mutation;
         const name = mutation.proccode;
-        if (P.config.debug && name === 'forkphorus:debugger;') {
-            util.writeLn('/* forkphorus debugger */ debugger;');
-            return;
+        if (P.config.debug) {
+            if (name === 'forkphorus:debugger;') {
+                util.writeLn('/* forkphorus */ debugger;');
+                return;
+            }
+            else if (name === 'forkphorus:throw;') {
+                util.writeLn('/* forkphorus */ throw new Error("Debug intended crash");');
+                return;
+            }
         }
         const label = util.claimNextLabel();
         util.write(`call(S.procedures[${util.sanitizedString(name)}], ${label}, [`);
@@ -7258,6 +7983,62 @@ var P;
         }
         util.writeLn(']); return;');
         util.addLabel(label);
+    };
+    statementLibrary['sound_changeeffectby'] = function (util) {
+        const EFFECT = util.sanitizedString(util.getField('EFFECT'));
+        const VALUE = util.getInput('VALUE', 'number');
+        util.writeLn(`S.changeSoundFilter(${EFFECT}, ${VALUE});`);
+    };
+    statementLibrary['sound_changevolumeby'] = function (util) {
+        const VOLUME = util.getInput('VOLUME', 'number');
+        util.writeLn(`S.volume = Math.max(0, Math.min(1, S.volume + ${VOLUME} / 100));`);
+        util.writeLn('if (S.node) S.node.gain.value = S.volume;');
+    };
+    statementLibrary['sound_cleareffects'] = function (util) {
+        util.writeLn('S.resetSoundFilters();');
+    };
+    statementLibrary['sound_play'] = function (util) {
+        const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
+        if (P.audio.context) {
+            util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
+            util.writeLn('if (sound) startSound(sound);');
+        }
+    };
+    statementLibrary['sound_playuntildone'] = function (util) {
+        const SOUND_MENU = util.getInput('SOUND_MENU', 'any');
+        if (P.audio.context) {
+            util.writeLn(`var sound = S.getSound(${SOUND_MENU});`);
+            util.writeLn('if (sound) {');
+            util.writeLn('  save();');
+            util.writeLn('  R.sound = playSound(sound);');
+            util.writeLn('  S.activeSounds.add(R.sound);');
+            util.writeLn('  R.start = runtime.now();');
+            util.writeLn('  R.duration = sound.duration;');
+            util.writeLn('  var first = true;');
+            const label = util.addLabel();
+            util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
+            util.writeLn('    var first;');
+            util.forceQueue(label);
+            util.writeLn('  }');
+            util.writeLn('  S.activeSounds.delete(R.sound);');
+            util.writeLn('  restore();');
+            util.writeLn('}');
+        }
+    };
+    statementLibrary['sound_seteffectto'] = function (util) {
+        const EFFECT = util.sanitizedString(util.getField('EFFECT'));
+        const VALUE = util.getInput('VALUE', 'number');
+        util.writeLn(`S.setSoundFilter(${EFFECT}, ${VALUE});`);
+    };
+    statementLibrary['sound_setvolumeto'] = function (util) {
+        const VOLUME = util.getInput('VOLUME', 'number');
+        util.writeLn(`S.volume = Math.max(0, Math.min(1, ${VOLUME} / 100));`);
+        util.writeLn('if (S.node) S.node.gain.value = S.volume;');
+    };
+    statementLibrary['sound_stopallsounds'] = function (util) {
+        if (P.audio.context) {
+            util.writeLn('self.stopAllSounds();');
+        }
     };
     statementLibrary['sensing_askandwait'] = function (util) {
         const QUESTION = util.getInput('QUESTION', 'string');
@@ -7405,6 +8186,15 @@ var P;
     inputLibrary['music_getTempo'] = function (util) {
         return util.numberInput('self.tempoBPM');
     };
+    inputLibrary['music_menu_DRUM'] = function (util) {
+        return util.fieldInput('DRUM');
+    };
+    inputLibrary['music_menu_INSTRUMENT'] = function (util) {
+        return util.fieldInput('INSTRUMENT');
+    };
+    inputLibrary['note'] = function (util) {
+        return util.fieldInput('NOTE');
+    };
     inputLibrary['operator_add'] = function (util) {
         const NUM1 = util.getInput('NUM1', 'number');
         const NUM2 = util.getInput('NUM2', 'number');
@@ -7433,10 +8223,10 @@ var P;
         }
         if (P.config.experimentalOptimizations) {
             if (OPERAND1.type === 'number') {
-                return util.booleanInput(`numEqual(${OPERAND1}, ${OPERAND2})`);
+                return util.booleanInput(`numEqualExperimental(${OPERAND1}, ${OPERAND2})`);
             }
             if (OPERAND2.type === 'number') {
-                return util.booleanInput(`numEqual(${OPERAND2}, ${OPERAND1})`);
+                return util.booleanInput(`numEqualExperimental(${OPERAND2}, ${OPERAND1})`);
             }
         }
         return util.booleanInput(`equal(${OPERAND1}, ${OPERAND2})`);
@@ -7444,6 +8234,11 @@ var P;
     inputLibrary['operator_gt'] = function (util) {
         const OPERAND1 = util.getInput('OPERAND1', 'any');
         const OPERAND2 = util.getInput('OPERAND2', 'any');
+        if (P.config.experimentalOptimizations) {
+            if (OPERAND1.type === 'number') {
+                return util.booleanInput(`numGreaterExperimental(${OPERAND1}, ${OPERAND2})`);
+            }
+        }
         return util.booleanInput(`(compare(${OPERAND1}, ${OPERAND2}) === 1)`);
     };
     inputLibrary['operator_join'] = function (util) {
@@ -7463,6 +8258,11 @@ var P;
     inputLibrary['operator_lt'] = function (util) {
         const OPERAND1 = util.getInput('OPERAND1', 'any');
         const OPERAND2 = util.getInput('OPERAND2', 'any');
+        if (P.config.experimentalOptimizations) {
+            if (OPERAND1.type === 'number') {
+                return util.booleanInput(`numLessExperimental(${OPERAND1}, ${OPERAND2})`);
+            }
+        }
         return util.booleanInput(`(compare(${OPERAND1}, ${OPERAND2}) === -1)`);
     };
     inputLibrary['operator_mathop'] = function (util) {
@@ -7573,7 +8373,7 @@ var P;
     };
     inputLibrary['sensing_keypressed'] = function (util) {
         const KEY_OPTION = util.getInput('KEY_OPTION', 'string');
-        return util.booleanInput(`!!self.keys[P.runtime.getKeyCode(${KEY_OPTION})]`);
+        return util.booleanInput(`!!self.keys[getKeyCode3(${KEY_OPTION})]`);
     };
     inputLibrary['sensing_loud'] = function (util) {
         util.stage.initLoudness();
@@ -7627,6 +8427,17 @@ var P;
         util.stage.initSpeech2Text();
         return util.stringInput('(self.speech2text ? self.speech2text.speech : "")');
     };
+    inputLibrary['translate_menu_languages'] = function (util) {
+        return util.fieldInput('languages');
+    };
+    inputLibrary['translate_getTranslate'] = function (util) {
+        const WORDS = util.getInput('WORDS', 'string');
+        const LANGUAGE = util.getInput('LANGUAGE', 'string');
+        return WORDS;
+    };
+    inputLibrary['translate_getViewerLanguage'] = function (util) {
+        return util.sanitizedInput('English');
+    };
     inputLibrary['videoSensing_menu_VIDEO_STATE'] = function (util) {
         return util.fieldInput('VIDEO_STATE');
     };
@@ -7671,7 +8482,11 @@ var P;
                 }
             }
             else {
-                util.target.listeners.whenKeyPressed[P.runtime.getKeyCode(KEY_OPTION)].push(util.startingFunction);
+                const keyCode = P.runtime.getKeyCode(KEY_OPTION);
+                if (!util.target.listeners.whenKeyPressed[keyCode]) {
+                    util.target.listeners.whenKeyPressed[keyCode] = [];
+                }
+                util.target.listeners.whenKeyPressed[keyCode].push(util.startingFunction);
             }
         },
     };
@@ -7690,19 +8505,22 @@ var P;
             const KEY = util.getInput('KEY', 'string');
             try {
                 const value = P.runtime.scopedEval(KEY.source);
-                var keycode = P.runtime.getKeyCode(value);
+                var keyCode = P.runtime.getKeyCode(value);
             }
             catch (e) {
                 util.compiler.warn('makeymakey key generation error', e);
                 return;
             }
-            if (keycode === 'any') {
+            if (keyCode === 'any') {
                 for (var i = 128; i--;) {
                     util.target.listeners.whenKeyPressed[i].push(util.startingFunction);
                 }
             }
             else {
-                util.target.listeners.whenKeyPressed[keycode].push(util.startingFunction);
+                if (!util.target.listeners.whenKeyPressed[keyCode]) {
+                    util.target.listeners.whenKeyPressed[keyCode] = [];
+                }
+                util.target.listeners.whenKeyPressed[keyCode].push(util.startingFunction);
             }
         },
     };
@@ -7933,6 +8751,179 @@ var P;
         ext.Extension = Extension;
     })(ext = P.ext || (P.ext = {}));
 })(P || (P = {}));
+var P;
+(function (P) {
+    var ext;
+    (function (ext) {
+        var cloud;
+        (function (cloud) {
+            const UPDATE_INTERVAL = 100;
+            function getAllCloudVariables(stage) {
+                const result = {};
+                for (const variable of stage.cloudVariables) {
+                    result[variable] = stage.vars[variable] + '';
+                }
+                return result;
+            }
+            cloud.getAllCloudVariables = getAllCloudVariables;
+            function isCloudDataMessage(data) {
+                if (typeof data !== 'object' || !data) {
+                    return false;
+                }
+                return typeof data.kind === 'string';
+            }
+            function isCloudSetMessage(data) {
+                return isCloudDataMessage(data) && typeof data.var === 'string' && typeof data.value === 'string';
+            }
+            class WebSocketCloudHandler extends P.ext.Extension {
+                constructor(stage, host, id) {
+                    super(stage);
+                    this.host = host;
+                    this.id = id;
+                    this.interval = null;
+                    this.queuedVariableChanges = [];
+                    this.ws = null;
+                    this.update = this.update.bind(this);
+                }
+                variableChanged(name) {
+                    if (this.queuedVariableChanges.indexOf(name) > -1) {
+                        return;
+                    }
+                    this.queuedVariableChanges.push(name);
+                }
+                update() {
+                    if (this.queuedVariableChanges.length === 0) {
+                        return;
+                    }
+                    const variableName = this.queuedVariableChanges.shift();
+                    const value = this.getVariable(variableName);
+                    this.send({
+                        kind: 'set',
+                        var: variableName,
+                        value: value,
+                    });
+                }
+                send(data) {
+                    if (!this.ws)
+                        throw new Error('not connected');
+                    this.ws.send(JSON.stringify(data));
+                }
+                getVariable(name) {
+                    return this.stage.vars[name] + '';
+                }
+                setVariable(name, value) {
+                    this.stage.vars[name] = value;
+                }
+                connect() {
+                    if (this.ws !== null) {
+                        return;
+                    }
+                    this.ws = new WebSocket(this.host);
+                    this.ws.onopen = () => {
+                        this.send({
+                            kind: 'handshake',
+                            id: this.id,
+                            username: 'player' + Math.random().toString().substr(4, 7),
+                            variables: getAllCloudVariables(this.stage),
+                        });
+                    };
+                    this.ws.onmessage = (e) => {
+                        try {
+                            const lines = e.data.split('\n');
+                            for (const line of lines) {
+                                const data = JSON.parse(line);
+                                this.handleMessage(data);
+                            }
+                        }
+                        catch (e) {
+                            console.warn('error parsing cloud server message', e.data, e);
+                            return;
+                        }
+                    };
+                    this.ws.onclose = (e) => {
+                        console.warn('ws closed', e);
+                    };
+                    this.ws.onerror = (e) => {
+                        console.warn('ws error', e);
+                    };
+                }
+                handleMessage(data) {
+                    if (!isCloudSetMessage(data)) {
+                        return;
+                    }
+                    const { var: variableName, value } = data;
+                    if (this.stage.cloudVariables.indexOf(variableName) === -1) {
+                        throw new Error('invalid variable name');
+                    }
+                    this.setVariable(variableName, value);
+                }
+                startInterval() {
+                    if (this.interval !== null) {
+                        return;
+                    }
+                    this.connect();
+                    this.interval = setInterval(this.update, UPDATE_INTERVAL);
+                }
+                stopInterval() {
+                    if (this.interval !== null) {
+                        clearInterval(this.interval);
+                        this.interval = null;
+                    }
+                }
+                onstart() {
+                    this.startInterval();
+                }
+                onpause() {
+                    this.stopInterval();
+                }
+                destroy() {
+                    this.stopInterval();
+                    if (this.ws) {
+                        this.ws.close();
+                    }
+                }
+            }
+            cloud.WebSocketCloudHandler = WebSocketCloudHandler;
+            class LocalStorageCloudHandler extends P.ext.Extension {
+                constructor(stage, id) {
+                    super(stage);
+                    this.storageKey = 'cloud-data:' + id;
+                    this.load();
+                    this.save = this.save.bind(this);
+                }
+                variableChanged(name) {
+                    this.save();
+                }
+                load() {
+                    try {
+                        const savedData = localStorage.getItem(this.storageKey);
+                        if (savedData === null) {
+                            return;
+                        }
+                        const parsedData = JSON.parse(savedData);
+                        for (const key of Object.keys(parsedData)) {
+                            if (this.stage.cloudVariables.indexOf(key) > -1) {
+                                this.stage.vars[key] = parsedData[key];
+                            }
+                        }
+                    }
+                    catch (e) {
+                        console.warn('cannot read from localStorage', e);
+                    }
+                }
+                save() {
+                    try {
+                        localStorage.setItem(this.storageKey, JSON.stringify(getAllCloudVariables(this.stage)));
+                    }
+                    catch (e) {
+                        console.warn('cannot save to localStorage', e);
+                    }
+                }
+            }
+            cloud.LocalStorageCloudHandler = LocalStorageCloudHandler;
+        })(cloud = ext.cloud || (ext.cloud = {}));
+    })(ext = P.ext || (P.ext = {}));
+})(P || (P = {}));
 /*!
 Parts of this file (microphone.ts) are derived from https://github.com/LLK/scratch-audio/blob/develop/src/Loudness.js
 */
@@ -8061,9 +9052,7 @@ var P;
                     this.recognition.continuous = true;
                     this.recognition.onresult = (event) => this.onresult(event);
                     this.recognition.onerror = (event) => {
-                        if (event.error !== 'aborted') {
-                            console.error('speech2text error', event);
-                        }
+                        console.warn('speech2text error', event);
                     };
                     this.recognition.onend = () => {
                         console.warn('speech2text disconnected, reconnecting');
@@ -8179,5 +9168,1349 @@ var P;
             video.VideoExtension = VideoExtension;
         })(video = ext.video || (ext.video = {}));
     })(ext = P.ext || (P.ext = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
+    var renderer;
+    (function (renderer_1) {
+        var canvas2d;
+        (function (canvas2d) {
+            function getCSSFilter(filters) {
+                let filter = '';
+                if (filters.brightness) {
+                    filter += 'brightness(' + (100 + filters.brightness) + '%) ';
+                }
+                if (filters.color) {
+                    if (filters.color === Infinity) {
+                        filter += 'grayscale(100%) ';
+                    }
+                    else {
+                        filter += 'hue-rotate(' + (filters.color / 200 * 360) + 'deg) ';
+                    }
+                }
+                return filter;
+            }
+            function create2dCanvas() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 480;
+                canvas.height = 360;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    throw new Error('Cannot get 2d rendering context in create2dCanvas');
+                }
+                ctx.imageSmoothingEnabled = false;
+                return { canvas, ctx };
+            }
+            const COLOR_MASK = 0b111110001111100011110000;
+            class SpriteRenderer2D {
+                constructor() {
+                    this.noEffects = false;
+                    this.imageSmoothingEnabled = false;
+                    const { canvas, ctx } = create2dCanvas();
+                    this.canvas = canvas;
+                    this.ctx = ctx;
+                }
+                reset(scale) {
+                    this._reset(this.ctx, scale);
+                }
+                drawChild(c) {
+                    this._drawChild(c, this.ctx);
+                }
+                drawObjects(children) {
+                    for (var i = 0; i < children.length; i++) {
+                        var child = children[i];
+                        if (!child.visible) {
+                            continue;
+                        }
+                        this.drawChild(child);
+                    }
+                }
+                _reset(ctx, scale) {
+                    const effectiveScale = scale * P.config.scale;
+                    const width = 480 * effectiveScale;
+                    const height = 360 * effectiveScale;
+                    if (ctx.canvas.width !== width || ctx.canvas.height !== height) {
+                        ctx.canvas.width = width;
+                        ctx.canvas.height = height;
+                        ctx.scale(effectiveScale, effectiveScale);
+                    }
+                    else {
+                        ctx.clearRect(0, 0, 480, 360);
+                    }
+                }
+                _drawChild(c, ctx) {
+                    const costume = c.costumes[c.currentCostumeIndex];
+                    if (!costume) {
+                        return;
+                    }
+                    ctx.save();
+                    const globalScale = c.stage.zoom * P.config.scale;
+                    ctx.translate(((c.scratchX + 240) * globalScale | 0) / globalScale, ((180 - c.scratchY) * globalScale | 0) / globalScale);
+                    let objectScale = costume.scale;
+                    if (P.core.isSprite(c)) {
+                        if (c.rotationStyle === 0) {
+                            ctx.rotate((c.direction - 90) * Math.PI / 180);
+                        }
+                        else if (c.rotationStyle === 1 && c.direction < 0) {
+                            ctx.scale(-1, 1);
+                        }
+                        objectScale *= c.scale;
+                    }
+                    if (costume.isScalable) {
+                        costume.requestSize(objectScale * globalScale);
+                    }
+                    ctx.imageSmoothingEnabled = costume.isScalable || this.imageSmoothingEnabled;
+                    const image = costume.getImage();
+                    const x = -costume.rotationCenterX * objectScale;
+                    const y = -costume.rotationCenterY * objectScale;
+                    const w = costume.width * objectScale;
+                    const h = costume.height * objectScale;
+                    if (w < 1 || h < 1) {
+                        ctx.restore();
+                        return;
+                    }
+                    if (!this.noEffects) {
+                        ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
+                        if (c.filters.brightness === 100) {
+                            workingRenderer.canvas.width = w;
+                            workingRenderer.canvas.height = h;
+                            workingRenderer.ctx.save();
+                            workingRenderer.ctx.translate(0, 0);
+                            workingRenderer.ctx.drawImage(image, 0, 0, w, h);
+                            workingRenderer.ctx.globalCompositeOperation = 'source-in';
+                            workingRenderer.ctx.fillStyle = 'white';
+                            workingRenderer.ctx.fillRect(0, 0, w, h);
+                            ctx.drawImage(workingRenderer.canvas, x, y);
+                            workingRenderer.ctx.restore();
+                        }
+                        else {
+                            const filter = getCSSFilter(c.filters);
+                            if (filter !== '') {
+                                ctx.filter = getCSSFilter(c.filters);
+                            }
+                            ctx.drawImage(image, x, y, w, h);
+                        }
+                    }
+                    else {
+                        ctx.drawImage(image, x, y, w, h);
+                    }
+                    ctx.restore();
+                }
+            }
+            canvas2d.SpriteRenderer2D = SpriteRenderer2D;
+            const workingRenderer = new SpriteRenderer2D();
+            const workingRenderer2 = new SpriteRenderer2D();
+            class ProjectRenderer2D extends SpriteRenderer2D {
+                constructor(stage) {
+                    super();
+                    this.stage = stage;
+                    this.zoom = 1;
+                    this.penScalingEnabled = true;
+                    this.penModified = false;
+                    this.penTargetZoom = -1;
+                    this.penZoom = 1;
+                    this.stageCostumeIndex = -1;
+                    const { ctx: stageContext, canvas: stageLayer } = create2dCanvas();
+                    this.stageContext = stageContext;
+                    this.stageLayer = stageLayer;
+                    const { ctx: penContext, canvas: penLayer } = create2dCanvas();
+                    this.penContext = penContext;
+                    this.penLayer = penLayer;
+                }
+                onStageFiltersChanged() {
+                    this.renderStageCostume(this.zoom);
+                }
+                renderStageCostume(scale) {
+                    this._reset(this.stageContext, scale);
+                    this._drawChild(this.stage, this.stageContext);
+                }
+                init(root) {
+                    root.appendChild(this.stageLayer);
+                    root.appendChild(this.penLayer);
+                    root.appendChild(this.canvas);
+                }
+                destroy() {
+                }
+                drawFrame() {
+                    this.reset(this.zoom);
+                    this.drawObjects(this.stage.children);
+                    if (this.stage.currentCostumeIndex !== this.stageCostumeIndex) {
+                        this.stageCostumeIndex = this.stage.currentCostumeIndex;
+                        this.renderStageCostume(this.zoom);
+                    }
+                }
+                drawAllExcept(renderer, skip) {
+                    renderer.drawChild(this.stage);
+                    renderer.ctx.drawImage(this.penLayer, 0, 0, 480, 360);
+                    for (var i = 0; i < this.stage.children.length; i++) {
+                        var child = this.stage.children[i];
+                        if (!child.visible || child === skip) {
+                            continue;
+                        }
+                        renderer.drawChild(child);
+                    }
+                }
+                resize(zoom) {
+                    this.zoom = zoom;
+                    this.resizePen(zoom);
+                    this.renderStageCostume(this.zoom);
+                }
+                resizePen(zoom) {
+                    if (!this.penScalingEnabled) {
+                        return;
+                    }
+                    if (zoom > this.penZoom) {
+                        this.penZoom = zoom;
+                        workingRenderer.canvas.width = this.penLayer.width;
+                        workingRenderer.canvas.height = this.penLayer.height;
+                        workingRenderer.ctx.drawImage(this.penLayer, 0, 0);
+                        this._reset(this.penContext, zoom);
+                        this.penContext.drawImage(workingRenderer.canvas, 0, 0, 480, 360);
+                    }
+                    else if (!this.penModified) {
+                        this.penZoom = zoom;
+                        this._reset(this.penContext, zoom);
+                    }
+                    else {
+                        this.penTargetZoom = zoom;
+                    }
+                }
+                penClear() {
+                    this.penModified = false;
+                    if (this.penTargetZoom !== -1) {
+                        this._reset(this.penContext, this.penTargetZoom);
+                        this.penZoom = this.penTargetZoom;
+                        this.penTargetZoom = -1;
+                    }
+                    this.penContext.clearRect(0, 0, 480, 360);
+                }
+                penDot(color, size, x, y) {
+                    this.penModified = true;
+                    this.penContext.fillStyle = color.toCSS();
+                    this.penContext.beginPath();
+                    this.penContext.arc(240 + x, 180 - y, size / 2, 0, 2 * Math.PI, false);
+                    this.penContext.fill();
+                }
+                penLine(color, size, x1, y1, x2, y2) {
+                    this.penModified = true;
+                    this.penContext.lineCap = 'round';
+                    if (this.penZoom === 1) {
+                        if (size % 2 > .5 && size % 2 < 1.5) {
+                            x1 -= .5;
+                            y1 -= .5;
+                            x2 -= .5;
+                            y2 -= .5;
+                        }
+                    }
+                    this.penContext.strokeStyle = color.toCSS();
+                    this.penContext.lineWidth = size;
+                    this.penContext.beginPath();
+                    this.penContext.moveTo(240 + x1, 180 - y1);
+                    this.penContext.lineTo(240 + x2, 180 - y2);
+                    this.penContext.stroke();
+                }
+                penStamp(sprite) {
+                    this.penModified = true;
+                    this._drawChild(sprite, this.penContext);
+                }
+                spriteTouchesPoint(sprite, x, y) {
+                    const bounds = sprite.rotatedBounds();
+                    if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top || sprite.scale === 0) {
+                        return false;
+                    }
+                    const costume = sprite.costumes[sprite.currentCostumeIndex];
+                    var cx = (x - sprite.scratchX) / sprite.scale;
+                    var cy = (sprite.scratchY - y) / sprite.scale;
+                    if (sprite.rotationStyle === 0 && sprite.direction !== 90) {
+                        const d = (90 - sprite.direction) * Math.PI / 180;
+                        const ox = cx;
+                        const s = Math.sin(d), c = Math.cos(d);
+                        cx = c * ox - s * cy;
+                        cy = s * ox + c * cy;
+                    }
+                    else if (sprite.rotationStyle === 1 && sprite.direction < 0) {
+                        cx = -cx;
+                    }
+                    let positionX = Math.round(cx / costume.scale + costume.rotationCenterX);
+                    let positionY = Math.round(cy / costume.scale + costume.rotationCenterY);
+                    if (costume instanceof P.core.VectorCostume) {
+                        positionX *= costume.currentScale;
+                        positionY *= costume.currentScale;
+                    }
+                    if (!Number.isFinite(positionX) || !Number.isFinite(positionY)) {
+                        return false;
+                    }
+                    const data = costume.getContext().getImageData(positionX, positionY, 1, 1).data;
+                    return data[3] !== 0;
+                }
+                spritesIntersect(spriteA, otherSprites) {
+                    const mb = spriteA.rotatedBounds();
+                    for (var i = 0; i < otherSprites.length; i++) {
+                        const spriteB = otherSprites[i];
+                        if (!spriteB.visible || spriteA === spriteB) {
+                            continue;
+                        }
+                        const ob = spriteB.rotatedBounds();
+                        if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
+                            continue;
+                        }
+                        const left = Math.max(mb.left, ob.left);
+                        const top = Math.min(mb.top, ob.top);
+                        const right = Math.min(mb.right, ob.right);
+                        const bottom = Math.max(mb.bottom, ob.bottom);
+                        const width = right - left;
+                        const height = top - bottom;
+                        if (width < 1 || height < 1 || width !== width || height !== height) {
+                            continue;
+                        }
+                        workingRenderer.canvas.width = width;
+                        workingRenderer.canvas.height = height;
+                        workingRenderer.ctx.save();
+                        workingRenderer.noEffects = true;
+                        workingRenderer.ctx.translate(-(left + 240), -(180 - top));
+                        workingRenderer.drawChild(spriteA);
+                        workingRenderer.ctx.globalCompositeOperation = 'source-in';
+                        workingRenderer.drawChild(spriteB);
+                        workingRenderer.noEffects = false;
+                        workingRenderer.ctx.restore();
+                        const data = workingRenderer.ctx.getImageData(0, 0, width, height).data;
+                        const length = data.length;
+                        for (var j = 0; j < length; j += 4) {
+                            if (data[j + 3]) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                }
+                spriteTouchesColor(sprite, color) {
+                    const b = sprite.rotatedBounds();
+                    const width = b.right - b.left;
+                    const height = b.top - b.bottom;
+                    if (width < 1 || height < 1 || width !== width || height !== height) {
+                        return false;
+                    }
+                    workingRenderer.canvas.width = width;
+                    workingRenderer.canvas.height = height;
+                    workingRenderer.ctx.save();
+                    workingRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
+                    this.drawAllExcept(workingRenderer, sprite);
+                    workingRenderer.ctx.globalCompositeOperation = 'destination-in';
+                    workingRenderer.noEffects = true;
+                    workingRenderer.drawChild(sprite);
+                    workingRenderer.noEffects = false;
+                    workingRenderer.ctx.restore();
+                    const data = workingRenderer.ctx.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
+                    color = color & COLOR_MASK;
+                    const length = (b.right - b.left) * (b.top - b.bottom) * 4;
+                    for (var i = 0; i < length; i += 4) {
+                        if (((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) & COLOR_MASK) === color && data[i + 3]) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+                spriteColorTouchesColor(sprite, spriteColor, otherColor) {
+                    var rb = sprite.rotatedBounds();
+                    const width = rb.right - rb.left;
+                    const height = rb.top - rb.bottom;
+                    if (width < 1 || height < 1 || width !== width || height !== height) {
+                        return false;
+                    }
+                    workingRenderer.canvas.width = workingRenderer2.canvas.width = width;
+                    workingRenderer.canvas.height = workingRenderer2.canvas.height = height;
+                    workingRenderer.ctx.save();
+                    workingRenderer2.ctx.save();
+                    workingRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
+                    workingRenderer2.ctx.translate(-(240 + rb.left), -(180 - rb.top));
+                    this.drawAllExcept(workingRenderer, sprite);
+                    workingRenderer2.drawChild(sprite);
+                    workingRenderer.ctx.restore();
+                    workingRenderer2.ctx.restore();
+                    var dataA = workingRenderer.ctx.getImageData(0, 0, width, height).data;
+                    var dataB = workingRenderer2.ctx.getImageData(0, 0, width, height).data;
+                    spriteColor = spriteColor & COLOR_MASK;
+                    otherColor = otherColor & COLOR_MASK;
+                    var length = dataA.length;
+                    for (var i = 0; i < length; i += 4) {
+                        var touchesSource = ((dataB[i] << 16 | dataB[i + 1] << 8 | dataB[i + 2]) & COLOR_MASK) === spriteColor && dataB[i + 3];
+                        var touchesOther = ((dataA[i] << 16 | dataA[i + 1] << 8 | dataA[i + 2]) & COLOR_MASK) === otherColor && dataA[i + 3];
+                        if (touchesSource && touchesOther) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            }
+            canvas2d.ProjectRenderer2D = ProjectRenderer2D;
+        })(canvas2d = renderer_1.canvas2d || (renderer_1.canvas2d = {}));
+    })(renderer = P.renderer || (P.renderer = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
+    var m3;
+    (function (m3) {
+        function multiply(out, other) {
+            const a0 = out[0];
+            const a1 = out[1];
+            const a2 = out[2];
+            const a3 = out[3];
+            const a4 = out[4];
+            const a5 = out[5];
+            const a6 = out[6];
+            const a7 = out[7];
+            const a8 = out[8];
+            const b0 = other[0];
+            const b1 = other[1];
+            const b2 = other[2];
+            const b3 = other[3];
+            const b4 = other[4];
+            const b5 = other[5];
+            const b6 = other[6];
+            const b7 = other[7];
+            const b8 = other[8];
+            out[0] = b0 * a0 + b1 * a3 + b2 * a6;
+            out[1] = b0 * a1 + b1 * a4 + b2 * a7;
+            out[2] = b0 * a2 + b1 * a5 + b2 * a8;
+            out[3] = b3 * a0 + b4 * a3 + b5 * a6;
+            out[4] = b3 * a1 + b4 * a4 + b5 * a7;
+            out[5] = b3 * a2 + b4 * a5 + b5 * a8;
+            out[6] = b6 * a0 + b7 * a3 + b8 * a6;
+            out[7] = b6 * a1 + b7 * a4 + b8 * a7;
+            out[8] = b6 * a2 + b7 * a5 + b8 * a8;
+        }
+        m3.multiply = multiply;
+        function translation(x, y) {
+            return [
+                1, 0, 0,
+                0, 1, 0,
+                x, y, 1,
+            ];
+        }
+        m3.translation = translation;
+        function rotation(degrees) {
+            const radians = degrees * Math.PI / 180;
+            const cos = Math.cos(radians);
+            const sin = Math.sin(radians);
+            return [
+                cos, -sin, 0,
+                sin, cos, 0,
+                0, 0, 1,
+            ];
+        }
+        m3.rotation = rotation;
+        function scaling(x, y) {
+            return [
+                x, 0, 0,
+                0, y, 0,
+                0, 0, 1,
+            ];
+        }
+        m3.scaling = scaling;
+        function projection(width, height) {
+            return [
+                2 / width, 0, 0,
+                0, -2 / height, 0,
+                -1, 1, 1,
+            ];
+        }
+        m3.projection = projection;
+    })(m3 = P.m3 || (P.m3 = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
+    var renderer;
+    (function (renderer) {
+        var webgl;
+        (function (webgl) {
+            function createCanvas() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 480;
+                canvas.height = 360;
+                return canvas;
+            }
+            const horizontalInvertMatrix = P.m3.scaling(-1, 1);
+            class Shader {
+                constructor(gl, program) {
+                    this.gl = gl;
+                    this.program = program;
+                    this.uniformLocations = {};
+                    this.attributeLocations = {};
+                    const activeUniforms = gl.getProgramParameter(program, this.gl.ACTIVE_UNIFORMS);
+                    for (let index = 0; index < activeUniforms; index++) {
+                        const info = gl.getActiveUniform(program, index);
+                        if (!info) {
+                            throw new Error('uniform at index ' + index + ' does not exist');
+                        }
+                        const name = info.name;
+                        const location = gl.getUniformLocation(program, name);
+                        if (!location) {
+                            throw new Error('uniform named ' + name + ' does not exist');
+                        }
+                        this.uniformLocations[name] = location;
+                    }
+                    const activeAttributes = gl.getProgramParameter(program, this.gl.ACTIVE_ATTRIBUTES);
+                    for (let index = 0; index < activeAttributes; index++) {
+                        const info = gl.getActiveAttrib(program, index);
+                        if (!info) {
+                            throw new Error('attribute at index ' + index + ' does not exist');
+                        }
+                        this.attributeLocations[info.name] = index;
+                    }
+                }
+                uniform1f(name, value) {
+                    const location = this.getUniform(name);
+                    this.gl.uniform1f(location, value);
+                }
+                uniform2f(name, a, b) {
+                    const location = this.getUniform(name);
+                    this.gl.uniform2f(location, a, b);
+                }
+                uniform4f(name, a, b, c, d) {
+                    const location = this.getUniform(name);
+                    this.gl.uniform4f(location, a, b, c, d);
+                }
+                uniformMatrix3(name, value) {
+                    const location = this.getUniform(name);
+                    this.gl.uniformMatrix3fv(location, false, value);
+                }
+                hasUniform(name) {
+                    return this.uniformLocations.hasOwnProperty(name);
+                }
+                getUniform(name) {
+                    if (!this.hasUniform(name)) {
+                        throw new Error('uniform of name ' + name + ' does not exist');
+                    }
+                    return this.uniformLocations[name];
+                }
+                attributeBuffer(name, value) {
+                    if (!this.hasAttribute(name)) {
+                        throw new Error('attribute of name ' + name + ' does not exist');
+                    }
+                    const location = this.attributeLocations[name];
+                    this.gl.enableVertexAttribArray(location);
+                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, value);
+                    this.gl.vertexAttribPointer(location, 2, this.gl.FLOAT, false, 0, 0);
+                }
+                hasAttribute(name) {
+                    return this.attributeLocations.hasOwnProperty(name);
+                }
+                getAttribute(name) {
+                    if (!this.hasAttribute(name)) {
+                        throw new Error('attribute of name ' + name + ' does not exist');
+                    }
+                    return this.attributeLocations[name];
+                }
+            }
+            class WebGLSpriteRenderer {
+                constructor() {
+                    this.globalScaleMatrix = P.m3.scaling(1, 1);
+                    this.costumeTextures = new Map();
+                    this.canvas = createCanvas();
+                    const gl = this.canvas.getContext('webgl', this.getContextOptions());
+                    if (!gl) {
+                        throw new Error('cannot get webgl rendering context');
+                    }
+                    this.gl = gl;
+                    this.noFiltersShader = this.createShader(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, []);
+                    this.allFiltersShader = this.createShader(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, [
+                        'ENABLE_BRIGHTNESS',
+                        'ENABLE_COLOR',
+                        'ENABLE_GHOST',
+                        'ENABLE_FISHEYE',
+                        'ENABLE_MOSAIC',
+                        'ENABLE_PIXELATE',
+                    ]);
+                    this.gl.enable(this.gl.BLEND);
+                    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+                    this.quadBuffer = this.gl.createBuffer();
+                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
+                    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
+                        0, 0,
+                        0, 1,
+                        1, 0,
+                        1, 0,
+                        0, 1,
+                        1, 1,
+                    ]), this.gl.STATIC_DRAW);
+                    this.reset(1);
+                }
+                getContextOptions() {
+                    return {
+                        alpha: false,
+                    };
+                }
+                compileShader(type, source, definitions) {
+                    if (definitions) {
+                        for (const def of definitions) {
+                            source = '#define ' + def + '\n' + source;
+                        }
+                    }
+                    const shader = this.gl.createShader(type);
+                    if (!shader) {
+                        throw new Error('Cannot create shader');
+                    }
+                    this.gl.shaderSource(shader, source);
+                    this.gl.compileShader(shader);
+                    if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
+                        const error = this.gl.getShaderInfoLog(shader);
+                        this.gl.deleteShader(shader);
+                        throw new Error('Shader compilation error: ' + error);
+                    }
+                    return shader;
+                }
+                compileProgram(vs, fs, definitions) {
+                    const vertexShader = this.compileShader(this.gl.VERTEX_SHADER, vs, definitions);
+                    const fragmentShader = this.compileShader(this.gl.FRAGMENT_SHADER, fs, definitions);
+                    const program = this.gl.createProgram();
+                    if (!program) {
+                        throw new Error('Cannot create program');
+                    }
+                    this.gl.attachShader(program, vertexShader);
+                    this.gl.attachShader(program, fragmentShader);
+                    this.gl.linkProgram(program);
+                    if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
+                        const error = this.gl.getProgramInfoLog(program);
+                        this.gl.deleteProgram(program);
+                        throw new Error('Program compilation error: ' + error);
+                    }
+                    return program;
+                }
+                createShader(vs, fs, definitions) {
+                    const program = this.compileProgram(vs, fs, definitions);
+                    return new Shader(this.gl, program);
+                }
+                convertToTexture(canvas) {
+                    const texture = this.gl.createTexture();
+                    if (!texture) {
+                        throw new Error('Cannot create texture');
+                    }
+                    this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+                    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
+                    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+                    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+                    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
+                    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
+                    return texture;
+                }
+                destroy() {
+                    const extension = this.gl.getExtension('WEBGL_lose_context');
+                    if (extension) {
+                        extension.loseContext();
+                    }
+                }
+                reset(scale) {
+                    this.canvas.width = scale * 480;
+                    this.canvas.height = scale * 360;
+                    this.gl.viewport(0, 0, scale * 480, scale * 360);
+                    if (this.globalScaleMatrix[0] !== scale) {
+                        this.globalScaleMatrix = P.m3.scaling(scale, scale);
+                    }
+                    this.gl.clearColor(1, 1, 1, 1);
+                    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                }
+                useShader(shader) {
+                    this.gl.useProgram(shader.program);
+                    this.shader = shader;
+                }
+                drawChild(child) {
+                    const costume = child.costumes[child.currentCostumeIndex];
+                    if (!this.costumeTextures.has(costume)) {
+                        const image = costume.getImage();
+                        const texture = this.convertToTexture(image);
+                        this.costumeTextures.set(costume, texture);
+                    }
+                    this.gl.bindTexture(this.gl.TEXTURE_2D, this.costumeTextures.get(costume));
+                    this.shader.attributeBuffer('a_position', this.quadBuffer);
+                    const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
+                    P.m3.multiply(matrix, this.globalScaleMatrix);
+                    P.m3.multiply(matrix, P.m3.translation(240 + child.scratchX | 0, 180 - child.scratchY | 0));
+                    if (P.core.isSprite(child)) {
+                        if (child.rotationStyle === 0 && child.direction !== 90) {
+                            P.m3.multiply(matrix, P.m3.rotation(90 - child.direction));
+                        }
+                        else if (child.rotationStyle === 1 && child.direction < 0) {
+                            P.m3.multiply(matrix, horizontalInvertMatrix);
+                        }
+                        if (child.scale !== 1) {
+                            P.m3.multiply(matrix, P.m3.scaling(child.scale, child.scale));
+                        }
+                    }
+                    if (costume.scale !== 1) {
+                        P.m3.multiply(matrix, P.m3.scaling(costume.scale, costume.scale));
+                    }
+                    P.m3.multiply(matrix, P.m3.translation(-costume.rotationCenterX, -costume.rotationCenterY));
+                    P.m3.multiply(matrix, P.m3.scaling(costume.width, costume.height));
+                    this.shader.uniformMatrix3('u_matrix', matrix);
+                    if (this.shader.hasUniform('u_opacity')) {
+                        this.shader.uniform1f('u_opacity', 1 - child.filters.ghost / 100);
+                    }
+                    if (this.shader.hasUniform('u_brightness')) {
+                        this.shader.uniform1f('u_brightness', child.filters.brightness / 100);
+                    }
+                    if (this.shader.hasUniform('u_color')) {
+                        this.shader.uniform1f('u_color', child.filters.color / 200);
+                    }
+                    if (this.shader.hasUniform('u_mosaic')) {
+                        const mosaic = Math.round((Math.abs(child.filters.mosaic) + 10) / 10);
+                        this.shader.uniform1f('u_mosaic', P.utils.clamp(mosaic, 1, 512));
+                    }
+                    if (this.shader.hasUniform('u_whirl')) {
+                        this.shader.uniform1f('u_whirl', child.filters.whirl * Math.PI / -180);
+                    }
+                    if (this.shader.hasUniform('u_fisheye')) {
+                        this.shader.uniform1f('u_fisheye', Math.max(0, (child.filters.fisheye + 100) / 100));
+                    }
+                    if (this.shader.hasUniform('u_pixelate')) {
+                        this.shader.uniform1f('u_pixelate', Math.abs(child.filters.pixelate) / 10);
+                    }
+                    if (this.shader.hasUniform('u_size')) {
+                        this.shader.uniform2f('u_size', costume.width, costume.height);
+                    }
+                    this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+                }
+                drawTextureOverlay(texture) {
+                    const shader = this.noFiltersShader;
+                    this.gl.useProgram(shader.program);
+                    this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+                    shader.attributeBuffer('a_position', this.quadBuffer);
+                    const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
+                    P.m3.multiply(matrix, this.globalScaleMatrix);
+                    P.m3.multiply(matrix, P.m3.translation(240, 180));
+                    P.m3.multiply(matrix, P.m3.scaling(1, 1));
+                    P.m3.multiply(matrix, P.m3.translation(-240, -180));
+                    P.m3.multiply(matrix, P.m3.scaling(480, 360));
+                    shader.uniformMatrix3('u_matrix', matrix);
+                    this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+                }
+            }
+            WebGLSpriteRenderer.vertexShader = `
+    attribute vec2 a_position;
+
+    uniform mat3 u_matrix;
+
+    varying vec2 v_texcoord;
+
+    void main() {
+      gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
+      v_texcoord = a_position;
+    }
+    `;
+            WebGLSpriteRenderer.fragmentShader = `
+    precision mediump float;
+
+    varying vec2 v_texcoord;
+
+    uniform sampler2D u_texture;
+
+    #ifdef ENABLE_BRIGHTNESS
+      uniform float u_brightness;
+    #endif
+    #ifdef ENABLE_COLOR
+      uniform float u_color;
+    #endif
+    #ifdef ENABLE_GHOST
+      uniform float u_opacity;
+    #endif
+    #ifdef ENABLE_MOSAIC
+      uniform float u_mosaic;
+    #endif
+    #ifdef ENABLE_WHIRL
+      uniform float u_whirl;
+    #endif
+    #ifdef ENABLE_FISHEYE
+      uniform float u_fisheye;
+    #endif
+    #ifdef ENABLE_PIXELATE
+      uniform float u_pixelate;
+      uniform vec2 u_size;
+    #endif
+    #ifdef ENABLE_COLOR_TEST
+      uniform vec3 u_colorTest;
+    #endif
+
+    const float minimumAlpha = 1.0 / 250.0;
+    const vec2 vecCenter = vec2(0.5, 0.5);
+
+    // http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl
+    vec3 rgb2hsv(vec3 c) {
+      vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+      vec4 p = c.g < c.b ? vec4(c.bg, K.wz) : vec4(c.gb, K.xy);
+      vec4 q = c.r < p.x ? vec4(p.xyw, c.r) : vec4(c.r, p.yzx);
+      float d = q.x - min(q.w, q.y);
+      float e = 1.0e-10;
+      return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+    }
+    vec3 hsv2rgb(vec3 c) {
+      vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+      vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+      return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+    }
+
+    void main() {
+      // varyings cannot be modified
+      vec2 texcoord = v_texcoord;
+
+      #ifdef ENABLE_MOSAIC
+        texcoord = fract(u_mosaic * v_texcoord);
+      #endif
+
+      #ifdef ENABLE_PIXELATE
+      if (u_pixelate != 0.0) {
+        vec2 texelSize = u_size / u_pixelate;
+        texcoord = (floor(texcoord * texelSize) + vecCenter) / texelSize;
+      }
+      #endif
+
+      #ifdef ENABLE_WHIRL
+      {
+        const float radius = 0.5;
+        vec2 offset = texcoord - vecCenter;
+        float offsetMagnitude = length(offset);
+        float whirlFactor = max(1.0 - (offsetMagnitude / radius), 0.0);
+        float whirlActual = u_whirl * whirlFactor * whirlFactor;
+        float sinWhirl = sin(whirlActual);
+        float cosWhirl = cos(whirlActual);
+        mat2 rotationMatrix = mat2(
+          cosWhirl, -sinWhirl,
+          sinWhirl, cosWhirl
+        );
+        texcoord = rotationMatrix * offset + vecCenter;
+      }
+      #endif
+
+      #ifdef ENABLE_FISHEYE
+      {
+        vec2 vec = (texcoord - vecCenter) / vecCenter;
+        float vecLength = length(vec);
+        float r = pow(min(vecLength, 1.0), u_fisheye) * max(1.0, vecLength);
+        vec2 unit = vec / vecLength;
+        texcoord = vecCenter + r * unit * vecCenter;
+      }
+      #endif
+
+      vec4 color = texture2D(u_texture, texcoord);
+      #ifndef DISABLE_MINIMUM_ALPHA
+      if (color.a < minimumAlpha) {
+        discard;
+      }
+      #endif
+
+      #ifdef ENABLE_GHOST
+        color.a *= u_opacity;
+      #endif
+
+      #ifdef ENABLE_COLOR
+      if (u_color != 0.0) {
+        vec3 hsv = rgb2hsv(color.rgb);
+        // hsv.x = hue
+        // hsv.y = saturation
+        // hsv.z = value
+
+        // scratch forces all colors to have some minimal amount saturation so there is a visual change
+        const float minValue = 0.11 / 2.0;
+        const float minSaturation = 0.09;
+        if (hsv.z < minValue) hsv = vec3(0.0, 1.0, minValue);
+        else if (hsv.y < minSaturation) hsv = vec3(0.0, minSaturation, hsv.z);
+
+        hsv.x = mod(hsv.x + u_color, 1.0);
+        if (hsv.x < 0.0) hsv.x += 1.0;
+        color = vec4(hsv2rgb(hsv), color.a);
+      }
+      #endif
+
+      #ifdef ENABLE_BRIGHTNESS
+        color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
+      #endif
+
+      #ifdef ENABLE_COLOR_TEST
+        if (color.rgb != u_colorTest) {
+          color = vec4(0.0, 0.0, 0.0, 0.0);
+        }
+      #endif
+
+      gl_FragColor = color;
+    }
+    `;
+            class CollisionRenderer extends WebGLSpriteRenderer {
+                constructor() {
+                    super();
+                    this.gl.enable(this.gl.SCISSOR_TEST);
+                    this.gl.scissor(0, 0, 480, 360);
+                    this.gl.clearColor(0, 0, 0, 0);
+                    this.touchingShader = this.createShader(CollisionRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, ['DISABLE_MINIMUM_ALPHA']);
+                    this.shapeFiltersShader = this.createShader(CollisionRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, [
+                        'ENABLE_FISHEYE',
+                        'ENABLE_PIXELATE',
+                        'ENABLE_MOSAIC',
+                    ]);
+                    this.touchingColorShader = this.createShader(CollisionRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, [
+                        'DISABLE_MINIMUM_ALPHA',
+                        'ENABLE_COLOR_TEST',
+                    ]);
+                }
+                getContextOptions() {
+                    return {
+                        alpha: true
+                    };
+                }
+                spritesIntersect(spriteA, otherSprites) {
+                    const mb = spriteA.rotatedBounds();
+                    for (const spriteB of otherSprites) {
+                        if (!spriteB.visible || spriteA === spriteB) {
+                            continue;
+                        }
+                        const ob = spriteB.rotatedBounds();
+                        if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
+                            continue;
+                        }
+                        const left = Math.max(mb.left, ob.left);
+                        const top = Math.min(mb.top, ob.top);
+                        const right = Math.min(mb.right, ob.right);
+                        const bottom = Math.max(mb.bottom, ob.bottom);
+                        const width = Math.max(right - left, 1);
+                        const height = Math.max(top - bottom, 1);
+                        this.gl.scissor(240 + left, 180 + bottom, width, height);
+                        this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                        this.useShader(this.allFiltersShader);
+                        this.drawChild(spriteA);
+                        this.gl.blendFunc(this.gl.DST_ALPHA, this.gl.ZERO);
+                        this.useShader(this.touchingShader);
+                        this.drawChild(spriteB);
+                        this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+                        var data = new Uint8Array(width * height * 4);
+                        this.gl.readPixels(240 + left, 180 + bottom, width, height, this.gl.RGBA, this.gl.UNSIGNED_BYTE, data);
+                        this.gl.scissor(0, 0, 480, 360);
+                        var length = data.length;
+                        for (var j = 0; j < length; j += 4) {
+                            if (data[j + 3]) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                }
+                spriteTouchesPoint(sprite, x, y) {
+                    const cx = 240 + x | 0;
+                    const cy = 180 + y | 0;
+                    this.gl.scissor(cx, cy, 1, 1);
+                    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                    this.useShader(this.shapeFiltersShader);
+                    this.drawChild(sprite);
+                    const result = new Uint8Array(4);
+                    this.gl.readPixels(cx, cy, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, result);
+                    this.gl.scissor(0, 0, 480, 360);
+                    return result[3] !== 0;
+                }
+            }
+            class PenRenderer extends WebGLSpriteRenderer {
+                constructor() {
+                    super();
+                    this.dirty = false;
+                    this.penCoords = new Float32Array(65536);
+                    this.penLines = new Float32Array(32768);
+                    this.penColors = new Float32Array(65536);
+                    this.penCoordsIndex = 0;
+                    this.penLinesIndex = 0;
+                    this.penColorsIndex = 0;
+                    this.penShader = this.createShader(PenRenderer.PEN_VERTEX_SHADER, PenRenderer.PEN_FRAGMENT_SHADER);
+                    this.positionBuffer = this.gl.createBuffer();
+                    this.lineBuffer = this.gl.createBuffer();
+                    this.colorBuffer = this.gl.createBuffer();
+                    this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+                }
+                getContextOptions() {
+                    return {
+                        alpha: true,
+                        preserveDrawingBuffer: true,
+                    };
+                }
+                pendingPenOperations() {
+                    return this.penLinesIndex > 0;
+                }
+                drawPendingOperations() {
+                    const gl = this.gl;
+                    this.dirty = true;
+                    this.useShader(this.penShader);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+                    gl.bufferData(gl.ARRAY_BUFFER, this.penCoords, gl.STREAM_DRAW);
+                    gl.vertexAttribPointer(this.penShader.getAttribute('a_vertexData'), 4, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(this.penShader.getAttribute('a_vertexData'));
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.lineBuffer);
+                    gl.bufferData(gl.ARRAY_BUFFER, this.penLines, gl.STREAM_DRAW);
+                    gl.vertexAttribPointer(this.penShader.getAttribute('a_lineData'), 2, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(this.penShader.getAttribute('a_lineData'));
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer);
+                    gl.bufferData(gl.ARRAY_BUFFER, this.penColors, gl.STREAM_DRAW);
+                    gl.vertexAttribPointer(this.penShader.getAttribute('a_color'), 4, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(this.penShader.getAttribute('a_color'));
+                    gl.drawArrays(gl.TRIANGLES, 0, (this.penCoordsIndex + 1) / 4);
+                    this.penCoordsIndex = 0;
+                    this.penLinesIndex = 0;
+                    this.penColorsIndex = 0;
+                }
+                buffersCanFit(size) {
+                    return this.penCoordsIndex + size > this.penCoords.length;
+                }
+                getCircleResolution(size) {
+                    return Math.max(Math.ceil(size), 3);
+                }
+                penLine(color, size, x1, y1, x2, y2) {
+                    const circleRes = this.getCircleResolution(size);
+                    if (this.buffersCanFit(24 * (circleRes + 1))) {
+                        this.drawPendingOperations();
+                    }
+                    this.penCoords[this.penCoordsIndex] = x1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = x2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y2;
+                    this.penCoordsIndex++;
+                    this.penLines[this.penLinesIndex] = -Math.PI / 2;
+                    this.penLinesIndex++;
+                    this.penLines[this.penLinesIndex] = size / 2;
+                    this.penLinesIndex++;
+                    this.penCoords[this.penCoordsIndex] = x2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = x1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y1;
+                    this.penCoordsIndex++;
+                    this.penLines[this.penLinesIndex] = Math.PI / 2;
+                    this.penLinesIndex++;
+                    this.penLines[this.penLinesIndex] = size / 2;
+                    this.penLinesIndex++;
+                    this.penCoords[this.penCoordsIndex] = x1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = x2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y2;
+                    this.penCoordsIndex++;
+                    this.penLines[this.penLinesIndex] = Math.PI / 2;
+                    this.penLinesIndex++;
+                    this.penLines[this.penLinesIndex] = size / 2;
+                    this.penLinesIndex++;
+                    this.penCoords[this.penCoordsIndex] = x1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = x2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y2;
+                    this.penCoordsIndex++;
+                    this.penLines[this.penLinesIndex] = Math.PI / 2;
+                    this.penLinesIndex++;
+                    this.penLines[this.penLinesIndex] = size / 2;
+                    this.penLinesIndex++;
+                    this.penCoords[this.penCoordsIndex] = x2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = x1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y1;
+                    this.penCoordsIndex++;
+                    this.penLines[this.penLinesIndex] = -Math.PI / 2;
+                    this.penLinesIndex++;
+                    this.penLines[this.penLinesIndex] = size / 2;
+                    this.penLinesIndex++;
+                    this.penCoords[this.penCoordsIndex] = x2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y2;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = x1;
+                    this.penCoordsIndex++;
+                    this.penCoords[this.penCoordsIndex] = y1;
+                    this.penCoordsIndex++;
+                    this.penLines[this.penLinesIndex] = Math.PI / 2;
+                    this.penLinesIndex++;
+                    this.penLines[this.penLinesIndex] = size / 2;
+                    this.penLinesIndex++;
+                    for (var i = 0; i < circleRes; i++) {
+                        this.penCoords[this.penCoordsIndex] = x2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y1;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = 0;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = 0;
+                        this.penLinesIndex++;
+                        this.penCoords[this.penCoordsIndex] = x2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y1;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = Math.PI / 2 + i / circleRes * Math.PI;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = size / 2;
+                        this.penLinesIndex++;
+                        this.penCoords[this.penCoordsIndex] = x2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y1;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = Math.PI / 2 + (i + 1) / circleRes * Math.PI;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = size / 2;
+                        this.penLinesIndex++;
+                        this.penCoords[this.penCoordsIndex] = x1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y2;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = 0;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = 0;
+                        this.penLinesIndex++;
+                        this.penCoords[this.penCoordsIndex] = x1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y2;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = Math.PI / 2 + i / circleRes * Math.PI;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = size / 2;
+                        this.penLinesIndex++;
+                        this.penCoords[this.penCoordsIndex] = x1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x2;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y2;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = Math.PI / 2 + (i + 1) / circleRes * Math.PI;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = size / 2;
+                        this.penLinesIndex++;
+                    }
+                    const [r, g, b, a] = color.toParts();
+                    for (var i = 0; i < circleRes * 6 + 6; i++) {
+                        this.penColors[this.penColorsIndex] = r;
+                        this.penColorsIndex++;
+                        this.penColors[this.penColorsIndex] = g;
+                        this.penColorsIndex++;
+                        this.penColors[this.penColorsIndex] = b;
+                        this.penColorsIndex++;
+                        this.penColors[this.penColorsIndex] = a;
+                        this.penColorsIndex++;
+                    }
+                }
+                penDot(color, size, x, y) {
+                    const circleRes = this.getCircleResolution(size);
+                    if (this.buffersCanFit(12 * circleRes)) {
+                        this.drawPendingOperations();
+                    }
+                    for (var i = 0; i < circleRes; i++) {
+                        this.penCoords[this.penCoordsIndex] = x;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = 0;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = 0;
+                        this.penLinesIndex++;
+                        this.penCoords[this.penCoordsIndex] = x;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x + 1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y + 1;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = Math.PI / 2 + i / circleRes * 2 * Math.PI;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = size / 2;
+                        this.penLinesIndex++;
+                        this.penCoords[this.penCoordsIndex] = x;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = x + 1;
+                        this.penCoordsIndex++;
+                        this.penCoords[this.penCoordsIndex] = y + 1;
+                        this.penCoordsIndex++;
+                        this.penLines[this.penLinesIndex] = Math.PI / 2 + (i + 1) / circleRes * 2 * Math.PI;
+                        this.penLinesIndex++;
+                        this.penLines[this.penLinesIndex] = size / 2;
+                        this.penLinesIndex++;
+                    }
+                    const [r, g, b, a] = color.toParts();
+                    for (var i = 0; i < circleRes * 3; i++) {
+                        this.penColors[this.penColorsIndex] = r;
+                        this.penColorsIndex++;
+                        this.penColors[this.penColorsIndex] = g;
+                        this.penColorsIndex++;
+                        this.penColors[this.penColorsIndex] = b;
+                        this.penColorsIndex++;
+                        this.penColors[this.penColorsIndex] = a;
+                        this.penColorsIndex++;
+                    }
+                }
+                penStamp(sprite) {
+                    this.dirty = true;
+                    if (this.pendingPenOperations()) {
+                        this.drawPendingOperations();
+                    }
+                    this.useShader(this.allFiltersShader);
+                    this.drawChild(sprite);
+                }
+                penClear() {
+                    this.gl.clearColor(0, 0, 0, 0);
+                    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                }
+            }
+            PenRenderer.PEN_VERTEX_SHADER = `
+    precision mediump float;
+
+    // [0] = x1
+    // [1] = y1
+    // [2] = x2
+    // [3] = y2
+    attribute vec4 a_vertexData;
+    // [0] = thickened vertex direction
+    // [1] = thickened vertex distance
+    attribute vec2 a_lineData;
+    // [0] = red
+    // [1] = green
+    // [2] = blue
+    // [3] = alpha
+    attribute vec4 a_color;
+
+    varying vec4 v_color;
+
+    void main() {
+      vec2 lineDir = normalize(a_vertexData.zw - a_vertexData.xy);
+
+      mat2 rot;
+      rot[0] = vec2(cos(a_lineData.x), sin(a_lineData.x));
+      rot[1] = vec2(-sin(a_lineData.x), cos(a_lineData.x));
+
+      lineDir *= rot * a_lineData.y;
+
+      vec2 p = (a_vertexData.xy + lineDir);
+      p.x /= 240.0;
+      p.y /= 180.0;
+
+      gl_Position = vec4(p, 0.0, 1.0);
+      v_color = vec4(a_color.xyz / 255.0, a_color.w);
+    }`;
+            PenRenderer.PEN_FRAGMENT_SHADER = `
+    precision mediump float;
+
+    varying vec4 v_color;
+
+    void main() {
+      gl_FragColor = v_color;
+    }`;
+            class WebGLProjectRenderer extends WebGLSpriteRenderer {
+                constructor(stage) {
+                    super();
+                    this.stage = stage;
+                    this.zoom = 1;
+                    this.collisionRenderer = new CollisionRenderer();
+                    this.penRenderer = new PenRenderer();
+                    this.fallbackRenderer = new P.renderer.canvas2d.ProjectRenderer2D(stage);
+                }
+                drawFrame() {
+                    if (this.penRenderer.pendingPenOperations()) {
+                        this.penRenderer.drawPendingOperations();
+                    }
+                    if (this.penRenderer.dirty) {
+                        this.updatePenTexture();
+                        this.penRenderer.dirty = false;
+                    }
+                    this.reset(this.zoom);
+                    this.useShader(this.allFiltersShader);
+                    this.drawChild(this.stage);
+                    if (this.penTexture) {
+                        this.drawTextureOverlay(this.penTexture);
+                        this.useShader(this.allFiltersShader);
+                    }
+                    for (var i = 0; i < this.stage.children.length; i++) {
+                        var child = this.stage.children[i];
+                        if (!child.visible) {
+                            continue;
+                        }
+                        this.drawChild(child);
+                    }
+                    this.gl.flush();
+                }
+                init(root) {
+                    root.appendChild(this.canvas);
+                }
+                destroy() {
+                    super.destroy();
+                    this.penRenderer.destroy();
+                    this.collisionRenderer.destroy();
+                }
+                onStageFiltersChanged() {
+                }
+                penLine(color, size, x1, y1, x2, y2) {
+                    this.penRenderer.penLine(color, size, x1, y1, x2, y2);
+                }
+                penDot(color, size, x, y) {
+                    this.penRenderer.penDot(color, size, x, y);
+                }
+                penStamp(sprite) {
+                    this.penRenderer.penStamp(sprite);
+                }
+                penClear() {
+                    this.penRenderer.penClear();
+                }
+                updatePenTexture() {
+                    if (this.penTexture) {
+                        this.gl.bindTexture(this.gl.TEXTURE_2D, this.penTexture);
+                        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.penRenderer.canvas);
+                    }
+                    else {
+                        this.penTexture = this.convertToTexture(this.penRenderer.canvas);
+                    }
+                }
+                resize(scale) {
+                    this.zoom = scale * P.config.scale;
+                }
+                spriteTouchesPoint(sprite, x, y) {
+                    return this.collisionRenderer.spriteTouchesPoint(sprite, x, y);
+                }
+                spritesIntersect(spriteA, otherSprites) {
+                    return this.collisionRenderer.spritesIntersect(spriteA, otherSprites);
+                }
+                spriteTouchesColor(sprite, color) {
+                    return this.fallbackRenderer.spriteTouchesColor(sprite, color);
+                }
+                spriteColorTouchesColor(sprite, spriteColor, otherColor) {
+                    return this.fallbackRenderer.spriteColorTouchesColor(sprite, spriteColor, otherColor);
+                }
+            }
+            webgl.WebGLProjectRenderer = WebGLProjectRenderer;
+        })(webgl = renderer.webgl || (renderer.webgl = {}));
+    })(renderer = P.renderer || (P.renderer = {}));
 })(P || (P = {}));
 //# sourceMappingURL=phosphorus.dist.js.map

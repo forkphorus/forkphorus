@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
   <title>forkphorus</title>
   <link rel="stylesheet" href="phosphorus.css">
-  <link rel="stylesheet" href="player.css">
 
   <style>
     body {
@@ -35,67 +36,50 @@
   <script src="lib/rgbcolor.js"></script>
   <script src="lib/canvg.min.js"></script>
   <script src="phosphorus.dist.js"></script>
-  <script src="i18n.js"></script>
-  <script src="player.js"></script>
+  <script src="common.js"></script>
 
   <script>
   (function() {
     'use strict';
 
-    var projectId = 17088932;
-    var autoStart = true;
-    var lightContent = false;
-    var hasUI = true;
-    var id = Math.random().toString().substr(2, 5) + '-' + projectId + '-' + Date.now();
-    var width = 480;
+    var player = new P.player.Player();
 
-    location.search.substr(1).split('&').forEach(function(p) {
-      const parts = p.split('=');
-      if (parts.length > 1) {
-        switch (parts[0]) {
-          case 'id':
-            projectId = Number(parts[1]);
-            break;
-          case 'auto-start':
-            autoStart = parts[1] !== 'false';
-            break;
-          case 'light-content':
-            lightContent = parts[1] !== 'false';
-            break;
-          case 'ui':
-            hasUI = parts[1] !== 'false';
-            break;
-          case 'w':
-            width = Number(parts[1]);
-            break;
-          case 'h':
-            // ignored by the embed itself. the scriptlet handles height
-            break;
-          default:
-            console.warn('unknown search param', parts);
-        }
+    var hasUI = true;
+    Common.parseSearch(function(key, value) {
+      switch (key) {
+        case 'auto-start':
+          if (value === 'true') {
+            player.setOptions({ autoplayPolicy: 'always' });
+          } else {
+            player.setOptions({ autoplayPolicy: 'never' });
+          }
+          break;
+        case 'light-content':
+          if (value === 'true') {
+            player.setOptions({ theme: 'dark' });
+          } else {
+            player.setOptions({ theme: 'light' });
+          }
+          break;
+        case 'ui':
+          hasUI = value !== 'false';
+          break;
       }
     });
 
-    function postMessage(type, data) {
-      if (window.parent && window.parent.postMessage) {
-        var data = Object.assign({
-          id: id,
-          type: type,
-        }, data || {});
-        window.parent.postMessage(data, '*');
-      }
-    }
+    var width = window.innerWidth;
 
-    var player = new P.Player({theme: lightContent ? 'dark' : 'light'});
+    player.setOptions(Common.playerOptions);
+    player.setOptions({ focusOnLoad: false });
 
     if (hasUI) {
       document.body.classList.add('has-ui');
       player.addControls();
-      new P.Player.ProgressBar(player, {position: 'controls'});
+      // space for border
+      width -= 2;
+      new P.player.ProgressBar(player, {position: 'controls'});
     }
-    // TODO: don't add ErrorHandler if UI is not set to be visible?
-    new P.Player.ErrorHandler(player);
+    new P.player.ErrorHandler(player);
     document.querySelector('.player').appendChild(player.root);
 
     // Implement Parent -> Embed API
@@ -104,7 +88,7 @@
       var type = data.type;
       switch (type) {
         case 'start': {
-          player.start();
+          player.resume();
           break;
         }
         case 'pause': {
@@ -118,6 +102,16 @@
     });
 
     // Implement Embed -> Parent API
+    var id = Math.random().toString().substr(2, 5) + '-' + Common.projectId + '-' + Date.now();
+    function postMessage(type, data) {
+      if (window.parent && window.parent !== window && window.parent.postMessage) {
+        var data = Object.assign({
+          id: id,
+          type: type,
+        }, data || {});
+        window.parent.postMessage(data, '*');
+      }
+    }
     player.onprogress.subscribe(function(progress) {
       postMessage('progress', { progress: progress });
     });
@@ -128,17 +122,14 @@
       postMessage('startload');
     });
     player.onerror.subscribe(function(error) {
-      postMessage('error', { error: error });
-    });
-    player.onstart.subscribe(function(error) {
-      postMessage('start');
+      postMessage('error');
     });
     player.onpause.subscribe(function(error) {
       postMessage('pause');
     });
     postMessage('hello', { version: 1 });
 
-    player.loadProjectId(projectId, { start: autoStart })
+    player.loadProjectById(Common.projectId)
       .then(function() {
         player.stage.setZoom(width / 480);
       });

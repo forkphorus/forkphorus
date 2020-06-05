@@ -2,13 +2,16 @@
 
 <html>
   <head>
+    <meta charset="utf-8">
+    <meta name="robots" content="noindex">
     <style>
       body {
         font-family: sans-serif;
       }
-      /* How to apply styles to the forkphorus embed <iframe> */
-      .forkphorus-embed {
-        margin: 10px;
+      input {
+        width: 200px;
+      }
+      iframe {
         display: block;
       }
     </style>
@@ -62,7 +65,7 @@
         }
 
         if (type === 'error') {
-          console.log(id, 'has encountered an error', data.error);
+          console.log(id, 'has encountered an error');
         }
       });
     </script>
@@ -72,41 +75,39 @@
     <p>The project being shown here is <a href="https://scratch.mit.edu/projects/280227362">Spring Physics by HowToLogic</a>.</p>
 
     <h2>no autostart, 480x360</h2>
-    <script src="/embed.js?id=280227362&auto-start=false&light-content=false&w=480&h=360"></script>
-    <input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=false&light-content=false&w=480&h=360">&lt;/script>'>
+    <iframe src="/embed.html?id=280227362&auto-start=false&light-content=false" width="482" height="393" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
 
     <h2>no autostart, 960x720</h2>
-    <script src="/embed.js?id=280227362&auto-start=false&light-content=false&w=960&h=720"></script>
-    <input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=false&light-content=false&w=960&h=720">&lt;/script>'>
-  
+    <iframe src="/embed.html?id=280227362&auto-start=false&light-content=false" width="962" height="753" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
+
     <h2>no autostart, 240x180</h2>
-    <script src="/embed.js?id=280227362&auto-start=false&light-content=false&w=240&h=180"></script>
-    <input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=false&light-content=false&w=240&h=180">&lt;/script>'>
+    <iframe src="/embed.html?id=280227362&auto-start=false&light-content=false" width="242" height="213" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
 
     <h2>autostart, 480x360</h2>
-    <script src="/embed.js?id=280227362&auto-start=true&light-content=false"></script>
-    <input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=true&light-content=false">&lt;/script>'>
+    <iframe src="/embed.html?id=280227362&auto-start=true&light-content=false" width="482" height="393" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
+
+    <h2>autostart, 480x360, 60 fps</h2>
+    <iframe src="/embed.html?id=280227362&auto-start=true&light-content=false&fps=60" width="482" height="393" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
 
     <h2>Light controls (for dark themes)</h2>
-    <p>(black background not set by the embed, the embed is transparent so set background-color on the parent)</p>
-    <div style="background-color: #111; padding: 10px; width: 500px;">
-      <script src="/embed.js?id=280227362&auto-start=false&light-content=true&w=480&h=360"></script>
+    <p>(black background not set by the embed, the embed is transparent so set background-color on the iframe or its container)</p>
+    <div style="background-color: #111; width: 480px; padding: 10px;">
+      <iframe src="/embed.html?id=280227362&auto-start=false&light-content=true" width="482" height="393" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
     </div>
-    <input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&auto-start=false&light-content=true&w=480&h=360">&lt;/script>'>
 
     <h2>Hide UI (autostart)</h2>
-    <script src="/embed.js?id=280227362&ui=false"></script>
-    <input value='&lt;script src="https://forkphorus.github.io/embed.js?id=280227362&ui=false">&lt;/script>'>
-
-    <p>... and more. This is not a comprehensive list. You can mix resolution, dark theme, controls, etc. and it all <i>just works</i>.</p>
+    <iframe src="/embed.html?id=280227362&ui=false" width="480" height="360" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
 
     <script>
-      for (var i of document.querySelectorAll('input')) {
-        i.readOnly = true;
-        i.onclick = function() {
+      for (var i of document.querySelectorAll('iframe')) {
+        var input = document.createElement('input');
+        input.value = i.outerHTML.replace('src="', 'src="' + location.origin).replace(/\&amp;/g, '&');
+        input.readOnly = true;
+        input.onclick = function() {
           this.focus();
           this.select();
         };
+        i.insertAdjacentElement('afterend', input);
       }
     </script>
 

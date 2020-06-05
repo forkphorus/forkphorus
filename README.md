@@ -16,23 +16,25 @@ Projects should, in general, run faster in forkphorus than in Scratch 3 and much
 
 (September 2019, Chrome 76)
 
-## Build Steps
+## Building Forkphorus
 
-Forkphorus is written in mostly TypeScript, which must be compiled to JavaScript to run in a browser.
+You will need Git and Node.js.
 
- * [Install node.js and npm](https://nodejs.org/en/) (npm is usually included with node)
- * **Automated way:**
-   * Run `npm run watch` in your terminal when in the repository.
-   * Open any of the links output in the console.
-   * **VS Code Users:** You can do this using Tasks: Command Pallet (Ctrl+Shift+P) -> "Run Build Task" -> "npm: watch" -> "TypeScript problems (Watch mode)". Other editors may have something similar.
- * **Manual way:** (only if the first method didn't work)
-   * Install dependencies by running `npm install` in the repository.
-   * Run `tsc -w` to start the TypeScript compiler in watch mode.
-   * Open index.html in your browser with a local HTTP server or a file:// URL.
- * Edit TypeScript files in the `phosphorus` folder, and the compiler will automatically rebuild the output.
- * Refresh to observe changes.
+```
+git clone https://github.com/forkphorus/forkphorus.git
+cd forkphorus
+npm install
+```
 
-If for some reason you don't want to or can't do that, then you could edit phosphorus.dist.js directly instead.
+Start the development server with:
+
+```
+npm start
+```
+
+View the development server at http://localhost:8080/
+
+Forkphorus is written in a mix of "vanilla" JavaScript and TypeScript. Most interface code is JavaScript, but the forkphorus runtime, compiler, and project player are written in TypeScript. The TypeScript files are in the `src` folder and changes automatically trigger rebuilds while the development server is running.
 
 ## License
 

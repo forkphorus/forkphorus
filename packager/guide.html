@@ -2,7 +2,7 @@
 <html lang="en">
 
 <head>
-  <meta charset="utf8">
+  <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Forkphorus to executable (.exe)</title>
   <style>
@@ -30,7 +30,7 @@
   <main>
     <header><h1>Forkphorus to executable (.exe)</h1></header>
 
-    <p>This guide will explain how to use the <a href="/packager/">Forkphorus Packager</a> to create executable files for Scratch projects. While this guide is mainly targetting Windows, the same steps can be applied to Mac OS and Linux operating systems.</p>
+    <p>This guide will explain how to use the <a href="/packager/">Forkphorus Packager</a> to create executable files for Scratch projects. While this guide is mainly targetting Windows, the same steps can be applied to Mac OS and Linux operating systems. <b>Currently only tested on Windows. Some Mac users are reporting issues. These will be investigated soon.</b></p>
 
     <section>
       <h2>Making an executable with NW.js</h2>
@@ -58,7 +58,7 @@
           <ul>
             <li>You should copy and paste the above to avoid issues.</li>
             <li>Underlined sections may be changed.</li>
-            <li><code>name</code>: The name of the project. It doesn't really matter what you set this to.</li>
+            <li><code>name</code>: The name of the project. This should be unique to your project, and should not change. This is used to remember cloud variables if you have that enabled, among other things.</li>
             <li><code>title</code>: This will be the Window's title.</li>
             <li><code>icon</code>: This is the path to the image that will be the Window's icon. If you  do not create an icon, an icon will be generated automatically.</li>
             <li><code>resizable</code>: Allows the window to be resized. Set this to <code>false</code> to disallow resizing. (on Mac OS, <a href="http://docs.nwjs.io/en/latest/References/Manifest%20Format/#resizable">you may need to do additional steps</a> to disallow resizing)</li>
