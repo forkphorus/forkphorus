@@ -66,6 +66,14 @@ var Common = (function() {
       setPlayerOption(name, value || 'true');
     }
 
+    function setPlayerEnum(name, value, values) {
+      if (values.indexOf(value) > -1) {
+        setPlayerOption(name, value);
+      } else {
+        console.warn(value, 'is not one of', values.join(', '));
+      }
+    }
+
     switch (key) {
       // Player options
       case 'fps':
@@ -79,6 +87,9 @@ var Common = (function() {
         break;
       case 'imageSmoothing':
         setPlayerFlag('imageSmoothing', value);
+        break;
+      case 'cloud':
+        setPlayerEnum('cloudVariables', value, ['once', 'off', 'ws', 'localStorage']);
         break;
       // Project ID
       case 'id':
