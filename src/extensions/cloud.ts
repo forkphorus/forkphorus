@@ -126,8 +126,7 @@ namespace P.ext.cloud {
         this.send({
           kind: 'handshake',
           id: this.id,
-          // TODO: proper username support
-          username: 'player' + Math.random().toString().substr(4, 7),
+          username: this.stage.username,
           variables: getAllCloudVariables(this.stage),
         });
       };
@@ -149,6 +148,7 @@ namespace P.ext.cloud {
 
       this.ws.onclose = (e) => {
         console.warn(this.logPrefix, 'closed', e.code, e.reason);
+        // TODO: do not reconnect after certain errors
         this.reconnect();
       };
 

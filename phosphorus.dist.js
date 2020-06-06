@@ -8847,7 +8847,7 @@ var P;
                         this.send({
                             kind: 'handshake',
                             id: this.id,
-                            username: 'player' + Math.random().toString().substr(4, 7),
+                            username: this.stage.username,
                             variables: getAllCloudVariables(this.stage),
                         });
                     };
