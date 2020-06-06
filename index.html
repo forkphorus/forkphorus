@@ -121,6 +121,13 @@
         </tr>
       </table>
       <p>Changes are applied automatically.</p>
+
+      <h1>Advanced Settings</h1>
+      <p>Help test unfinished features. <b>Note: These are advanced features and require a refresh to apply.</b> <a href="https://github.com/forkphorus/forkphorus/wiki/Advanced-Features" target="_blank">Please read this first.</a></p>
+      <div class="advanced">
+        <label><input id="advanced-webgl" class="advanced-feature" type="checkbox"> WebGL Renderer</label>
+        <label><input id="advanced-cloud" class="advanced-feature" type="checkbox"> Cloud Variables</label>
+      </div>
     </div>
 
     <section>
@@ -135,6 +142,7 @@
     </section>
   </div>
 
+  <script src="lib/details-element-polyfill.js"></script>
   <script src="lib/jszip.min.js"></script>
   <script src="lib/fontfaceobserver.standalone.js"></script>
   <script src="lib/stackblur.min.js"></script>
@@ -601,6 +609,32 @@
     settingImageSmoothing.addEventListener('change', (e) => {
       player.setOptions({ imageSmoothing: settingImageSmoothing.checked });
     });
+
+    /** Advanced Settings Menu **/
+    var advancedWebGL = querySelector('#advanced-webgl');
+    var advancedCloud = querySelector('#advanced-cloud');
+    advancedWebGL.checked = P.config.useWebGL;
+    advancedWebGL.addEventListener('change', function(e) {
+      setSearchParam('webgl', e.target.checked);
+    });
+    advancedCloud.checked = player.getOptions().cloudVariables === 'ws';
+    advancedCloud.addEventListener('change', function(e) {
+      setSearchParam('cloud', e.target.checked ? 'ws' : false);
+    });
+    function setSearchParam(key, value) {
+      if (!confirm("This will refresh this page, resetting the project. Continue?")) {
+        return;
+      }
+      var searchParams = new URLSearchParams(location.search);
+      if (value === true) {
+        searchParams.set(key, '');
+      } else if (value === false) {
+        searchParams.delete(key);
+      } else {
+        searchParams.set(key, value);
+      }
+      location.search = searchParams.toString();
+    }
 
     if (initialId) {
       player.setOptions({ autoplayPolicy: 'never' });
