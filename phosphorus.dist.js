@@ -8792,8 +8792,10 @@ var P;
                     this.queuedVariableChanges = [];
                     this.ws = null;
                     this.shouldReconnect = true;
+                    this.failures = 0;
                     this.logPrefix = '[cloud-ws ' + host + ']';
                     this.handleUpdateInterval = this.handleUpdateInterval.bind(this);
+                    this.connect = this.connect.bind(this);
                     this.connect();
                 }
                 variableChanged(name) {
@@ -8811,7 +8813,7 @@ var P;
                         this.stopUpdateInterval();
                         return;
                     }
-                    if (this.ws === null) {
+                    if (this.ws === null || this.ws.readyState !== this.ws.OPEN) {
                         return;
                     }
                     const variableName = this.queuedVariableChanges.shift();
@@ -8834,10 +8836,14 @@ var P;
                     this.stage.vars[name] = value;
                 }
                 connect() {
+                    if (this.ws !== null) {
+                        throw new Error('already connected');
+                    }
                     console.log(this.logPrefix, 'connecting');
                     this.ws = new WebSocket(this.host);
                     this.ws.onopen = () => {
-                        console.log(this.logPrefix, 'opened, sending handshake');
+                        console.log(this.logPrefix, 'connected');
+                        this.failures = 0;
                         this.send({
                             kind: 'handshake',
                             id: this.id,
@@ -8859,27 +8865,33 @@ var P;
                         }
                     };
                     this.ws.onclose = (e) => {
-                        console.warn(this.logPrefix, 'closed', e);
-                        this.ws = null;
+                        console.warn(this.logPrefix, 'closed', e.code, e.reason);
                         this.reconnect();
                     };
                     this.ws.onerror = (e) => {
                         console.warn(this.logPrefix, 'error', e);
                     };
                 }
-                disconnect() {
-                    console.log(this.logPrefix, 'disconnecting');
-                    this.shouldReconnect = false;
-                    if (this.ws) {
-                        this.ws.close();
-                        this.ws = null;
-                    }
-                }
                 reconnect() {
                     if (!this.shouldReconnect) {
                         return;
                     }
-                    this.connect();
+                    if (this.ws !== null) {
+                        this.ws.close();
+                        this.ws = null;
+                    }
+                    this.failures++;
+                    const delayTime = this.getBackoffTime();
+                    console.log(this.logPrefix, 'reconnecting in', delayTime);
+                    setTimeout(this.connect, delayTime);
+                }
+                disconnect() {
+                    console.log(this.logPrefix, 'disconnecting');
+                    this.shouldReconnect = false;
+                    if (this.ws !== null) {
+                        this.ws.close();
+                        this.ws = null;
+                    }
                 }
                 handleMessage(data) {
                     if (!isCloudSetMessage(data)) {
@@ -8890,6 +8902,9 @@ var P;
                         throw new Error('invalid variable name');
                     }
                     this.setVariable(variableName, value);
+                }
+                getBackoffTime() {
+                    return Math.pow(2, this.failures) * 1000;
                 }
                 startUpdateInterval() {
                     if (this.updateInterval !== null) {

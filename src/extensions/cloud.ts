@@ -52,11 +52,13 @@ namespace P.ext.cloud {
     private ws: WebSocket | null = null;
     private readonly logPrefix: string;
     private shouldReconnect: boolean = true;
+    private failures: number = 0;
 
     constructor(stage: P.core.Stage, private host: string, private id: string) {
       super(stage);
       this.logPrefix = '[cloud-ws ' + host + ']';
       this.handleUpdateInterval = this.handleUpdateInterval.bind(this);
+      this.connect = this.connect.bind(this);
       this.connect();
     }
 
@@ -79,8 +81,9 @@ namespace P.ext.cloud {
         this.stopUpdateInterval();
         return;
       }
-      if (this.ws === null) {
+      if (this.ws === null || this.ws.readyState !== this.ws.OPEN) {
         // no connection
+        // we will hope that the connection will become available in the near future and keep checking
         return;
       }
       const variableName = this.queuedVariableChanges.shift()!;
@@ -106,11 +109,20 @@ namespace P.ext.cloud {
     }
 
     private connect() {
+      if (this.ws !== null) {
+        throw new Error('already connected');
+      }
+
       console.log(this.logPrefix, 'connecting');
       this.ws = new WebSocket(this.host);
 
       this.ws.onopen = () => {
-        console.log(this.logPrefix, 'opened, sending handshake');
+        console.log(this.logPrefix, 'connected');
+        
+        // after a successful connection we can reset the failures counter
+        this.failures = 0;
+
+        // send the handshake
         this.send({
           kind: 'handshake',
           id: this.id,
@@ -122,7 +134,8 @@ namespace P.ext.cloud {
 
       this.ws.onmessage = (e) => {
         try {
-          // Each line of the message is treated as a separate message.
+          // Each line of the message is treated as a separate JSON-encoded message.
+          // This is not a JSON list.
           const lines = e.data.split('\n');
           for (const line of lines) {
             const data = JSON.parse(line);
@@ -135,8 +148,7 @@ namespace P.ext.cloud {
       };
 
       this.ws.onclose = (e) => {
-        console.warn(this.logPrefix, 'closed', e);
-        this.ws = null;
+        console.warn(this.logPrefix, 'closed', e.code, e.reason);
         this.reconnect();
       };
 
@@ -146,20 +158,27 @@ namespace P.ext.cloud {
       };
     }
 
-    private disconnect() {
-      console.log(this.logPrefix, 'disconnecting');
-      this.shouldReconnect = false;
-      if (this.ws) {
-        this.ws.close();
-        this.ws = null;
-      }
-    }
-
     private reconnect() {
       if (!this.shouldReconnect) {
         return;
       }
-      this.connect();
+      if (this.ws !== null) {
+        this.ws.close();
+        this.ws = null;
+      }
+      this.failures++;
+      const delayTime = this.getBackoffTime();
+      console.log(this.logPrefix, 'reconnecting in', delayTime);
+      setTimeout(this.connect, delayTime);
+    }
+
+    private disconnect() {
+      console.log(this.logPrefix, 'disconnecting');
+      this.shouldReconnect = false;
+      if (this.ws !== null) {
+        this.ws.close();
+        this.ws = null;
+      }
     }
 
     private handleMessage(data: unknown) {
@@ -171,6 +190,11 @@ namespace P.ext.cloud {
         throw new Error('invalid variable name');
       }
       this.setVariable(variableName, value);
+    }
+
+    private getBackoffTime(): number {
+      // TODO: add randomness
+      return 2 ** this.failures * 1000;
     }
 
     private startUpdateInterval() {
