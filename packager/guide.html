@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Forkphorus to executable (.exe)</title>
+  <title>Forkphorus to executable (Windows, Mac, Linux)</title>
   <style>
     body {
       max-width: 720px;
@@ -20,29 +20,141 @@
       max-width: 100%;
       display: block;
     }
-    footer {
-      font-size: smaller;
+
+    #platform-selector {
+      display: flex;
+      width: 100%;
+      justify-content: space-around;
+      height: 3em;
+      margin-bottom: 16px;
+    }
+    .platform {
+      user-select: none;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: background-color .2s, border-color .2s;
+      box-sizing: content-box;
+      border-bottom: 3px solid #fff;
+    }
+    .platform.selected {
+      background-color: #e8e8e8;
+      border-color: #000;
+      font-weight: bold;
+    }
+    .platform:hover {
+      background-color: #eee;
+    }
+    .platform:active {
+      background-color: #ddd;
+    }
+
+    .windows, .mac, .linux {
+      display: none;
+      font-weight: bold;
+    }
+    body[platform=windows] .windows,
+    body[platform=mac] .mac,
+    body[platform=linux] .linux {
+      display: initial;
+    }
+    body[platform=windows] img.windows,
+    body[platform=mac] img.mac,
+    body[platform=linux] img.linux {
+      display: block;
+    }
+    body[platform=windows] section.windows,
+    body[platform=windows] small.windows,
+    body[platform=mac] small.mac,
+    body[platform=linux] small.linux {
+      font-weight: normal;
     }
   </style>
 </head>
 
 <body>
   <main>
-    <header><h1>Forkphorus to executable (.exe)</h1></header>
+    <header><h1>Forkphorus to executable (Windows, Mac, Linux)</h1></header>
 
-    <p>This guide will explain how to use the <a href="/packager/">Forkphorus Packager</a> to create executable files for Scratch projects. While this guide is mainly targetting Windows, the same steps can be applied to Mac OS and Linux operating systems. <b>Currently only tested on Windows. Some Mac users are reporting issues. These will be investigated soon.</b></p>
+    <p>This guide will explain how to use the <a href="/packager/">Forkphorus Packager</a> to create executable files for Scratch projects. For mobile devices, please see <a href="android.html">the Android guide</a>.</p>
+
+    <div id="platform-selector">
+      <a class="platform" id="windows"><span class="platform-text">Windows</span></a>
+      <a class="platform" id="mac"><span class="platform-text">Mac</span></a>
+      <a class="platform" id="linux"><span class="platform-text">Linux</span></a>
+    </div>
+
+    <script>
+      (function() {
+        var buttons = document.getElementsByClassName('platform');
+        var platform;
+        if (['windows', 'mac', 'linux'].indexOf(location.hash.substr(1)) > -1) {
+          platform = location.hash.substr(1);
+        } else {
+          if (/cros/i.test(navigator.userAgent)) {
+            platform = 'windows'; // temporary
+          }
+          if (/mac/i.test(navigator.userAgent)) {
+            platform = 'mac';
+          }
+          if (/linux/i.test(navigator.userAgent)) {
+            platform = 'linux';
+          }
+          if (!platform) {
+            platform = 'windows';
+          }
+        }
+        for (var i = 0; i < buttons.length; i++) {
+          buttons[i].onclick = function(e) {
+            document.body.setAttribute('platform', this.id);
+            if (e && history && history.pushState) {
+              history.replaceState('', '', '#' + this.id);
+            }
+            for (var i = 0; i < buttons.length; i++) {
+              var otherEl = buttons[i];
+              otherEl.classList.toggle('selected', otherEl === this);
+            }
+          };
+          if (buttons[i].id === platform) {
+            buttons[i].onclick();
+          }
+        }
+      })();
+    </script>
+
+    <p class="mac">Note for Mac users: While this guide is adapted for Macs, I am not very familiar with Macs. You might have to do a bit of your own research to finish things. Please <a href="https://github.com/forkphorus/forkphorus/issues/new">report your findings</a> so I can improve this guide for everyone.</p>
+    <p class="linux">Note for Linux users: This guide has not yet been adapted for Linux. However, most of the steps should still apply. You might have to do a bit of your own research to finish things. Please <a href="https://github.com/forkphorus/forkphorus/issues/new">report your findings</a> so I can improve this guide for everyone.</p>
 
     <section>
       <h2>Making an executable with NW.js</h2>
 
-      <p>If you're not using Windows, just ignore all references to "exe" and everything should work correctly.</p>
-
       <ol>
-        <li>Use <a href="index.html">the packager</a> to generate a .html file for the project.</li>
-        <li><a href="https://nwjs.io/">Download NW.js's "Normal" version</a> (not "SDK") for your platform.<img src="https://user-images.githubusercontent.com/17209175/58752962-441c6200-847d-11e9-9387-4fb25f164025.png" height="329"><small>Version numbers will no doubt be different, but compatibility shouldn't be an issue. The "SDK" version works but includes tools we don't need.</small></li>
-        <li>Extract the archive</li>
-        <li>Move "project.html" (file created by the packager, it's probably in your Downloads folder) into the extracted folder from the previous step (the same folder where "nw.exe" is located). Make sure it is named exactly "project.html" and not something else like "project(1).html"</li>
-        <li>Create the file "package.json" in the same folder with the content:
+        <li>
+          Use <a href="index.html">the HTML packager</a> to generate a .html file for the project.
+        </li>
+        <li>
+          <a href="https://nwjs.io/">Download NW.js's "Normal" version</a> (not "SDK") for your platform.
+          <!-- PICTURE OF NWJS WEBSITE -->
+          <img src="https://user-images.githubusercontent.com/17209175/58752962-441c6200-847d-11e9-9387-4fb25f164025.png" height="329">
+          <small>NW.js should automatically detect your operating system and show the correct download. Otherwise, go to the Downloads page and find the correct download.<br>
+            The "SDK" version works, but it includes extra tools you won't need.</small>
+        </li>
+        <li>
+          Extract the archive. <span class="mac">Mac users: This may happen automatically.</span>
+        </li>
+        <li>
+          Move "project.html" (file created by the packager, it's probably in your Downloads folder) into the extracted folder from the previous step (the same folder where
+          <span class="windows">nw.exe</span>
+          <span class="mac">nwjs</span>
+          <span class="linux">nw</span>
+          is located).
+          Make sure it is named exactly "project.html" and not something else like "project(1).html"
+        </li>
+        <li>
+          Create the file "package.json" in the same folder with the content:
           <pre>
 {
   "name": "<u>Name of the project</u>",
@@ -60,26 +172,49 @@
             <li>Underlined sections may be changed.</li>
             <li><code>name</code>: The name of the project. This should be unique to your project, and should not change. This is used to remember cloud variables if you have that enabled, among other things.</li>
             <li><code>title</code>: This will be the Window's title.</li>
-            <li><code>icon</code>: This is the path to the image that will be the Window's icon. If you  do not create an icon, an icon will be generated automatically.</li>
-            <li><code>resizable</code>: Allows the window to be resized. Set this to <code>false</code> to disallow resizing. (on Mac OS, <a href="http://docs.nwjs.io/en/latest/References/Manifest%20Format/#resizable">you may need to do additional steps</a> to disallow resizing)</li>
+            <li><code>icon</code>: This is the path to the image that will be the Window's icon. If you do not create an icon, NW.js will create a temporary one automatically. <span class="mac">Mac users: this seems to be a bit broken. If you can figure out how to make it work, please let me know.</span></li>
+            <li><code>resizable</code>: Allows the window to be resized. Set this to <code>false</code> to disallow resizing. <span class="mac">Mac users: <a href="http://docs.nwjs.io/en/latest/References/Manifest%20Format/#resizable">you may need to also set fullscreen to false to disallow resizing</a></span></li>
             <li><code>width</code> and <code>height</code>: The initial width and height (in pixels) of the window. Scratch's project player is 480x360 by default. Aspect ratios other than 4:3 will result in black bars around the project.</li>
-            <li>For a full list of fields you can use, see <a href="http://docs.nwjs.io/en/latest/References/Manifest%20Format/#window-subfields">the NW.js documentation</a>.</li>
+            <li>For a full list of usable fields, see <a href="http://docs.nwjs.io/en/latest/References/Manifest%20Format/#window-subfields">the NW.js documentation</a>.</li>
           </ul>
           <br>
           At this point, your NW.js folder should look something like this:
-          <img src="https://user-images.githubusercontent.com/17209175/59154860-a0652000-8a41-11e9-85d0-109e59c0316c.png" height="481">
+          <img class="windows" src="https://user-images.githubusercontent.com/17209175/59154860-a0652000-8a41-11e9-85d0-109e59c0316c.png" height="481">
+          <img class="mac" src="https://user-images.githubusercontent.com/17209175/83950423-53509100-a7f0-11ea-9bd9-9f5dc2282e7b.png" height="200">
+          <!-- TODO --> <img class="linux" src="https://user-images.githubusercontent.com/17209175/59154860-a0652000-8a41-11e9-85d0-109e59c0316c.png" height="481">
           <small>Highlighted files are ones you should have created.</small>
         </li>
-        <li>Optionally rename "nw.exe" to something else, such as the name of your project. (make sure to keep the .exe ending)</li>
-        <li>Open "nw.exe" or whatever you renamed it.</li>
-        <li>You're done! <img src="https://user-images.githubusercontent.com/17209175/59154894-67797b00-8a42-11e9-9678-e24bca31f285.png" height="402"><small><a href="https://scratch.mit.edu/projects/10128407/">griffpatch's Paper Minecraft project</a> running as an exe on Windows with a solid blue icon.</small></li>
+        <li>
+          Optionally rename
+          <span class="windows">nw.exe</span>
+          <span class="mac">nwjs</span>
+          <span class="linux">nw</span>
+          to something else, such as the name of your project.
+          <span class="windows">(make sure to keep the .exe ending)</span>
+        </li>
+        <li>
+          Open
+          <span class="windows">nw.exe</span>
+          <span class="mac">nwjs</span>
+          <span class="linux">nw</span>
+          or whatever you renamed it.
+        </li>
+        <li>
+          You're done!
+          <img class="windows" src="https://user-images.githubusercontent.com/17209175/59154894-67797b00-8a42-11e9-9678-e24bca31f285.png" height="402">
+          <small class="windows"><a href="https://scratch.mit.edu/projects/10128407/">griffpatch's Paper Minecraft project</a> running as an exe on Windows with a solid blue icon.</small>
+          <img class="mac" src="https://user-images.githubusercontent.com/17209175/83950538-146f0b00-a7f1-11ea-9116-cfb9ae1a445e.png" height="397">
+          <small class="mac"><a href="https://scratch.mit.edu/projects/10128407/">griffpatch's Paper Minecraft project</a> running as an application on Mac.</small>
+          <!-- TODO --> <img class="linux" src="https://user-images.githubusercontent.com/17209175/59154894-67797b00-8a42-11e9-9678-e24bca31f285.png" height="402">
+          <!-- TODO --> <small class="linux"><a href="https://scratch.mit.edu/projects/10128407/">griffpatch's Paper Minecraft project</a> running as an exe on Windows with a solid blue icon.</small>
+        </li>
       </ol>
+
+      <hr>
     </section>
 
-    <hr>
-
-    <section>
-      <h2>Creating a self-extracting archive</h2>
+    <section class="windows">
+      <h2>Creating a self-extracting archive (Windows only)</h2>
 
       <p>NW.js works great, but it has a few problems. Specifically:
         <ul>
@@ -91,14 +226,14 @@
       <p>At the very least, you should compress the NW.js folder into a ZIP archive. We're going to go a bit beyond that and create a <a href="https://en.wikipedia.org/wiki/Self-extracting_archive">self-extracting archive</a>. However, note that this step is optional.</p>
 
       <h3>A note on anti-viruses</h3>
-      <p style="background: yellow; border: 3px solid red; padding: 4px;">Some anti-virus software detect all self-extracting archives as viruses. For this reason, <b>I would recommend just creating a ZIP archive and telling people to extract and run "nw.exe" (or whatever you renamed it)</b> instead of creating a self-extracting archive.</p>
+      <p style="background: yellow; border: 3px solid red; padding: 4px;">Some anti-virus software detects all self-extracting archives as viruses. For this reason, <b>I would recommend just creating a ZIP archive and telling people to extract and run "nw.exe" (or whatever you renamed it)</b> instead of creating a self-extracting archive.</p>
 
       <h3>Using Make SFX</h3>
       <p>Make SFX is a tool for creating self-extracting archives. Other similar tools include <a href="https://www.7-zip.org/">7-Zip</a>, <a href="https://www.peazip.org/">PeaZip</a>, and <a href="https://rarlab.com/download.htm">WinRAR</a>.</p>
       <ol>
         <li>Complete the first section using NW.js first.</li>
         <li>Download Make SFX from <a href="http://74.cz/en/make-sfx/index.php">their website</a>.</li>
-        <li>The Make SFX interface is rather daunting. Pretty much, configure it so that it looks like this:<img src="https://user-images.githubusercontent.com/17209175/58766023-61b20000-853f-11e9-8712-90336b9ad987.png" height="557">
+        <li>The Make SFX interface is rather daunting. Pretty much, configure it so that it looks like this: <img src="https://user-images.githubusercontent.com/17209175/58766023-61b20000-853f-11e9-8712-90336b9ad987.png" height="557">
           <ul>
             <li>"Source folder" is where you extracted NW.js to (again, the folder that contains "nw.exe" or what you renamed it)</li>
             <li>"Target SFX file" is where the .exe created by Make SFX will be saved</li>
@@ -110,11 +245,11 @@
         <li>Run the output file and make sure it works.</li>
         <li>You're done!</li>
       </ol>
+
+      <hr>
     </section>
 
   </main>
-
-  <hr>
 
   <footer>
     <p>If you encounter problems or wish to improve this guide, visit <a href="https://github.com/forkphorus/forkphorus/">the GitHub repo</a>.</p>
