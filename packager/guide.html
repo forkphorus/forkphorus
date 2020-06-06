@@ -82,9 +82,9 @@
     <p>This guide will explain how to use the <a href="/packager/">Forkphorus Packager</a> to create executable files for Scratch projects. For mobile devices, please see <a href="android.html">the Android guide</a>.</p>
 
     <div id="platform-selector">
-      <a class="platform" id="windows"><span class="platform-text">Windows</span></a>
-      <a class="platform" id="mac"><span class="platform-text">Mac</span></a>
-      <a class="platform" id="linux"><span class="platform-text">Linux</span></a>
+      <a class="platform" data-id="windows"><span class="platform-text">Windows</span></a>
+      <a class="platform" data-id="mac"><span class="platform-text">Mac</span></a>
+      <a class="platform" data-id="linux"><span class="platform-text">Linux</span></a>
     </div>
 
     <script>
@@ -94,10 +94,12 @@
         if (['windows', 'mac', 'linux'].indexOf(location.hash.substr(1)) > -1) {
           platform = location.hash.substr(1);
         } else {
-          if (/cros/i.test(navigator.userAgent)) {
-            platform = 'windows'; // temporary
+          if (/cros/i.test(navigator.userAgent) || /android/i.test(navigator.userAgent)) {
+            // unsupported platform, default to windows
+            platform = 'windows';
           }
           if (/mac/i.test(navigator.userAgent)) {
+            // ios will also go here
             platform = 'mac';
           }
           if (/linux/i.test(navigator.userAgent)) {
@@ -109,16 +111,16 @@
         }
         for (var i = 0; i < buttons.length; i++) {
           buttons[i].onclick = function(e) {
-            document.body.setAttribute('platform', this.id);
+            document.body.setAttribute('platform', this.dataset.id);
             if (e && history && history.pushState) {
-              history.replaceState('', '', '#' + this.id);
+              history.replaceState('', '', '#' + this.dataset.id);
             }
             for (var i = 0; i < buttons.length; i++) {
               var otherEl = buttons[i];
               otherEl.classList.toggle('selected', otherEl === this);
             }
           };
-          if (buttons[i].id === platform) {
+          if (buttons[i].dataset.id === platform) {
             buttons[i].onclick();
           }
         }
