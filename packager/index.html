@@ -451,7 +451,7 @@
 
     const projectId = new Option()
       .label('Project ID')
-      .input({ pattern: '.*[0-9]+.*', value: location.hash ? location.hash.substr(1) : '' })
+      .input({ pattern: '.*[0-9]+.*', value: location.hash ? location.hash.substr(1) : '10128407' })
       .parser((input) => input.match(/\d+/)[0])
       .description('Load a project from scratch.mit.edu. Project ID or URL are accepted.')
       .add();
