@@ -8765,7 +8765,7 @@ var P;
     (function (ext) {
         var cloud;
         (function (cloud) {
-            const UPDATE_INTERVAL = 100;
+            const UPDATE_INTERVAL = 1000 / 15;
             function getAllCloudVariables(stage) {
                 const result = {};
                 for (const variable of stage.cloudVariables) {
@@ -8788,19 +8788,30 @@ var P;
                     super(stage);
                     this.host = host;
                     this.id = id;
-                    this.interval = null;
+                    this.updateInterval = null;
                     this.queuedVariableChanges = [];
                     this.ws = null;
-                    this.update = this.update.bind(this);
+                    this.shouldReconnect = true;
+                    this.logPrefix = '[cloud-ws ' + host + ']';
+                    this.handleUpdateInterval = this.handleUpdateInterval.bind(this);
+                    this.connect();
                 }
                 variableChanged(name) {
                     if (this.queuedVariableChanges.indexOf(name) > -1) {
                         return;
                     }
                     this.queuedVariableChanges.push(name);
+                    if (this.updateInterval === null) {
+                        this.handleUpdateInterval();
+                        this.startUpdateInterval();
+                    }
                 }
-                update() {
+                handleUpdateInterval() {
                     if (this.queuedVariableChanges.length === 0) {
+                        this.stopUpdateInterval();
+                        return;
+                    }
+                    if (this.ws === null) {
                         return;
                     }
                     const variableName = this.queuedVariableChanges.shift();
@@ -8823,11 +8834,10 @@ var P;
                     this.stage.vars[name] = value;
                 }
                 connect() {
-                    if (this.ws !== null) {
-                        return;
-                    }
+                    console.log(this.logPrefix, 'connecting');
                     this.ws = new WebSocket(this.host);
                     this.ws.onopen = () => {
+                        console.log(this.logPrefix, 'opened, sending handshake');
                         this.send({
                             kind: 'handshake',
                             id: this.id,
@@ -8849,11 +8859,27 @@ var P;
                         }
                     };
                     this.ws.onclose = (e) => {
-                        console.warn('ws closed', e);
+                        console.warn(this.logPrefix, 'closed', e);
+                        this.ws = null;
+                        this.reconnect();
                     };
                     this.ws.onerror = (e) => {
-                        console.warn('ws error', e);
+                        console.warn(this.logPrefix, 'error', e);
                     };
+                }
+                disconnect() {
+                    console.log(this.logPrefix, 'disconnecting');
+                    this.shouldReconnect = false;
+                    if (this.ws) {
+                        this.ws.close();
+                        this.ws = null;
+                    }
+                }
+                reconnect() {
+                    if (!this.shouldReconnect) {
+                        return;
+                    }
+                    this.connect();
                 }
                 handleMessage(data) {
                     if (!isCloudSetMessage(data)) {
@@ -8865,30 +8891,30 @@ var P;
                     }
                     this.setVariable(variableName, value);
                 }
-                startInterval() {
-                    if (this.interval !== null) {
+                startUpdateInterval() {
+                    if (this.updateInterval !== null) {
                         return;
                     }
-                    this.connect();
-                    this.interval = setInterval(this.update, UPDATE_INTERVAL);
+                    this.updateInterval = setInterval(this.handleUpdateInterval, UPDATE_INTERVAL);
                 }
-                stopInterval() {
-                    if (this.interval !== null) {
-                        clearInterval(this.interval);
-                        this.interval = null;
+                stopUpdateInterval() {
+                    if (this.updateInterval === null) {
+                        return;
                     }
+                    clearInterval(this.updateInterval);
+                    this.updateInterval = null;
                 }
                 onstart() {
-                    this.startInterval();
+                    if (this.queuedVariableChanges.length > 0) {
+                        this.startUpdateInterval();
+                    }
                 }
                 onpause() {
-                    this.stopInterval();
+                    this.stopUpdateInterval();
                 }
                 destroy() {
-                    this.stopInterval();
-                    if (this.ws) {
-                        this.ws.close();
-                    }
+                    this.stopUpdateInterval();
+                    this.disconnect();
                 }
             }
             cloud.WebSocketCloudHandler = WebSocketCloudHandler;

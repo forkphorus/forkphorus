@@ -2,11 +2,20 @@
 /// <reference path="extension.ts" />
 
 namespace P.ext.cloud {
+  const enum State {
+    Disconnected,
+    Connecting,
+    Connected,
+    Error,
+  }
+
   export interface CloudHandler extends P.ext.Extension {
     variableChanged(name: string): void;
   }
 
-  const UPDATE_INTERVAL = 100;
+  // We aim for about 15 updates per second.
+  // This is more than what Scratch does, I believe.
+  const UPDATE_INTERVAL = 1000 / 15;
 
   export function getAllCloudVariables(stage: P.core.Stage) {
     const result = {};
@@ -38,13 +47,17 @@ namespace P.ext.cloud {
   }
 
   export class WebSocketCloudHandler extends P.ext.Extension implements CloudHandler {
-    private interval: number | null = null;
+    private updateInterval: number | null = null;
     private queuedVariableChanges: string[] = [];
     private ws: WebSocket | null = null;
+    private readonly logPrefix: string;
+    private shouldReconnect: boolean = true;
 
     constructor(stage: P.core.Stage, private host: string, private id: string) {
       super(stage);
-      this.update = this.update.bind(this);
+      this.logPrefix = '[cloud-ws ' + host + ']';
+      this.handleUpdateInterval = this.handleUpdateInterval.bind(this);
+      this.connect();
     }
 
     variableChanged(name: string): void {
@@ -53,10 +66,21 @@ namespace P.ext.cloud {
         return;
       }
       this.queuedVariableChanges.push(name);
+      if (this.updateInterval === null) {
+        // handle first change immediately, reduces latency on one-off sets
+        this.handleUpdateInterval();
+        this.startUpdateInterval();
+      }
     }
 
-    private update() {
+    private handleUpdateInterval() {
       if (this.queuedVariableChanges.length === 0) {
+        // no further changes, interval can stop
+        this.stopUpdateInterval();
+        return;
+      }
+      if (this.ws === null) {
+        // no connection
         return;
       }
       const variableName = this.queuedVariableChanges.shift()!;
@@ -82,19 +106,20 @@ namespace P.ext.cloud {
     }
 
     private connect() {
-      if (this.ws !== null) {
-        // already connected
-        return;
-      }
+      console.log(this.logPrefix, 'connecting');
       this.ws = new WebSocket(this.host);
+
       this.ws.onopen = () => {
+        console.log(this.logPrefix, 'opened, sending handshake');
         this.send({
           kind: 'handshake',
           id: this.id,
+          // TODO: proper username support
           username: 'player' + Math.random().toString().substr(4, 7),
           variables: getAllCloudVariables(this.stage),
         });
       };
+
       this.ws.onmessage = (e) => {
         try {
           // Each line of the message is treated as a separate message.
@@ -108,12 +133,33 @@ namespace P.ext.cloud {
           return;
         }
       };
+
       this.ws.onclose = (e) => {
-        console.warn('ws closed', e);
+        console.warn(this.logPrefix, 'closed', e);
+        this.ws = null;
+        this.reconnect();
       };
+
       this.ws.onerror = (e) => {
-        console.warn('ws error', e);
+        console.warn(this.logPrefix, 'error', e);
+        // onclose is called after onerror
       };
+    }
+
+    private disconnect() {
+      console.log(this.logPrefix, 'disconnecting');
+      this.shouldReconnect = false;
+      if (this.ws) {
+        this.ws.close();
+        this.ws = null;
+      }
+    }
+
+    private reconnect() {
+      if (!this.shouldReconnect) {
+        return;
+      }
+      this.connect();
     }
 
     private handleMessage(data: unknown) {
@@ -127,35 +173,35 @@ namespace P.ext.cloud {
       this.setVariable(variableName, value);
     }
 
-    private startInterval() {
-      if (this.interval !== null) {
-        // already running
+    private startUpdateInterval() {
+      if (this.updateInterval !== null) {
         return;
       }
-      this.connect();
-      this.interval = setInterval(this.update, UPDATE_INTERVAL);
+      this.updateInterval = setInterval(this.handleUpdateInterval, UPDATE_INTERVAL);
     }
 
-    private stopInterval() {
-      if (this.interval !== null) {
-        clearInterval(this.interval);
-        this.interval = null;
+    private stopUpdateInterval() {
+      if (this.updateInterval === null) {
+        return;
       }
+      clearInterval(this.updateInterval);
+      this.updateInterval = null;
     }
 
     onstart() {
-      this.startInterval();
+      // project may have been paused & resumed with queued changes
+      if (this.queuedVariableChanges.length > 0) {
+        this.startUpdateInterval();
+      }
     }
 
     onpause() {
-      this.stopInterval();
+      this.stopUpdateInterval();
     }
 
     destroy() {
-      this.stopInterval();
-      if (this.ws) {
-        this.ws.close();
-      }
+      this.stopUpdateInterval();
+      this.disconnect();
     }
   }
 
@@ -173,7 +219,8 @@ namespace P.ext.cloud {
     }
 
     variableChanged(name: string): void {
-      // TODO: don't save immediately, that's probably bad for performance
+      // TODO: see whether delaying these save operations is good for performance
+      // if a variable is changed 10 times in 1 frame, it would not make sense to save it 10 times
       this.save();
     }
 
