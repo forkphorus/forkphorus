@@ -69,7 +69,9 @@
     body[platform=windows] section.windows,
     body[platform=windows] small.windows,
     body[platform=mac] small.mac,
-    body[platform=linux] small.linux {
+    body[platform=mac] section.mac,
+    body[platform=linux] small.linux,
+    body[platform=linux] section.linux {
       font-weight: normal;
     }
   </style>
@@ -127,8 +129,8 @@
       })();
     </script>
 
-    <p class="mac">Note for Mac users: While this guide is adapted for Macs, I am not very familiar with Macs. You might have to do a bit of your own research to finish things. Please <a href="https://github.com/forkphorus/forkphorus/issues/new">report your findings</a> so I can improve this guide for everyone.</p>
-    <p class="linux">Note for Linux users: This guide has not yet been adapted for Linux. However, most of the steps should still apply. You might have to do a bit of your own research to finish things. Please <a href="https://github.com/forkphorus/forkphorus/issues/new">report your findings</a> so I can improve this guide for everyone.</p>
+    <p class="mac">Note for Mac users: There are many inaccuracies and other issues in the Mac OS instructions. These will be addressed soon. Note that packaging for Mac is a very compliacted process compared to other operating systems.</p>
+    <p class="linux">Note for Linux users: I am not very familiar with packaging applications for Linux. You will have to do a bit of your own research to finish things. Please <a href="https://github.com/forkphorus/forkphorus/issues/new">report your findings</a> so I can improve this guide for everyone.</p>
 
     <section>
       <h2>Making an executable with NW.js</h2>
@@ -145,7 +147,9 @@
             The "SDK" version works, but it includes extra tools you won't need.</small>
         </li>
         <li>
-          Extract the archive. <span class="mac">Mac users: This may happen automatically.</span>
+          Extract the archive.
+          <span class="mac">Mac users: This may happen automatically.</span>
+          <span class="linux">Linux users: Here's the command for that: <code>tar -xzf nwjs*.tar.gz</code></span>
         </li>
         <li>
           Move "project.html" (file created by the packager, it's probably in your Downloads folder) into the extracted folder from the previous step (the same folder where
@@ -183,7 +187,7 @@
           At this point, your NW.js folder should look something like this:
           <img class="windows" src="https://user-images.githubusercontent.com/17209175/59154860-a0652000-8a41-11e9-85d0-109e59c0316c.png" height="481">
           <img class="mac" src="https://user-images.githubusercontent.com/17209175/83950423-53509100-a7f0-11ea-9bd9-9f5dc2282e7b.png" height="200">
-          <!-- TODO --> <img class="linux" src="https://user-images.githubusercontent.com/17209175/59154860-a0652000-8a41-11e9-85d0-109e59c0316c.png" height="481">
+          <img class="linux" src="https://user-images.githubusercontent.com/17209175/83994680-c35c3580-a91c-11ea-9fbb-5da40f03e65f.png" height="382">
           <small>Highlighted files are ones you should have created.</small>
         </li>
         <li>
@@ -200,17 +204,41 @@
           <span class="mac">nwjs</span>
           <span class="linux">nw</span>
           or whatever you renamed it.
+          <span class="linux">Linux users: You need to open a terminal and run <code>./nw</code> to start NW.js. This should be fixable by using a <code>.desktop</code> file.</span>
         </li>
         <li>
-          You're done!
+          The project should launch!
           <img class="windows" src="https://user-images.githubusercontent.com/17209175/59154894-67797b00-8a42-11e9-9678-e24bca31f285.png" height="402">
           <small class="windows"><a href="https://scratch.mit.edu/projects/10128407/">griffpatch's Paper Minecraft project</a> running as an exe on Windows with a solid blue icon.</small>
           <img class="mac" src="https://user-images.githubusercontent.com/17209175/83950538-146f0b00-a7f1-11ea-9116-cfb9ae1a445e.png" height="397">
           <small class="mac"><a href="https://scratch.mit.edu/projects/10128407/">griffpatch's Paper Minecraft project</a> running as an application on Mac.</small>
-          <!-- TODO --> <img class="linux" src="https://user-images.githubusercontent.com/17209175/59154894-67797b00-8a42-11e9-9678-e24bca31f285.png" height="402">
-          <!-- TODO --> <small class="linux"><a href="https://scratch.mit.edu/projects/10128407/">griffpatch's Paper Minecraft project</a> running as an exe on Windows with a solid blue icon.</small>
+          <img class="linux" src="https://user-images.githubusercontent.com/17209175/83994811-159d5680-a91d-11ea-8adf-8edd8e9ceda3.png" height="426">
+          <small class="linux"><a href="https://scratch.mit.edu/projects/391480888/">squig3's Scratch port of Ikachan</a> running in Linux. <span title="That's just what I had available. Don't bother me about DE or distro choice.">(Manjaro GNOME with Adwaita Dark theme)</span></small>
         </li>
       </ol>
+
+      <hr>
+    </section>
+
+    <section class="mac">
+      <h2>Mac Packaging - Further steps</h2>
+
+      <p>It's complicated.</p>
+      <p>I'll direct you to the <a href="https://docs.nwjs.io/en/latest/For%20Users/Package%20and%20Distribute/#mac-os-x">NW.js documentation</a>.</p>
+      <p>I haven't tested this yet and will look into it more soon.</p>
+
+      <hr>
+    </section>
+
+    <section class="linux">
+      <h2>Linux Packaging - Further steps</h2>
+
+      <h3>Create a <code>.desktop</code> file</h3>
+
+      <p>See the Arch wiki: <a href="https://wiki.archlinux.org/index.php/Desktop_entries">Desktop entries</a></p>
+      <p>This allows you to set a desktop icon and should the "open a terminal and do ./nw" problem.</p>
+
+      <p>For more information see the <a href="https://docs.nwjs.io/en/latest/For%20Users/Package%20and%20Distribute/#linux">NW.js documentation</a>.</p>
 
       <hr>
     </section>
