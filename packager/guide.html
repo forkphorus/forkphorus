@@ -21,7 +21,7 @@
       display: block;
     }
 
-    #platform-selector {
+    .platform-selector {
       display: flex;
       width: 100%;
       justify-content: space-around;
@@ -52,26 +52,11 @@
       background-color: #ddd;
     }
 
-    .windows, .mac, .linux {
-      display: none;
+    [data-os] {
       font-weight: bold;
     }
-    body[platform=windows] .windows,
-    body[platform=mac] .mac,
-    body[platform=linux] .linux {
-      display: initial;
-    }
-    body[platform=windows] img.windows,
-    body[platform=mac] img.mac,
-    body[platform=linux] img.linux {
-      display: block;
-    }
-    body[platform=windows] section.windows,
-    body[platform=windows] small.windows,
-    body[platform=mac] small.mac,
-    body[platform=mac] section.mac,
-    body[platform=linux] small.linux,
-    body[platform=linux] section.linux {
+    section[data-os],
+    small[data-os] {
       font-weight: normal;
     }
   </style>
@@ -81,56 +66,18 @@
   <main>
     <header><h1>Forkphorus to executable (Windows, Mac, Linux)</h1></header>
 
+    <noscript><b>This page requires JavaScript to work properly.</b></noscript>
+
     <p>This guide will explain how to use the <a href="/packager/">Forkphorus Packager</a> to create executable files for Scratch projects. For mobile devices, please see <a href="android.html">the Android guide</a>.</p>
 
-    <div id="platform-selector">
+    <div class="platform-selector" data-selector="os">
       <a class="platform" data-id="windows"><span class="platform-text">Windows</span></a>
       <a class="platform" data-id="mac"><span class="platform-text">Mac</span></a>
       <a class="platform" data-id="linux"><span class="platform-text">Linux</span></a>
     </div>
 
-    <script>
-      (function() {
-        var buttons = document.getElementsByClassName('platform');
-        var platform;
-        if (['windows', 'mac', 'linux'].indexOf(location.hash.substr(1)) > -1) {
-          platform = location.hash.substr(1);
-        } else {
-          if (/cros/i.test(navigator.userAgent) || /android/i.test(navigator.userAgent)) {
-            // unsupported platform, default to windows
-            platform = 'windows';
-          }
-          if (/mac/i.test(navigator.userAgent)) {
-            // ios will also go here
-            platform = 'mac';
-          }
-          if (/linux/i.test(navigator.userAgent)) {
-            platform = 'linux';
-          }
-          if (!platform) {
-            platform = 'windows';
-          }
-        }
-        for (var i = 0; i < buttons.length; i++) {
-          buttons[i].onclick = function(e) {
-            document.body.setAttribute('platform', this.dataset.id);
-            if (e && history && history.pushState) {
-              history.replaceState('', '', '#' + this.dataset.id);
-            }
-            for (var i = 0; i < buttons.length; i++) {
-              var otherEl = buttons[i];
-              otherEl.classList.toggle('selected', otherEl === this);
-            }
-          };
-          if (buttons[i].dataset.id === platform) {
-            buttons[i].onclick();
-          }
-        }
-      })();
-    </script>
-
-    <p class="mac">Note for Mac users: There are many inaccuracies and other issues in the Mac OS instructions. These will be addressed soon. Note that packaging for Mac is a very compliacted process compared to other operating systems.</p>
-    <p class="linux">Note for Linux users: I am not very familiar with packaging applications for Linux. You will have to do a bit of your own research to finish things. Please <a href="https://github.com/forkphorus/forkphorus/issues/new">report your findings</a> so I can improve this guide for everyone.</p>
+    <p data-os="mac">Note for Mac users: There are many inaccuracies and other issues in the Mac OS instructions. These will be addressed soon. Note that packaging for Mac is a very compliacted process compared to other operating systems.</p>
+    <p data-os="linux">Note for Linux users: I am not very familiar with packaging applications for Linux. You will have to do a bit of your own research to finish things. Please <a href="https://github.com/forkphorus/forkphorus/issues/new">report your findings</a> so I can improve this guide for everyone.</p>
 
     <section>
       <h2>Making an executable with NW.js</h2>
@@ -142,20 +89,20 @@
         <li>
           <a href="https://nwjs.io/">Download NW.js's "Normal" version</a> (not "SDK") for your platform.
           <!-- PICTURE OF NWJS WEBSITE -->
-          <img src="https://user-images.githubusercontent.com/17209175/58752962-441c6200-847d-11e9-9387-4fb25f164025.png" height="329">
+          <img loading="lazy" src="https://user-images.githubusercontent.com/17209175/58752962-441c6200-847d-11e9-9387-4fb25f164025.png" height="329">
           <small>NW.js should automatically detect your operating system and show the correct download. Otherwise, go to the Downloads page and find the correct download.<br>
             The "SDK" version works, but it includes extra tools you won't need.</small>
         </li>
         <li>
           Extract the archive.
-          <span class="mac">Mac users: This may happen automatically.</span>
-          <span class="linux">Linux users: Here's the command for that: <code>tar -xzf nwjs*.tar.gz</code></span>
+          <span data-os="mac">Mac users: This may happen automatically.</span>
+          <span data-os="linux">Linux users: Here's the command for that: <code>tar -xzf nwjs*.tar.gz</code></span>
         </li>
         <li>
           Move "project.html" (file created by the packager, it's probably in your Downloads folder) into the extracted folder from the previous step (the same folder where
-          <span class="windows">nw.exe</span>
-          <span class="mac">nwjs</span>
-          <span class="linux">nw</span>
+          <span data-os="windows">nw.exe</span>
+          <span data-os="mac">nwjs</span>
+          <span data-os="linux">nw</span>
           is located).
           Make sure it is named exactly "project.html" and not something else like "project(1).html"
         </li>
@@ -185,42 +132,44 @@
           </ul>
           <br>
           At this point, your NW.js folder should look something like this:
-          <img class="windows" src="https://user-images.githubusercontent.com/17209175/59154860-a0652000-8a41-11e9-85d0-109e59c0316c.png" height="481">
-          <img class="mac" src="https://user-images.githubusercontent.com/17209175/83950423-53509100-a7f0-11ea-9bd9-9f5dc2282e7b.png" height="200">
-          <img class="linux" src="https://user-images.githubusercontent.com/17209175/83994680-c35c3580-a91c-11ea-9fbb-5da40f03e65f.png" height="382">
+          <!-- NW.JS FOLDER PREVIEW -->
+          <img loading="lazy" data-os="windows" src="https://user-images.githubusercontent.com/17209175/59154860-a0652000-8a41-11e9-85d0-109e59c0316c.png" height="481">
+          <img loading="lazy" data-os="mac" src="https://user-images.githubusercontent.com/17209175/83950423-53509100-a7f0-11ea-9bd9-9f5dc2282e7b.png" height="200">
+          <img loading="lazy" data-os="linux" src="https://user-images.githubusercontent.com/17209175/83994680-c35c3580-a91c-11ea-9fbb-5da40f03e65f.png" height="382">
           <small>Highlighted files are ones you should have created.</small>
         </li>
         <li>
           Optionally rename
-          <span class="windows">nw.exe</span>
-          <span class="mac">nwjs</span>
-          <span class="linux">nw</span>
+          <span data-os="windows">nw.exe</span>
+          <span data-os="mac">nwjs</span>
+          <span data-os="linux">nw</span>
           to something else, such as the name of your project.
-          <span class="windows">(make sure to keep the .exe ending)</span>
+          <span data-os="windows">(make sure to keep the .exe ending)</span>
         </li>
         <li>
           Open
-          <span class="windows">nw.exe</span>
-          <span class="mac">nwjs</span>
-          <span class="linux">nw</span>
+          <span data-os="windows">nw.exe</span>
+          <span data-os="mac">nwjs</span>
+          <span data-os="linux">nw</span>
           or whatever you renamed it.
-          <span class="linux">Linux users: You need to open a terminal and run <code>./nw</code> to start NW.js. This should be fixable by using a <code>.desktop</code> file.</span>
+          <span data-os="linux">Linux users: You need to open a terminal and run <code>./nw</code> to start NW.js. This should be fixable by using a <code>.desktop</code> file.</span>
         </li>
         <li>
           The project should launch!
-          <img class="windows" src="https://user-images.githubusercontent.com/17209175/59154894-67797b00-8a42-11e9-9678-e24bca31f285.png" height="402">
-          <small class="windows"><a href="https://scratch.mit.edu/projects/10128407/">griffpatch's Paper Minecraft project</a> running as an exe on Windows with a solid blue icon.</small>
-          <img class="mac" src="https://user-images.githubusercontent.com/17209175/83950538-146f0b00-a7f1-11ea-9116-cfb9ae1a445e.png" height="397">
-          <small class="mac"><a href="https://scratch.mit.edu/projects/10128407/">griffpatch's Paper Minecraft project</a> running as an application on Mac.</small>
-          <img class="linux" src="https://user-images.githubusercontent.com/17209175/83994811-159d5680-a91d-11ea-8adf-8edd8e9ceda3.png" height="426">
-          <small class="linux"><a href="https://scratch.mit.edu/projects/391480888/">squig3's Scratch port of Ikachan</a> running in Linux. <span title="That's just what I had available. Don't bother me about DE or distro choice.">(Manjaro GNOME with Adwaita Dark theme)</span></small>
+          <!-- PROJECT RUNNING -->
+          <img data-os="windows" loading="lazy" src="https://user-images.githubusercontent.com/17209175/59154894-67797b00-8a42-11e9-9678-e24bca31f285.png" height="402">
+          <small data-os="windows"><a href="https://scratch.mit.edu/projects/10128407/">griffpatch's Paper Minecraft project</a> running as an exe on Windows with a solid blue icon.</small>
+          <img data-os="mac" loading="lazy" src="https://user-images.githubusercontent.com/17209175/83950538-146f0b00-a7f1-11ea-9116-cfb9ae1a445e.png" height="397">
+          <small data-os="mac"><a href="https://scratch.mit.edu/projects/10128407/">griffpatch's Paper Minecraft project</a> running as an application on Mac.</small>
+          <img data-os="linux" loading="lazy" src="https://user-images.githubusercontent.com/17209175/83994811-159d5680-a91d-11ea-8adf-8edd8e9ceda3.png" height="426">
+          <small data-os="linux"><a href="https://scratch.mit.edu/projects/391480888/">squig3's Scratch port of Ikachan</a> running in Linux. <span title="That's just what I had available. Don't bother me about DE or distro choice.">(Manjaro GNOME with Adwaita Dark theme)</span></small>
         </li>
       </ol>
 
       <hr>
     </section>
 
-    <section class="mac">
+    <section data-os="mac">
       <h2>Mac Packaging - Further steps</h2>
 
       <p>It's complicated.</p>
@@ -230,7 +179,7 @@
       <hr>
     </section>
 
-    <section class="linux">
+    <section data-os="linux">
       <h2>Linux Packaging - Further steps</h2>
 
       <h3>Create a <code>.desktop</code> file</h3>
@@ -243,7 +192,7 @@
       <hr>
     </section>
 
-    <section class="windows">
+    <section data-os="windows">
       <h2>Creating a self-extracting archive (Windows only)</h2>
 
       <p>NW.js works great, but it has a few problems. Specifically:
@@ -288,7 +237,7 @@
 
   <script>
     (function() {
-      // make images clickable
+      // clickable images
       var images = document.getElementsByTagName('img');
       for (var i = 0; i < images.length; i++) {
         var img = images[i];
@@ -297,6 +246,54 @@
         img.parentElement.replaceChild(el, img);
         el.appendChild(img);
       }
+
+      function enableSelector(el, def, hash) {
+        var selectorId = el.dataset.selector;
+        var choices = el.children;
+        var filteredElements = document.querySelectorAll('[data-' + selectorId + ']');
+        function setVisible(id) {
+          // update selected button
+          for (var i = 0; i < choices.length; i++) {
+            var otherChoice = choices[i];
+            otherChoice.classList.toggle('selected', otherChoice.dataset.id === id);
+          }
+          // update visible content
+          for (var i = 0; i < filteredElements.length; i++) {
+            var filteredElement = filteredElements[i];
+            var visible = filteredElement.dataset[selectorId] === id
+            filteredElement.hidden = !visible;
+            filteredElement.style.display = visible ? '' : 'none';
+          }
+        }
+        // implement buttons
+        for (var i = 0; i < choices.length; i++) {
+          var choiceEl = choices[i];
+          choiceEl.onclick = function() {
+            if (hash) {
+              history.replaceState('', '', '#' + this.dataset.id);
+            }
+            setVisible(this.dataset.id);
+          };
+        }
+        setVisible(def);
+      }
+
+      function getDefaultOS() {
+        // check location hash
+        var hash = location.hash.substr(1);
+        if (['windows', 'mac', 'linux'].indexOf(hash) > -1) return hash;
+        // unsupported platforms
+        if (/cros/i.test(navigator.userAgent) || /android/i.test(navigator.userAgent)) return 'windows';
+        // mac
+        if (/mac/i.test(navigator.userAgent)) return 'mac';
+        // linux
+        if (/linux/i.test(navigator.userAgent)) return 'linux';
+        // everything else is windows
+        return 'windows';
+      }
+
+      // implement the platform selectors
+      enableSelector(document.querySelector('[data-selector=os]'), getDefaultOS(), true);
     })();
   </script>
 
