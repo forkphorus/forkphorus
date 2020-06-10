@@ -312,7 +312,7 @@ namespace P.player {
       // $id is replaced with the project's ID
       CLOUD_HISTORY_API: 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100',
       // $id is replaced with the project's ID
-      PROJECT_API: 'https://projects.scratch.mit.edu/$id',
+      PROJECT_API: 'https://cdn.projects.scratch.mit.edu/$id',
       // an instance of https://github.com/forkphorus/cloud-server
       CLOUD_DATA_SERVER: 'wss://stratus.garbomuffin.com',
     };

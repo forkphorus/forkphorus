@@ -243,42 +243,38 @@ namespace P.io {
     private _load(): Promise<any> {
       return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
+        xhr.open('GET', this.url);
+        xhr.responseType = this.responseType;
+        this.xhr = xhr;
 
-        xhr.addEventListener('load', () => {
+        xhr.onload = () => {
           this.status = xhr.status;
           if (Request.acceptableResponseCodes.indexOf(xhr.status) !== -1 || this.shouldIgnoreErrors) {
             resolve(xhr.response);
           } else {
             reject(new Error(`HTTP Error ${xhr.status} while downloading ${this.url}`));
           }
-        });
+        };
 
-        xhr.addEventListener('progress', (e) => {
+        xhr.onloadstart = (e) => {
           this.updateProgress(e);
-        });
+        };
 
-        xhr.addEventListener('loadstart', (e) => {
-          this.updateProgress(e);
-        });
-
-        xhr.addEventListener('loadend', (e) => {
+        xhr.onloadend = (e) => {
           this.complete = true;
           this.updateProgress(e);
-        });
+        };
 
-        xhr.addEventListener('error', (err) => {
+        xhr.onerror = (err) => {
           reject(new Error(`Error while downloading ${this.url} (error) (${xhr.status}/${xhr.statusText}/${this.aborted}/${xhr.readyState})`));
-        });
+        };
 
-        xhr.addEventListener('abort', (err) => {
+        xhr.onabort = (err) => {
           this.aborted = true;
           reject(new Error(`Error while downloading ${this.url} (abort) (${xhr.status}/${xhr.statusText}/${xhr.readyState})`));
-        });
+        };
 
-        xhr.open('GET', this.url);
-        xhr.responseType = this.responseType;
-        this.xhr = xhr;
-        setTimeout(xhr.send.bind(xhr));
+        xhr.send();
       });
     }
 
@@ -398,48 +394,14 @@ namespace P.io {
         return 0;
       }
 
-      // Analyze the tasks and record known information.
-      // This will impact how progress is determined later.
-      let totalWork = 0;
-      let completedWork = 0;
       let finishedTasks = 0;
-      let uncomputable = 0;
-
       for (const task of this._tasks) {
         if (task.isComplete()) {
           finishedTasks++;
         }
-        if (task.isWorkComputable()) {
-          completedWork += task.getCompletedWork();
-          totalWork += task.getTotalWork();
-        } else {
-          uncomputable++;
-        }
       }
 
-      // If there is no known total work (all uncomputable), then use a simple done/not done division.
-      if (totalWork === 0) {
-        return finishedTasks / totalTasks;
-      }
-
-      // If there are some unknown tasks, we will attempt to extrapolate their value.
-      if (uncomputable > 0) {
-        const averageWork = totalWork / (totalTasks - uncomputable) * uncomputable;
-        totalWork = 0;
-        completedWork = 0;
-
-        for (const task of this._tasks) {
-          if (task.isWorkComputable()) {
-            completedWork += task.getCompletedWork();
-            totalWork += task.getTotalWork();
-          } else {
-            totalWork += averageWork;
-            if (task.isComplete()) completedWork += averageWork;
-          }
-        }
-      }
-
-      return completedWork / totalWork;
+      return finishedTasks / totalTasks;
     }
 
     updateProgress() {

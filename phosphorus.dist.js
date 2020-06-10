@@ -2163,7 +2163,10 @@ var P;
             _load() {
                 return new Promise((resolve, reject) => {
                     const xhr = new XMLHttpRequest();
-                    xhr.addEventListener('load', () => {
+                    xhr.open('GET', this.url);
+                    xhr.responseType = this.responseType;
+                    this.xhr = xhr;
+                    xhr.onload = () => {
                         this.status = xhr.status;
                         if (Request.acceptableResponseCodes.indexOf(xhr.status) !== -1 || this.shouldIgnoreErrors) {
                             resolve(xhr.response);
@@ -2171,28 +2174,22 @@ var P;
                         else {
                             reject(new Error(`HTTP Error ${xhr.status} while downloading ${this.url}`));
                         }
-                    });
-                    xhr.addEventListener('progress', (e) => {
+                    };
+                    xhr.onloadstart = (e) => {
                         this.updateProgress(e);
-                    });
-                    xhr.addEventListener('loadstart', (e) => {
-                        this.updateProgress(e);
-                    });
-                    xhr.addEventListener('loadend', (e) => {
+                    };
+                    xhr.onloadend = (e) => {
                         this.complete = true;
                         this.updateProgress(e);
-                    });
-                    xhr.addEventListener('error', (err) => {
+                    };
+                    xhr.onerror = (err) => {
                         reject(new Error(`Error while downloading ${this.url} (error) (${xhr.status}/${xhr.statusText}/${this.aborted}/${xhr.readyState})`));
-                    });
-                    xhr.addEventListener('abort', (err) => {
+                    };
+                    xhr.onabort = (err) => {
                         this.aborted = true;
                         reject(new Error(`Error while downloading ${this.url} (abort) (${xhr.status}/${xhr.statusText}/${xhr.readyState})`));
-                    });
-                    xhr.open('GET', this.url);
-                    xhr.responseType = this.responseType;
-                    this.xhr = xhr;
-                    setTimeout(xhr.send.bind(xhr));
+                    };
+                    xhr.send();
                 });
             }
             load(type) {
@@ -2296,42 +2293,13 @@ var P;
                 if (totalTasks === 0) {
                     return 0;
                 }
-                let totalWork = 0;
-                let completedWork = 0;
                 let finishedTasks = 0;
-                let uncomputable = 0;
                 for (const task of this._tasks) {
                     if (task.isComplete()) {
                         finishedTasks++;
                     }
-                    if (task.isWorkComputable()) {
-                        completedWork += task.getCompletedWork();
-                        totalWork += task.getTotalWork();
-                    }
-                    else {
-                        uncomputable++;
-                    }
                 }
-                if (totalWork === 0) {
-                    return finishedTasks / totalTasks;
-                }
-                if (uncomputable > 0) {
-                    const averageWork = totalWork / (totalTasks - uncomputable) * uncomputable;
-                    totalWork = 0;
-                    completedWork = 0;
-                    for (const task of this._tasks) {
-                        if (task.isWorkComputable()) {
-                            completedWork += task.getCompletedWork();
-                            totalWork += task.getTotalWork();
-                        }
-                        else {
-                            totalWork += averageWork;
-                            if (task.isComplete())
-                                completedWork += averageWork;
-                        }
-                    }
-                }
-                return completedWork / totalWork;
+                return finishedTasks / totalTasks;
             }
             updateProgress() {
                 if (this.error) {
@@ -2926,7 +2894,7 @@ var P;
                 this.MAGIC = {
                     LARGE_Z_INDEX: '9999999999',
                     CLOUD_HISTORY_API: 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100',
-                    PROJECT_API: 'https://projects.scratch.mit.edu/$id',
+                    PROJECT_API: 'https://cdn.projects.scratch.mit.edu/$id',
                     CLOUD_DATA_SERVER: 'wss://stratus.garbomuffin.com',
                 };
                 this.projectMeta = null;
