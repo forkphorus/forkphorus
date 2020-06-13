@@ -1806,8 +1806,8 @@ var P;
                 return this.canvas;
             }
         }
-        VectorCostume.MAX_SCALE = 8;
-        VectorCostume.MAX_SIZE = 1024;
+        VectorCostume.MAX_SCALE = 16;
+        VectorCostume.MAX_SIZE = 2048;
         VectorCostume.DISABLE_RASTERIZE = false;
         core.VectorCostume = VectorCostume;
         if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
@@ -4944,22 +4944,25 @@ var P;
                 this.buffer = buffer;
             }
             loadMD5(hash, id, isAudio = false) {
-                const f = isAudio ? this.zip.file(id + '.wav') : this.zip.file(id + '.gif') || this.zip.file(id + '.png') || this.zip.file(id + '.jpg') || this.zip.file(id + '.svg');
+                const f = isAudio ? (this.zip.file(id + '.wav') || this.zip.file(id + '.mp3')) : this.zip.file(id + '.gif') || (this.zip.file(id + '.png') || this.zip.file(id + '.jpg') || this.zip.file(id + '.svg'));
                 hash = f.name;
+                if (isAudio) {
+                    return f.async('arrayBuffer')
+                        .then((buffer) => P.audio.decodeAudio(buffer));
+                }
                 const ext = hash.split('.').pop();
                 if (ext === 'svg') {
                     return f.async('text')
                         .then((text) => this.loadSVG(text));
-                }
-                else if (ext === 'wav') {
-                    return f.async('arrayBuffer')
-                        .then((buffer) => P.audio.decodeAudio(buffer));
                 }
                 else {
                     return new Promise((resolve, reject) => {
                         var image = new Image();
                         image.onload = function () {
                             resolve(image);
+                        };
+                        image.onerror = function () {
+                            reject(new Error('Failed to load image: ' + hash + '/' + id));
                         };
                         f.async('binarystring')
                             .then((data) => {

@@ -596,21 +596,26 @@ namespace P.sb2 {
     loadMD5(hash: string, id: string, isAudio?: true): Promise<AudioBuffer>;
     loadMD5(hash: string, id: string, isAudio?: false): Promise<HTMLImageElement | HTMLCanvasElement | null>;
     loadMD5(hash: string, id: string, isAudio: boolean = false): Promise<HTMLImageElement | HTMLCanvasElement | AudioBuffer | null> {
-      const f = isAudio ? this.zip.file(id + '.wav') : this.zip.file(id + '.gif') || this.zip.file(id + '.png') || this.zip.file(id + '.jpg') || this.zip.file(id + '.svg');
+      const f = isAudio ? (this.zip.file(id + '.wav') || this.zip.file(id + '.mp3')) : this.zip.file(id + '.gif') || (this.zip.file(id + '.png') || this.zip.file(id + '.jpg') || this.zip.file(id + '.svg'));
       hash = f.name;
-      const ext = hash.split('.').pop();
 
+      if (isAudio) {
+        return f.async('arrayBuffer')
+          .then((buffer) => P.audio.decodeAudio(buffer));
+      }
+
+      const ext = hash.split('.').pop();
       if (ext === 'svg') {
         return f.async('text')
           .then((text) => this.loadSVG(text));
-      } else if (ext === 'wav') {
-        return f.async('arrayBuffer')
-          .then((buffer) => P.audio.decodeAudio(buffer));
       } else {
         return new Promise((resolve, reject) => {
           var image = new Image();
           image.onload = function() {
             resolve(image);
+          };
+          image.onerror = function() {
+            reject(new Error('Failed to load image: ' + hash + '/' + id));
           };
           f.async('binarystring')
             .then((data: string) => {
