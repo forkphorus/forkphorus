@@ -1423,6 +1423,7 @@ namespace P.sb3.compiler {
     public labelCount: number = 0;
     public state: CompilerState;
     public needsMusic: boolean = false;
+    public disableStringToNumberConversion: boolean = false;
 
     constructor(target: Target) {
       this.target = target;
@@ -1618,7 +1619,7 @@ namespace P.sb3.compiler {
         case NativeTypes.ANGLE_NUM: {
           // [type, value]
           const number = +native[1];
-          if (isNaN(number) || desiredType === 'string') {
+          if (this.disableStringToNumberConversion || isNaN(number) || desiredType === 'string') {
             return this.sanitizedInput('' + native[1]);
           } else {
             // Using number.toString() instead of native[1] fixes syntax errors
@@ -2271,14 +2272,18 @@ namespace P.sb3.compiler {
     util.updateBubble();
   };
   statementLibrary['looks_switchbackdropto'] = function(util) {
+    util.compiler.disableStringToNumberConversion = true;
     const BACKDROP = util.getInput('BACKDROP', 'any');
+    util.compiler.disableStringToNumberConversion = false;
     util.writeLn(`self.setCostume(${BACKDROP});`);
     util.visual('always');
     util.writeLn('var threads = backdropChange();');
     util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
   };
   statementLibrary['looks_switchcostumeto'] = function(util) {
+    util.compiler.disableStringToNumberConversion = true;
     const COSTUME = util.getInput('COSTUME', 'any');
+    util.compiler.disableStringToNumberConversion = false;
     util.writeLn(`S.setCostume(${COSTUME});`);
     util.visual('visible');
   };

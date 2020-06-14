@@ -6996,6 +6996,7 @@ var P;
                 constructor(target) {
                     this.labelCount = 0;
                     this.needsMusic = false;
+                    this.disableStringToNumberConversion = false;
                     this.target = target;
                     this.data = target.sb3data;
                     this.blocks = this.data.blocks;
@@ -7117,7 +7118,7 @@ var P;
                         case 7:
                         case 8: {
                             const number = +native[1];
-                            if (isNaN(number) || desiredType === 'string') {
+                            if (this.disableStringToNumberConversion || isNaN(number) || desiredType === 'string') {
                                 return this.sanitizedInput('' + native[1]);
                             }
                             else {
@@ -7664,14 +7665,18 @@ var P;
         util.updateBubble();
     };
     statementLibrary['looks_switchbackdropto'] = function (util) {
+        util.compiler.disableStringToNumberConversion = true;
         const BACKDROP = util.getInput('BACKDROP', 'any');
+        util.compiler.disableStringToNumberConversion = false;
         util.writeLn(`self.setCostume(${BACKDROP});`);
         util.visual('always');
         util.writeLn('var threads = backdropChange();');
         util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
     };
     statementLibrary['looks_switchcostumeto'] = function (util) {
+        util.compiler.disableStringToNumberConversion = true;
         const COSTUME = util.getInput('COSTUME', 'any');
+        util.compiler.disableStringToNumberConversion = false;
         util.writeLn(`S.setCostume(${COSTUME});`);
         util.visual('visible');
     };
