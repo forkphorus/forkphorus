@@ -614,26 +614,33 @@
     var advancedWebGL = querySelector('#advanced-webgl');
     var advancedCloud = querySelector('#advanced-cloud');
     advancedWebGL.checked = P.config.useWebGL;
-    advancedWebGL.addEventListener('change', function(e) {
-      setSearchParam('webgl', e.target.checked);
+    advancedWebGL.addEventListener('click', function(e) {
+      setSearchParam('webgl', e.target.checked, e);
     });
     advancedCloud.checked = player.getOptions().cloudVariables === 'ws';
-    advancedCloud.addEventListener('change', function(e) {
-      setSearchParam('cloud', e.target.checked ? 'ws' : false);
+    advancedCloud.addEventListener('click', function(e) {
+      setSearchParam('cloud', e.target.checked ? 'ws' : false, e);
     });
-    function setSearchParam(key, value) {
+    function setSearchParam(key, value, event) {
       if (!confirm("This will refresh this page, resetting the project. Continue?")) {
+        event.preventDefault();
         return;
       }
-      var searchParams = new URLSearchParams(location.search);
-      if (value === true) {
-        searchParams.set(key, '');
-      } else if (value === false) {
+      // if value === false, remove the key
+      // if value === true, add a key with no value
+      // else, add a key with the given value
+      if (value === false) {
+        var searchParams = new URLSearchParams(location.search);
         searchParams.delete(key);
+        location.search = searchParams.toString();
       } else {
-        searchParams.set(key, value);
+        var query = value === true ? key : key + '=' + value;
+        if (location.search.length > 1) {
+          location.search += '&' + query;
+        } else {
+          location.search = '?' + query;
+        }
       }
-      location.search = searchParams.toString();
     }
 
     if (initialId) {
