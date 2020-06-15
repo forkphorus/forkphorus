@@ -6485,7 +6485,32 @@ var P;
             return list;
         }
         sb3.createList = createList;
-        function patchSVG(svg) {
+        const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
+        function fixSVGNamespace(svg) {
+            const newSVG = document.createElementNS(SVG_NAMESPACE, 'svg');
+            for (const attribute of svg.attributes) {
+                newSVG.setAttribute(attribute.name, attribute.value);
+            }
+            newSVG.innerHTML = svg.innerHTML;
+            return newSVG;
+        }
+        function patchSVG(svg, costumeOptions) {
+            const invalidNamespace = svg.namespaceURI !== SVG_NAMESPACE;
+            if (invalidNamespace) {
+                svg = fixSVGNamespace(svg);
+                if (svg.firstElementChild && svg.firstElementChild.tagName !== 'g') {
+                    const group = document.createElementNS(SVG_NAMESPACE, 'g');
+                    const transform = svg.createSVGTransform();
+                    for (const el of svg.children) {
+                        group.appendChild(el);
+                    }
+                    transform.setTranslate(-svg.width.baseVal.value / 2, svg.height.baseVal.value / 2);
+                    group.transform.baseVal.appendItem(transform);
+                    costumeOptions.rotationCenterX -= svg.width.baseVal.value / 2;
+                    costumeOptions.rotationCenterY += svg.height.baseVal.value / 2;
+                    svg.appendChild(group);
+                }
+            }
             if (svg.hasAttribute('viewBox')) {
                 const viewBox = svg.getAttribute('viewBox').split(/ |,/).map((i) => +i);
                 if (viewBox.every((i) => !isNaN(i)) && viewBox.length === 4) {
@@ -6530,30 +6555,19 @@ var P;
                 }
             }
             P.fonts.addFontRules(svg, usedFonts);
-        }
-        function fixVectorNamespace(svg) {
-            var newSVG = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            for (const attribute of svg.attributes) {
-                newSVG.setAttribute(attribute.name, attribute.value);
-            }
-            newSVG.innerHTML = svg.innerHTML;
-            return newSVG;
+            return svg;
         }
         class BaseSB3Loader extends P.io.Loader {
             constructor() {
                 super(...arguments);
                 this.needsMusic = false;
             }
-            getSVG(path) {
+            getSVG(path, costumeOptions) {
                 return this.getAsText(path)
                     .then((source) => {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(source, 'image/svg+xml');
-                    let svg = doc.documentElement;
-                    if (svg.namespaceURI !== 'http://www.w3.org/2000/svg') {
-                        svg = fixVectorNamespace(svg);
-                    }
-                    patchSVG(svg);
+                    const svg = patchSVG(doc.documentElement, costumeOptions);
                     return new Promise((resolve, reject) => {
                         const image = new Image();
                         image.onload = (e) => {
@@ -6578,7 +6592,7 @@ var P;
                     rotationCenterY: data.rotationCenterY,
                 };
                 if (data.dataFormat === 'svg') {
-                    return this.getSVG(path)
+                    return this.getSVG(path, costumeOptions)
                         .then((svg) => new P.core.VectorCostume(svg, costumeOptions));
                 }
                 else {
