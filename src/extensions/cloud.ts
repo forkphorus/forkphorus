@@ -53,10 +53,18 @@ namespace P.ext.cloud {
     private readonly logPrefix: string;
     private shouldReconnect: boolean = true;
     private failures: number = 0;
+    private usernameInvalid: boolean = false;
+    private usernameInvalidLastUsername: string = '';
+    private interfaceStatusIndicator: HTMLElement;
 
     constructor(stage: P.core.Stage, private host: string, private id: string) {
       super(stage);
       this.logPrefix = '[cloud-ws ' + host + ']';
+
+      this.interfaceStatusIndicator = document.createElement('div');
+      this.interfaceStatusIndicator.className = 'phosphorus-cloud-status-indicator';
+      stage.ui.appendChild(this.interfaceStatusIndicator);
+
       this.handleUpdateInterval = this.handleUpdateInterval.bind(this);
       this.connect = this.connect.bind(this);
       this.connect();
@@ -113,14 +121,25 @@ namespace P.ext.cloud {
         throw new Error('already connected');
       }
 
+      if (this.usernameInvalid && this.stage.username === this.usernameInvalidLastUsername) {
+        this.tryAutomaticReconnect();
+        return;
+      }
+
+      this.setStatusText('Connecting...');
       console.log(this.logPrefix, 'connecting');
       this.ws = new WebSocket(this.host);
 
       this.ws.onopen = () => {
         console.log(this.logPrefix, 'connected');
-        
-        // after a successful connection we can reset the failures counter
+
+        this.setStatusText('Connected');
+        this.setStatusVisible(false);
+
+        // reset some data used for reconnecting
         this.failures = 0;
+        this.usernameInvalid = false;
+        this.usernameInvalidLastUsername = '';
 
         // send the handshake
         this.send({
@@ -147,9 +166,18 @@ namespace P.ext.cloud {
       };
 
       this.ws.onclose = (e) => {
-        console.warn(this.logPrefix, 'closed', e.code, e.reason);
-        // TODO: do not reconnect after certain errors
-        this.reconnect();
+        const code = e.code;
+        console.warn(this.logPrefix, 'closed', code);
+        // see https://github.com/forkphorus/cloud-server/blob/master/protocol.md#status-codes for status codes
+        if (code === 4001) {
+          this.setStatusText('Incompatible with room.');
+          this.shouldReconnect = false;
+        } else if (code === 4002) {
+          this.setStatusText('Username is invalid. Change your username to connect.');
+          this.usernameInvalid = true;
+          this.usernameInvalidLastUsername = this.stage.username;
+        }
+        this.tryAutomaticReconnect();
       };
 
       this.ws.onerror = (e) => {
@@ -158,16 +186,20 @@ namespace P.ext.cloud {
       };
     }
 
-    private reconnect() {
+    private tryAutomaticReconnect() {
       if (!this.shouldReconnect) {
         return;
       }
+      // close the connection if it exists
       if (this.ws !== null) {
         this.ws.close();
         this.ws = null;
       }
-      this.failures++;
-      const delayTime = this.getBackoffTime();
+      if (!this.usernameInvalid) {
+        this.setStatusText('Connection lost, reconnecting...');
+        this.failures++;
+      }
+      const delayTime = 2 ** this.failures * 1000;
       console.log(this.logPrefix, 'reconnecting in', delayTime);
       setTimeout(this.connect, delayTime);
     }
@@ -192,11 +224,6 @@ namespace P.ext.cloud {
       this.setVariable(variableName, value);
     }
 
-    private getBackoffTime(): number {
-      // TODO: add randomness
-      return 2 ** this.failures * 1000;
-    }
-
     private startUpdateInterval() {
       if (this.updateInterval !== null) {
         return;
@@ -210,6 +237,19 @@ namespace P.ext.cloud {
       }
       clearInterval(this.updateInterval);
       this.updateInterval = null;
+    }
+
+    private setStatusText(text: string) {
+      if (text) {
+        this.interfaceStatusIndicator.textContent = `☁ ${text}`;
+        this.setStatusVisible(true);
+      } else {
+        this.setStatusVisible(false);
+      }
+    }
+
+    private setStatusVisible(visible: boolean) {
+      this.interfaceStatusIndicator.classList.toggle('phosphorus-cloud-status-indicator-hidden', !visible);
     }
 
     onstart() {
