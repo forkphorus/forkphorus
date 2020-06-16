@@ -104,14 +104,14 @@ namespace P.sb3 {
   }
 
   /**
-   * Tuple of name and initial value
+   * Tuple of name, value
    */
   type SB3List = [string, any[]];
 
   /**
-   * Tuple of name and initial value
+   * Tuple of name, value, and sometimes cloud.
    */
-  type SB3Variable = [string, any];
+  type SB3Variable = [string, any, boolean?];
 
   // Implements a Scratch 3 Stage.
   export class Scratch3Stage extends P.core.Stage {
@@ -121,7 +121,7 @@ namespace P.sb3 {
 
   // Implements a Scratch 3 Sprite.
   export class Scratch3Sprite extends P.core.Sprite {
-    public sb3data: any;
+    public sb3data: SB3Target;
     public listIds: ObjectMap<string> = {};
 
     _clone() {
@@ -450,8 +450,8 @@ namespace P.sb3 {
         return;
       }
 
-      const height = this.list.length * this.getRowHeight();
-      this.endpointEl.style.transform = 'translateY(' + (height * this.stage.zoom) + 'px)';
+      const height = this.list.length * this.getRowHeight() * this.stage.zoom;
+      this.endpointEl.style.transform = 'translateY(' + height + 'px)';
 
       const topVisible = this.scrollTop;
       const bottomVisible = topVisible + this.getContentHeight();
@@ -480,7 +480,6 @@ namespace P.sb3 {
       while (this.rows.length <= visibleRows) {
         this.addRow();
       }
-
       for (var listIndex = startingIndex, rowIndex = 0; listIndex <= endingIndex; listIndex++, rowIndex++) {
         let row = this.rows[rowIndex];
         row.setIndex(listIndex);
@@ -506,7 +505,9 @@ namespace P.sb3 {
       }
       this.list = this.target.lists[listName] as Scratch3List;
       this.target.listWatchers[listName] = this;
-      this.updateLayout();
+      if (this.visible) {
+        this.updateLayout();
+      }
     }
 
     getTopLabel(): string {
@@ -546,6 +547,10 @@ namespace P.sb3 {
 
     updateLayout() {
       if (!this.containerEl) {
+        if (!this.visible) {
+          // if the element doesn't exist, we have no reason to create it
+          return;
+        }
         this.createLayout();
       }
       this.containerEl.style.display = this.visible ? '' : 'none';
@@ -637,11 +642,53 @@ namespace P.sb3 {
     return list;
   }
 
+  const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
+
   /**
-   * Patches and modifies an SVG element in-place to make it function properly in the forkphorus environment.
-   * Fixes fonts and viewBox.
+   * Convert an SVG with an improper or missing namespace to a proper namespaced SVG
+   * @param svg An SVG with an improper or missing namespace
    */
-  function patchSVG(svg: SVGElement): void {
+  function fixSVGNamespace(svg: SVGSVGElement): SVGSVGElement {
+    // To fix the namespace, we create a new SVG and copy its content.
+    const newSVG = document.createElementNS(SVG_NAMESPACE, 'svg');
+    for (const attribute of svg.attributes) {
+      newSVG.setAttribute(attribute.name, attribute.value);
+    }
+    newSVG.innerHTML = svg.innerHTML;
+    return newSVG;
+  }
+
+  /**
+   * Patches and modifies an SVG element to make it function properly in the forkphorus environment.
+   */
+  function patchSVG(svg: SVGSVGElement, costumeOptions: P.core.CostumeOptions): SVGSVGElement {
+    // Fix missing namespace
+    const invalidNamespace = svg.namespaceURI !== SVG_NAMESPACE;
+    if (invalidNamespace) {
+      svg = fixSVGNamespace(svg);
+
+      // fix some edge case SVGs
+      // this could apply to any SVG with or without a namespace, but right now we only do this on projects that are missing a namespace
+      // (they tend to be more likely to be invalid)
+      // https://github.com/forkphorus/forkphorus/issues/210
+      // https://forkphorus.github.io/#374570920
+      if (svg.firstElementChild && svg.firstElementChild.tagName !== 'g') {
+        // create a new <g> (group) and transform
+        const group = document.createElementNS(SVG_NAMESPACE, 'g');
+        const transform = svg.createSVGTransform();
+        // move the children to the new group
+        for (const el of svg.children) {
+          group.appendChild(el);
+        }
+        // translate the SVG to fix the center
+        transform.setTranslate(-svg.width.baseVal.value / 2, svg.height.baseVal.value / 2);
+        group.transform.baseVal.appendItem(transform);
+        costumeOptions.rotationCenterX -= svg.width.baseVal.value / 2;
+        costumeOptions.rotationCenterY += svg.height.baseVal.value / 2;
+        svg.appendChild(group);
+      }
+    }
+
     // Special treatment for the viewBox attribute
     if (svg.hasAttribute('viewBox')) {
       const viewBox = svg.getAttribute('viewBox')!.split(/ |,/).map((i) => +i);
@@ -656,6 +703,7 @@ namespace P.sb3 {
       svg.removeAttribute('viewBox');
     }
 
+    // Search for used fonts
     const textElements = svg.querySelectorAll('text');
     const usedFonts: string[] = [];
     const addFont = (font: string) => {
@@ -663,7 +711,6 @@ namespace P.sb3 {
         usedFonts.push(font);
       }
     };
-
     for (var i = 0; i < textElements.length; i++) {
       const el = textElements[i];
       let fonts = (el.getAttribute('font-family') || '')
@@ -678,6 +725,7 @@ namespace P.sb3 {
         } else if (family === 'sans-serif') {
           found = true;
           // We let the system handle their respective 'sans-serif' fonts
+          // This is different from Scratch's 'Sans Serif' font.
           // https://scratch.mit.edu/projects/319138929/
           break;
         }
@@ -689,21 +737,9 @@ namespace P.sb3 {
         el.setAttribute('font-family', font);
       }
     }
-
     P.fonts.addFontRules(svg, usedFonts);
-  }
 
-  /**
-   * Convert an SVG with an improper or missing namespace to a proper namespaced SVG
-   * @param svg An SVG with an improper or missing namespace
-   */
-  function fixVectorNamespace(svg: SVGSVGElement): SVGSVGElement {
-    var newSVG = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    for (const attribute of svg.attributes) {
-      newSVG.setAttribute(attribute.name, attribute.value);
-    }
-    newSVG.innerHTML = svg.innerHTML;
-    return newSVG;
+    return svg;
   }
 
   // Implements base SB3 loading logic.
@@ -711,26 +747,18 @@ namespace P.sb3 {
   // Implementations are expected to set `this.projectData` to something before calling super.load()
   export abstract class BaseSB3Loader extends P.io.Loader<P.core.Stage> {
     protected projectData: SB3Project;
-    // private totalTasks: number = 0;
-    // private finishedTasks: number = 0;
-    // private requests: XMLHttpRequest[] = [];
+    private needsMusic: boolean = false;
 
     protected abstract getAsText(path: string): Promise<string>;
     protected abstract getAsArrayBuffer(path: string): Promise<ArrayBuffer>;
     protected abstract getAsImage(path: string, format: string): Promise<HTMLImageElement>;
 
-    getSVG(path: string): Promise<HTMLImageElement> {
+    getSVG(path: string, costumeOptions: P.core.CostumeOptions): Promise<HTMLImageElement> {
       return this.getAsText(path)
         .then((source) => {
           const parser = new DOMParser();
           const doc = parser.parseFromString(source, 'image/svg+xml');
-
-          let svg = doc.documentElement as any;
-          if (svg.namespaceURI !== 'http://www.w3.org/2000/svg') {
-            svg = fixVectorNamespace(svg);
-          }
-
-          patchSVG(svg);
+          const svg = patchSVG(doc.documentElement as any, costumeOptions);
 
           return new Promise((resolve, reject) => {
             const image = new Image();
@@ -738,7 +766,7 @@ namespace P.sb3 {
               resolve(image);
             };
             image.onerror = (e) => {
-              reject('Failed to load SVG: ' + path);
+              reject(new Error('Failed to load SVG: ' + path));
             };
             image.src = 'data:image/svg+xml,' + encodeURIComponent(new XMLSerializer().serializeToString(svg));
           });
@@ -758,7 +786,7 @@ namespace P.sb3 {
         rotationCenterY: data.rotationCenterY,
       };
       if (data.dataFormat === 'svg') {
-        return this.getSVG(path)
+        return this.getSVG(path, costumeOptions)
           .then((svg) => new P.core.VectorCostume(svg, costumeOptions));
       } else {
         return this.getBitmapImage(path, data.dataFormat)
@@ -806,6 +834,16 @@ namespace P.sb3 {
         const variable = data.variables[id];
         const name = variable[0];
         const value = variable[1];
+        if (variable.length > 2) {
+          const cloud = variable[2];
+          if (cloud) {
+            if (data.isStage) {
+              (target as Scratch3Stage).cloudVariables.push(name);
+            } else {
+              console.warn('Cloud variable found on a non-stage object. Skipping.');
+            }
+          }
+        }
         target.vars[name] = value;
       }
 
@@ -858,9 +896,8 @@ namespace P.sb3 {
         });
     }
 
-    loadAssets() {
+    loadRequiredAssets() {
       return Promise.all([
-        this.loadSoundbank(),
         this.loadFonts(),
       ]);
     }
@@ -886,13 +923,16 @@ namespace P.sb3 {
       for (const target of targets) {
         const compiler = new P.sb3.compiler.Compiler(target);
         compiler.compile();
+        if (compiler.needsMusic) {
+          this.needsMusic = true;
+        }
       }
       if (P.config.debug) {
         console.timeEnd('Scratch 3 compile');
       }
     }
 
-    load() {
+    async load() {
       if (!this.projectData) {
         throw new Error('Project data is missing or invalid');
       }
@@ -900,36 +940,41 @@ namespace P.sb3 {
         throw new Error('Invalid project data: missing targets');
       }
 
-      const targets = this.projectData.targets;
-      // sort targets by their layerOrder to match how they will display
-      targets.sort((a, b) => a.layerOrder - b.layerOrder);
+      await this.loadRequiredAssets();
 
-      return this.loadAssets()
-        .then(() => {
-          this.resetTasks();
-          return Promise.all(targets.map((data) => this.loadTarget(data)));
-        })
-        .then((targets: any) => {
-          if (this.aborted) {
-            throw new Error('Loading aborting.');
-          }
-          const stage = targets.filter((i) => i.isStage)[0] as Scratch3Stage;
-          if (!stage) {
-            throw new Error('Project does not have a Stage');
-          }
-          const sprites = targets.filter((i) => i.isSprite) as Scratch3Sprite[];
-          sprites.forEach((sprite) => sprite.stage = stage);
-          stage.children = sprites;
+      this.resetTasks();
+      const targets = await Promise.all(this.projectData.targets
+        .sort((a, b) => a.layerOrder - b.layerOrder)
+        .map((data) => this.loadTarget(data))
+      );
 
-          stage.allWatchers = this.projectData.monitors
-            .map((data) => this.loadWatcher(data, stage))
-            .filter((i) => i && i.valid);
-          stage.allWatchers.forEach((watcher) => watcher.init());
+      if (this.aborted) {
+        throw new Error('Loading aborting.');
+      }
 
-          this.compileTargets(targets, stage);
+      const stage = targets.filter((i) => i.isStage)[0] as Scratch3Stage;
+      if (!stage) {
+        throw new Error('Project does not have a Stage');
+      }
+      const sprites = targets.filter((i) => i.isSprite) as Scratch3Sprite[];
+      sprites.forEach((sprite) => sprite.stage = stage);
+      stage.children = sprites;
 
-          return stage;
-        });
+      stage.allWatchers = this.projectData.monitors
+        .map((data) => this.loadWatcher(data, stage))
+        .filter((i) => i && i.valid);
+      stage.allWatchers.forEach((watcher) => watcher.init());
+
+      this.compileTargets(targets, stage);
+
+      if (this.needsMusic) {
+        await this.loadSoundbank();
+      }
+
+      // projectData is now unused and can be removed. This reduces memory usage
+      this.projectData = null as any;
+
+      return stage;
     }
   }
 
@@ -981,7 +1026,7 @@ namespace P.sb3 {
               resolve(image);
             };
             image.onerror = (error) => {
-              reject('Failed to load image: ' + path + '.' + format);
+              reject(new Error('Failed to load image: ' + path + '.' + format));
             };
             image.src = 'data:image/' + format + ';base64,' + imageData;
           });
@@ -1205,6 +1250,13 @@ namespace P.sb3.compiler {
     }
 
     /**
+     * Determine whether a variable is a cloud variable.
+     */
+    isCloudVariable(field: string): boolean {
+      return this.target.stage.cloudVariables.indexOf(this.getField(field)) > -1;
+    }
+
+    /**
      * Gets the scope of a field's reference to a list.
      */
     getListScope(field: string): string {
@@ -1395,6 +1447,8 @@ namespace P.sb3.compiler {
      */
     public labelCount: number = 0;
     public state: CompilerState;
+    public needsMusic: boolean = false;
+    public disableStringToNumberConversion: boolean = false;
 
     constructor(target: Target) {
       this.target = target;
@@ -1590,7 +1644,7 @@ namespace P.sb3.compiler {
         case NativeTypes.ANGLE_NUM: {
           // [type, value]
           const number = +native[1];
-          if (isNaN(number) || desiredType === 'string') {
+          if (this.disableStringToNumberConversion || isNaN(number) || desiredType === 'string') {
             return this.sanitizedInput('' + native[1]);
           } else {
             // Using number.toString() instead of native[1] fixes syntax errors
@@ -1888,6 +1942,9 @@ namespace P.sb3.compiler {
         const hat = this.blocks[hatId];
         this.compileHat(hat);
       }
+
+      // Remove data that is now unused
+      this.target.sb3data = null as any;
     }
   }
 }
@@ -2078,6 +2135,9 @@ namespace P.sb3.compiler {
     const VARIABLE = util.getVariableReference('VARIABLE');
     const VALUE = util.getInput('VALUE', 'number');
     util.writeLn(`${VARIABLE} = (${util.asType(VARIABLE, 'number')} + ${VALUE});`);
+    if (util.isCloudVariable('VARIABLE')) {
+      util.writeLn(`cloudVariableChanged(${util.sanitizedString(util.getField('VARIABLE'))})`);
+    }
   };
   statementLibrary['data_deletealloflist'] = function(util) {
     const LIST = util.getListReference('LIST');
@@ -2114,6 +2174,9 @@ namespace P.sb3.compiler {
     const VARIABLE = util.getVariableReference('VARIABLE');
     const VALUE = util.getInput('VALUE', 'any');
     util.writeLn(`${VARIABLE} = ${VALUE};`);
+    if (util.isCloudVariable('VARIABLE')) {
+      util.writeLn(`cloudVariableChanged(${util.sanitizedString(util.getField('VARIABLE'))})`);
+    }
   };
   statementLibrary['data_showlist'] = function(util) {
     const LIST = util.sanitizedString(util.getField('LIST'));
@@ -2234,14 +2297,18 @@ namespace P.sb3.compiler {
     util.updateBubble();
   };
   statementLibrary['looks_switchbackdropto'] = function(util) {
+    util.compiler.disableStringToNumberConversion = true;
     const BACKDROP = util.getInput('BACKDROP', 'any');
+    util.compiler.disableStringToNumberConversion = false;
     util.writeLn(`self.setCostume(${BACKDROP});`);
     util.visual('always');
     util.writeLn('var threads = backdropChange();');
     util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
   };
   statementLibrary['looks_switchcostumeto'] = function(util) {
+    util.compiler.disableStringToNumberConversion = true;
     const COSTUME = util.getInput('COSTUME', 'any');
+    util.compiler.disableStringToNumberConversion = false;
     util.writeLn(`S.setCostume(${COSTUME});`);
     util.visual('visible');
   };
@@ -2293,6 +2360,7 @@ namespace P.sb3.compiler {
     util.writeLn('var f = (runtime.now() - R.start) / (R.duration * 1000);');
     util.writeLn('if (f > 1 || isNaN(f)) f = 1;');
     util.writeLn('S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
+    util.visual('drawing');
     util.writeLn('if (f < 1) {');
     util.forceQueue(label);
     util.writeLn('}');
@@ -2315,6 +2383,7 @@ namespace P.sb3.compiler {
     util.writeLn('  var f = (runtime.now() - R.start) / (R.duration * 1000);');
     util.writeLn('  if (f > 1 || isNaN(f)) f = 1;');
     util.writeLn('  S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
+    util.visual('drawing');
     util.writeLn('  if (f < 1) {');
     util.forceQueue(label);
     util.writeLn('  }');
@@ -2384,6 +2453,8 @@ namespace P.sb3.compiler {
     const BEATS = util.getInput('BEATS', 'number');
     const DRUM = util.getInput('DRUM', 'number');
 
+    util.compiler.needsMusic = true;
+
     util.writeLn('save();');
     util.writeLn('R.start = runtime.now();');
     util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
@@ -2407,6 +2478,8 @@ namespace P.sb3.compiler {
   statementLibrary['music_playNoteForBeats'] = function(util) {
     const BEATS = util.getInput('BEATS', 'number');
     const NOTE = util.getInput('NOTE', 'number');
+
+    util.compiler.needsMusic = true;
 
     util.writeLn('save();');
     util.writeLn('R.start = runtime.now();');

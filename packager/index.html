@@ -4,6 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="canonical" href="https://forkphorus.github.io/packager/" />
   <style>
     body {
       max-width: 480px;
@@ -100,9 +101,10 @@
 
   <p>The HTML packager allows you to generate an HTML file for a Scratch project.</p>
 
+  <noscript><b>This page requires JavaScript to work properly.</b></noscript>
+
   <ul>
-    <li>Guide: <a href="guide.html">Packaging to .EXE</a> (Windows/Mac OS/Linux)</li>
-    <li>Guide: <a href="android.html">Packaging to .APK</a> (Android, maybe iOS)</li>
+    <li>Guide: <a href="guide.html">Forkphorus Packager Guide (Windows, Mac, Linux, Android)</a></li>
     <li>Additional Help: Create an issue on <a href="https://github.com/forkphorus/forkphorus/issues">GitHub</a></li>
   </ul>
 
@@ -113,11 +115,11 @@
       <div id="click-disabler" title="please wait for the packager to finish..."></div>
       <!-- JS injects options into here -->
     </div>
-  
+
     <section>
       <button id="package-html">Package Project</button>
     </section>
-  
+
     <section id="loading-section">
       <!-- JS injects progress bars here -->
     </section>
@@ -381,7 +383,8 @@
 
         const description = document.createElement('td');
         description.colSpan = 2;
-        description.textContent = content;
+        // innerHTML intentional: allows use of HTML in descriptions
+        description.innerHTML = content;
 
         row.appendChild(description);
         this.root.appendChild(row);
@@ -451,9 +454,9 @@
 
     const projectId = new Option()
       .label('Project ID')
-      .input({ pattern: '.*[0-9]+.*', value: location.hash ? location.hash.substr(1) : '' })
+      .input({ pattern: '.*[0-9]+.*', value: location.hash ? location.hash.substr(1) : '10128407' })
       .parser((input) => input.match(/\d+/)[0])
-      .description('Load a project from scratch.mit.edu. Project ID or URL are accepted.')
+      .description('Load a project from scratch.mit.edu. Project ID or URL are accepted. Note: Projects on scratch.mit.edu are licensed under <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC BY-SA 2.0</a>. Please ensure you comply with this license if this is not your project.')
       .add();
 
     const projectFile = new Option()
@@ -505,7 +508,14 @@
       .input({ type: 'number', value: 30 })
       .description('Framerate in frames per second.')
       .add(playerOptionsSection);
-    
+
+    const cloudVariables = new Section('Cloud Variable Options (BETA)');
+    cloudVariables.storeInLocalStorage = new Option()
+      .label('Store Cloud Variables')
+      .input({ type: 'checkbox' })
+      .description('Stores Cloud Variables in the browser\'s localStorage. This means that they will be remembered even after closing and reopening the app. Note: This is in beta, and has not been fully tested. Please test it yourself (and let us know if it works)')
+      .add(cloudVariables);
+
     const loadingScreen = new Section('Loading Screen Options');
     loadingScreen.text = new Option()
       .label('Loading screen text')
@@ -676,6 +686,7 @@
         packager.playerOptions.autoplayPolicy = autoplay.value;
         packager.playerOptions.username = username.value;
         packager.playerOptions.fps = fps.value;
+        packager.playerOptions.cloudVariables = cloudVariables.storeInLocalStorage.value ? 'localStorage' : 'off';
         if (showControls.value) {
           packager.controlsOptions = { enableFullscreen: false };
         }
@@ -688,6 +699,8 @@
           if (!/^\d+$/.test(projectId.value)) {
             throw new Error('Invalid Project ID');
           }
+          // Comply with CC BY-SA 2.0
+          packager.projectAttribution = 'Project source: https://scratch.mit.edu/projects/' + projectId.value + ' (CC BY-SA 2.0)';
           await packager.loadProjectById(projectId.value);
         } else if (projectSource.value === 'file') {
           if (!projectFile.value) {

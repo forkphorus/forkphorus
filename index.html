@@ -87,6 +87,8 @@
           <a href="#" target="_blank" id="package-link" data-i18n="index.package.button">Package</a>
           <input type="checkbox" id="package-turbo">
           <label for="package-turbo" data-i18n="index.package.turbo">Turbo mode</label>
+          <input type="checkbox" id="package-controls">
+          <label for="package-controls" data-i18n="index.package.controls">Controls</label>
           <span>
             <input type="radio" name="package-resolution" id="package-full-screen" checked>
             <label for="package-full-screen" data-i18n="index.package.fullscreen">Full screen</label>
@@ -106,12 +108,12 @@
       <h1 data-i18n="index.settings">Settings</h1>
       <table id="settings">
         <tr>
-          <td class="name" title="Forkphorus will **attempt** to run at this framerate."><label for="settings-framerate">Framerate (FPS)</label></td>
-          <td class="value"><input id="settings-framerate" value="30" placeholder="30" type="number" step="any" min="0" required autocomplete="off"></td>
+          <td class="name" title="Forkphorus will **attempt** to run at this framerate."><label for="settings-fps">Framerate (FPS)</label></td>
+          <td class="value"><input id="settings-fps" value="0" placeholder="30" type="number" step="any" min="0" required autocomplete="off"></td>
         </tr>
         <tr>
           <td class="name" title="The value of the &quot;username&quot; block. Changing this may cause issues in some projects."><label for="settings-username">Username</label></td>
-          <td class="value"><input id="settings-username" value="" type="text" placeholder="(nothing)" autocomplete="off"></td>
+          <td class="value"><input id="settings-username" type="text" placeholder="(nothing)" autocomplete="off"></td>
         </tr>
         <tr>
           <td class="name" title="Controls whether the renderer tries to make images look smoother."><label for="settings-image-smoothing">Image Smoothing</label></td>
@@ -139,6 +141,7 @@
   <script src="lib/rgbcolor.js"></script>
   <script src="lib/canvg.min.js"></script>
   <script src="phosphorus.dist.js"></script>
+  <script src="common.js"></script>
   <script src="studioview/studioview.js"></script>
 
   <script>
@@ -156,6 +159,7 @@
       'index.studio.view': 'View studio on Scratch.',
       'index.package.button': 'Package',
       'index.package.turbo': 'Turbo mode',
+      'index.package.controls': 'Controls',
       'index.package.fullscreen': 'Full screen',
       'index.package.480': '480\u00D7360',
       'index.package.custom': 'Other:',
@@ -176,11 +180,12 @@
   </script>
 
   <script>
-
   if (!window.P || !window.P.io) {
     document.getElementById('title-area').innerHTML += '<p><b>This browser is not supported.</b> Please upgrade to Mozilla Firefox, Google Chrome, or Microsoft Edge.</p>'
   }
+  </script>
 
+  <script>
   (function() {
     'use strict';
 
@@ -192,15 +197,6 @@
         throw new Error('Selector returned nothing: ' + selector);
       }
       return el;
-    }
-
-    // Shallowly clones an object (member values are not cloned)
-    function shallowClone(obj) {
-      var result = {};
-      for (var k in obj) {
-        result[k] = obj[k];
-      }
-      return result;
     }
 
     /** i18n */
@@ -237,10 +233,8 @@
     });
     playerArea.appendChild(player.root);
 
-    var initialId = location.hash.substr(1);
-    if (!/^\d+$/.test(initialId)) {
-      initialId = '';
-    }
+    var initialId = Common.projectId || '';
+    player.setOptions(Common.playerOptions);
 
     playerArea.style.height = projectArea.style.height = 'auto';
     var titleAreaHeight = titleArea.offsetHeight;
@@ -258,17 +252,11 @@
 
     var timeout;
     urlInput.addEventListener('input', function() {
-      var ss = urlInput.selectionStart;
-      var se = urlInput.selectionEnd;
       var url = urlInput.value;
-      var id = url.match(/\d+/g) || [''];
       var pid = player.hasProjectMeta() ? player.getProjectMeta().getId() : -1;
-      while (id.length > 1 && id.indexOf(pid) > -1) {
-        id.splice(id.indexOf(pid), 1);
-      }
+      var id = url.match(/\d+/g) || [''];
       id = id[0];
       urlInput.value = url = PROJECT_PREFIX + id;
-      urlInput.selectionStart = urlInput.selectionEnd = Math.max(PROJECT_PREFIX.length, ss);
       clearTimeout(timeout);
       if (pid !== id) {
         timeout = setTimeout(function() {
@@ -340,13 +328,16 @@
       showPlayerArea();
       player.loadProjectFromFile(file);
       updateLinks();
-      resetTitle();
+      setTitleToProjectTitle();
     }
     function updateLinks() {
       bugLink.href = errorHandler.createBugReportLink(P.i18n.translate('index.report.instructions'));
-      if (player.getProjectMeta().getId()) {
+      if (player.getProjectMeta().isFromScratch()) {
         projectLink.href = 'https://scratch.mit.edu/projects/' + player.getProjectMeta().getId();
         htmlPackagerLink.href = 'packager/#' + player.getProjectMeta().getId();
+      } else {
+        projectLink.href = 'https://scratch.mit.edu/';
+        htmlPackagerLink.href = 'packager';
       }
       updatePackageLink();
       updateEmbedCode();
@@ -380,6 +371,7 @@
     var packageOther = querySelector('#package-other');
     var packageOtherWidth = querySelector('#package-other-width');
     var packageOtherHeight = querySelector('#package-other-height');
+    var packageControls = querySelector('#package-controls');
 
     // Bind two inputs together so that changes to one reflect a change in the other.
     function bindInputs(first, other, multiplier) {
@@ -392,7 +384,7 @@
     }
     function updatePackageLink() {
       packageOtherWidth.disabled = packageOtherHeight.disabled = !packageOther.checked;
-      if (player.getProjectMeta().getId()) {
+      if (player.getProjectMeta().isFromScratch()) {
         var url = location.origin + location.pathname + 'app.html?id=' + player.getProjectMeta().getId();
         if (packageTurbo.checked) url += '&turbo';
         if (packageFullScreen.checked) {
@@ -401,6 +393,9 @@
           url += '&w=480';
         } else {
           url += '&w=' + packageOtherWidth.value;
+        }
+        if (packageControls.checked) {
+          url += '&controls';
         }
         packageLink.href = url;
       } else {
@@ -414,6 +409,7 @@
     packageOther.addEventListener('change', updatePackageLink);
     packageOtherHeight.addEventListener('change', updatePackageLink);
     packageOtherWidth.addEventListener('change', updatePackageLink);
+    packageControls.addEventListener('change', updatePackageLink);
 
     /** Embedding **/
     var embedCode = querySelector('#embed-code');
@@ -435,22 +431,26 @@
       }
       embedOtherWidth.disabled = embedOtherHeight.disabled = !embedOther.checked;
 
-      if (player.getProjectMeta().getId()) {
-        var source = location.protocol + '//' + location.host + location.pathname + 'embed.js?id=' + player.getProjectMeta().getId();
+      if (player.getProjectMeta().isFromScratch()) {
+        var source = location.protocol + '//' + location.host + location.pathname + 'embed.html?id=' + player.getProjectMeta().getId();
         if (embedHideControls.checked) {
           source += '&ui=false';
         } else {
           source += '&auto-start=' + embedAutoStart.checked;
           source += '&light-content=' + embedLightContent.checked;
         }
+        var width = 480;
+        var height = 360;
         if (embedOther.checked) {
-          source += '&w=' + embedOtherWidth.value;
-          source += '&h=' + embedOtherHeight.value;
-        } else {
-          source += '&w=480&h=360';
+          width = +embedOtherWidth.value;
+          height = +embedOtherHeight.value;
         }
-        // We need to break up the closing script tag, otherwise things break.
-        embedCode.value = '<script src="' + source + '"></scrip' + 't>';
+        if (!embedHideControls.checked) {
+          // Space for controls and player border
+          width += 2;
+          height += 33;
+        }
+        embedCode.value = '<iframe src="' + source + '" width="' + width + '" height="' + height + '" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>';
       } else {
         embedCode.value = '';
       }
@@ -583,18 +583,21 @@
     setDarkMode(getLocalDarkMode());
 
     /** Settings Menu **/
-    var settingFramerate = querySelector('#settings-framerate');
+    var settingFps = querySelector('#settings-fps');
     var settingUsername = querySelector('#settings-username');
     var settingImageSmoothing = querySelector('#settings-image-smoothing');
 
-    settingFramerate.addEventListener('input', (e) => {
-      if (settingFramerate.checkValidity()) {
-        player.setOptions({ fps: +settingFramerate.value });
+    settingFps.value = player.options.fps;
+    settingFps.addEventListener('input', (e) => {
+      if (settingFps.checkValidity()) {
+        player.setOptions({ fps: +settingFps.value });
       }
     });
+    settingUsername.value = player.options.username;
     settingUsername.addEventListener('input', (e) => {
       player.setOptions({ username: settingUsername.value });
     });
+    settingImageSmoothing.checked = player.options.imageSmoothing;
     settingImageSmoothing.addEventListener('change', (e) => {
       player.setOptions({ imageSmoothing: settingImageSmoothing.checked });
     });
@@ -604,6 +607,8 @@
       loadProjectId(initialId);
     } else {
       player.setOptions({ autoplayPolicy: 'always' });
+      urlInput.focus();
+      urlInput.setSelectionRange(urlInput.value.length, urlInput.value.length);
     }
 
   }());

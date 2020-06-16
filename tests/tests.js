@@ -5,6 +5,7 @@
 
   const tests = [
     'sb2/sb2-template.sb2',
+    'sb2/non-standard-json.sb2',
 
     'sb3/sb3-template.sb3',
     'sb3/quicksort.sb3',
@@ -24,7 +25,7 @@
 
   /**
    * Default options to override the default options
-   * @type {ProjectMeta}
+   * @type {Partial<ProjectMeta>}
    */
   const defaultMetadata = {
     timeout: 5000,
@@ -34,14 +35,14 @@
 
   /**
    * @param {string} path
-   * @param {ProjectMeta} metadata 
+   * @param {Partial<ProjectMeta>} metadata 
    * @returns {ProjectMeta}
    */
   function createProjectMeta(path, metadata = {}) {
     metadata.path = path;
     const clonedDefaults = Object.assign({}, defaultMetadata);
     const merged = Object.assign(clonedDefaults, metadata);
-    return merged;
+    return /** @type {ProjectMeta} */ (merged);
   }
 
   P.suite.tests = () => tests.map((i) => {

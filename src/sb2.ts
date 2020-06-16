@@ -384,32 +384,32 @@ namespace P.sb2 {
         this.loadArray(data.costumes, this.loadCostume.bind(this)).then((c) => costumes = c),
         this.loadArray(data.sounds, this.loadSound.bind(this)).then((s) => sounds = s),
       ]).then(() => {
-        const variables = {};
-        if (data.variables) {
-          for (const variable of data.variables) {
-            if (variable.isPeristent) {
-              throw new Error('Cloud variables are not supported');
-            }
-            variables[variable.name] = variable.value;
-          }
-        }
-
-        const lists = {};
-        if (data.lists) {
-          for (const list of data.lists) {
-            if (list.isPeristent) {
-              throw new Error('Cloud lists are not supported');
-            }
-            lists[list.listName] = list.contents;
-          }
-        }
-
         // Dirty hack to construct a target with a null stage
         const object = new (isStage ? Scratch2Stage : Scratch2Sprite)(null!);
 
+        if (data.variables) {
+          for (const variable of data.variables) {
+            if (variable.isPersistent) {
+              if (object.isStage) {
+                (object as Scratch2Stage).cloudVariables.push(variable.name);
+              } else {
+                console.warn('Cloud variable found on a non-stage object. Skipping.');
+              }
+            }
+            object.vars[variable.name] = variable.value;
+          }
+        }
+
+        if (data.lists) {
+          for (const list of data.lists) {
+            if (list.isPersistent) {
+              console.warn('Cloud lists are not supported');
+            }
+            object.lists[list.listName] = list.contents;
+          }
+        }
+
         object.name = data.objName;
-        object.vars = variables;
-        object.lists = lists;
         object.costumes = costumes;
         object.currentCostumeIndex = data.currentCostumeIndex;
         sounds.forEach((sound) => sound && object.addSound(sound));
@@ -596,21 +596,26 @@ namespace P.sb2 {
     loadMD5(hash: string, id: string, isAudio?: true): Promise<AudioBuffer>;
     loadMD5(hash: string, id: string, isAudio?: false): Promise<HTMLImageElement | HTMLCanvasElement | null>;
     loadMD5(hash: string, id: string, isAudio: boolean = false): Promise<HTMLImageElement | HTMLCanvasElement | AudioBuffer | null> {
-      const f = isAudio ? this.zip.file(id + '.wav') : this.zip.file(id + '.gif') || this.zip.file(id + '.png') || this.zip.file(id + '.jpg') || this.zip.file(id + '.svg');
+      const f = isAudio ? (this.zip.file(id + '.wav') || this.zip.file(id + '.mp3')) : this.zip.file(id + '.gif') || (this.zip.file(id + '.png') || this.zip.file(id + '.jpg') || this.zip.file(id + '.svg'));
       hash = f.name;
-      const ext = hash.split('.').pop();
 
+      if (isAudio) {
+        return f.async('arrayBuffer')
+          .then((buffer) => P.audio.decodeAudio(buffer));
+      }
+
+      const ext = hash.split('.').pop();
       if (ext === 'svg') {
         return f.async('text')
           .then((text) => this.loadSVG(text));
-      } else if (ext === 'wav') {
-        return f.async('arrayBuffer')
-          .then((buffer) => P.audio.decodeAudio(buffer));
       } else {
         return new Promise((resolve, reject) => {
           var image = new Image();
           image.onload = function() {
             resolve(image);
+          };
+          image.onerror = function() {
+            reject(new Error('Failed to load image: ' + hash + '/' + id));
           };
           f.async('binarystring')
             .then((data: string) => {
@@ -627,7 +632,7 @@ namespace P.sb2 {
           return this.zip.file('project.json').async('text');
         })
         .then((project) => {
-          this.projectData = JSON.parse(project);
+          this.projectData = P.json.parse(project);
         })
         .then(() => super.load());
     }
@@ -735,6 +740,8 @@ namespace P.sb2 {
 
 // Compiler for .sb2 projects
 namespace P.sb2.compiler {
+  const CLOUD = '☁ ';
+
   var LOG_PRIMITIVES;
 
   // Implements a Scratch 2 procedure.
@@ -809,6 +816,14 @@ namespace P.sb2.compiler {
       }
       var o = object.stage.vars[name] !== undefined ? 'self' : 'S';
       return o + '.vars[' + val(name) + ']';
+    };
+
+    var isCloudVar = function(name) {
+      if (typeof name !== 'string') {
+        // a dynamic variable could be a cloud variable, but we will ignore this.
+        return false;
+      }
+      return name.startsWith(CLOUD) && object.stage.vars[name] !== undefined && object.stage.cloudVariables.indexOf(name) > -1;
     };
 
     var listRef = function(name) {
@@ -1578,11 +1593,17 @@ namespace P.sb2.compiler {
       } else if (block[0] === 'setVar:to:') { /* Data */
 
         source += varRef(block[1]) + ' = ' + val(block[2]) + ';\n';
+        if (isCloudVar(block[1])) {
+          source += 'cloudVariableChanged(' + val(block[1]) + ');\n';
+        }
 
       } else if (block[0] === 'changeVar:by:') {
 
         var ref = varRef(block[1]);
         source += ref + ' = (+' + ref + ' || 0) + ' + num(block[2]) + ';\n';
+        if (isCloudVar(block[1])) {
+          source += 'cloudVariableChanged(' + val(block[1]) + ');\n';
+        }
 
       } else if (block[0] === 'append:toList:') {
 

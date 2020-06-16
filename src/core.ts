@@ -152,8 +152,11 @@ namespace P.core {
           const rgb = P.utils.hsvToRGB(this.x / 360, this.y / 100, this.z / 100);
           return [rgb[0], rgb[1], rgb[2], this.a];
         }
+        case PenMode.HSLA: {
+          const rgb = P.utils.hslToRGB(this.x / 360, this.y / 100, this.z / 100);
+          return [rgb[0], rgb[1], rgb[2], this.a];
+        }
       }
-      return [255, 0, 0, 1];
     }
 
     /**
@@ -170,7 +173,6 @@ namespace P.core {
           return 'rgba(' + rgb[0] + ', ' + rgb[1] + ', ' + rgb[2] + ', ' + this.a + ')';
         }
       }
-      throw new Error('Unknown pen color mode: ' + this.mode);
     }
 
     setParam(param: string, value: number) {
@@ -300,23 +302,23 @@ namespace P.core {
     /**
      * Variable watchers that this object owns.
      */
-    public watchers: ObjectMap<Watcher> = Object.create(null);
+    public watchers: ObjectMap<Watcher> = {};
     /**
      * List watchers that this object owns.
      */
-    public listWatchers: ObjectMap<Watcher> = Object.create(null);
+    public listWatchers: ObjectMap<Watcher> = {};
     /**
      * Variables of this object.
      * Maps variable names (or ids) to their value.
      * Values can be of any type and should likely be converted first.
      */
-    public vars: ObjectMap<any> = Object.create(null);
+    public vars: ObjectMap<any> = {};
     /**
      * Lists of this object.
      * Maps list names (or ids) to their list.
      * Each list can contain objects of any type, and should be converted first.
      */
-    public lists: ObjectMap<Array<any>> = Object.create(null);
+    public lists: ObjectMap<Array<any>> = {};
     /**
      * Is this object saying something?
      */
@@ -335,15 +337,15 @@ namespace P.core {
     /**
      * Maps procedure names (usually includes parameters) to the Procedure object
      */
-    public procedures: ObjectMap<Procedure> = Object.create(null);
+    public procedures: ObjectMap<Procedure> = {};
     public listeners: Listeners = {
       whenClicked: [],
       whenCloned: [],
       whenGreenFlag: [],
-      whenIReceive: Object.create(null),
+      whenIReceive: {},
       whenKeyPressed: [],
-      whenBackdropChanges: Object.create(null),
-      whenSceneStarts: Object.create(null),
+      whenBackdropChanges: {},
+      whenSceneStarts: {},
     };
     public fns: P.runtime.Fn[] = [];
     public filters: Filters = {
@@ -789,8 +791,10 @@ namespace P.core {
 
     public zoom: number = 1;
 
+    // rawMouseX/rawMouseY = mouse x/y, in Scratch coordinate space, before clamping or rounding
     public rawMouseX: number = 0;
     public rawMouseY: number = 0;
+    // mouseX/mouseY = mouse x/y, in Scratch coordinate space, rounded and clamped to the stage bounds
     public mouseX: number = 0;
     public mouseY: number = 0;
     public mousePressed: boolean = false;
@@ -813,6 +817,9 @@ namespace P.core {
     public promptTitle: HTMLElement;
     public promptButton: HTMLElement;
     public mouseSprite: Sprite | undefined;
+
+    public cloudHandler: P.ext.cloud.CloudHandler | null = null;
+    public cloudVariables: string[] = [];
 
     private videoElement: HTMLVideoElement;
     public speech2text: P.ext.speech2text.SpeechToTextExtension | null = null;
@@ -1071,6 +1078,7 @@ namespace P.core {
       for (const extension of this.extensions) {
         extension.destroy();
       }
+      this.renderer.destroy();
       this.removeEventListeners();
     }
 
@@ -1121,12 +1129,10 @@ namespace P.core {
       this.root.style.height = (360 * zoom | 0) + 'px';
       this.root.style.fontSize = (zoom*10) + 'px';
       this.zoom = zoom;
-      // Temporary fix to make Scratch 3 list watchers properly resize when paused
-      if (!this.runtime.isRunning) {
-        for (const watcher of this.allWatchers) {
-          if (watcher instanceof P.sb3.Scratch3ListWatcher) {
-            watcher.updateList();
-          }
+      // Temporary fix to make Scratch 3 list watchers properly resize
+      for (const watcher of this.allWatchers) {
+        if (watcher instanceof P.sb3.Scratch3ListWatcher) {
+          watcher.updateList();
         }
       }
     }
@@ -1279,6 +1285,11 @@ namespace P.core {
         this.microphone = new P.ext.microphone.MicrophoneExtension(this);
         this.addExtension(this.microphone);
       }
+    }
+
+    setCloudHandler(cloudHandler: P.ext.cloud.CloudHandler) {
+      this.cloudHandler = cloudHandler;
+      this.addExtension(cloudHandler);
     }
 
     stopAllSounds() {
@@ -1675,7 +1686,7 @@ namespace P.core {
     }
   }
 
-  interface CostumeOptions {
+  export interface CostumeOptions {
     name: string;
     bitmapResolution: number;
     rotationCenterX: number;
@@ -1766,12 +1777,14 @@ namespace P.core {
 
   export class VectorCostume extends Costume {
     /** Maximum scale factor of a Vector costume. */
-    public static MAX_SCALE = 8;
+    public static MAX_SCALE = 16;
     /** Maximum width or height of a Vector costume. Overrides MAX_SCALE. */
-    public static MAX_SIZE = 1024;
+    public static MAX_SIZE = 2048;
+    /** Disables rasterize/zoom. */
+    public static DISABLE_RASTERIZE = false;
 
     private svg: HTMLImageElement;
-    public currentScale: number = 1;
+    public currentScale: number;
     public maxScale: number;
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
@@ -1786,6 +1799,7 @@ namespace P.core {
       this.height = svg.height;
       this.svg = svg;
       this.maxScale = this.calculateMaxScale();
+      this.currentScale = Math.min(1, this.maxScale);
     }
 
     private calculateMaxScale(): number {
@@ -1822,6 +1836,9 @@ namespace P.core {
     }
 
     requestSize(costumeScale: number) {
+      if (VectorCostume.DISABLE_RASTERIZE) {
+        return;
+      }
       const scale = Math.min(Math.ceil(costumeScale), this.maxScale);
       if (this.currentScale < scale) {
         this.currentScale = scale;
@@ -1838,6 +1855,9 @@ namespace P.core {
     }
 
     getImage() {
+      if (VectorCostume.DISABLE_RASTERIZE) {
+        return this.svg;
+      }
       if (this.canvas) {
         return this.canvas;
       }
@@ -1848,11 +1868,10 @@ namespace P.core {
 
   // TEMPORARY FIX:
   // Disable image scaling on Safari.
-  // TODO: see if this is not necessary anymore due to changes in scaling
   // detection method from https://stackoverflow.com/a/23522755
   if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
-    console.log('Vector scaling is disabled');
-    VectorCostume.MAX_SCALE = 1;
+    console.log('Vector rasterization is disabled. This may affect performance.');
+    VectorCostume.DISABLE_RASTERIZE = true;
   }
 
   interface SoundOptions {

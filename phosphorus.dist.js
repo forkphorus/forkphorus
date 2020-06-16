@@ -43,11 +43,10 @@ var P;
 (function (P) {
     var config;
     (function (config) {
-        const features = location.search.replace('?', '').split('&');
-        config.debug = features.indexOf('debug') > -1 || true;
-        config.useWebGL = features.indexOf('webgl') > -1;
-        config.supportVideoSensing = features.indexOf('video') > -1;
-        config.experimentalOptimizations = features.indexOf('opt') > -1;
+        config.debug = true;
+        config.useWebGL = false;
+        config.supportVideoSensing = false;
+        config.experimentalOptimizations = false;
         config.scale = window.devicePixelRatio || 1;
         config.PROJECT_API = 'https://projects.scratch.mit.edu/$id';
     })(config = P.config || (P.config = {}));
@@ -440,7 +439,7 @@ var P;
         }
         function decodeAudio(ab) {
             if (!audio.context) {
-                return Promise.reject('No audio context');
+                return Promise.reject(new Error('No audio context'));
             }
             return new Promise((resolve, reject) => {
                 decodeADPCMAudio(ab, function (err1, buffer) {
@@ -530,8 +529,11 @@ var P;
                         const rgb = P.utils.hsvToRGB(this.x / 360, this.y / 100, this.z / 100);
                         return [rgb[0], rgb[1], rgb[2], this.a];
                     }
+                    case 1: {
+                        const rgb = P.utils.hslToRGB(this.x / 360, this.y / 100, this.z / 100);
+                        return [rgb[0], rgb[1], rgb[2], this.a];
+                    }
                 }
-                return [255, 0, 0, 1];
             }
             toCSS() {
                 switch (this.mode) {
@@ -544,7 +546,6 @@ var P;
                         return 'rgba(' + rgb[0] + ', ' + rgb[1] + ', ' + rgb[2] + ', ' + this.a + ')';
                     }
                 }
-                throw new Error('Unknown pen color mode: ' + this.mode);
             }
             setParam(param, value) {
                 this.toHSVA();
@@ -615,22 +616,22 @@ var P;
                 this.volume = 1;
                 this.node = null;
                 this.activeSounds = new Set();
-                this.watchers = Object.create(null);
-                this.listWatchers = Object.create(null);
-                this.vars = Object.create(null);
-                this.lists = Object.create(null);
+                this.watchers = {};
+                this.listWatchers = {};
+                this.vars = {};
+                this.lists = {};
                 this.saying = false;
                 this.thinking = false;
                 this.sayId = 0;
-                this.procedures = Object.create(null);
+                this.procedures = {};
                 this.listeners = {
                     whenClicked: [],
                     whenCloned: [],
                     whenGreenFlag: [],
-                    whenIReceive: Object.create(null),
+                    whenIReceive: {},
                     whenKeyPressed: [],
-                    whenBackdropChanges: Object.create(null),
-                    whenSceneStarts: Object.create(null),
+                    whenBackdropChanges: {},
+                    whenSceneStarts: {},
                 };
                 this.fns = [];
                 this.filters = {
@@ -1000,6 +1001,8 @@ var P;
                 this.tempoBPM = 60;
                 this.username = '';
                 this.counter = 0;
+                this.cloudHandler = null;
+                this.cloudVariables = [];
                 this.speech2text = null;
                 this.microphone = null;
                 this.extensions = [];
@@ -1219,6 +1222,7 @@ var P;
                 for (const extension of this.extensions) {
                     extension.destroy();
                 }
+                this.renderer.destroy();
                 this.removeEventListeners();
             }
             pauseExtensions() {
@@ -1264,11 +1268,9 @@ var P;
                 this.root.style.height = (360 * zoom | 0) + 'px';
                 this.root.style.fontSize = (zoom * 10) + 'px';
                 this.zoom = zoom;
-                if (!this.runtime.isRunning) {
-                    for (const watcher of this.allWatchers) {
-                        if (watcher instanceof P.sb3.Scratch3ListWatcher) {
-                            watcher.updateList();
-                        }
+                for (const watcher of this.allWatchers) {
+                    if (watcher instanceof P.sb3.Scratch3ListWatcher) {
+                        watcher.updateList();
                     }
                 }
             }
@@ -1394,6 +1396,10 @@ var P;
                     this.microphone = new P.ext.microphone.MicrophoneExtension(this);
                     this.addExtension(this.microphone);
                 }
+            }
+            setCloudHandler(cloudHandler) {
+                this.cloudHandler = cloudHandler;
+                this.addExtension(cloudHandler);
             }
             stopAllSounds() {
                 for (var children = this.children, i = children.length; i--;) {
@@ -1732,7 +1738,6 @@ var P;
         class VectorCostume extends Costume {
             constructor(svg, options) {
                 super(options);
-                this.currentScale = 1;
                 if (svg.height < 1 || svg.width < 1) {
                     svg = new Image(1, 1);
                 }
@@ -1741,6 +1746,7 @@ var P;
                 this.height = svg.height;
                 this.svg = svg;
                 this.maxScale = this.calculateMaxScale();
+                this.currentScale = Math.min(1, this.maxScale);
             }
             calculateMaxScale() {
                 if (VectorCostume.MAX_SIZE / this.width < VectorCostume.MAX_SCALE) {
@@ -1773,6 +1779,9 @@ var P;
                 this.ctx.drawImage(this.svg, 0, 0, width, height);
             }
             requestSize(costumeScale) {
+                if (VectorCostume.DISABLE_RASTERIZE) {
+                    return;
+                }
                 const scale = Math.min(Math.ceil(costumeScale), this.maxScale);
                 if (this.currentScale < scale) {
                     this.currentScale = scale;
@@ -1787,6 +1796,9 @@ var P;
                 return this.ctx;
             }
             getImage() {
+                if (VectorCostume.DISABLE_RASTERIZE) {
+                    return this.svg;
+                }
                 if (this.canvas) {
                     return this.canvas;
                 }
@@ -1794,12 +1806,13 @@ var P;
                 return this.canvas;
             }
         }
-        VectorCostume.MAX_SCALE = 8;
-        VectorCostume.MAX_SIZE = 1024;
+        VectorCostume.MAX_SCALE = 16;
+        VectorCostume.MAX_SIZE = 2048;
+        VectorCostume.DISABLE_RASTERIZE = false;
         core.VectorCostume = VectorCostume;
         if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
-            console.log('Vector scaling is disabled');
-            VectorCostume.MAX_SCALE = 1;
+            console.log('Vector rasterization is disabled. This may affect performance.');
+            VectorCostume.DISABLE_RASTERIZE = true;
         }
         class Sound {
             constructor(data) {
@@ -2003,7 +2016,7 @@ var P;
                         resolve(fileReader.result);
                     };
                     fileReader.onerror = function (err) {
-                        reject('Could not read object');
+                        reject(new Error('Could not read object as ArrayBuffer'));
                     };
                     fileReader.readAsArrayBuffer(object);
                 });
@@ -2016,7 +2029,7 @@ var P;
                         resolve(fileReader.result);
                     };
                     fileReader.onerror = function (err) {
-                        reject('Could not read object');
+                        reject(new Error('Could not read object as data: URL'));
                     };
                     fileReader.readAsDataURL(object);
                 });
@@ -2029,7 +2042,7 @@ var P;
                         resolve(fileReader.result);
                     };
                     fileReader.onerror = function (err) {
-                        reject('Could not read object');
+                        reject(new Error('Could not read object as text'));
                     };
                     fileReader.readAsText(object);
                 });
@@ -2074,6 +2087,10 @@ var P;
         }
         io.AbstractTask = AbstractTask;
         class Retry extends AbstractTask {
+            constructor() {
+                super(...arguments);
+                this.aborted = false;
+            }
             try(handle) {
                 return new Promise((resolve, reject) => {
                     handle()
@@ -2088,7 +2105,7 @@ var P;
                             handle()
                                 .then((response) => resolve(response))
                                 .catch((err) => reject(err));
-                        }, 250);
+                        }, 2000);
                     });
                 });
             }
@@ -2146,7 +2163,10 @@ var P;
             _load() {
                 return new Promise((resolve, reject) => {
                     const xhr = new XMLHttpRequest();
-                    xhr.addEventListener('load', () => {
+                    xhr.open('GET', this.url);
+                    xhr.responseType = this.responseType;
+                    this.xhr = xhr;
+                    xhr.onload = () => {
                         this.status = xhr.status;
                         if (Request.acceptableResponseCodes.indexOf(xhr.status) !== -1 || this.shouldIgnoreErrors) {
                             resolve(xhr.response);
@@ -2154,28 +2174,22 @@ var P;
                         else {
                             reject(new Error(`HTTP Error ${xhr.status} while downloading ${this.url}`));
                         }
-                    });
-                    xhr.addEventListener('progress', (e) => {
+                    };
+                    xhr.onloadstart = (e) => {
                         this.updateProgress(e);
-                    });
-                    xhr.addEventListener('loadstart', (e) => {
-                        this.updateProgress(e);
-                    });
-                    xhr.addEventListener('loadend', (e) => {
+                    };
+                    xhr.onloadend = (e) => {
                         this.complete = true;
                         this.updateProgress(e);
-                    });
-                    xhr.addEventListener('error', (err) => {
-                        reject(`Error while downloading ${this.url} (error) (${xhr.status}/${xhr.readyState})`);
-                    });
-                    xhr.addEventListener('abort', (err) => {
+                    };
+                    xhr.onerror = (err) => {
+                        reject(new Error(`Error while downloading ${this.url} (error) (${xhr.status}/${xhr.statusText}/${this.aborted}/${xhr.readyState})`));
+                    };
+                    xhr.onabort = (err) => {
                         this.aborted = true;
-                        reject(`Error while downloading ${this.url} (abort) (${xhr.status}/${xhr.readyState})`);
-                    });
-                    xhr.open('GET', this.url);
-                    xhr.responseType = this.responseType;
-                    this.xhr = xhr;
-                    setTimeout(xhr.send.bind(xhr));
+                        reject(new Error(`Error while downloading ${this.url} (abort) (${xhr.status}/${xhr.statusText}/${xhr.readyState})`));
+                    };
+                    xhr.send();
                 });
             }
             load(type) {
@@ -2215,10 +2229,12 @@ var P;
                         resolve(image);
                     };
                     image.onerror = (err) => {
-                        reject('Failed to load image: ' + image.src);
+                        reject(new Error('Failed to load image: ' + image.src));
                     };
                     image.crossOrigin = 'anonymous';
-                    image.src = this.src;
+                    setTimeout(() => {
+                        image.src = this.src;
+                    });
                 });
             }
             load() {
@@ -2277,42 +2293,13 @@ var P;
                 if (totalTasks === 0) {
                     return 0;
                 }
-                let totalWork = 0;
-                let completedWork = 0;
                 let finishedTasks = 0;
-                let uncomputable = 0;
                 for (const task of this._tasks) {
                     if (task.isComplete()) {
                         finishedTasks++;
                     }
-                    if (task.isWorkComputable()) {
-                        completedWork += task.getCompletedWork();
-                        totalWork += task.getTotalWork();
-                    }
-                    else {
-                        uncomputable++;
-                    }
                 }
-                if (totalWork === 0) {
-                    return finishedTasks / totalTasks;
-                }
-                if (uncomputable > 0) {
-                    const averageWork = totalWork / (totalTasks - uncomputable) * uncomputable;
-                    totalWork = 0;
-                    completedWork = 0;
-                    for (const task of this._tasks) {
-                        if (task.isWorkComputable()) {
-                            completedWork += task.getCompletedWork();
-                            totalWork += task.getTotalWork();
-                        }
-                        else {
-                            totalWork += averageWork;
-                            if (task.isComplete())
-                                completedWork += averageWork;
-                        }
-                    }
-                }
-                return completedWork / totalWork;
+                return finishedTasks / totalTasks;
             }
             updateProgress() {
                 if (this.error) {
@@ -2336,11 +2323,281 @@ var P;
                     task.abort();
                 }
             }
+            cleanup() {
+                for (const task of this._tasks) {
+                    task.setLoader(null);
+                }
+                this._tasks.length = 0;
+            }
             onprogress(progress) {
             }
         }
         io.Loader = Loader;
     })(io = P.io || (P.io = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
+    var json;
+    (function (json) {
+        class JSONParser {
+            constructor(source) {
+                this.source = source;
+                this.index = 0;
+            }
+            parse() {
+                return this.parseValue();
+            }
+            lineInfo() {
+                let line = 0;
+                let column = 0;
+                for (var i = 0; i < this.index; i++) {
+                    if (this.source[i] === '\n') {
+                        line++;
+                        column = 0;
+                    }
+                    else {
+                        column++;
+                    }
+                }
+                return { line: line + 1, column: column + 1 };
+            }
+            error(message) {
+                const { line, column } = this.lineInfo();
+                throw new Error(`JSONParser: ${message} (Line ${line} Column ${column})`);
+            }
+            char() {
+                return this.charAt(this.index);
+            }
+            charAt(index) {
+                if (index >= this.source.length) {
+                    this.error('Unexpected end of input');
+                }
+                return this.source[index];
+            }
+            next() {
+                this.index++;
+            }
+            expect(char) {
+                if (this.char() !== char) {
+                    this.error(`Expected '${char}' but found '${this.char()}'`);
+                }
+                this.next();
+            }
+            peek(length = 1, offset = 1) {
+                if (length === 1)
+                    return this.charAt(this.index + offset);
+                let result = '';
+                for (var i = 0; i < length; i++) {
+                    result += this.charAt(this.index + offset + i);
+                }
+                return result;
+            }
+            skipWhitespace() {
+                while (/\s/.test(this.char())) {
+                    this.next();
+                }
+            }
+            parseValue() {
+                this.skipWhitespace();
+                const char = this.char();
+                switch (char) {
+                    case '"': return this.parseString();
+                    case '{': return this.parseObject();
+                    case '[': return this.parseList();
+                    case '0':
+                    case '1':
+                    case '2':
+                    case '3':
+                    case '4':
+                    case '5':
+                    case '6':
+                    case '7':
+                    case '8':
+                    case '9':
+                    case '-':
+                        return this.parseNumber();
+                    default: return this.parseWord();
+                }
+            }
+            parseWord() {
+                if (this.peek(4, 0) === 'null') {
+                    for (var i = 0; i < 4; i++)
+                        this.next();
+                    return Infinity;
+                }
+                if (this.peek(4, 0) === 'true') {
+                    for (var i = 0; i < 4; i++)
+                        this.next();
+                    return true;
+                }
+                if (this.peek(5, 0) === 'false') {
+                    for (var i = 0; i < 5; i++)
+                        this.next();
+                    return false;
+                }
+                if (this.peek(8, 0) === 'Infinity') {
+                    for (var i = 0; i < 8; i++)
+                        this.next();
+                    return Infinity;
+                }
+                if (this.peek(3, 0) === 'NaN') {
+                    for (var i = 0; i < 3; i++)
+                        this.next();
+                    return NaN;
+                }
+                this.error(`Unknown word (starts with ${this.char()})`);
+            }
+            parseNumber() {
+                let number = '';
+                while (true) {
+                    number += this.char();
+                    if (/[\d\.e+-]/i.test(this.peek())) {
+                        this.next();
+                    }
+                    else {
+                        break;
+                    }
+                }
+                this.next();
+                const value = +number;
+                if (Number.isNaN(value)) {
+                    this.error('Not a number: ' + number);
+                }
+                return value;
+            }
+            parseString() {
+                this.expect('"');
+                let result = '';
+                if (this.char() === '"') {
+                    this.next();
+                    return '';
+                }
+                while (true) {
+                    const char = this.char();
+                    if (char === '\\') {
+                        this.next();
+                        switch (this.char()) {
+                            case '"':
+                                result += '"';
+                                break;
+                            case '/':
+                                result += '/';
+                                break;
+                            case '\\':
+                                result += '\\';
+                                break;
+                            case 'b':
+                                result += '\b';
+                                break;
+                            case 'f':
+                                result += '\f';
+                                break;
+                            case 'n':
+                                result += '\n';
+                                break;
+                            case 'r':
+                                result += '\r';
+                                break;
+                            case 't':
+                                result += '\t';
+                                break;
+                            case 'u': {
+                                let hexString = '';
+                                for (var i = 0; i < 4; i++) {
+                                    this.next();
+                                    const char = this.char();
+                                    if (!/[0-9a-f]/i.test(char)) {
+                                        this.error('Invalid hex code: ' + char);
+                                    }
+                                    hexString += char;
+                                }
+                                const hexNumber = Number.parseInt(hexString, 16);
+                                const letter = String.fromCharCode(hexNumber);
+                                result += letter;
+                                break;
+                            }
+                            default: this.error('Invalid escape code: \\' + this.char());
+                        }
+                    }
+                    else {
+                        result += char;
+                    }
+                    if (this.peek() === '"') {
+                        break;
+                    }
+                    this.next();
+                }
+                this.next();
+                this.expect('"');
+                return result;
+            }
+            parseList() {
+                this.expect('[');
+                this.skipWhitespace();
+                if (this.char() === ']') {
+                    this.next();
+                    return [];
+                }
+                const result = [];
+                while (true) {
+                    this.skipWhitespace();
+                    const value = this.parseValue();
+                    result.push(value);
+                    this.skipWhitespace();
+                    if (this.char() === ']') {
+                        break;
+                    }
+                    this.expect(',');
+                }
+                this.expect(']');
+                return result;
+            }
+            parseObject() {
+                this.expect('{');
+                this.skipWhitespace();
+                if (this.char() === '}') {
+                    this.next();
+                    return {};
+                }
+                const result = Object.create(null);
+                while (true) {
+                    this.skipWhitespace();
+                    const key = this.parseString();
+                    this.skipWhitespace();
+                    this.expect(':');
+                    const value = this.parseValue();
+                    result[key] = value;
+                    this.skipWhitespace();
+                    if (this.char() === '}') {
+                        break;
+                    }
+                    this.expect(',');
+                }
+                this.expect('}');
+                return result;
+            }
+        }
+        function parse(source) {
+            if (!/^\s*{/.test(source)) {
+                throw new Error('The input does not seem to be a JSON object');
+            }
+            try {
+                return JSON.parse(source);
+            }
+            catch (firstError) {
+                console.warn('JSON.parse failed. Trying alternative parser', firstError);
+                try {
+                    const parser = new JSONParser(source);
+                    return parser.parse();
+                }
+                catch (secondError) {
+                    console.warn('Alternative parser failed', secondError);
+                    throw firstError;
+                }
+            }
+        }
+        json.parse = parse;
+    })(json = P.json || (P.json = {}));
 })(P || (P = {}));
 var P;
 (function (P) {
@@ -2448,6 +2705,34 @@ var P;
             return [r * 255, g * 255, b * 255];
         }
         utils.hsvToRGB = hsvToRGB;
+        function hslToRGB(h, s, l) {
+            var r, g, b;
+            if (s == 0) {
+                r = g = b = l;
+            }
+            else {
+                function hue2rgb(p, q, t) {
+                    if (t < 0)
+                        t += 1;
+                    if (t > 1)
+                        t -= 1;
+                    if (t < 1 / 6)
+                        return p + (q - p) * 6 * t;
+                    if (t < 1 / 2)
+                        return q;
+                    if (t < 2 / 3)
+                        return p + (q - p) * (2 / 3 - t) * 6;
+                    return p;
+                }
+                var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                var p = 2 * l - q;
+                r = hue2rgb(p, q, h + 1 / 3);
+                g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1 / 3);
+            }
+            return [r * 255, g * 255, b * 255];
+        }
+        utils.hslToRGB = hslToRGB;
         function hslToHSV(h, s, l) {
             var v = l + s * Math.min(l, 1 - l);
             var s = v === 0 ? 0 : 2 - 2 * l / v;
@@ -2549,7 +2834,24 @@ var P;
                 return this.filename;
             }
             getId() {
+                return this.filename;
+            }
+            isFromScratch() {
+                return false;
+            }
+        }
+        class BinaryProjectMeta {
+            load() {
+                return Promise.resolve(this);
+            }
+            getTitle() {
                 return null;
+            }
+            getId() {
+                return '#buffer#';
+            }
+            isFromScratch() {
+                return false;
             }
         }
         class RemoteProjectMeta {
@@ -2574,6 +2876,9 @@ var P;
             getId() {
                 return this.id;
             }
+            isFromScratch() {
+                return true;
+            }
         }
         class Player {
             constructor(options = {}) {
@@ -2589,7 +2894,8 @@ var P;
                 this.MAGIC = {
                     LARGE_Z_INDEX: '9999999999',
                     CLOUD_HISTORY_API: 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100',
-                    PROJECT_API: 'https://projects.scratch.mit.edu/$id',
+                    PROJECT_API: 'https://cdn.projects.scratch.mit.edu/$id',
+                    CLOUD_DATA_SERVER: 'wss://stratus.garbomuffin.com',
                 };
                 this.projectMeta = null;
                 this.currentLoader = null;
@@ -2690,6 +2996,16 @@ var P;
                 };
                 this.controlsContainer = document.createElement('div');
                 this.controlsContainer.className = 'player-controls';
+                this.controlsContainer.onmousedown = (e) => {
+                    if (e.target !== this.controlsContainer) {
+                        e.stopPropagation();
+                    }
+                };
+                this.controlsContainer.ontouchstart = (e) => {
+                    if (e.target !== this.controlsContainer) {
+                        e.stopPropagation();
+                    }
+                };
                 if (options.enableStop !== false) {
                     var stopButton = document.createElement('span');
                     stopButton.className = 'player-button player-stop';
@@ -2942,19 +3258,12 @@ var P;
                     this.exitFullscreen();
                 }
             }
-            isCloudVariable(variableName) {
-                return variableName.startsWith('☁');
-            }
-            getCloudVariables(id) {
+            getCloudVariablesFromLogs(id) {
                 return __awaiter(this, void 0, void 0, function* () {
                     const data = yield new P.io.Request(this.MAGIC.CLOUD_HISTORY_API.replace('$id', id)).load('json');
                     const variables = Object.create(null);
                     for (const entry of data.reverse()) {
                         const { verb, name, value } = entry;
-                        if (!this.isCloudVariable(name)) {
-                            console.warn('cloud variable logs affecting non-cloud variable, skipping', name);
-                            continue;
-                        }
                         switch (verb) {
                             case 'create_var':
                             case 'set_var':
@@ -2974,15 +3283,10 @@ var P;
                     return variables;
                 });
             }
-            addCloudVariables(stage, id) {
-                const variables = Object.keys(stage.vars);
-                const hasCloudVariables = variables.some(this.isCloudVariable);
-                if (!hasCloudVariables) {
-                    return;
-                }
-                this.getCloudVariables(id).then((variables) => {
+            applyCloudVariablesOnce(stage, id) {
+                this.getCloudVariablesFromLogs(id).then((variables) => {
                     for (const name of Object.keys(variables)) {
-                        if (name in stage.vars) {
+                        if (stage.cloudVariables.indexOf(name) > -1) {
                             stage.vars[name] = variables[name];
                         }
                         else {
@@ -2991,7 +3295,40 @@ var P;
                     }
                 });
             }
-            enactAutoplayPolicy(policy) {
+            applyCloudVariablesSocket(stage, id) {
+                const handler = new P.ext.cloud.WebSocketCloudHandler(stage, this.MAGIC.CLOUD_DATA_SERVER, id);
+                stage.setCloudHandler(handler);
+            }
+            applyCloudVariablesLocalStorage(stage, id) {
+                const handler = new P.ext.cloud.LocalStorageCloudHandler(stage, id);
+                stage.setCloudHandler(handler);
+            }
+            applyCloudVariables(policy) {
+                const stage = this.stage;
+                const meta = this.projectMeta;
+                if (!meta) {
+                    throw new Error('cannot apply cloud variable settings without projectMeta');
+                }
+                const hasCloudVariables = stage.cloudVariables.length > 0;
+                if (!hasCloudVariables) {
+                    return;
+                }
+                switch (policy) {
+                    case 'once':
+                        this.applyCloudVariablesOnce(stage, meta.getId());
+                        break;
+                    case 'ws':
+                        if (!meta.isFromScratch()) {
+                            throw new Error('ws cloudVariables does not work with projects not from scratch.mit.edu');
+                        }
+                        this.applyCloudVariablesSocket(stage, meta.getId());
+                        break;
+                    case 'localStorage':
+                        this.applyCloudVariablesLocalStorage(stage, meta.getId());
+                        break;
+                }
+            }
+            applyAutoplayPolicy(policy) {
                 switch (policy) {
                     case 'always': {
                         this.triggerGreenFlag();
@@ -3019,6 +3356,9 @@ var P;
                 this.clickToPlayContainer = document.createElement('div');
                 this.clickToPlayContainer.className = 'player-click-to-play-container';
                 this.clickToPlayContainer.onclick = () => {
+                    if (P.audio.context && P.audio.context.state !== 'running') {
+                        P.audio.context.resume();
+                    }
                     this.removeClickToPlayContainer();
                     this.triggerGreenFlag();
                     this.focus();
@@ -3080,7 +3420,9 @@ var P;
                     this.focus();
                 }
                 this.onload.emit(stage);
-                this.enactAutoplayPolicy(this.options.autoplayPolicy);
+                this.stage.draw();
+                this.applyCloudVariables(this.options.cloudVariables);
+                this.applyAutoplayPolicy(this.options.autoplayPolicy);
             }
             loadLoader(loaderId, loader) {
                 return __awaiter(this, void 0, void 0, function* () {
@@ -3092,31 +3434,18 @@ var P;
                     };
                     const stage = yield loader.load();
                     this.setStage(stage);
+                    this.currentLoader = null;
+                    loader.cleanup();
                     return stage;
-                });
-            }
-            loadProjectFromBufferWithType(loaderId, buffer, type) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    let loader;
-                    switch (type) {
-                        case 'sb2':
-                            loader = new P.sb2.SB2FileLoader(buffer);
-                            break;
-                        case 'sb3':
-                            loader = new P.sb3.SB3FileLoader(buffer);
-                            break;
-                        default: throw new Error('Unknown type: ' + type);
-                    }
-                    yield this.loadLoader(loaderId, loader);
                 });
             }
             loadProjectById(id) {
                 return __awaiter(this, void 0, void 0, function* () {
                     const { loaderId } = this.beginLoadingProject();
                     const getLoader = (blob) => __awaiter(this, void 0, void 0, function* () {
-                        const projectText = yield P.io.readers.toText(blob);
                         try {
-                            const projectJson = JSON.parse(projectText);
+                            const projectText = yield P.io.readers.toText(blob);
+                            const projectJson = P.json.parse(projectText);
                             switch (this.determineProjectType(projectJson)) {
                                 case 'sb2': return new P.sb2.Scratch2Loader(projectJson);
                                 case 'sb3': return new P.sb3.Scratch3Loader(projectJson);
@@ -3134,14 +3463,28 @@ var P;
                         this.projectMeta = new RemoteProjectMeta(id);
                         const blob = yield this.fetchProject(id);
                         const loader = yield getLoader(blob);
-                        const stage = yield this.loadLoader(loaderId, loader);
-                        this.addCloudVariables(stage, id);
+                        yield this.loadLoader(loaderId, loader);
                     }
                     catch (e) {
                         if (loaderId.isActive()) {
                             this.handleError(e);
                         }
                     }
+                });
+            }
+            loadProjectFromBufferWithType(loaderId, buffer, type) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    let loader;
+                    switch (type) {
+                        case 'sb2':
+                            loader = new P.sb2.SB2FileLoader(buffer);
+                            break;
+                        case 'sb3':
+                            loader = new P.sb3.SB3FileLoader(buffer);
+                            break;
+                        default: throw new Error('Unknown type: ' + type);
+                    }
+                    yield this.loadLoader(loaderId, loader);
                 });
             }
             loadProjectFromFile(file) {
@@ -3168,6 +3511,7 @@ var P;
                 return __awaiter(this, void 0, void 0, function* () {
                     const { loaderId } = this.beginLoadingProject();
                     try {
+                        this.projectMeta = new BinaryProjectMeta();
                         return yield this.loadProjectFromBufferWithType(loaderId, buffer, type);
                     }
                     catch (e) {
@@ -3744,7 +4088,12 @@ var P;
                     if (VISUAL) {
                         for (var i = CALLS.length, j = 5; i-- && j--;) {
                             if (CALLS[i].base === procedure.fn) {
-                                runtime.queue[THREAD] = new Thread(S, BASE, procedure.fn, CALLS);
+                                runtime.queue[THREAD] = {
+                                    sprite: S,
+                                    base: BASE,
+                                    fn: procedure.fn,
+                                    calls: CALLS,
+                                };
                                 return;
                             }
                         }
@@ -3764,6 +4113,11 @@ var P;
                 C = CALLS.pop();
                 STACK = C.stack;
                 R = STACK.pop();
+            }
+        };
+        var cloudVariableChanged = function (name) {
+            if (self.cloudHandler) {
+                self.cloudHandler.variableChanged(name);
             }
         };
         var sceneChange = function () {
@@ -3791,16 +4145,13 @@ var P;
             }
         };
         var forceQueue = function (id) {
-            runtime.queue[THREAD] = new Thread(S, BASE, S.fns[id], CALLS);
+            runtime.queue[THREAD] = {
+                sprite: S,
+                base: BASE,
+                fn: S.fns[id],
+                calls: CALLS,
+            };
         };
-        class Thread {
-            constructor(sprite, base, fn, calls) {
-                this.sprite = sprite;
-                this.base = base;
-                this.fn = fn;
-                this.calls = calls;
-            }
-        }
         class Runtime {
             constructor(stage) {
                 this.stage = stage;
@@ -3816,10 +4167,15 @@ var P;
                 this.step = this.step.bind(this);
             }
             startThread(sprite, base) {
-                const thread = new Thread(sprite, base, base, [{
-                        args: [],
-                        stack: [{}],
-                    }]);
+                const thread = {
+                    sprite: sprite,
+                    base: base,
+                    fn: base,
+                    calls: [{
+                            args: [],
+                            stack: [{}],
+                        }],
+                };
                 for (let i = 0; i < this.queue.length; i++) {
                     const q = this.queue[i];
                     if (q && q.sprite === sprite && q.base === base) {
@@ -4423,28 +4779,29 @@ var P;
                     this.loadArray(data.costumes, this.loadCostume.bind(this)).then((c) => costumes = c),
                     this.loadArray(data.sounds, this.loadSound.bind(this)).then((s) => sounds = s),
                 ]).then(() => {
-                    const variables = {};
+                    const object = new (isStage ? Scratch2Stage : Scratch2Sprite)(null);
                     if (data.variables) {
                         for (const variable of data.variables) {
-                            if (variable.isPeristent) {
-                                throw new Error('Cloud variables are not supported');
+                            if (variable.isPersistent) {
+                                if (object.isStage) {
+                                    object.cloudVariables.push(variable.name);
+                                }
+                                else {
+                                    console.warn('Cloud variable found on a non-stage object. Skipping.');
+                                }
                             }
-                            variables[variable.name] = variable.value;
+                            object.vars[variable.name] = variable.value;
                         }
                     }
-                    const lists = {};
                     if (data.lists) {
                         for (const list of data.lists) {
-                            if (list.isPeristent) {
-                                throw new Error('Cloud lists are not supported');
+                            if (list.isPersistent) {
+                                console.warn('Cloud lists are not supported');
                             }
-                            lists[list.listName] = list.contents;
+                            object.lists[list.listName] = list.contents;
                         }
                     }
-                    const object = new (isStage ? Scratch2Stage : Scratch2Sprite)(null);
                     object.name = data.objName;
-                    object.vars = variables;
-                    object.lists = lists;
                     object.costumes = costumes;
                     object.currentCostumeIndex = data.currentCostumeIndex;
                     sounds.forEach((sound) => sound && object.addSound(sound));
@@ -4605,22 +4962,25 @@ var P;
                 this.buffer = buffer;
             }
             loadMD5(hash, id, isAudio = false) {
-                const f = isAudio ? this.zip.file(id + '.wav') : this.zip.file(id + '.gif') || this.zip.file(id + '.png') || this.zip.file(id + '.jpg') || this.zip.file(id + '.svg');
+                const f = isAudio ? (this.zip.file(id + '.wav') || this.zip.file(id + '.mp3')) : this.zip.file(id + '.gif') || (this.zip.file(id + '.png') || this.zip.file(id + '.jpg') || this.zip.file(id + '.svg'));
                 hash = f.name;
+                if (isAudio) {
+                    return f.async('arrayBuffer')
+                        .then((buffer) => P.audio.decodeAudio(buffer));
+                }
                 const ext = hash.split('.').pop();
                 if (ext === 'svg') {
                     return f.async('text')
                         .then((text) => this.loadSVG(text));
-                }
-                else if (ext === 'wav') {
-                    return f.async('arrayBuffer')
-                        .then((buffer) => P.audio.decodeAudio(buffer));
                 }
                 else {
                     return new Promise((resolve, reject) => {
                         var image = new Image();
                         image.onload = function () {
                             resolve(image);
+                        };
+                        image.onerror = function () {
+                            reject(new Error('Failed to load image: ' + hash + '/' + id));
                         };
                         f.async('binarystring')
                             .then((data) => {
@@ -4636,7 +4996,7 @@ var P;
                     return this.zip.file('project.json').async('text');
                 })
                     .then((project) => {
-                    this.projectData = JSON.parse(project);
+                    this.projectData = P.json.parse(project);
                 })
                     .then(() => super.load());
             }
@@ -4744,6 +5104,7 @@ var P;
     (function (sb2) {
         var compiler;
         (function (compiler) {
+            const CLOUD = '☁ ';
             var LOG_PRIMITIVES;
             class Scratch2Procedure extends P.core.Procedure {
                 call(inputs) {
@@ -4807,6 +5168,12 @@ var P;
                     }
                     var o = object.stage.vars[name] !== undefined ? 'self' : 'S';
                     return o + '.vars[' + val(name) + ']';
+                };
+                var isCloudVar = function (name) {
+                    if (typeof name !== 'string') {
+                        return false;
+                    }
+                    return name.startsWith(CLOUD) && object.stage.vars[name] !== undefined && object.stage.cloudVariables.indexOf(name) > -1;
                 };
                 var listRef = function (name) {
                     if (typeof name !== 'string') {
@@ -5435,10 +5802,16 @@ var P;
                     }
                     else if (block[0] === 'setVar:to:') {
                         source += varRef(block[1]) + ' = ' + val(block[2]) + ';\n';
+                        if (isCloudVar(block[1])) {
+                            source += 'cloudVariableChanged(' + val(block[1]) + ');\n';
+                        }
                     }
                     else if (block[0] === 'changeVar:by:') {
                         var ref = varRef(block[1]);
                         source += ref + ' = (+' + ref + ' || 0) + ' + num(block[2]) + ';\n';
+                        if (isCloudVar(block[1])) {
+                            source += 'cloudVariableChanged(' + val(block[1]) + ');\n';
+                        }
                     }
                     else if (block[0] === 'append:toList:') {
                         source += 'appendToList(' + listRef(block[2]) + ', ' + val(block[1]) + ');\n';
@@ -5969,8 +6342,8 @@ var P;
                 if (!this.visible && this._rowHeight === -1) {
                     return;
                 }
-                const height = this.list.length * this.getRowHeight();
-                this.endpointEl.style.transform = 'translateY(' + (height * this.stage.zoom) + 'px)';
+                const height = this.list.length * this.getRowHeight() * this.stage.zoom;
+                this.endpointEl.style.transform = 'translateY(' + height + 'px)';
                 const topVisible = this.scrollTop;
                 const bottomVisible = topVisible + this.getContentHeight();
                 let startingIndex = Math.floor(topVisible / this.getRowHeight());
@@ -6016,7 +6389,9 @@ var P;
                 }
                 this.list = this.target.lists[listName];
                 this.target.listWatchers[listName] = this;
-                this.updateLayout();
+                if (this.visible) {
+                    this.updateLayout();
+                }
             }
             getTopLabel() {
                 if (this.target.isStage) {
@@ -6050,6 +6425,9 @@ var P;
             }
             updateLayout() {
                 if (!this.containerEl) {
+                    if (!this.visible) {
+                        return;
+                    }
                     this.createLayout();
                 }
                 this.containerEl.style.display = this.visible ? '' : 'none';
@@ -6125,7 +6503,32 @@ var P;
             return list;
         }
         sb3.createList = createList;
-        function patchSVG(svg) {
+        const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
+        function fixSVGNamespace(svg) {
+            const newSVG = document.createElementNS(SVG_NAMESPACE, 'svg');
+            for (const attribute of svg.attributes) {
+                newSVG.setAttribute(attribute.name, attribute.value);
+            }
+            newSVG.innerHTML = svg.innerHTML;
+            return newSVG;
+        }
+        function patchSVG(svg, costumeOptions) {
+            const invalidNamespace = svg.namespaceURI !== SVG_NAMESPACE;
+            if (invalidNamespace) {
+                svg = fixSVGNamespace(svg);
+                if (svg.firstElementChild && svg.firstElementChild.tagName !== 'g') {
+                    const group = document.createElementNS(SVG_NAMESPACE, 'g');
+                    const transform = svg.createSVGTransform();
+                    for (const el of svg.children) {
+                        group.appendChild(el);
+                    }
+                    transform.setTranslate(-svg.width.baseVal.value / 2, svg.height.baseVal.value / 2);
+                    group.transform.baseVal.appendItem(transform);
+                    costumeOptions.rotationCenterX -= svg.width.baseVal.value / 2;
+                    costumeOptions.rotationCenterY += svg.height.baseVal.value / 2;
+                    svg.appendChild(group);
+                }
+            }
             if (svg.hasAttribute('viewBox')) {
                 const viewBox = svg.getAttribute('viewBox').split(/ |,/).map((i) => +i);
                 if (viewBox.every((i) => !isNaN(i)) && viewBox.length === 4) {
@@ -6170,33 +6573,26 @@ var P;
                 }
             }
             P.fonts.addFontRules(svg, usedFonts);
-        }
-        function fixVectorNamespace(svg) {
-            var newSVG = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            for (const attribute of svg.attributes) {
-                newSVG.setAttribute(attribute.name, attribute.value);
-            }
-            newSVG.innerHTML = svg.innerHTML;
-            return newSVG;
+            return svg;
         }
         class BaseSB3Loader extends P.io.Loader {
-            getSVG(path) {
+            constructor() {
+                super(...arguments);
+                this.needsMusic = false;
+            }
+            getSVG(path, costumeOptions) {
                 return this.getAsText(path)
                     .then((source) => {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(source, 'image/svg+xml');
-                    let svg = doc.documentElement;
-                    if (svg.namespaceURI !== 'http://www.w3.org/2000/svg') {
-                        svg = fixVectorNamespace(svg);
-                    }
-                    patchSVG(svg);
+                    const svg = patchSVG(doc.documentElement, costumeOptions);
                     return new Promise((resolve, reject) => {
                         const image = new Image();
                         image.onload = (e) => {
                             resolve(image);
                         };
                         image.onerror = (e) => {
-                            reject('Failed to load SVG: ' + path);
+                            reject(new Error('Failed to load SVG: ' + path));
                         };
                         image.src = 'data:image/svg+xml,' + encodeURIComponent(new XMLSerializer().serializeToString(svg));
                     });
@@ -6214,7 +6610,7 @@ var P;
                     rotationCenterY: data.rotationCenterY,
                 };
                 if (data.dataFormat === 'svg') {
-                    return this.getSVG(path)
+                    return this.getSVG(path, costumeOptions)
                         .then((svg) => new P.core.VectorCostume(svg, costumeOptions));
                 }
                 else {
@@ -6256,6 +6652,17 @@ var P;
                     const variable = data.variables[id];
                     const name = variable[0];
                     const value = variable[1];
+                    if (variable.length > 2) {
+                        const cloud = variable[2];
+                        if (cloud) {
+                            if (data.isStage) {
+                                target.cloudVariables.push(name);
+                            }
+                            else {
+                                console.warn('Cloud variable found on a non-stage object. Skipping.');
+                            }
+                        }
+                    }
                     target.vars[name] = value;
                 }
                 for (const id of Object.keys(data.lists)) {
@@ -6298,9 +6705,8 @@ var P;
                     return target;
                 });
             }
-            loadAssets() {
+            loadRequiredAssets() {
                 return Promise.all([
-                    this.loadSoundbank(),
                     this.loadFonts(),
                 ]);
             }
@@ -6323,26 +6729,27 @@ var P;
                 for (const target of targets) {
                     const compiler = new P.sb3.compiler.Compiler(target);
                     compiler.compile();
+                    if (compiler.needsMusic) {
+                        this.needsMusic = true;
+                    }
                 }
                 if (P.config.debug) {
                     console.timeEnd('Scratch 3 compile');
                 }
             }
             load() {
-                if (!this.projectData) {
-                    throw new Error('Project data is missing or invalid');
-                }
-                if (!Array.isArray(this.projectData.targets)) {
-                    throw new Error('Invalid project data: missing targets');
-                }
-                const targets = this.projectData.targets;
-                targets.sort((a, b) => a.layerOrder - b.layerOrder);
-                return this.loadAssets()
-                    .then(() => {
+                return __awaiter(this, void 0, void 0, function* () {
+                    if (!this.projectData) {
+                        throw new Error('Project data is missing or invalid');
+                    }
+                    if (!Array.isArray(this.projectData.targets)) {
+                        throw new Error('Invalid project data: missing targets');
+                    }
+                    yield this.loadRequiredAssets();
                     this.resetTasks();
-                    return Promise.all(targets.map((data) => this.loadTarget(data)));
-                })
-                    .then((targets) => {
+                    const targets = yield Promise.all(this.projectData.targets
+                        .sort((a, b) => a.layerOrder - b.layerOrder)
+                        .map((data) => this.loadTarget(data)));
                     if (this.aborted) {
                         throw new Error('Loading aborting.');
                     }
@@ -6358,6 +6765,10 @@ var P;
                         .filter((i) => i && i.valid);
                     stage.allWatchers.forEach((watcher) => watcher.init());
                     this.compileTargets(targets, stage);
+                    if (this.needsMusic) {
+                        yield this.loadSoundbank();
+                    }
+                    this.projectData = null;
                     return stage;
                 });
             }
@@ -6403,7 +6814,7 @@ var P;
                             resolve(image);
                         };
                         image.onerror = (error) => {
-                            reject('Failed to load image: ' + path + '.' + format);
+                            reject(new Error('Failed to load image: ' + path + '.' + format));
                         };
                         image.src = 'data:image/' + format + ';base64,' + imageData;
                     });
@@ -6517,6 +6928,9 @@ var P;
                 getVariableScope(field) {
                     return this.compiler.getVariableScope(this.getField(field));
                 }
+                isCloudVariable(field) {
+                    return this.target.stage.cloudVariables.indexOf(this.getField(field)) > -1;
+                }
                 getListScope(field) {
                     return this.compiler.getListScope(this.getField(field));
                 }
@@ -6613,6 +7027,8 @@ var P;
             class Compiler {
                 constructor(target) {
                     this.labelCount = 0;
+                    this.needsMusic = false;
+                    this.disableStringToNumberConversion = false;
                     this.target = target;
                     this.data = target.sb3data;
                     this.blocks = this.data.blocks;
@@ -6734,7 +7150,7 @@ var P;
                         case 7:
                         case 8: {
                             const number = +native[1];
-                            if (isNaN(number) || desiredType === 'string') {
+                            if (this.disableStringToNumberConversion || isNaN(number) || desiredType === 'string') {
                                 return this.sanitizedInput('' + native[1]);
                             }
                             else {
@@ -6926,6 +7342,7 @@ var P;
                         const hat = this.blocks[hatId];
                         this.compileHat(hat);
                     }
+                    this.target.sb3data = null;
                 }
             }
             compiler_1.Compiler = Compiler;
@@ -7116,6 +7533,9 @@ var P;
         const VARIABLE = util.getVariableReference('VARIABLE');
         const VALUE = util.getInput('VALUE', 'number');
         util.writeLn(`${VARIABLE} = (${util.asType(VARIABLE, 'number')} + ${VALUE});`);
+        if (util.isCloudVariable('VARIABLE')) {
+            util.writeLn(`cloudVariableChanged(${util.sanitizedString(util.getField('VARIABLE'))})`);
+        }
     };
     statementLibrary['data_deletealloflist'] = function (util) {
         const LIST = util.getListReference('LIST');
@@ -7152,6 +7572,9 @@ var P;
         const VARIABLE = util.getVariableReference('VARIABLE');
         const VALUE = util.getInput('VALUE', 'any');
         util.writeLn(`${VARIABLE} = ${VALUE};`);
+        if (util.isCloudVariable('VARIABLE')) {
+            util.writeLn(`cloudVariableChanged(${util.sanitizedString(util.getField('VARIABLE'))})`);
+        }
     };
     statementLibrary['data_showlist'] = function (util) {
         const LIST = util.sanitizedString(util.getField('LIST'));
@@ -7274,14 +7697,18 @@ var P;
         util.updateBubble();
     };
     statementLibrary['looks_switchbackdropto'] = function (util) {
+        util.compiler.disableStringToNumberConversion = true;
         const BACKDROP = util.getInput('BACKDROP', 'any');
+        util.compiler.disableStringToNumberConversion = false;
         util.writeLn(`self.setCostume(${BACKDROP});`);
         util.visual('always');
         util.writeLn('var threads = backdropChange();');
         util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
     };
     statementLibrary['looks_switchcostumeto'] = function (util) {
+        util.compiler.disableStringToNumberConversion = true;
         const COSTUME = util.getInput('COSTUME', 'any');
+        util.compiler.disableStringToNumberConversion = false;
         util.writeLn(`S.setCostume(${COSTUME});`);
         util.visual('visible');
     };
@@ -7333,6 +7760,7 @@ var P;
         util.writeLn('var f = (runtime.now() - R.start) / (R.duration * 1000);');
         util.writeLn('if (f > 1 || isNaN(f)) f = 1;');
         util.writeLn('S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
+        util.visual('drawing');
         util.writeLn('if (f < 1) {');
         util.forceQueue(label);
         util.writeLn('}');
@@ -7355,6 +7783,7 @@ var P;
         util.writeLn('  var f = (runtime.now() - R.start) / (R.duration * 1000);');
         util.writeLn('  if (f > 1 || isNaN(f)) f = 1;');
         util.writeLn('  S.moveTo(R.baseX + f * R.deltaX, R.baseY + f * R.deltaY);');
+        util.visual('drawing');
         util.writeLn('  if (f < 1) {');
         util.forceQueue(label);
         util.writeLn('  }');
@@ -7422,6 +7851,7 @@ var P;
     statementLibrary['music_playDrumForBeats'] = function (util) {
         const BEATS = util.getInput('BEATS', 'number');
         const DRUM = util.getInput('DRUM', 'number');
+        util.compiler.needsMusic = true;
         util.writeLn('save();');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
@@ -7444,6 +7874,7 @@ var P;
     statementLibrary['music_playNoteForBeats'] = function (util) {
         const BEATS = util.getInput('BEATS', 'number');
         const NOTE = util.getInput('NOTE', 'number');
+        util.compiler.needsMusic = true;
         util.writeLn('save();');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
@@ -8335,6 +8766,220 @@ var P;
         ext.Extension = Extension;
     })(ext = P.ext || (P.ext = {}));
 })(P || (P = {}));
+var P;
+(function (P) {
+    var ext;
+    (function (ext) {
+        var cloud;
+        (function (cloud) {
+            const UPDATE_INTERVAL = 1000 / 15;
+            function getAllCloudVariables(stage) {
+                const result = {};
+                for (const variable of stage.cloudVariables) {
+                    result[variable] = stage.vars[variable] + '';
+                }
+                return result;
+            }
+            cloud.getAllCloudVariables = getAllCloudVariables;
+            function isCloudDataMessage(data) {
+                if (typeof data !== 'object' || !data) {
+                    return false;
+                }
+                return typeof data.kind === 'string';
+            }
+            function isCloudSetMessage(data) {
+                return isCloudDataMessage(data) && typeof data.var === 'string' && typeof data.value === 'string';
+            }
+            class WebSocketCloudHandler extends P.ext.Extension {
+                constructor(stage, host, id) {
+                    super(stage);
+                    this.host = host;
+                    this.id = id;
+                    this.updateInterval = null;
+                    this.queuedVariableChanges = [];
+                    this.ws = null;
+                    this.shouldReconnect = true;
+                    this.failures = 0;
+                    this.logPrefix = '[cloud-ws ' + host + ']';
+                    this.handleUpdateInterval = this.handleUpdateInterval.bind(this);
+                    this.connect = this.connect.bind(this);
+                    this.connect();
+                }
+                variableChanged(name) {
+                    if (this.queuedVariableChanges.indexOf(name) > -1) {
+                        return;
+                    }
+                    this.queuedVariableChanges.push(name);
+                    if (this.updateInterval === null) {
+                        this.handleUpdateInterval();
+                        this.startUpdateInterval();
+                    }
+                }
+                handleUpdateInterval() {
+                    if (this.queuedVariableChanges.length === 0) {
+                        this.stopUpdateInterval();
+                        return;
+                    }
+                    if (this.ws === null || this.ws.readyState !== this.ws.OPEN) {
+                        return;
+                    }
+                    const variableName = this.queuedVariableChanges.shift();
+                    const value = this.getVariable(variableName);
+                    this.send({
+                        kind: 'set',
+                        var: variableName,
+                        value: value,
+                    });
+                }
+                send(data) {
+                    if (!this.ws)
+                        throw new Error('not connected');
+                    this.ws.send(JSON.stringify(data));
+                }
+                getVariable(name) {
+                    return this.stage.vars[name] + '';
+                }
+                setVariable(name, value) {
+                    this.stage.vars[name] = value;
+                }
+                connect() {
+                    if (this.ws !== null) {
+                        throw new Error('already connected');
+                    }
+                    console.log(this.logPrefix, 'connecting');
+                    this.ws = new WebSocket(this.host);
+                    this.ws.onopen = () => {
+                        console.log(this.logPrefix, 'connected');
+                        this.failures = 0;
+                        this.send({
+                            kind: 'handshake',
+                            id: this.id,
+                            username: this.stage.username,
+                            variables: getAllCloudVariables(this.stage),
+                        });
+                    };
+                    this.ws.onmessage = (e) => {
+                        try {
+                            const lines = e.data.split('\n');
+                            for (const line of lines) {
+                                const data = JSON.parse(line);
+                                this.handleMessage(data);
+                            }
+                        }
+                        catch (e) {
+                            console.warn('error parsing cloud server message', e.data, e);
+                            return;
+                        }
+                    };
+                    this.ws.onclose = (e) => {
+                        console.warn(this.logPrefix, 'closed', e.code, e.reason);
+                        this.reconnect();
+                    };
+                    this.ws.onerror = (e) => {
+                        console.warn(this.logPrefix, 'error', e);
+                    };
+                }
+                reconnect() {
+                    if (!this.shouldReconnect) {
+                        return;
+                    }
+                    if (this.ws !== null) {
+                        this.ws.close();
+                        this.ws = null;
+                    }
+                    this.failures++;
+                    const delayTime = this.getBackoffTime();
+                    console.log(this.logPrefix, 'reconnecting in', delayTime);
+                    setTimeout(this.connect, delayTime);
+                }
+                disconnect() {
+                    console.log(this.logPrefix, 'disconnecting');
+                    this.shouldReconnect = false;
+                    if (this.ws !== null) {
+                        this.ws.close();
+                        this.ws = null;
+                    }
+                }
+                handleMessage(data) {
+                    if (!isCloudSetMessage(data)) {
+                        return;
+                    }
+                    const { var: variableName, value } = data;
+                    if (this.stage.cloudVariables.indexOf(variableName) === -1) {
+                        throw new Error('invalid variable name');
+                    }
+                    this.setVariable(variableName, value);
+                }
+                getBackoffTime() {
+                    return Math.pow(2, this.failures) * 1000;
+                }
+                startUpdateInterval() {
+                    if (this.updateInterval !== null) {
+                        return;
+                    }
+                    this.updateInterval = setInterval(this.handleUpdateInterval, UPDATE_INTERVAL);
+                }
+                stopUpdateInterval() {
+                    if (this.updateInterval === null) {
+                        return;
+                    }
+                    clearInterval(this.updateInterval);
+                    this.updateInterval = null;
+                }
+                onstart() {
+                    if (this.queuedVariableChanges.length > 0) {
+                        this.startUpdateInterval();
+                    }
+                }
+                onpause() {
+                    this.stopUpdateInterval();
+                }
+                destroy() {
+                    this.stopUpdateInterval();
+                    this.disconnect();
+                }
+            }
+            cloud.WebSocketCloudHandler = WebSocketCloudHandler;
+            class LocalStorageCloudHandler extends P.ext.Extension {
+                constructor(stage, id) {
+                    super(stage);
+                    this.storageKey = 'cloud-data:' + id;
+                    this.load();
+                    this.save = this.save.bind(this);
+                }
+                variableChanged(name) {
+                    this.save();
+                }
+                load() {
+                    try {
+                        const savedData = localStorage.getItem(this.storageKey);
+                        if (savedData === null) {
+                            return;
+                        }
+                        const parsedData = JSON.parse(savedData);
+                        for (const key of Object.keys(parsedData)) {
+                            if (this.stage.cloudVariables.indexOf(key) > -1) {
+                                this.stage.vars[key] = parsedData[key];
+                            }
+                        }
+                    }
+                    catch (e) {
+                        console.warn('cannot read from localStorage', e);
+                    }
+                }
+                save() {
+                    try {
+                        localStorage.setItem(this.storageKey, JSON.stringify(getAllCloudVariables(this.stage)));
+                    }
+                    catch (e) {
+                        console.warn('cannot save to localStorage', e);
+                    }
+                }
+            }
+            cloud.LocalStorageCloudHandler = LocalStorageCloudHandler;
+        })(cloud = ext.cloud || (ext.cloud = {}));
+    })(ext = P.ext || (P.ext = {}));
+})(P || (P = {}));
 /*!
 Parts of this file (microphone.ts) are derived from https://github.com/LLK/scratch-audio/blob/develop/src/Loudness.js
 */
@@ -8560,6 +9205,7 @@ var P;
                 ctx.imageSmoothingEnabled = false;
                 return { canvas, ctx };
             }
+            const COLOR_MASK = 0b111110001111100011110000;
             class SpriteRenderer2D {
                 constructor() {
                     this.noEffects = false;
@@ -8686,6 +9332,8 @@ var P;
                     root.appendChild(this.stageLayer);
                     root.appendChild(this.penLayer);
                     root.appendChild(this.canvas);
+                }
+                destroy() {
                 }
                 drawFrame() {
                     this.reset(this.zoom);
@@ -8857,10 +9505,10 @@ var P;
                     workingRenderer.noEffects = false;
                     workingRenderer.ctx.restore();
                     const data = workingRenderer.ctx.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
-                    color = color & 0xffffff;
+                    color = color & COLOR_MASK;
                     const length = (b.right - b.left) * (b.top - b.bottom) * 4;
                     for (var i = 0; i < length; i += 4) {
-                        if ((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) === color && data[i + 3]) {
+                        if (((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) & COLOR_MASK) === color && data[i + 3]) {
                             return true;
                         }
                     }
@@ -8885,12 +9533,12 @@ var P;
                     workingRenderer2.ctx.restore();
                     var dataA = workingRenderer.ctx.getImageData(0, 0, width, height).data;
                     var dataB = workingRenderer2.ctx.getImageData(0, 0, width, height).data;
-                    spriteColor = spriteColor & 0xffffff;
-                    otherColor = otherColor & 0xffffff;
+                    spriteColor = spriteColor & COLOR_MASK;
+                    otherColor = otherColor & COLOR_MASK;
                     var length = dataA.length;
                     for (var i = 0; i < length; i += 4) {
-                        var touchesSource = (dataB[i] << 16 | dataB[i + 1] << 8 | dataB[i + 2]) === spriteColor && dataB[i + 3];
-                        var touchesOther = (dataA[i] << 16 | dataA[i + 1] << 8 | dataA[i + 2]) === otherColor && dataA[i + 3];
+                        var touchesSource = ((dataB[i] << 16 | dataB[i + 1] << 8 | dataB[i + 2]) & COLOR_MASK) === spriteColor && dataB[i + 3];
+                        var touchesOther = ((dataA[i] << 16 | dataA[i + 1] << 8 | dataA[i + 2]) & COLOR_MASK) === otherColor && dataA[i + 3];
                         if (touchesSource && touchesOther) {
                             return true;
                         }
@@ -8985,12 +9633,6 @@ var P;
                 canvas.height = 360;
                 return canvas;
             }
-            function filtersAffectShape(filters) {
-                return filters.fisheye !== 0 ||
-                    filters.mosaic !== 0 ||
-                    filters.pixelate !== 0 ||
-                    filters.whirl !== 0;
-            }
             const horizontalInvertMatrix = P.m3.scaling(-1, 1);
             class Shader {
                 constructor(gl, program) {
@@ -9067,7 +9709,6 @@ var P;
             class WebGLSpriteRenderer {
                 constructor() {
                     this.globalScaleMatrix = P.m3.scaling(1, 1);
-                    this.boundFramebuffer = null;
                     this.costumeTextures = new Map();
                     this.canvas = createCanvas();
                     const gl = this.canvas.getContext('webgl', this.getContextOptions());
@@ -9075,8 +9716,8 @@ var P;
                         throw new Error('cannot get webgl rendering context');
                     }
                     this.gl = gl;
-                    this.noFiltersShader = this.compileVariant([]);
-                    this.allFiltersShader = this.compileVariant([
+                    this.noFiltersShader = this.createShader(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, []);
+                    this.allFiltersShader = this.createShader(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, [
                         'ENABLE_BRIGHTNESS',
                         'ENABLE_COLOR',
                         'ENABLE_GHOST',
@@ -9086,7 +9727,6 @@ var P;
                     ]);
                     this.gl.enable(this.gl.BLEND);
                     this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
-                    this.gl.disable(this.gl.DEPTH_TEST);
                     this.quadBuffer = this.gl.createBuffer();
                     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
                     this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
@@ -9097,10 +9737,11 @@ var P;
                         0, 1,
                         1, 1,
                     ]), this.gl.STATIC_DRAW);
+                    this.reset(1);
                 }
                 getContextOptions() {
                     return {
-                        alpha: true,
+                        alpha: false,
                     };
                 }
                 compileShader(type, source, definitions) {
@@ -9139,58 +9780,44 @@ var P;
                     }
                     return program;
                 }
-                compileVariant(definitions) {
-                    const program = this.compileProgram(WebGLSpriteRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, definitions);
+                createShader(vs, fs, definitions) {
+                    const program = this.compileProgram(vs, fs, definitions);
                     return new Shader(this.gl, program);
                 }
-                createTexture() {
+                convertToTexture(canvas) {
                     const texture = this.gl.createTexture();
                     if (!texture) {
                         throw new Error('Cannot create texture');
                     }
                     this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+                    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
                     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
                     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
-                    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+                    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
+                    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
                     return texture;
                 }
-                convertToTexture(canvas) {
-                    const texture = this.createTexture();
-                    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, canvas);
-                    return texture;
-                }
-                createFramebuffer() {
-                    const frameBuffer = this.gl.createFramebuffer();
-                    if (!frameBuffer) {
-                        throw new Error('cannot create frame buffer');
+                destroy() {
+                    const extension = this.gl.getExtension('WEBGL_lose_context');
+                    if (extension) {
+                        extension.loseContext();
                     }
-                    return frameBuffer;
-                }
-                bindFramebuffer(buffer) {
-                    if (buffer === this.boundFramebuffer) {
-                        return;
-                    }
-                    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, buffer);
-                    this.boundFramebuffer = buffer;
                 }
                 reset(scale) {
                     this.canvas.width = scale * 480;
                     this.canvas.height = scale * 360;
-                    this.resetFramebuffer(scale);
-                }
-                resetFramebuffer(scale) {
                     this.gl.viewport(0, 0, scale * 480, scale * 360);
                     if (this.globalScaleMatrix[0] !== scale) {
                         this.globalScaleMatrix = P.m3.scaling(scale, scale);
                     }
-                    this.gl.clearColor(0, 0, 0, 0);
+                    this.gl.clearColor(1, 1, 1, 1);
                     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
                 }
-                drawChild(child) {
-                    this._drawChild(child, this.allFiltersShader);
-                }
-                _drawChild(child, shader) {
+                useShader(shader) {
                     this.gl.useProgram(shader.program);
+                    this.shader = shader;
+                }
+                drawChild(child) {
                     const costume = child.costumes[child.currentCostumeIndex];
                     if (!this.costumeTextures.has(costume)) {
                         const image = costume.getImage();
@@ -9198,7 +9825,7 @@ var P;
                         this.costumeTextures.set(costume, texture);
                     }
                     this.gl.bindTexture(this.gl.TEXTURE_2D, this.costumeTextures.get(costume));
-                    shader.attributeBuffer('a_position', this.quadBuffer);
+                    this.shader.attributeBuffer('a_position', this.quadBuffer);
                     const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
                     P.m3.multiply(matrix, this.globalScaleMatrix);
                     P.m3.multiply(matrix, P.m3.translation(240 + child.scratchX | 0, 180 - child.scratchY | 0));
@@ -9218,31 +9845,31 @@ var P;
                     }
                     P.m3.multiply(matrix, P.m3.translation(-costume.rotationCenterX, -costume.rotationCenterY));
                     P.m3.multiply(matrix, P.m3.scaling(costume.width, costume.height));
-                    shader.uniformMatrix3('u_matrix', matrix);
-                    if (shader.hasUniform('u_opacity')) {
-                        shader.uniform1f('u_opacity', 1 - child.filters.ghost / 100);
+                    this.shader.uniformMatrix3('u_matrix', matrix);
+                    if (this.shader.hasUniform('u_opacity')) {
+                        this.shader.uniform1f('u_opacity', 1 - child.filters.ghost / 100);
                     }
-                    if (shader.hasUniform('u_brightness')) {
-                        shader.uniform1f('u_brightness', child.filters.brightness / 100);
+                    if (this.shader.hasUniform('u_brightness')) {
+                        this.shader.uniform1f('u_brightness', child.filters.brightness / 100);
                     }
-                    if (shader.hasUniform('u_color')) {
-                        shader.uniform1f('u_color', child.filters.color / 200);
+                    if (this.shader.hasUniform('u_color')) {
+                        this.shader.uniform1f('u_color', child.filters.color / 200);
                     }
-                    if (shader.hasUniform('u_mosaic')) {
+                    if (this.shader.hasUniform('u_mosaic')) {
                         const mosaic = Math.round((Math.abs(child.filters.mosaic) + 10) / 10);
-                        shader.uniform1f('u_mosaic', P.utils.clamp(mosaic, 1, 512));
+                        this.shader.uniform1f('u_mosaic', P.utils.clamp(mosaic, 1, 512));
                     }
-                    if (shader.hasUniform('u_whirl')) {
-                        shader.uniform1f('u_whirl', child.filters.whirl * Math.PI / -180);
+                    if (this.shader.hasUniform('u_whirl')) {
+                        this.shader.uniform1f('u_whirl', child.filters.whirl * Math.PI / -180);
                     }
-                    if (shader.hasUniform('u_fisheye')) {
-                        shader.uniform1f('u_fisheye', Math.max(0, (child.filters.fisheye + 100) / 100));
+                    if (this.shader.hasUniform('u_fisheye')) {
+                        this.shader.uniform1f('u_fisheye', Math.max(0, (child.filters.fisheye + 100) / 100));
                     }
-                    if (shader.hasUniform('u_pixelate')) {
-                        shader.uniform1f('u_pixelate', Math.abs(child.filters.pixelate) / 10);
+                    if (this.shader.hasUniform('u_pixelate')) {
+                        this.shader.uniform1f('u_pixelate', Math.abs(child.filters.pixelate) / 10);
                     }
-                    if (shader.hasUniform('u_size')) {
-                        shader.uniform2f('u_size', costume.width, costume.height);
+                    if (this.shader.hasUniform('u_size')) {
+                        this.shader.uniform2f('u_size', costume.width, costume.height);
                     }
                     this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
                 }
@@ -9254,7 +9881,7 @@ var P;
                     const matrix = P.m3.projection(this.canvas.width, this.canvas.height);
                     P.m3.multiply(matrix, this.globalScaleMatrix);
                     P.m3.multiply(matrix, P.m3.translation(240, 180));
-                    P.m3.multiply(matrix, P.m3.scaling(1, -1));
+                    P.m3.multiply(matrix, P.m3.scaling(1, 1));
                     P.m3.multiply(matrix, P.m3.translation(-240, -180));
                     P.m3.multiply(matrix, P.m3.scaling(480, 360));
                     shader.uniformMatrix3('u_matrix', matrix);
@@ -9302,6 +9929,9 @@ var P;
       uniform float u_pixelate;
       uniform vec2 u_size;
     #endif
+    #ifdef ENABLE_COLOR_TEST
+      uniform vec3 u_colorTest;
+    #endif
 
     const float minimumAlpha = 1.0 / 250.0;
     const vec2 vecCenter = vec2(0.5, 0.5);
@@ -9364,9 +9994,11 @@ var P;
       #endif
 
       vec4 color = texture2D(u_texture, texcoord);
+      #ifndef DISABLE_MINIMUM_ALPHA
       if (color.a < minimumAlpha) {
         discard;
       }
+      #endif
 
       #ifdef ENABLE_GHOST
         color.a *= u_opacity;
@@ -9393,6 +10025,12 @@ var P;
 
       #ifdef ENABLE_BRIGHTNESS
         color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
+      #endif
+
+      #ifdef ENABLE_COLOR_TEST
+        if (color.rgb != u_colorTest) {
+          color = vec4(0.0, 0.0, 0.0, 0.0);
+        }
       #endif
 
       gl_FragColor = color;
@@ -9403,175 +10041,86 @@ var P;
                     super();
                     this.gl.enable(this.gl.SCISSOR_TEST);
                     this.gl.scissor(0, 0, 480, 360);
-                    this.touchingShader = new Shader(this.gl, this.compileProgram(CollisionRenderer.touchingVertex, CollisionRenderer.touchingFragment));
+                    this.gl.clearColor(0, 0, 0, 0);
+                    this.touchingShader = this.createShader(CollisionRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, ['DISABLE_MINIMUM_ALPHA']);
+                    this.shapeFiltersShader = this.createShader(CollisionRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, [
+                        'ENABLE_FISHEYE',
+                        'ENABLE_PIXELATE',
+                        'ENABLE_MOSAIC',
+                    ]);
+                    this.touchingColorShader = this.createShader(CollisionRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, [
+                        'DISABLE_MINIMUM_ALPHA',
+                        'ENABLE_COLOR_TEST',
+                    ]);
                 }
-                drawChild(sprite) {
-                    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
-                    super.drawChild(sprite);
+                getContextOptions() {
+                    return {
+                        alpha: true
+                    };
                 }
-                drawChildTouching(sprite) {
-                    this.gl.blendFunc(this.gl.DST_ALPHA, this.gl.ZERO);
-                    this._drawChild(sprite, this.touchingShader);
+                spritesIntersect(spriteA, otherSprites) {
+                    const mb = spriteA.rotatedBounds();
+                    for (const spriteB of otherSprites) {
+                        if (!spriteB.visible || spriteA === spriteB) {
+                            continue;
+                        }
+                        const ob = spriteB.rotatedBounds();
+                        if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
+                            continue;
+                        }
+                        const left = Math.max(mb.left, ob.left);
+                        const top = Math.min(mb.top, ob.top);
+                        const right = Math.min(mb.right, ob.right);
+                        const bottom = Math.max(mb.bottom, ob.bottom);
+                        const width = Math.max(right - left, 1);
+                        const height = Math.max(top - bottom, 1);
+                        this.gl.scissor(240 + left, 180 + bottom, width, height);
+                        this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                        this.useShader(this.allFiltersShader);
+                        this.drawChild(spriteA);
+                        this.gl.blendFunc(this.gl.DST_ALPHA, this.gl.ZERO);
+                        this.useShader(this.touchingShader);
+                        this.drawChild(spriteB);
+                        this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+                        var data = new Uint8Array(width * height * 4);
+                        this.gl.readPixels(240 + left, 180 + bottom, width, height, this.gl.RGBA, this.gl.UNSIGNED_BYTE, data);
+                        this.gl.scissor(0, 0, 480, 360);
+                        var length = data.length;
+                        for (var j = 0; j < length; j += 4) {
+                            if (data[j + 3]) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                }
+                spriteTouchesPoint(sprite, x, y) {
+                    const cx = 240 + x | 0;
+                    const cy = 180 + y | 0;
+                    this.gl.scissor(cx, cy, 1, 1);
+                    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                    this.useShader(this.shapeFiltersShader);
+                    this.drawChild(sprite);
+                    const result = new Uint8Array(4);
+                    this.gl.readPixels(cx, cy, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, result);
+                    this.gl.scissor(0, 0, 480, 360);
+                    return result[3] !== 0;
                 }
             }
-            CollisionRenderer.touchingVertex = `
-    attribute vec2 a_position;
-
-    uniform mat3 u_matrix;
-
-    varying vec2 v_texcoord;
-
-    void main() {
-      gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
-      v_texcoord = a_position;
-    }`;
-            CollisionRenderer.touchingFragment = `
-    precision mediump float;
-
-    varying vec2 v_texcoord;
-
-    uniform sampler2D u_texture;
-
-    #ifdef ENABLE_BRIGHTNESS
-      uniform float u_brightness;
-    #endif
-    #ifdef ENABLE_COLOR
-      uniform float u_color;
-    #endif
-    #ifdef ENABLE_GHOST
-      uniform float u_opacity;
-    #endif
-    #ifdef ENABLE_MOSAIC
-      uniform float u_mosaic;
-    #endif
-    #ifdef ENABLE_WHIRL
-      uniform float u_whirl;
-    #endif
-    #ifdef ENABLE_FISHEYE
-      uniform float u_fisheye;
-    #endif
-    #ifdef ENABLE_PIXELATE
-      uniform float u_pixelate;
-      uniform vec2 u_size;
-    #endif
-
-    const float minimumAlpha = 1.0 / 250.0;
-    const vec2 vecCenter = vec2(0.5, 0.5);
-
-    // http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl
-    vec3 rgb2hsv(vec3 c) {
-      vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
-      vec4 p = c.g < c.b ? vec4(c.bg, K.wz) : vec4(c.gb, K.xy);
-      vec4 q = c.r < p.x ? vec4(p.xyw, c.r) : vec4(c.r, p.yzx);
-      float d = q.x - min(q.w, q.y);
-      float e = 1.0e-10;
-      return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
-    }
-    vec3 hsv2rgb(vec3 c) {
-      vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-      vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-      return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
-    }
-
-    void main() {
-      // varyings cannot be modified
-      vec2 texcoord = v_texcoord;
-
-      #ifdef ENABLE_MOSAIC
-        texcoord = fract(u_mosaic * v_texcoord);
-      #endif
-
-      #ifdef ENABLE_PIXELATE
-      if (u_pixelate != 0.0) {
-        vec2 texelSize = u_size / u_pixelate;
-        texcoord = (floor(texcoord * texelSize) + vecCenter) / texelSize;
-      }
-      #endif
-
-      #ifdef ENABLE_WHIRL
-      {
-        const float radius = 0.5;
-        vec2 offset = texcoord - vecCenter;
-        float offsetMagnitude = length(offset);
-        float whirlFactor = max(1.0 - (offsetMagnitude / radius), 0.0);
-        float whirlActual = u_whirl * whirlFactor * whirlFactor;
-        float sinWhirl = sin(whirlActual);
-        float cosWhirl = cos(whirlActual);
-        mat2 rotationMatrix = mat2(
-          cosWhirl, -sinWhirl,
-          sinWhirl, cosWhirl
-        );
-        texcoord = rotationMatrix * offset + vecCenter;
-      }
-      #endif
-
-      #ifdef ENABLE_FISHEYE
-      {
-        vec2 vec = (texcoord - vecCenter) / vecCenter;
-        float vecLength = length(vec);
-        float r = pow(min(vecLength, 1.0), u_fisheye) * max(1.0, vecLength);
-        vec2 unit = vec / vecLength;
-        texcoord = vecCenter + r * unit * vecCenter;
-      }
-      #endif
-
-      vec4 color = texture2D(u_texture, texcoord);
-      // if (color.a < minimumAlpha) {
-      //   discard;
-      // }
-
-      #ifdef ENABLE_GHOST
-        color.a *= u_opacity;
-      #endif
-
-      #ifdef ENABLE_COLOR
-      if (u_color != 0.0) {
-        vec3 hsv = rgb2hsv(color.rgb);
-        // hsv.x = hue
-        // hsv.y = saturation
-        // hsv.z = value
-
-        // scratch forces all colors to have some minimal amount saturation so there is a visual change
-        const float minValue = 0.11 / 2.0;
-        const float minSaturation = 0.09;
-        if (hsv.z < minValue) hsv = vec3(0.0, 1.0, minValue);
-        else if (hsv.y < minSaturation) hsv = vec3(0.0, minSaturation, hsv.z);
-
-        hsv.x = mod(hsv.x + u_color, 1.0);
-        if (hsv.x < 0.0) hsv.x += 1.0;
-        color = vec4(hsv2rgb(hsv), color.a);
-      }
-      #endif
-
-      #ifdef ENABLE_BRIGHTNESS
-        color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
-      #endif
-
-      if (color.a > 0.0) {
-        color = vec4(1.0, 1.0, 1.0, 1.0);
-      } else {
-        color = vec4(0.0, 0.0, 0.0, 0.0);
-      }
-
-      gl_FragColor = color;
-    }
-    `;
             class PenRenderer extends WebGLSpriteRenderer {
                 constructor() {
                     super();
+                    this.dirty = false;
                     this.penCoords = new Float32Array(65536);
                     this.penLines = new Float32Array(32768);
                     this.penColors = new Float32Array(65536);
                     this.penCoordsIndex = 0;
                     this.penLinesIndex = 0;
                     this.penColorsIndex = 0;
-                    this.shader = new Shader(this.gl, this.compileProgram(PenRenderer.PEN_VERTEX_SHADER, PenRenderer.PEN_FRAGMENT_SHADER));
+                    this.penShader = this.createShader(PenRenderer.PEN_VERTEX_SHADER, PenRenderer.PEN_FRAGMENT_SHADER);
                     this.positionBuffer = this.gl.createBuffer();
                     this.lineBuffer = this.gl.createBuffer();
                     this.colorBuffer = this.gl.createBuffer();
-                    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
-                    this.gl.enable(this.gl.BLEND);
-                    this.gl.disable(this.gl.DEPTH_TEST);
                     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
                 }
                 getContextOptions() {
@@ -9583,27 +10132,28 @@ var P;
                 pendingPenOperations() {
                     return this.penLinesIndex > 0;
                 }
-                drawPen() {
+                drawPendingOperations() {
                     const gl = this.gl;
+                    this.dirty = true;
+                    this.useShader(this.penShader);
                     gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
                     gl.bufferData(gl.ARRAY_BUFFER, this.penCoords, gl.STREAM_DRAW);
-                    gl.vertexAttribPointer(this.shader.getAttribute('vertexData'), 4, gl.FLOAT, false, 0, 0);
-                    gl.enableVertexAttribArray(this.shader.getAttribute('vertexData'));
+                    gl.vertexAttribPointer(this.penShader.getAttribute('a_vertexData'), 4, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(this.penShader.getAttribute('a_vertexData'));
                     gl.bindBuffer(gl.ARRAY_BUFFER, this.lineBuffer);
                     gl.bufferData(gl.ARRAY_BUFFER, this.penLines, gl.STREAM_DRAW);
-                    gl.vertexAttribPointer(this.shader.getAttribute('lineData'), 2, gl.FLOAT, false, 0, 0);
-                    gl.enableVertexAttribArray(this.shader.getAttribute('lineData'));
+                    gl.vertexAttribPointer(this.penShader.getAttribute('a_lineData'), 2, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(this.penShader.getAttribute('a_lineData'));
                     gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer);
                     gl.bufferData(gl.ARRAY_BUFFER, this.penColors, gl.STREAM_DRAW);
-                    gl.vertexAttribPointer(this.shader.getAttribute('colorData'), 4, gl.FLOAT, false, 0, 0);
-                    gl.enableVertexAttribArray(this.shader.getAttribute('colorData'));
-                    gl.useProgram(this.shader.program);
+                    gl.vertexAttribPointer(this.penShader.getAttribute('a_color'), 4, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(this.penShader.getAttribute('a_color'));
                     gl.drawArrays(gl.TRIANGLES, 0, (this.penCoordsIndex + 1) / 4);
                     this.penCoordsIndex = 0;
                     this.penLinesIndex = 0;
                     this.penColorsIndex = 0;
                 }
-                buffersFull(size) {
+                buffersCanFit(size) {
                     return this.penCoordsIndex + size > this.penCoords.length;
                 }
                 getCircleResolution(size) {
@@ -9611,8 +10161,8 @@ var P;
                 }
                 penLine(color, size, x1, y1, x2, y2) {
                     const circleRes = this.getCircleResolution(size);
-                    if (this.buffersFull(24 * (circleRes + 1))) {
-                        this.drawPen();
+                    if (this.buffersCanFit(24 * (circleRes + 1))) {
+                        this.drawPendingOperations();
                     }
                     this.penCoords[this.penCoordsIndex] = x1;
                     this.penCoordsIndex++;
@@ -9774,8 +10324,8 @@ var P;
                 }
                 penDot(color, size, x, y) {
                     const circleRes = this.getCircleResolution(size);
-                    if (this.buffersFull(12 * circleRes)) {
-                        this.drawPen();
+                    if (this.buffersCanFit(12 * circleRes)) {
+                        this.drawPendingOperations();
                     }
                     for (var i = 0; i < circleRes; i++) {
                         this.penCoords[this.penCoordsIndex] = x;
@@ -9828,12 +10378,15 @@ var P;
                     }
                 }
                 penStamp(sprite) {
-                    if (this.penCoordsIndex) {
-                        this.drawPen();
+                    this.dirty = true;
+                    if (this.pendingPenOperations()) {
+                        this.drawPendingOperations();
                     }
+                    this.useShader(this.allFiltersShader);
                     this.drawChild(sprite);
                 }
                 penClear() {
+                    this.gl.clearColor(0, 0, 0, 0);
                     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
                 }
             }
@@ -9844,63 +10397,66 @@ var P;
     // [1] = y1
     // [2] = x2
     // [3] = y2
-    attribute vec4 vertexData;
+    attribute vec4 a_vertexData;
     // [0] = thickened vertex direction
     // [1] = thickened vertex distance
-    attribute vec2 lineData;
+    attribute vec2 a_lineData;
     // [0] = red
     // [1] = green
     // [2] = blue
     // [3] = alpha
-    attribute vec4 colorData;
+    attribute vec4 a_color;
 
-    varying vec4 fragColor;
+    varying vec4 v_color;
 
-    void main(){
-
-      vec2 lineDir = normalize(vertexData.zw - vertexData.xy);
+    void main() {
+      vec2 lineDir = normalize(a_vertexData.zw - a_vertexData.xy);
 
       mat2 rot;
-      rot[0] = vec2(cos(lineData.x), sin(lineData.x));
-      rot[1] = vec2(-sin(lineData.x), cos(lineData.x));
+      rot[0] = vec2(cos(a_lineData.x), sin(a_lineData.x));
+      rot[1] = vec2(-sin(a_lineData.x), cos(a_lineData.x));
 
-      lineDir *= rot * lineData.y;
+      lineDir *= rot * a_lineData.y;
 
-      vec2 p = (vertexData.xy + lineDir);
+      vec2 p = (a_vertexData.xy + lineDir);
       p.x /= 240.0;
       p.y /= 180.0;
 
       gl_Position = vec4(p, 0.0, 1.0);
-      fragColor = colorData;
-    }
-  `;
+      v_color = vec4(a_color.xyz / 255.0, a_color.w);
+    }`;
             PenRenderer.PEN_FRAGMENT_SHADER = `
     precision mediump float;
-    varying vec4 fragColor;
-    void main(){
 
-      gl_FragColor = vec4(fragColor.xyz / 255.0, fragColor.w);
-    }
-    `;
+    varying vec4 v_color;
+
+    void main() {
+      gl_FragColor = v_color;
+    }`;
             class WebGLProjectRenderer extends WebGLSpriteRenderer {
                 constructor(stage) {
                     super();
                     this.stage = stage;
                     this.zoom = 1;
-                    this.shaderOnlyShapeFilters = this.compileVariant(['ONLY_SHAPE_FILTERS']);
                     this.collisionRenderer = new CollisionRenderer();
                     this.penRenderer = new PenRenderer();
-                    this.stageRenderer = new WebGLSpriteRenderer();
                     this.fallbackRenderer = new P.renderer.canvas2d.ProjectRenderer2D(stage);
-                    this.reset(1);
                 }
                 drawFrame() {
-                    this.bindFramebuffer(null);
                     if (this.penRenderer.pendingPenOperations()) {
-                        this.penRenderer.drawPen();
+                        this.penRenderer.drawPendingOperations();
+                    }
+                    if (this.penRenderer.dirty) {
+                        this.updatePenTexture();
+                        this.penRenderer.dirty = false;
                     }
                     this.reset(this.zoom);
-                    this.stageRenderer.drawChild(this.stage);
+                    this.useShader(this.allFiltersShader);
+                    this.drawChild(this.stage);
+                    if (this.penTexture) {
+                        this.drawTextureOverlay(this.penTexture);
+                        this.useShader(this.allFiltersShader);
+                    }
                     for (var i = 0; i < this.stage.children.length; i++) {
                         var child = this.stage.children[i];
                         if (!child.visible) {
@@ -9908,11 +10464,15 @@ var P;
                         }
                         this.drawChild(child);
                     }
+                    this.gl.flush();
                 }
                 init(root) {
-                    root.appendChild(this.stageRenderer.canvas);
-                    root.appendChild(this.penRenderer.canvas);
                     root.appendChild(this.canvas);
+                }
+                destroy() {
+                    super.destroy();
+                    this.penRenderer.destroy();
+                    this.collisionRenderer.destroy();
                 }
                 onStageFiltersChanged() {
                 }
@@ -9928,55 +10488,23 @@ var P;
                 penClear() {
                     this.penRenderer.penClear();
                 }
+                updatePenTexture() {
+                    if (this.penTexture) {
+                        this.gl.bindTexture(this.gl.TEXTURE_2D, this.penTexture);
+                        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.penRenderer.canvas);
+                    }
+                    else {
+                        this.penTexture = this.convertToTexture(this.penRenderer.canvas);
+                    }
+                }
                 resize(scale) {
-                    this.zoom = scale;
+                    this.zoom = scale * P.config.scale;
                 }
                 spriteTouchesPoint(sprite, x, y) {
-                    if (!filtersAffectShape(sprite.filters)) {
-                        return this.fallbackRenderer.spriteTouchesPoint(sprite, x, y);
-                    }
-                    const texture = this.createTexture();
-                    const framebuffer = this.createFramebuffer();
-                    this.bindFramebuffer(framebuffer);
-                    this.resetFramebuffer(1);
-                    this._drawChild(sprite, this.shaderOnlyShapeFilters);
-                    const result = new Uint8Array(4);
-                    this.gl.readPixels(240 + x | 0, 180 + y | 0, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, result);
-                    this.gl.deleteTexture(texture);
-                    this.gl.deleteFramebuffer(framebuffer);
-                    return result[3] !== 0;
+                    return this.collisionRenderer.spriteTouchesPoint(sprite, x, y);
                 }
                 spritesIntersect(spriteA, otherSprites) {
-                    const mb = spriteA.rotatedBounds();
-                    for (const spriteB of otherSprites) {
-                        if (!spriteB.visible || spriteA === spriteB) {
-                            continue;
-                        }
-                        const ob = spriteB.rotatedBounds();
-                        if (mb.bottom >= ob.top || ob.bottom >= mb.top || mb.left >= ob.right || ob.left >= mb.right) {
-                            continue;
-                        }
-                        const left = Math.max(mb.left, ob.left);
-                        const top = Math.min(mb.top, ob.top);
-                        const right = Math.min(mb.right, ob.right);
-                        const bottom = Math.max(mb.bottom, ob.bottom);
-                        const width = Math.max(right - left, 1);
-                        const height = Math.max(top - bottom, 1);
-                        this.collisionRenderer.gl.scissor(240 + left, 180 + bottom, width, height);
-                        this.collisionRenderer.gl.clear(this.collisionRenderer.gl.COLOR_BUFFER_BIT);
-                        this.collisionRenderer.drawChild(spriteA);
-                        this.collisionRenderer.drawChildTouching(spriteB);
-                        var data = new Uint8Array(width * height * 4);
-                        this.collisionRenderer.gl.readPixels(240 + left, 180 + bottom, width, height, this.collisionRenderer.gl.RGBA, this.collisionRenderer.gl.UNSIGNED_BYTE, data);
-                        this.collisionRenderer.gl.scissor(0, 0, 480, 360);
-                        var length = data.length;
-                        for (var j = 0; j < length; j += 4) {
-                            if (data[j + 3]) {
-                                return true;
-                            }
-                        }
-                    }
-                    return false;
+                    return this.collisionRenderer.spritesIntersect(spriteA, otherSprites);
                 }
                 spriteTouchesColor(sprite, color) {
                     return this.fallbackRenderer.spriteTouchesColor(sprite, color);

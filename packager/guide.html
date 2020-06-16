@@ -4,7 +4,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Forkphorus to executable (.exe)</title>
+  <link rel="canonical" href="https://forkphorus.github.io/packager/guide.html" />
+  <title>Forkphorus Packaging Guide for Scratch</title>
   <style>
     body {
       max-width: 720px;
@@ -20,29 +21,98 @@
       max-width: 100%;
       display: block;
     }
-    footer {
-      font-size: smaller;
+    table {
+      border-collapse: collapse;
+    }
+    table, th, td {
+      border: 1px solid black;
+      text-align: center;
+    }
+
+    .platform-selector {
+      display: flex;
+      width: 100%;
+      justify-content: space-around;
+      height: 3em;
+      margin-bottom: 16px;
+    }
+    .platform {
+      user-select: none;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: background-color .2s, border-color .2s;
+      box-sizing: content-box;
+      border-bottom: 3px solid #fff;
+    }
+    .platform.selected {
+      background-color: #e8e8e8;
+      border-color: #000;
+      font-weight: bold;
+    }
+    .platform:hover {
+      background-color: #eee;
+    }
+    .platform:active {
+      background-color: #ddd;
     }
   </style>
 </head>
 
 <body>
   <main>
-    <header><h1>Forkphorus to executable (.exe)</h1></header>
+    <header><h1>Forkphorus Packaging Guide</h1></header>
 
-    <p>This guide will explain how to use the <a href="/packager/">Forkphorus Packager</a> to create executable files for Scratch projects. While this guide is mainly targetting Windows, the same steps can be applied to Mac OS and Linux operating systems.</p>
+    <p>This guide will explain how to use the <a href="/packager/">Forkphorus Packager</a> to package Scratch projects for Windows, Mac, Linux, Apple, and iOS.</p>
 
-    <section>
+    <p>This guide is a Work In Progress. The Windows and Android sections are more complete than others. If you encounter problems or wish to improve this guide, visit <a href="https://github.com/forkphorus/forkphorus/">the GitHub repo</a>.</p>
+
+    <noscript><b>This page requires JavaScript to work properly.</b></noscript>
+
+    <div class="platform-selector" data-selector="os">
+      <a class="platform" tabindex="0" data-id="windows"><span class="platform-text">Windows</span></a>
+      <a class="platform" tabindex="0" data-id="mac"><span class="platform-text">Mac</span></a>
+      <a class="platform" tabindex="0" data-id="linux"><span class="platform-text">Linux</span></a>
+      <a class="platform" tabindex="0" data-id="android"><span class="platform-text">Android</span></a>
+      <a class="platform" tabindex="0" data-id="ios"><span class="platform-text">iOS</span></a>
+    </div>
+
+    <p data-os="mac"><b>Note for Mac users: There are many inaccuracies and other issues in the Mac OS instructions. These will be addressed soon. Note that packaging for Mac is a very compliacted process compared to other operating systems.</b></p>
+    <p data-os="linux"><b>Note for Linux users: I am not very familiar with packaging applications for Linux. You will have to do a bit of your own research to finish things. Please <a href="https://github.com/forkphorus/forkphorus/issues/new">report your findings</a> so I can improve this guide for everyone.</b></p>
+    <p data-os="ios"><b>Note for iOS users: I do not have access to an iOS device for testing, so I unsure of the accuracy of the guide below. If you get it to work, please <a href="https://github.com/forkphorus/forkphorus/issues/new">report your findings</a> so I can improve this guide for everyone.</b></p>
+
+    <section data-os="windows,mac,linux">
       <h2>Making an executable with NW.js</h2>
 
-      <p>If you're not using Windows, just ignore all references to "exe" and everything should work correctly.</p>
-
       <ol>
-        <li>Use <a href="index.html">the packager</a> to generate a .html file for the project.</li>
-        <li><a href="https://nwjs.io/">Download NW.js's "Normal" version</a> (not "SDK") for your platform.<img src="https://user-images.githubusercontent.com/17209175/58752962-441c6200-847d-11e9-9387-4fb25f164025.png" height="329"><small>Version numbers will no doubt be different, but compatibility shouldn't be an issue. The "SDK" version works but includes tools we don't need.</small></li>
-        <li>Extract the archive</li>
-        <li>Move "project.html" (file created by the packager, it's probably in your Downloads folder) into the extracted folder from the previous step (the same folder where "nw.exe" is located). Make sure it is named exactly "project.html" and not something else like "project(1).html"</li>
-        <li>Create the file "package.json" in the same folder with the content:
+        <li>
+          Use <a href="index.html">the HTML packager</a> to generate a .html file for the project.
+        </li>
+        <li>
+          <a href="https://nwjs.io/">Download NW.js's "Normal" version</a> (not "SDK") for your platform.
+          <!-- PICTURE OF NWJS WEBSITE -->
+          <img loading="lazy" data-src="https://user-images.githubusercontent.com/17209175/58752962-441c6200-847d-11e9-9387-4fb25f164025.png" height="329">
+          <small>NW.js should automatically detect your operating system and show the correct download. Otherwise, go to the Downloads page and find the correct download.<br>
+            The "SDK" version works, but it includes extra tools you won't need.</small>
+        </li>
+        <li>
+          Extract the archive.
+          <span data-os="mac">Mac users: This may happen automatically.</span>
+          <span data-os="linux">Linux users: Here's the command for that: <code>tar -xzf nwjs*.tar.gz</code></span>
+        </li>
+        <li>
+          Move "project.html" (file created by the packager, it's probably in your Downloads folder) into the extracted folder from the previous step (the same folder where
+          <span data-os="windows">nw.exe</span>
+          <span data-os="mac">nwjs</span>
+          <span data-os="linux">nw</span>
+          is located).
+          Make sure it is named exactly "project.html" and not something else like "project(1).html"
+        </li>
+        <li>
+          Create the file "package.json" in the same folder with the content:
           <pre>
 {
   "name": "<u>Name of the project</u>",
@@ -56,30 +126,256 @@
   }
 }</pre>
           <ul>
+            <li>
+              <b>You must use a plain text editor for this step.</b>
+              <span data-os="windows">In Windows, use Notepad (NOT WordPad or Microsoft Word).</span>
+              <span data-os="mac">In Mac, open TextEdit (NOT Pages) and do <i>Format > Make plain text (Shift+Command+T)</i>.</span>
+              <span data-os="linux">In Linux, well, you should be able to figure this out (just don't use LibreOffice).</span>
+              If you do not do this you WILL get errors!
+            </li>
             <li>You should copy and paste the above to avoid issues.</li>
             <li>Underlined sections may be changed.</li>
-            <li><code>name</code>: The name of the project. It doesn't really matter what you set this to.</li>
+            <li><code>name</code>: The name of the project. This should be unique to your project, and should not change. This is used to remember cloud variables if you have that enabled, among other things.</li>
             <li><code>title</code>: This will be the Window's title.</li>
-            <li><code>icon</code>: This is the path to the image that will be the Window's icon. If you  do not create an icon, an icon will be generated automatically.</li>
-            <li><code>resizable</code>: Allows the window to be resized. Set this to <code>false</code> to disallow resizing. (on Mac OS, <a href="http://docs.nwjs.io/en/latest/References/Manifest%20Format/#resizable">you may need to do additional steps</a> to disallow resizing)</li>
+            <li><code>icon</code>: This is the path to the image that will be the Window's icon. If you do not create an icon, NW.js will create a temporary one automatically. <span class="mac">Mac users: this seems to be a bit broken. If you can figure out how to make it work, please let me know.</span></li>
+            <li><code>resizable</code>: Allows the window to be resized. Set this to <code>false</code> to disallow resizing. <span class="mac">Mac users: <a href="http://docs.nwjs.io/en/latest/References/Manifest%20Format/#resizable">you may need to also set fullscreen to false to disallow resizing</a></span></li>
             <li><code>width</code> and <code>height</code>: The initial width and height (in pixels) of the window. Scratch's project player is 480x360 by default. Aspect ratios other than 4:3 will result in black bars around the project.</li>
-            <li>For a full list of fields you can use, see <a href="http://docs.nwjs.io/en/latest/References/Manifest%20Format/#window-subfields">the NW.js documentation</a>.</li>
+            <li>For a full list of usable fields, see <a href="http://docs.nwjs.io/en/latest/References/Manifest%20Format/#window-subfields">the NW.js documentation</a>.</li>
           </ul>
           <br>
           At this point, your NW.js folder should look something like this:
-          <img src="https://user-images.githubusercontent.com/17209175/59154860-a0652000-8a41-11e9-85d0-109e59c0316c.png" height="481">
+          <!-- NW.JS FOLDER PREVIEW -->
+          <img loading="lazy" data-os="windows" data-src="https://user-images.githubusercontent.com/17209175/59154860-a0652000-8a41-11e9-85d0-109e59c0316c.png" height="481">
+          <img loading="lazy" data-os="mac" data-src="https://user-images.githubusercontent.com/17209175/83950423-53509100-a7f0-11ea-9bd9-9f5dc2282e7b.png" height="200">
+          <img loading="lazy" data-os="linux" data-src="https://user-images.githubusercontent.com/17209175/83994680-c35c3580-a91c-11ea-9fbb-5da40f03e65f.png" height="382">
           <small>Highlighted files are ones you should have created.</small>
         </li>
-        <li>Optionally rename "nw.exe" to something else, such as the name of your project. (make sure to keep the .exe ending)</li>
-        <li>Open "nw.exe" or whatever you renamed it.</li>
-        <li>You're done! <img src="https://user-images.githubusercontent.com/17209175/59154894-67797b00-8a42-11e9-9678-e24bca31f285.png" height="402"><small><a href="https://scratch.mit.edu/projects/10128407/">griffpatch's Paper Minecraft project</a> running as an exe on Windows with a solid blue icon.</small></li>
+        <li>
+          Optionally rename
+          <span data-os="windows">nw.exe</span>
+          <span data-os="mac">nwjs</span>
+          <span data-os="linux">nw</span>
+          to something else, such as the name of your project.
+          <span data-os="windows">(make sure to keep the .exe ending)</span>
+        </li>
+        <li>
+          Open
+          <span data-os="windows">nw.exe</span>
+          <span data-os="mac">nwjs</span>
+          <span data-os="linux">nw</span>
+          or whatever you renamed it.
+          <span data-os="linux">Linux users: You need to open a terminal and run <code>./nw</code> to start NW.js. This should be fixable by using a <code>.desktop</code> file.</span>
+        </li>
+        <li>
+          The project should launch!
+          <!-- PROJECT RUNNING -->
+          <img data-os="windows" loading="lazy" data-src="https://user-images.githubusercontent.com/17209175/59154894-67797b00-8a42-11e9-9678-e24bca31f285.png" height="402">
+          <small data-os="windows"><a href="https://scratch.mit.edu/projects/10128407/">griffpatch's Paper Minecraft project</a> running as an exe on Windows with a solid blue icon.</small>
+          <img data-os="mac" loading="lazy" data-src="https://user-images.githubusercontent.com/17209175/83950538-146f0b00-a7f1-11ea-9116-cfb9ae1a445e.png" height="397">
+          <small data-os="mac"><a href="https://scratch.mit.edu/projects/10128407/">griffpatch's Paper Minecraft project</a> running as an application on Mac.</small>
+          <img data-os="linux" loading="lazy" data-src="https://user-images.githubusercontent.com/17209175/83994811-159d5680-a91d-11ea-8adf-8edd8e9ceda3.png" height="426">
+          <small data-os="linux"><a href="https://scratch.mit.edu/projects/391480888/">squig3's Scratch port of Ikachan</a> running in Linux. <span title="That's just what I had available. Don't bother me about DE or distro choice.">(Manjaro GNOME with Adwaita Dark theme)</span></small>
+        </li>
       </ol>
+
+      <hr>
     </section>
 
-    <hr>
+    <section data-os="android,ios">
+      <h2>
+        <span data-os="android">Android</span>
+        <span data-os="ios">iOS</span>
+        Packaging
+      </h2>
 
-    <section>
-      <h2>Creating a self-extracting archive</h2>
+      <p>There are two ways to do this:</p>
+
+      <table>
+        <tr>
+          <td aria-hidden="true"></td>
+          <th scope="col">Embed a link to the packager</th>
+          <th scope="col">Embed a file generated by the HTML packager</th>
+        </tr>
+        <tr>
+          <th scope="row">Advantages</th>
+          <td>Probably easier</td>
+          <td>App works offline</td>
+        </tr>
+        <tr>
+          <th scope="row">Disadvantages</th>
+          <td>App requires internet connection</td>
+          <td>More complicated</td>
+        </tr>
+      </table>
+
+      <p>These will be discussed separately below.</p>
+
+      <p data-os="android">Note that the Google Play Store has a one time fee of $25.</p>
+      <p data-os="ios">Note that the Apple App Store has a recurring fee of $99/year.</p>
+
+      <hr>
+
+      <div class="platform-selector" data-selector="mobilemethod">
+        <a class="platform" tabindex="0" data-id="embed">Embed a link</a>
+        <a class="platform" tabindex="0" data-id="package">Embed a file</a>
+      </div>
+    </section>
+
+    <section data-os="android,ios" data-mobilemethod="embed">
+      <h2>Generate forkphorus packager link</h2>
+
+      <p>Note: This does NOT use the HTML Packager.</p>
+
+      <ol>
+        <li>Go to the <a href="/">forkphorus homepage</a></li>
+        <li>Load your project</li>
+        <li>Scroll down to <i>Package this project</i>, configure settings, and click <i>Package</i> to generate a forkphorus packager link.</li>
+        <li>This link should start with: <i>https://forkphorus.github.io/app.html?...</i></li>
+        <li>Keep this link around, it will be needed later.</li>
+      </ol>
+
+      <hr>
+    </section>
+
+    <section data-os="android" data-mobilemethod="embed">
+      <h2>First Method - Using AppInventor to embed</h2>
+
+      <p>Perhaps using AppInventor just to embed a webpage is a bit overkill, but it works good enough. These steps do not require any programming knowledge &mdash; just follow what them exactly.</p>
+
+      <ol>
+        <li>Go to <a href="http://appinventor.mit.edu/">the AppInventor home page</a> and hit <i>Create Apps!</i>. Sign in with a Google account.</li>
+        <li>Hit <i>Start new project</i>, name the project (this doesn't matter), and hit <i>OK</i></li>
+        <li>From the Palette on the left, drag a <i>WebViewer</i> into the Viewer in the middle of the screen.</li>
+        <li>In the components menu, select <i>WebViewer1</i> and configure it like so:
+          <table>
+            <tr>
+              <td>Width</td>
+              <td>Fill parent...</td>
+            </tr>
+            <tr>
+              <td>Height</td>
+              <td>Fill parent...</td>
+            </tr>
+            <tr>
+              <td>HomeURL</td>
+              <td>The URL generated by Forkphorus from the previous scetion.</td>
+            </tr>
+          </table>
+          <!-- WebViewer PROPERTIES -->
+          <img loading="lazy" data-src="https://user-images.githubusercontent.com/17209175/65193625-5547a980-da41-11e9-821e-abbec5512601.png" height="464">
+        </li>
+        <li>In the components menu, select <i>Screen1</i> and consider the following optional settings:
+          <table>
+            <tr>
+              <td>AppName</td>
+              <td>The name of your app (eg. <i>Paper Minecraft</i>)</td>
+            </tr>
+            <tr>
+              <td>TitleVisible</td>
+              <td>false (unchecked) to remove an ugly titlebar from your app</td>
+            </tr>
+            <tr>
+              <td>ShowStatusBar</td>
+              <td>false (unchecked) to hide the native Android status bar while your app is running</td>
+            </tr>
+            <tr>
+              <td>ScreenOrientation</td>
+              <td>Landscape or Portrait if you want to force a specific screen orientation, otherwise leave this to its default value.</td>
+            </tr>
+            <tr>
+              <td>Icon</td>
+              <td>A nice icon for your project.</td>
+            </tr>
+          </table>
+          <!-- Screen1 PROPERTIES -->
+          <img loading="lazy" data-src="https://user-images.githubusercontent.com/17209175/65193665-858f4800-da41-11e9-8f3c-7c644ada52ce.png" height="1265">These are all optional. There are some other options you can set but many of them will have no effect.
+        </li>
+        <li>To create an APK:
+          <ul>
+            <li>Select <i>Build</i> &gt; <i>App (provide QR code for .APK)</i> and scan the QR code on your phone</li>
+            <li>or Select <i>Build</i> &gt; <i>App (save .apk to my computer)</i></li>
+          </ul>
+        </li>
+        <li>For help on publishing to the Google Play Store, see <a href="http://appinventor.mit.edu/explore/ai2/google-play.html">Publishing Apps to Google Play (App Inventor 2)</a></li>
+      </ol>
+
+      <hr>
+    </section>
+
+    <section data-os="android,ios" data-mobilemethod="embed">
+      <h2><span data-os="android">Second Method - </span>Using AppsGeyser to embed</h2>
+
+      <ol>
+        <li>Open the AppsGeyser page <a href="http://appsgeyser.com/create-url-app/"><i>Create Smart URL App</i></a></li>
+        <li>Insert the link Forkphorus generated into the <i>Website URL</i> box.</li>
+        <li>Choose a color theme, and hit <i>NEXT</i></li>
+        <li>Fill out details such as your App's Name, Description, and Icon, and then hit <i>Create</i></li>
+        <li>From here, navigate the treacherous interface to Publish or Download your APK.</li>
+      </ol>
+
+      <hr>
+    </section>
+
+    <section data-os="android,ios" data-mobilemethod="package">
+      <h2>Using the HTML packager and PhoneGap</h2>
+      <p>An alternative method involves creating an independent HTML file for your project and embedding that. The main advantage is that this will work offline, independent of an internet connection and will always produce the same result.</p>
+      <p>PhoneGap seems to support iOS, but I have not tested this. You will need a <a href="http://docs.phonegap.com/phonegap-build/signing/ios/">signing key</a>.</p>
+      <p>Note that you do not need to install PhoneGap as we will be using their online build service.</p>
+
+      <ol>
+        <li>Generate a ZIP archive using <a href="/packager/">the HTML packager</a>
+          <ol>
+            <li>Click "PhoneGap Options" to open the special settings for PhoneGap</li>
+            <li>Check "Enable PhoneGap", this will give us a ZIP instead of HTML and enable some additional options</li>
+            <li>Change "PhoneGap config.xml" as needed. The default configuration will work just fine for testing. However, if you want to publish the app, you should make some changes:
+              <ul>
+                <li>Put your App's name between <code>&lt;name&gt;&#8230;&lt;name&gt;</code></li>
+                <li>Put your App's description between <code>&lt;description&gt;&#8230;&lt;description&gt;</code></li>
+                <li>Put your name between <code>&lt;author href="your website" email="your email" &gt;&#8230;&lt;author&gt;</code> and set href and email to your website and email respectively.</li>
+                <li>Change the ID in <code>id="io.github.forkphorus.example"</code> to something unique to your app (you can remove the io.github.forkphorus part, it just has to be unique)</li>
+              </ul>
+            </li>
+            <li>Optionally choose a custom icon.</li>
+          </ol>
+        </li>
+        <li>Go to the <a href="https://build.phonegap.com">PhoneGap build service</a> and sign in with or create an Adobe account</li>
+        <li>Create a new <i>Private</i> app and upload the generated ZIP to the service.</li>
+        <li>Wait for the builds to complete.</li>
+        <li>Click on the Android icon to download the APK. You can also scan the QR code.</li>
+        <li>To update the APK, run the packager again, go to the PhoneGap build service, and use the <i>Update code</i> button:<img loading="lazy" data-src="https://user-images.githubusercontent.com/17209175/66354891-e7015300-e92b-11e9-8753-dd3237d0c8f1.png" height="285"></li>
+        <li>If uploading to the Google Play Store, you should read <a href="http://docs.phonegap.com/phonegap-build/signing/android/">Android Signing (PhoneGap Documentation)</a> or <a href="https://unbot.wordpress.com/2014/11/16/builing-a-release-version-for-build-phonegap-com/">Building a release version for build.phonegap.com</a></li>
+      </ol>
+
+      <p><small>Due to a bug in the PhoneGap CLI/Desktop app, forkphorus does not work in the preview. It works fine in the final build. This bug does not affect the online build service.</small></p>
+
+      <hr>
+    </section>
+
+    <section data-os="mac">
+      <h2>Mac Packaging - Further steps</h2>
+
+      <p>It's complicated.</p>
+      <p>I'll direct you to the <a href="https://docs.nwjs.io/en/latest/For%20Users/Package%20and%20Distribute/#mac-os-x">NW.js documentation</a>.</p>
+      <p>I haven't tested this yet and will look into it more soon.</p>
+
+      <hr>
+    </section>
+
+    <section data-os="linux">
+      <h2>Linux Packaging - Further steps</h2>
+
+      <h3>Create a <code>.desktop</code> file</h3>
+
+      <p>See the Arch wiki: <a href="https://wiki.archlinux.org/index.php/Desktop_entries">Desktop entries</a></p>
+      <p>This allows you to set a desktop icon and should the "open a terminal and do ./nw" problem.</p>
+
+      <p>For more information see the <a href="https://docs.nwjs.io/en/latest/For%20Users/Package%20and%20Distribute/#linux">NW.js documentation</a>.</p>
+
+      <hr>
+    </section>
+
+    <section data-os="windows">
+      <h2>Creating a self-extracting archive (Windows only)</h2>
 
       <p>NW.js works great, but it has a few problems. Specifically:
         <ul>
@@ -91,14 +387,15 @@
       <p>At the very least, you should compress the NW.js folder into a ZIP archive. We're going to go a bit beyond that and create a <a href="https://en.wikipedia.org/wiki/Self-extracting_archive">self-extracting archive</a>. However, note that this step is optional.</p>
 
       <h3>A note on anti-viruses</h3>
-      <p style="background: yellow; border: 3px solid red; padding: 4px;">Some anti-virus software detect all self-extracting archives as viruses. For this reason, <b>I would recommend just creating a ZIP archive and telling people to extract and run "nw.exe" (or whatever you renamed it)</b> instead of creating a self-extracting archive.</p>
+      <p style="background: yellow; border: 3px solid red; padding: 4px;">Some anti-virus software detects all self-extracting archives as viruses. For this reason, <b>I would recommend just creating a ZIP archive and telling people to extract and run "nw.exe" (or whatever you renamed it)</b> instead of creating a self-extracting archive.</p>
 
       <h3>Using Make SFX</h3>
       <p>Make SFX is a tool for creating self-extracting archives. Other similar tools include <a href="https://www.7-zip.org/">7-Zip</a>, <a href="https://www.peazip.org/">PeaZip</a>, and <a href="https://rarlab.com/download.htm">WinRAR</a>.</p>
       <ol>
         <li>Complete the first section using NW.js first.</li>
         <li>Download Make SFX from <a href="http://74.cz/en/make-sfx/index.php">their website</a>.</li>
-        <li>The Make SFX interface is rather daunting. Pretty much, configure it so that it looks like this:<img src="https://user-images.githubusercontent.com/17209175/58766023-61b20000-853f-11e9-8712-90336b9ad987.png" height="557">
+        <li>The Make SFX interface is rather daunting. Pretty much, configure it so that it looks like this:
+          <img loading="lazy" data-src="https://user-images.githubusercontent.com/17209175/58766023-61b20000-853f-11e9-8712-90336b9ad987.png" height="557">
           <ul>
             <li>"Source folder" is where you extracted NW.js to (again, the folder that contains "nw.exe" or what you renamed it)</li>
             <li>"Target SFX file" is where the .exe created by Make SFX will be saved</li>
@@ -110,28 +407,112 @@
         <li>Run the output file and make sure it works.</li>
         <li>You're done!</li>
       </ol>
+
+      <hr>
     </section>
 
   </main>
 
-  <hr>
-
   <footer>
     <p>If you encounter problems or wish to improve this guide, visit <a href="https://github.com/forkphorus/forkphorus/">the GitHub repo</a>.</p>
-    <p>This guide is based on <a href="https://scratch.mit.edu/discuss/topic/341617/">SpeedDesign's tutorial for packaging Scratch 3</a>.</p>
+    <p>Parts of this guide are based on <a href="https://scratch.mit.edu/discuss/topic/341617/">SpeedDesign's tutorial for packaging Scratch 3</a>.</p>
   </footer>
 
   <script>
     (function() {
-      // make images clickable
+      // clickable images
       var images = document.getElementsByTagName('img');
       for (var i = 0; i < images.length; i++) {
         var img = images[i];
+        img.src = img.dataset.src;
         var el = document.createElement('a');
+        el.tabIndex = 0;
         el.href = img.src;
         img.parentElement.replaceChild(el, img);
         el.appendChild(img);
       }
+
+      var allFilteredElements = [];
+      var updateOnChange = false;
+
+      function enableSelector(el, def, hash) {
+        var selectorId = el.dataset.selector;
+        var choices = el.children;
+        var selection = def;
+
+        var filteredElements = Array.from(document.querySelectorAll('[data-' + selectorId + ']'));
+        filteredElements.forEach(function(el) {
+          if (allFilteredElements.indexOf(el) === -1) allFilteredElements.push(el);
+          if (!el.filters) el.filters = [];
+          el.filters.push(function() { return el.dataset[selectorId].split(',').indexOf(selection) > -1; });
+        });
+
+        function setSelection(id) {
+          selection = id;
+
+          for (var i = 0; i < choices.length; i++) {
+            var otherChoice = choices[i];
+            otherChoice.classList.toggle('selected', otherChoice.dataset.id === id);
+          }
+
+          if (updateOnChange) updateFilteredElements();
+        }
+
+        function clickHandler(el) {
+          return function(event) {
+            if (event.keyCode && event.keyCode !== 13) {
+              return;
+            }
+            if (hash) history.replaceState('', '', '#' + el.dataset.id);
+            setSelection(el.dataset.id);
+          }
+        }
+
+        for (var i = 0; i < choices.length; i++) {
+          var choiceEl = choices[i];
+          choiceEl.onclick = choiceEl.onkeydown = clickHandler(choiceEl);
+        }
+
+        setSelection(def);
+      }
+
+      function updateFilteredElements() {
+        allFilteredElements.forEach(function(el) {
+          var filters = el.filters;
+          var falseFilters = filters.filter((i) => !i());
+          var visible = falseFilters.length === 0;
+          el.hidden = !visible;
+          if (el.tagName === 'IMG') {
+            el.style.display = visible ? '' : 'none';
+            el.parentNode.tabIndex = visible ? '0' : '-1';
+          }
+        });
+      }
+
+      function getDefaultOS() {
+        // check location hash
+        var hash = location.hash.substr(1);
+        if (['windows', 'mac', 'linux', 'android', 'ios'].indexOf(hash) > -1) return hash;
+        // chromeos is unsupported
+        if (/cros/i.test(navigator.userAgent)) return 'windows';
+        // ios
+        if (/iphone/i.test(navigator.userAgent) || /ipad/i.test(navigator.userAgent)) return 'ios';
+        // android
+        if (/android/i.test(navigator.userAgent)) return 'android';
+        // mac
+        if (/mac/i.test(navigator.userAgent)) return 'mac';
+        // linux
+        if (/linux/i.test(navigator.userAgent)) return 'linux';
+        // most likely windows, everything undetected should default to this anyways
+        return 'windows';
+      }
+
+      // implement the platform selectors
+      enableSelector(document.querySelector('[data-selector=os]'), getDefaultOS(), true);
+      enableSelector(document.querySelector('[data-selector=mobilemethod]'), 'embed', false);
+
+      updateOnChange = true;
+      updateFilteredElements();
     })();
   </script>
 

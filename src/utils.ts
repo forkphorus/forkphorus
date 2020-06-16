@@ -119,6 +119,39 @@ namespace P.utils {
   }
 
   /**
+   * @param h Hue in the range 0-1 (wrapping)
+   * @param s Saturation in the range 0-1
+   * @param v Value in the range 0-1
+   * @returns RGB, each value in the range 0-255
+   */
+  export function hslToRGB(h: number, s: number, l: number): [number, number, number] {
+    // https://en.wikipedia.org/wiki/HSL_and_HSV
+    var r: number, g: number, b: number;
+  
+    if (s == 0) {
+      r = g = b = l; // achromatic
+    } else {
+      function hue2rgb(p, q, t) {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1/6) return p + (q - p) * 6 * t;
+        if (t < 1/2) return q;
+        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+        return p;
+      }
+  
+      var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      var p = 2 * l - q;
+  
+      r = hue2rgb(p, q, h + 1/3);
+      g = hue2rgb(p, q, h);
+      b = hue2rgb(p, q, h - 1/3);
+    }
+  
+    return [r * 255, g * 255, b * 255];
+  }
+
+  /**
    * 
    * @param h Hue in the range 0-360
    * @param s Saturation in the range 0-1

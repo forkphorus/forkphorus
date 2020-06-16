@@ -145,7 +145,7 @@ function portConnectionInfo(port) {
   console.log('Visit any of these links in your browser:');
   console.log(`    http://localhost:${port}/`);
   console.log(`    http://127.0.0.1:${port}/`);
-  console.log('Changes to .ts files automatically retrigger a build. Refresh to view changes.');
+  console.log('Changes to .ts files automatically trigger a rebuild. Refresh to view changes.');
   console.log('='.repeat(80));
   console.log('Compiler output:');
 }
