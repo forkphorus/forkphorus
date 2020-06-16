@@ -28,5 +28,12 @@ namespace P.ext {
     onpause() {
 
     }
+
+    /**
+     * Called at the end of every frame
+     */
+    update() {
+
+    }
   }
 }

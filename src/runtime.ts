@@ -772,6 +772,8 @@ namespace P.runtime {
         }
       } while ((this.isTurbo || !VISUAL) && Date.now() - start < 1000 / this.framerate && queue.length);
 
+      this.stage.updateExtensions();
+
       this.stage.draw();
     }
 

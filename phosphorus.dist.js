@@ -1235,6 +1235,13 @@ var P;
                     extension.onstart();
                 }
             }
+            updateExtensions() {
+                if (this.extensions.length) {
+                    for (const extension of this.extensions) {
+                        extension.update();
+                    }
+                }
+            }
             focus() {
                 if (this.promptId < this.nextPromptId) {
                     this.prompt.focus();
@@ -4340,6 +4347,7 @@ var P;
                         }
                     }
                 } while ((this.isTurbo || !VISUAL) && Date.now() - start < 1000 / this.framerate && queue.length);
+                this.stage.updateExtensions();
                 this.stage.draw();
             }
             onError(e) {
@@ -8745,6 +8753,8 @@ var P;
             }
             onpause() {
             }
+            update() {
+            }
         }
         ext.Extension = Extension;
     })(ext = P.ext || (P.ext = {}));
@@ -8778,14 +8788,14 @@ var P;
                     super(stage);
                     this.host = host;
                     this.id = id;
-                    this.updateInterval = null;
-                    this.queuedVariableChanges = [];
                     this.ws = null;
+                    this.queuedVariableChanges = [];
+                    this.updateInterval = null;
+                    this.reconnectTimeout = null;
                     this.shouldReconnect = true;
                     this.failures = 0;
-                    this.usernameInvalid = false;
-                    this.usernameInvalidLastUsername = '';
                     this.logPrefix = '[cloud-ws ' + host + ']';
+                    this.username = this.stage.username;
                     this.interfaceStatusIndicator = document.createElement('div');
                     this.interfaceStatusIndicator.className = 'phosphorus-cloud-status-indicator';
                     stage.ui.appendChild(this.interfaceStatusIndicator);
@@ -8830,28 +8840,29 @@ var P;
                 setVariable(name, value) {
                     this.stage.vars[name] = value;
                 }
+                terminateConnection() {
+                    if (this.ws !== null) {
+                        this.ws.close();
+                        this.ws = null;
+                    }
+                }
                 connect() {
                     if (this.ws !== null) {
                         throw new Error('already connected');
                     }
-                    if (this.usernameInvalid && this.stage.username === this.usernameInvalidLastUsername) {
-                        this.tryAutomaticReconnect();
-                        return;
-                    }
                     this.setStatusText('Connecting...');
                     console.log(this.logPrefix, 'connecting');
                     this.ws = new WebSocket(this.host);
+                    this.shouldReconnect = true;
                     this.ws.onopen = () => {
                         console.log(this.logPrefix, 'connected');
                         this.setStatusText('Connected');
                         this.setStatusVisible(false);
                         this.failures = 0;
-                        this.usernameInvalid = false;
-                        this.usernameInvalidLastUsername = '';
                         this.send({
                             kind: 'handshake',
                             id: this.id,
-                            username: this.stage.username,
+                            username: this.username,
                             variables: getAllCloudVariables(this.stage),
                         });
                     };
@@ -8870,45 +8881,45 @@ var P;
                     };
                     this.ws.onclose = (e) => {
                         const code = e.code;
+                        this.ws = null;
                         console.warn(this.logPrefix, 'closed', code);
                         if (code === 4001) {
-                            this.setStatusText('Incompatible with room.');
+                            this.setStatusText('Cannot connect: Incompatible with room.');
+                            console.error(this.logPrefix, 'error: Incompatibility');
                             this.shouldReconnect = false;
                         }
                         else if (code === 4002) {
                             this.setStatusText('Username is invalid. Change your username to connect.');
-                            this.usernameInvalid = true;
-                            this.usernameInvalidLastUsername = this.stage.username;
+                            console.error(this.logPrefix, 'error: Username');
                         }
-                        this.tryAutomaticReconnect();
+                        else {
+                            this.reconnect();
+                        }
                     };
                     this.ws.onerror = (e) => {
                         console.warn(this.logPrefix, 'error', e);
                     };
                 }
-                tryAutomaticReconnect() {
+                reconnect() {
                     if (!this.shouldReconnect) {
                         return;
                     }
-                    if (this.ws !== null) {
-                        this.ws.close();
-                        this.ws = null;
+                    this.terminateConnection();
+                    if (this.reconnectTimeout) {
+                        clearTimeout(this.reconnectTimeout);
                     }
-                    if (!this.usernameInvalid) {
-                        this.setStatusText('Connection lost, reconnecting...');
+                    else {
                         this.failures++;
                     }
+                    this.setStatusText('Connection lost, reconnecting...');
                     const delayTime = Math.pow(2, this.failures) * 1000;
                     console.log(this.logPrefix, 'reconnecting in', delayTime);
-                    setTimeout(this.connect, delayTime);
+                    this.reconnectTimeout = setTimeout(this.connect, delayTime);
                 }
                 disconnect() {
                     console.log(this.logPrefix, 'disconnecting');
                     this.shouldReconnect = false;
-                    if (this.ws !== null) {
-                        this.ws.close();
-                        this.ws = null;
-                    }
+                    this.terminateConnection();
                 }
                 handleMessage(data) {
                     if (!isCloudSetMessage(data)) {
@@ -8934,13 +8945,8 @@ var P;
                     this.updateInterval = null;
                 }
                 setStatusText(text) {
-                    if (text) {
-                        this.interfaceStatusIndicator.textContent = `☁ ${text}`;
-                        this.setStatusVisible(true);
-                    }
-                    else {
-                        this.setStatusVisible(false);
-                    }
+                    this.interfaceStatusIndicator.textContent = `☁ ${text}`;
+                    this.setStatusVisible(true);
                 }
                 setStatusVisible(visible) {
                     this.interfaceStatusIndicator.classList.toggle('phosphorus-cloud-status-indicator-hidden', !visible);
@@ -8952,6 +8958,13 @@ var P;
                 }
                 onpause() {
                     this.stopUpdateInterval();
+                }
+                update() {
+                    if (this.stage.username !== this.username) {
+                        console.log(this.logPrefix, 'username changed to', this.stage.username);
+                        this.username = this.stage.username;
+                        this.reconnect();
+                    }
                 }
                 destroy() {
                     this.stopUpdateInterval();

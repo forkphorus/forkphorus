@@ -1094,6 +1094,14 @@ namespace P.core {
       }
     }
 
+    updateExtensions() {
+      if (this.extensions.length) {
+        for (const extension of this.extensions) {
+          extension.update();
+        }
+      }
+    }
+
     /**
      * Give browser focus to the Stage.
      */

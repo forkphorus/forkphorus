@@ -47,19 +47,20 @@ namespace P.ext.cloud {
   }
 
   export class WebSocketCloudHandler extends P.ext.Extension implements CloudHandler {
-    private updateInterval: number | null = null;
-    private queuedVariableChanges: string[] = [];
-    private ws: WebSocket | null = null;
     private readonly logPrefix: string;
+    private ws: WebSocket | null = null;
+    private queuedVariableChanges: string[] = [];
+    private updateInterval: number | null = null;
+    private reconnectTimeout: number | null = null;
     private shouldReconnect: boolean = true;
     private failures: number = 0;
-    private usernameInvalid: boolean = false;
-    private usernameInvalidLastUsername: string = '';
+    private username: string;
     private interfaceStatusIndicator: HTMLElement;
 
     constructor(stage: P.core.Stage, private host: string, private id: string) {
       super(stage);
       this.logPrefix = '[cloud-ws ' + host + ']';
+      this.username = this.stage.username;
 
       this.interfaceStatusIndicator = document.createElement('div');
       this.interfaceStatusIndicator.className = 'phosphorus-cloud-status-indicator';
@@ -77,7 +78,7 @@ namespace P.ext.cloud {
       }
       this.queuedVariableChanges.push(name);
       if (this.updateInterval === null) {
-        // handle first change immediately, reduces latency on one-off sets
+        // handle first change immediately, reduces latency on the first set
         this.handleUpdateInterval();
         this.startUpdateInterval();
       }
@@ -116,19 +117,22 @@ namespace P.ext.cloud {
       this.stage.vars[name] = value;
     }
 
+    private terminateConnection() {
+      if (this.ws !== null) {
+        this.ws.close();
+        this.ws = null;
+      }
+    }
+
     private connect() {
       if (this.ws !== null) {
         throw new Error('already connected');
       }
 
-      if (this.usernameInvalid && this.stage.username === this.usernameInvalidLastUsername) {
-        this.tryAutomaticReconnect();
-        return;
-      }
-
       this.setStatusText('Connecting...');
       console.log(this.logPrefix, 'connecting');
       this.ws = new WebSocket(this.host);
+      this.shouldReconnect = true;
 
       this.ws.onopen = () => {
         console.log(this.logPrefix, 'connected');
@@ -136,16 +140,12 @@ namespace P.ext.cloud {
         this.setStatusText('Connected');
         this.setStatusVisible(false);
 
-        // reset some data used for reconnecting
         this.failures = 0;
-        this.usernameInvalid = false;
-        this.usernameInvalidLastUsername = '';
 
-        // send the handshake
         this.send({
           kind: 'handshake',
           id: this.id,
-          username: this.stage.username,
+          username: this.username,
           variables: getAllCloudVariables(this.stage),
         });
       };
@@ -167,17 +167,19 @@ namespace P.ext.cloud {
 
       this.ws.onclose = (e) => {
         const code = e.code;
+        this.ws = null;
         console.warn(this.logPrefix, 'closed', code);
         // see https://github.com/forkphorus/cloud-server/blob/master/protocol.md#status-codes for status codes
         if (code === 4001) {
-          this.setStatusText('Incompatible with room.');
+          this.setStatusText('Cannot connect: Incompatible with room.');
+          console.error(this.logPrefix, 'error: Incompatibility');
           this.shouldReconnect = false;
         } else if (code === 4002) {
           this.setStatusText('Username is invalid. Change your username to connect.');
-          this.usernameInvalid = true;
-          this.usernameInvalidLastUsername = this.stage.username;
+          console.error(this.logPrefix, 'error: Username');
+        } else {
+          this.reconnect();
         }
-        this.tryAutomaticReconnect();
       };
 
       this.ws.onerror = (e) => {
@@ -186,31 +188,28 @@ namespace P.ext.cloud {
       };
     }
 
-    private tryAutomaticReconnect() {
+    private reconnect() {
       if (!this.shouldReconnect) {
         return;
       }
-      // close the connection if it exists
-      if (this.ws !== null) {
-        this.ws.close();
-        this.ws = null;
-      }
-      if (!this.usernameInvalid) {
-        this.setStatusText('Connection lost, reconnecting...');
+      this.terminateConnection();
+      if (this.reconnectTimeout) {
+        clearTimeout(this.reconnectTimeout);
+      } else {
+        // only increase failures in the case of an actual failure
+        // rescheduling a reconnect is not a failure
         this.failures++;
       }
+      this.setStatusText('Connection lost, reconnecting...');
       const delayTime = 2 ** this.failures * 1000;
       console.log(this.logPrefix, 'reconnecting in', delayTime);
-      setTimeout(this.connect, delayTime);
+      this.reconnectTimeout = setTimeout(this.connect, delayTime);
     }
 
     private disconnect() {
       console.log(this.logPrefix, 'disconnecting');
       this.shouldReconnect = false;
-      if (this.ws !== null) {
-        this.ws.close();
-        this.ws = null;
-      }
+      this.terminateConnection();
     }
 
     private handleMessage(data: unknown) {
@@ -240,12 +239,8 @@ namespace P.ext.cloud {
     }
 
     private setStatusText(text: string) {
-      if (text) {
-        this.interfaceStatusIndicator.textContent = `☁ ${text}`;
-        this.setStatusVisible(true);
-      } else {
-        this.setStatusVisible(false);
-      }
+      this.interfaceStatusIndicator.textContent = `☁ ${text}`;
+      this.setStatusVisible(true);
     }
 
     private setStatusVisible(visible: boolean) {
@@ -261,6 +256,14 @@ namespace P.ext.cloud {
 
     onpause() {
       this.stopUpdateInterval();
+    }
+
+    update() {
+      if (this.stage.username !== this.username) {
+        console.log(this.logPrefix, 'username changed to', this.stage.username);
+        this.username = this.stage.username;
+        this.reconnect();
+      }
     }
 
     destroy() {

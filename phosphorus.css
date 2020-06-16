@@ -434,11 +434,16 @@
 
 /* Cloud variable status */
 .phosphorus-cloud-status-indicator {
-  font-size: 12px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  font-size: 1.2em;
   color: white;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(2px);
   text-align: center;
+  z-index: 10;
 }
 .phosphorus-cloud-status-indicator.phosphorus-cloud-status-indicator-hidden {
   opacity: 0;
