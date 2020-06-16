@@ -7,7 +7,7 @@
     "test": "node runner.js"
   },
   "dependencies": {
-    "puppeteer": "^3.3.0"
+    "puppeteer": "^4.0.0"
   },
   "repository": {
     "type": "git",
