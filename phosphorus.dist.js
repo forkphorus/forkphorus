@@ -8800,7 +8800,6 @@ var P;
                     this.interfaceStatusIndicator.className = 'phosphorus-cloud-status-indicator';
                     stage.ui.appendChild(this.interfaceStatusIndicator);
                     this.handleUpdateInterval = this.handleUpdateInterval.bind(this);
-                    this.connect = this.connect.bind(this);
                     this.connect();
                 }
                 variableChanged(name) {
@@ -8914,7 +8913,10 @@ var P;
                     this.setStatusText('Connection lost, reconnecting...');
                     const delayTime = Math.pow(2, this.failures) * 1000;
                     console.log(this.logPrefix, 'reconnecting in', delayTime);
-                    this.reconnectTimeout = setTimeout(this.connect, delayTime);
+                    this.reconnectTimeout = setTimeout(() => {
+                        this.reconnectTimeout = null;
+                        this.connect();
+                    }, delayTime);
                 }
                 disconnect() {
                     console.log(this.logPrefix, 'disconnecting');

@@ -314,6 +314,7 @@ namespace P.player {
       // $id is replaced with the project's ID
       PROJECT_API: 'https://cdn.projects.scratch.mit.edu/$id',
       // an instance of https://github.com/forkphorus/cloud-server
+      // CLOUD_DATA_SERVER: 'ws://localhost:9080', // for cloud-server development
       CLOUD_DATA_SERVER: 'wss://stratus.garbomuffin.com',
     };
 

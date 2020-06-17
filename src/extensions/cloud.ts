@@ -67,7 +67,6 @@ namespace P.ext.cloud {
       stage.ui.appendChild(this.interfaceStatusIndicator);
 
       this.handleUpdateInterval = this.handleUpdateInterval.bind(this);
-      this.connect = this.connect.bind(this);
       this.connect();
     }
 
@@ -203,7 +202,10 @@ namespace P.ext.cloud {
       this.setStatusText('Connection lost, reconnecting...');
       const delayTime = 2 ** this.failures * 1000;
       console.log(this.logPrefix, 'reconnecting in', delayTime);
-      this.reconnectTimeout = setTimeout(this.connect, delayTime);
+      this.reconnectTimeout = setTimeout(() => {
+        this.reconnectTimeout = null;
+        this.connect();
+      }, delayTime);
     }
 
     private disconnect() {
