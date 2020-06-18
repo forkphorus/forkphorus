@@ -8873,9 +8873,8 @@ var P;
                                 this.handleMessage(data);
                             }
                         }
-                        catch (e) {
-                            console.warn('error parsing cloud server message', e.data, e);
-                            return;
+                        catch (err) {
+                            console.warn('error parsing cloud server message', e.data, err);
                         }
                     };
                     this.ws.onclose = (e) => {
