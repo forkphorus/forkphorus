@@ -2791,7 +2791,7 @@ namespace P.sb3.compiler {
     }
   };
   inputLibrary['looks_size'] = function(util) {
-    return util.numberInput('(S.scale * 100)');
+    return util.numberInput('Math.round(S.scale * 100)');
   };
   inputLibrary['makeymakey_menu_KEY'] = function(util) {
     return util.fieldInput('KEY');
