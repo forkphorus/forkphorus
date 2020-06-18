@@ -46,6 +46,12 @@ namespace P.ext.cloud {
     return isCloudDataMessage(data) && typeof (data as CloudSetMessage).var === 'string' && typeof (data as CloudSetMessage).value === 'string';
   }
 
+  /**
+   * Implements cloud variables over WebSocket.
+   *
+   * Intended Server Code: https://github.com/forkphorus/cloud-server
+   * Protocol: https://github.com/forkphorus/cloud-server/blob/master/protocol.md (this is NOT the same as Scratch's protocol)
+   */
   export class WebSocketCloudHandler extends P.ext.Extension implements CloudHandler {
     private readonly logPrefix: string;
     private ws: WebSocket | null = null;
@@ -116,9 +122,10 @@ namespace P.ext.cloud {
       this.stage.vars[name] = value;
     }
 
-    private terminateConnection() {
+    private terminateConnection(code: number = 1000) {
+      // 1000 is Normal Closure
       if (this.ws !== null) {
-        this.ws.close();
+        this.ws.close(code);
         this.ws = null;
       }
     }
@@ -168,12 +175,12 @@ namespace P.ext.cloud {
         const code = e.code;
         this.ws = null;
         console.warn(this.logPrefix, 'closed', code);
-        // see https://github.com/forkphorus/cloud-server/blob/master/protocol.md#status-codes for status codes
-        if (code === 4001) {
+        // see the protocol document
+        if (code === 4001) { // Incompatibility
           this.setStatusText('Cannot connect: Incompatible with room.');
           console.error(this.logPrefix, 'error: Incompatibility');
           this.shouldReconnect = false;
-        } else if (code === 4002) {
+        } else if (code === 4002) { // Username Error
           this.setStatusText('Username is invalid. Change your username to connect.');
           console.error(this.logPrefix, 'error: Username');
         } else {
@@ -264,6 +271,7 @@ namespace P.ext.cloud {
       if (this.stage.username !== this.username) {
         console.log(this.logPrefix, 'username changed to', this.stage.username);
         this.username = this.stage.username;
+        this.terminateConnection(4100); // Username Change
         this.reconnect();
       }
     }

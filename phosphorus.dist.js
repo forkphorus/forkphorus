@@ -8839,9 +8839,9 @@ var P;
                 setVariable(name, value) {
                     this.stage.vars[name] = value;
                 }
-                terminateConnection() {
+                terminateConnection(code = 1000) {
                     if (this.ws !== null) {
-                        this.ws.close();
+                        this.ws.close(code);
                         this.ws = null;
                     }
                 }
@@ -8965,6 +8965,7 @@ var P;
                     if (this.stage.username !== this.username) {
                         console.log(this.logPrefix, 'username changed to', this.stage.username);
                         this.username = this.stage.username;
+                        this.terminateConnection(4100);
                         this.reconnect();
                     }
                 }
