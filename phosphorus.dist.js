@@ -5288,7 +5288,7 @@ var P;
                         return '(self.currentCostumeIndex + 1)';
                     }
                     else if (e[0] === 'scale') {
-                        return '(S.scale * 100)';
+                        return 'Math.round(S.scale * 100)';
                     }
                     else if (e[0] === 'volume') {
                         return '(S.volume * 100)';
