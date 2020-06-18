@@ -353,18 +353,13 @@
           const opt = document.createElement('option');
           opt.value = i.value;
           opt.textContent = i.label;
-
-          if (i.selected) {
-            opt.selected = true;
-            this.setValue(opt.value);
-          }
-
-          opt.onclick = () => {
-            this.setValue(opt.value);
-          };
-
           el.appendChild(opt);
         }
+
+        this.setValue(el.value);
+        el.onchange = () => {
+          this.setValue(el.value);
+        };
 
         this.inputContainer.appendChild(el);
         return this;
@@ -384,6 +379,7 @@
         const description = document.createElement('td');
         description.colSpan = 2;
         // innerHTML intentional: allows use of HTML in descriptions
+        // allow values of `content` are in the source code already so this is not a security vulnerability
         description.innerHTML = content;
 
         row.appendChild(description);
@@ -700,13 +696,16 @@
             throw new Error('Invalid Project ID');
           }
           // Comply with CC BY-SA 2.0
-          packager.projectAttribution = 'Project source: https://scratch.mit.edu/projects/' + projectId.value + ' (CC BY-SA 2.0)';
+          packager.projectAttribution = 'Project is loaded from: https://scratch.mit.edu/projects/' + projectId.value + '. Projects from scratch.mit.edu are generally licensed under CC BY-SA 2.0';
           await packager.loadProjectById(projectId.value);
         } else if (projectSource.value === 'file') {
           if (!projectFile.value) {
             throw new Error('No file selected');
           }
           await packager.loadProjectFromFile(projectFile.value);
+          packager.projectAttribution = 'No license assumed.';
+        } else {
+          throw new Error('projectSource is an unknown value: ' + projectSource.value);
         }
 
         // Package to HTML
