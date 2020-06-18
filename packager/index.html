@@ -18,17 +18,17 @@
       text-align: center;
       font-style: italic;
     }
-    #options {
+    #interface-container {
       position: relative;
     }
-    #options[data-usable=false] {
+    #interface-container[data-usable=false] {
       pointer-events: none;
       opacity: 0.75;
     }
-    #options[data-usable=true] #click-disabler {
+    #interface-container[data-usable=true] #click-disabler {
       display: none;
     }
-    #options[data-usable=false] #click-disabler {
+    #interface-container[data-usable=false] #click-disabler {
       position: absolute;
       top: 0;
       left: 0;
@@ -57,6 +57,8 @@
     input[type=text], input[type=number], input[type=checkbox], select {
       box-sizing: border-box;
       width: 100%;
+      color: black;
+      padding: 2px;
     }
 
     textarea {
@@ -110,9 +112,10 @@
 
   <div id="loading-message">Loading...</div>
 
-  <div id="interface-container" hidden>
-    <div id="options" data-usable="true">
-      <div id="click-disabler" title="please wait for the packager to finish..."></div>
+  <div id="interface-container" data-usable="true" hidden>
+    <div id="click-disabler" title="please wait for the packager to finish..."></div>
+
+    <div id="options">
       <!-- JS injects options into here -->
     </div>
 
@@ -572,6 +575,7 @@
 
   <!-- Interface Logic -->
   <script>
+    const interfaceContainer = document.getElementById('interface-container');
     const loadingSection = document.getElementById('loading-section');
     let progressBar = null;
 
@@ -631,7 +635,10 @@
     }
 
     function setInputsUsable(usable) {
-      optionsContainer.dataset.usable = usable;
+      interfaceContainer.dataset.usable = usable;
+      for (const element of document.querySelectorAll('input, button')) {
+        element.disabled = !usable;
+      }
     }
 
     SBDL.progressHooks.start = () => setAction('Loading project files');
