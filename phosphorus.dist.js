@@ -2370,7 +2370,7 @@ var P;
             }
             error(message) {
                 const { line, column } = this.lineInfo();
-                throw new Error(`JSONParser: ${message} (Line ${line} Column ${column})`);
+                throw new SyntaxError(`JSONParser: ${message} (Line ${line} Column ${column})`);
             }
             char() {
                 return this.charAt(this.index);
@@ -2430,7 +2430,7 @@ var P;
                 if (this.peek(4, 0) === 'null') {
                     for (var i = 0; i < 4; i++)
                         this.next();
-                    return Infinity;
+                    return null;
                 }
                 if (this.peek(4, 0) === 'true') {
                     for (var i = 0; i < 4; i++)
@@ -2446,6 +2446,11 @@ var P;
                     for (var i = 0; i < 8; i++)
                         this.next();
                     return Infinity;
+                }
+                if (this.peek(9, 0) === '-Infinity') {
+                    for (var i = 0; i < 9; i++)
+                        this.next();
+                    return -Infinity;
                 }
                 if (this.peek(3, 0) === 'NaN') {
                     for (var i = 0; i < 3; i++)
