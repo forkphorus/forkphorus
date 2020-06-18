@@ -165,6 +165,10 @@ namespace P.ext.cloud {
             const data = JSON.parse(line);
             this.handleMessage(data);
           }
+          // Update variable watchers
+          if (!this.stage.runtime.isRunning) {
+            this.stage.draw();
+          }
         } catch (err) {
           console.warn('error parsing cloud server message', e.data, err);
         }
