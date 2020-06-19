@@ -545,9 +545,10 @@
       .select([
         { value: 'none', label: 'None (Plain HTML)', selected: true },
         { value: 'phonegap', label: 'PhoneGap' },
-        { value: 'nwjs', label: 'NW.js' },
+        { value: 'nwjs-win', label: 'NW.js (Windows/Linux)' },
+        { value: 'nwjs-mac', label: 'NW.js (Mac)' },
       ])
-      .description('Enable special behavior for certain environments. This may change the output format of the packager.')
+      .description('Enable special behavior for certain environments. This may change the output format of the packager. The <a href="guide.html">guide</a> will tell you if you need to change this.')
       .add(environment);
 
     environment.icon = new Option()
@@ -560,7 +561,7 @@
     environment.environment.onchange = (value) => {
       environment.icon.setVisible(value !== 'none');
       phonegap.setVisible(value === 'phonegap');
-      nwjs.setVisible(value === 'nwjs');
+      nwjs.setVisible(value === 'nwjs-win' || value === 'nwjs-mac');
     };
   </script>
 
@@ -785,9 +786,13 @@
             zipper.addFile('project.html', result);
             zipper.addFile('icon.png', icon);
             zipper.addFile('config.xml', phonegap.xml.value);
-          } else if (environmentType === 'nwjs') {
+          } else if (environmentType === 'nwjs-win' || environmentType === 'nwjs-mac') {
             bindProgress('Packaging for NW.js', zipper.progress);
-            filename = 'package';
+            if (environmentType === 'nwjs-win') {
+              filename = 'package';
+            } else {
+              filename = 'app';
+            }
             filetype = 'nw';
             zipper.addFile('project.html', result);
             zipper.addFile('icon.png', icon);
