@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <style>
+    body {
+      font-family: Helvetica, Arial, sans-serif;
+      line-height: 1.3;
+    }
+    #nw-config {
+      font-family: monospace;
+      white-space: pre;
+    }
+    td {
+      text-align: right;
+    }
+    textarea {
+      height: 75px;
+      width: 250px;
+    }
+  </style>
+  <title>HTML Packager - Config Generator</title>
+</head>
+
+<body>
+  <h1>Config Generator for NW.js package.json</h1>
+
+  <p>This page lets you modify the most common settings without worrying about how JSON works. The output JSON is at the bottom, this is what you input for "NW.js package.json"</p>
+
+  <hr>
+
+  <h2>Settings</h2>
+
+  <h3>Name</h3>
+  <input type="text" id="nw-name" value="Name of the project">
+  <p>This is the internal name of your project. Make sure you always use the same name, otherwise things such as cloud variables may reset! This should be unique to your project.</p>
+
+  <h3>Title</h3>
+  <input type="text" id="nw-title" value="The title of the window">
+  <p>This is the title of the window when the project is open.</p>
+
+  <h3>Resolution</h3>
+
+  <table>
+    <tr>
+      <td><b>Width</b></td>
+      <td><input type="number" id="nw-width" value="480"></td>
+    </tr>
+    <tr>
+      <td><b>Height</b></td>
+      <td><input type="number" id="nw-height" value="360"></td>
+    </tr>
+  </table>
+
+  <p>The window's default width and height, in pixels. Values that do not match the 4:3 aspect ratio used by Scratch will result in black bars.</p>
+
+  <h3>Resizable</h3>
+
+  <select id="nw-resizable">
+    <option value="yes">Allow resizing</option>
+    <option value="no">Do not allow resizing</option>
+  </select>
+
+  <p>Controls whether the window can be resized by the user. Disabling resizing will also disable fullscreen in Mac OS.</p>
+
+  <hr>
+
+  <h2>Output</h2>
+  <textarea id="result" readonly onclick="this.focus();this.select();"></textarea>
+
+  <p>Updated automatically. Copy and paste this into "NW.js package.json"</p>
+
+  <script>
+    function update() {
+      const result = {
+        name: document.getElementById('nw-name').value,
+        main: "project.html",
+        window: {
+          title: document.getElementById('nw-title').value,
+          width: +document.getElementById('nw-width').value,
+          height: +document.getElementById('nw-height').value,
+          resizable: document.getElementById('nw-resizable').value === 'yes',
+          icon: "icon.png",
+        },
+      };
+      if (!result.window.resizable) {
+        result.window.fullscreen = false;
+      }
+      document.getElementById('result').value = JSON.stringify(result, null, 2);
+    }
+    for (const input of document.querySelectorAll('select, input')) {
+      input.oninput = update;
+      input.onclick = update;
+      input.onchange = update;
+    }
+    update();
+  </script>
+
+</body>
+
+</html>

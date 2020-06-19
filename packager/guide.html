@@ -98,12 +98,11 @@
             <span data-os="mac">NW.js (Mac)</span>
           </b>
         </li>
-        <li>Select a custom, if you have one. (MUST be .png)</li>
-        <li>Make changes to "NW.js package.json" to match your project:
+        <li data-os="windows,linux">Select a custom icon, if you have one. (must be .png)</li>
+        <li>Make changes to <b>NW.js package.json</b> to match your project:
           <ul>
-            <li>Change <b>name</b> to the name of your project. Make sure this is unique to your game and stays consistent as this is used for storing data such as cloud variables, if that option is enabled.</li>
-            <li>Change <b>title</b> to the desired title of the Window.</li>
-            <li>For a full list of usable fields, see <a href="http://docs.nwjs.io/en/latest/References/Manifest%20Format/#window-subfields">the NW.js documentation</a>.</li>
+            <li>Use the <a href="config_generator.html">config generator</a> if you are unfamiliar with JSON.</li>
+            <li>For a full list of usable fields, see <a href="http://docs.nwjs.io/en/latest/References/Manifest%20Format/#window-subfields">the NW.js documentation</a> (Advanced users only)</li>
           </ul>
         </li>
         <li>
@@ -144,7 +143,7 @@
             Make sure that this file is named <i>exactly</i> "package.nw" and not something else such as "package(1).nw". The file extension should be .nw, not .zip or .html.
           </span>
           <span data-os="mac">
-            Right click or Control+Click nwjs and select <b>Show Package Contents</b>. Move app.nw into the <b>Resources</b> folder. It may be easiest to open two windows to do this.
+            Right-click or Control+Click nwjs and select <b>Show Package Contents</b>. Move app.nw into the <b>Resources</b> folder. It may be easiest to open two windows to do this.
           </span>
         </li>
         <li>
@@ -153,7 +152,7 @@
           <img loading="lazy" data-os="windows" data-src="https://user-images.githubusercontent.com/17209175/85090301-65481180-b1aa-11ea-90df-768b9af4aa7f.png" height="523">
           <img loading="lazy" data-os="mac" data-src="https://user-images.githubusercontent.com/17209175/85091937-3fbd0700-b1ae-11ea-8bb3-5bc4ce307547.png" height="395">
           <!-- TODO --> <img loading="lazy" data-os="linux" data-src="https://user-images.githubusercontent.com/17209175/85090301-65481180-b1aa-11ea-90df-768b9af4aa7f.png" height="523">
-          <small>The highlighted file is what you should have created.</small>          
+          <small>The highlighted file is what you should have created.</small>
         </li>
         <li>
           Optionally rename
@@ -189,11 +188,13 @@
     <section data-os="mac">
       <h2>Mac Packaging - Further steps</h2>
 
-      <p><a href="https://docs.nwjs.io/en/latest/For%20Users/Package%20and%20Distribute/#mac-os-x">See the NW.js documentation for further steps.</a></p>
+      <p>Create a zip archive of the app itself and credits.html (included in the NW.js download). You must include credits.html, otherwise you may be violating the license of some projects used by NW.js. (not legal advice)</p>
+
+      <p><a href="https://docs.nwjs.io/en/latest/For%20Users/Package%20and%20Distribute/#mac-os-x">See the NW.js documentation for the full list of further steps.</a> Some of the more important and simpler ones are described below.</p>
 
       <h3>Changing the Icon</h3>
 
-      <p>Use <a href="http://www.img2icnsapp.com/">Image2icon</a> to generate a <code>.icns</code> file. Replace Contents/Resources/nw.icns in the app contents to change the icon.</p>
+      <p>Use <a href="http://www.img2icnsapp.com/">Image2icon</a> to generate a <code>.icns</code> file. Replace Contents/Resources/app.icns in the app to change the icon.</p>
 
       <h3>Renaming the Application</h3>
 
@@ -209,30 +210,58 @@
     <section data-os="linux">
       <h2>Linux Packaging - Further steps</h2>
 
-      <h3>Create a <code>.desktop</code> file</h3>
+      <p>Linux Users: I am not very familiar with packaging for linux. You are mostly on your own here. Please <a href="https://github.com/forkphorus/forkphorus/">help write this section on GitHub!</a></p>
 
-      <p>See the Arch wiki: <a href="https://wiki.archlinux.org/index.php/Desktop_entries">Desktop entries</a></p>
-      <p>This allows you to set a desktop icon and should the "open a terminal and do ./nw" problem.</p>
+      <p>You'll probably just want to archive everything into a tarball and have your users extract it. You may will want to make a <a href="https://wiki.archlinux.org/index.php/desktop_entries">.desktop</a> file to get a proper desktop presence.</p>
 
-      <p>For more information see the <a href="https://docs.nwjs.io/en/latest/For%20Users/Package%20and%20Distribute/#linux">NW.js documentation</a>.</p>
+      <p>I think that <span title="apparently AppImage doesn't even have a page on the arch wiki yet? :/">AppImage</span> would be a great way to package this type of app, but I'm not sure how to do that.</p>
 
       <hr>
     </section>
 
     <section data-os="windows">
-      <h2>Creating a self-extracting archive (Windows only)</h2>
+      <h2>Windows Packaging - Further Steps</h2>
 
-      <p>NW.js works great, but it has a few problems. Specifically:
-        <ul>
-          <li>There's a lot of files</li>
-          <li>It's very large</li>
-        </ul>
-      </p>
+      <p>There are many possible ways to distribute your packaged project for Windows. The ones that will be described in more detail here are:</p>
 
-      <p>At the very least, you should compress the NW.js folder into a ZIP archive. We're going to go a bit beyond that and create a <a href="https://en.wikipedia.org/wiki/Self-extracting_archive">self-extracting archive</a>. However, note that this step is optional.</p>
+      <ul>
+        <li><b>Zip</b> - a .zip archive that users must extract and manually run nw.exe (or whatever you renamed it). This is the simplest method and the most common.</li>
+        <li><b>Make SFX (Self Extracting Archive)</b> - a .exe file that automatically extracts itself and runs your project.</li>
+      </ul>
+
+      <p>There are also ways to create installers for your projects. This is out of the scope of this guide.</p>
+
+      <hr>
+
+      <div class="platform-selector" data-selector="winmethod">
+        <a class="platform" tabindex="0" data-id="zip"><span class="platform-text">Zip</span></a>
+        <a class="platform" tabindex="0" data-id="sfx"><span class="platform-text">Make SFX</span></a>
+      </div>
+
+    </section>
+
+    <section data-os="windows" data-winmethod="zip">
+      <h2>Creating a zip archive</h2>
+
+      <ol>
+        <li>Find the folder that contains nw.exe. This is not nw.exe itself, but rather the folder that contains it. It should be named something similar to <b>nwjs-v0.46.1-win-x64</b> unless you have already renamed it.</li>
+        <li>Rename this folder to the name of your project, or something similar.</li>
+        <li>Right-click on the folder and select <b>Sent To -> Compressed (zipped) Folder</b>.</li>
+      </ol>
+
+      <p>This will generate a zip archive for your game.</p>
+
+      <p>Users will have to extract this archive and open nw.exe manually.</p>
+
+      <hr>
+    </section>
+
+    <section data-os="windows" data-winmethod="sfx">
+      <h2>Creating a self-extracting archive</h2>
 
       <h3>A note on anti-viruses</h3>
-      <p style="background: yellow; border: 3px solid red; padding: 4px;">Some anti-virus software detects all self-extracting archives as viruses. For this reason, <b>I would recommend just creating a ZIP archive and telling people to extract and run "nw.exe" (or whatever you renamed it)</b> instead of creating a self-extracting archive.</p>
+      <p style="background: yellow; border: 3px solid red; padding: 4px;">Some anti-virus software detects all self-extracting archives as viruses. For this reason, <b>I would recommend using a simpler Zip archive</b> instead of creating a self-extracting archive.</p>
+      <p>Self extracting archives also make your game take significantly longer to launch, and are not very common.</p>
 
       <h3>Using Make SFX</h3>
       <p>Make SFX is a tool for creating self-extracting archives. Other similar tools include <a href="https://www.7-zip.org/">7-Zip</a>, <a href="https://www.peazip.org/">PeaZip</a>, and <a href="https://rarlab.com/download.htm">WinRAR</a>.</p>
@@ -304,8 +333,7 @@
       <ol>
         <li>Go to the <a href="/">forkphorus homepage</a></li>
         <li>Load your project</li>
-        <li>Scroll down to <i>Package this project</i>, configure settings, and click <i>Package</i> to generate a forkphorus packager link.</li>
-        <li>This link should start with: <i>https://forkphorus.github.io/app.html?...</i></li>
+        <li>Scroll down to <i>Package this project</i>, configure settings, and click <i>Package</i> to generate a forkphorus packager link. This link should start with: <i>https://forkphorus.github.io/app.html?...</i></li>
         <li>Keep this link around, it will be needed later.</li>
       </ol>
 
@@ -525,6 +553,7 @@
       // implement the platform selectors
       enableSelector(document.querySelector('[data-selector=os]'), getDefaultOS(), true);
       enableSelector(document.querySelector('[data-selector=mobilemethod]'), 'embed', false);
+      enableSelector(document.querySelector('[data-selector=winmethod]'), 'zip', false);
 
       updateOnChange = true;
       updateFilteredElements();

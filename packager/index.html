@@ -60,7 +60,10 @@
       color: black;
       padding: 2px;
     }
-
+    label ~ label input[type=radio] {
+      /* apply extra margin to all but the first radio */
+      margin-left: 10px;
+    }
     textarea {
       box-sizing: border-box;
       width: 100%;
@@ -464,7 +467,7 @@
       .label('Project ID')
       .input({ pattern: '.*[0-9]+.*', value: location.hash ? location.hash.substr(1) : '10128407' })
       .parser((input) => input.match(/\d+/)[0])
-      .description('Load a project from scratch.mit.edu. Project ID or URL are accepted. Note: Projects on scratch.mit.edu are licensed under <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC BY-SA 2.0</a>. Please ensure you comply with this license if this is not your project.')
+      .description('Load a project from scratch.mit.edu. Project ID or URL are accepted. Note: Projects on scratch.mit.edu are licensed under <a href="https://creativecommons.org/licenses/by-sa/2.0/" target="_blank">CC BY-SA 2.0</a>. Please ensure you comply with this license if this is not your project.')
       .add();
 
     const projectFile = new Option()
@@ -528,7 +531,7 @@
     loadingScreen.text = new Option()
       .label('Loading screen text')
       .input({ value: 'forkphorus' })
-      .description('Text to be displayed while the project is loading. Set to blank to display nothing.')
+      .description('Text to be displayed while the project is loading. Set to blank to display only a progress bar.')
       .add(loadingScreen);
   </script>
 
@@ -548,7 +551,7 @@
         { value: 'nwjs-win', label: 'NW.js (Windows/Linux)' },
         { value: 'nwjs-mac', label: 'NW.js (Mac)' },
       ])
-      .description('Enable special behavior for certain environments. This may change the output format of the packager. The <a href="guide.html">guide</a> will tell you if you need to change this.')
+      .description('Enable special behavior for certain environments. This may change the output format of the packager. The <a href="guide.html" target="_blank">guide</a> will tell you if you need to change this.')
       .add(environment);
 
     environment.icon = new Option()
@@ -559,7 +562,7 @@
       .add(environment);
 
     environment.environment.onchange = (value) => {
-      environment.icon.setVisible(value !== 'none');
+      environment.icon.setVisible(value !== 'none' && value !== 'nwjs-mac');
       phonegap.setVisible(value === 'phonegap');
       nwjs.setVisible(value === 'nwjs-win' || value === 'nwjs-mac');
     };
@@ -603,13 +606,13 @@
   "main": "project.html",
   "window": {
     "title": "The title of the window",
-    "icon": "icon.png",
     "width": 480,
     "height": 360,
-    "resizable": true
+    "resizable": true,
+    "icon": "icon.png"
   }
 }`})
-      .description('This is the config file for NW.js apps. This is JSON, so formatting like quotes and case are important.')
+      .description('This is the config file for NW.js apps. You can use the <a href="config_generator.html" target="_blank">the config generator</a> to generate this text automatically.')
       .hide()
       .add(environment);
 
