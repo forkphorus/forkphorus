@@ -36,7 +36,12 @@ window.Packer = (function() {
     return new Promise((resolve, reject) => {
       const fileReader = new FileReader();
       fileReader.onload = () => {
-        resolve(/** @type {string} */ (fileReader.result));
+        const result = /** @type {string} */ (fileReader.result);
+        if (result.length === 0) {
+          reject(new Error('File could not be read, it may be too large. (length 0)'));
+          return;
+        }
+        resolve(result);
       };
       fileReader.onerror = (e) => {
         reject(new Error('Error reading file'));
@@ -169,24 +174,28 @@ window.Packer = (function() {
   }
 
   /**
-   * Implements PhoneGap support.
+   * Implements zipping, needed to support certain environments.
    */
-  class PhoneGap {
+  class EnvironmentZipper {
     constructor() {
-      this.configXML = '';
-      this.icon = null;
       this.progress = new Progress();
+      this.files = [];
+    }
+
+    /**
+     * Add a file to this zipper.
+     * @param {string} name The name of the file
+     * @param {string|Blob} data The file's data
+     */
+    addFile(name, data) {
+      this.files.push({ path: name, data });
     }
 
     /**
      * @param {string} html HTML output from a Packager
      */
-    async package(html) {
-      return createArchive([
-        { path: 'index.html', data: html, },
-        { path: 'config.xml', data: this.configXML, },
-        { path: 'icon.png', data: this.icon, },
-      ], this.progress);
+    zip(html) {
+      return createArchive(this.files, this.progress);
     }
   }
 
@@ -298,18 +307,9 @@ window.Packer = (function() {
      */
     async loadProjectFromFile(file) {
       const extension = file.name.split('.').pop();
-      return new Promise((resolve, reject) => {
-        const fileReader = new FileReader();
-        fileReader.onload = () => {
-          this.projectData = fileReader.result;
-          this.projectType = extension;
-          resolve();
-        };
-        fileReader.onerror = () => {
-          reject(new Error('cannot read file'));
-        };
-        fileReader.readAsDataURL(file);
-      });
+      const url = await readAsURL(file);
+      this.projectType = extension;
+      this.projectData = url;
     }
 
     /**
@@ -516,7 +516,7 @@ ${scripts}
 
   return {
     FileLoader,
-    PhoneGap,
+    EnvironmentZipper,
     Packager,
   };
 }());

@@ -411,6 +411,15 @@
         return this;
       }
 
+      setVisible(visible) {
+        if (visible) {
+          this.show();
+        } else {
+          this.hide();
+        }
+        return this;
+      }
+
       add(section = defaultSection) {
         section._sectionRoot.appendChild(this.root);
         return this;
@@ -523,23 +532,45 @@
       .add(loadingScreen);
   </script>
 
-  <!-- PhoneGap -->
+  <!-- Environment -->
   <script>
-    const phonegap = new Section('PhoneGap Options');
+    const environment = new Section('Environment Options');
 
-    phonegap.loader = new Packer.FileLoader();
-    phonegap.defaultIconAsset = { src: 'packager/defaultIcon.png' }
-    phonegap.loader.assets.push(phonegap.defaultIconAsset);
+    environment.loader = new Packer.FileLoader();
+    environment.defaultIconAsset = { src: 'packager/defaultIcon.png' };
+    environment.loader.assets.push(environment.defaultIconAsset);
 
-    phonegap.enabled = new Option()
-        .label('Enable Phonegap')
-        .input({ type: 'checkbox' })
-        .description('Enables special behavior and options related to PhoneGap. This will make the output of this packager a ZIP archive instead of HTML.')
-        .add(phonegap);
+    environment.environment = new Option()
+      .label('Packager Environment')
+      .select([
+        { value: 'none', label: 'None (Plain HTML)', selected: true },
+        { value: 'phonegap', label: 'PhoneGap' },
+        { value: 'nwjs', label: 'NW.js' },
+      ])
+      .description('Enable special behavior for certain environments. This may change the output format of the packager.')
+      .add(environment);
+
+    environment.icon = new Option()
+      .label('Icon (.png)')
+      .file({ accept: '.png' })
+      .description('The icon that to be used. If you do not select an icon, a default will be used instead.')
+      .hide()
+      .add(environment);
+
+    environment.environment.onchange = (value) => {
+      environment.icon.setVisible(value !== 'none');
+      phonegap.setVisible(value === 'phonegap');
+      nwjs.setVisible(value === 'nwjs');
+    };
+  </script>
+
+  <!-- PhoneGap Environment -->
+  <script>
+    const phonegap = {};
 
     phonegap.xml = new Option()
-        .label('PhoneGap config.xml')
-        .textarea({ value: `<?xml version="1.0" encoding="UTF-8" ?>
+      .label('PhoneGap config.xml')
+      .textarea({ value: `<?xml version="1.0" encoding="UTF-8" ?>
 <widget xmlns="http://www.w3.org/ns/widgets" xmlns:gap="http://phonegap.com/ns/1.0" id="io.github.forkphorus.example" version="1.0.0" >
 
   <name>Forkphorus Packaged App</name>
@@ -551,26 +582,39 @@
   <icon src="icon.png" />
 
 </widget>`})
-        .description('This is the config file for PhoneGap apps. It allows you to control name, ID, description, author, version, etc. This is XML, so formatting like quotes, angled brackets, and case are important.')
-        .hide()
-        .add(phonegap);
+      .description('This is the config file for PhoneGap apps. It allows you to control name, ID, description, author, version, etc. This is XML, so formatting like quotes, angled brackets, and case are important.')
+      .hide()
+      .add(environment);
 
-    phonegap.icon = new Option()
-        .label('Phonegap Icon (.png)')
-        .file({ accept: '.png' })
-        .description('The icon that PhoneGap will use. If you do not select an icon, a default will be used instead.')
-        .hide()
-        .add(phonegap);
+    phonegap.setVisible = (visible) => {
+      phonegap.xml.setVisible(visible);
+    };
+  </script>
 
-    phonegap.enabled.onchange = (value) => {
-      if (value) {
-        phonegap.xml.show();
-        phonegap.icon.show();
-      } else {
-        phonegap.xml.hide();
-        phonegap.icon.hide();
-      }
-    }
+  <!-- NW.js Environment -->
+  <script>
+    const nwjs = {};
+
+    nwjs.json = new Option()
+      .label('NW.js package.json')
+      .textarea({ value: `{
+  "name": "Name of the project",
+  "main": "project.html",
+  "window": {
+    "title": "The title of the window",
+    "icon": "icon.png",
+    "width": 480,
+    "height": 360,
+    "resizable": true
+  }
+}`})
+      .description('This is the config file for NW.js apps. This is JSON, so formatting like quotes and case are important.')
+      .hide()
+      .add(environment);
+
+    nwjs.setVisible = (visible) => {
+      nwjs.json.setVisible(visible);
+    };
   </script>
 
   <!-- Interface Logic -->
@@ -720,18 +764,39 @@
         let filetype = 'html';
         let result = await packager.run();
 
-        // PhoneGap support
-        if (phonegap.enabled.value) {
-          const pg = new Packer.PhoneGap();
-          bindProgress('Converting to PhoneGap', pg.progress);
-          pg.configXML = phonegap.xml.value;
-          pg.icon = phonegap.icon.value;
-          if (!pg.icon) {
-            await phonegap.loader.loadMissingAssets();
-            pg.icon = phonegap.defaultIconAsset.blob;
+        // Environments
+        const environmentType = environment.environment.value;
+        if (environment.environment.value !== 'none') {
+          let icon = environment.icon.value;
+          if (!icon) {
+            // Apply & load default icon
+            if (!environment.defaultIconAsset.blob) {
+              bindProgress('Loading default icon', environment.loader.progress);
+              await environment.loader.loadMissingAssets();
+            }
+            icon = environment.defaultIconAsset.blob;
           }
-          result = await pg.package(result);
-          filetype = 'zip';
+
+          const zipper = new Packer.EnvironmentZipper();
+
+          if (environmentType === 'phonegap') {
+            bindProgress('Packaging for PhoneGap', zipper.progress);
+            filetype = 'zip';
+            zipper.addFile('project.html', result);
+            zipper.addFile('icon.png', icon);
+            zipper.addFile('config.xml', phonegap.xml.value);
+          } else if (environmentType === 'nwjs') {
+            bindProgress('Packaging for NW.js', zipper.progress);
+            filename = 'package';
+            filetype = 'nw';
+            zipper.addFile('project.html', result);
+            zipper.addFile('icon.png', icon);
+            zipper.addFile('package.json', nwjs.json.value);
+          } else {
+            throw new Error('Unknown environment: ' + environmentType);
+          }
+
+          result = await zipper.zip();
         }
 
         // Finalize loading and download the file
