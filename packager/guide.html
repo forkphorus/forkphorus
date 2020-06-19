@@ -78,17 +78,17 @@
 
     <noscript><b>This page requires JavaScript to work properly.</b></noscript>
 
-    <div class="platform-selector" data-selector="os">
+    <nav class="platform-selector" data-selector="os">
       <a class="platform" tabindex="0" data-id="windows"><span class="platform-text">Windows</span></a>
       <a class="platform" tabindex="0" data-id="mac"><span class="platform-text">Mac</span></a>
       <a class="platform" tabindex="0" data-id="linux"><span class="platform-text">Linux</span></a>
       <a class="platform" tabindex="0" data-id="android"><span class="platform-text">Android</span></a>
       <a class="platform" tabindex="0" data-id="ios"><span class="platform-text">iOS</span></a>
-    </div>
+    </nav>
 
-    <p data-os="mac"><b>Mac users: I am not super familiar with Macs so there may be some inaccuracies or better ways to do things, please <a href="https://github.com/forkphorus/forkphorus/issues/new">let me know</a> if this is the case!</b></p>
-    <p data-os="linux"><b>Linux users: I am not very familiar with packaging applications for Linux. You will have to do a bit of your own research to finish things. Please <a href="https://github.com/forkphorus/forkphorus/issues/new">report your findings</a> so I can improve this guide for everyone.</b></p>
-    <p data-os="ios"><b>iOS users: I do not have access to an iOS device for testing, so I unsure of the accuracy of the guide below. If you get it to work, please <a href="https://github.com/forkphorus/forkphorus/issues/new">report your findings</a> so I can improve this guide for everyone.</b></p>
+    <p data-os="mac"><b>Mac users: I am not super familiar with Macs so there may be some inaccuracies or better ways to do things, please <a href="https://github.com/forkphorus/forkphorus/issues/new" target="_blank">let me know</a> if this is the case!</b></p>
+    <p data-os="linux"><b>Linux users: I am not very familiar with packaging applications for Linux. You will have to do a bit of your own research to finish things. Please <a href="https://github.com/forkphorus/forkphorus/issues/new" target="_blank">report your findings</a> so I can improve this guide for everyone.</b></p>
+    <p data-os="ios"><b>iOS users: I do not have access to an iOS device for testing, so I unsure of the accuracy of the guide below. If you get it to work, please <a href="https://github.com/forkphorus/forkphorus/issues/new" target="_blank">report your findings</a> so I can improve this guide for everyone.</b></p>
 
     <section data-os="windows,mac,linux">
       <h2>Step 1 - Use the packager</h2>
@@ -188,6 +188,16 @@
         </li>
       </ol>
 
+      <h3>Slow startup with large projects</h3>
+
+      <p>
+        If your project is very large, it may take a while for NW.js to start with this packaging method.
+        If this is the case, you can change the file extension of <b><span data-os="windows,linux">package.nw</span><span data-os="mac">app.nw</span></b> to <code>.zip</code>,
+        and extract the files within this zip to the same location where <b><span data-os="windows,linux">package.nw</span><span data-os="mac">app.nw</span></b> was located.
+        The app should function the same, but start faster.
+        You can delete <span data-os="windows,linux">package.nw</span><span data-os="mac">app.nw</span> after doing this.
+      </p>
+
       <hr>
     </section>
 
@@ -228,6 +238,17 @@
     <section data-os="windows">
       <h2>Windows Packaging - Further Steps</h2>
 
+      <h3>Changing the icon of nw.exe</h3>
+
+      <p>
+        You can use a tool like <a href="http://www.angusj.com/resourcehacker/" target="_blank">Resource Hacker</a> to change the icon of nw.exe.
+        You will probably need to use a converter to convert your images to <code>.ico</code> files.
+        The icon you will want to change is Icon 1. Right click on it and select "Replace Icon" to change it.
+        <img data-src="https://user-images.githubusercontent.com/17209175/85179500-bdccec80-b246-11ea-9fd4-e3f020f19682.png" height="433">
+      </p>
+
+      <h3>Distribution</h3>
+
       <p>There are many possible ways to distribute your packaged project for Windows. The ones that will be described in more detail here are:</p>
 
       <ul>
@@ -235,41 +256,39 @@
         <li><b>Make SFX (Self Extracting Archive)</b> - a .exe file that automatically extracts itself and runs your project.</li>
       </ul>
 
-      <p>There are also ways to create installers for your projects. This is out of the scope of this guide.</p>
+      <p>There are also ways to create installers for your projects using tools like <a></a>. This is out of the scope of this guide.</p>
 
-      <hr>
-
-      <div class="platform-selector" data-selector="winmethod">
+      <nav class="platform-selector" data-selector="winmethod">
         <a class="platform" tabindex="0" data-id="zip"><span class="platform-text">Zip</span></a>
         <a class="platform" tabindex="0" data-id="sfx"><span class="platform-text">Make SFX</span></a>
-      </div>
+      </nav>
 
     </section>
 
     <section data-os="windows" data-winmethod="zip">
-      <h2>Creating a zip archive</h2>
+      <h3>Creating a zip archive</h3>
 
       <ol>
         <li>Find the folder that contains nw.exe. This is not nw.exe itself, but rather the folder that contains it. It should be named something similar to <b>nwjs-v0.46.1-win-x64</b> unless you have already renamed it.</li>
-        <li>Rename this folder to the name of your project, or something similar.</li>
+        <li>Rename this folder to something such as the name of your project.</li>
         <li>Right-click on the folder and select <b>Sent To -> Compressed (zipped) Folder</b>.</li>
       </ol>
 
-      <p>This will generate a zip archive for your game.</p>
+      <p>This will generate a zip archive that contains your project.</p>
 
-      <p>Users will have to extract this archive and open nw.exe manually.</p>
+      <p>Users will have to extract this archive and open nw.exe (or whatever you renamed it) manually.</p>
 
       <hr>
     </section>
 
     <section data-os="windows" data-winmethod="sfx">
-      <h2>Creating a self-extracting archive</h2>
+      <h3>Creating a self-extracting archive</h3>
 
-      <h3>A note on anti-viruses</h3>
+      <h4>A note on anti-viruses</h4>
       <p style="background: yellow; border: 3px solid red; padding: 4px;">Some anti-virus software detects all self-extracting archives as viruses. For this reason, <b>I would recommend using a simpler Zip archive</b> instead of creating a self-extracting archive.</p>
-      <p>Self extracting archives also make your game take significantly longer to launch, and are not very common.</p>
+      <p>Self extracting archives also make your project take significantly longer to launch, and are not very common.</p>
 
-      <h3>Using Make SFX</h3>
+      <h4>Using Make SFX</h4>
       <p>Make SFX is a tool for creating self-extracting archives. Other similar tools include <a href="https://www.7-zip.org/" target="_blank">7-Zip</a>, <a href="https://www.peazip.org/" target="_blank">PeaZip</a>, and <a href="https://rarlab.com/download.htm" target="_blank">WinRAR</a>.</p>
       <ol>
         <li>Complete the first section using NW.js first.</li>
@@ -326,10 +345,10 @@
 
       <hr>
 
-      <div class="platform-selector" data-selector="mobilemethod">
+      <nav class="platform-selector" data-selector="mobilemethod">
         <a class="platform" tabindex="0" data-id="embed">Embed a link</a>
         <a class="platform" tabindex="0" data-id="package">Embed a file</a>
-      </div>
+      </nav>
     </section>
 
     <section data-os="android,ios" data-mobilemethod="embed">
@@ -428,8 +447,8 @@
 
     <section data-os="android,ios" data-mobilemethod="package">
       <h2>Using the HTML packager and PhoneGap</h2>
-      <p>An alternative method involves creating an independent HTML file for your project and embedding that. The main advantage is that this will work offline, independent of an internet connection and will always produce the same result.</p>
-      <p>PhoneGap seems to support iOS, but I have not tested this. You will need a <a href="http://docs.phonegap.com/phonegap-build/signing/ios/" target="_blank">signing key</a>.</p>
+      <p>This method involves creating an independent HTML file for your project and embedding that file. This will make your app work offline and always produce the same result.</p>
+      <p data-os="ios">PhoneGap seems to support iOS, but I have not tested this. You will need a <a href="http://docs.phonegap.com/phonegap-build/signing/ios/" target="_blank">signing key</a>.</p>
       <p>Note that you do not need to install PhoneGap as we will be using their online build service.</p>
 
       <ol>
@@ -524,14 +543,12 @@
 
       function updateFilteredElements() {
         allFilteredElements.forEach(function(el) {
-          var filters = el.filters;
-          var falseFilters = filters.filter((i) => !i());
+          var falseFilters = el.filters.filter(function(i){ return !i(); });
           var visible = falseFilters.length === 0;
+          // we *really* want to make sure that these are hidden and won't be included by things like reader mode
           el.hidden = !visible;
-          if (el.tagName === 'IMG') {
-            el.style.display = visible ? '' : 'none';
-            el.parentNode.tabIndex = visible ? '0' : '-1';
-          }
+          el.setAttribute('aria-hidden', !visible);
+          el.style.display = visible ? '' : 'none';
         });
       }
 
