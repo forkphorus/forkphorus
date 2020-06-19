@@ -15,6 +15,9 @@
       font-family: Helvetica, Arial, sans-serif;
       line-height: 1.3;
     }
+    body[data-loading] main {
+      display: none;
+    }
     hr {
       border: 0;
       height: 1px;
@@ -68,16 +71,18 @@
   </style>
 </head>
 
-<body>
+<body data-loading="true">
+  <header>
+    <h1>Forkphorus Packaging Guide</h1>
+  </header>
+
+  <noscript><b>This page requires JavaScript to work properly.</b></noscript>
+
+  <p>This guide will explain how to use the <a href="/packager/" target="_blank">Forkphorus Packager</a> to package Scratch projects for Windows, Mac, Linux, Android, and iOS.</p>
+
+  <p>This guide is a Work In Progress. The Windows and Android sections are more complete than others. If you encounter problems or wish to improve this guide, visit <a href="https://github.com/forkphorus/forkphorus/">the GitHub repo</a>.</p>
+
   <main>
-    <header><h1>Forkphorus Packaging Guide</h1></header>
-
-    <p>This guide will explain how to use the <a href="/packager/" target="_blank">Forkphorus Packager</a> to package Scratch projects for Windows, Mac, Linux, Android, and iOS.</p>
-
-    <p>This guide is a Work In Progress. The Windows and Android sections are more complete than others. If you encounter problems or wish to improve this guide, visit <a href="https://github.com/forkphorus/forkphorus/">the GitHub repo</a>.</p>
-
-    <noscript><b>This page requires JavaScript to work properly.</b></noscript>
-
     <nav class="platform-selector" data-selector="os">
       <a class="platform" tabindex="0" data-id="windows"><span class="platform-text">Windows</span></a>
       <a class="platform" tabindex="0" data-id="mac"><span class="platform-text">Mac</span></a>
@@ -132,7 +137,7 @@
         <li>
           <a href="https://nwjs.io/" target="_blank">Download NW.js's "Normal" version</a> (not "SDK") for your platform.
           <!-- PICTURE OF NWJS WEBSITE -->
-          <img loading="lazy" data-src="https://user-images.githubusercontent.com/17209175/58752962-441c6200-847d-11e9-9387-4fb25f164025.png" height="329">
+          <img loading="lazy" data-src="https://user-images.githubusercontent.com/17209175/85181434-8a409100-b24b-11ea-8978-93a9983f8051.png" height="300">
           <small>
             NW.js should automatically detect your operating system and show the correct download. Otherwise, go to the Downloads page and find the correct download.<br>
             The "SDK" version works, but it includes extra tools you won't need.
@@ -343,8 +348,6 @@
       <p data-os="android">Note that the Google Play Store has a one time fee of $25.</p>
       <p data-os="ios">Note that the Apple App Store has a recurring fee of $99/year.</p>
 
-      <hr>
-
       <nav class="platform-selector" data-selector="mobilemethod">
         <a class="platform" tabindex="0" data-id="embed">Embed a link</a>
         <a class="platform" tabindex="0" data-id="package">Embed a file</a>
@@ -494,7 +497,7 @@
       var images = document.getElementsByTagName('img');
       for (var i = 0; i < images.length; i++) {
         var img = images[i];
-        img.src = img.dataset.src;
+        img.src = img.getAttribute('data-src');
       }
 
       var allFilteredElements = [];
@@ -505,11 +508,12 @@
         var choices = el.children;
         var selection = def;
 
-        var filteredElements = Array.from(document.querySelectorAll('[data-' + selectorId + ']'));
-        filteredElements.forEach(function(el) {
+        var filteredElements = document.querySelectorAll('[data-' + selectorId + ']');
+        Array.prototype.forEach.call(filteredElements, function(el) {
           if (allFilteredElements.indexOf(el) === -1) allFilteredElements.push(el);
           if (!el.filters) el.filters = [];
-          el.filters.push(function() { return el.dataset[selectorId].split(',').indexOf(selection) > -1; });
+          var fields = el.dataset[selectorId].split(',');
+          el.filters.push(function() { return fields.indexOf(selection) !== -1; });
         });
 
         function setSelection(id) {
@@ -517,7 +521,11 @@
 
           for (var i = 0; i < choices.length; i++) {
             var otherChoice = choices[i];
-            otherChoice.classList.toggle('selected', otherChoice.dataset.id === id);
+            if (otherChoice.dataset.id === id) {
+              otherChoice.classList.add('selected');
+            } else {
+              otherChoice.classList.remove('selected');
+            }
           }
 
           if (updateOnChange) updateFilteredElements();
@@ -543,7 +551,7 @@
 
       function updateFilteredElements() {
         allFilteredElements.forEach(function(el) {
-          var falseFilters = el.filters.filter(function(i){ return !i(); });
+          var falseFilters = el.filters.filter(function(i) { return !i(); });
           var visible = falseFilters.length === 0;
           // we *really* want to make sure that these are hidden and won't be included by things like reader mode
           el.hidden = !visible;
@@ -577,6 +585,8 @@
 
       updateOnChange = true;
       updateFilteredElements();
+
+      document.body.removeAttribute('data-loading');
     })();
   </script>
 
