@@ -94,7 +94,6 @@
     <p data-os="mac"><b>Mac users: I am not super familiar with Macs so there may be some inaccuracies or better ways to do things, please <a href="https://github.com/forkphorus/forkphorus/issues/new" target="_blank">let me know</a> if this is the case!</b></p>
     <p data-os="linux"><b>Linux users: I am not very familiar with packaging applications for Linux. You will have to do a bit of your own research to finish things. Please <a href="https://github.com/forkphorus/forkphorus/issues/new" target="_blank">report your findings</a> so I can improve this guide for everyone.</b></p>
     <p data-os="ios"><b>iOS users: I do not have access to an iOS device for testing, so I am unsure of the accuracy of the guide below. If you try it, please <a href="https://github.com/forkphorus/forkphorus/issues/new" target="_blank">report your findings</a> so I can improve this guide for everyone.</b></p>
-    <p data-os="ios"><b>A Mac is likely required to complete these steps.</b></p>
 
     <section data-os="windows,mac,linux">
       <h2>Step 1 - Use the packager</h2>
@@ -317,12 +316,8 @@
       <hr>
     </section>
 
-    <section data-os="android,ios">
-      <h2>
-        <span data-os="android">Android</span>
-        <span data-os="ios">iOS</span>
-        Packaging
-      </h2>
+    <section data-os="android">
+      <h2>Android Packaging</h2>
 
       <p>There are two ways to do this:</p>
 
@@ -346,16 +341,15 @@
 
       <p>These will be discussed separately below.</p>
 
-      <p data-os="android">Note that the Google Play Store has a one time fee of $25.</p>
-      <p data-os="ios">Note that the Apple App Store has a recurring fee of $99/year.</p>
+      <p>Note that the Google Play Store has a one time fee of $25.</p>
 
-      <nav class="platform-selector" data-selector="mobilemethod">
+      <nav class="platform-selector" data-selector="androidmethod">
         <a class="platform" tabindex="0" data-id="embed">Embed a link</a>
         <a class="platform" tabindex="0" data-id="package">Embed a file</a>
       </nav>
     </section>
 
-    <section data-os="android,ios" data-mobilemethod="embed">
+    <section data-os="android" data-androidmethod="embed">
       <h2>Generate forkphorus packager link</h2>
 
       <p>Note: This does NOT use the HTML Packager.</p>
@@ -370,7 +364,7 @@
       <hr>
     </section>
 
-    <section data-os="android" data-mobilemethod="embed">
+    <section data-os="android" data-androidmethod="embed">
       <h2>First Method - Using AppInventor to embed</h2>
 
       <p>Perhaps using AppInventor just to embed a webpage is a bit overkill, but it works good enough. These steps do not require any programming knowledge &mdash; just follow what them exactly.</p>
@@ -435,7 +429,7 @@
       <hr>
     </section>
 
-    <section data-os="android,ios" data-mobilemethod="embed">
+    <section data-os="android" data-androidmethod="embed">
       <h2><span data-os="android">Second Method - </span>Using AppsGeyser to embed</h2>
 
       <ol>
@@ -449,11 +443,50 @@
       <hr>
     </section>
 
-    <section data-os="android,ios" data-mobilemethod="package">
+    <section data-os="android" data-androidmethod="package">
       <h2>Using the HTML packager and PhoneGap</h2>
       <p>This method involves creating an independent HTML file for your project and embedding that file. This will make your app work offline and always produce the same result.</p>
-      <p data-os="ios">PhoneGap seems to support iOS, but I have not tested this. You will need a <a href="http://docs.phonegap.com/phonegap-build/signing/ios/" target="_blank">signing key</a>.</p>
-      <p>Note that you do not need to install PhoneGap as we will be using their online build service.</p>
+      <p>You will not need to install PhoneGap as we will be using their online build service.</p>
+
+      <ol>
+        <li>Generate a ZIP archive using <a href="/packager/" target="_blank">the HTML packager</a>
+          <ol>
+            <li>Click "Environment Options"</li>
+            <li>Set "Packager Environment" to "PhoneGap"</li>
+            <li>Change "PhoneGap config.xml" as needed. The default configuration will work just fine for testing. However, if you want to publish the app, you should make some changes:
+              <ul>
+                <li>Put your App's name between <code>&lt;name&gt;&#8230;&lt;name&gt;</code></li>
+                <li>Put your App's description between <code>&lt;description&gt;&#8230;&lt;description&gt;</code></li>
+                <li>Put your name between <code>&lt;author href="your website" email="your email" &gt;&#8230;&lt;author&gt;</code> and set href and email to your website and email respectively.</li>
+                <li>Change the ID in <code>id="io.github.forkphorus.example"</code> to something unique to your app (you can remove the io.github.forkphorus part, it just has to be unique)</li>
+              </ul>
+            </li>
+            <li>Optionally choose a custom icon.</li>
+          </ol>
+        </li>
+        <li>Go to the <a href="https://build.phonegap.com" target="_blank">PhoneGap build service</a> and sign in with or create an Adobe account</li>
+        <li>Create a new <i>Private</i> app and upload the generated ZIP to the service.</li>
+        <li>Wait for the builds to complete.</li>
+        <li>Click on the Android icon to download the APK. You can also scan the QR code.</li>
+        <li>To update the APK, run the packager again, go to the PhoneGap build service, and use the <i>Update code</i> button:<img loading="lazy" data-src="https://user-images.githubusercontent.com/17209175/66354891-e7015300-e92b-11e9-8753-dd3237d0c8f1.png" height="285"></li>
+        <li>If uploading to the Google Play Store, you should read <a href="http://docs.phonegap.com/phonegap-build/signing/android/" target="_blank">Android Signing (PhoneGap Documentation)</a> or <a href="https://unbot.wordpress.com/2014/11/16/builing-a-release-version-for-build-phonegap-com/">Building a release version for build.phonegap.com</a></li>
+      </ol>
+
+      <p><small>Due to a bug in the PhoneGap CLI/Desktop app, forkphorus does not work in the preview. It works fine in the final build. This bug does not affect the online build service.</small></p>
+
+      <hr>
+    </section>
+
+    <section data-os="ios">
+      <h2>iOS Packaging</h2>
+      <p>You will likely need a Mac to complete these steps.</p>
+      <p>Note that the Apple App Store has a recurring fee of $99/year.</p>
+    </section>
+
+    <section data-os="ios">
+      <h2>Using the HTML packager and PhoneGap</h2>
+      <p>This method involves creating an independent HTML file for your project and embedding that file. This will make your app work offline and always produce the same result.</p>
+      <p>I haven not tested PhoneGap's iOS support yet as I do not have an iOS device. You will need a <a href="http://docs.phonegap.com/phonegap-build/signing/ios/" target="_blank">signing key</a>. This part of the guide still references some Android things, but the interface is much the same for iOS.</p>
 
       <ol>
         <li>Generate a ZIP archive using <a href="/packager/" target="_blank">the HTML packager</a>
@@ -581,7 +614,7 @@
 
       // implement the platform selectors
       enableSelector(document.querySelector('[data-selector=os]'), getDefaultOS(), true);
-      enableSelector(document.querySelector('[data-selector=mobilemethod]'), 'embed', false);
+      enableSelector(document.querySelector('[data-selector=androidmethod]'), 'embed', false);
       enableSelector(document.querySelector('[data-selector=winmethod]'), 'zip', false);
 
       updateOnChange = true;
