@@ -174,9 +174,9 @@ window.Packer = (function() {
   }
 
   /**
-   * Implements zipping, needed to support certain environments.
+   * JSZip wrapper.
    */
-  class EnvironmentZipper {
+  class Zipper {
     constructor() {
       this.progress = new Progress();
       this.files = [];
@@ -516,7 +516,7 @@ ${scripts}
 
   return {
     FileLoader,
-    EnvironmentZipper,
+    Zipper,
     Packager,
   };
 }());

@@ -109,8 +109,8 @@
   <noscript><b>This page requires JavaScript to work properly.</b></noscript>
 
   <ul>
-    <li>Guide: <a href="guide.html">Forkphorus Packager Guide (Windows, Mac, Linux, Android)</a></li>
-    <li>Additional Help: Create an issue on <a href="https://github.com/forkphorus/forkphorus/issues">GitHub</a></li>
+    <li>Guide: <a href="guide.html" target="_blank">Forkphorus Packager Guide (Windows, Mac, Linux, Android)</a></li>
+    <li>Additional Help: Create an issue on <a href="https://github.com/forkphorus/forkphorus/issues" target="_blank">GitHub</a></li>
   </ul>
 
   <div id="loading-message">Loading...</div>
@@ -551,7 +551,7 @@
         { value: 'nwjs-win', label: 'NW.js (Windows/Linux)' },
         { value: 'nwjs-mac', label: 'NW.js (Mac)' },
       ])
-      .description('Enable special behavior for certain environments. This may change the output format of the packager. The <a href="guide.html" target="_blank">guide</a> will tell you if you need to change this.')
+      .description('Enable special behavior for certain environments. You <b>must</b> read <a href="guide.html" target="_blank">the guide</a> before changing this value. This setting does not do anything on its own, additional configuration and steps are required.')
       .add(environment);
 
     environment.icon = new Option()
@@ -781,7 +781,7 @@
             icon = environment.defaultIconAsset.blob;
           }
 
-          const zipper = new Packer.EnvironmentZipper();
+          const zipper = new Packer.Zipper();
 
           if (environmentType === 'phonegap') {
             bindProgress('Packaging for PhoneGap', zipper.progress);
