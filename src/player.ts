@@ -126,6 +126,7 @@ namespace P.player {
     fullscreenMaxWidth: number;
     imageSmoothing: boolean;
     focusOnLoad: boolean;
+    spriteFencing: boolean;
   }
 
   interface ControlsOptions {
@@ -289,6 +290,7 @@ namespace P.player {
       fullscreenMaxWidth: Infinity,
       imageSmoothing: false,
       focusOnLoad: true,
+      spriteFencing: false,
     };
 
     public onprogress = new Slot<number>();
@@ -374,6 +376,9 @@ namespace P.player {
       if (typeof changedOptions.theme !== 'undefined') {
         this.root.setAttribute('theme', changedOptions.theme);
         this.onthemechange.emit(changedOptions.theme);
+      }
+      if (typeof changedOptions.spriteFencing !== 'undefined') {
+        P.config.spriteFencing = changedOptions.spriteFencing;
       }
       if (this.hasStage()) {
         this.applyOptionsToStage();

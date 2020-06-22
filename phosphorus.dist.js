@@ -47,6 +47,7 @@ var P;
         config.useWebGL = false;
         config.supportVideoSensing = false;
         config.experimentalOptimizations = false;
+        config.spriteFencing = false;
         config.scale = window.devicePixelRatio || 1;
         config.PROJECT_API = 'https://projects.scratch.mit.edu/$id';
     })(config = P.config || (P.config = {}));
@@ -1546,6 +1547,24 @@ var P;
                 const d = (90 - this.direction) * Math.PI / 180;
                 this.moveTo(this.scratchX + steps * Math.cos(d), this.scratchY + steps * Math.sin(d));
             }
+            keepInView() {
+                const rb = this.rotatedBounds();
+                const width = rb.right - rb.left;
+                const height = rb.top - rb.bottom;
+                const bounds = Math.min(15, Math.floor(Math.min(width, height) / 2));
+                if (rb.right - bounds < -240) {
+                    this.scratchX -= rb.right - bounds + 240;
+                }
+                if (rb.left + bounds > 240) {
+                    this.scratchX -= rb.left + bounds - 240;
+                }
+                if (rb.bottom + bounds > 180) {
+                    this.scratchY -= rb.bottom + bounds - 180;
+                }
+                if (rb.top - bounds < -180) {
+                    this.scratchY -= rb.top - bounds + 180;
+                }
+            }
             moveTo(x, y) {
                 var ox = this.scratchX;
                 var oy = this.scratchY;
@@ -1554,6 +1573,9 @@ var P;
                 }
                 this.scratchX = x;
                 this.scratchY = y;
+                if (P.config.spriteFencing) {
+                    this.keepInView();
+                }
                 if (this.isPenDown && !this.isDragging) {
                     this.stage.renderer.penLine(this.penColor, this.penSize, ox, oy, x, y);
                 }
@@ -2948,6 +2970,9 @@ var P;
                     this.root.setAttribute('theme', changedOptions.theme);
                     this.onthemechange.emit(changedOptions.theme);
                 }
+                if (typeof changedOptions.spriteFencing !== 'undefined') {
+                    P.config.spriteFencing = changedOptions.spriteFencing;
+                }
                 if (this.hasStage()) {
                     this.applyOptionsToStage();
                 }
@@ -3546,6 +3571,7 @@ var P;
             fullscreenMaxWidth: Infinity,
             imageSmoothing: false,
             focusOnLoad: true,
+            spriteFencing: false,
         };
         player_1.Player = Player;
         class ErrorHandler {
