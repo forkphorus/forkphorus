@@ -786,7 +786,7 @@
           if (environmentType === 'phonegap') {
             bindProgress('Packaging for PhoneGap', zipper.progress);
             filetype = 'zip';
-            zipper.addFile('project.html', result);
+            zipper.addFile('index.html', result);
             zipper.addFile('icon.png', icon);
             zipper.addFile('config.xml', phonegap.xml.value);
           } else if (environmentType === 'nwjs-win' || environmentType === 'nwjs-mac') {
