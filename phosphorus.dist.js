@@ -8285,7 +8285,7 @@ var P;
             case 'floor':
                 return util.numberInput(`Math.floor(${NUM})`);
             case 'sqrt':
-                return util.numberInput(`Math.sqrt(${NUM})`);
+                return util.numberInput(`(Math.sqrt(${NUM}) || 0)`);
             case 'ceiling':
                 return util.numberInput(`Math.ceil(${NUM})`);
             case 'cos':
