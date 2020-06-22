@@ -113,6 +113,7 @@
         <li>Make changes to <b>NW.js package.json</b> to match your project:
           <ul>
             <li>Use the <a href="config_generator.html" target="_blank">config generator</a> if you are unfamiliar with JSON.</li>
+            <li>Save this text somewhere because you'll probably want to reuse it if you ever update your project.</li>
             <li>For a full list of usable fields, see <a href="http://docs.nwjs.io/en/latest/References/Manifest%20Format/#window-subfields" target="_blank">the NW.js documentation</a> (Advanced users only)</li>
           </ul>
         </li>
@@ -448,6 +449,14 @@
       <p>This method involves creating an independent HTML file for your project and embedding that file. This will make your app work offline and always produce the same result.</p>
       <p>You will not need to install PhoneGap as we will be using their online build service.</p>
 
+      <!--
+        NOTE TO EDITOR
+
+        This section is largely duplicated below for iOS.
+        Please keep these sections in sync.
+        TODO: don't duplicate these
+      -->
+
       <ol>
         <li>Generate a ZIP archive using <a href="/packager/" target="_blank">the HTML packager</a>
           <ol>
@@ -466,27 +475,42 @@
         </li>
         <li>Go to the <a href="https://build.phonegap.com" target="_blank">PhoneGap build service</a> and sign in with or create an Adobe account</li>
         <li>Create a new <i>Private</i> app and upload the generated ZIP to the service.</li>
+        <li>Click <i>Ready to build</i>.</li>
         <li>Wait for the builds to complete.</li>
         <li>Click on the Android icon to download the APK. You can also scan the QR code.</li>
-        <li>To update the APK, run the packager again, go to the PhoneGap build service, and use the <i>Update code</i> button:<img loading="lazy" data-src="https://user-images.githubusercontent.com/17209175/66354891-e7015300-e92b-11e9-8753-dd3237d0c8f1.png" height="285"></li>
-        <li>If uploading to the Google Play Store, you should read <a href="http://docs.phonegap.com/phonegap-build/signing/android/" target="_blank">Android Signing (PhoneGap Documentation)</a> or <a href="https://unbot.wordpress.com/2014/11/16/builing-a-release-version-for-build-phonegap-com/">Building a release version for build.phonegap.com</a></li>
+        <li>
+          To update your app, run the packager again, go to the PhoneGap build service, and use the <i>Update code</i> button:
+          <img loading="lazy" data-src="https://user-images.githubusercontent.com/17209175/85251937-43f05b00-b420-11ea-911f-6e83b9e88c7e.png" height="263">
+        </li>
+        <li>
+          If uploading to the Google Play Store, you should read
+          <a href="http://docs.phonegap.com/phonegap-build/signing/android/" target="_blank">Android Signing (PhoneGap Documentation)</a>
+          or <a href="https://unbot.wordpress.com/2014/11/16/builing-a-release-version-for-build-phonegap-com/" target="_blank">Building a release version for build.phonegap.com</a>
+        </li>
       </ol>
 
-      <p><small>Due to a bug in the PhoneGap CLI/Desktop app, forkphorus does not work in the preview. It works fine in the final build. This bug does not affect the online build service.</small></p>
+      <p><small>Due to a bug in the PhoneGap CLI/Desktop app, forkphorus may not work in the preview. It works fine in the final build. This bug does not affect the online build service.</small></p>
 
       <hr>
     </section>
 
     <section data-os="ios">
       <h2>iOS Packaging</h2>
-      <p>You will likely need a Mac to complete these steps.</p>
+      <p>These steps require a membership in the Apple Developer Program.</p>
       <p>Note that the Apple App Store has a recurring fee of $99/year.</p>
     </section>
 
     <section data-os="ios">
       <h2>Using the HTML packager and PhoneGap</h2>
-      <p>This method involves creating an independent HTML file for your project and embedding that file. This will make your app work offline and always produce the same result.</p>
       <p>I haven not tested PhoneGap's iOS support yet as I do not have an iOS device. You will need a <a href="http://docs.phonegap.com/phonegap-build/signing/ios/" target="_blank">signing key</a>. This part of the guide still references some Android things, but the interface is much the same for iOS.</p>
+
+      <!--
+        NOTE TO EDITOR
+
+        This section is largely duplicated above for Android.
+        Please keep these sections in sync.
+        TODO: don't duplicate these
+      -->
 
       <ol>
         <li>Generate a ZIP archive using <a href="/packager/" target="_blank">the HTML packager</a>
@@ -506,13 +530,22 @@
         </li>
         <li>Go to the <a href="https://build.phonegap.com" target="_blank">PhoneGap build service</a> and sign in with or create an Adobe account</li>
         <li>Create a new <i>Private</i> app and upload the generated ZIP to the service.</li>
+        <li>Click <i>Ready to build</i>.</li>
         <li>Wait for the builds to complete.</li>
-        <li>Click on the Android icon to download the APK. You can also scan the QR code.</li>
-        <li>To update the APK, run the packager again, go to the PhoneGap build service, and use the <i>Update code</i> button:<img loading="lazy" data-src="https://user-images.githubusercontent.com/17209175/66354891-e7015300-e92b-11e9-8753-dd3237d0c8f1.png" height="285"></li>
-        <li>If uploading to the Google Play Store, you should read <a href="http://docs.phonegap.com/phonegap-build/signing/android/" target="_blank">Android Signing (PhoneGap Documentation)</a> or <a href="https://unbot.wordpress.com/2014/11/16/builing-a-release-version-for-build-phonegap-com/">Building a release version for build.phonegap.com</a></li>
+        <li>
+          <b>If the iOS icon is <a href="https://user-images.githubusercontent.com/17209175/85252191-e14b8f00-b420-11ea-8ccf-deeda9bdf46b.png" target="_blank">red</a>, then you likely need to add your signing key.</b>
+          <ul>
+            <li>See the <a href="http://docs.phonegap.com/phonegap-build/signing/ios/" target="_blank">PhoneGap documentation</a> for instructions.</li>
+          </ul>
+        </li>
+        <li>Click on the iOS icon to download the app. You can also scan the QR code.</li>
+        <li>
+          To update your app, run the packager again, go to the PhoneGap build service, and use the <i>Update code</i> button:
+          <img loading="lazy" data-src="https://user-images.githubusercontent.com/17209175/85251937-43f05b00-b420-11ea-911f-6e83b9e88c7e.png" height="263">
+        </li>
       </ol>
 
-      <p><small>Due to a bug in the PhoneGap CLI/Desktop app, forkphorus does not work in the preview. It works fine in the final build. This bug does not affect the online build service.</small></p>
+      <p><small>Due to a bug in the PhoneGap CLI/Desktop app, forkphorus may not work in the preview. It works fine in the final build. This bug does not affect the online build service.</small></p>
 
       <hr>
     </section>
