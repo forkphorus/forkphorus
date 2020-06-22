@@ -4368,8 +4368,9 @@ var P;
             _debugCrash() {
                 console.log('Current Stage: ', self);
                 console.log('Current Sprite: ', S);
-                console.log('Next IMMEDIATE: ', IMMEDIATE, '' + IMMEDIATE);
+                console.log('Next IMMEDIATE: ', '' + IMMEDIATE);
                 console.log('Previous IMMEDIATES: ', this._debugHistory.map((i) => i.toString() + '\n\n'));
+                console.log('Current C: ', C);
                 console.log('CALL Stack: ', CALLS);
                 throw new Error('Debug crash. See console for more information.');
             }
