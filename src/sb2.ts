@@ -981,7 +981,7 @@ namespace P.sb2.compiler {
 
       } else if (e[0] === 'scale') {
 
-        return '(S.scale * 100)';
+        return 'Math.round(S.scale * 100)';
 
       } else if (e[0] === 'volume') { /* Sound */
 

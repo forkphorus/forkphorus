@@ -1235,6 +1235,13 @@ var P;
                     extension.onstart();
                 }
             }
+            updateExtensions() {
+                if (this.extensions.length) {
+                    for (const extension of this.extensions) {
+                        extension.update();
+                    }
+                }
+            }
             focus() {
                 if (this.promptId < this.nextPromptId) {
                     this.prompt.focus();
@@ -2363,7 +2370,7 @@ var P;
             }
             error(message) {
                 const { line, column } = this.lineInfo();
-                throw new Error(`JSONParser: ${message} (Line ${line} Column ${column})`);
+                throw new SyntaxError(`JSONParser: ${message} (Line ${line} Column ${column})`);
             }
             char() {
                 return this.charAt(this.index);
@@ -2423,7 +2430,7 @@ var P;
                 if (this.peek(4, 0) === 'null') {
                     for (var i = 0; i < 4; i++)
                         this.next();
-                    return Infinity;
+                    return null;
                 }
                 if (this.peek(4, 0) === 'true') {
                     for (var i = 0; i < 4; i++)
@@ -2439,6 +2446,11 @@ var P;
                     for (var i = 0; i < 8; i++)
                         this.next();
                     return Infinity;
+                }
+                if (this.peek(9, 0) === '-Infinity') {
+                    for (var i = 0; i < 9; i++)
+                        this.next();
+                    return -Infinity;
                 }
                 if (this.peek(3, 0) === 'NaN') {
                     for (var i = 0; i < 3; i++)
@@ -4345,6 +4357,7 @@ var P;
                         }
                     }
                 } while ((this.isTurbo || !VISUAL) && Date.now() - start < 1000 / this.framerate && queue.length);
+                this.stage.updateExtensions();
                 this.stage.draw();
             }
             _debugLogImmediate(immediate) {
@@ -5298,7 +5311,7 @@ var P;
                         return '(self.currentCostumeIndex + 1)';
                     }
                     else if (e[0] === 'scale') {
-                        return '(S.scale * 100)';
+                        return 'Math.round(S.scale * 100)';
                     }
                     else if (e[0] === 'volume') {
                         return '(S.volume * 100)';
@@ -8170,7 +8183,7 @@ var P;
         }
     };
     inputLibrary['looks_size'] = function (util) {
-        return util.numberInput('(S.scale * 100)');
+        return util.numberInput('Math.round(S.scale * 100)');
     };
     inputLibrary['makeymakey_menu_KEY'] = function (util) {
         return util.fieldInput('KEY');
@@ -8762,6 +8775,8 @@ var P;
             }
             onpause() {
             }
+            update() {
+            }
         }
         ext.Extension = Extension;
     })(ext = P.ext || (P.ext = {}));
@@ -8795,14 +8810,18 @@ var P;
                     super(stage);
                     this.host = host;
                     this.id = id;
-                    this.updateInterval = null;
-                    this.queuedVariableChanges = [];
                     this.ws = null;
+                    this.queuedVariableChanges = [];
+                    this.updateInterval = null;
+                    this.reconnectTimeout = null;
                     this.shouldReconnect = true;
                     this.failures = 0;
                     this.logPrefix = '[cloud-ws ' + host + ']';
+                    this.username = this.stage.username;
+                    this.interfaceStatusIndicator = document.createElement('div');
+                    this.interfaceStatusIndicator.className = 'phosphorus-cloud-status-indicator';
+                    stage.ui.appendChild(this.interfaceStatusIndicator);
                     this.handleUpdateInterval = this.handleUpdateInterval.bind(this);
-                    this.connect = this.connect.bind(this);
                     this.connect();
                 }
                 variableChanged(name) {
@@ -8842,19 +8861,29 @@ var P;
                 setVariable(name, value) {
                     this.stage.vars[name] = value;
                 }
+                terminateConnection(code = 1000) {
+                    if (this.ws !== null) {
+                        this.ws.close(code);
+                        this.ws = null;
+                    }
+                }
                 connect() {
                     if (this.ws !== null) {
                         throw new Error('already connected');
                     }
+                    this.setStatusText('Connecting...');
                     console.log(this.logPrefix, 'connecting');
                     this.ws = new WebSocket(this.host);
+                    this.shouldReconnect = true;
                     this.ws.onopen = () => {
                         console.log(this.logPrefix, 'connected');
+                        this.setStatusText('Connected');
+                        this.setStatusVisible(false);
                         this.failures = 0;
                         this.send({
                             kind: 'handshake',
                             id: this.id,
-                            username: this.stage.username,
+                            username: this.username,
                             variables: getAllCloudVariables(this.stage),
                         });
                     };
@@ -8865,15 +8894,30 @@ var P;
                                 const data = JSON.parse(line);
                                 this.handleMessage(data);
                             }
+                            if (!this.stage.runtime.isRunning) {
+                                this.stage.draw();
+                            }
                         }
-                        catch (e) {
-                            console.warn('error parsing cloud server message', e.data, e);
-                            return;
+                        catch (err) {
+                            console.warn('error parsing cloud server message', e.data, err);
                         }
                     };
                     this.ws.onclose = (e) => {
-                        console.warn(this.logPrefix, 'closed', e.code, e.reason);
-                        this.reconnect();
+                        const code = e.code;
+                        this.ws = null;
+                        console.warn(this.logPrefix, 'closed', code);
+                        if (code === 4001) {
+                            this.setStatusText('Cannot connect: Incompatible with room.');
+                            console.error(this.logPrefix, 'error: Incompatibility');
+                            this.shouldReconnect = false;
+                        }
+                        else if (code === 4002) {
+                            this.setStatusText('Username is invalid. Change your username to connect.');
+                            console.error(this.logPrefix, 'error: Username');
+                        }
+                        else {
+                            this.reconnect();
+                        }
                     };
                     this.ws.onerror = (e) => {
                         console.warn(this.logPrefix, 'error', e);
@@ -8883,22 +8927,25 @@ var P;
                     if (!this.shouldReconnect) {
                         return;
                     }
-                    if (this.ws !== null) {
-                        this.ws.close();
-                        this.ws = null;
+                    this.terminateConnection();
+                    if (this.reconnectTimeout) {
+                        clearTimeout(this.reconnectTimeout);
                     }
-                    this.failures++;
-                    const delayTime = this.getBackoffTime();
+                    else {
+                        this.failures++;
+                    }
+                    this.setStatusText('Connection lost, reconnecting...');
+                    const delayTime = Math.pow(2, this.failures) * 1000;
                     console.log(this.logPrefix, 'reconnecting in', delayTime);
-                    setTimeout(this.connect, delayTime);
+                    this.reconnectTimeout = setTimeout(() => {
+                        this.reconnectTimeout = null;
+                        this.connect();
+                    }, delayTime);
                 }
                 disconnect() {
                     console.log(this.logPrefix, 'disconnecting');
                     this.shouldReconnect = false;
-                    if (this.ws !== null) {
-                        this.ws.close();
-                        this.ws = null;
-                    }
+                    this.terminateConnection();
                 }
                 handleMessage(data) {
                     if (!isCloudSetMessage(data)) {
@@ -8909,9 +8956,6 @@ var P;
                         throw new Error('invalid variable name');
                     }
                     this.setVariable(variableName, value);
-                }
-                getBackoffTime() {
-                    return Math.pow(2, this.failures) * 1000;
                 }
                 startUpdateInterval() {
                     if (this.updateInterval !== null) {
@@ -8926,6 +8970,13 @@ var P;
                     clearInterval(this.updateInterval);
                     this.updateInterval = null;
                 }
+                setStatusText(text) {
+                    this.interfaceStatusIndicator.textContent = `☁ ${text}`;
+                    this.setStatusVisible(true);
+                }
+                setStatusVisible(visible) {
+                    this.interfaceStatusIndicator.classList.toggle('phosphorus-cloud-status-indicator-hidden', !visible);
+                }
                 onstart() {
                     if (this.queuedVariableChanges.length > 0) {
                         this.startUpdateInterval();
@@ -8933,6 +8984,14 @@ var P;
                 }
                 onpause() {
                     this.stopUpdateInterval();
+                }
+                update() {
+                    if (this.stage.username !== this.username) {
+                        console.log(this.logPrefix, 'username changed to', this.stage.username);
+                        this.username = this.stage.username;
+                        this.terminateConnection(4100);
+                        this.reconnect();
+                    }
                 }
                 destroy() {
                     this.stopUpdateInterval();

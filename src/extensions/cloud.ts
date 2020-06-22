@@ -46,19 +46,33 @@ namespace P.ext.cloud {
     return isCloudDataMessage(data) && typeof (data as CloudSetMessage).var === 'string' && typeof (data as CloudSetMessage).value === 'string';
   }
 
+  /**
+   * Implements cloud variables over WebSocket.
+   *
+   * Intended Server Code: https://github.com/forkphorus/cloud-server
+   * Protocol: https://github.com/forkphorus/cloud-server/blob/master/protocol.md (this is NOT the same as Scratch's protocol)
+   */
   export class WebSocketCloudHandler extends P.ext.Extension implements CloudHandler {
-    private updateInterval: number | null = null;
-    private queuedVariableChanges: string[] = [];
-    private ws: WebSocket | null = null;
     private readonly logPrefix: string;
+    private ws: WebSocket | null = null;
+    private queuedVariableChanges: string[] = [];
+    private updateInterval: number | null = null;
+    private reconnectTimeout: number | null = null;
     private shouldReconnect: boolean = true;
     private failures: number = 0;
+    private username: string;
+    private interfaceStatusIndicator: HTMLElement;
 
     constructor(stage: P.core.Stage, private host: string, private id: string) {
       super(stage);
       this.logPrefix = '[cloud-ws ' + host + ']';
+      this.username = this.stage.username;
+
+      this.interfaceStatusIndicator = document.createElement('div');
+      this.interfaceStatusIndicator.className = 'phosphorus-cloud-status-indicator';
+      stage.ui.appendChild(this.interfaceStatusIndicator);
+
       this.handleUpdateInterval = this.handleUpdateInterval.bind(this);
-      this.connect = this.connect.bind(this);
       this.connect();
     }
 
@@ -69,7 +83,7 @@ namespace P.ext.cloud {
       }
       this.queuedVariableChanges.push(name);
       if (this.updateInterval === null) {
-        // handle first change immediately, reduces latency on one-off sets
+        // handle first change immediately, reduces latency on the first set
         this.handleUpdateInterval();
         this.startUpdateInterval();
       }
@@ -108,25 +122,36 @@ namespace P.ext.cloud {
       this.stage.vars[name] = value;
     }
 
+    private terminateConnection(code: number = 1000) {
+      // 1000 is Normal Closure
+      if (this.ws !== null) {
+        this.ws.close(code);
+        this.ws = null;
+      }
+    }
+
     private connect() {
       if (this.ws !== null) {
         throw new Error('already connected');
       }
 
+      this.setStatusText('Connecting...');
       console.log(this.logPrefix, 'connecting');
       this.ws = new WebSocket(this.host);
+      this.shouldReconnect = true;
 
       this.ws.onopen = () => {
         console.log(this.logPrefix, 'connected');
-        
-        // after a successful connection we can reset the failures counter
+
+        this.setStatusText('Connected');
+        this.setStatusVisible(false);
+
         this.failures = 0;
 
-        // send the handshake
         this.send({
           kind: 'handshake',
           id: this.id,
-          username: this.stage.username,
+          username: this.username,
           variables: getAllCloudVariables(this.stage),
         });
       };
@@ -140,16 +165,30 @@ namespace P.ext.cloud {
             const data = JSON.parse(line);
             this.handleMessage(data);
           }
-        } catch (e) {
-          console.warn('error parsing cloud server message', e.data, e);
-          return;
+          // Update variable watchers
+          if (!this.stage.runtime.isRunning) {
+            this.stage.draw();
+          }
+        } catch (err) {
+          console.warn('error parsing cloud server message', e.data, err);
         }
       };
 
       this.ws.onclose = (e) => {
-        console.warn(this.logPrefix, 'closed', e.code, e.reason);
-        // TODO: do not reconnect after certain errors
-        this.reconnect();
+        const code = e.code;
+        this.ws = null;
+        console.warn(this.logPrefix, 'closed', code);
+        // see the protocol document
+        if (code === 4001) { // Incompatibility
+          this.setStatusText('Cannot connect: Incompatible with room.');
+          console.error(this.logPrefix, 'error: Incompatibility');
+          this.shouldReconnect = false;
+        } else if (code === 4002) { // Username Error
+          this.setStatusText('Username is invalid. Change your username to connect.');
+          console.error(this.logPrefix, 'error: Username');
+        } else {
+          this.reconnect();
+        }
       };
 
       this.ws.onerror = (e) => {
@@ -162,23 +201,27 @@ namespace P.ext.cloud {
       if (!this.shouldReconnect) {
         return;
       }
-      if (this.ws !== null) {
-        this.ws.close();
-        this.ws = null;
+      this.terminateConnection();
+      if (this.reconnectTimeout) {
+        clearTimeout(this.reconnectTimeout);
+      } else {
+        // only increase failures in the case of an actual failure
+        // rescheduling a reconnect is not a failure
+        this.failures++;
       }
-      this.failures++;
-      const delayTime = this.getBackoffTime();
+      this.setStatusText('Connection lost, reconnecting...');
+      const delayTime = 2 ** this.failures * 1000;
       console.log(this.logPrefix, 'reconnecting in', delayTime);
-      setTimeout(this.connect, delayTime);
+      this.reconnectTimeout = setTimeout(() => {
+        this.reconnectTimeout = null;
+        this.connect();
+      }, delayTime);
     }
 
     private disconnect() {
       console.log(this.logPrefix, 'disconnecting');
       this.shouldReconnect = false;
-      if (this.ws !== null) {
-        this.ws.close();
-        this.ws = null;
-      }
+      this.terminateConnection();
     }
 
     private handleMessage(data: unknown) {
@@ -190,11 +233,6 @@ namespace P.ext.cloud {
         throw new Error('invalid variable name');
       }
       this.setVariable(variableName, value);
-    }
-
-    private getBackoffTime(): number {
-      // TODO: add randomness
-      return 2 ** this.failures * 1000;
     }
 
     private startUpdateInterval() {
@@ -212,6 +250,15 @@ namespace P.ext.cloud {
       this.updateInterval = null;
     }
 
+    private setStatusText(text: string) {
+      this.interfaceStatusIndicator.textContent = `☁ ${text}`;
+      this.setStatusVisible(true);
+    }
+
+    private setStatusVisible(visible: boolean) {
+      this.interfaceStatusIndicator.classList.toggle('phosphorus-cloud-status-indicator-hidden', !visible);
+    }
+
     onstart() {
       // project may have been paused & resumed with queued changes
       if (this.queuedVariableChanges.length > 0) {
@@ -221,6 +268,15 @@ namespace P.ext.cloud {
 
     onpause() {
       this.stopUpdateInterval();
+    }
+
+    update() {
+      if (this.stage.username !== this.username) {
+        console.log(this.logPrefix, 'username changed to', this.stage.username);
+        this.username = this.stage.username;
+        this.terminateConnection(4100); // Username Change
+        this.reconnect();
+      }
     }
 
     destroy() {

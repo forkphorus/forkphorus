@@ -255,7 +255,7 @@
       var url = urlInput.value;
       var pid = player.hasProjectMeta() ? player.getProjectMeta().getId() : -1;
       var id = url.match(/\d+/g) || [''];
-      id = id[0];
+      id = id[0].replace(/^0+/, '');
       urlInput.value = url = PROJECT_PREFIX + id;
       clearTimeout(timeout);
       if (pid !== id) {
