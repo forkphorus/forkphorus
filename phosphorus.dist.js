@@ -7023,10 +7023,13 @@ var P;
                 constructor(target) {
                     this.labelCount = 0;
                     this.needsMusic = false;
-                    this.disableStringToNumberConversion = false;
+                    this.costumeNames = new Set();
                     this.target = target;
                     this.data = target.sb3data;
                     this.blocks = this.data.blocks;
+                    for (const costume of target.costumes) {
+                        this.costumeNames.add(costume.name);
+                    }
                 }
                 getHatBlocks() {
                     return Object.keys(this.blocks)
@@ -7136,6 +7139,9 @@ var P;
                 isStringLiteralPotentialNumber(text) {
                     return /\d|true|false|Infinity/.test(text);
                 }
+                isCostumeName(text) {
+                    return this.costumeNames.has(text);
+                }
                 compileNativeInput(native, desiredType) {
                     const type = native[0];
                     switch (type) {
@@ -7145,7 +7151,7 @@ var P;
                         case 7:
                         case 8: {
                             const number = +native[1];
-                            if (this.disableStringToNumberConversion || isNaN(number) || desiredType === 'string') {
+                            if (isNaN(number) || desiredType === 'string') {
                                 return this.sanitizedInput('' + native[1]);
                             }
                             else {
@@ -7154,7 +7160,7 @@ var P;
                         }
                         case 10: {
                             const value = native[1];
-                            if (desiredType !== 'string' && /\d|Infinity/.test(value)) {
+                            if (desiredType !== 'string' && /\d|Infinity/.test(value) && !this.isCostumeName(value)) {
                                 const number = +value;
                                 if (number.toString() === value) {
                                     if (!isNaN(number)) {
@@ -7692,18 +7698,14 @@ var P;
         util.updateBubble();
     };
     statementLibrary['looks_switchbackdropto'] = function (util) {
-        util.compiler.disableStringToNumberConversion = true;
         const BACKDROP = util.getInput('BACKDROP', 'any');
-        util.compiler.disableStringToNumberConversion = false;
         util.writeLn(`self.setCostume(${BACKDROP});`);
         util.visual('always');
         util.writeLn('var threads = backdropChange();');
         util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
     };
     statementLibrary['looks_switchcostumeto'] = function (util) {
-        util.compiler.disableStringToNumberConversion = true;
         const COSTUME = util.getInput('COSTUME', 'any');
-        util.compiler.disableStringToNumberConversion = false;
         util.writeLn(`S.setCostume(${COSTUME});`);
         util.visual('visible');
     };
