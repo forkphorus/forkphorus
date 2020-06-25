@@ -321,7 +321,7 @@ namespace P.player {
     };
 
     private options: Readonly<PlayerOptions>;
-    private stage: P.core.Stage;
+    private stage: P.core.Stage = null!; // making this nullable forces some very verbose type checking
     private projectMeta: ProjectMeta | null = null;
     private currentLoader: LoaderIdentifier | null = null;
     private fullscreenEnabled: boolean = false;

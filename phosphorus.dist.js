@@ -2931,6 +2931,7 @@ var P;
                     PROJECT_API: 'https://projects.scratch.mit.edu/$id',
                     CLOUD_DATA_SERVER: 'wss://stratus.garbomuffin.com',
                 };
+                this.stage = null;
                 this.projectMeta = null;
                 this.currentLoader = null;
                 this.fullscreenEnabled = false;
