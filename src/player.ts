@@ -126,6 +126,7 @@ namespace P.player {
     fullscreenMaxWidth: number;
     imageSmoothing: boolean;
     focusOnLoad: boolean;
+    spriteFencing: boolean;
   }
 
   interface ControlsOptions {
@@ -289,6 +290,7 @@ namespace P.player {
       fullscreenMaxWidth: Infinity,
       imageSmoothing: false,
       focusOnLoad: true,
+      spriteFencing: false,
     };
 
     public onprogress = new Slot<number>();
@@ -536,6 +538,7 @@ namespace P.player {
       }
       this.stage.username = this.options.username;
       this.stage.runtime.isTurbo = this.options.turbo;
+      this.stage.useSpriteFencing = this.options.spriteFencing;
       (this.stage.renderer as P.renderer.canvas2d.ProjectRenderer2D).imageSmoothingEnabled = this.options.imageSmoothing;
     }
 

@@ -1006,6 +1006,7 @@ var P;
                 this.speech2text = null;
                 this.microphone = null;
                 this.extensions = [];
+                this.useSpriteFencing = false;
                 this.runtime = new P.runtime.Runtime(this);
                 this.keys = [];
                 this.keys.any = 0;
@@ -1546,6 +1547,24 @@ var P;
                 const d = (90 - this.direction) * Math.PI / 180;
                 this.moveTo(this.scratchX + steps * Math.cos(d), this.scratchY + steps * Math.sin(d));
             }
+            keepInView() {
+                const rb = this.rotatedBounds();
+                const width = rb.right - rb.left;
+                const height = rb.top - rb.bottom;
+                const bounds = Math.min(15, Math.floor(Math.min(width, height) / 2));
+                if (rb.right - bounds < -240) {
+                    this.scratchX -= rb.right - bounds + 240;
+                }
+                if (rb.left + bounds > 240) {
+                    this.scratchX -= rb.left + bounds - 240;
+                }
+                if (rb.bottom + bounds > 180) {
+                    this.scratchY -= rb.bottom + bounds - 180;
+                }
+                if (rb.top - bounds < -180) {
+                    this.scratchY -= rb.top - bounds + 180;
+                }
+            }
             moveTo(x, y) {
                 var ox = this.scratchX;
                 var oy = this.scratchY;
@@ -1554,6 +1573,9 @@ var P;
                 }
                 this.scratchX = x;
                 this.scratchY = y;
+                if (this.stage.useSpriteFencing) {
+                    this.keepInView();
+                }
                 if (this.isPenDown && !this.isDragging) {
                     this.stage.renderer.penLine(this.penColor, this.penSize, ox, oy, x, y);
                 }
@@ -3085,6 +3107,7 @@ var P;
                 }
                 this.stage.username = this.options.username;
                 this.stage.runtime.isTurbo = this.options.turbo;
+                this.stage.useSpriteFencing = this.options.spriteFencing;
                 this.stage.renderer.imageSmoothingEnabled = this.options.imageSmoothing;
             }
             throwWithoutStage() {
@@ -3546,6 +3569,7 @@ var P;
             fullscreenMaxWidth: Infinity,
             imageSmoothing: false,
             focusOnLoad: true,
+            spriteFencing: false,
         };
         player_1.Player = Player;
         class ErrorHandler {
