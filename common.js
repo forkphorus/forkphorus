@@ -89,6 +89,9 @@ var Common = (function() {
       case 'imageSmoothing':
         setPlayerFlag('imageSmoothing', value);
         break;
+      case 'fencing':
+        setPlayerFlag('spriteFencing', value);
+        break;
       case 'cloud':
         setPlayerEnum('cloudVariables', value, ['once', 'off', 'ws', 'localStorage']);
         if (value === 'ws') usernameNeeded = true; // ws needs username
