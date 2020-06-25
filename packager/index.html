@@ -110,7 +110,7 @@
 
   <ul>
     <li>Guide: <a href="guide.html" target="_blank">Forkphorus Packager Guide (Windows, Mac, Linux, Android)</a></li>
-    <li>Additional Help: Create an issue on <a href="https://github.com/forkphorus/forkphorus/issues" target="_blank">GitHub</a></li>
+    <li>Additional Help: Create an issue on <a href="https://github.com/forkphorus/forkphorus/issues" target="_blank" rel="noopener">GitHub</a></li>
   </ul>
 
   <div id="loading-message">Loading...</div>
@@ -467,7 +467,7 @@
       .label('Project ID')
       .input({ pattern: '.*[0-9]+.*', value: location.hash ? location.hash.substr(1) : '10128407' })
       .parser((input) => input.match(/\d+/)[0])
-      .description('Load a project from scratch.mit.edu. Project ID or URL are accepted. Note: Projects on scratch.mit.edu are licensed under <a href="https://creativecommons.org/licenses/by-sa/2.0/" target="_blank">CC BY-SA 2.0</a>. Please ensure you comply with this license if this is not your project.')
+      .description('Load a project from scratch.mit.edu. Project ID or URL are accepted. Note: Projects on scratch.mit.edu are licensed under <a href="https://creativecommons.org/licenses/by-sa/2.0/" target="_blank" rel="noopener">CC BY-SA 2.0</a>. Please ensure you comply with this license if this is not your project.')
       .add();
 
     const projectFile = new Option()
