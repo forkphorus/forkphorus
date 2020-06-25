@@ -377,9 +377,6 @@ namespace P.player {
         this.root.setAttribute('theme', changedOptions.theme);
         this.onthemechange.emit(changedOptions.theme);
       }
-      if (typeof changedOptions.spriteFencing !== 'undefined') {
-        P.config.spriteFencing = changedOptions.spriteFencing;
-      }
       if (this.hasStage()) {
         this.applyOptionsToStage();
       }
@@ -541,6 +538,7 @@ namespace P.player {
       }
       this.stage.username = this.options.username;
       this.stage.runtime.isTurbo = this.options.turbo;
+      this.stage.useSpriteFencing = this.options.spriteFencing;
       (this.stage.renderer as P.renderer.canvas2d.ProjectRenderer2D).imageSmoothingEnabled = this.options.imageSmoothing;
     }
 

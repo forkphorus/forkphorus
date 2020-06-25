@@ -47,7 +47,6 @@ var P;
         config.useWebGL = false;
         config.supportVideoSensing = false;
         config.experimentalOptimizations = false;
-        config.spriteFencing = false;
         config.scale = window.devicePixelRatio || 1;
         config.PROJECT_API = 'https://projects.scratch.mit.edu/$id';
     })(config = P.config || (P.config = {}));
@@ -1007,6 +1006,7 @@ var P;
                 this.speech2text = null;
                 this.microphone = null;
                 this.extensions = [];
+                this.useSpriteFencing = false;
                 this.runtime = new P.runtime.Runtime(this);
                 this.keys = [];
                 this.keys.any = 0;
@@ -1573,7 +1573,7 @@ var P;
                 }
                 this.scratchX = x;
                 this.scratchY = y;
-                if (P.config.spriteFencing) {
+                if (this.stage.useSpriteFencing) {
                     this.keepInView();
                 }
                 if (this.isPenDown && !this.isDragging) {
@@ -2970,9 +2970,6 @@ var P;
                     this.root.setAttribute('theme', changedOptions.theme);
                     this.onthemechange.emit(changedOptions.theme);
                 }
-                if (typeof changedOptions.spriteFencing !== 'undefined') {
-                    P.config.spriteFencing = changedOptions.spriteFencing;
-                }
                 if (this.hasStage()) {
                     this.applyOptionsToStage();
                 }
@@ -3110,6 +3107,7 @@ var P;
                 }
                 this.stage.username = this.options.username;
                 this.stage.runtime.isTurbo = this.options.turbo;
+                this.stage.useSpriteFencing = this.options.spriteFencing;
                 this.stage.renderer.imageSmoothingEnabled = this.options.imageSmoothing;
             }
             throwWithoutStage() {

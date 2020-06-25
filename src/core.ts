@@ -826,6 +826,8 @@ namespace P.core {
     public microphone: P.ext.microphone.MicrophoneExtension | null = null;
     private extensions: P.ext.Extension[] = [];
 
+    public useSpriteFencing: boolean = false;
+
     constructor() {
       super();
 
@@ -1536,7 +1538,7 @@ namespace P.core {
       this.scratchX = x;
       this.scratchY = y;
 
-      if (P.config.spriteFencing) {
+      if (this.stage.useSpriteFencing) {
         this.keepInView();
       }
 
