@@ -2906,7 +2906,7 @@ var P;
                 this.MAGIC = {
                     LARGE_Z_INDEX: '9999999999',
                     CLOUD_HISTORY_API: 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100',
-                    PROJECT_API: 'https://cdn.projects.scratch.mit.edu/$id',
+                    PROJECT_API: 'https://projects.scratch.mit.edu/$id',
                     CLOUD_DATA_SERVER: 'wss://stratus.garbomuffin.com',
                 };
                 this.projectMeta = null;

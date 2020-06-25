@@ -461,7 +461,7 @@ ${scripts}
 
   document.addEventListener('touchmove', function(e) {
     e.preventDefault();
-  });
+  }, { passive: false });
 
   P.io.setAssetManager(new class {
     constructor() {
