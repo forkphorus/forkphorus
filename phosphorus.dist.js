@@ -6431,8 +6431,10 @@ var P;
             getRowHeight() {
                 if (this._rowHeight === -1) {
                     const PADDING = 2;
-                    const row = this.addRow();
-                    const height = row.element.offsetHeight;
+                    if (this.rows.length === 0) {
+                        this.addRow();
+                    }
+                    const height = this.rows[0].element.offsetHeight;
                     if (height === 0) {
                         return 0;
                     }
