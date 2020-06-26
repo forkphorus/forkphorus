@@ -6902,6 +6902,13 @@ var P;
                     this.source = source;
                     this.type = type;
                     this.potentialNumber = true;
+                    this.flags = 0;
+                }
+                enableFlag(n) {
+                    this.flags &= n;
+                }
+                hasFlag(n) {
+                    return this.flags & n;
                 }
                 toString() {
                     return this.source;
@@ -7100,6 +7107,9 @@ var P;
                 }
                 convertInputType(input, type) {
                     if (input.type === type) {
+                        if (type === 'number' && input.hasFlag(1)) {
+                            return new CompiledInput('(' + input.source + ' || 0)', type);
+                        }
                         return input;
                     }
                     if (type === 'any') {
@@ -8251,7 +8261,9 @@ var P;
     inputLibrary['operator_divide'] = function (util) {
         const NUM1 = util.getInput('NUM1', 'number');
         const NUM2 = util.getInput('NUM2', 'number');
-        return util.numberInput(`(${NUM1} / ${NUM2} || 0)`);
+        const input = util.numberInput(`(${NUM1} / ${NUM2})`);
+        input.enableFlag(1);
+        return input;
     };
     inputLibrary['operator_equals'] = function (util) {
         const OPERAND1 = util.getInput('OPERAND1', 'any');
@@ -8311,8 +8323,11 @@ var P;
                 return util.numberInput(`Math.abs(${NUM})`);
             case 'floor':
                 return util.numberInput(`Math.floor(${NUM})`);
-            case 'sqrt':
-                return util.numberInput(`(Math.sqrt(${NUM}) || 0)`);
+            case 'sqrt': {
+                const input = util.numberInput(`Math.sqrt(${NUM})`);
+                input.enableFlag(1);
+                return input;
+            }
             case 'ceiling':
                 return util.numberInput(`Math.ceil(${NUM})`);
             case 'cos':

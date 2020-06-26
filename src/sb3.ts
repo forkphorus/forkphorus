@@ -1115,6 +1115,10 @@ namespace P.sb3.compiler {
     LIST = 13,
   }
 
+  export const enum InputFlags {
+    NaN = 1,
+  }
+
   /**
    * JS code with an associated type.
    * Returns the source when stringified, making the raw type safe to use in concatenation.
@@ -1128,9 +1132,18 @@ namespace P.sb3.compiler {
      *  - it is a string that represents a number or a boolean
      */
     public potentialNumber: boolean = true;
+    private flags: number = 0;
 
     constructor(public source: string, public type: InputType) {
 
+    }
+
+    enableFlag(n: number) {
+      this.flags &= n;
+    }
+
+    hasFlag(n: number) {
+      return this.flags & n;
     }
 
     toString() {
@@ -1541,6 +1554,10 @@ namespace P.sb3.compiler {
     convertInputType(input: CompiledInput, type: InputType): CompiledInput {
       // If the types are already identical, no changes are necessary
       if (input.type === type) {
+        // if the input could be NaN, number conversion is always required (NaN will be converted to 0)
+        if (type === 'number' && input.hasFlag(InputFlags.NaN)) {
+          return new CompiledInput('(' + input.source + ' || 0)', type);
+        }
         return input;
       }
       // The 'any' type is a little bit special.
@@ -2871,7 +2888,9 @@ namespace P.sb3.compiler {
   inputLibrary['operator_divide'] = function(util) {
     const NUM1 = util.getInput('NUM1', 'number');
     const NUM2 = util.getInput('NUM2', 'number');
-    return util.numberInput(`(${NUM1} / ${NUM2} || 0)`);
+    const input = util.numberInput(`(${NUM1} / ${NUM2})`);
+    input.enableFlag(P.sb3.compiler.InputFlags.NaN);
+    return input;
   };
   inputLibrary['operator_equals'] = function(util) {
     const OPERAND1 = util.getInput('OPERAND1', 'any');
@@ -2936,8 +2955,11 @@ namespace P.sb3.compiler {
         return util.numberInput(`Math.abs(${NUM})`);
       case 'floor':
         return util.numberInput(`Math.floor(${NUM})`);
-      case 'sqrt':
-        return util.numberInput(`(Math.sqrt(${NUM}) || 0)`);
+      case 'sqrt': {
+        const input = util.numberInput(`Math.sqrt(${NUM})`);
+        input.enableFlag(P.sb3.compiler.InputFlags.NaN);
+        return input;
+      }
       case 'ceiling':
         return util.numberInput(`Math.ceil(${NUM})`);
       case 'cos':
