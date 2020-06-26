@@ -2,12 +2,14 @@ const playwright = require("playwright");
 const LocalWebServer = require('local-web-server');
 const path = require('path');
 
-const BROWSERS = ['chromium', 'firefox'];
+const BROWSERS = ['chromium', 'firefox', 'webkit'];
 
 // console log messages that match any of these regular expressions will be ignored
 const IGNORE_LOG_MESSAGES = [
   // firefox will complain a lot about how we generate scripts, this is safe to ignore.
   /unreachable code after return statement/,
+  // do not log warnings about the alternative parser, these are normal
+  /alternative parser/,
 ];
 
 // In order to run the browsers, we must setup a local HTTP server for them to run on.
