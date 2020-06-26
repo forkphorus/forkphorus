@@ -98,6 +98,8 @@
         P.suite.defaults.repeatCount = 50;
       }
 
+      P.audio.context = null;
+
       if (location.search.indexOf('nostart') === -1) {
         P.suite.run(P.suite.tests());
       } else {
