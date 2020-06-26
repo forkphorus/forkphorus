@@ -87,6 +87,8 @@
           <a href="#" target="_blank" id="package-link" data-i18n="index.package.button">Package</a>
           <input type="checkbox" id="package-turbo">
           <label for="package-turbo" data-i18n="index.package.turbo">Turbo mode</label>
+          <input type="checkbox" id="package-controls">
+          <label for="package-controls" data-i18n="index.package.controls">Controls</label>
           <span>
             <input type="radio" name="package-resolution" id="package-full-screen" checked>
             <label for="package-full-screen" data-i18n="index.package.fullscreen">Full screen</label>
@@ -116,6 +118,10 @@
         <tr>
           <td class="name" title="Controls whether the renderer tries to make images look smoother."><label for="settings-image-smoothing">Image Smoothing</label></td>
           <td class="value"><input id="settings-image-smoothing" type="checkbox" autocomplete="off"></td>
+        </tr>
+        <tr>
+          <td class="name" title="Prevents sprites from moving offscreen."><label for="settings-sprite-fencing">Sprite Fencing</label></td>
+          <td class="value"><input id="settings-sprite-fencing" type="checkbox" autocomplete="off"></td>
         </tr>
       </table>
       <p>Changes are applied automatically.</p>
@@ -157,6 +163,7 @@
       'index.studio.view': 'View studio on Scratch.',
       'index.package.button': 'Package',
       'index.package.turbo': 'Turbo mode',
+      'index.package.controls': 'Controls',
       'index.package.fullscreen': 'Full screen',
       'index.package.480': '480\u00D7360',
       'index.package.custom': 'Other:',
@@ -212,7 +219,6 @@
     var projectArea = querySelector('#project-area');
 
     var player = new P.player.Player();
-    window.player = player;
     player.addControls();
     new P.player.ProgressBar(player, {
       position: querySelector('.url').parentNode,
@@ -229,6 +235,13 @@
       errorHandler.errorEl.appendChild(el);
     });
     playerArea.appendChild(player.root);
+
+    // expose player on the global object
+    window.player = player;
+    console.log('forkphorus is open source https://github.com/forkphorus/forkphorus');
+    console.log('The project player is exposed as `player`');
+    console.log('The project is exposed as `player.stage`');
+    console.log('Sprites are exposed in `player.stage.children`');
 
     var initialId = Common.projectId || '';
     player.setOptions(Common.playerOptions);
@@ -249,17 +262,11 @@
 
     var timeout;
     urlInput.addEventListener('input', function() {
-      var ss = urlInput.selectionStart;
-      var se = urlInput.selectionEnd;
       var url = urlInput.value;
-      var id = url.match(/\d+/g) || [''];
       var pid = player.hasProjectMeta() ? player.getProjectMeta().getId() : -1;
-      while (id.length > 1 && id.indexOf(pid) > -1) {
-        id.splice(id.indexOf(pid), 1);
-      }
-      id = id[0];
+      var id = url.match(/\d+/g) || [''];
+      id = id[0].replace(/^0+/, '');
       urlInput.value = url = PROJECT_PREFIX + id;
-      urlInput.selectionStart = urlInput.selectionEnd = Math.max(PROJECT_PREFIX.length, ss);
       clearTimeout(timeout);
       if (pid !== id) {
         timeout = setTimeout(function() {
@@ -331,13 +338,16 @@
       showPlayerArea();
       player.loadProjectFromFile(file);
       updateLinks();
-      resetTitle();
+      setTitleToProjectTitle();
     }
     function updateLinks() {
       bugLink.href = errorHandler.createBugReportLink(P.i18n.translate('index.report.instructions'));
-      if (player.getProjectMeta().getId()) {
+      if (player.getProjectMeta().isFromScratch()) {
         projectLink.href = 'https://scratch.mit.edu/projects/' + player.getProjectMeta().getId();
         htmlPackagerLink.href = 'packager/#' + player.getProjectMeta().getId();
+      } else {
+        projectLink.href = 'https://scratch.mit.edu/';
+        htmlPackagerLink.href = 'packager';
       }
       updatePackageLink();
       updateEmbedCode();
@@ -371,6 +381,7 @@
     var packageOther = querySelector('#package-other');
     var packageOtherWidth = querySelector('#package-other-width');
     var packageOtherHeight = querySelector('#package-other-height');
+    var packageControls = querySelector('#package-controls');
 
     // Bind two inputs together so that changes to one reflect a change in the other.
     function bindInputs(first, other, multiplier) {
@@ -383,7 +394,7 @@
     }
     function updatePackageLink() {
       packageOtherWidth.disabled = packageOtherHeight.disabled = !packageOther.checked;
-      if (player.getProjectMeta().getId()) {
+      if (player.getProjectMeta().isFromScratch()) {
         var url = location.origin + location.pathname + 'app.html?id=' + player.getProjectMeta().getId();
         if (packageTurbo.checked) url += '&turbo';
         if (packageFullScreen.checked) {
@@ -392,6 +403,9 @@
           url += '&w=480';
         } else {
           url += '&w=' + packageOtherWidth.value;
+        }
+        if (packageControls.checked) {
+          url += '&controls';
         }
         packageLink.href = url;
       } else {
@@ -405,6 +419,7 @@
     packageOther.addEventListener('change', updatePackageLink);
     packageOtherHeight.addEventListener('change', updatePackageLink);
     packageOtherWidth.addEventListener('change', updatePackageLink);
+    packageControls.addEventListener('change', updatePackageLink);
 
     /** Embedding **/
     var embedCode = querySelector('#embed-code');
@@ -426,7 +441,7 @@
       }
       embedOtherWidth.disabled = embedOtherHeight.disabled = !embedOther.checked;
 
-      if (player.getProjectMeta().getId()) {
+      if (player.getProjectMeta().isFromScratch()) {
         var source = location.protocol + '//' + location.host + location.pathname + 'embed.html?id=' + player.getProjectMeta().getId();
         if (embedHideControls.checked) {
           source += '&ui=false';
@@ -581,6 +596,7 @@
     var settingFps = querySelector('#settings-fps');
     var settingUsername = querySelector('#settings-username');
     var settingImageSmoothing = querySelector('#settings-image-smoothing');
+    var settingSpriteFencing = querySelector('#settings-sprite-fencing');
 
     settingFps.value = player.options.fps;
     settingFps.addEventListener('input', (e) => {
@@ -595,6 +611,10 @@
     settingImageSmoothing.checked = player.options.imageSmoothing;
     settingImageSmoothing.addEventListener('change', (e) => {
       player.setOptions({ imageSmoothing: settingImageSmoothing.checked });
+    });
+    settingSpriteFencing.checked = player.options.spriteFencing;
+    settingSpriteFencing.addEventListener('change', (e) => {
+      player.setOptions({ spriteFencing: settingSpriteFencing.checked });
     });
 
     if (initialId) {

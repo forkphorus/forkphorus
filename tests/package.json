@@ -15,5 +15,6 @@
     "url": "git@github.com:forkphorus/forkphorus.git",
     "directory": "tests"
   },
+  "private": true,
   "license": "MIT"
 }

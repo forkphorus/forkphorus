@@ -115,7 +115,7 @@
 
     document.addEventListener('touchmove', function(e) {
       e.preventDefault();
-    });
+    }, { passive: false });
 
     Common.parseSearch(function(key, value) {
       switch (key) {
@@ -126,11 +126,14 @@
         case 'w':
           player.setOptions({ fullscreenMaxWidth: Number(value) || 480 });
           break;
+        case 'controls':
+          player.addControls({ enableFullscreen: false });
+          break;
       }
     });
 
     // do not focus the stage when embedded
-    if (window.parent) {
+    if (!window.parent || window.parent === window) {
       player.setOptions({ focusOnLoad: false });
     }
 
