@@ -533,6 +533,10 @@ namespace P.sb3 {
         const PADDING = 2;
         const row = this.addRow();
         const height = row.element.offsetHeight;
+        if (height === 0) {
+          // happens sometimes when list is updated but not actually visible, make sure not to cache the result in this case
+          return 0;
+        }
         this._rowHeight = height + PADDING;
       }
       return this._rowHeight;
