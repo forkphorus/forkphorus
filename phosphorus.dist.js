@@ -3594,21 +3594,20 @@ var P;
                 if (error.stack) {
                     return 'Message: ' + error.message + '\nStack:\n' + error.stack;
                 }
-                return error.toString();
+                return '' + error;
             }
-            createBugReportLink(bodyBefore, bodyAfter) {
-                var title = this.getBugReportTitle();
-                bodyAfter = bodyAfter || '';
-                var body = bodyBefore +
-                    '\n\n\n-----\n' +
-                    this.getBugReportMetadata() +
-                    '\n' +
-                    bodyAfter;
+            createBugReportLink(error) {
+                const type = error ? '[Error]' : '[Bug]';
+                const title = `${type} ${this.getBugReportTitle()}`;
+                const body = this.getBugReportBody(error);
                 return ErrorHandler.BUG_REPORT_LINK
                     .replace('$title', encodeURIComponent(title))
                     .replace('$body', encodeURIComponent(body));
             }
             getBugReportTitle() {
+                if (!this.player.hasProjectMeta()) {
+                    return 'Unknown Project';
+                }
                 const meta = this.player.getProjectMeta();
                 const title = meta.getTitle();
                 const id = meta.getId();
@@ -3620,16 +3619,49 @@ var P;
                 }
                 return 'Unknown Project';
             }
-            getBugReportMetadata() {
-                var meta = '';
-                meta += 'Project ID: ' + this.player.getProjectMeta().getId() + '\n';
-                meta += location.href + '\n';
-                meta += navigator.userAgent;
-                return meta;
+            getBugReportBody(error) {
+                const sections = [];
+                sections.push({
+                    title: 'Describe the bug',
+                    body: '',
+                });
+                sections.push({
+                    title: 'Steps to reproduce',
+                    body: '',
+                });
+                sections.push({
+                    title: 'Project ID, URL, or file',
+                    body: this.getProjectInformation(),
+                });
+                let debug = '';
+                debug += location.href + '\n';
+                debug += navigator.userAgent + '\n';
+                if (error) {
+                    debug += '```\n' + this.stringifyError(error) + '\n```';
+                }
+                sections.push({
+                    title: 'Debug information <!-- DO NOT EDIT -->',
+                    body: debug,
+                });
+                return sections
+                    .map((i) => `**${i.title}**\n${i.body}\n`)
+                    .join('\n')
+                    .trim();
             }
-            createErrorLink(error) {
-                var body = P.i18n.translate('player.errorhandler.instructions');
-                return this.createBugReportLink(body, '```\n' + this.stringifyError(error) + '\n```');
+            getProjectInformation() {
+                if (!this.player.hasProjectMeta()) {
+                    return 'no project meta loaded';
+                }
+                const projectMeta = this.player.getProjectMeta();
+                if (projectMeta.isFromScratch()) {
+                    if (projectMeta.getTitle()) {
+                        return 'https://scratch.mit.edu/projects/' + projectMeta.getId();
+                    }
+                    else {
+                        return 'https://scratch.mit.edu/projects/' + projectMeta.getId() + ' (probably unshared)';
+                    }
+                }
+                return 'Not from Scratch: ' + projectMeta.getId();
             }
             oncleanup() {
                 if (this.errorEl && this.errorEl.parentNode) {
@@ -3639,7 +3671,7 @@ var P;
             }
             handleError(error) {
                 var el = document.createElement('div');
-                var errorLink = this.createErrorLink(error);
+                var errorLink = this.createBugReportLink(error);
                 var attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
                 el.innerHTML = P.i18n.translate('player.errorhandler.error').replace('$attrs', attributes);
                 return el;
@@ -3678,7 +3710,7 @@ var P;
                 this.errorEl = el;
             }
         }
-        ErrorHandler.BUG_REPORT_LINK = 'https://github.com/forkphorus/forkphorus/issues/new?title=$title&body=$body';
+        ErrorHandler.BUG_REPORT_LINK = 'https://github.com/forkphorus/forkphorus/issues/new?template=bug_report.md&labels=bug&title=$title&body=$body&';
         player_1.ErrorHandler = ErrorHandler;
         class ProgressBar {
             constructor(player, options = {}) {

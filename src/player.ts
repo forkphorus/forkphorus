@@ -233,6 +233,7 @@ namespace P.player {
     }
 
     getId() {
+      // do not change -- that could break cloud variables for some projects in the packager.
       return '#buffer#';
     }
 
@@ -1095,7 +1096,7 @@ namespace P.player {
    * Error handler UI for Player
    */
   export class ErrorHandler {
-    public static BUG_REPORT_LINK = 'https://github.com/forkphorus/forkphorus/issues/new?title=$title&body=$body';
+    public static BUG_REPORT_LINK = 'https://github.com/forkphorus/forkphorus/issues/new?template=bug_report.md&labels=bug&title=$title&body=$body&';
 
     private errorEl: HTMLElement | null;
     private errorContainer: HTMLElement | null;
@@ -1115,28 +1116,25 @@ namespace P.player {
     /**
      * Create a string representation of an error.
      */
-    stringifyError(error: any): string {
+    private stringifyError(error: any): string {
       if (!error) {
         return 'unknown error';
       }
       if (error.stack) {
         return 'Message: ' + error.message + '\nStack:\n' + error.stack;
       }
-      return error.toString();
+      return '' + error;
     }
 
     /**
-     * Generate the link to report a bug to, including title and metadata.
+     * Generate the link to report a bug to, including project and device information.
+     * @param error An error to include in the bug report
      */
-    createBugReportLink(bodyBefore: string, bodyAfter: string): string {
-      var title = this.getBugReportTitle();
-      bodyAfter = bodyAfter || '';
-      var body =
-        bodyBefore +
-        '\n\n\n-----\n' +
-        this.getBugReportMetadata() +
-        '\n' +
-        bodyAfter;
+    createBugReportLink(error?: any): string {
+      const type = error ? '[Error]' : '[Bug]';
+      const title = `${type} ${this.getBugReportTitle()}`;
+      const body = this.getBugReportBody(error);
+
       return ErrorHandler.BUG_REPORT_LINK
         .replace('$title', encodeURIComponent(title))
         .replace('$body', encodeURIComponent(body));
@@ -1145,7 +1143,10 @@ namespace P.player {
     /**
      * Get the title for bug reports.
      */
-    getBugReportTitle(): string {
+    private getBugReportTitle(): string {
+      if (!this.player.hasProjectMeta()) {
+        return 'Unknown Project';
+      }
       const meta = this.player.getProjectMeta();
       const title = meta.getTitle();
       const id = meta.getId();
@@ -1159,25 +1160,63 @@ namespace P.player {
     }
 
     /**
-     * Get the metadata to include in bug reports.
+     * Generate the body of an error report.
+     * @param error An error to include, if any.
      */
-    getBugReportMetadata(): string {
-      var meta = '';
-      meta += 'Project ID: ' + this.player.getProjectMeta().getId() + '\n';
-      meta += location.href + '\n';
-      meta += navigator.userAgent;
-      return meta;
+    private getBugReportBody(error: any): string {
+      const sections: {title: string; body: string;}[] = [];
+
+      sections.push({
+        title: 'Describe the bug',
+        body: '',
+      });
+
+      sections.push({
+        title: 'Steps to reproduce',
+        body: '',
+      });
+
+      sections.push({
+        title: 'Project ID, URL, or file',
+        body: this.getProjectInformation(),
+      });
+
+      let debug = '';
+      debug += location.href + '\n';
+      debug += navigator.userAgent + '\n';
+      if (error) {
+        debug += '```\n' + this.stringifyError(error) + '\n```';
+      }
+      sections.push({
+        title: 'Debug information <!-- DO NOT EDIT -->',
+        body: debug,
+      });
+
+      return sections
+        .map((i) => `**${i.title}**\n${i.body}\n`)
+        .join('\n')
+        .trim();
     }
 
     /**
-     * Get the URL to report an error to.
+     * Get the information to display to describe where to find the project.
      */
-    createErrorLink(error: any): string {
-      var body = P.i18n.translate('player.errorhandler.instructions');
-      return this.createBugReportLink(body, '```\n' + this.stringifyError(error) + '\n```');
+    private getProjectInformation(): string {
+      if (!this.player.hasProjectMeta()) {
+        return 'no project meta loaded';
+      }
+      const projectMeta = this.player.getProjectMeta();
+      if (projectMeta.isFromScratch()) {
+        if (projectMeta.getTitle()) {
+          return 'https://scratch.mit.edu/projects/' + projectMeta.getId();
+        } else {
+          return 'https://scratch.mit.edu/projects/' + projectMeta.getId() + ' (probably unshared)';
+        }
+      }
+      return 'Not from Scratch: ' + projectMeta.getId();
     }
 
-    oncleanup(): void {
+    private oncleanup(): void {
       if (this.errorEl && this.errorEl.parentNode) {
         this.errorEl.parentNode.removeChild(this.errorEl);
         this.errorEl = null;
@@ -1189,7 +1228,7 @@ namespace P.player {
      */
     handleError(error: any): HTMLElement {
       var el = document.createElement('div');
-      var errorLink = this.createErrorLink(error);
+      var errorLink = this.createBugReportLink(error);
       var attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
       // use of innerHTML intentional
       el.innerHTML = P.i18n.translate('player.errorhandler.error').replace('$attrs', attributes);
@@ -1199,7 +1238,7 @@ namespace P.player {
     /**
      * Create an error element indicating this project is not supported.
      */
-    handleNotSupportedError(error: ProjectNotSupportedError): HTMLElement {
+    private handleNotSupportedError(error: ProjectNotSupportedError): HTMLElement {
       var el = document.createElement('div');
       // use of innerHTML intentional
       el.innerHTML = P.i18n.translate('player.errorhandler.error.unsupported').replace('$type', error.type);
@@ -1209,13 +1248,13 @@ namespace P.player {
     /**
      * Create an error element indicating this project does not exist.
      */
-    handleDoesNotExistError(error: ProjectDoesNotExistError): HTMLElement {
+    private handleDoesNotExistError(error: ProjectDoesNotExistError): HTMLElement {
       var el = document.createElement('div');
       el.textContent = P.i18n.translate('player.errorhandler.error.doesnotexist').replace('$id', error.id);
       return el;
     }
 
-    onerror(error: any): void {
+    private onerror(error: any): void {
       var el = document.createElement('div');
       el.className = 'player-error';
       // Special handling for certain errors to provide a better error message

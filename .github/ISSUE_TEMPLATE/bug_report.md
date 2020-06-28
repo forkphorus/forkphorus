@@ -1,19 +1,20 @@
 ---
 name: Bug report
-about: Create a report to help us improve and fix the bug
-title: "[BUG]"
+about: Create a report to help us improve
+title: "[Bug]"
 labels: bug
 assignees: ''
 
 ---
 
 **Describe the bug**
+Please also describe how to reproduce this bug.
+
+**Project ID, url, or file**
 
 
-**How to reproduce**
+**Device Information (Device, Operating System, Browser)**
 
 
-**Screenshots**
-
-
-**Project link**
+**Additional context**
+Add any other context or screenshots about the problem here.

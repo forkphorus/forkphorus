@@ -1,13 +1,23 @@
 # Reporting Bugs
 
-<!-- NOTE TO EDITOR: Please keep this section similar to https://scratch.mit.edu/projects/366001364/ -->
+<!--
+
+NOTE:
+
+ - Please keep this section similar to https://scratch.mit.edu/projects/366001364/
+ - Ensure that the issue templates are up to date with the contents of this page.
+ - Ensure that the generated error pages have similar content to the issue templates.
+
+-->
+
 Please make sure to include the following in your bug reports:
 
+ - description of the bug
+ - steps to recreate the bug
  - project ID (included by default if you use the bug report links)
- - error message, if any (included by default if you use the bug report links)
- - what you were doing (steps to recreate bug)
  - suspected cause, if you have an idea
  - anything else you want to include
+ - do **not** edit the "Debug information" section, if it is present
 
 Feel free to bump your bug by commenting on it if it seems to be going nowhere for a long time.
 
