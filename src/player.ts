@@ -1096,10 +1096,16 @@ namespace P.player {
    * Error handler UI for Player
    */
   export class ErrorHandler {
+    /**
+     * The URL to report bugs to.
+     * $title is replaced with the project title (encoded)
+     * $body is replaced with the bug report body (encoded)
+     */
     public static BUG_REPORT_LINK = 'https://github.com/forkphorus/forkphorus/issues/new?template=bug_report.md&labels=bug&title=$title&body=$body&';
 
-    private errorEl: HTMLElement | null;
-    private errorContainer: HTMLElement | null;
+    private errorEl: HTMLElement | null = null;
+    private errorContainer: HTMLElement | null = null;
+    public generatedErrorLink: string | null = null;
 
     constructor(public player: ProjectPlayer, options: ErrorHandlerOptions = {}) {
       this.player = player;
@@ -1221,15 +1227,17 @@ namespace P.player {
         this.errorEl.parentNode.removeChild(this.errorEl);
         this.errorEl = null;
       }
+      this.generatedErrorLink = null;
     }
 
     /**
      * Create an error element indicating that forkphorus has crashed, and where to report the bug.
      */
     handleError(error: any): HTMLElement {
-      var el = document.createElement('div');
-      var errorLink = this.createBugReportLink(error);
-      var attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
+      const el = document.createElement('div');
+      const errorLink = this.createBugReportLink(error);
+      this.generatedErrorLink = errorLink;
+      const attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
       // use of innerHTML intentional
       el.innerHTML = P.i18n.translate('player.errorhandler.error').replace('$attrs', attributes);
       return el;
@@ -1239,7 +1247,7 @@ namespace P.player {
      * Create an error element indicating this project is not supported.
      */
     private handleNotSupportedError(error: ProjectNotSupportedError): HTMLElement {
-      var el = document.createElement('div');
+      const el = document.createElement('div');
       // use of innerHTML intentional
       el.innerHTML = P.i18n.translate('player.errorhandler.error.unsupported').replace('$type', error.type);
       return el;
@@ -1249,13 +1257,13 @@ namespace P.player {
      * Create an error element indicating this project does not exist.
      */
     private handleDoesNotExistError(error: ProjectDoesNotExistError): HTMLElement {
-      var el = document.createElement('div');
+      const el = document.createElement('div');
       el.textContent = P.i18n.translate('player.errorhandler.error.doesnotexist').replace('$id', error.id);
       return el;
     }
 
     private onerror(error: any): void {
-      var el = document.createElement('div');
+      const el = document.createElement('div');
       el.className = 'player-error';
       // Special handling for certain errors to provide a better error message
       if (error instanceof ProjectNotSupportedError) {

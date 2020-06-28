@@ -3576,6 +3576,9 @@ var P;
         class ErrorHandler {
             constructor(player, options = {}) {
                 this.player = player;
+                this.errorEl = null;
+                this.errorContainer = null;
+                this.generatedErrorLink = null;
                 this.player = player;
                 player.onerror.subscribe(this.onerror.bind(this));
                 player.oncleanup.subscribe(this.oncleanup.bind(this));
@@ -3668,26 +3671,28 @@ var P;
                     this.errorEl.parentNode.removeChild(this.errorEl);
                     this.errorEl = null;
                 }
+                this.generatedErrorLink = null;
             }
             handleError(error) {
-                var el = document.createElement('div');
-                var errorLink = this.createBugReportLink(error);
-                var attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
+                const el = document.createElement('div');
+                const errorLink = this.createBugReportLink(error);
+                this.generatedErrorLink = errorLink;
+                const attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
                 el.innerHTML = P.i18n.translate('player.errorhandler.error').replace('$attrs', attributes);
                 return el;
             }
             handleNotSupportedError(error) {
-                var el = document.createElement('div');
+                const el = document.createElement('div');
                 el.innerHTML = P.i18n.translate('player.errorhandler.error.unsupported').replace('$type', error.type);
                 return el;
             }
             handleDoesNotExistError(error) {
-                var el = document.createElement('div');
+                const el = document.createElement('div');
                 el.textContent = P.i18n.translate('player.errorhandler.error.doesnotexist').replace('$id', error.id);
                 return el;
             }
             onerror(error) {
-                var el = document.createElement('div');
+                const el = document.createElement('div');
                 el.className = 'player-error';
                 if (error instanceof ProjectNotSupportedError) {
                     el.appendChild(this.handleNotSupportedError(error));

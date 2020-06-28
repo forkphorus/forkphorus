@@ -233,6 +233,9 @@
       var el = document.createElement('div');
       el.innerHTML = `Alternatively, <a href="https://scratch.mit.edu/projects/366001364/" target="_blank">post a Scratch comment</a> and include: "<span style="font-family: monospace; user-select: all">${err.replace(/<>/g, '')} (${player.getProjectMeta().getId()})</span>"`;
       errorHandler.errorEl.appendChild(el);
+      if (errorHandler.generatedErrorLink) {
+        bugLink.href = errorHandler.generatedErrorLink;
+      }
     });
     playerArea.appendChild(player.root);
 
