@@ -119,6 +119,10 @@
           <td class="name" title="Controls whether the renderer tries to make images look smoother."><label for="settings-image-smoothing">Image Smoothing</label></td>
           <td class="value"><input id="settings-image-smoothing" type="checkbox" autocomplete="off"></td>
         </tr>
+        <tr>
+          <td class="name" title="Prevents sprites from moving offscreen."><label for="settings-sprite-fencing">Sprite Fencing</label></td>
+          <td class="value"><input id="settings-sprite-fencing" type="checkbox" autocomplete="off"></td>
+        </tr>
       </table>
       <p>Changes are applied automatically.</p>
     </div>
@@ -215,7 +219,6 @@
     var projectArea = querySelector('#project-area');
 
     var player = new P.player.Player();
-    window.player = player;
     player.addControls();
     new P.player.ProgressBar(player, {
       position: querySelector('.url').parentNode,
@@ -232,6 +235,13 @@
       errorHandler.errorEl.appendChild(el);
     });
     playerArea.appendChild(player.root);
+
+    // expose player on the global object
+    window.player = player;
+    console.log('forkphorus is open source https://github.com/forkphorus/forkphorus');
+    console.log('The project player is exposed as `player`');
+    console.log('The project is exposed as `player.stage`');
+    console.log('Sprites are exposed in `player.stage.children`');
 
     var initialId = Common.projectId || '';
     player.setOptions(Common.playerOptions);
@@ -586,6 +596,7 @@
     var settingFps = querySelector('#settings-fps');
     var settingUsername = querySelector('#settings-username');
     var settingImageSmoothing = querySelector('#settings-image-smoothing');
+    var settingSpriteFencing = querySelector('#settings-sprite-fencing');
 
     settingFps.value = player.options.fps;
     settingFps.addEventListener('input', (e) => {
@@ -600,6 +611,10 @@
     settingImageSmoothing.checked = player.options.imageSmoothing;
     settingImageSmoothing.addEventListener('change', (e) => {
       player.setOptions({ imageSmoothing: settingImageSmoothing.checked });
+    });
+    settingSpriteFencing.checked = player.options.spriteFencing;
+    settingSpriteFencing.addEventListener('change', (e) => {
+      player.setOptions({ spriteFencing: settingSpriteFencing.checked });
     });
 
     if (initialId) {

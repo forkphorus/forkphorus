@@ -78,7 +78,7 @@
 
   <noscript><b>This page requires JavaScript to work properly.</b></noscript>
 
-  <p>This guide will explain how to use the <a href="/packager/" target="_blank">Forkphorus Packager</a> to package Scratch projects for Windows, Mac, Linux, Android, and iOS.</p>
+  <p>This guide will explain how to use the <a href="/packager/" target="_blank" rel="noopener">Forkphorus Packager</a> to package Scratch projects for Windows, Mac, Linux, Android, and iOS.</p>
 
   <p>This guide is a Work In Progress. The Windows and Android sections are more complete than others. If you encounter problems or wish to improve this guide, visit <a href="https://github.com/forkphorus/forkphorus/">the GitHub repo</a>.</p>
 
@@ -91,15 +91,15 @@
       <a class="platform" tabindex="0" data-id="ios"><span class="platform-text">iOS</span></a>
     </nav>
 
-    <p data-os="mac"><b>Mac users: I am not super familiar with Macs so there may be some inaccuracies or better ways to do things, please <a href="https://github.com/forkphorus/forkphorus/issues/new" target="_blank">let me know</a> if this is the case!</b></p>
-    <p data-os="linux"><b>Linux users: I am not very familiar with packaging applications for Linux. You will have to do a bit of your own research to finish things. Please <a href="https://github.com/forkphorus/forkphorus/issues/new" target="_blank">report your findings</a> so I can improve this guide for everyone.</b></p>
-    <p data-os="ios"><b>iOS users: I do not have access to an iOS device for testing, so I am unsure of the accuracy of the guide below. If you try it, please <a href="https://github.com/forkphorus/forkphorus/issues/new" target="_blank">report your findings</a> so I can improve this guide for everyone.</b></p>
+    <p data-os="mac"><b>Mac users: I am not super familiar with Macs so there may be some inaccuracies or better ways to do things, please <a href="https://github.com/forkphorus/forkphorus/issues/new" target="_blank" rel="noopener">let me know</a> if this is the case!</b></p>
+    <p data-os="linux"><b>Linux users: I am not very familiar with packaging applications for Linux. You will have to do a bit of your own research to finish things. Please <a href="https://github.com/forkphorus/forkphorus/issues/new" target="_blank" rel="noopener">report your findings</a> so I can improve this guide for everyone.</b></p>
+    <p data-os="ios"><b>iOS users: I do not have access to an iOS device for testing, so I am unsure of the accuracy of the guide below. If you try it, please <a href="https://github.com/forkphorus/forkphorus/issues/new" target="_blank" rel="noopener">report your findings</a> so I can improve this guide for everyone.</b></p>
 
     <section data-os="windows,mac,linux">
       <h2>Step 1 - Use the packager</h2>
 
       <ol>
-        <li>Go to the <a href="/packager/" target="_blank">forkphorus HTML packager</a></li>
+        <li>Go to the <a href="/packager/" target="_blank" rel="noopener">forkphorus HTML packager</a></li>
         <li>Enter your project ID or select the project file. Change the options to match your needs.</li>
         <li>Open the <b>Environment Options</b> section</li>
         <li>
@@ -112,8 +112,9 @@
         <li data-os="windows,linux">Select a custom icon, if you have one. (must be .png)</li>
         <li>Make changes to <b>NW.js package.json</b> to match your project:
           <ul>
-            <li>Use the <a href="config_generator.html" target="_blank">config generator</a> if you are unfamiliar with JSON.</li>
-            <li>For a full list of usable fields, see <a href="http://docs.nwjs.io/en/latest/References/Manifest%20Format/#window-subfields" target="_blank">the NW.js documentation</a> (Advanced users only)</li>
+            <li>Use the <a href="config_generator.html" target="_blank" rel="noopener">config generator</a> if you are unfamiliar with JSON.</li>
+            <li>Save this text somewhere because you'll probably want to reuse it if you ever update your project.</li>
+            <li>For a full list of usable fields, see <a href="http://docs.nwjs.io/en/latest/References/Manifest%20Format/#window-subfields" target="_blank" rel="noopener">the NW.js documentation</a> (Advanced users only)</li>
           </ul>
         </li>
         <li>
@@ -135,7 +136,7 @@
 
       <ol>
         <li>
-          <a href="https://nwjs.io/" target="_blank">Download NW.js's "Normal" version</a> (not "SDK") for your platform.
+          <a href="https://nwjs.io/" target="_blank" rel="noopener">Download NW.js's "Normal" version</a> (not "SDK") for your platform.
           <!-- PICTURE OF NWJS WEBSITE -->
           <img loading="lazy" data-src="https://user-images.githubusercontent.com/17209175/85181434-8a409100-b24b-11ea-8978-93a9983f8051.png" height="300">
           <small>
@@ -185,11 +186,11 @@
           The project should launch!
           <!-- PROJECT RUNNING -->
           <img data-os="windows" loading="lazy" data-src="https://user-images.githubusercontent.com/17209175/59154894-67797b00-8a42-11e9-9678-e24bca31f285.png" height="402">
-          <small data-os="windows"><a href="https://scratch.mit.edu/projects/10128407/" target="_blank">griffpatch's Paper Minecraft project</a> running as an exe on Windows with a solid blue icon.</small>
+          <small data-os="windows"><a href="https://scratch.mit.edu/projects/10128407/" target="_blank" rel="noopener">griffpatch's Paper Minecraft project</a> running as an exe on Windows with a solid blue icon.</small>
           <img data-os="mac" loading="lazy" data-src="https://user-images.githubusercontent.com/17209175/83950538-146f0b00-a7f1-11ea-9116-cfb9ae1a445e.png" height="397">
-          <small data-os="mac"><a href="https://scratch.mit.edu/projects/10128407/" target="_blank">griffpatch's Paper Minecraft project</a> running as an application on Mac.</small>
+          <small data-os="mac"><a href="https://scratch.mit.edu/projects/10128407/" target="_blank" rel="noopener">griffpatch's Paper Minecraft project</a> running as an application on Mac.</small>
           <img data-os="linux" loading="lazy" data-src="https://user-images.githubusercontent.com/17209175/83994811-159d5680-a91d-11ea-8adf-8edd8e9ceda3.png" height="426">
-          <small data-os="linux"><a href="https://scratch.mit.edu/projects/391480888/" target="_blank">squig3's Scratch port of Ikachan</a> running in Linux. <span title="That's just what I had available. Don't bother me about DE or distro choice.">(Manjaro GNOME with Adwaita Dark theme)</span></small>
+          <small data-os="linux"><a href="https://scratch.mit.edu/projects/391480888/" target="_blank" rel="noopener">squig3's Scratch port of Ikachan</a> running in Linux. <span title="That's just what I had available. Don't bother me about DE or distro choice.">(Manjaro GNOME with Adwaita Dark theme)</span></small>
         </li>
       </ol>
 
@@ -211,11 +212,11 @@
 
       <p>Create a zip archive of the app itself and credits.html (included in the NW.js download). You must include credits.html, otherwise you may be violating the license of some projects used by NW.js. (not legal advice)</p>
 
-      <p><a href="https://docs.nwjs.io/en/latest/For%20Users/Package%20and%20Distribute/#mac-os-x" target="_blank">See the NW.js documentation for the full list of further steps.</a> Some of the more important and simpler ones are described below.</p>
+      <p><a href="https://docs.nwjs.io/en/latest/For%20Users/Package%20and%20Distribute/#mac-os-x" target="_blank" rel="noopener">See the NW.js documentation for the full list of further steps.</a> Some of the more important and simpler ones are described below.</p>
 
       <h3>Changing the Icon</h3>
 
-      <p>Use <a href="http://www.img2icnsapp.com/" target="_blank">Image2icon</a> to generate a <code>.icns</code> file. Replace Contents/Resources/app.icns in the app to change the icon.</p>
+      <p>Use <a href="http://www.img2icnsapp.com/" target="_blank" rel="noopener">Image2icon</a> to generate a <code>.icns</code> file. Replace Contents/Resources/app.icns in the app to change the icon.</p>
 
       <h3>Renaming the Application</h3>
 
@@ -231,9 +232,9 @@
     <section data-os="linux">
       <h2>Linux Packaging - Further steps</h2>
 
-      <p>Linux Users: I am not very familiar with packaging for linux. You are mostly on your own here. Please <a href="https://github.com/forkphorus/forkphorus/" target="_blank">help write this section on GitHub!</a></p>
+      <p>Linux Users: I am not very familiar with packaging for linux. You are mostly on your own here. Please <a href="https://github.com/forkphorus/forkphorus/" target="_blank" rel="noopener">help write this section on GitHub!</a></p>
 
-      <p>You'll probably just want to archive everything into a tarball and have your users extract it. You may will want to make a <a href="https://wiki.archlinux.org/index.php/desktop_entries" target="_blank">.desktop</a> file to get a proper desktop presence.</p>
+      <p>You'll probably just want to archive everything into a tarball and have your users extract it. You may will want to make a <a href="https://wiki.archlinux.org/index.php/desktop_entries" target="_blank" rel="noopener">.desktop</a> file to get a proper desktop presence.</p>
 
       <p>I think that <span title="apparently AppImage doesn't even have a page on the arch wiki yet? :/">AppImage</span> would be a great way to package this type of app, but I'm not sure how to do that.</p>
 
@@ -246,7 +247,7 @@
       <h3>Changing the icon of nw.exe</h3>
 
       <p>
-        You can use a tool like <a href="http://www.angusj.com/resourcehacker/" target="_blank">Resource Hacker</a> to change the icon of nw.exe.
+        You can use a tool like <a href="http://www.angusj.com/resourcehacker/" target="_blank" rel="noopener">Resource Hacker</a> to change the icon of nw.exe.
         You will probably need to use a converter to convert your images to <code>.ico</code> files.
         The icon you will want to change is Icon 1. Right click on it and select "Replace Icon" to change it.
         <img data-src="https://user-images.githubusercontent.com/17209175/85179500-bdccec80-b246-11ea-9fd4-e3f020f19682.png" height="433">
@@ -294,10 +295,10 @@
       <p>Self extracting archives also make your project take significantly longer to launch, and are not very common.</p>
 
       <h4>Using Make SFX</h4>
-      <p>Make SFX is a tool for creating self-extracting archives. Other similar tools include <a href="https://www.7-zip.org/" target="_blank">7-Zip</a>, <a href="https://www.peazip.org/" target="_blank">PeaZip</a>, and <a href="https://rarlab.com/download.htm" target="_blank">WinRAR</a>.</p>
+      <p>Make SFX is a tool for creating self-extracting archives. Other similar tools include <a href="https://www.7-zip.org/" target="_blank" rel="noopener">7-Zip</a>, <a href="https://www.peazip.org/" target="_blank" rel="noopener">PeaZip</a>, and <a href="https://rarlab.com/download.htm" target="_blank" rel="noopener">WinRAR</a>.</p>
       <ol>
         <li>Complete the first section using NW.js first.</li>
-        <li>Download Make SFX from <a href="http://74.cz/en/make-sfx/index.php" target="_blank">their website</a>.</li>
+        <li>Download Make SFX from <a href="http://74.cz/en/make-sfx/index.php" target="_blank" rel="noopener">their website</a>.</li>
         <li>The Make SFX interface is rather daunting. Pretty much, configure it so that it looks like this:
           <!-- MAKE SFX INTERFACE -->
           <img loading="lazy" data-src="https://user-images.githubusercontent.com/17209175/58766023-61b20000-853f-11e9-8712-90336b9ad987.png" height="557">
@@ -355,7 +356,7 @@
       <p>Note: This does NOT use the HTML Packager.</p>
 
       <ol>
-        <li>Go to the <a href="/" target="_blank">forkphorus homepage</a></li>
+        <li>Go to the <a href="/" target="_blank" rel="noopener">forkphorus homepage</a></li>
         <li>Load your project</li>
         <li>Scroll down to <i>Package this project</i>, configure settings, and click <i>Package</i> to generate a forkphorus packager link. This link should start with: <i>https://forkphorus.github.io/app.html?...</i></li>
         <li>Keep this link around, it will be needed later.</li>
@@ -370,7 +371,7 @@
       <p>Perhaps using AppInventor just to embed a webpage is a bit overkill, but it works good enough. These steps do not require any programming knowledge &mdash; just follow what them exactly.</p>
 
       <ol>
-        <li>Go to <a href="http://appinventor.mit.edu/" target="_blank">the AppInventor home page</a> and hit <i>Create Apps!</i>. Sign in with a Google account.</li>
+        <li>Go to <a href="http://appinventor.mit.edu/" target="_blank" rel="noopener">the AppInventor home page</a> and hit <i>Create Apps!</i>. Sign in with a Google account.</li>
         <li>Hit <i>Start new project</i>, name the project (this doesn't matter), and hit <i>OK</i></li>
         <li>From the Palette on the left, drag a <i>WebViewer</i> into the Viewer in the middle of the screen.</li>
         <li>In the components menu, select <i>WebViewer1</i> and configure it like so:
@@ -423,7 +424,7 @@
             <li>or Select <i>Build</i> &gt; <i>App (save .apk to my computer)</i></li>
           </ul>
         </li>
-        <li>For help on publishing to the Google Play Store, see <a href="http://appinventor.mit.edu/explore/ai2/google-play.html" target="_blank">Publishing Apps to Google Play (App Inventor 2)</a></li>
+        <li>For help on publishing to the Google Play Store, see <a href="http://appinventor.mit.edu/explore/ai2/google-play.html" target="_blank" rel="noopener">Publishing Apps to Google Play (App Inventor 2)</a></li>
       </ol>
 
       <hr>
@@ -433,7 +434,7 @@
       <h2><span data-os="android">Second Method - </span>Using AppsGeyser to embed</h2>
 
       <ol>
-        <li>Open the AppsGeyser page <a href="http://appsgeyser.com/create-url-app/" target="_blank"><i>Create Smart URL App</i></a></li>
+        <li>Open the AppsGeyser page <a href="http://appsgeyser.com/create-url-app/" target="_blank" rel="noopener"><i>Create Smart URL App</i></a></li>
         <li>Insert the link Forkphorus generated into the <i>Website URL</i> box.</li>
         <li>Choose a color theme, and hit <i>NEXT</i></li>
         <li>Fill out details such as your App's Name, Description, and Icon, and then hit <i>Create</i></li>
@@ -448,8 +449,16 @@
       <p>This method involves creating an independent HTML file for your project and embedding that file. This will make your app work offline and always produce the same result.</p>
       <p>You will not need to install PhoneGap as we will be using their online build service.</p>
 
+      <!--
+        NOTE TO EDITOR
+
+        This section is largely duplicated below for iOS.
+        Please keep these sections in sync.
+        TODO: don't duplicate these
+      -->
+
       <ol>
-        <li>Generate a ZIP archive using <a href="/packager/" target="_blank">the HTML packager</a>
+        <li>Generate a ZIP archive using <a href="/packager/" target="_blank" rel="noopener">the HTML packager</a>
           <ol>
             <li>Click "Environment Options"</li>
             <li>Set "Packager Environment" to "PhoneGap"</li>
@@ -464,32 +473,47 @@
             <li>Optionally choose a custom icon.</li>
           </ol>
         </li>
-        <li>Go to the <a href="https://build.phonegap.com" target="_blank">PhoneGap build service</a> and sign in with or create an Adobe account</li>
+        <li>Go to the <a href="https://build.phonegap.com" target="_blank" rel="noopener">PhoneGap build service</a> and sign in with or create an Adobe account</li>
         <li>Create a new <i>Private</i> app and upload the generated ZIP to the service.</li>
+        <li>Click <i>Ready to build</i>.</li>
         <li>Wait for the builds to complete.</li>
         <li>Click on the Android icon to download the APK. You can also scan the QR code.</li>
-        <li>To update the APK, run the packager again, go to the PhoneGap build service, and use the <i>Update code</i> button:<img loading="lazy" data-src="https://user-images.githubusercontent.com/17209175/66354891-e7015300-e92b-11e9-8753-dd3237d0c8f1.png" height="285"></li>
-        <li>If uploading to the Google Play Store, you should read <a href="http://docs.phonegap.com/phonegap-build/signing/android/" target="_blank">Android Signing (PhoneGap Documentation)</a> or <a href="https://unbot.wordpress.com/2014/11/16/builing-a-release-version-for-build-phonegap-com/">Building a release version for build.phonegap.com</a></li>
+        <li>
+          To update your app, run the packager again, go to the PhoneGap build service, and use the <i>Update code</i> button:
+          <img loading="lazy" data-src="https://user-images.githubusercontent.com/17209175/85251937-43f05b00-b420-11ea-911f-6e83b9e88c7e.png" height="263">
+        </li>
+        <li>
+          If uploading to the Google Play Store, you should read
+          <a href="http://docs.phonegap.com/phonegap-build/signing/android/" target="_blank" rel="noopener">Android Signing (PhoneGap Documentation)</a>
+          or <a href="https://unbot.wordpress.com/2014/11/16/builing-a-release-version-for-build-phonegap-com/" target="_blank" rel="noopener">Building a release version for build.phonegap.com</a>
+        </li>
       </ol>
 
-      <p><small>Due to a bug in the PhoneGap CLI/Desktop app, forkphorus does not work in the preview. It works fine in the final build. This bug does not affect the online build service.</small></p>
+      <p><small>Due to a bug in the PhoneGap CLI/Desktop app, forkphorus may not work in the preview. It works fine in the final build. This bug does not affect the online build service.</small></p>
 
       <hr>
     </section>
 
     <section data-os="ios">
       <h2>iOS Packaging</h2>
-      <p>You will likely need a Mac to complete these steps.</p>
+      <p>These steps require a membership in the Apple Developer Program.</p>
       <p>Note that the Apple App Store has a recurring fee of $99/year.</p>
     </section>
 
     <section data-os="ios">
       <h2>Using the HTML packager and PhoneGap</h2>
-      <p>This method involves creating an independent HTML file for your project and embedding that file. This will make your app work offline and always produce the same result.</p>
-      <p>I haven not tested PhoneGap's iOS support yet as I do not have an iOS device. You will need a <a href="http://docs.phonegap.com/phonegap-build/signing/ios/" target="_blank">signing key</a>. This part of the guide still references some Android things, but the interface is much the same for iOS.</p>
+      <p>I haven not tested PhoneGap's iOS support yet as I do not have an iOS device. You will need a <a href="http://docs.phonegap.com/phonegap-build/signing/ios/" target="_blank" rel="noopener">signing key</a>. This part of the guide still references some Android things, but the interface is much the same for iOS.</p>
+
+      <!--
+        NOTE TO EDITOR
+
+        This section is largely duplicated above for Android.
+        Please keep these sections in sync.
+        TODO: don't duplicate these
+      -->
 
       <ol>
-        <li>Generate a ZIP archive using <a href="/packager/" target="_blank">the HTML packager</a>
+        <li>Generate a ZIP archive using <a href="/packager/" target="_blank" rel="noopener">the HTML packager</a>
           <ol>
             <li>Click "Environment Options"</li>
             <li>Set "Packager Environment" to "PhoneGap"</li>
@@ -504,15 +528,24 @@
             <li>Optionally choose a custom icon.</li>
           </ol>
         </li>
-        <li>Go to the <a href="https://build.phonegap.com" target="_blank">PhoneGap build service</a> and sign in with or create an Adobe account</li>
+        <li>Go to the <a href="https://build.phonegap.com" target="_blank" rel="noopener">PhoneGap build service</a> and sign in with or create an Adobe account</li>
         <li>Create a new <i>Private</i> app and upload the generated ZIP to the service.</li>
+        <li>Click <i>Ready to build</i>.</li>
         <li>Wait for the builds to complete.</li>
-        <li>Click on the Android icon to download the APK. You can also scan the QR code.</li>
-        <li>To update the APK, run the packager again, go to the PhoneGap build service, and use the <i>Update code</i> button:<img loading="lazy" data-src="https://user-images.githubusercontent.com/17209175/66354891-e7015300-e92b-11e9-8753-dd3237d0c8f1.png" height="285"></li>
-        <li>If uploading to the Google Play Store, you should read <a href="http://docs.phonegap.com/phonegap-build/signing/android/" target="_blank">Android Signing (PhoneGap Documentation)</a> or <a href="https://unbot.wordpress.com/2014/11/16/builing-a-release-version-for-build-phonegap-com/">Building a release version for build.phonegap.com</a></li>
+        <li>
+          <b>If the iOS icon is <a href="https://user-images.githubusercontent.com/17209175/85252191-e14b8f00-b420-11ea-8ccf-deeda9bdf46b.png" target="_blank" rel="noopener">red</a>, then you likely need to add your signing key.</b>
+          <ul>
+            <li>See the <a href="http://docs.phonegap.com/phonegap-build/signing/ios/" target="_blank" rel="noopener">PhoneGap documentation</a> for instructions.</li>
+          </ul>
+        </li>
+        <li>Click on the iOS icon to download the app. You can also scan the QR code.</li>
+        <li>
+          To update your app, run the packager again, go to the PhoneGap build service, and use the <i>Update code</i> button:
+          <img loading="lazy" data-src="https://user-images.githubusercontent.com/17209175/85251937-43f05b00-b420-11ea-911f-6e83b9e88c7e.png" height="263">
+        </li>
       </ol>
 
-      <p><small>Due to a bug in the PhoneGap CLI/Desktop app, forkphorus does not work in the preview. It works fine in the final build. This bug does not affect the online build service.</small></p>
+      <p><small>Due to a bug in the PhoneGap CLI/Desktop app, forkphorus may not work in the preview. It works fine in the final build. This bug does not affect the online build service.</small></p>
 
       <hr>
     </section>

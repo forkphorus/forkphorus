@@ -6,7 +6,7 @@
 
   // compatibility: embed.js does not work in some common WYSIWYG editors
   // security: this script could potentially do things like steal browser cookies. an <iframe> should not be able to do this ("same origin policy")
-  // this won't be removed soon but it may be removed "eventually"
+  // embed.js won't be removed soon but it may be removed "eventually" and is not actively tested
   console.warn('forkphorus: embed.js is deprecated due to compatibility and security concerns and may stop working in the future. Please use a direct <iframe> of embed.html instead! The generator on https://forkphorus.github.io/ has been updated to do this.');
 
   // Get this script's HTML element.

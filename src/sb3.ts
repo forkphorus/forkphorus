@@ -531,8 +531,14 @@ namespace P.sb3 {
       if (this._rowHeight === -1) {
         // Space between each row, in pixels.
         const PADDING = 2;
-        const row = this.addRow();
-        const height = row.element.offsetHeight;
+        if (this.rows.length === 0) {
+          this.addRow();
+        }
+        const height = this.rows[0].element.offsetHeight;
+        if (height === 0) {
+          // happens sometimes when list is updated but not actually visible, make sure not to cache the result in this case
+          return 0;
+        }
         this._rowHeight = height + PADDING;
       }
       return this._rowHeight;
@@ -1115,6 +1121,10 @@ namespace P.sb3.compiler {
     LIST = 13,
   }
 
+  export const enum InputFlags {
+    NaN = 1,
+  }
+
   /**
    * JS code with an associated type.
    * Returns the source when stringified, making the raw type safe to use in concatenation.
@@ -1128,9 +1138,18 @@ namespace P.sb3.compiler {
      *  - it is a string that represents a number or a boolean
      */
     public potentialNumber: boolean = true;
+    private flags: number = 0;
 
     constructor(public source: string, public type: InputType) {
 
+    }
+
+    enableFlag(n: number) {
+      this.flags &= n;
+    }
+
+    hasFlag(n: number) {
+      return this.flags & n;
     }
 
     toString() {
@@ -1446,14 +1465,27 @@ namespace P.sb3.compiler {
      * Total number of labels created by this compiler.
      */
     public labelCount: number = 0;
+    /**
+     * Compilation state metadata.
+     */
     public state: CompilerState;
+    /**
+     * Whether the compiled scripts depend on music assets to exist.
+     */
     public needsMusic: boolean = false;
-    public disableStringToNumberConversion: boolean = false;
+    /**
+     * Set of the names of all costumes in this sprite.
+     * This affects some optimizations.
+     */
+    public costumeNames: Set<string> = new Set();
 
     constructor(target: Target) {
       this.target = target;
       this.data = target.sb3data;
       this.blocks = this.data.blocks;
+      for (const costume of target.costumes) {
+        this.costumeNames.add(costume.name);
+      }
     }
 
     /**
@@ -1528,6 +1560,10 @@ namespace P.sb3.compiler {
     convertInputType(input: CompiledInput, type: InputType): CompiledInput {
       // If the types are already identical, no changes are necessary
       if (input.type === type) {
+        // if the input could be NaN, number conversion is always required (NaN will be converted to 0)
+        if (type === 'number' && input.hasFlag(InputFlags.NaN)) {
+          return new CompiledInput('(' + input.source + ' || 0)', type);
+        }
         return input;
       }
       // The 'any' type is a little bit special.
@@ -1631,6 +1667,13 @@ namespace P.sb3.compiler {
     }
 
     /**
+     * Determine whether some text is used as the name of a costume.
+     */
+    isCostumeName(text: string) {
+      return this.costumeNames.has(text);
+    }
+
+    /**
      * Compile a native or primitive value.
      */
     compileNativeInput(native: any[], desiredType: InputType): CompiledInput {
@@ -1644,7 +1687,7 @@ namespace P.sb3.compiler {
         case NativeTypes.ANGLE_NUM: {
           // [type, value]
           const number = +native[1];
-          if (this.disableStringToNumberConversion || isNaN(number) || desiredType === 'string') {
+          if (isNaN(number) || desiredType === 'string') {
             return this.sanitizedInput('' + native[1]);
           } else {
             // Using number.toString() instead of native[1] fixes syntax errors
@@ -1656,8 +1699,11 @@ namespace P.sb3.compiler {
         case NativeTypes.TEXT: {
           // [type, value]
           const value = native[1];
-          // Do not attempt any conversions if the desired type is string or if the value does not appear to be number-like
-          if (desiredType !== 'string' && /\d|Infinity/.test(value)) {
+          // Do not attempt any conversions if:
+          //  - desired type is string
+          //  - value does not appear to be number-like
+          //  - this is the name of a costume (as that breaks setCostume #264)
+          if (desiredType !== 'string' && /\d|Infinity/.test(value) && !this.isCostumeName(value)) {
             const number = +value;
             // If the stringification of the number is not the same as the original value, do not convert.
             // This fixes issues where the stringification is used instead of the number itself.
@@ -2297,18 +2343,16 @@ namespace P.sb3.compiler {
     util.updateBubble();
   };
   statementLibrary['looks_switchbackdropto'] = function(util) {
-    util.compiler.disableStringToNumberConversion = true;
+    // BACKDROP cannot be casted: setCostume behavior depends on type
     const BACKDROP = util.getInput('BACKDROP', 'any');
-    util.compiler.disableStringToNumberConversion = false;
     util.writeLn(`self.setCostume(${BACKDROP});`);
     util.visual('always');
     util.writeLn('var threads = backdropChange();');
     util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
   };
   statementLibrary['looks_switchcostumeto'] = function(util) {
-    util.compiler.disableStringToNumberConversion = true;
+    // COSTUME cannot be casted: setCostume behavior depends on type
     const COSTUME = util.getInput('COSTUME', 'any');
-    util.compiler.disableStringToNumberConversion = false;
     util.writeLn(`S.setCostume(${COSTUME});`);
     util.visual('visible');
   };
@@ -2850,7 +2894,9 @@ namespace P.sb3.compiler {
   inputLibrary['operator_divide'] = function(util) {
     const NUM1 = util.getInput('NUM1', 'number');
     const NUM2 = util.getInput('NUM2', 'number');
-    return util.numberInput(`(${NUM1} / ${NUM2} || 0)`);
+    const input = util.numberInput(`(${NUM1} / ${NUM2})`);
+    input.enableFlag(P.sb3.compiler.InputFlags.NaN);
+    return input;
   };
   inputLibrary['operator_equals'] = function(util) {
     const OPERAND1 = util.getInput('OPERAND1', 'any');
@@ -2915,8 +2961,11 @@ namespace P.sb3.compiler {
         return util.numberInput(`Math.abs(${NUM})`);
       case 'floor':
         return util.numberInput(`Math.floor(${NUM})`);
-      case 'sqrt':
-        return util.numberInput(`Math.sqrt(${NUM})`);
+      case 'sqrt': {
+        const input = util.numberInput(`Math.sqrt(${NUM})`);
+        input.enableFlag(P.sb3.compiler.InputFlags.NaN);
+        return input;
+      }
       case 'ceiling':
         return util.numberInput(`Math.ceil(${NUM})`);
       case 'cos':

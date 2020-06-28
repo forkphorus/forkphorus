@@ -21,6 +21,8 @@
     'sb3/105-contains.sb3',
     'sb3/112.sb3',
     'sb3/for-each-in.sb3',
+    'sb3/264-setCostume.sb3',
+    'sb3/263-NaN.sb3',
   ];
 
   /**

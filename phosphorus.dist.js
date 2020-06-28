@@ -1006,6 +1006,7 @@ var P;
                 this.speech2text = null;
                 this.microphone = null;
                 this.extensions = [];
+                this.useSpriteFencing = false;
                 this.runtime = new P.runtime.Runtime(this);
                 this.keys = [];
                 this.keys.any = 0;
@@ -1546,6 +1547,24 @@ var P;
                 const d = (90 - this.direction) * Math.PI / 180;
                 this.moveTo(this.scratchX + steps * Math.cos(d), this.scratchY + steps * Math.sin(d));
             }
+            keepInView() {
+                const rb = this.rotatedBounds();
+                const width = rb.right - rb.left;
+                const height = rb.top - rb.bottom;
+                const bounds = Math.min(15, Math.floor(Math.min(width, height) / 2));
+                if (rb.right - bounds < -240) {
+                    this.scratchX -= rb.right - bounds + 240;
+                }
+                if (rb.left + bounds > 240) {
+                    this.scratchX -= rb.left + bounds - 240;
+                }
+                if (rb.bottom + bounds > 180) {
+                    this.scratchY -= rb.bottom + bounds - 180;
+                }
+                if (rb.top - bounds < -180) {
+                    this.scratchY -= rb.top - bounds + 180;
+                }
+            }
             moveTo(x, y) {
                 var ox = this.scratchX;
                 var oy = this.scratchY;
@@ -1554,6 +1573,9 @@ var P;
                 }
                 this.scratchX = x;
                 this.scratchY = y;
+                if (this.stage.useSpriteFencing) {
+                    this.keepInView();
+                }
                 if (this.isPenDown && !this.isDragging) {
                     this.stage.renderer.penLine(this.penColor, this.penSize, ox, oy, x, y);
                 }
@@ -2906,9 +2928,10 @@ var P;
                 this.MAGIC = {
                     LARGE_Z_INDEX: '9999999999',
                     CLOUD_HISTORY_API: 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100',
-                    PROJECT_API: 'https://cdn.projects.scratch.mit.edu/$id',
+                    PROJECT_API: 'https://projects.scratch.mit.edu/$id',
                     CLOUD_DATA_SERVER: 'wss://stratus.garbomuffin.com',
                 };
+                this.stage = null;
                 this.projectMeta = null;
                 this.currentLoader = null;
                 this.fullscreenEnabled = false;
@@ -3085,6 +3108,7 @@ var P;
                 }
                 this.stage.username = this.options.username;
                 this.stage.runtime.isTurbo = this.options.turbo;
+                this.stage.useSpriteFencing = this.options.spriteFencing;
                 this.stage.renderer.imageSmoothingEnabled = this.options.imageSmoothing;
             }
             throwWithoutStage() {
@@ -3546,6 +3570,7 @@ var P;
             fullscreenMaxWidth: Infinity,
             imageSmoothing: false,
             focusOnLoad: true,
+            spriteFencing: false,
         };
         player_1.Player = Player;
         class ErrorHandler {
@@ -6406,8 +6431,13 @@ var P;
             getRowHeight() {
                 if (this._rowHeight === -1) {
                     const PADDING = 2;
-                    const row = this.addRow();
-                    const height = row.element.offsetHeight;
+                    if (this.rows.length === 0) {
+                        this.addRow();
+                    }
+                    const height = this.rows[0].element.offsetHeight;
+                    if (height === 0) {
+                        return 0;
+                    }
                     this._rowHeight = height + PADDING;
                 }
                 return this._rowHeight;
@@ -6877,6 +6907,13 @@ var P;
                     this.source = source;
                     this.type = type;
                     this.potentialNumber = true;
+                    this.flags = 0;
+                }
+                enableFlag(n) {
+                    this.flags &= n;
+                }
+                hasFlag(n) {
+                    return this.flags & n;
                 }
                 toString() {
                     return this.source;
@@ -7023,10 +7060,13 @@ var P;
                 constructor(target) {
                     this.labelCount = 0;
                     this.needsMusic = false;
-                    this.disableStringToNumberConversion = false;
+                    this.costumeNames = new Set();
                     this.target = target;
                     this.data = target.sb3data;
                     this.blocks = this.data.blocks;
+                    for (const costume of target.costumes) {
+                        this.costumeNames.add(costume.name);
+                    }
                 }
                 getHatBlocks() {
                     return Object.keys(this.blocks)
@@ -7072,6 +7112,9 @@ var P;
                 }
                 convertInputType(input, type) {
                     if (input.type === type) {
+                        if (type === 'number' && input.hasFlag(1)) {
+                            return new CompiledInput('(' + input.source + ' || 0)', type);
+                        }
                         return input;
                     }
                     if (type === 'any') {
@@ -7136,6 +7179,9 @@ var P;
                 isStringLiteralPotentialNumber(text) {
                     return /\d|true|false|Infinity/.test(text);
                 }
+                isCostumeName(text) {
+                    return this.costumeNames.has(text);
+                }
                 compileNativeInput(native, desiredType) {
                     const type = native[0];
                     switch (type) {
@@ -7145,7 +7191,7 @@ var P;
                         case 7:
                         case 8: {
                             const number = +native[1];
-                            if (this.disableStringToNumberConversion || isNaN(number) || desiredType === 'string') {
+                            if (isNaN(number) || desiredType === 'string') {
                                 return this.sanitizedInput('' + native[1]);
                             }
                             else {
@@ -7154,7 +7200,7 @@ var P;
                         }
                         case 10: {
                             const value = native[1];
-                            if (desiredType !== 'string' && /\d|Infinity/.test(value)) {
+                            if (desiredType !== 'string' && /\d|Infinity/.test(value) && !this.isCostumeName(value)) {
                                 const number = +value;
                                 if (number.toString() === value) {
                                     if (!isNaN(number)) {
@@ -7692,18 +7738,14 @@ var P;
         util.updateBubble();
     };
     statementLibrary['looks_switchbackdropto'] = function (util) {
-        util.compiler.disableStringToNumberConversion = true;
         const BACKDROP = util.getInput('BACKDROP', 'any');
-        util.compiler.disableStringToNumberConversion = false;
         util.writeLn(`self.setCostume(${BACKDROP});`);
         util.visual('always');
         util.writeLn('var threads = backdropChange();');
         util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
     };
     statementLibrary['looks_switchcostumeto'] = function (util) {
-        util.compiler.disableStringToNumberConversion = true;
         const COSTUME = util.getInput('COSTUME', 'any');
-        util.compiler.disableStringToNumberConversion = false;
         util.writeLn(`S.setCostume(${COSTUME});`);
         util.visual('visible');
     };
@@ -8224,7 +8266,9 @@ var P;
     inputLibrary['operator_divide'] = function (util) {
         const NUM1 = util.getInput('NUM1', 'number');
         const NUM2 = util.getInput('NUM2', 'number');
-        return util.numberInput(`(${NUM1} / ${NUM2} || 0)`);
+        const input = util.numberInput(`(${NUM1} / ${NUM2})`);
+        input.enableFlag(1);
+        return input;
     };
     inputLibrary['operator_equals'] = function (util) {
         const OPERAND1 = util.getInput('OPERAND1', 'any');
@@ -8284,8 +8328,11 @@ var P;
                 return util.numberInput(`Math.abs(${NUM})`);
             case 'floor':
                 return util.numberInput(`Math.floor(${NUM})`);
-            case 'sqrt':
-                return util.numberInput(`Math.sqrt(${NUM})`);
+            case 'sqrt': {
+                const input = util.numberInput(`Math.sqrt(${NUM})`);
+                input.enableFlag(1);
+                return input;
+            }
             case 'ceiling':
                 return util.numberInput(`Math.ceil(${NUM})`);
             case 'cos':

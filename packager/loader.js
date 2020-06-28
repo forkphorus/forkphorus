@@ -211,6 +211,7 @@ window.SBDL = (function() {
     ];
     const SOUND_EXTENSIONS = [
       'wav',
+      'mp3',
     ];
 
     const result = {

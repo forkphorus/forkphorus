@@ -126,6 +126,7 @@ namespace P.player {
     fullscreenMaxWidth: number;
     imageSmoothing: boolean;
     focusOnLoad: boolean;
+    spriteFencing: boolean;
   }
 
   interface ControlsOptions {
@@ -289,6 +290,7 @@ namespace P.player {
       fullscreenMaxWidth: Infinity,
       imageSmoothing: false,
       focusOnLoad: true,
+      spriteFencing: false,
     };
 
     public onprogress = new Slot<number>();
@@ -312,14 +314,14 @@ namespace P.player {
       // $id is replaced with the project's ID
       CLOUD_HISTORY_API: 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100',
       // $id is replaced with the project's ID
-      PROJECT_API: 'https://cdn.projects.scratch.mit.edu/$id',
+      PROJECT_API: 'https://projects.scratch.mit.edu/$id',
       // an instance of https://github.com/forkphorus/cloud-server
       // CLOUD_DATA_SERVER: 'ws://localhost:9080', // for cloud-server development
       CLOUD_DATA_SERVER: 'wss://stratus.garbomuffin.com',
     };
 
     private options: Readonly<PlayerOptions>;
-    private stage: P.core.Stage;
+    private stage: P.core.Stage = null!; // making this nullable forces some very verbose type checking
     private projectMeta: ProjectMeta | null = null;
     private currentLoader: LoaderIdentifier | null = null;
     private fullscreenEnabled: boolean = false;
@@ -536,6 +538,7 @@ namespace P.player {
       }
       this.stage.username = this.options.username;
       this.stage.runtime.isTurbo = this.options.turbo;
+      this.stage.useSpriteFencing = this.options.spriteFencing;
       (this.stage.renderer as P.renderer.canvas2d.ProjectRenderer2D).imageSmoothingEnabled = this.options.imageSmoothing;
     }
 

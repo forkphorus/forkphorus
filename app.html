@@ -115,7 +115,7 @@
 
     document.addEventListener('touchmove', function(e) {
       e.preventDefault();
-    });
+    }, { passive: false });
 
     Common.parseSearch(function(key, value) {
       switch (key) {

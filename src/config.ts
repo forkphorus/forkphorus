@@ -1,10 +1,10 @@
 /// <reference path="phosphorus.ts" />
 
 namespace P.config {
-  export const debug = false;
-  export const useWebGL = false;
-  export const supportVideoSensing = false;
-  export const experimentalOptimizations = false;
-  export const scale = window.devicePixelRatio || 1;
-  export const PROJECT_API: string = 'https://projects.scratch.mit.edu/$id';
+  export var debug = false;
+  export var useWebGL = false;
+  export var supportVideoSensing = false;
+  export var experimentalOptimizations = false;
+  export var scale = window.devicePixelRatio || 1;
+  export var PROJECT_API: string = 'https://projects.scratch.mit.edu/$id';
 }

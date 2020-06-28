@@ -4,6 +4,7 @@
 <head>
   <title>Test Suite</title>
 
+  <meta charset="utf-8">
   <link rel="stylesheet" href="../phosphorus.css">
   <script src="../lib/jszip.min.js"></script>
   <script src="../lib/fontfaceobserver.standalone.js"></script>
@@ -96,6 +97,8 @@
       if (location.search.indexOf('benchmark') > -1) {
         P.suite.defaults.repeatCount = 50;
       }
+
+      P.audio.context = null;
 
       if (location.search.indexOf('nostart') === -1) {
         P.suite.run(P.suite.tests());
