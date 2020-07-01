@@ -987,7 +987,7 @@ namespace P.sb3 {
   // Loads a .sb3 file
   export class SB3FileLoader extends BaseSB3Loader {
     private buffer: ArrayBuffer;
-    private zip: JSZip.Zip;
+    private zip: JSZip;
 
     constructor(buffer: ArrayBuffer) {
       super();

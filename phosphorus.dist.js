@@ -3434,6 +3434,17 @@ var P;
                 }
                 return true;
             }
+            convertScratch1Project(buffer) {
+                const sb1 = new ScratchSB1Converter.SB1File(buffer);
+                const projectData = sb1.json;
+                const zipFiles = sb1.zip.files;
+                const zip = new JSZip();
+                zip.file('project.json', JSON.stringify(projectData));
+                for (const fileName of Object.keys(zipFiles)) {
+                    zip.file(fileName, zipFiles[fileName].bytes);
+                }
+                return zip.generateAsync({ type: 'arraybuffer' });
+            }
             fetchProject(id) {
                 const request = new P.io.Request(this.MAGIC.PROJECT_API.replace('$id', id));
                 return request
@@ -3487,9 +3498,9 @@ var P;
                             }
                         }
                         catch (e) {
-                            const buffer = yield P.io.readers.toArrayBuffer(blob);
+                            let buffer = yield P.io.readers.toArrayBuffer(blob);
                             if (this.isScratch1Project(buffer)) {
-                                throw new ProjectNotSupportedError('Scratch 1');
+                                buffer = yield this.convertScratch1Project(buffer);
                             }
                             return new P.sb2.SB2FileLoader(buffer);
                         }

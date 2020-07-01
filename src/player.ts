@@ -933,7 +933,7 @@ namespace P.player {
     /**
      * Determine if a project file is a Scratch 1 project.
      */
-    private isScratch1Project(buffer: ArrayBuffer) {
+    private isScratch1Project(buffer: ArrayBuffer): boolean {
       const MAGIC = 'ScratchV0';
       const array = new Uint8Array(buffer);
       for (var i = 0; i < MAGIC.length; i++) {
@@ -942,6 +942,24 @@ namespace P.player {
         }
       }
       return true;
+    }
+
+    /**
+     * Convert a Scratch 1 project to a Scratch 2 project.
+     * @param buffer The binary data of the Scratch 1 project.
+     * @returns The binary data of the Scratch 2 project.
+     */
+    private convertScratch1Project(buffer: ArrayBuffer): Promise<ArrayBuffer> {
+      const sb1 = new ScratchSB1Converter.SB1File(buffer);
+      const projectData = sb1.json;
+      const zipFiles = sb1.zip.files;
+
+      const zip = new JSZip();
+      zip.file('project.json', JSON.stringify(projectData));
+      for (const fileName of Object.keys(zipFiles)) {
+        zip.file(fileName, zipFiles[fileName].bytes);
+      }
+      return zip.generateAsync({ type: 'arraybuffer' });
     }
 
     /**
@@ -1021,11 +1039,10 @@ namespace P.player {
           }
         } catch (e) {
           // if the project cannot be loaded as JSON, it may be a binary project.
-          const buffer = await P.io.readers.toArrayBuffer(blob);
+          let buffer = await P.io.readers.toArrayBuffer(blob);
 
-          // check for Scratch 1, which we do not support
           if (this.isScratch1Project(buffer)) {
-            throw new ProjectNotSupportedError('Scratch 1');
+            buffer = await this.convertScratch1Project(buffer);
           }
 
           return new P.sb2.SB2FileLoader(buffer);

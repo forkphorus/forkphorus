@@ -586,7 +586,7 @@ namespace P.sb2 {
 
   export class SB2FileLoader extends BaseSB2Loader {
     private buffer: ArrayBuffer;
-    private zip: JSZip.Zip;
+    private zip: JSZip;
 
     constructor(buffer: ArrayBuffer) {
       super();
