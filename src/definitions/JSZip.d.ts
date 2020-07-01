@@ -2,10 +2,6 @@
 // Only types what we use
 
 declare namespace JSZip {
-  export interface Zip {
-    file(path: string): File;
-  }
-
   export interface File {
     async(type: 'arrayBuffer'): Promise<ArrayBuffer>;
     async(type: 'text'): Promise<string>;
@@ -13,10 +9,12 @@ declare namespace JSZip {
     async(type: 'base64'): Promise<string>;
     name: string;
   }
-
-  export interface Base {
-    loadAsync(buffer: ArrayBuffer): Promise<Zip>;
-  }
 }
 
-declare var JSZip: JSZip.Base;
+declare class JSZip {
+  constructor();
+  file(path: string): JSZip.File;
+  file(path: string, data: string | ArrayBuffer | Uint8Array | Blob): JSZip.File;
+  generateAsync(options: { type: 'arraybuffer' }): Promise<ArrayBuffer>;
+  static loadAsync(buffer: ArrayBuffer): Promise<JSZip>;
+}
