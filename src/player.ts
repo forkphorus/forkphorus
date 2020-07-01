@@ -1173,12 +1173,7 @@ namespace P.player {
       const sections: {title: string; body: string;}[] = [];
 
       sections.push({
-        title: 'Describe the bug',
-        body: '',
-      });
-
-      sections.push({
-        title: 'Steps to reproduce',
+        title: 'Describe the bug, including any steps to reproduce it',
         body: '',
       });
 

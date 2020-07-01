@@ -7,8 +7,8 @@ assignees: ''
 
 ---
 
-**Describe the bug**
-Please also describe how to reproduce this bug.
+**Describe the bug, including any steps to reproduce it**
+
 
 **Project ID, url, or file**
 
@@ -16,5 +16,4 @@ Please also describe how to reproduce this bug.
 **Device Information (Device, Operating System, Browser)**
 
 
-**Additional context**
-Add any other context or screenshots about the problem here.
+**Additional context or screenshots**

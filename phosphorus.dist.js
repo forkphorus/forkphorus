@@ -3624,11 +3624,7 @@ var P;
             getBugReportBody(error) {
                 const sections = [];
                 sections.push({
-                    title: 'Describe the bug',
-                    body: '',
-                });
-                sections.push({
-                    title: 'Steps to reproduce',
+                    title: 'Describe the bug, including any steps to reproduce it',
                     body: '',
                 });
                 sections.push({
