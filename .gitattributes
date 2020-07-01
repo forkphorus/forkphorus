@@ -1,3 +1,4 @@
 # Improves how GitHub detects files
 phosphorus.dist.js linguist-generated=true
+bundle.js linguist-generated=true
 lib linguist-vendored
