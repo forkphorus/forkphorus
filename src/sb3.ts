@@ -996,7 +996,11 @@ namespace P.sb3 {
 
     getAsText(path: string) {
       const task = this.addTask(new P.io.Manual());
-      return this.zip.file(path).async('text')
+      const file = this.zip.file(path);
+      if (!file) {
+        throw new Error('cannot find file as text: ' + path);
+      }
+      return file.async('text')
         .then((response) => {
           task.markComplete();
           return response;
@@ -1005,7 +1009,11 @@ namespace P.sb3 {
 
     getAsArrayBuffer(path: string) {
       const task = this.addTask(new P.io.Manual());
-      return this.zip.file(path).async('arrayBuffer')
+      const file = this.zip.file(path);
+      if (!file) {
+        throw new Error('cannot find file as arraybuffer: ' + path);
+      }
+      return file.async('arraybuffer')
         .then((response) => {
           task.markComplete();
           return response;
@@ -1014,7 +1022,11 @@ namespace P.sb3 {
 
     getAsBase64(path: string) {
       const task = this.addTask(new P.io.Manual());
-      return this.zip.file(path).async('base64')
+      const file = this.zip.file(path);
+      if (!file) {
+        throw new Error('cannot find file as base64: ' + path);
+      }
+      return file.async('base64')
         .then((response) => {
           task.markComplete();
           return response;

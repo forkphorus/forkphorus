@@ -5026,9 +5026,12 @@ var P;
             }
             loadMD5(hash, id, isAudio = false) {
                 const f = isAudio ? (this.zip.file(id + '.wav') || this.zip.file(id + '.mp3')) : this.zip.file(id + '.gif') || (this.zip.file(id + '.png') || this.zip.file(id + '.jpg') || this.zip.file(id + '.svg'));
+                if (!f) {
+                    throw new Error('cannot find md5: ' + hash + ' (isAudio=' + isAudio + ')');
+                }
                 hash = f.name;
                 if (isAudio) {
-                    return f.async('arrayBuffer')
+                    return f.async('arraybuffer')
                         .then((buffer) => P.audio.decodeAudio(buffer));
                 }
                 const ext = hash.split('.').pop();
@@ -5056,7 +5059,11 @@ var P;
                 return JSZip.loadAsync(this.buffer)
                     .then((data) => {
                     this.zip = data;
-                    return this.zip.file('project.json').async('text');
+                    const project = this.zip.file('project.json');
+                    if (!project) {
+                        throw new Error('project.json is missing');
+                    }
+                    return project.async('text');
                 })
                     .then((project) => {
                     this.projectData = P.json.parse(project);
@@ -6849,7 +6856,11 @@ var P;
             }
             getAsText(path) {
                 const task = this.addTask(new P.io.Manual());
-                return this.zip.file(path).async('text')
+                const file = this.zip.file(path);
+                if (!file) {
+                    throw new Error('cannot find file as text: ' + path);
+                }
+                return file.async('text')
                     .then((response) => {
                     task.markComplete();
                     return response;
@@ -6857,7 +6868,11 @@ var P;
             }
             getAsArrayBuffer(path) {
                 const task = this.addTask(new P.io.Manual());
-                return this.zip.file(path).async('arrayBuffer')
+                const file = this.zip.file(path);
+                if (!file) {
+                    throw new Error('cannot find file as arraybuffer: ' + path);
+                }
+                return file.async('arraybuffer')
                     .then((response) => {
                     task.markComplete();
                     return response;
@@ -6865,7 +6880,11 @@ var P;
             }
             getAsBase64(path) {
                 const task = this.addTask(new P.io.Manual());
-                return this.zip.file(path).async('base64')
+                const file = this.zip.file(path);
+                if (!file) {
+                    throw new Error('cannot find file as base64: ' + path);
+                }
+                return file.async('base64')
                     .then((response) => {
                     task.markComplete();
                     return response;
