@@ -28,7 +28,7 @@ var P = P || {};
 
 /**
  * Identifies the version of Scratch a project is made for.
- * @typedef {'sb2'|'sb3'} ProjectType
+ * @typedef {'sb'|'sb2'|'sb3'} ProjectType
  */
 
 /**
@@ -90,8 +90,9 @@ P.suite = (function() {
   function getProjectType(path) {
     const extension = path.match(/\..*$/)[0];
     switch (extension) {
-      case '.sb3': return 'sb3';
+      case '.sb': return 'sb';
       case '.sb2': return 'sb2';
+      case '.sb3': return 'sb3';
     }
     throw new Error('unknown project type: ' + extension);
   }
@@ -407,12 +408,12 @@ P.suite = (function() {
 (function(compiler) {
   // The Scratch 2 compiler has very limited internals exposed, but we can replace the entire listener compiler.
   // (which is where all top level blocks, such as procedure definitions, are compiled)
-  // We replace the custom block definition instead of the call.
+  // We replace custom block definitions and some broadcast receivers instead of the calls because that's easier.
 
   const originalCompileListener = compiler.compileListener;
   compiler.compileListener = function compileListener(object, script) {
     const opcode = script[0][0];
-    if (opcode !== 'procDef') {
+    if (opcode !== 'procDef' && opcode !== 'whenIReceive') {
       return originalCompileListener(object, script);
     }
 
@@ -443,9 +444,16 @@ P.suite = (function() {
       default:
         return originalCompileListener(object, script);
     }
+
     source += 'endCall();\n';
     const f = P.runtime.createContinuation(source);
     object.fns.push(f);
-    object.procedures[proccode] = new compiler.Scratch2Procedure(f, false, []);
+
+    if (opcode === 'procDef') {
+      object.procedures[proccode] = new compiler.Scratch2Procedure(f, false, []);
+    }
+    if (opcode === 'whenIReceive') {
+      (object.listeners.whenIReceive[proccode] || (object.listeners.whenIReceive[proccode] = [])).push(f);
+    }
   };
 }(P.sb2.compiler));

@@ -4,6 +4,8 @@
   'use strict';
 
   const tests = [
+    'sb/scratch1.sb',
+
     'sb2/sb2-template.sb2',
     'sb2/non-standard-json.sb2',
 

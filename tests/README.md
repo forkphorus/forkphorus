@@ -26,6 +26,10 @@ Try to remove all unused costumes and sounds to keep the files small.
 
 The same process as writing Scratch 3 tests (described above), but just save them as .sb2 instead of .sb3. The template file is `sb2/sb2-template.sb2`.
 
+### Writing Scratch 1 Tests
+
+Don't bother, they get converted to Scratch 2. The Scratch 1 test is only there to ensure that the project gets converted, not to test anything complicated.
+
 ### Adding it to the tests
 
 Open tests.js and add the path to your test to `const tests = [...`.
