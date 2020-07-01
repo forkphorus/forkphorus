@@ -8936,7 +8936,7 @@ var P;
                         this.stopUpdateInterval();
                         return;
                     }
-                    if (this.ws === null || this.ws.readyState !== this.ws.OPEN) {
+                    if (this.ws === null || this.ws.readyState !== this.ws.OPEN || this.ws.bufferedAmount > 2048) {
                         return;
                     }
                     const variableName = this.queuedVariableChanges.shift();
