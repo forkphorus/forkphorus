@@ -49,6 +49,8 @@ namespace P.player {
     }
   }
 
+  type ProjectType = 'sb' | 'sb2' | 'sb3';
+
   interface ProjectPlayer {
     /** Emitted when there has been an update on loading progress. */
     onprogress: Slot<number>;
@@ -96,7 +98,7 @@ namespace P.player {
 
     loadProjectById(id: string): Promise<void>;
     loadProjectFromFile(file: File): Promise<void>;
-    loadProjectFromBuffer(buffer: ArrayBuffer, type: 'sb2' | 'sb3'): Promise<void>;
+    loadProjectFromBuffer(buffer: ArrayBuffer, type: ProjectType): Promise<void>;
 
     hasStage(): boolean;
     getStage(): P.core.Stage;
@@ -1041,6 +1043,7 @@ namespace P.player {
           // if the project cannot be loaded as JSON, it may be a binary project.
           let buffer = await P.io.readers.toArrayBuffer(blob);
 
+          // Scratch 1 is converted to Scratch 2.
           if (this.isScratch1Project(buffer)) {
             buffer = await this.convertScratch1Project(buffer);
           }
@@ -1061,8 +1064,15 @@ namespace P.player {
       }
     }
 
-    private async loadProjectFromBufferWithType(loaderId: LoaderIdentifier, buffer: ArrayBuffer, type: 'sb2' | 'sb3'): Promise<void> {
+    private async loadProjectFromBufferWithType(loaderId: LoaderIdentifier, buffer: ArrayBuffer, type: ProjectType): Promise<void> {
       let loader: P.io.Loader<P.core.Stage>;
+
+      // Scratch 1 is converted to Scratch 2.
+      if (type === 'sb') {
+        buffer = await this.convertScratch1Project(buffer);
+        type = 'sb2';
+      }
+
       switch (type) {
         case 'sb2': loader = new P.sb2.SB2FileLoader(buffer); break;
         case 'sb3': loader = new P.sb3.SB3FileLoader(buffer); break;
@@ -1080,6 +1090,7 @@ namespace P.player {
         const buffer = await P.io.readers.toArrayBuffer(file);
 
         switch (extension) {
+          case 'sb': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb');
           case 'sb2': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb2');
           case 'sb3': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb3');
           default: throw new Error('Unrecognized file extension: ' + extension);
@@ -1091,7 +1102,7 @@ namespace P.player {
       }
     }
 
-    async loadProjectFromBuffer(buffer: ArrayBuffer, type: 'sb2' | 'sb3'): Promise<void> {
+    async loadProjectFromBuffer(buffer: ArrayBuffer, type: ProjectType): Promise<void> {
       const { loaderId } = this.beginLoadingProject();
 
       try {

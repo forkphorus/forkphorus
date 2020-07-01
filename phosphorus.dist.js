@@ -3521,6 +3521,10 @@ var P;
             loadProjectFromBufferWithType(loaderId, buffer, type) {
                 return __awaiter(this, void 0, void 0, function* () {
                     let loader;
+                    if (type === 'sb') {
+                        buffer = yield this.convertScratch1Project(buffer);
+                        type = 'sb2';
+                    }
                     switch (type) {
                         case 'sb2':
                             loader = new P.sb2.SB2FileLoader(buffer);
@@ -3541,6 +3545,7 @@ var P;
                         const extension = file.name.split('.').pop() || '';
                         const buffer = yield P.io.readers.toArrayBuffer(file);
                         switch (extension) {
+                            case 'sb': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb');
                             case 'sb2': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb2');
                             case 'sb3': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb3');
                             default: throw new Error('Unrecognized file extension: ' + extension);
