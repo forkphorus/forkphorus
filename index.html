@@ -122,8 +122,8 @@
       </table>
       <p>Changes are applied automatically.</p>
 
-      <h1>Advanced Settings</h1>
-      <p>Help test unfinished features. <b>Note: These are advanced features and require a refresh to apply.</b> <a href="https://github.com/forkphorus/forkphorus/wiki/Advanced-Features" target="_blank">Please read this first.</a></p>
+      <h1 data-i18n="index.advanced">Advanced Settings</h1>
+      <p>Help test unfinished features. These require a refresh to apply.</b> <a href="https://github.com/forkphorus/forkphorus/wiki/Advanced-Features" target="_blank">Please read this first</a>.</p>
       <div class="advanced">
         <label><input id="advanced-webgl" class="advanced-feature" type="checkbox"> WebGL Renderer</label>
         <label><input id="advanced-cloud" class="advanced-feature" type="checkbox"> Cloud Variables</label>
@@ -176,6 +176,8 @@
       'index.embed.autostart': 'Start automatically',
       'index.embed.lightControls': 'Light controls',
       'index.embed.hideUI': 'Hide UI',
+      'index.advanced': 'Advanced Settings',
+      'index.advanced.confirmation': 'This will refresh this page, resetting the project. Continue?',
     });
     P.i18n.addTranslations('es', {
       'studioview.authorAttribution': 'por $author',
@@ -622,7 +624,7 @@
       setSearchParam('cloud', e.target.checked ? 'ws' : false, e);
     });
     function setSearchParam(key, value, event) {
-      if (!confirm("This will refresh this page, resetting the project. Continue?")) {
+      if (!confirm(P.i18n.translate('index.advanced.confirmation'))) {
         event.preventDefault();
         return;
       }
