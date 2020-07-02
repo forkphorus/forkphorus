@@ -79,7 +79,6 @@ namespace P.i18n {
     'player.controls.flag.title.enabled': 'Turbo mode is enabled. Shift+click to disable turbo mode.',
     'player.controls.flag.title.disabled': 'Turbo mode is disabled. Shift+click to enable turbo mode.',
     'player.errorhandler.error': 'An internal error occurred. <a $attrs>Click here</a> to file a bug report.',
-    'player.errorhandler.error.unsupported': 'This project type ($type) is not supported. For more information and workarounds, <a href="https://github.com/forkphorus/forkphorus/wiki/On-Scratch-1-Projects" target="_blank" rel="noopener">visit this help page</a>.',
     'player.errorhandler.error.doesnotexist': 'There is no project with ID $id (Project was probably deleted, never existed, or you made a typo.)',
   });
 
