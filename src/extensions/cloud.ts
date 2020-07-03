@@ -95,9 +95,9 @@ namespace P.ext.cloud {
         this.stopUpdateInterval();
         return;
       }
-      if (this.ws === null || this.ws.readyState !== this.ws.OPEN) {
-        // no connection
-        // we will hope that the connection will become available in the near future and keep checking
+      if (this.ws === null || this.ws.readyState !== this.ws.OPEN || this.ws.bufferedAmount > 16384) {
+        // do not try to send data if there is no connection or if we are significantly backlogged on data sending
+        // this condition is likely to be temporary so don't stop the interval
         return;
       }
       const variableName = this.queuedVariableChanges.shift()!;

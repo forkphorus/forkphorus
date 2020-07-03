@@ -4,7 +4,7 @@ Test suite for forkphorus. Automatically runs a few Scratch projects and validat
 
 To visit the test suite: [https://forkphorus.github.io/tests/suite.html](https://forkphorus.github.io/tests/suite.html)
 
-All project files are [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/) licensed because that's what Scratch uses.
+All project files (names ending with `.sb`, `.sb2`, or `.sb3`) are [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/) licensed as this is what projects on scratch.mit.edu use.
 
 Files that start with numbers are referring to GitHub issues.
 
@@ -28,7 +28,7 @@ The same process as writing Scratch 3 tests (described above), but just save the
 
 ### Writing Scratch 1 Tests
 
-Don't bother, they get converted to Scratch 2. The Scratch 1 test is only there to ensure that the project gets converted, not to test anything complicated.
+Don't bother, they get converted to Scratch 2. The Scratch 1 test is only there to ensure that the project is converted, not to test anything more complex than that.
 
 ### Adding it to the tests
 

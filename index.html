@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Forkphorus is a JavaScript compiler for Scratch 2 and Scratch 3 projects.">
+  <meta name="description" content="Forkphorus is a JavaScript compiler for Scratch 3, 2, and 1 projects.">
   <link rel="canonical" href="https://forkphorus.github.io/" />
   <title>forkphorus - phosphorus for Scratch 3</title>
   <script>
@@ -34,7 +34,7 @@
 
     <div class="area" id="title-area">
       <h1 class="title">forkphorus</h1>
-      <p>forkphorus runs Scratch 2 and Scratch 3 projects really fast by compiling them to JavaScript. Try it out by pasting a project ID or URL into the field below, <a class="upload-button"><input id="upload-file-input" type="file" autocomplete="off" accept=".sb,.sb2,.sb3">selecting a project file</a>, dropping a file on the page, or <a id="examples">exploring the examples studio</a>.</p>
+      <p>forkphorus runs Scratch 3, 2, and 1 projects really fast by compiling them to JavaScript. Try it out by pasting a project ID or URL into the field below, <a class="upload-button"><input id="upload-file-input" type="file" autocomplete="off" accept=".sb,.sb2,.sb3">selecting a project file</a>, dropping a file on the page, or <a id="examples">exploring the examples studio</a>.</p>
     </div>
 
     <div id="examples-container" class="area">
@@ -125,6 +125,13 @@
         </tr>
       </table>
       <p>Changes are applied automatically.</p>
+
+      <h1 data-i18n="index.advanced">Advanced Settings</h1>
+      <p>Help test unfinished features. These require a refresh to apply.</b> <a href="https://github.com/forkphorus/forkphorus/wiki/Advanced-Features" target="_blank">Please read this first</a>.</p>
+      <div class="advanced">
+        <label><input id="advanced-webgl" class="advanced-feature" type="checkbox"> WebGL Renderer</label>
+        <label><input id="advanced-cloud" class="advanced-feature" type="checkbox"> Cloud Variables</label>
+      </div>
     </div>
 
     <section>
@@ -167,6 +174,8 @@
       'index.embed.autostart': 'Start automatically',
       'index.embed.lightControls': 'Light controls',
       'index.embed.hideUI': 'Hide UI',
+      'index.advanced': 'Advanced Settings',
+      'index.advanced.confirmation': 'This will refresh this page, resetting the project. Continue?',
     });
     P.i18n.addTranslations('es', {
       'studioview.authorAttribution': 'por $author',
@@ -614,6 +623,39 @@
     settingSpriteFencing.addEventListener('change', (e) => {
       player.setOptions({ spriteFencing: settingSpriteFencing.checked });
     });
+
+    /** Advanced Settings Menu **/
+    var advancedWebGL = querySelector('#advanced-webgl');
+    var advancedCloud = querySelector('#advanced-cloud');
+    advancedWebGL.checked = P.config.useWebGL;
+    advancedWebGL.addEventListener('click', function(e) {
+      setSearchParam('webgl', e.target.checked, e);
+    });
+    advancedCloud.checked = player.getOptions().cloudVariables === 'ws';
+    advancedCloud.addEventListener('click', function(e) {
+      setSearchParam('cloud', e.target.checked ? 'ws' : false, e);
+    });
+    function setSearchParam(key, value, event) {
+      if (!confirm(P.i18n.translate('index.advanced.confirmation'))) {
+        event.preventDefault();
+        return;
+      }
+      // if value === false, remove the key
+      // if value === true, add a key with no value
+      // else, add a key with the given value
+      if (value === false) {
+        var searchParams = new URLSearchParams(location.search);
+        searchParams.delete(key);
+        location.search = searchParams.toString();
+      } else {
+        var query = value === true ? key : key + '=' + value;
+        if (location.search.length > 1) {
+          location.search += '&' + query;
+        } else {
+          location.search = '?' + query;
+        }
+      }
+    }
 
     if (initialId) {
       player.setOptions({ autoplayPolicy: 'never' });

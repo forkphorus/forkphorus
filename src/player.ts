@@ -30,16 +30,6 @@ namespace P.player {
   }
 
   /**
-   * An error that indicates that this project type is knowingly not supported.
-   */
-  export class ProjectNotSupportedError extends PlayerError {
-    constructor(public type: string) {
-      super('Project type (' + type + ') is not supported');
-      this.name = 'ProjectNotSupportedError';
-    }
-  }
-
-  /**
    * An error that indicates that this project does not exist.
    */
   export class ProjectDoesNotExistError extends PlayerError {
@@ -1267,16 +1257,6 @@ namespace P.player {
     }
 
     /**
-     * Create an error element indicating this project is not supported.
-     */
-    private handleNotSupportedError(error: ProjectNotSupportedError): HTMLElement {
-      const el = document.createElement('div');
-      // use of innerHTML intentional
-      el.innerHTML = P.i18n.translate('player.errorhandler.error.unsupported').replace('$type', error.type);
-      return el;
-    }
-
-    /**
      * Create an error element indicating this project does not exist.
      */
     private handleDoesNotExistError(error: ProjectDoesNotExistError): HTMLElement {
@@ -1289,9 +1269,7 @@ namespace P.player {
       const el = document.createElement('div');
       el.className = 'player-error';
       // Special handling for certain errors to provide a better error message
-      if (error instanceof ProjectNotSupportedError) {
-        el.appendChild(this.handleNotSupportedError(error));
-      } else if (error instanceof ProjectDoesNotExistError) {
+      if (error instanceof ProjectDoesNotExistError) {
         el.appendChild(this.handleDoesNotExistError(error));
       } else {
         el.appendChild(this.handleError(error));

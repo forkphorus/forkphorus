@@ -2017,7 +2017,6 @@ var P;
             'player.controls.flag.title.enabled': 'Turbo mode is enabled. Shift+click to disable turbo mode.',
             'player.controls.flag.title.disabled': 'Turbo mode is disabled. Shift+click to enable turbo mode.',
             'player.errorhandler.error': 'An internal error occurred. <a $attrs>Click here</a> to file a bug report.',
-            'player.errorhandler.error.unsupported': 'This project type ($type) is not supported. For more information and workarounds, <a href="https://github.com/forkphorus/forkphorus/wiki/On-Scratch-1-Projects" target="_blank" rel="noopener">visit this help page</a>.',
             'player.errorhandler.error.doesnotexist': 'There is no project with ID $id (Project was probably deleted, never existed, or you made a typo.)',
         });
         addTranslations('es', {
@@ -2803,14 +2802,6 @@ var P;
             }
         }
         player_1.PlayerError = PlayerError;
-        class ProjectNotSupportedError extends PlayerError {
-            constructor(type) {
-                super('Project type (' + type + ') is not supported');
-                this.type = type;
-                this.name = 'ProjectNotSupportedError';
-            }
-        }
-        player_1.ProjectNotSupportedError = ProjectNotSupportedError;
         class ProjectDoesNotExistError extends PlayerError {
             constructor(id) {
                 super('Project with ID ' + id + ' does not exist');
@@ -3692,11 +3683,6 @@ var P;
                 el.innerHTML = P.i18n.translate('player.errorhandler.error').replace('$attrs', attributes);
                 return el;
             }
-            handleNotSupportedError(error) {
-                const el = document.createElement('div');
-                el.innerHTML = P.i18n.translate('player.errorhandler.error.unsupported').replace('$type', error.type);
-                return el;
-            }
             handleDoesNotExistError(error) {
                 const el = document.createElement('div');
                 el.textContent = P.i18n.translate('player.errorhandler.error.doesnotexist').replace('$id', error.id);
@@ -3705,10 +3691,7 @@ var P;
             onerror(error) {
                 const el = document.createElement('div');
                 el.className = 'player-error';
-                if (error instanceof ProjectNotSupportedError) {
-                    el.appendChild(this.handleNotSupportedError(error));
-                }
-                else if (error instanceof ProjectDoesNotExistError) {
+                if (error instanceof ProjectDoesNotExistError) {
                     el.appendChild(this.handleDoesNotExistError(error));
                 }
                 else {
@@ -8936,7 +8919,7 @@ var P;
                         this.stopUpdateInterval();
                         return;
                     }
-                    if (this.ws === null || this.ws.readyState !== this.ws.OPEN) {
+                    if (this.ws === null || this.ws.readyState !== this.ws.OPEN || this.ws.bufferedAmount > 16384) {
                         return;
                     }
                     const variableName = this.queuedVariableChanges.shift();
