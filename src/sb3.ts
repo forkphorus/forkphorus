@@ -3189,6 +3189,52 @@ namespace P.sb3.compiler {
       util.target.listeners.whenGreenFlag.push(util.startingFunction);
     },
   };
+  // weird global state, it's certainly dirty but hat compilers are used in order, one at a time, so this works just fine.
+  let whenGreaterThanLabel = 0;
+  hatLibrary['event_whengreaterthan'] = {
+    precompile(compiler, hat) {
+      const WHENGREATERTHANMENU = compiler.getField(hat, 'WHENGREATERTHANMENU');
+      const VALUE = compiler.compileInput(hat, 'VALUE', 'number');
+
+      let sensor = '0';
+      switch (WHENGREATERTHANMENU) {
+        case 'TIMER':
+          sensor = '(runtime.now() - runtime.timerStart) / 1000';
+          break;
+        case 'LOUDNESS':
+          compiler.target.stage.initLoudness();
+          sensor = 'self.microphone.getLoudness()';
+          break;
+        default:
+          console.warn('unsupported sensor', WHENGREATERTHANMENU);
+      }
+
+      whenGreaterThanLabel = compiler.target.fns.length;
+
+      let source = '';
+      // init R in state 0
+      source += 'if (!R.init) { R.init = true; R.state = 0; }\n';
+      // R.state === 1
+      // Enter state 0 if the condition is false.
+      source += `if (R.state === 1 && ${sensor} <= ${VALUE}) { R.state = 0; }\n`;
+      // if R.state === 0
+      // Execute the script and enter state 1 if the condition is true. 
+      source += `if (R.state === 0 && ${sensor} > ${VALUE}) { R.state = 1; save();\n`;
+      // if/else block will be finished by postcompile
+      return source;
+    },
+    postcompile(compiler, source, hat) {
+      source += '}\n';
+      // restore stack if it was saved (see R.state === 0)
+      source += 'if (C.stack.length) { restore(); }\n';
+      // jump back to start
+      source += `forceQueue(${whenGreaterThanLabel});`;
+      return source;
+    },
+    handle(util) {
+      util.target.listeners.whenGreenFlag.push(util.startingFunction);
+    },
+  };
   hatLibrary['event_whenkeypressed'] = {
     handle(util) {
       const KEY_OPTION = util.getField('KEY_OPTION');

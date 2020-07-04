@@ -29,7 +29,6 @@ namespace P.core {
     whenKeyPressed: P.runtime.Fn[][];
     whenBackdropChanges: ObjectMap<P.runtime.Fn[]>;
     whenSceneStarts: ObjectMap<P.runtime.Fn[]>;
-    // whenSensorGreaterThan: P.runtime.Fn[]
   }
 
   export interface ActiveSound {
