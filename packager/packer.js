@@ -261,13 +261,14 @@ window.Packer = (function() {
         data = await res.json();
       } catch (e) {
         // binary file, try to see if it could be a Scratch 2 project
+        const blob = await responseClone.blob();
         try {
-          const blob = await responseClone.blob();
-          const zip = await JSZip.loadAsync(blob);
+          await JSZip.loadAsync(blob);
           // if loadAsync doesn't reject, this is valid zip, and is probably a Scratch 2 project
           return 'sb2';
         } catch (e) {
-          throw new Error('Project type (probably Scratch 1) is not supported.');
+          // not a zip, probably a .sb
+          return 'sb';
         }
       }
 
