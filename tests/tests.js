@@ -25,6 +25,7 @@
     'sb3/for-each-in.sb3',
     'sb3/264-setCostume.sb3',
     'sb3/263-NaN.sb3',
+    'sb3/when-greater-than.sb3',
   ];
 
   /**
