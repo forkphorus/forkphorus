@@ -9323,7 +9323,7 @@ var P;
                         const startingFunction = hat.startingFunction;
                         const value = this.stage.runtime.evaluateExpression(target, phraseFunction);
                         if (value === transcript) {
-                            this.stage.runtime.startThread(target, startingFunction);
+                            this.stage.runtime.startThread(target, startingFunction, true);
                         }
                     }
                 }
