@@ -1202,8 +1202,9 @@ namespace P.sb3.compiler {
     postcompile?(compiler: Compiler, source: string, hat: SB3Block): string;
     /**
      * Optionally handle what happens before compilation begins.
+     * The result of this will be added to the script's source before the script begins.
      */
-    precompile?(compiler: Compiler, hat: SB3Block): void;
+    precompile?(compiler: Compiler, hat: SB3Block): string;
   };
 
   export type InputType = 'string' | 'boolean' | 'number' | 'any' | 'list';
@@ -1909,13 +1910,14 @@ namespace P.sb3.compiler {
 
       this.state = this.getNewState();
 
-      if (hatCompiler.precompile) {
-        hatCompiler.precompile(this, hat);
-      }
-
       // There is always a label placed at the beginning of the script.
       // If you're clever, you may be able to remove this at some point.
       let script = `{{${this.labelCount++}}}`;
+
+      if (hatCompiler.precompile) {
+        script += hatCompiler.precompile(this, hat);
+      }
+
       script += this.compileStack(startingBlock);
 
       // If a block wants to do some changes to the script after script generation but before compilation, let it.
@@ -1932,8 +1934,8 @@ namespace P.sb3.compiler {
         this.target.fns[label] = P.runtime.createContinuation(parsedScript.slice(parseResult.labels[label]));
       }
 
-      const startingFn = this.target.fns[startFn];
-      const util = new HatUtil(this, hat, startingFn);
+      const startingFunction = this.target.fns[startFn];
+      const util = new HatUtil(this, hat, startingFunction);
       hatCompiler.handle(util);
 
       if (P.config.debug) {
@@ -3297,6 +3299,7 @@ namespace P.sb3.compiler {
       if (warp) {
         compiler.state.isWarp = true;
       }
+      return '';
     },
   };
   hatLibrary['speech2text_whenIHearHat'] = {

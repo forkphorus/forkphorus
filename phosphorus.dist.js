@@ -7376,10 +7376,10 @@ var P;
                         return;
                     }
                     this.state = this.getNewState();
-                    if (hatCompiler.precompile) {
-                        hatCompiler.precompile(this, hat);
-                    }
                     let script = `{{${this.labelCount++}}}`;
+                    if (hatCompiler.precompile) {
+                        script += hatCompiler.precompile(this, hat);
+                    }
                     script += this.compileStack(startingBlock);
                     if (hatCompiler.postcompile) {
                         script = hatCompiler.postcompile(this, script, hat);
@@ -7390,8 +7390,8 @@ var P;
                     for (let label of Object.keys(parseResult.labels)) {
                         this.target.fns[label] = P.runtime.createContinuation(parsedScript.slice(parseResult.labels[label]));
                     }
-                    const startingFn = this.target.fns[startFn];
-                    const util = new HatUtil(this, hat, startingFn);
+                    const startingFunction = this.target.fns[startFn];
+                    const util = new HatUtil(this, hat, startingFunction);
                     hatCompiler.handle(util);
                     if (P.config.debug) {
                         this.log(`[${this.target.name}] compiled sb3 script "${hat.opcode}"`, script, this.target);
@@ -8691,6 +8691,7 @@ var P;
             if (warp) {
                 compiler.state.isWarp = true;
             }
+            return '';
         },
     };
     hatLibrary['speech2text_whenIHearHat'] = {
