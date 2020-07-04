@@ -3336,7 +3336,7 @@ var P;
                     throw new Error('cannot apply cloud variable settings without projectMeta');
                 }
                 const hasCloudVariables = stage.cloudVariables.length > 0;
-                if (!hasCloudVariables) {
+                if (!hasCloudVariables || !meta.isFromScratch()) {
                     return;
                 }
                 switch (policy) {

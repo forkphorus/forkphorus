@@ -819,8 +819,8 @@ namespace P.player {
       }
 
       const hasCloudVariables = stage.cloudVariables.length > 0;
-      if (!hasCloudVariables) {
-        // if there are no cloud variables, none of the handlers will do anything anyways
+      if (!hasCloudVariables || !meta.isFromScratch()) {
+        // if there are no cloud variables or not loaded from scratch, none of the handlers will do anything anyways
         return;
       }
 
