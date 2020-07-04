@@ -4233,7 +4233,7 @@ var P;
                 this.onError = this.onError.bind(this);
                 this.step = this.step.bind(this);
             }
-            startThread(sprite, base) {
+            startThread(sprite, base, replaceExisting) {
                 const thread = {
                     sprite: sprite,
                     base: base,
@@ -4246,7 +4246,9 @@ var P;
                 for (let i = 0; i < this.queue.length; i++) {
                     const q = this.queue[i];
                     if (q && q.sprite === sprite && q.base === base) {
-                        this.queue[i] = thread;
+                        if (replaceExisting) {
+                            this.queue[i] = thread;
+                        }
                         return;
                     }
                 }
@@ -4254,6 +4256,7 @@ var P;
             }
             triggerFor(sprite, event, arg) {
                 let threads;
+                let replaceExisting = true;
                 switch (event) {
                     case 'whenClicked':
                         threads = sprite.listeners.whenClicked;
@@ -4265,6 +4268,7 @@ var P;
                         threads = sprite.listeners.whenGreenFlag;
                         break;
                     case 'whenKeyPressed':
+                        replaceExisting = false;
                         threads = sprite.listeners.whenKeyPressed[arg];
                         break;
                     case 'whenSceneStarts':
@@ -4281,7 +4285,7 @@ var P;
                 }
                 if (threads) {
                     for (let i = 0; i < threads.length; i++) {
-                        this.startThread(sprite, threads[i]);
+                        this.startThread(sprite, threads[i], replaceExisting);
                     }
                 }
                 return threads || [];

@@ -556,7 +556,7 @@ namespace P.runtime {
       this.step = this.step.bind(this);
     }
 
-    startThread(sprite: core.Base, base: Fn) {
+    startThread(sprite: core.Base, base: Fn, replaceExisting: boolean) {
       const thread = {
         sprite: sprite,
         base: base,
@@ -567,11 +567,13 @@ namespace P.runtime {
         }],
       };
 
-      // Replace an existing thread instead of adding a new one when possible.
+      // Find if this spread is already being executed.
       for (let i = 0; i < this.queue.length; i++) {
         const q = this.queue[i];
         if (q && q.sprite === sprite && q.base === base) {
-          this.queue[i] = thread;
+          if (replaceExisting) {
+            this.queue[i] = thread;
+          }
           return;
         }
       }
@@ -584,11 +586,15 @@ namespace P.runtime {
      */
     triggerFor(sprite: P.core.Base, event: string, arg?: any): Fn[] {
       let threads: Fn[];
+      let replaceExisting = true;
       switch (event) {
         case 'whenClicked': threads = sprite.listeners.whenClicked; break;
         case 'whenCloned': threads = sprite.listeners.whenCloned; break;
         case 'whenGreenFlag': threads = sprite.listeners.whenGreenFlag; break;
-        case 'whenKeyPressed': threads = sprite.listeners.whenKeyPressed[arg]; break;
+        case 'whenKeyPressed':
+          replaceExisting = false;
+          threads = sprite.listeners.whenKeyPressed[arg];
+          break;
         case 'whenSceneStarts': threads = sprite.listeners.whenSceneStarts[('' + arg).toLowerCase()]; break;
         case 'whenBackdropChanges': threads = sprite.listeners.whenBackdropChanges['' + arg]; break;
         case 'whenIReceive':
@@ -600,7 +606,7 @@ namespace P.runtime {
       }
       if (threads) {
         for (let i = 0; i < threads.length; i++) {
-          this.startThread(sprite, threads[i]);
+          this.startThread(sprite, threads[i], replaceExisting);
         }
       }
       return threads || [];
