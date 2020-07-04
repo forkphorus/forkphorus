@@ -3219,7 +3219,7 @@ namespace P.sb3.compiler {
       source += `if (R.state === 1 && ${sensor} <= ${VALUE}) { R.state = 0; }\n`;
       // if R.state === 0
       // Execute the script and enter state 1 if the condition is true. 
-      source += `if (R.state === 0 && ${sensor} > ${VALUE}) { R.state = 1; save();\n`;
+      source += `else if (R.state === 0 && ${sensor} > ${VALUE}) { R.state = 1; save();\n`;
       // if/else block will be finished by postcompile
       return source;
     },

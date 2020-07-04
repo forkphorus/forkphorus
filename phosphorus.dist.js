@@ -8602,7 +8602,7 @@ var P;
             let source = '';
             source += 'if (!R.init) { R.init = true; R.state = 0; }\n';
             source += `if (R.state === 1 && ${sensor} <= ${VALUE}) { R.state = 0; }\n`;
-            source += `if (R.state === 0 && ${sensor} > ${VALUE}) { R.state = 1; save();\n`;
+            source += `else if (R.state === 0 && ${sensor} > ${VALUE}) { R.state = 1; save();\n`;
             return source;
         },
         postcompile(compiler, source, hat) {
