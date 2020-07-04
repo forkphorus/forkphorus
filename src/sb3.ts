@@ -3189,8 +3189,6 @@ namespace P.sb3.compiler {
       util.target.listeners.whenGreenFlag.push(util.startingFunction);
     },
   };
-  // weird global state, it's certainly dirty but hat compilers are used in order, one at a time, so this works just fine.
-  let whenGreaterThanLabel = 0;
   hatLibrary['event_whengreaterthan'] = {
     precompile(compiler, hat) {
       const WHENGREATERTHANMENU = compiler.getField(hat, 'WHENGREATERTHANMENU');
@@ -3206,29 +3204,21 @@ namespace P.sb3.compiler {
           sensor = 'self.microphone.getLoudness()';
           break;
         default:
-          console.warn('unsupported sensor', WHENGREATERTHANMENU);
+          console.warn('unknown WHENGREATERTHANMENU', WHENGREATERTHANMENU);
       }
 
-      whenGreaterThanLabel = compiler.target.fns.length;
-
       let source = '';
-      // init R in state 0
-      source += 'if (!R.init) { R.init = true; R.state = 0; }\n';
-      // R.state === 1
-      // Enter state 0 if the condition is false.
-      source += `if (R.state === 1 && ${sensor} <= ${VALUE}) { R.state = 0; }\n`;
-      // if R.state === 0
-      // Execute the script and enter state 1 if the condition is true. 
-      source += `else if (R.state === 0 && ${sensor} > ${VALUE}) { R.state = 1; save();\n`;
-      // if/else block will be finished by postcompile
+      source += 'if (!R.init) { R.init = true; R.stalled = false; }\n';
+      // Leave stalled state if the condition is false.
+      source += `if (R.stalled && ${sensor} <= ${VALUE}) { R.stalled = false; }\n`;
+      // Execute the script and enter stalled state if the condition is true. 
+      source += `else if (!R.stalled && ${sensor} > ${VALUE}) { R.stalled = true;\n`;
+      // if/else will be finished in postcompile
       return source;
     },
     postcompile(compiler, source, hat) {
       source += '}\n';
-      // restore stack if it was saved (see R.state === 0)
-      source += 'if (C.stack.length) { restore(); }\n';
-      // jump back to start
-      source += `forceQueue(${whenGreaterThanLabel});`;
+      source += `forceQueue(${compiler.target.fns.length});`;
       return source;
     },
     handle(util) {

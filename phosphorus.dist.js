@@ -8585,7 +8585,6 @@ var P;
             util.target.listeners.whenGreenFlag.push(util.startingFunction);
         },
     };
-    let whenGreaterThanLabel = 0;
     hatLibrary['event_whengreaterthan'] = {
         precompile(compiler, hat) {
             const WHENGREATERTHANMENU = compiler.getField(hat, 'WHENGREATERTHANMENU');
@@ -8600,19 +8599,17 @@ var P;
                     sensor = 'self.microphone.getLoudness()';
                     break;
                 default:
-                    console.warn('unsupported sensor', WHENGREATERTHANMENU);
+                    console.warn('unknown WHENGREATERTHANMENU', WHENGREATERTHANMENU);
             }
-            whenGreaterThanLabel = compiler.target.fns.length;
             let source = '';
-            source += 'if (!R.init) { R.init = true; R.state = 0; }\n';
-            source += `if (R.state === 1 && ${sensor} <= ${VALUE}) { R.state = 0; }\n`;
-            source += `else if (R.state === 0 && ${sensor} > ${VALUE}) { R.state = 1; save();\n`;
+            source += 'if (!R.init) { R.init = true; R.stalled = false; }\n';
+            source += `if (R.stalled && ${sensor} <= ${VALUE}) { R.stalled = false; }\n`;
+            source += `else if (!R.stalled && ${sensor} > ${VALUE}) { R.stalled = true;\n`;
             return source;
         },
         postcompile(compiler, source, hat) {
             source += '}\n';
-            source += 'if (C.stack.length) { restore(); }\n';
-            source += `forceQueue(${whenGreaterThanLabel});`;
+            source += `forceQueue(${compiler.target.fns.length});`;
             return source;
         },
         handle(util) {
