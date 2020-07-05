@@ -7071,6 +7071,10 @@ var P;
                 asType(input, type) {
                     return this.compiler.asType(input, type);
                 }
+                evaluateInputOnce(input) {
+                    const fn = P.runtime.scopedEval(`(function() { return ${input}; })`);
+                    return this.target.stage.runtime.evaluateExpression(this.target, fn);
+                }
             }
             compiler_1.BlockUtil = BlockUtil;
             class StatementUtil extends BlockUtil {
@@ -8691,12 +8695,21 @@ var P;
             util.target.listeners.whenClicked.push(util.startingFunction);
         },
     };
+    function makeymakeyParseKey(key) {
+        key = key.toLowerCase();
+        if (key === 'up' || key === 'down' || key === 'left' || key === 'right') {
+            return P.runtime.getKeyCode(key + ' arrow');
+        }
+        return P.runtime.getKeyCode(key);
+    }
     hatLibrary['makeymakey_whenMakeyKeyPressed'] = {
         handle(util) {
             const KEY = util.getInput('KEY', 'string');
             try {
-                const value = P.runtime.scopedEval(KEY.source);
-                var keyCode = P.runtime.getKeyCode(value);
+                const keyValue = '' + util.evaluateInputOnce(KEY);
+                if (typeof keyValue !== 'string')
+                    throw new Error('cannot accept type: ' + typeof keyValue);
+                var keyCode = makeymakeyParseKey(keyValue);
             }
             catch (e) {
                 util.compiler.warn('makeymakey key generation error', e);
@@ -8719,22 +8732,20 @@ var P;
         handle(util) {
             const SEQUENCE = util.getInput('SEQUENCE', 'string');
             try {
-                var sequence = P.runtime.scopedEval(SEQUENCE.source);
+                var sequence = '' + util.evaluateInputOnce(SEQUENCE);
             }
             catch (e) {
-                util.compiler.warn('makeymakey sequence generation error', e);
+                util.compiler.warn('makeymakey key generation error', e);
                 return;
             }
-            const ARROWS = ['up', 'down', 'left', 'right'];
-            const keys = sequence.toLowerCase().split(' ')
-                .map((key) => {
-                if (ARROWS.indexOf(key) > -1) {
-                    return P.runtime.getKeyCode(key + ' arrow');
-                }
-                else {
-                    return P.runtime.getKeyCode(key);
-                }
-            });
+            const keys = sequence
+                .toLowerCase()
+                .split(' ')
+                .map((key) => makeymakeyParseKey(key));
+            if (keys.some((i) => typeof i !== 'number')) {
+                util.compiler.warn('makeymakey whenCodePressed found unexpected string in sequence');
+                return;
+            }
             const targetFunction = util.startingFunction;
             let sequenceIndex = 0;
             for (let key = 128; key--;) {

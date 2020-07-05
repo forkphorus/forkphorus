@@ -1301,6 +1301,18 @@ namespace P.sb3.compiler {
     asType(input: string, type: InputType): string {
       return this.compiler.asType(input, type)
     }
+
+    /**
+     * Evaluate a compiled input.
+     * May throw if there is an error evaluating the input.
+     * As the input is always evaluated once, changes will not be reflected.
+     * The input will have access to runtime objects and data, including the target sprite and runtime methods.
+     * @param input The input to evaluate.
+     */
+    evaluateInputOnce(input: CompiledInput): any {
+      const fn = P.runtime.scopedEval(`(function() { return ${input}; })`);
+      return this.target.stage.runtime.evaluateExpression(this.target, fn);
+    }
   }
 
   /**
@@ -3251,12 +3263,20 @@ namespace P.sb3.compiler {
       util.target.listeners.whenClicked.push(util.startingFunction);
     },
   };
+  function makeymakeyParseKey(key: string): number | 'any' {
+    key = key.toLowerCase();
+    if (key === 'up' || key === 'down' || key === 'left' || key === 'right') {
+      return P.runtime.getKeyCode(key + ' arrow') as number;
+    }
+    return P.runtime.getKeyCode(key);
+  }
   hatLibrary['makeymakey_whenMakeyKeyPressed'] = {
     handle(util) {
       const KEY = util.getInput('KEY', 'string');
       try {
-        const value = P.runtime.scopedEval(KEY.source);
-        var keyCode = P.runtime.getKeyCode(value);
+        const keyValue = '' + util.evaluateInputOnce(KEY);
+        if (typeof keyValue !== 'string') throw new Error('cannot accept type: ' + typeof keyValue);
+        var keyCode = makeymakeyParseKey(keyValue);
       } catch (e) {
         util.compiler.warn('makeymakey key generation error', e);
         return;
@@ -3277,23 +3297,24 @@ namespace P.sb3.compiler {
     handle(util) {
       const SEQUENCE = util.getInput('SEQUENCE', 'string');
       try {
-        var sequence = P.runtime.scopedEval(SEQUENCE.source);
+        var sequence = '' + util.evaluateInputOnce(SEQUENCE);
       } catch (e) {
-        util.compiler.warn('makeymakey sequence generation error', e);
+        util.compiler.warn('makeymakey key generation error', e);
         return;
       }
-      const ARROWS = ['up', 'down', 'left', 'right'];
-      const keys = sequence.toLowerCase().split(' ')
-        .map((key) => {
-          if (ARROWS.indexOf(key) > -1) {
-            return P.runtime.getKeyCode(key + ' arrow');
-          } else {
-            return P.runtime.getKeyCode(key);
-          }
-        });
+      const keys = sequence
+        .toLowerCase()
+        .split(' ')
+        .map((key: string) => makeymakeyParseKey(key));
+      // prevent the use of "any"
+      if (keys.some((i) => typeof i !== 'number')) {
+        util.compiler.warn('makeymakey whenCodePressed found unexpected string in sequence');
+        return;
+      }
       const targetFunction = util.startingFunction;
       let sequenceIndex = 0;
       for (let key = 128; key--;) {
+        // `key` is captured in this function's body
         util.target.listeners.whenKeyPressed[key].push(function() {
           const expectedKey = keys[sequenceIndex];
           if (key !== expectedKey) {
