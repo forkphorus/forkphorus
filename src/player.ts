@@ -826,6 +826,9 @@ namespace P.player {
 
       switch (policy) {
         case 'once':
+          if (!meta.isFromScratch()) {
+            throw new Error('once cloudVariables does not work with projects not from scratch.mit.edu');
+          }
           this.applyCloudVariablesOnce(stage, meta.getId());
           break;
         case 'ws':
