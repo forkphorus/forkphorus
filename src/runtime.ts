@@ -26,7 +26,7 @@ namespace P.runtime {
   // Each level (usually procedures) of depth will increment and decrement as they start and stop.
   // As long as this is greater than 0, functions will run without waiting for the screen.
   var WARP: number;
-  // ??
+  // BASE is the first ran function of a thread, used as an identifier
   var BASE;
   // The ID of the active thread in the Runtime's queue
   var THREAD: number;
@@ -456,7 +456,12 @@ namespace P.runtime {
           // 5 is an arbitrary number that works good enough and limits the possible performance impact
           for (var i = CALLS.length, j = 5; i-- && j--;) {
             if (CALLS[i].base === procedure.fn) {
-              runtime.queue[THREAD] = new Thread(S, BASE, procedure.fn, CALLS);
+              runtime.queue[THREAD] = {
+                sprite: S,
+                base: BASE,
+                fn: procedure.fn,
+                calls: CALLS,
+              };
               return;
             }
           }
@@ -475,6 +480,12 @@ namespace P.runtime {
       C = CALLS.pop();
       STACK = C.stack;
       R = STACK.pop();
+    }
+  };
+
+  var cloudVariableChanged = function(name) {
+    if (self.cloudHandler) {
+      self.cloudHandler.variableChanged(name);
     }
   };
 
@@ -506,7 +517,12 @@ namespace P.runtime {
   };
 
   var forceQueue = function(id) {
-    runtime.queue[THREAD] = new Thread(S, BASE, S.fns[id], CALLS);
+    runtime.queue[THREAD] = {
+      sprite: S,
+      base: BASE,
+      fn: S.fns[id],
+      calls: CALLS,
+    };
   };
 
   type ThreadResume = any;
@@ -517,15 +533,11 @@ namespace P.runtime {
     [s: string]: any;
   }
 
-  class Thread {
-    constructor(
-      public sprite: P.core.Base,
-      public base: Fn,
-      public fn: Fn,
-      public calls: ThreadCall[],
-    ) {
-
-    }
+  interface Thread {
+    sprite: P.core.Base,
+    base: Fn,
+    fn: Fn,
+    calls: ThreadCall[],
   }
 
   export class Runtime {
@@ -544,17 +556,24 @@ namespace P.runtime {
       this.step = this.step.bind(this);
     }
 
-    startThread(sprite: core.Base, base: Fn) {
-      const thread = new Thread(sprite, base, base, [{
-        args: [],
-        stack: [{}],
-      }]);
+    startThread(sprite: core.Base, base: Fn, replaceExisting: boolean) {
+      const thread = {
+        sprite: sprite,
+        base: base,
+        fn: base,
+        calls: [{
+          args: [],
+          stack: [{}],
+        }],
+      };
 
-      // Replace an existing thread instead of adding a new one when possible.
+      // Find if this spread is already being executed.
       for (let i = 0; i < this.queue.length; i++) {
         const q = this.queue[i];
         if (q && q.sprite === sprite && q.base === base) {
-          this.queue[i] = thread;
+          if (replaceExisting) {
+            this.queue[i] = thread;
+          }
           return;
         }
       }
@@ -567,11 +586,15 @@ namespace P.runtime {
      */
     triggerFor(sprite: P.core.Base, event: string, arg?: any): Fn[] {
       let threads: Fn[];
+      let replaceExisting = true;
       switch (event) {
         case 'whenClicked': threads = sprite.listeners.whenClicked; break;
         case 'whenCloned': threads = sprite.listeners.whenCloned; break;
         case 'whenGreenFlag': threads = sprite.listeners.whenGreenFlag; break;
-        case 'whenKeyPressed': threads = sprite.listeners.whenKeyPressed[arg]; break;
+        case 'whenKeyPressed':
+          replaceExisting = false;
+          threads = sprite.listeners.whenKeyPressed[arg];
+          break;
         case 'whenSceneStarts': threads = sprite.listeners.whenSceneStarts[('' + arg).toLowerCase()]; break;
         case 'whenBackdropChanges': threads = sprite.listeners.whenBackdropChanges['' + arg]; break;
         case 'whenIReceive':
@@ -583,7 +606,7 @@ namespace P.runtime {
       }
       if (threads) {
         for (let i = 0; i < threads.length; i++) {
-          this.startThread(sprite, threads[i]);
+          this.startThread(sprite, threads[i], replaceExisting);
         }
       }
       return threads || [];
@@ -754,6 +777,8 @@ namespace P.runtime {
           }
         }
       } while ((this.isTurbo || !VISUAL) && Date.now() - start < 1000 / this.framerate && queue.length);
+
+      this.stage.updateExtensions();
 
       this.stage.draw();
     }

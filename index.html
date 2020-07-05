@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Forkphorus is a JavaScript compiler for Scratch 2 and Scratch 3 projects.">
+  <meta name="description" content="Forkphorus is a JavaScript compiler for Scratch 3, 2, and 1 projects.">
   <link rel="canonical" href="https://forkphorus.github.io/" />
   <title>forkphorus - phosphorus for Scratch 3</title>
   <script>
@@ -34,7 +34,7 @@
 
     <div class="area" id="title-area">
       <h1 class="title">forkphorus</h1>
-      <p>forkphorus runs Scratch 2 and Scratch 3 projects really fast by compiling them to JavaScript. Try it out by pasting a project ID or URL into the field below, <a class="upload-button"><input id="upload-file-input" type="file" autocomplete="off" accept=".sb2,.sb3">selecting a project file</a>, dropping a file on the page, or <a id="examples">exploring the examples studio</a>.</p>
+      <p>forkphorus runs Scratch 3, 2, and 1 projects really fast by compiling them to JavaScript. Try it out by pasting a project ID or URL into the field below, <a class="upload-button"><input id="upload-file-input" type="file" autocomplete="off" accept=".sb,.sb2,.sb3">selecting a project file</a>, dropping a file on the page, or <a id="examples">exploring the examples studio</a>.</p>
     </div>
 
     <div id="examples-container" class="area">
@@ -87,6 +87,8 @@
           <a href="#" target="_blank" id="package-link" data-i18n="index.package.button">Package</a>
           <input type="checkbox" id="package-turbo">
           <label for="package-turbo" data-i18n="index.package.turbo">Turbo mode</label>
+          <input type="checkbox" id="package-controls">
+          <label for="package-controls" data-i18n="index.package.controls">Controls</label>
           <span>
             <input type="radio" name="package-resolution" id="package-full-screen" checked>
             <label for="package-full-screen" data-i18n="index.package.fullscreen">Full screen</label>
@@ -106,19 +108,30 @@
       <h1 data-i18n="index.settings">Settings</h1>
       <table id="settings">
         <tr>
-          <td class="name" title="Forkphorus will **attempt** to run at this framerate."><label for="settings-framerate">Framerate (FPS)</label></td>
-          <td class="value"><input id="settings-framerate" value="30" placeholder="30" type="number" step="any" min="0" required autocomplete="off"></td>
+          <td class="name" title="Forkphorus will **attempt** to run at this framerate."><label for="settings-fps">Framerate (FPS)</label></td>
+          <td class="value"><input id="settings-fps" value="0" placeholder="30" type="number" step="any" min="0" required autocomplete="off"></td>
         </tr>
         <tr>
           <td class="name" title="The value of the &quot;username&quot; block. Changing this may cause issues in some projects."><label for="settings-username">Username</label></td>
-          <td class="value"><input id="settings-username" value="" type="text" placeholder="(nothing)" autocomplete="off"></td>
+          <td class="value"><input id="settings-username" type="text" placeholder="(nothing)" autocomplete="off"></td>
         </tr>
         <tr>
           <td class="name" title="Controls whether the renderer tries to make images look smoother."><label for="settings-image-smoothing">Image Smoothing</label></td>
           <td class="value"><input id="settings-image-smoothing" type="checkbox" autocomplete="off"></td>
         </tr>
+        <tr>
+          <td class="name" title="Prevents sprites from moving offscreen."><label for="settings-sprite-fencing">Sprite Fencing</label></td>
+          <td class="value"><input id="settings-sprite-fencing" type="checkbox" autocomplete="off"></td>
+        </tr>
       </table>
       <p>Changes are applied automatically.</p>
+
+      <h1 data-i18n="index.advanced">Advanced Settings</h1>
+      <p>Help test unfinished features. These require a refresh to apply.</b> <a href="https://github.com/forkphorus/forkphorus/wiki/Advanced-Features" target="_blank">Please read this first</a>.</p>
+      <div class="advanced">
+        <label><input id="advanced-webgl" class="advanced-feature" type="checkbox"> WebGL Renderer</label>
+        <label><input id="advanced-cloud" class="advanced-feature" type="checkbox"> Cloud Variables</label>
+      </div>
     </div>
 
     <section>
@@ -133,19 +146,20 @@
     </section>
   </div>
 
+  <script src="lib/scratch-sb1-converter.js"></script>
   <script src="lib/jszip.min.js"></script>
   <script src="lib/fontfaceobserver.standalone.js"></script>
   <script src="lib/stackblur.min.js"></script>
   <script src="lib/rgbcolor.js"></script>
   <script src="lib/canvg.min.js"></script>
   <script src="phosphorus.dist.js"></script>
+  <script src="common.js"></script>
   <script src="studioview/studioview.js"></script>
 
   <script>
     P.i18n.addTranslations('en', {
       'studioview.authorAttribution': 'by $author',
       'studioview.projectHoverText': '$title by $author',
-      'index.report.instructions': 'Describe the issue:',
       'index.document.title': 'forkphorus - phosphorus for Scratch 3',
       'index.report': 'Report a problem',
       'index.embed': 'Embed this project',
@@ -156,6 +170,7 @@
       'index.studio.view': 'View studio on Scratch.',
       'index.package.button': 'Package',
       'index.package.turbo': 'Turbo mode',
+      'index.package.controls': 'Controls',
       'index.package.fullscreen': 'Full screen',
       'index.package.480': '480\u00D7360',
       'index.package.custom': 'Other:',
@@ -164,6 +179,8 @@
       'index.embed.autostart': 'Start automatically',
       'index.embed.lightControls': 'Light controls',
       'index.embed.hideUI': 'Hide UI',
+      'index.advanced': 'Advanced Settings',
+      'index.advanced.confirmation': 'This will refresh this page, resetting the project. Continue?',
     });
     P.i18n.addTranslations('es', {
       'studioview.authorAttribution': 'por $author',
@@ -195,15 +212,6 @@
       return el;
     }
 
-    // Shallowly clones an object (member values are not cloned)
-    function shallowClone(obj) {
-      var result = {};
-      for (var k in obj) {
-        result[k] = obj[k];
-      }
-      return result;
-    }
-
     /** i18n */
     document.title = P.i18n.translate('index.document.title');
     StudioView.AUTHOR_ATTRIBUTION = P.i18n.translate('studioview.authorAttribution');
@@ -220,7 +228,6 @@
     var projectArea = querySelector('#project-area');
 
     var player = new P.player.Player();
-    window.player = player;
     player.addControls();
     new P.player.ProgressBar(player, {
       position: querySelector('.url').parentNode,
@@ -235,13 +242,21 @@
       var el = document.createElement('div');
       el.innerHTML = `Alternatively, <a href="https://scratch.mit.edu/projects/366001364/" target="_blank">post a Scratch comment</a> and include: "<span style="font-family: monospace; user-select: all">${err.replace(/<>/g, '')} (${player.getProjectMeta().getId()})</span>"`;
       errorHandler.errorEl.appendChild(el);
+      if (errorHandler.generatedErrorLink) {
+        bugLink.href = errorHandler.generatedErrorLink;
+      }
     });
     playerArea.appendChild(player.root);
 
-    var initialId = location.hash.substr(1);
-    if (!/^\d+$/.test(initialId)) {
-      initialId = '';
-    }
+    // expose player on the global object
+    window.player = player;
+    console.log('forkphorus is open source https://github.com/forkphorus/forkphorus');
+    console.log('The project player is exposed as `player`');
+    console.log('The project is exposed as `player.stage`');
+    console.log('Sprites are exposed in `player.stage.children`');
+
+    var initialId = Common.projectId || '';
+    player.setOptions(Common.playerOptions);
 
     playerArea.style.height = projectArea.style.height = 'auto';
     var titleAreaHeight = titleArea.offsetHeight;
@@ -259,17 +274,11 @@
 
     var timeout;
     urlInput.addEventListener('input', function() {
-      var ss = urlInput.selectionStart;
-      var se = urlInput.selectionEnd;
       var url = urlInput.value;
-      var id = url.match(/\d+/g) || [''];
       var pid = player.hasProjectMeta() ? player.getProjectMeta().getId() : -1;
-      while (id.length > 1 && id.indexOf(pid) > -1) {
-        id.splice(id.indexOf(pid), 1);
-      }
-      id = id[0];
+      var id = url.match(/\d+/g) || [''];
+      id = id[0].replace(/^0+/, '');
       urlInput.value = url = PROJECT_PREFIX + id;
-      urlInput.selectionStart = urlInput.selectionEnd = Math.max(PROJECT_PREFIX.length, ss);
       clearTimeout(timeout);
       if (pid !== id) {
         timeout = setTimeout(function() {
@@ -334,20 +343,23 @@
     }
     function loadProjectFile(file) {
       var extension = file.name.split('.').pop();
-      if (!['sb2', 'sb3'].includes(extension)) {
+      if (!['sb', 'sb2', 'sb3'].includes(extension)) {
         return;
       }
       silentChangeHash('#' + file.name);
       showPlayerArea();
       player.loadProjectFromFile(file);
       updateLinks();
-      resetTitle();
+      setTitleToProjectTitle();
     }
     function updateLinks() {
-      bugLink.href = errorHandler.createBugReportLink(P.i18n.translate('index.report.instructions'));
-      if (player.getProjectMeta().getId()) {
+      bugLink.href = errorHandler.createBugReportLink();
+      if (player.getProjectMeta().isFromScratch()) {
         projectLink.href = 'https://scratch.mit.edu/projects/' + player.getProjectMeta().getId();
         htmlPackagerLink.href = 'packager/#' + player.getProjectMeta().getId();
+      } else {
+        projectLink.href = 'https://scratch.mit.edu/';
+        htmlPackagerLink.href = 'packager';
       }
       updatePackageLink();
       updateEmbedCode();
@@ -381,6 +393,7 @@
     var packageOther = querySelector('#package-other');
     var packageOtherWidth = querySelector('#package-other-width');
     var packageOtherHeight = querySelector('#package-other-height');
+    var packageControls = querySelector('#package-controls');
 
     // Bind two inputs together so that changes to one reflect a change in the other.
     function bindInputs(first, other, multiplier) {
@@ -393,7 +406,7 @@
     }
     function updatePackageLink() {
       packageOtherWidth.disabled = packageOtherHeight.disabled = !packageOther.checked;
-      if (player.getProjectMeta().getId()) {
+      if (player.getProjectMeta().isFromScratch()) {
         var url = location.origin + location.pathname + 'app.html?id=' + player.getProjectMeta().getId();
         if (packageTurbo.checked) url += '&turbo';
         if (packageFullScreen.checked) {
@@ -402,6 +415,9 @@
           url += '&w=480';
         } else {
           url += '&w=' + packageOtherWidth.value;
+        }
+        if (packageControls.checked) {
+          url += '&controls';
         }
         packageLink.href = url;
       } else {
@@ -415,6 +431,7 @@
     packageOther.addEventListener('change', updatePackageLink);
     packageOtherHeight.addEventListener('change', updatePackageLink);
     packageOtherWidth.addEventListener('change', updatePackageLink);
+    packageControls.addEventListener('change', updatePackageLink);
 
     /** Embedding **/
     var embedCode = querySelector('#embed-code');
@@ -436,22 +453,26 @@
       }
       embedOtherWidth.disabled = embedOtherHeight.disabled = !embedOther.checked;
 
-      if (player.getProjectMeta().getId()) {
-        var source = location.protocol + '//' + location.host + location.pathname + 'embed.js?id=' + player.getProjectMeta().getId();
+      if (player.getProjectMeta().isFromScratch()) {
+        var source = location.protocol + '//' + location.host + location.pathname + 'embed.html?id=' + player.getProjectMeta().getId();
         if (embedHideControls.checked) {
           source += '&ui=false';
         } else {
           source += '&auto-start=' + embedAutoStart.checked;
           source += '&light-content=' + embedLightContent.checked;
         }
+        var width = 480;
+        var height = 360;
         if (embedOther.checked) {
-          source += '&w=' + embedOtherWidth.value;
-          source += '&h=' + embedOtherHeight.value;
-        } else {
-          source += '&w=480&h=360';
+          width = +embedOtherWidth.value;
+          height = +embedOtherHeight.value;
         }
-        // We need to break up the closing script tag, otherwise things break.
-        embedCode.value = '<script src="' + source + '"></scrip' + 't>';
+        if (!embedHideControls.checked) {
+          // Space for controls and player border
+          width += 2;
+          height += 33;
+        }
+        embedCode.value = '<iframe src="' + source + '" width="' + width + '" height="' + height + '" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>';
       } else {
         embedCode.value = '';
       }
@@ -584,21 +605,62 @@
     setDarkMode(getLocalDarkMode());
 
     /** Settings Menu **/
-    var settingFramerate = querySelector('#settings-framerate');
+    var settingFps = querySelector('#settings-fps');
     var settingUsername = querySelector('#settings-username');
     var settingImageSmoothing = querySelector('#settings-image-smoothing');
+    var settingSpriteFencing = querySelector('#settings-sprite-fencing');
 
-    settingFramerate.addEventListener('input', (e) => {
-      if (settingFramerate.checkValidity()) {
-        player.setOptions({ fps: +settingFramerate.value });
+    settingFps.value = player.options.fps;
+    settingFps.addEventListener('input', (e) => {
+      if (settingFps.checkValidity()) {
+        player.setOptions({ fps: +settingFps.value });
       }
     });
+    settingUsername.value = player.options.username;
     settingUsername.addEventListener('input', (e) => {
       player.setOptions({ username: settingUsername.value });
     });
+    settingImageSmoothing.checked = player.options.imageSmoothing;
     settingImageSmoothing.addEventListener('change', (e) => {
       player.setOptions({ imageSmoothing: settingImageSmoothing.checked });
     });
+    settingSpriteFencing.checked = player.options.spriteFencing;
+    settingSpriteFencing.addEventListener('change', (e) => {
+      player.setOptions({ spriteFencing: settingSpriteFencing.checked });
+    });
+
+    /** Advanced Settings Menu **/
+    var advancedWebGL = querySelector('#advanced-webgl');
+    var advancedCloud = querySelector('#advanced-cloud');
+    advancedWebGL.checked = P.config.useWebGL;
+    advancedWebGL.addEventListener('click', function(e) {
+      setSearchParam('webgl', e.target.checked, e);
+    });
+    advancedCloud.checked = player.getOptions().cloudVariables === 'ws';
+    advancedCloud.addEventListener('click', function(e) {
+      setSearchParam('cloud', e.target.checked ? 'ws' : false, e);
+    });
+    function setSearchParam(key, value, event) {
+      if (!confirm(P.i18n.translate('index.advanced.confirmation'))) {
+        event.preventDefault();
+        return;
+      }
+      // if value === false, remove the key
+      // if value === true, add a key with no value
+      // else, add a key with the given value
+      if (value === false) {
+        var searchParams = new URLSearchParams(location.search);
+        searchParams.delete(key);
+        location.search = searchParams.toString();
+      } else {
+        var query = value === true ? key : key + '=' + value;
+        if (location.search.length > 1) {
+          location.search += '&' + query;
+        } else {
+          location.search = '?' + query;
+        }
+      }
+    }
 
     if (initialId) {
       player.setOptions({ autoplayPolicy: 'never' });

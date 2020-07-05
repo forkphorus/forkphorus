@@ -30,12 +30,14 @@
 <body>
   <div class="player"></div>
 
+  <script src="lib/scratch-sb1-converter.js"></script>
   <script src="lib/jszip.min.js"></script>
   <script src="lib/fontfaceobserver.standalone.js"></script>
   <script src="lib/stackblur.min.js"></script>
   <script src="lib/rgbcolor.js"></script>
   <script src="lib/canvg.min.js"></script>
   <script src="phosphorus.dist.js"></script>
+  <script src="common.js"></script>
 
   <script>
   (function() {
@@ -43,65 +45,39 @@
 
     var player = new P.player.Player();
 
-    var projectId = 17088932;
     var hasUI = true;
-    var id = Math.random().toString().substr(2, 5) + '-' + projectId + '-' + Date.now();
-    var width = 480;
-
-    location.search.substr(1).split('&').forEach(function(p) {
-      const parts = p.split('=');
-      if (parts.length > 1) {
-        switch (parts[0]) {
-          case 'id':
-            projectId = Number(parts[1]);
-            break;
-          case 'auto-start':
-            if (parts[1] === 'true') {
-              player.setOptions({ autoplayPolicy: 'always' });
-            } else {
-              player.setOptions({ autoplayPolicy: 'never' });
-            }
-            break;
-          case 'light-content':
-            if (parts[1] === 'true') {
-              player.setOptions({ theme: 'dark' });
-            } else {
-              player.setOptions({ theme: 'light' });
-            }
-            break;
-          case 'ui':
-            hasUI = parts[1] !== 'false';
-            break;
-          case 'w':
-            width = Number(parts[1]);
-            break;
-          case 'h':
-            // ignored by the embed itself. the scriptlet handles height
-            break;
-          case 'fps':
-            player.setOptions({ fps: Number(parts[1]) });
-            break;
-          default:
-            console.warn('unknown search param', parts);
-        }
+    Common.parseSearch(function(key, value) {
+      switch (key) {
+        case 'auto-start':
+          if (value === 'true') {
+            player.setOptions({ autoplayPolicy: 'always' });
+          } else {
+            player.setOptions({ autoplayPolicy: 'never' });
+          }
+          break;
+        case 'light-content':
+          if (value === 'true') {
+            player.setOptions({ theme: 'dark' });
+          } else {
+            player.setOptions({ theme: 'light' });
+          }
+          break;
+        case 'ui':
+          hasUI = value !== 'false';
+          break;
       }
     });
 
-    function postMessage(type, data) {
-      if (window.parent && window.parent.postMessage) {
-        var data = Object.assign({
-          id: id,
-          type: type,
-        }, data || {});
-        window.parent.postMessage(data, '*');
-      }
-    }
+    var width = window.innerWidth;
 
+    player.setOptions(Common.playerOptions);
     player.setOptions({ focusOnLoad: false });
 
     if (hasUI) {
       document.body.classList.add('has-ui');
       player.addControls();
+      // space for border
+      width -= 2;
       new P.player.ProgressBar(player, {position: 'controls'});
     }
     new P.player.ErrorHandler(player);
@@ -127,6 +103,16 @@
     });
 
     // Implement Embed -> Parent API
+    var id = Math.random().toString().substr(2, 5) + '-' + Common.projectId + '-' + Date.now();
+    function postMessage(type, data) {
+      if (window.parent && window.parent !== window && window.parent.postMessage) {
+        var data = Object.assign({
+          id: id,
+          type: type,
+        }, data || {});
+        window.parent.postMessage(data, '*');
+      }
+    }
     player.onprogress.subscribe(function(progress) {
       postMessage('progress', { progress: progress });
     });
@@ -144,7 +130,7 @@
     });
     postMessage('hello', { version: 1 });
 
-    player.loadProjectById(projectId)
+    player.loadProjectById(Common.projectId)
       .then(function() {
         player.stage.setZoom(width / 480);
       });

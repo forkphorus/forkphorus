@@ -187,6 +187,9 @@ namespace P.renderer.webgl {
       uniform float u_pixelate;
       uniform vec2 u_size;
     #endif
+    #ifdef ENABLE_COLOR_TEST
+      uniform vec3 u_colorTest;
+    #endif
 
     const float minimumAlpha = 1.0 / 250.0;
     const vec2 vecCenter = vec2(0.5, 0.5);
@@ -280,6 +283,12 @@ namespace P.renderer.webgl {
 
       #ifdef ENABLE_BRIGHTNESS
         color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
+      #endif
+
+      #ifdef ENABLE_COLOR_TEST
+        if (color.rgb != u_colorTest) {
+          color = vec4(0.0, 0.0, 0.0, 0.0);
+        }
       #endif
 
       gl_FragColor = color;
@@ -440,9 +449,9 @@ namespace P.renderer.webgl {
 
     /**
      * Reset and resize this renderer.
+     * `scale` should already include any changes to account for device pixel ratio or the like, if applicable.
      */
     reset(scale: number) {
-      scale = scale * P.config.scale;
       this.canvas.width = scale * 480;
       this.canvas.height = scale * 360;
       this.gl.viewport(0, 0, scale * 480, scale * 360);
@@ -556,6 +565,7 @@ namespace P.renderer.webgl {
   class CollisionRenderer extends WebGLSpriteRenderer {
     private touchingShader: Shader;
     private shapeFiltersShader: Shader;
+    private touchingColorShader: Shader;
 
     constructor() {
       super();
@@ -570,6 +580,10 @@ namespace P.renderer.webgl {
         'ENABLE_FISHEYE',
         'ENABLE_PIXELATE',
         'ENABLE_MOSAIC',
+      ]);
+      this.touchingColorShader = this.createShader(CollisionRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, [
+        'DISABLE_MINIMUM_ALPHA',
+        'ENABLE_COLOR_TEST',
       ]);
     }
 
@@ -771,7 +785,7 @@ namespace P.renderer.webgl {
       this.penColorsIndex = 0;
     }
 
-    private buffersFull(size: number) {
+    private buffersCanFit(size: number) {
       return this.penCoordsIndex + size > this.penCoords.length;
     }
 
@@ -782,8 +796,8 @@ namespace P.renderer.webgl {
     penLine(color: P.core.PenColor, size: number, x1: number, y1: number, x2: number, y2: number): void {
       const circleRes = this.getCircleResolution(size);
 
-      // Redraw when array is full.
-      if (this.buffersFull(24 * (circleRes + 1))) {
+      // Redraw when buffers are full.
+      if (this.buffersCanFit(24 * (circleRes + 1))) {
         this.drawPendingOperations();
       }
 
@@ -1028,8 +1042,8 @@ namespace P.renderer.webgl {
     penDot(color: P.core.PenColor, size: number, x: number, y: number): void {
       const circleRes = this.getCircleResolution(size);
 
-      // Redraw when array is full.
-      if (this.buffersFull(12 * circleRes)) {
+      // Redraw when buffers are full.
+      if (this.buffersCanFit(12 * circleRes)) {
         this.drawPendingOperations();
       }
 
@@ -1212,7 +1226,7 @@ namespace P.renderer.webgl {
     }
 
     resize(scale: number): void {
-      this.zoom = scale;
+      this.zoom = scale * P.config.scale;
       // TODO: resize pen layer
     }
 

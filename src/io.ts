@@ -32,7 +32,7 @@ namespace P.io {
           resolve(fileReader.result as ArrayBuffer);
         };
         fileReader.onerror = function(err) {
-          reject('Could not read object');
+          reject(new Error('Could not read object as ArrayBuffer'));
         };
         fileReader.readAsArrayBuffer(object);
       });
@@ -45,7 +45,7 @@ namespace P.io {
           resolve(fileReader.result as string);
         };
         fileReader.onerror = function(err) {
-          reject('Could not read object');
+          reject(new Error('Could not read object as data: URL'));
         };
         fileReader.readAsDataURL(object);
       });
@@ -58,7 +58,7 @@ namespace P.io {
           resolve(fileReader.result as string);
         };
         fileReader.onerror = function(err) {
-          reject('Could not read object');
+          reject(new Error('Could not read object as text'));
         };
         fileReader.readAsText(object);
       });
@@ -196,7 +196,7 @@ namespace P.io {
   }
 
   export abstract class Retry extends AbstractTask {
-    protected aborted: boolean;
+    protected aborted: boolean = false;
 
     try<T>(handle: () => Promise<T>): Promise<T> {
       return new Promise((resolve, reject) => {
@@ -212,7 +212,7 @@ namespace P.io {
               handle()
                 .then((response) => resolve(response))
                 .catch((err) => reject(err));
-            }, 250);
+            }, 2000);
           });
       });
     }
@@ -284,42 +284,38 @@ namespace P.io {
     private _load(): Promise<any> {
       return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
+        xhr.open('GET', this.url);
+        xhr.responseType = this.responseType;
+        this.xhr = xhr;
 
-        xhr.addEventListener('load', () => {
+        xhr.onload = () => {
           this.status = xhr.status;
           if (Request.acceptableResponseCodes.indexOf(xhr.status) !== -1 || this.shouldIgnoreErrors) {
             resolve(xhr.response);
           } else {
             reject(new Error(`HTTP Error ${xhr.status} while downloading ${this.url}`));
           }
-        });
+        };
 
-        xhr.addEventListener('progress', (e) => {
+        xhr.onloadstart = (e) => {
           this.updateProgress(e);
-        });
+        };
 
-        xhr.addEventListener('loadstart', (e) => {
-          this.updateProgress(e);
-        });
-
-        xhr.addEventListener('loadend', (e) => {
+        xhr.onloadend = (e) => {
           this.complete = true;
           this.updateProgress(e);
-        });
+        };
 
-        xhr.addEventListener('error', (err) => {
-          reject(`Error while downloading ${this.url} (error) (${xhr.status}/${xhr.readyState})`);
-        });
+        xhr.onerror = (err) => {
+          reject(new Error(`Error while downloading ${this.url} (error) (${xhr.status}/${xhr.statusText}/${this.aborted}/${xhr.readyState})`));
+        };
 
-        xhr.addEventListener('abort', (err) => {
+        xhr.onabort = (err) => {
           this.aborted = true;
-          reject(`Error while downloading ${this.url} (abort) (${xhr.status}/${xhr.readyState})`);
-        });
+          reject(new Error(`Error while downloading ${this.url} (abort) (${xhr.status}/${xhr.statusText}/${xhr.readyState})`));
+        };
 
-        xhr.open('GET', this.url);
-        xhr.responseType = this.responseType;
-        this.xhr = xhr;
-        setTimeout(xhr.send.bind(xhr));
+        xhr.send();
       });
     }
 
@@ -369,10 +365,12 @@ namespace P.io {
           resolve(image);
         };
         image.onerror = (err) => {
-          reject('Failed to load image: ' + image.src);
+          reject(new Error('Failed to load image: ' + image.src));
         };
         image.crossOrigin = 'anonymous';
-        image.src = this.src;
+        setTimeout(() => {
+          image.src = this.src;
+        });
       });
     }
 
@@ -437,48 +435,14 @@ namespace P.io {
         return 0;
       }
 
-      // Analyze the tasks and record known information.
-      // This will impact how progress is determined later.
-      let totalWork = 0;
-      let completedWork = 0;
       let finishedTasks = 0;
-      let uncomputable = 0;
-
       for (const task of this._tasks) {
         if (task.isComplete()) {
           finishedTasks++;
         }
-        if (task.isWorkComputable()) {
-          completedWork += task.getCompletedWork();
-          totalWork += task.getTotalWork();
-        } else {
-          uncomputable++;
-        }
       }
 
-      // If there is no known total work (all uncomputable), then use a simple done/not done division.
-      if (totalWork === 0) {
-        return finishedTasks / totalTasks;
-      }
-
-      // If there are some unknown tasks, we will attempt to extrapolate their value.
-      if (uncomputable > 0) {
-        const averageWork = totalWork / (totalTasks - uncomputable) * uncomputable;
-        totalWork = 0;
-        completedWork = 0;
-
-        for (const task of this._tasks) {
-          if (task.isWorkComputable()) {
-            completedWork += task.getCompletedWork();
-            totalWork += task.getTotalWork();
-          } else {
-            totalWork += averageWork;
-            if (task.isComplete()) completedWork += averageWork;
-          }
-        }
-      }
-
-      return completedWork / totalWork;
+      return finishedTasks / totalTasks;
     }
 
     updateProgress() {
@@ -505,6 +469,13 @@ namespace P.io {
       for (const task of this._tasks) {
         task.abort();
       }
+    }
+
+    cleanup() {
+      for (const task of this._tasks) {
+        task.setLoader(null as any);
+      }
+      this._tasks.length = 0;
     }
 
     onprogress(progress: number) {

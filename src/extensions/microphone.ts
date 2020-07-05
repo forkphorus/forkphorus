@@ -1,3 +1,4 @@
+/// <reference path="../phosphorus.ts" />
 /// <reference path="extension.ts" />
 
 /*!

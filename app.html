@@ -83,12 +83,14 @@
     </div>
   </div>
 
+  <script src="lib/scratch-sb1-converter.js"></script>
   <script src="lib/jszip.min.js"></script>
   <script src="lib/fontfaceobserver.standalone.js"></script>
   <script src="lib/stackblur.min.js"></script>
   <script src="lib/rgbcolor.js"></script>
   <script src="lib/canvg.min.js"></script>
   <script src="phosphorus.dist.js"></script>
+  <script src="common.js"></script>
 
   <script>
   (function () {
@@ -114,46 +116,36 @@
 
     document.addEventListener('touchmove', function(e) {
       e.preventDefault();
-    });
+    }, { passive: false });
 
-    var projectId = 17088932;
-
-    var params = location.search.substr(1).split('&');
-    params.forEach(function(p) {
-      var parts = p.split('=');
-      switch (parts[0]) {
-        case 'id':
-          projectId = Number(parts[1]);
-          break;
-        case 'turbo':
-          player.setOptions({ turbo: parts[1] !== 'false' });
-          break;
+    Common.parseSearch(function(key, value) {
+      switch (key) {
         case 'full-screen':
           // legacy value
-          player.setOptions({ fullscreenMaxWidth: parts[1] !== 'false' ? Infinity : 480 });
+          player.setOptions({ fullscreenMaxWidth: value !== 'false' ? Infinity : 480 });
           break;
         case 'w':
-          player.setOptions({ fullscreenMaxWidth: Number(parts[1]) || 480 });
+          player.setOptions({ fullscreenMaxWidth: Number(value) || 480 });
           break;
-        case 'fps':
-          player.setOptions({ fps: Number(parts[1]) });
+        case 'controls':
+          player.addControls({ enableFullscreen: false });
           break;
-        default:
-          console.warn('unknown search param', parts);
       }
     });
 
     // do not focus the stage when embedded
-    if (window.parent) {
+    if (!window.parent || window.parent === window) {
       player.setOptions({ focusOnLoad: false });
     }
+
+    player.setOptions(Common.playerOptions);
 
     player.setOptions({
       fullscreenMode: 'window',
       autoplayPolicy: 'if-audio-playable',
     });
 
-    player.loadProjectById(projectId)
+    player.loadProjectById(Common.projectId)
       .then(function() {
         player.enterFullscreen();
         splash.style.display = 'none';

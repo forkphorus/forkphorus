@@ -6,40 +6,58 @@
 // Also the API can return two types of results (zip or buffer) and you have to handle both of them in different ways.
 
 // If you want to use this library still, see index.html for a pretty complete usage example (notably downloadProject())
+// Converting projects to archives may require JSZip: https://stuk.github.io/jszip/ (tested on 3.1.5)
 
 window.SBDL = (function() {
   'use strict';
 
   /**
-   * Wrapper around XmlHttpRequest.
-   * @param {string} url
-   * @param {XMLHttpRequestResponseType} type Response type
+   * An error where the project cannot be loaded as the desired type, but it is likely that this project is of another format.
    */
-  function request(url, type) {
-    const attempt = () => {
-      return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.onload = () => resolve(xhr.response);
-        xhr.onerror = () => reject('Failed to load: ' + url);
-        xhr.open('GET', url);
-        xhr.responseType = type;
-        setTimeout(xhr.send.bind(xhr));
-      });
+  class ProjectFormatError extends Error {
+    constructor(message, probableType) {
+      super(message + ' (probably a .' + probableType + ')');
+      this.probableType = probableType;
     }
+  }
 
-    return new Promise((resolve, reject) => {
-      attempt()
-        .then((result) => resolve(result))
+  const SB_MAGIC = 'ScratchV01';
+  const ZIP_MAGIC = 'PK';
+
+  const fetchQueue = {
+    concurrentRequests: 0,
+    maxConcurrentRequests: 30,
+    queue: [],
+    add(url) {
+      return new Promise((resolve, reject) => {
+        this.queue.push({ url: url, resolve: resolve, reject: reject });
+        if (this.concurrentRequests < this.maxConcurrentRequests) {
+          this.processNext();
+        }
+      });
+    },
+    processNext() {
+      if (this.queue.length === 0) {
+        return;
+      }
+      const request = this.queue.shift();
+      this.concurrentRequests++;
+      window.fetch(request.url)
+        .then((r) => {
+          this.concurrentRequests--;
+          this.processNext();
+          request.resolve(r);
+        })
         .catch((err) => {
-          // try again once
-          console.warn('First attempt to load ' + url + ' failed. Trying again.', err);
-          setTimeout(() => {
-            attempt()
-              .then((result) => resolve(result))
-              .catch((err) => reject(err));
-          }, 500);
+          this.concurrentRequests--;
+          this.processNext();
+          request.reject(err);
         });
-    });
+    },
+  };
+
+  function fetch(url) {
+    return fetchQueue.add(url);
   }
 
   // Customizable hooks that can be overridden by other scripts to measure progress.
@@ -51,6 +69,16 @@ window.SBDL = (function() {
     // Indicates a task has finished
     finishTask() {},
   };
+
+  function checkMagic(buffer, magic) {
+    const header = new Uint8Array(buffer.slice(0, magic.length));
+    for (let i = 0; i < magic.length; i++) {
+      if (header[i] !== magic.charCodeAt(i)) {
+        return false;
+      }
+    }
+    return true;
+  }
 
   // Sorts a list of files in-place.
   function sortFiles(files) {
@@ -78,11 +106,10 @@ window.SBDL = (function() {
       return nameA.localeCompare(nameB);
     });
   }
-
+  
   // Loads a Scratch 1 project
   function loadScratch1Project(id) {
     const PROJECTS_API = 'https://projects.scratch.mit.edu/internalapi/project/$id/get/';
-    const HEADER = 'ScratchV01';
 
     const result = {
       title: id.toString(),
@@ -93,17 +120,12 @@ window.SBDL = (function() {
       buffer: null,
     };
 
-    return request(PROJECTS_API.replace('$id', id), 'arraybuffer')
+    return fetch(PROJECTS_API.replace('$id', id))
+      .then((data) => data.arrayBuffer())
       .then((buffer) => {
-
-        // Check that the header matches that of a Scratch 1 project.
-        const header = new Uint8Array(buffer.slice(0, HEADER.length));
-        for (let i = 0; i < HEADER.length; i++) {
-          if (header[i] !== HEADER.charCodeAt(i)) {
-            throw new Error('Failed header check, expected ' + HEADER.charCodeAt(i) + ' but got ' + header[i] + ' @ ' + i);
-          }
+        if (!checkMagic(buffer, SB_MAGIC)) {
+          throw new Error('Project is not a valid .sb file (failed magic check)');
         }
-
         result.buffer = buffer;
         return result;
       });
@@ -123,13 +145,19 @@ window.SBDL = (function() {
     let blob;
 
     // The fetch routine is rather complicated because we have to determine which type of project we are looking at.
-    return request(PROJECTS_API.replace('$id', id), 'blob')
+    return fetch(PROJECTS_API.replace('$id', id))
+      .then((request) => {
+        if (request.status !== 200) {
+          throw new Error('Returned status code: ' + request.status);
+        }
+        return request.blob();
+      })
       .then((b) => {
         blob = b;
         return new Promise((resolve, reject) => {
           const fileReader = new FileReader();
           fileReader.onload = () => resolve(fileReader.result);
-          fileReader.onerror = () => reject('Cannot read blob as text');
+          fileReader.onerror = () => reject(new Error('Cannot read blob as text'));
           fileReader.readAsText(blob);
         });
       })
@@ -153,6 +181,14 @@ window.SBDL = (function() {
     return new Promise((resolve, reject) => {
       const fileReader = new FileReader();
       fileReader.onload = () => {
+        if (!checkMagic(fileReader.result, ZIP_MAGIC)) {
+          if (checkMagic(fileReader.result, SB_MAGIC)) {
+            reject(new ProjectFormatError('File is not a valid .sb2 (failed magic check)', 'sb'))
+          }
+          reject(new Error('File is not a valid .sb2 (failed magic check)'));
+          return;
+        }
+        
         resolve({
           title: id.toString(),
           extension: 'sb2',
@@ -160,7 +196,7 @@ window.SBDL = (function() {
           buffer: fileReader.result,
         });
       };
-      fileReader.onerror = () => reject('Cannot read blob as array buffer');
+      fileReader.onerror = () => reject(new Error('Cannot read blob as array buffer'));
       fileReader.readAsArrayBuffer(blob);
     });
   }
@@ -175,6 +211,7 @@ window.SBDL = (function() {
     ];
     const SOUND_EXTENSIONS = [
       'wav',
+      'mp3',
     ];
 
     const result = {
@@ -186,7 +223,7 @@ window.SBDL = (function() {
 
     // sb2 files have two ways of storing references to files.
     // In the online editor they use md5 hashes which point to an API destination.
-    // In the offline editor they use separate accumlative file IDs for images and sounds.
+    // In the offline editor they use separate accumulative file IDs for images and sounds.
     // The files served from the Scratch API don't contain the file IDs we need to export a valid .sb2, so we must create those ourselves.
 
     let soundAccumulator = 0;
@@ -198,7 +235,7 @@ window.SBDL = (function() {
       return thing.md5 || thing.baseLayerMD5 || thing.penLayerMD5 || thing.toString();
     }
 
-    function claimAccumlatedID(extension) {
+    function claimAccumulatedID(extension) {
       if (IMAGE_EXTENSIONS.includes(extension)) {
         return imageAccumulator++;
       } else if (SOUND_EXTENSIONS.includes(extension)) {
@@ -213,24 +250,25 @@ window.SBDL = (function() {
 
       const md5 = asset.md5;
       const extension = asset.extension;
-      const accumlator = claimAccumlatedID(extension);
-      const path = accumlator + '.' + extension;
+      const accumulator = claimAccumulatedID(extension);
+      const path = accumulator + '.' + extension;
 
       // Update IDs in all references to match the accumulator
       // Downloaded projects usually use -1 for all of these, but sometimes they exist and are just wrong since we're redoing them all.
       for (const reference of asset.references) {
         if ('baseLayerID' in reference) {
-          reference.baseLayerID = accumlator;
+          reference.baseLayerID = accumulator;
         }
         if ('soundID' in reference) {
-          reference.soundID = accumlator;
+          reference.soundID = accumulator;
         }
         if ('penLayerID' in reference) {
-          reference.penLayerID = accumlator;
+          reference.penLayerID = accumulator;
         }
       }
 
-      return request(ASSETS_API.replace('$path', md5), 'arraybuffer')
+      return fetch(ASSETS_API.replace('$path', md5))
+        .then((request) => request.arrayBuffer())
         .then((buffer) => {
           result.files.push({
             path: path,
@@ -293,7 +331,8 @@ window.SBDL = (function() {
     function addFile(data) {
       progressHooks.newTask();
       const path = data.md5ext || data.assetId + '.' + data.dataFormat;
-      return request(ASSETS_API.replace('$path', path), 'arraybuffer')
+      return fetch(ASSETS_API.replace('$path', path))
+        .then((request) => request.arrayBuffer())
         .then((buffer) => {
           result.files.push({path: path, data: buffer});
           progressHooks.finishTask();
@@ -320,10 +359,11 @@ window.SBDL = (function() {
     progressHooks.start();
     progressHooks.newTask();
 
-    return request(PROJECTS_API.replace('$id', id), 'json')
+    return fetch(PROJECTS_API.replace('$id', id))
+      .then((request) => request.json())
       .then((projectData) => {
         if (typeof projectData.objName === 'string') {
-          throw new Error('Not a Scratch 3 project, found objName (probably a Scratch 2 project)');
+          throw new ProjectFormatError('Not a Scratch 3 project (found objName)', 'sb2');
         }
         if (!Array.isArray(projectData.targets)) {
           throw new Error('Not a Scratch 3 project, missing targets');
@@ -376,7 +416,7 @@ window.SBDL = (function() {
     };
     type = type.toString();
     if (!(type in loaders)) {
-      return Promise.reject('Unknown type: ' + type);
+      return Promise.reject(new Error('Unknown type: ' + type));
     }
     return loaders[type](id);
   }

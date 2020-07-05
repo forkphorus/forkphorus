@@ -282,6 +282,10 @@ code {
   box-shadow: inset 0 0 0 24px rgba(255, 0, 0, 0.2), 0 0 0 2px #ff6262;
 }
 
+.advanced input[type=checkbox] {
+  margin-left: 12px;
+}
+
 .player-root:not([fullscreen]) .player-stage {
   outline: 1px solid rgba(0, 0, 0, .4);
   margin-bottom: 1px;

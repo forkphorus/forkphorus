@@ -32,6 +32,7 @@ namespace P.renderer {
     /**
      * Asks this renderer to resize itself.
      * Renderer may choose what to resize and when.
+     * @param scale Zoom level of the renderer, 1 = 1x zoom. Does not include device pixel ratio.
      */
     resize(scale: number): void;
     /**

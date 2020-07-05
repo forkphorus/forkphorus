@@ -43,11 +43,10 @@ var P;
 (function (P) {
     var config;
     (function (config) {
-        const features = location.search.replace('?', '').split('&');
-        config.debug = features.indexOf('debug') > -1;
-        config.useWebGL = features.indexOf('webgl') > -1;
-        config.supportVideoSensing = features.indexOf('video') > -1;
-        config.experimentalOptimizations = features.indexOf('opt') > -1;
+        config.debug = false;
+        config.useWebGL = false;
+        config.supportVideoSensing = false;
+        config.experimentalOptimizations = false;
         config.scale = window.devicePixelRatio || 1;
         config.PROJECT_API = 'https://projects.scratch.mit.edu/$id';
     })(config = P.config || (P.config = {}));
@@ -440,7 +439,7 @@ var P;
         }
         function decodeAudio(ab) {
             if (!audio.context) {
-                return Promise.reject('No audio context');
+                return Promise.reject(new Error('No audio context'));
             }
             return new Promise((resolve, reject) => {
                 decodeADPCMAudio(ab, function (err1, buffer) {
@@ -617,22 +616,22 @@ var P;
                 this.volume = 1;
                 this.node = null;
                 this.activeSounds = new Set();
-                this.watchers = Object.create(null);
-                this.listWatchers = Object.create(null);
-                this.vars = Object.create(null);
-                this.lists = Object.create(null);
+                this.watchers = {};
+                this.listWatchers = {};
+                this.vars = {};
+                this.lists = {};
                 this.saying = false;
                 this.thinking = false;
                 this.sayId = 0;
-                this.procedures = Object.create(null);
+                this.procedures = {};
                 this.listeners = {
                     whenClicked: [],
                     whenCloned: [],
                     whenGreenFlag: [],
-                    whenIReceive: Object.create(null),
+                    whenIReceive: {},
                     whenKeyPressed: [],
-                    whenBackdropChanges: Object.create(null),
-                    whenSceneStarts: Object.create(null),
+                    whenBackdropChanges: {},
+                    whenSceneStarts: {},
                 };
                 this.fns = [];
                 this.filters = {
@@ -1002,9 +1001,12 @@ var P;
                 this.tempoBPM = 60;
                 this.username = '';
                 this.counter = 0;
+                this.cloudHandler = null;
+                this.cloudVariables = [];
                 this.speech2text = null;
                 this.microphone = null;
                 this.extensions = [];
+                this.useSpriteFencing = false;
                 this.runtime = new P.runtime.Runtime(this);
                 this.keys = [];
                 this.keys.any = 0;
@@ -1234,6 +1236,13 @@ var P;
                     extension.onstart();
                 }
             }
+            updateExtensions() {
+                if (this.extensions.length) {
+                    for (const extension of this.extensions) {
+                        extension.update();
+                    }
+                }
+            }
             focus() {
                 if (this.promptId < this.nextPromptId) {
                     this.prompt.focus();
@@ -1267,11 +1276,9 @@ var P;
                 this.root.style.height = (360 * zoom | 0) + 'px';
                 this.root.style.fontSize = (zoom * 10) + 'px';
                 this.zoom = zoom;
-                if (!this.runtime.isRunning) {
-                    for (const watcher of this.allWatchers) {
-                        if (watcher instanceof P.sb3.Scratch3ListWatcher) {
-                            watcher.updateList();
-                        }
+                for (const watcher of this.allWatchers) {
+                    if (watcher instanceof P.sb3.Scratch3ListWatcher) {
+                        watcher.updateList();
                     }
                 }
             }
@@ -1397,6 +1404,10 @@ var P;
                     this.microphone = new P.ext.microphone.MicrophoneExtension(this);
                     this.addExtension(this.microphone);
                 }
+            }
+            setCloudHandler(cloudHandler) {
+                this.cloudHandler = cloudHandler;
+                this.addExtension(cloudHandler);
             }
             stopAllSounds() {
                 for (var children = this.children, i = children.length; i--;) {
@@ -1536,6 +1547,24 @@ var P;
                 const d = (90 - this.direction) * Math.PI / 180;
                 this.moveTo(this.scratchX + steps * Math.cos(d), this.scratchY + steps * Math.sin(d));
             }
+            keepInView() {
+                const rb = this.rotatedBounds();
+                const width = rb.right - rb.left;
+                const height = rb.top - rb.bottom;
+                const bounds = Math.min(15, Math.floor(Math.min(width, height) / 2));
+                if (rb.right - bounds < -240) {
+                    this.scratchX -= rb.right - bounds + 240;
+                }
+                if (rb.left + bounds > 240) {
+                    this.scratchX -= rb.left + bounds - 240;
+                }
+                if (rb.bottom + bounds > 180) {
+                    this.scratchY -= rb.bottom + bounds - 180;
+                }
+                if (rb.top - bounds < -180) {
+                    this.scratchY -= rb.top - bounds + 180;
+                }
+            }
             moveTo(x, y) {
                 var ox = this.scratchX;
                 var oy = this.scratchY;
@@ -1544,6 +1573,9 @@ var P;
                 }
                 this.scratchX = x;
                 this.scratchY = y;
+                if (this.stage.useSpriteFencing) {
+                    this.keepInView();
+                }
                 if (this.isPenDown && !this.isDragging) {
                     this.stage.renderer.penLine(this.penColor, this.penSize, ox, oy, x, y);
                 }
@@ -1735,7 +1767,6 @@ var P;
         class VectorCostume extends Costume {
             constructor(svg, options) {
                 super(options);
-                this.currentScale = 1;
                 if (svg.height < 1 || svg.width < 1) {
                     svg = new Image(1, 1);
                 }
@@ -1744,6 +1775,7 @@ var P;
                 this.height = svg.height;
                 this.svg = svg;
                 this.maxScale = this.calculateMaxScale();
+                this.currentScale = Math.min(1, this.maxScale);
             }
             calculateMaxScale() {
                 if (VectorCostume.MAX_SIZE / this.width < VectorCostume.MAX_SCALE) {
@@ -1776,6 +1808,9 @@ var P;
                 this.ctx.drawImage(this.svg, 0, 0, width, height);
             }
             requestSize(costumeScale) {
+                if (VectorCostume.DISABLE_RASTERIZE) {
+                    return;
+                }
                 const scale = Math.min(Math.ceil(costumeScale), this.maxScale);
                 if (this.currentScale < scale) {
                     this.currentScale = scale;
@@ -1790,6 +1825,9 @@ var P;
                 return this.ctx;
             }
             getImage() {
+                if (VectorCostume.DISABLE_RASTERIZE) {
+                    return this.svg;
+                }
                 if (this.canvas) {
                     return this.canvas;
                 }
@@ -1797,12 +1835,13 @@ var P;
                 return this.canvas;
             }
         }
-        VectorCostume.MAX_SCALE = 8;
-        VectorCostume.MAX_SIZE = 1024;
+        VectorCostume.MAX_SCALE = 16;
+        VectorCostume.MAX_SIZE = 2048;
+        VectorCostume.DISABLE_RASTERIZE = false;
         core.VectorCostume = VectorCostume;
         if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
-            console.log('Vector scaling is disabled');
-            VectorCostume.MAX_SCALE = 1;
+            console.log('Vector rasterization is disabled. This may affect performance.');
+            VectorCostume.DISABLE_RASTERIZE = true;
         }
         class Sound {
             constructor(data) {
@@ -1978,9 +2017,7 @@ var P;
             'player.controls.flag.title.enabled': 'Turbo mode is enabled. Shift+click to disable turbo mode.',
             'player.controls.flag.title.disabled': 'Turbo mode is disabled. Shift+click to enable turbo mode.',
             'player.errorhandler.error': 'An internal error occurred. <a $attrs>Click here</a> to file a bug report.',
-            'player.errorhandler.error.unsupported': 'This project type ($type) is not supported. For more information and workarounds, <a href="https://github.com/forkphorus/forkphorus/wiki/On-Scratch-1-Projects" target="_blank" rel="noopener">visit this help page</a>.',
             'player.errorhandler.error.doesnotexist': 'There is no project with ID $id (Project was probably deleted, never existed, or you made a typo.)',
-            'player.errorhandler.instructions': 'Describe what you were doing to cause this error:',
         });
         addTranslations('es', {
             'player.controls.turboIndicator': 'Modo Turbo',
@@ -2006,7 +2043,7 @@ var P;
                         resolve(fileReader.result);
                     };
                     fileReader.onerror = function (err) {
-                        reject('Could not read object');
+                        reject(new Error('Could not read object as ArrayBuffer'));
                     };
                     fileReader.readAsArrayBuffer(object);
                 });
@@ -2019,7 +2056,7 @@ var P;
                         resolve(fileReader.result);
                     };
                     fileReader.onerror = function (err) {
-                        reject('Could not read object');
+                        reject(new Error('Could not read object as data: URL'));
                     };
                     fileReader.readAsDataURL(object);
                 });
@@ -2032,7 +2069,7 @@ var P;
                         resolve(fileReader.result);
                     };
                     fileReader.onerror = function (err) {
-                        reject('Could not read object');
+                        reject(new Error('Could not read object as text'));
                     };
                     fileReader.readAsText(object);
                 });
@@ -2118,6 +2155,10 @@ var P;
         }
         io.AbstractTask = AbstractTask;
         class Retry extends AbstractTask {
+            constructor() {
+                super(...arguments);
+                this.aborted = false;
+            }
             try(handle) {
                 return new Promise((resolve, reject) => {
                     handle()
@@ -2132,7 +2173,7 @@ var P;
                             handle()
                                 .then((response) => resolve(response))
                                 .catch((err) => reject(err));
-                        }, 250);
+                        }, 2000);
                     });
                 });
             }
@@ -2190,7 +2231,10 @@ var P;
             _load() {
                 return new Promise((resolve, reject) => {
                     const xhr = new XMLHttpRequest();
-                    xhr.addEventListener('load', () => {
+                    xhr.open('GET', this.url);
+                    xhr.responseType = this.responseType;
+                    this.xhr = xhr;
+                    xhr.onload = () => {
                         this.status = xhr.status;
                         if (Request.acceptableResponseCodes.indexOf(xhr.status) !== -1 || this.shouldIgnoreErrors) {
                             resolve(xhr.response);
@@ -2198,28 +2242,22 @@ var P;
                         else {
                             reject(new Error(`HTTP Error ${xhr.status} while downloading ${this.url}`));
                         }
-                    });
-                    xhr.addEventListener('progress', (e) => {
+                    };
+                    xhr.onloadstart = (e) => {
                         this.updateProgress(e);
-                    });
-                    xhr.addEventListener('loadstart', (e) => {
-                        this.updateProgress(e);
-                    });
-                    xhr.addEventListener('loadend', (e) => {
+                    };
+                    xhr.onloadend = (e) => {
                         this.complete = true;
                         this.updateProgress(e);
-                    });
-                    xhr.addEventListener('error', (err) => {
-                        reject(`Error while downloading ${this.url} (error) (${xhr.status}/${xhr.readyState})`);
-                    });
-                    xhr.addEventListener('abort', (err) => {
+                    };
+                    xhr.onerror = (err) => {
+                        reject(new Error(`Error while downloading ${this.url} (error) (${xhr.status}/${xhr.statusText}/${this.aborted}/${xhr.readyState})`));
+                    };
+                    xhr.onabort = (err) => {
                         this.aborted = true;
-                        reject(`Error while downloading ${this.url} (abort) (${xhr.status}/${xhr.readyState})`);
-                    });
-                    xhr.open('GET', this.url);
-                    xhr.responseType = this.responseType;
-                    this.xhr = xhr;
-                    setTimeout(xhr.send.bind(xhr));
+                        reject(new Error(`Error while downloading ${this.url} (abort) (${xhr.status}/${xhr.statusText}/${xhr.readyState})`));
+                    };
+                    xhr.send();
                 });
             }
             load(type) {
@@ -2259,10 +2297,12 @@ var P;
                         resolve(image);
                     };
                     image.onerror = (err) => {
-                        reject('Failed to load image: ' + image.src);
+                        reject(new Error('Failed to load image: ' + image.src));
                     };
                     image.crossOrigin = 'anonymous';
-                    image.src = this.src;
+                    setTimeout(() => {
+                        image.src = this.src;
+                    });
                 });
             }
             load() {
@@ -2321,42 +2361,13 @@ var P;
                 if (totalTasks === 0) {
                     return 0;
                 }
-                let totalWork = 0;
-                let completedWork = 0;
                 let finishedTasks = 0;
-                let uncomputable = 0;
                 for (const task of this._tasks) {
                     if (task.isComplete()) {
                         finishedTasks++;
                     }
-                    if (task.isWorkComputable()) {
-                        completedWork += task.getCompletedWork();
-                        totalWork += task.getTotalWork();
-                    }
-                    else {
-                        uncomputable++;
-                    }
                 }
-                if (totalWork === 0) {
-                    return finishedTasks / totalTasks;
-                }
-                if (uncomputable > 0) {
-                    const averageWork = totalWork / (totalTasks - uncomputable) * uncomputable;
-                    totalWork = 0;
-                    completedWork = 0;
-                    for (const task of this._tasks) {
-                        if (task.isWorkComputable()) {
-                            completedWork += task.getCompletedWork();
-                            totalWork += task.getTotalWork();
-                        }
-                        else {
-                            totalWork += averageWork;
-                            if (task.isComplete())
-                                completedWork += averageWork;
-                        }
-                    }
-                }
-                return completedWork / totalWork;
+                return finishedTasks / totalTasks;
             }
             updateProgress() {
                 if (this.error) {
@@ -2380,11 +2391,286 @@ var P;
                     task.abort();
                 }
             }
+            cleanup() {
+                for (const task of this._tasks) {
+                    task.setLoader(null);
+                }
+                this._tasks.length = 0;
+            }
             onprogress(progress) {
             }
         }
         io.Loader = Loader;
     })(io = P.io || (P.io = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
+    var json;
+    (function (json) {
+        class JSONParser {
+            constructor(source) {
+                this.source = source;
+                this.index = 0;
+            }
+            parse() {
+                return this.parseValue();
+            }
+            lineInfo() {
+                let line = 0;
+                let column = 0;
+                for (var i = 0; i < this.index; i++) {
+                    if (this.source[i] === '\n') {
+                        line++;
+                        column = 0;
+                    }
+                    else {
+                        column++;
+                    }
+                }
+                return { line: line + 1, column: column + 1 };
+            }
+            error(message) {
+                const { line, column } = this.lineInfo();
+                throw new SyntaxError(`JSONParser: ${message} (Line ${line} Column ${column})`);
+            }
+            char() {
+                return this.charAt(this.index);
+            }
+            charAt(index) {
+                if (index >= this.source.length) {
+                    this.error('Unexpected end of input');
+                }
+                return this.source[index];
+            }
+            next() {
+                this.index++;
+            }
+            expect(char) {
+                if (this.char() !== char) {
+                    this.error(`Expected '${char}' but found '${this.char()}'`);
+                }
+                this.next();
+            }
+            peek(length = 1, offset = 1) {
+                if (length === 1)
+                    return this.charAt(this.index + offset);
+                let result = '';
+                for (var i = 0; i < length; i++) {
+                    result += this.charAt(this.index + offset + i);
+                }
+                return result;
+            }
+            skipWhitespace() {
+                while (/\s/.test(this.char())) {
+                    this.next();
+                }
+            }
+            parseValue() {
+                this.skipWhitespace();
+                const char = this.char();
+                switch (char) {
+                    case '"': return this.parseString();
+                    case '{': return this.parseObject();
+                    case '[': return this.parseList();
+                    case '0':
+                    case '1':
+                    case '2':
+                    case '3':
+                    case '4':
+                    case '5':
+                    case '6':
+                    case '7':
+                    case '8':
+                    case '9':
+                    case '-':
+                        return this.parseNumber();
+                    default: return this.parseWord();
+                }
+            }
+            parseWord() {
+                if (this.peek(4, 0) === 'null') {
+                    for (var i = 0; i < 4; i++)
+                        this.next();
+                    return null;
+                }
+                if (this.peek(4, 0) === 'true') {
+                    for (var i = 0; i < 4; i++)
+                        this.next();
+                    return true;
+                }
+                if (this.peek(5, 0) === 'false') {
+                    for (var i = 0; i < 5; i++)
+                        this.next();
+                    return false;
+                }
+                if (this.peek(8, 0) === 'Infinity') {
+                    for (var i = 0; i < 8; i++)
+                        this.next();
+                    return Infinity;
+                }
+                if (this.peek(9, 0) === '-Infinity') {
+                    for (var i = 0; i < 9; i++)
+                        this.next();
+                    return -Infinity;
+                }
+                if (this.peek(3, 0) === 'NaN') {
+                    for (var i = 0; i < 3; i++)
+                        this.next();
+                    return NaN;
+                }
+                this.error(`Unknown word (starts with ${this.char()})`);
+            }
+            parseNumber() {
+                let number = '';
+                while (true) {
+                    number += this.char();
+                    if (/[\d\.e+-]/i.test(this.peek())) {
+                        this.next();
+                    }
+                    else {
+                        break;
+                    }
+                }
+                this.next();
+                const value = +number;
+                if (Number.isNaN(value)) {
+                    this.error('Not a number: ' + number);
+                }
+                return value;
+            }
+            parseString() {
+                this.expect('"');
+                let result = '';
+                if (this.char() === '"') {
+                    this.next();
+                    return '';
+                }
+                while (true) {
+                    const char = this.char();
+                    if (char === '\\') {
+                        this.next();
+                        switch (this.char()) {
+                            case '"':
+                                result += '"';
+                                break;
+                            case '/':
+                                result += '/';
+                                break;
+                            case '\\':
+                                result += '\\';
+                                break;
+                            case 'b':
+                                result += '\b';
+                                break;
+                            case 'f':
+                                result += '\f';
+                                break;
+                            case 'n':
+                                result += '\n';
+                                break;
+                            case 'r':
+                                result += '\r';
+                                break;
+                            case 't':
+                                result += '\t';
+                                break;
+                            case 'u': {
+                                let hexString = '';
+                                for (var i = 0; i < 4; i++) {
+                                    this.next();
+                                    const char = this.char();
+                                    if (!/[0-9a-f]/i.test(char)) {
+                                        this.error('Invalid hex code: ' + char);
+                                    }
+                                    hexString += char;
+                                }
+                                const hexNumber = Number.parseInt(hexString, 16);
+                                const letter = String.fromCharCode(hexNumber);
+                                result += letter;
+                                break;
+                            }
+                            default: this.error('Invalid escape code: \\' + this.char());
+                        }
+                    }
+                    else {
+                        result += char;
+                    }
+                    if (this.peek() === '"') {
+                        break;
+                    }
+                    this.next();
+                }
+                this.next();
+                this.expect('"');
+                return result;
+            }
+            parseList() {
+                this.expect('[');
+                this.skipWhitespace();
+                if (this.char() === ']') {
+                    this.next();
+                    return [];
+                }
+                const result = [];
+                while (true) {
+                    this.skipWhitespace();
+                    const value = this.parseValue();
+                    result.push(value);
+                    this.skipWhitespace();
+                    if (this.char() === ']') {
+                        break;
+                    }
+                    this.expect(',');
+                }
+                this.expect(']');
+                return result;
+            }
+            parseObject() {
+                this.expect('{');
+                this.skipWhitespace();
+                if (this.char() === '}') {
+                    this.next();
+                    return {};
+                }
+                const result = Object.create(null);
+                while (true) {
+                    this.skipWhitespace();
+                    const key = this.parseString();
+                    this.skipWhitespace();
+                    this.expect(':');
+                    const value = this.parseValue();
+                    result[key] = value;
+                    this.skipWhitespace();
+                    if (this.char() === '}') {
+                        break;
+                    }
+                    this.expect(',');
+                }
+                this.expect('}');
+                return result;
+            }
+        }
+        function parse(source) {
+            if (!/^\s*{/.test(source)) {
+                throw new Error('The input does not seem to be a JSON object');
+            }
+            try {
+                return JSON.parse(source);
+            }
+            catch (firstError) {
+                console.warn('JSON.parse failed. Trying alternative parser', firstError);
+                try {
+                    const parser = new JSONParser(source);
+                    return parser.parse();
+                }
+                catch (secondError) {
+                    console.warn('Alternative parser failed', secondError);
+                    throw firstError;
+                }
+            }
+        }
+        json.parse = parse;
+    })(json = P.json || (P.json = {}));
 })(P || (P = {}));
 var P;
 (function (P) {
@@ -2557,14 +2843,6 @@ var P;
             }
         }
         player_1.PlayerError = PlayerError;
-        class ProjectNotSupportedError extends PlayerError {
-            constructor(type) {
-                super('Project type (' + type + ') is not supported');
-                this.type = type;
-                this.name = 'ProjectNotSupportedError';
-            }
-        }
-        player_1.ProjectNotSupportedError = ProjectNotSupportedError;
         class ProjectDoesNotExistError extends PlayerError {
             constructor(id) {
                 super('Project with ID ' + id + ' does not exist');
@@ -2621,7 +2899,24 @@ var P;
                 return this.filename;
             }
             getId() {
+                return this.filename;
+            }
+            isFromScratch() {
+                return false;
+            }
+        }
+        class BinaryProjectMeta {
+            load() {
+                return Promise.resolve(this);
+            }
+            getTitle() {
                 return null;
+            }
+            getId() {
+                return '#buffer#';
+            }
+            isFromScratch() {
+                return false;
             }
         }
         class RemoteProjectMeta {
@@ -2646,6 +2941,9 @@ var P;
             getId() {
                 return this.id;
             }
+            isFromScratch() {
+                return true;
+            }
         }
         class Player {
             constructor(options = {}) {
@@ -2662,7 +2960,9 @@ var P;
                     LARGE_Z_INDEX: '9999999999',
                     CLOUD_HISTORY_API: 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100',
                     PROJECT_API: 'https://projects.scratch.mit.edu/$id',
+                    CLOUD_DATA_SERVER: 'wss://stratus.garbomuffin.com',
                 };
+                this.stage = null;
                 this.projectMeta = null;
                 this.currentLoader = null;
                 this.fullscreenEnabled = false;
@@ -2839,6 +3139,7 @@ var P;
                 }
                 this.stage.username = this.options.username;
                 this.stage.runtime.isTurbo = this.options.turbo;
+                this.stage.useSpriteFencing = this.options.spriteFencing;
                 this.stage.renderer.imageSmoothingEnabled = this.options.imageSmoothing;
             }
             throwWithoutStage() {
@@ -3024,19 +3325,12 @@ var P;
                     this.exitFullscreen();
                 }
             }
-            isCloudVariable(variableName) {
-                return variableName.startsWith('☁');
-            }
-            getCloudVariables(id) {
+            getCloudVariablesFromLogs(id) {
                 return __awaiter(this, void 0, void 0, function* () {
                     const data = yield new P.io.Request(this.MAGIC.CLOUD_HISTORY_API.replace('$id', id)).load('json');
                     const variables = Object.create(null);
                     for (const entry of data.reverse()) {
                         const { verb, name, value } = entry;
-                        if (!this.isCloudVariable(name)) {
-                            console.warn('cloud variable logs affecting non-cloud variable, skipping', name);
-                            continue;
-                        }
                         switch (verb) {
                             case 'create_var':
                             case 'set_var':
@@ -3056,15 +3350,10 @@ var P;
                     return variables;
                 });
             }
-            addCloudVariables(stage, id) {
-                const variables = Object.keys(stage.vars);
-                const hasCloudVariables = variables.some(this.isCloudVariable);
-                if (!hasCloudVariables) {
-                    return;
-                }
-                this.getCloudVariables(id).then((variables) => {
+            applyCloudVariablesOnce(stage, id) {
+                this.getCloudVariablesFromLogs(id).then((variables) => {
                     for (const name of Object.keys(variables)) {
-                        if (name in stage.vars) {
+                        if (stage.cloudVariables.indexOf(name) > -1) {
                             stage.vars[name] = variables[name];
                         }
                         else {
@@ -3073,7 +3362,43 @@ var P;
                     }
                 });
             }
-            enactAutoplayPolicy(policy) {
+            applyCloudVariablesSocket(stage, id) {
+                const handler = new P.ext.cloud.WebSocketCloudHandler(stage, this.MAGIC.CLOUD_DATA_SERVER, id);
+                stage.setCloudHandler(handler);
+            }
+            applyCloudVariablesLocalStorage(stage, id) {
+                const handler = new P.ext.cloud.LocalStorageCloudHandler(stage, id);
+                stage.setCloudHandler(handler);
+            }
+            applyCloudVariables(policy) {
+                const stage = this.stage;
+                const meta = this.projectMeta;
+                if (!meta) {
+                    throw new Error('cannot apply cloud variable settings without projectMeta');
+                }
+                const hasCloudVariables = stage.cloudVariables.length > 0;
+                if (!hasCloudVariables) {
+                    return;
+                }
+                switch (policy) {
+                    case 'once':
+                        if (!meta.isFromScratch()) {
+                            throw new Error('once cloudVariables does not work with projects not from scratch.mit.edu');
+                        }
+                        this.applyCloudVariablesOnce(stage, meta.getId());
+                        break;
+                    case 'ws':
+                        if (!meta.isFromScratch()) {
+                            throw new Error('ws cloudVariables does not work with projects not from scratch.mit.edu');
+                        }
+                        this.applyCloudVariablesSocket(stage, meta.getId());
+                        break;
+                    case 'localStorage':
+                        this.applyCloudVariablesLocalStorage(stage, meta.getId());
+                        break;
+                }
+            }
+            applyAutoplayPolicy(policy) {
                 switch (policy) {
                     case 'always': {
                         this.triggerGreenFlag();
@@ -3101,6 +3426,9 @@ var P;
                 this.clickToPlayContainer = document.createElement('div');
                 this.clickToPlayContainer.className = 'player-click-to-play-container';
                 this.clickToPlayContainer.onclick = () => {
+                    if (P.audio.context && P.audio.context.state !== 'running') {
+                        P.audio.context.resume();
+                    }
                     this.removeClickToPlayContainer();
                     this.triggerGreenFlag();
                     this.focus();
@@ -3141,6 +3469,17 @@ var P;
                 }
                 return true;
             }
+            convertScratch1Project(buffer) {
+                const sb1 = new ScratchSB1Converter.SB1File(buffer);
+                const projectData = sb1.json;
+                const zipFiles = sb1.zip.files;
+                const zip = new JSZip();
+                zip.file('project.json', JSON.stringify(projectData));
+                for (const fileName of Object.keys(zipFiles)) {
+                    zip.file(fileName, zipFiles[fileName].bytes);
+                }
+                return zip.generateAsync({ type: 'arraybuffer' });
+            }
             fetchProject(id) {
                 const request = new P.io.Request(this.MAGIC.PROJECT_API.replace('$id', id));
                 return request
@@ -3163,7 +3502,8 @@ var P;
                 }
                 this.onload.emit(stage);
                 this.stage.draw();
-                this.enactAutoplayPolicy(this.options.autoplayPolicy);
+                this.applyCloudVariables(this.options.cloudVariables);
+                this.applyAutoplayPolicy(this.options.autoplayPolicy);
             }
             loadLoader(loaderId, loader) {
                 return __awaiter(this, void 0, void 0, function* () {
@@ -3175,12 +3515,51 @@ var P;
                     };
                     const stage = yield loader.load();
                     this.setStage(stage);
+                    this.currentLoader = null;
+                    loader.cleanup();
                     return stage;
+                });
+            }
+            loadProjectById(id) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    const { loaderId } = this.beginLoadingProject();
+                    const getLoader = (blob) => __awaiter(this, void 0, void 0, function* () {
+                        try {
+                            const projectText = yield P.io.readers.toText(blob);
+                            const projectJson = P.json.parse(projectText);
+                            switch (this.determineProjectType(projectJson)) {
+                                case 'sb2': return new P.sb2.Scratch2Loader(projectJson);
+                                case 'sb3': return new P.sb3.Scratch3Loader(projectJson);
+                            }
+                        }
+                        catch (e) {
+                            let buffer = yield P.io.readers.toArrayBuffer(blob);
+                            if (this.isScratch1Project(buffer)) {
+                                buffer = yield this.convertScratch1Project(buffer);
+                            }
+                            return new P.sb2.SB2FileLoader(buffer);
+                        }
+                    });
+                    try {
+                        this.projectMeta = new RemoteProjectMeta(id);
+                        const blob = yield this.fetchProject(id);
+                        const loader = yield getLoader(blob);
+                        yield this.loadLoader(loaderId, loader);
+                    }
+                    catch (e) {
+                        if (loaderId.isActive()) {
+                            this.handleError(e);
+                        }
+                    }
                 });
             }
             loadProjectFromBufferWithType(loaderId, buffer, type) {
                 return __awaiter(this, void 0, void 0, function* () {
                     let loader;
+                    if (type === 'sb') {
+                        buffer = yield this.convertScratch1Project(buffer);
+                        type = 'sb2';
+                    }
                     switch (type) {
                         case 'sb2':
                             loader = new P.sb2.SB2FileLoader(buffer);
@@ -3193,40 +3572,6 @@ var P;
                     yield this.loadLoader(loaderId, loader);
                 });
             }
-            loadProjectById(id) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    const { loaderId } = this.beginLoadingProject();
-                    const getLoader = (blob) => __awaiter(this, void 0, void 0, function* () {
-                        const projectText = yield P.io.readers.toText(blob);
-                        try {
-                            const projectJson = JSON.parse(projectText);
-                            switch (this.determineProjectType(projectJson)) {
-                                case 'sb2': return new P.sb2.Scratch2Loader(projectJson);
-                                case 'sb3': return new P.sb3.Scratch3Loader(projectJson);
-                            }
-                        }
-                        catch (e) {
-                            const buffer = yield P.io.readers.toArrayBuffer(blob);
-                            if (this.isScratch1Project(buffer)) {
-                                throw new ProjectNotSupportedError('Scratch 1');
-                            }
-                            return new P.sb2.SB2FileLoader(buffer);
-                        }
-                    });
-                    try {
-                        this.projectMeta = new RemoteProjectMeta(id);
-                        const blob = yield this.fetchProject(id);
-                        const loader = yield getLoader(blob);
-                        const stage = yield this.loadLoader(loaderId, loader);
-                        this.addCloudVariables(stage, id);
-                    }
-                    catch (e) {
-                        if (loaderId.isActive()) {
-                            this.handleError(e);
-                        }
-                    }
-                });
-            }
             loadProjectFromFile(file) {
                 return __awaiter(this, void 0, void 0, function* () {
                     const { loaderId } = this.beginLoadingProject();
@@ -3235,6 +3580,7 @@ var P;
                         const extension = file.name.split('.').pop() || '';
                         const buffer = yield P.io.readers.toArrayBuffer(file);
                         switch (extension) {
+                            case 'sb': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb');
                             case 'sb2': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb2');
                             case 'sb3': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb3');
                             default: throw new Error('Unrecognized file extension: ' + extension);
@@ -3251,6 +3597,7 @@ var P;
                 return __awaiter(this, void 0, void 0, function* () {
                     const { loaderId } = this.beginLoadingProject();
                     try {
+                        this.projectMeta = new BinaryProjectMeta();
                         return yield this.loadProjectFromBufferWithType(loaderId, buffer, type);
                     }
                     catch (e) {
@@ -3273,11 +3620,15 @@ var P;
             fullscreenMaxWidth: Infinity,
             imageSmoothing: false,
             focusOnLoad: true,
+            spriteFencing: false,
         };
         player_1.Player = Player;
         class ErrorHandler {
             constructor(player, options = {}) {
                 this.player = player;
+                this.errorEl = null;
+                this.errorContainer = null;
+                this.generatedErrorLink = null;
                 this.player = player;
                 player.onerror.subscribe(this.onerror.bind(this));
                 player.oncleanup.subscribe(this.oncleanup.bind(this));
@@ -3296,21 +3647,20 @@ var P;
                 if (error.stack) {
                     return 'Message: ' + error.message + '\nStack:\n' + error.stack;
                 }
-                return error.toString();
+                return '' + error;
             }
-            createBugReportLink(bodyBefore, bodyAfter) {
-                var title = this.getBugReportTitle();
-                bodyAfter = bodyAfter || '';
-                var body = bodyBefore +
-                    '\n\n\n-----\n' +
-                    this.getBugReportMetadata() +
-                    '\n' +
-                    bodyAfter;
+            createBugReportLink(error) {
+                const type = error ? '[Error]' : '[Bug]';
+                const title = `${type} ${this.getBugReportTitle()}`;
+                const body = this.getBugReportBody(error);
                 return ErrorHandler.BUG_REPORT_LINK
                     .replace('$title', encodeURIComponent(title))
                     .replace('$body', encodeURIComponent(body));
             }
             getBugReportTitle() {
+                if (!this.player.hasProjectMeta()) {
+                    return 'Unknown Project';
+                }
                 const meta = this.player.getProjectMeta();
                 const title = meta.getTitle();
                 const id = meta.getId();
@@ -3322,47 +3672,70 @@ var P;
                 }
                 return 'Unknown Project';
             }
-            getBugReportMetadata() {
-                var meta = '';
-                meta += 'Project ID: ' + this.player.getProjectMeta().getId() + '\n';
-                meta += location.href + '\n';
-                meta += navigator.userAgent;
-                return meta;
+            getBugReportBody(error) {
+                const sections = [];
+                sections.push({
+                    title: 'Describe the bug, including any steps to reproduce it',
+                    body: '',
+                });
+                sections.push({
+                    title: 'Project ID, URL, or file',
+                    body: this.getProjectInformation(),
+                });
+                let debug = '';
+                debug += location.href + '\n';
+                debug += navigator.userAgent + '\n';
+                if (error) {
+                    debug += '```\n' + this.stringifyError(error) + '\n```';
+                }
+                sections.push({
+                    title: 'Debug information <!-- DO NOT EDIT -->',
+                    body: debug,
+                });
+                return sections
+                    .map((i) => `**${i.title}**\n${i.body}\n`)
+                    .join('\n')
+                    .trim();
             }
-            createErrorLink(error) {
-                var body = P.i18n.translate('player.errorhandler.instructions');
-                return this.createBugReportLink(body, '```\n' + this.stringifyError(error) + '\n```');
+            getProjectInformation() {
+                if (!this.player.hasProjectMeta()) {
+                    return 'no project meta loaded';
+                }
+                const projectMeta = this.player.getProjectMeta();
+                if (projectMeta.isFromScratch()) {
+                    if (projectMeta.getTitle()) {
+                        return 'https://scratch.mit.edu/projects/' + projectMeta.getId();
+                    }
+                    else {
+                        return 'https://scratch.mit.edu/projects/' + projectMeta.getId() + ' (probably unshared)';
+                    }
+                }
+                return 'Not from Scratch: ' + projectMeta.getId();
             }
             oncleanup() {
                 if (this.errorEl && this.errorEl.parentNode) {
                     this.errorEl.parentNode.removeChild(this.errorEl);
                     this.errorEl = null;
                 }
+                this.generatedErrorLink = null;
             }
             handleError(error) {
-                var el = document.createElement('div');
-                var errorLink = this.createErrorLink(error);
-                var attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
+                const el = document.createElement('div');
+                const errorLink = this.createBugReportLink(error);
+                this.generatedErrorLink = errorLink;
+                const attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
                 el.innerHTML = P.i18n.translate('player.errorhandler.error').replace('$attrs', attributes);
                 return el;
             }
-            handleNotSupportedError(error) {
-                var el = document.createElement('div');
-                el.innerHTML = P.i18n.translate('player.errorhandler.error.unsupported').replace('$type', error.type);
-                return el;
-            }
             handleDoesNotExistError(error) {
-                var el = document.createElement('div');
+                const el = document.createElement('div');
                 el.textContent = P.i18n.translate('player.errorhandler.error.doesnotexist').replace('$id', error.id);
                 return el;
             }
             onerror(error) {
-                var el = document.createElement('div');
+                const el = document.createElement('div');
                 el.className = 'player-error';
-                if (error instanceof ProjectNotSupportedError) {
-                    el.appendChild(this.handleNotSupportedError(error));
-                }
-                else if (error instanceof ProjectDoesNotExistError) {
+                if (error instanceof ProjectDoesNotExistError) {
                     el.appendChild(this.handleDoesNotExistError(error));
                 }
                 else {
@@ -3380,7 +3753,7 @@ var P;
                 this.errorEl = el;
             }
         }
-        ErrorHandler.BUG_REPORT_LINK = 'https://github.com/forkphorus/forkphorus/issues/new?title=$title&body=$body';
+        ErrorHandler.BUG_REPORT_LINK = 'https://github.com/forkphorus/forkphorus/issues/new?template=bug_report.md&labels=bug&title=$title&body=$body&';
         player_1.ErrorHandler = ErrorHandler;
         class ProgressBar {
             constructor(player, options = {}) {
@@ -3827,7 +4200,12 @@ var P;
                     if (VISUAL) {
                         for (var i = CALLS.length, j = 5; i-- && j--;) {
                             if (CALLS[i].base === procedure.fn) {
-                                runtime.queue[THREAD] = new Thread(S, BASE, procedure.fn, CALLS);
+                                runtime.queue[THREAD] = {
+                                    sprite: S,
+                                    base: BASE,
+                                    fn: procedure.fn,
+                                    calls: CALLS,
+                                };
                                 return;
                             }
                         }
@@ -3847,6 +4225,11 @@ var P;
                 C = CALLS.pop();
                 STACK = C.stack;
                 R = STACK.pop();
+            }
+        };
+        var cloudVariableChanged = function (name) {
+            if (self.cloudHandler) {
+                self.cloudHandler.variableChanged(name);
             }
         };
         var sceneChange = function () {
@@ -3874,16 +4257,13 @@ var P;
             }
         };
         var forceQueue = function (id) {
-            runtime.queue[THREAD] = new Thread(S, BASE, S.fns[id], CALLS);
+            runtime.queue[THREAD] = {
+                sprite: S,
+                base: BASE,
+                fn: S.fns[id],
+                calls: CALLS,
+            };
         };
-        class Thread {
-            constructor(sprite, base, fn, calls) {
-                this.sprite = sprite;
-                this.base = base;
-                this.fn = fn;
-                this.calls = calls;
-            }
-        }
         class Runtime {
             constructor(stage) {
                 this.stage = stage;
@@ -3897,15 +4277,22 @@ var P;
                 this.onError = this.onError.bind(this);
                 this.step = this.step.bind(this);
             }
-            startThread(sprite, base) {
-                const thread = new Thread(sprite, base, base, [{
-                        args: [],
-                        stack: [{}],
-                    }]);
+            startThread(sprite, base, replaceExisting) {
+                const thread = {
+                    sprite: sprite,
+                    base: base,
+                    fn: base,
+                    calls: [{
+                            args: [],
+                            stack: [{}],
+                        }],
+                };
                 for (let i = 0; i < this.queue.length; i++) {
                     const q = this.queue[i];
                     if (q && q.sprite === sprite && q.base === base) {
-                        this.queue[i] = thread;
+                        if (replaceExisting) {
+                            this.queue[i] = thread;
+                        }
                         return;
                     }
                 }
@@ -3913,6 +4300,7 @@ var P;
             }
             triggerFor(sprite, event, arg) {
                 let threads;
+                let replaceExisting = true;
                 switch (event) {
                     case 'whenClicked':
                         threads = sprite.listeners.whenClicked;
@@ -3924,6 +4312,7 @@ var P;
                         threads = sprite.listeners.whenGreenFlag;
                         break;
                     case 'whenKeyPressed':
+                        replaceExisting = false;
                         threads = sprite.listeners.whenKeyPressed[arg];
                         break;
                     case 'whenSceneStarts':
@@ -3940,7 +4329,7 @@ var P;
                 }
                 if (threads) {
                     for (let i = 0; i < threads.length; i++) {
-                        this.startThread(sprite, threads[i]);
+                        this.startThread(sprite, threads[i], replaceExisting);
                     }
                 }
                 return threads || [];
@@ -4067,6 +4456,7 @@ var P;
                         }
                     }
                 } while ((this.isTurbo || !VISUAL) && Date.now() - start < 1000 / this.framerate && queue.length);
+                this.stage.updateExtensions();
                 this.stage.draw();
             }
             onError(e) {
@@ -4488,28 +4878,29 @@ var P;
                     this.loadArray(data.costumes, this.loadCostume.bind(this)).then((c) => costumes = c),
                     this.loadArray(data.sounds, this.loadSound.bind(this)).then((s) => sounds = s),
                 ]).then(() => {
-                    const variables = {};
+                    const object = new (isStage ? Scratch2Stage : Scratch2Sprite)(null);
                     if (data.variables) {
                         for (const variable of data.variables) {
-                            if (variable.isPeristent) {
-                                throw new Error('Cloud variables are not supported');
+                            if (variable.isPersistent) {
+                                if (object.isStage) {
+                                    object.cloudVariables.push(variable.name);
+                                }
+                                else {
+                                    console.warn('Cloud variable found on a non-stage object. Skipping.');
+                                }
                             }
-                            variables[variable.name] = variable.value;
+                            object.vars[variable.name] = variable.value;
                         }
                     }
-                    const lists = {};
                     if (data.lists) {
                         for (const list of data.lists) {
-                            if (list.isPeristent) {
-                                throw new Error('Cloud lists are not supported');
+                            if (list.isPersistent) {
+                                console.warn('Cloud lists are not supported');
                             }
-                            lists[list.listName] = list.contents;
+                            object.lists[list.listName] = list.contents;
                         }
                     }
-                    const object = new (isStage ? Scratch2Stage : Scratch2Sprite)(null);
                     object.name = data.objName;
-                    object.vars = variables;
-                    object.lists = lists;
                     object.costumes = costumes;
                     object.currentCostumeIndex = data.currentCostumeIndex;
                     sounds.forEach((sound) => sound && object.addSound(sound));
@@ -4670,22 +5061,28 @@ var P;
                 this.buffer = buffer;
             }
             loadMD5(hash, id, isAudio = false) {
-                const f = isAudio ? this.zip.file(id + '.wav') : this.zip.file(id + '.gif') || this.zip.file(id + '.png') || this.zip.file(id + '.jpg') || this.zip.file(id + '.svg');
+                const f = isAudio ? (this.zip.file(id + '.wav') || this.zip.file(id + '.mp3')) : this.zip.file(id + '.gif') || (this.zip.file(id + '.png') || this.zip.file(id + '.jpg') || this.zip.file(id + '.svg'));
+                if (!f) {
+                    throw new Error('cannot find md5: ' + hash + ' (isAudio=' + isAudio + ')');
+                }
                 hash = f.name;
+                if (isAudio) {
+                    return f.async('arraybuffer')
+                        .then((buffer) => P.audio.decodeAudio(buffer));
+                }
                 const ext = hash.split('.').pop();
                 if (ext === 'svg') {
                     return f.async('text')
                         .then((text) => this.loadSVG(text));
-                }
-                else if (ext === 'wav') {
-                    return f.async('arrayBuffer')
-                        .then((buffer) => P.audio.decodeAudio(buffer));
                 }
                 else {
                     return new Promise((resolve, reject) => {
                         var image = new Image();
                         image.onload = function () {
                             resolve(image);
+                        };
+                        image.onerror = function () {
+                            reject(new Error('Failed to load image: ' + hash + '/' + id));
                         };
                         f.async('binarystring')
                             .then((data) => {
@@ -4698,10 +5095,14 @@ var P;
                 return JSZip.loadAsync(this.buffer)
                     .then((data) => {
                     this.zip = data;
-                    return this.zip.file('project.json').async('text');
+                    const project = this.zip.file('project.json');
+                    if (!project) {
+                        throw new Error('project.json is missing');
+                    }
+                    return project.async('text');
                 })
                     .then((project) => {
-                    this.projectData = JSON.parse(project);
+                    this.projectData = P.json.parse(project);
                 })
                     .then(() => super.load());
             }
@@ -4809,6 +5210,7 @@ var P;
     (function (sb2) {
         var compiler;
         (function (compiler) {
+            const CLOUD = '☁ ';
             var LOG_PRIMITIVES;
             class Scratch2Procedure extends P.core.Procedure {
                 call(inputs) {
@@ -4872,6 +5274,12 @@ var P;
                     }
                     var o = object.stage.vars[name] !== undefined ? 'self' : 'S';
                     return o + '.vars[' + val(name) + ']';
+                };
+                var isCloudVar = function (name) {
+                    if (typeof name !== 'string') {
+                        return false;
+                    }
+                    return name.startsWith(CLOUD) && object.stage.vars[name] !== undefined && object.stage.cloudVariables.indexOf(name) > -1;
                 };
                 var listRef = function (name) {
                     if (typeof name !== 'string') {
@@ -4996,7 +5404,7 @@ var P;
                         return '(self.currentCostumeIndex + 1)';
                     }
                     else if (e[0] === 'scale') {
-                        return '(S.scale * 100)';
+                        return 'Math.round(S.scale * 100)';
                     }
                     else if (e[0] === 'volume') {
                         return '(S.volume * 100)';
@@ -5500,10 +5908,16 @@ var P;
                     }
                     else if (block[0] === 'setVar:to:') {
                         source += varRef(block[1]) + ' = ' + val(block[2]) + ';\n';
+                        if (isCloudVar(block[1])) {
+                            source += 'cloudVariableChanged(' + val(block[1]) + ');\n';
+                        }
                     }
                     else if (block[0] === 'changeVar:by:') {
                         var ref = varRef(block[1]);
                         source += ref + ' = (+' + ref + ' || 0) + ' + num(block[2]) + ';\n';
+                        if (isCloudVar(block[1])) {
+                            source += 'cloudVariableChanged(' + val(block[1]) + ');\n';
+                        }
                     }
                     else if (block[0] === 'append:toList:') {
                         source += 'appendToList(' + listRef(block[2]) + ', ' + val(block[1]) + ');\n';
@@ -6034,8 +6448,8 @@ var P;
                 if (!this.visible && this._rowHeight === -1) {
                     return;
                 }
-                const height = this.list.length * this.getRowHeight();
-                this.endpointEl.style.transform = 'translateY(' + (height * this.stage.zoom) + 'px)';
+                const height = this.list.length * this.getRowHeight() * this.stage.zoom;
+                this.endpointEl.style.transform = 'translateY(' + height + 'px)';
                 const topVisible = this.scrollTop;
                 const bottomVisible = topVisible + this.getContentHeight();
                 let startingIndex = Math.floor(topVisible / this.getRowHeight());
@@ -6063,7 +6477,7 @@ var P;
                     let row = this.rows[rowIndex];
                     row.setIndex(listIndex);
                     row.setValue(this.list[listIndex]);
-                    row.setY(listIndex * this._rowHeight);
+                    row.setY(listIndex * this._rowHeight * this.stage.zoom);
                     row.setVisible(true);
                 }
                 while (rowIndex < this.rows.length) {
@@ -6103,8 +6517,13 @@ var P;
             getRowHeight() {
                 if (this._rowHeight === -1) {
                     const PADDING = 2;
-                    const row = this.addRow();
-                    const height = row.element.offsetHeight;
+                    if (this.rows.length === 0) {
+                        this.addRow();
+                    }
+                    const height = this.rows[0].element.offsetHeight;
+                    if (height === 0) {
+                        return 0;
+                    }
                     this._rowHeight = height + PADDING;
                 }
                 return this._rowHeight;
@@ -6195,7 +6614,32 @@ var P;
             return list;
         }
         sb3.createList = createList;
-        function patchSVG(svg) {
+        const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
+        function fixSVGNamespace(svg) {
+            const newSVG = document.createElementNS(SVG_NAMESPACE, 'svg');
+            for (const attribute of svg.attributes) {
+                newSVG.setAttribute(attribute.name, attribute.value);
+            }
+            newSVG.innerHTML = svg.innerHTML;
+            return newSVG;
+        }
+        function patchSVG(svg, costumeOptions) {
+            const invalidNamespace = svg.namespaceURI !== SVG_NAMESPACE;
+            if (invalidNamespace) {
+                svg = fixSVGNamespace(svg);
+                if (svg.firstElementChild && svg.firstElementChild.tagName !== 'g') {
+                    const group = document.createElementNS(SVG_NAMESPACE, 'g');
+                    const transform = svg.createSVGTransform();
+                    for (const el of svg.children) {
+                        group.appendChild(el);
+                    }
+                    transform.setTranslate(-svg.width.baseVal.value / 2, svg.height.baseVal.value / 2);
+                    group.transform.baseVal.appendItem(transform);
+                    costumeOptions.rotationCenterX -= svg.width.baseVal.value / 2;
+                    costumeOptions.rotationCenterY += svg.height.baseVal.value / 2;
+                    svg.appendChild(group);
+                }
+            }
             if (svg.hasAttribute('viewBox')) {
                 const viewBox = svg.getAttribute('viewBox').split(/ |,/).map((i) => +i);
                 if (viewBox.every((i) => !isNaN(i)) && viewBox.length === 4) {
@@ -6240,33 +6684,26 @@ var P;
                 }
             }
             P.fonts.addFontRules(svg, usedFonts);
-        }
-        function fixVectorNamespace(svg) {
-            var newSVG = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            for (const attribute of svg.attributes) {
-                newSVG.setAttribute(attribute.name, attribute.value);
-            }
-            newSVG.innerHTML = svg.innerHTML;
-            return newSVG;
+            return svg;
         }
         class BaseSB3Loader extends P.io.Loader {
-            getSVG(path) {
+            constructor() {
+                super(...arguments);
+                this.needsMusic = false;
+            }
+            getSVG(path, costumeOptions) {
                 return this.getAsText(path)
                     .then((source) => {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(source, 'image/svg+xml');
-                    let svg = doc.documentElement;
-                    if (svg.namespaceURI !== 'http://www.w3.org/2000/svg') {
-                        svg = fixVectorNamespace(svg);
-                    }
-                    patchSVG(svg);
+                    const svg = patchSVG(doc.documentElement, costumeOptions);
                     return new Promise((resolve, reject) => {
                         const image = new Image();
                         image.onload = (e) => {
                             resolve(image);
                         };
                         image.onerror = (e) => {
-                            reject('Failed to load SVG: ' + path);
+                            reject(new Error('Failed to load SVG: ' + path));
                         };
                         image.src = 'data:image/svg+xml,' + encodeURIComponent(new XMLSerializer().serializeToString(svg));
                     });
@@ -6284,7 +6721,7 @@ var P;
                     rotationCenterY: data.rotationCenterY,
                 };
                 if (data.dataFormat === 'svg') {
-                    return this.getSVG(path)
+                    return this.getSVG(path, costumeOptions)
                         .then((svg) => new P.core.VectorCostume(svg, costumeOptions));
                 }
                 else {
@@ -6326,6 +6763,17 @@ var P;
                     const variable = data.variables[id];
                     const name = variable[0];
                     const value = variable[1];
+                    if (variable.length > 2) {
+                        const cloud = variable[2];
+                        if (cloud) {
+                            if (data.isStage) {
+                                target.cloudVariables.push(name);
+                            }
+                            else {
+                                console.warn('Cloud variable found on a non-stage object. Skipping.');
+                            }
+                        }
+                    }
                     target.vars[name] = value;
                 }
                 for (const id of Object.keys(data.lists)) {
@@ -6368,9 +6816,8 @@ var P;
                     return target;
                 });
             }
-            loadAssets() {
+            loadRequiredAssets() {
                 return Promise.all([
-                    this.loadSoundbank(),
                     this.loadFonts(),
                 ]);
             }
@@ -6393,26 +6840,27 @@ var P;
                 for (const target of targets) {
                     const compiler = new P.sb3.compiler.Compiler(target);
                     compiler.compile();
+                    if (compiler.needsMusic) {
+                        this.needsMusic = true;
+                    }
                 }
                 if (P.config.debug) {
                     console.timeEnd('Scratch 3 compile');
                 }
             }
             load() {
-                if (!this.projectData) {
-                    throw new Error('Project data is missing or invalid');
-                }
-                if (!Array.isArray(this.projectData.targets)) {
-                    throw new Error('Invalid project data: missing targets');
-                }
-                const targets = this.projectData.targets;
-                targets.sort((a, b) => a.layerOrder - b.layerOrder);
-                return this.loadAssets()
-                    .then(() => {
+                return __awaiter(this, void 0, void 0, function* () {
+                    if (!this.projectData) {
+                        throw new Error('Project data is missing or invalid');
+                    }
+                    if (!Array.isArray(this.projectData.targets)) {
+                        throw new Error('Invalid project data: missing targets');
+                    }
+                    yield this.loadRequiredAssets();
                     this.resetTasks();
-                    return Promise.all(targets.map((data) => this.loadTarget(data)));
-                })
-                    .then((targets) => {
+                    const targets = yield Promise.all(this.projectData.targets
+                        .sort((a, b) => a.layerOrder - b.layerOrder)
+                        .map((data) => this.loadTarget(data)));
                     if (this.aborted) {
                         throw new Error('Loading aborting.');
                     }
@@ -6428,6 +6876,10 @@ var P;
                         .filter((i) => i && i.valid);
                     stage.allWatchers.forEach((watcher) => watcher.init());
                     this.compileTargets(targets, stage);
+                    if (this.needsMusic) {
+                        yield this.loadSoundbank();
+                    }
+                    this.projectData = null;
                     return stage;
                 });
             }
@@ -6440,7 +6892,11 @@ var P;
             }
             getAsText(path) {
                 const task = this.addTask(new P.io.Manual());
-                return this.zip.file(path).async('text')
+                const file = this.zip.file(path);
+                if (!file) {
+                    throw new Error('cannot find file as text: ' + path);
+                }
+                return file.async('text')
                     .then((response) => {
                     task.markComplete();
                     return response;
@@ -6448,7 +6904,11 @@ var P;
             }
             getAsArrayBuffer(path) {
                 const task = this.addTask(new P.io.Manual());
-                return this.zip.file(path).async('arrayBuffer')
+                const file = this.zip.file(path);
+                if (!file) {
+                    throw new Error('cannot find file as arraybuffer: ' + path);
+                }
+                return file.async('arraybuffer')
                     .then((response) => {
                     task.markComplete();
                     return response;
@@ -6456,7 +6916,11 @@ var P;
             }
             getAsBase64(path) {
                 const task = this.addTask(new P.io.Manual());
-                return this.zip.file(path).async('base64')
+                const file = this.zip.file(path);
+                if (!file) {
+                    throw new Error('cannot find file as base64: ' + path);
+                }
+                return file.async('base64')
                     .then((response) => {
                     task.markComplete();
                     return response;
@@ -6473,7 +6937,7 @@ var P;
                             resolve(image);
                         };
                         image.onerror = (error) => {
-                            reject('Failed to load image: ' + path + '.' + format);
+                            reject(new Error('Failed to load image: ' + path + '.' + format));
                         };
                         image.src = 'data:image/' + format + ';base64,' + imageData;
                     });
@@ -6541,6 +7005,13 @@ var P;
                     this.source = source;
                     this.type = type;
                     this.potentialNumber = true;
+                    this.flags = 0;
+                }
+                enableFlag(n) {
+                    this.flags &= n;
+                }
+                hasFlag(n) {
+                    return this.flags & n;
                 }
                 toString() {
                     return this.source;
@@ -6586,6 +7057,9 @@ var P;
                 }
                 getVariableScope(field) {
                     return this.compiler.getVariableScope(this.getField(field));
+                }
+                isCloudVariable(field) {
+                    return this.target.stage.cloudVariables.indexOf(this.getField(field)) > -1;
                 }
                 getListScope(field) {
                     return this.compiler.getListScope(this.getField(field));
@@ -6683,9 +7157,14 @@ var P;
             class Compiler {
                 constructor(target) {
                     this.labelCount = 0;
+                    this.needsMusic = false;
+                    this.costumeNames = new Set();
                     this.target = target;
                     this.data = target.sb3data;
                     this.blocks = this.data.blocks;
+                    for (const costume of target.costumes) {
+                        this.costumeNames.add(costume.name);
+                    }
                 }
                 getHatBlocks() {
                     return Object.keys(this.blocks)
@@ -6731,6 +7210,9 @@ var P;
                 }
                 convertInputType(input, type) {
                     if (input.type === type) {
+                        if (type === 'number' && input.hasFlag(1)) {
+                            return new CompiledInput('(' + input.source + ' || 0)', type);
+                        }
                         return input;
                     }
                     if (type === 'any') {
@@ -6795,6 +7277,9 @@ var P;
                 isStringLiteralPotentialNumber(text) {
                     return /\d|true|false|Infinity/.test(text);
                 }
+                isCostumeName(text) {
+                    return this.costumeNames.has(text);
+                }
                 compileNativeInput(native, desiredType) {
                     const type = native[0];
                     switch (type) {
@@ -6813,7 +7298,7 @@ var P;
                         }
                         case 10: {
                             const value = native[1];
-                            if (desiredType !== 'string' && /\d|Infinity/.test(value)) {
+                            if (desiredType !== 'string' && /\d|Infinity/.test(value) && !this.isCostumeName(value)) {
                                 const number = +value;
                                 if (number.toString() === value) {
                                     if (!isNaN(number)) {
@@ -6939,10 +7424,10 @@ var P;
                         return;
                     }
                     this.state = this.getNewState();
-                    if (hatCompiler.precompile) {
-                        hatCompiler.precompile(this, hat);
-                    }
                     let script = `{{${this.labelCount++}}}`;
+                    if (hatCompiler.precompile) {
+                        script += hatCompiler.precompile(this, hat);
+                    }
                     script += this.compileStack(startingBlock);
                     if (hatCompiler.postcompile) {
                         script = hatCompiler.postcompile(this, script, hat);
@@ -6953,8 +7438,8 @@ var P;
                     for (let label of Object.keys(parseResult.labels)) {
                         this.target.fns[label] = P.runtime.createContinuation(parsedScript.slice(parseResult.labels[label]));
                     }
-                    const startingFn = this.target.fns[startFn];
-                    const util = new HatUtil(this, hat, startingFn);
+                    const startingFunction = this.target.fns[startFn];
+                    const util = new HatUtil(this, hat, startingFunction);
                     hatCompiler.handle(util);
                     if (P.config.debug) {
                         this.log(`[${this.target.name}] compiled sb3 script "${hat.opcode}"`, script, this.target);
@@ -6996,6 +7481,7 @@ var P;
                         const hat = this.blocks[hatId];
                         this.compileHat(hat);
                     }
+                    this.target.sb3data = null;
                 }
             }
             compiler_1.Compiler = Compiler;
@@ -7186,6 +7672,9 @@ var P;
         const VARIABLE = util.getVariableReference('VARIABLE');
         const VALUE = util.getInput('VALUE', 'number');
         util.writeLn(`${VARIABLE} = (${util.asType(VARIABLE, 'number')} + ${VALUE});`);
+        if (util.isCloudVariable('VARIABLE')) {
+            util.writeLn(`cloudVariableChanged(${util.sanitizedString(util.getField('VARIABLE'))})`);
+        }
     };
     statementLibrary['data_deletealloflist'] = function (util) {
         const LIST = util.getListReference('LIST');
@@ -7222,6 +7711,9 @@ var P;
         const VARIABLE = util.getVariableReference('VARIABLE');
         const VALUE = util.getInput('VALUE', 'any');
         util.writeLn(`${VARIABLE} = ${VALUE};`);
+        if (util.isCloudVariable('VARIABLE')) {
+            util.writeLn(`cloudVariableChanged(${util.sanitizedString(util.getField('VARIABLE'))})`);
+        }
     };
     statementLibrary['data_showlist'] = function (util) {
         const LIST = util.sanitizedString(util.getField('LIST'));
@@ -7494,6 +7986,7 @@ var P;
     statementLibrary['music_playDrumForBeats'] = function (util) {
         const BEATS = util.getInput('BEATS', 'number');
         const DRUM = util.getInput('DRUM', 'number');
+        util.compiler.needsMusic = true;
         util.writeLn('save();');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
@@ -7516,6 +8009,7 @@ var P;
     statementLibrary['music_playNoteForBeats'] = function (util) {
         const BEATS = util.getInput('BEATS', 'number');
         const NOTE = util.getInput('NOTE', 'number');
+        util.compiler.needsMusic = true;
         util.writeLn('save();');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
@@ -7811,7 +8305,7 @@ var P;
         }
     };
     inputLibrary['looks_size'] = function (util) {
-        return util.numberInput('(S.scale * 100)');
+        return util.numberInput('Math.round(S.scale * 100)');
     };
     inputLibrary['makeymakey_menu_KEY'] = function (util) {
         return util.fieldInput('KEY');
@@ -7870,7 +8364,9 @@ var P;
     inputLibrary['operator_divide'] = function (util) {
         const NUM1 = util.getInput('NUM1', 'number');
         const NUM2 = util.getInput('NUM2', 'number');
-        return util.numberInput(`(${NUM1} / ${NUM2} || 0)`);
+        const input = util.numberInput(`(${NUM1} / ${NUM2})`);
+        input.enableFlag(1);
+        return input;
     };
     inputLibrary['operator_equals'] = function (util) {
         const OPERAND1 = util.getInput('OPERAND1', 'any');
@@ -7930,8 +8426,11 @@ var P;
                 return util.numberInput(`Math.abs(${NUM})`);
             case 'floor':
                 return util.numberInput(`Math.floor(${NUM})`);
-            case 'sqrt':
-                return util.numberInput(`Math.sqrt(${NUM})`);
+            case 'sqrt': {
+                const input = util.numberInput(`Math.sqrt(${NUM})`);
+                input.enableFlag(1);
+                return input;
+            }
             case 'ceiling':
                 return util.numberInput(`Math.ceil(${NUM})`);
             case 'cos':
@@ -8130,6 +8629,37 @@ var P;
             util.target.listeners.whenGreenFlag.push(util.startingFunction);
         },
     };
+    hatLibrary['event_whengreaterthan'] = {
+        precompile(compiler, hat) {
+            const WHENGREATERTHANMENU = compiler.getField(hat, 'WHENGREATERTHANMENU');
+            const VALUE = compiler.compileInput(hat, 'VALUE', 'number');
+            let sensor = '0';
+            switch (WHENGREATERTHANMENU) {
+                case 'TIMER':
+                    sensor = '(runtime.now() - runtime.timerStart) / 1000';
+                    break;
+                case 'LOUDNESS':
+                    compiler.target.stage.initLoudness();
+                    sensor = 'self.microphone.getLoudness()';
+                    break;
+                default:
+                    console.warn('unknown WHENGREATERTHANMENU', WHENGREATERTHANMENU);
+            }
+            let source = '';
+            source += 'if (!R.init) { R.init = true; R.stalled = false; }\n';
+            source += `if (R.stalled && ${sensor} <= ${VALUE}) { R.stalled = false; }\n`;
+            source += `else if (!R.stalled && ${sensor} > ${VALUE}) { R.stalled = true;\n`;
+            return source;
+        },
+        postcompile(compiler, source, hat) {
+            source += '}\n';
+            source += `forceQueue(${compiler.target.fns.length});`;
+            return source;
+        },
+        handle(util) {
+            util.target.listeners.whenGreenFlag.push(util.startingFunction);
+        },
+    };
     hatLibrary['event_whenkeypressed'] = {
         handle(util) {
             const KEY_OPTION = util.getField('KEY_OPTION');
@@ -8240,6 +8770,7 @@ var P;
             if (warp) {
                 compiler.state.isWarp = true;
             }
+            return '';
         },
     };
     hatLibrary['speech2text_whenIHearHat'] = {
@@ -8404,8 +8935,268 @@ var P;
             }
             onpause() {
             }
+            update() {
+            }
         }
         ext.Extension = Extension;
+    })(ext = P.ext || (P.ext = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
+    var ext;
+    (function (ext) {
+        var cloud;
+        (function (cloud) {
+            const UPDATE_INTERVAL = 1000 / 15;
+            function getAllCloudVariables(stage) {
+                const result = {};
+                for (const variable of stage.cloudVariables) {
+                    result[variable] = stage.vars[variable] + '';
+                }
+                return result;
+            }
+            cloud.getAllCloudVariables = getAllCloudVariables;
+            function isCloudDataMessage(data) {
+                if (typeof data !== 'object' || !data) {
+                    return false;
+                }
+                return typeof data.kind === 'string';
+            }
+            function isCloudSetMessage(data) {
+                return isCloudDataMessage(data) && typeof data.var === 'string' && typeof data.value === 'string';
+            }
+            class WebSocketCloudHandler extends P.ext.Extension {
+                constructor(stage, host, id) {
+                    super(stage);
+                    this.host = host;
+                    this.id = id;
+                    this.ws = null;
+                    this.queuedVariableChanges = [];
+                    this.updateInterval = null;
+                    this.reconnectTimeout = null;
+                    this.shouldReconnect = true;
+                    this.failures = 0;
+                    this.logPrefix = '[cloud-ws ' + host + ']';
+                    this.username = this.stage.username;
+                    this.interfaceStatusIndicator = document.createElement('div');
+                    this.interfaceStatusIndicator.className = 'phosphorus-cloud-status-indicator';
+                    stage.ui.appendChild(this.interfaceStatusIndicator);
+                    this.handleUpdateInterval = this.handleUpdateInterval.bind(this);
+                    this.connect();
+                }
+                variableChanged(name) {
+                    if (this.queuedVariableChanges.indexOf(name) > -1) {
+                        return;
+                    }
+                    this.queuedVariableChanges.push(name);
+                    if (this.updateInterval === null) {
+                        this.handleUpdateInterval();
+                        this.startUpdateInterval();
+                    }
+                }
+                handleUpdateInterval() {
+                    if (this.queuedVariableChanges.length === 0) {
+                        this.stopUpdateInterval();
+                        return;
+                    }
+                    if (this.ws === null || this.ws.readyState !== this.ws.OPEN || this.ws.bufferedAmount > 16384) {
+                        return;
+                    }
+                    const variableName = this.queuedVariableChanges.shift();
+                    const value = this.getVariable(variableName);
+                    this.send({
+                        kind: 'set',
+                        var: variableName,
+                        value: value,
+                    });
+                }
+                send(data) {
+                    if (!this.ws)
+                        throw new Error('not connected');
+                    this.ws.send(JSON.stringify(data));
+                }
+                getVariable(name) {
+                    return this.stage.vars[name] + '';
+                }
+                setVariable(name, value) {
+                    this.stage.vars[name] = value;
+                }
+                terminateConnection(code = 1000) {
+                    if (this.ws !== null) {
+                        this.ws.close(code);
+                        this.ws = null;
+                    }
+                }
+                connect() {
+                    if (this.ws !== null) {
+                        throw new Error('already connected');
+                    }
+                    this.setStatusText('Connecting...');
+                    console.log(this.logPrefix, 'connecting');
+                    this.ws = new WebSocket(this.host);
+                    this.shouldReconnect = true;
+                    this.ws.onopen = () => {
+                        console.log(this.logPrefix, 'connected');
+                        this.setStatusText('Connected');
+                        this.setStatusVisible(false);
+                        this.failures = 0;
+                        this.send({
+                            kind: 'handshake',
+                            id: this.id,
+                            username: this.username,
+                            variables: getAllCloudVariables(this.stage),
+                        });
+                    };
+                    this.ws.onmessage = (e) => {
+                        try {
+                            const lines = e.data.split('\n');
+                            for (const line of lines) {
+                                const data = JSON.parse(line);
+                                this.handleMessage(data);
+                            }
+                            if (!this.stage.runtime.isRunning) {
+                                this.stage.draw();
+                            }
+                        }
+                        catch (err) {
+                            console.warn('error parsing cloud server message', e.data, err);
+                        }
+                    };
+                    this.ws.onclose = (e) => {
+                        const code = e.code;
+                        this.ws = null;
+                        console.warn(this.logPrefix, 'closed', code);
+                        if (code === 4001) {
+                            this.setStatusText('Cannot connect: Incompatible with room.');
+                            console.error(this.logPrefix, 'error: Incompatibility');
+                            this.shouldReconnect = false;
+                        }
+                        else if (code === 4002) {
+                            this.setStatusText('Username is invalid. Change your username to connect.');
+                            console.error(this.logPrefix, 'error: Username');
+                        }
+                        else {
+                            this.reconnect();
+                        }
+                    };
+                    this.ws.onerror = (e) => {
+                        console.warn(this.logPrefix, 'error', e);
+                    };
+                }
+                reconnect() {
+                    if (!this.shouldReconnect) {
+                        return;
+                    }
+                    this.terminateConnection();
+                    if (this.reconnectTimeout) {
+                        clearTimeout(this.reconnectTimeout);
+                    }
+                    else {
+                        this.failures++;
+                    }
+                    this.setStatusText('Connection lost, reconnecting...');
+                    const delayTime = Math.pow(2, this.failures) * 1000;
+                    console.log(this.logPrefix, 'reconnecting in', delayTime);
+                    this.reconnectTimeout = setTimeout(() => {
+                        this.reconnectTimeout = null;
+                        this.connect();
+                    }, delayTime);
+                }
+                disconnect() {
+                    console.log(this.logPrefix, 'disconnecting');
+                    this.shouldReconnect = false;
+                    this.terminateConnection();
+                }
+                handleMessage(data) {
+                    if (!isCloudSetMessage(data)) {
+                        return;
+                    }
+                    const { var: variableName, value } = data;
+                    if (this.stage.cloudVariables.indexOf(variableName) === -1) {
+                        throw new Error('invalid variable name');
+                    }
+                    this.setVariable(variableName, value);
+                }
+                startUpdateInterval() {
+                    if (this.updateInterval !== null) {
+                        return;
+                    }
+                    this.updateInterval = setInterval(this.handleUpdateInterval, UPDATE_INTERVAL);
+                }
+                stopUpdateInterval() {
+                    if (this.updateInterval === null) {
+                        return;
+                    }
+                    clearInterval(this.updateInterval);
+                    this.updateInterval = null;
+                }
+                setStatusText(text) {
+                    this.interfaceStatusIndicator.textContent = `☁ ${text}`;
+                    this.setStatusVisible(true);
+                }
+                setStatusVisible(visible) {
+                    this.interfaceStatusIndicator.classList.toggle('phosphorus-cloud-status-indicator-hidden', !visible);
+                }
+                onstart() {
+                    if (this.queuedVariableChanges.length > 0) {
+                        this.startUpdateInterval();
+                    }
+                }
+                onpause() {
+                    this.stopUpdateInterval();
+                }
+                update() {
+                    if (this.stage.username !== this.username) {
+                        console.log(this.logPrefix, 'username changed to', this.stage.username);
+                        this.username = this.stage.username;
+                        this.terminateConnection(4100);
+                        this.reconnect();
+                    }
+                }
+                destroy() {
+                    this.stopUpdateInterval();
+                    this.disconnect();
+                }
+            }
+            cloud.WebSocketCloudHandler = WebSocketCloudHandler;
+            class LocalStorageCloudHandler extends P.ext.Extension {
+                constructor(stage, id) {
+                    super(stage);
+                    this.storageKey = 'cloud-data:' + id;
+                    this.load();
+                    this.save = this.save.bind(this);
+                }
+                variableChanged(name) {
+                    this.save();
+                }
+                load() {
+                    try {
+                        const savedData = localStorage.getItem(this.storageKey);
+                        if (savedData === null) {
+                            return;
+                        }
+                        const parsedData = JSON.parse(savedData);
+                        for (const key of Object.keys(parsedData)) {
+                            if (this.stage.cloudVariables.indexOf(key) > -1) {
+                                this.stage.vars[key] = parsedData[key];
+                            }
+                        }
+                    }
+                    catch (e) {
+                        console.warn('cannot read from localStorage', e);
+                    }
+                }
+                save() {
+                    try {
+                        localStorage.setItem(this.storageKey, JSON.stringify(getAllCloudVariables(this.stage)));
+                    }
+                    catch (e) {
+                        console.warn('cannot save to localStorage', e);
+                    }
+                }
+            }
+            cloud.LocalStorageCloudHandler = LocalStorageCloudHandler;
+        })(cloud = ext.cloud || (ext.cloud = {}));
     })(ext = P.ext || (P.ext = {}));
 })(P || (P = {}));
 /*!
@@ -8573,7 +9364,7 @@ var P;
                         const startingFunction = hat.startingFunction;
                         const value = this.stage.runtime.evaluateExpression(target, phraseFunction);
                         if (value === transcript) {
-                            this.stage.runtime.startThread(target, startingFunction);
+                            this.stage.runtime.startThread(target, startingFunction, true);
                         }
                     }
                 }
@@ -8633,6 +9424,7 @@ var P;
                 ctx.imageSmoothingEnabled = false;
                 return { canvas, ctx };
             }
+            const COLOR_MASK = 0b111110001111100011110000;
             class SpriteRenderer2D {
                 constructor() {
                     this.noEffects = false;
@@ -8932,10 +9724,10 @@ var P;
                     workingRenderer.noEffects = false;
                     workingRenderer.ctx.restore();
                     const data = workingRenderer.ctx.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
-                    color = color & 0xffffff;
+                    color = color & COLOR_MASK;
                     const length = (b.right - b.left) * (b.top - b.bottom) * 4;
                     for (var i = 0; i < length; i += 4) {
-                        if ((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) === color && data[i + 3]) {
+                        if (((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) & COLOR_MASK) === color && data[i + 3]) {
                             return true;
                         }
                     }
@@ -8960,12 +9752,12 @@ var P;
                     workingRenderer2.ctx.restore();
                     var dataA = workingRenderer.ctx.getImageData(0, 0, width, height).data;
                     var dataB = workingRenderer2.ctx.getImageData(0, 0, width, height).data;
-                    spriteColor = spriteColor & 0xffffff;
-                    otherColor = otherColor & 0xffffff;
+                    spriteColor = spriteColor & COLOR_MASK;
+                    otherColor = otherColor & COLOR_MASK;
                     var length = dataA.length;
                     for (var i = 0; i < length; i += 4) {
-                        var touchesSource = (dataB[i] << 16 | dataB[i + 1] << 8 | dataB[i + 2]) === spriteColor && dataB[i + 3];
-                        var touchesOther = (dataA[i] << 16 | dataA[i + 1] << 8 | dataA[i + 2]) === otherColor && dataA[i + 3];
+                        var touchesSource = ((dataB[i] << 16 | dataB[i + 1] << 8 | dataB[i + 2]) & COLOR_MASK) === spriteColor && dataB[i + 3];
+                        var touchesOther = ((dataA[i] << 16 | dataA[i + 1] << 8 | dataA[i + 2]) & COLOR_MASK) === otherColor && dataA[i + 3];
                         if (touchesSource && touchesOther) {
                             return true;
                         }
@@ -9231,7 +10023,6 @@ var P;
                     }
                 }
                 reset(scale) {
-                    scale = scale * P.config.scale;
                     this.canvas.width = scale * 480;
                     this.canvas.height = scale * 360;
                     this.gl.viewport(0, 0, scale * 480, scale * 360);
@@ -9357,6 +10148,9 @@ var P;
       uniform float u_pixelate;
       uniform vec2 u_size;
     #endif
+    #ifdef ENABLE_COLOR_TEST
+      uniform vec3 u_colorTest;
+    #endif
 
     const float minimumAlpha = 1.0 / 250.0;
     const vec2 vecCenter = vec2(0.5, 0.5);
@@ -9452,6 +10246,12 @@ var P;
         color.rgb = clamp(color.rgb + vec3(u_brightness), 0.0, 1.0);
       #endif
 
+      #ifdef ENABLE_COLOR_TEST
+        if (color.rgb != u_colorTest) {
+          color = vec4(0.0, 0.0, 0.0, 0.0);
+        }
+      #endif
+
       gl_FragColor = color;
     }
     `;
@@ -9466,6 +10266,10 @@ var P;
                         'ENABLE_FISHEYE',
                         'ENABLE_PIXELATE',
                         'ENABLE_MOSAIC',
+                    ]);
+                    this.touchingColorShader = this.createShader(CollisionRenderer.vertexShader, WebGLSpriteRenderer.fragmentShader, [
+                        'DISABLE_MINIMUM_ALPHA',
+                        'ENABLE_COLOR_TEST',
                     ]);
                 }
                 getContextOptions() {
@@ -9568,7 +10372,7 @@ var P;
                     this.penLinesIndex = 0;
                     this.penColorsIndex = 0;
                 }
-                buffersFull(size) {
+                buffersCanFit(size) {
                     return this.penCoordsIndex + size > this.penCoords.length;
                 }
                 getCircleResolution(size) {
@@ -9576,7 +10380,7 @@ var P;
                 }
                 penLine(color, size, x1, y1, x2, y2) {
                     const circleRes = this.getCircleResolution(size);
-                    if (this.buffersFull(24 * (circleRes + 1))) {
+                    if (this.buffersCanFit(24 * (circleRes + 1))) {
                         this.drawPendingOperations();
                     }
                     this.penCoords[this.penCoordsIndex] = x1;
@@ -9739,7 +10543,7 @@ var P;
                 }
                 penDot(color, size, x, y) {
                     const circleRes = this.getCircleResolution(size);
-                    if (this.buffersFull(12 * circleRes)) {
+                    if (this.buffersCanFit(12 * circleRes)) {
                         this.drawPendingOperations();
                     }
                     for (var i = 0; i < circleRes; i++) {
@@ -9913,7 +10717,7 @@ var P;
                     }
                 }
                 resize(scale) {
-                    this.zoom = scale;
+                    this.zoom = scale * P.config.scale;
                 }
                 spriteTouchesPoint(sprite, x, y) {
                     return this.collisionRenderer.spriteTouchesPoint(sprite, x, y);
