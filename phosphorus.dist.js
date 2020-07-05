@@ -2229,6 +2229,9 @@ var P;
                 this.updateLoaderProgress();
             }
             _load() {
+                if (this.aborted) {
+                    return Promise.reject(new Error(`Cannot download ${this.url} -- aborted.`));
+                }
                 return new Promise((resolve, reject) => {
                     const xhr = new XMLHttpRequest();
                     xhr.open('GET', this.url);
