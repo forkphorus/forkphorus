@@ -2247,6 +2247,7 @@ var P;
                         this.updateProgress(e);
                     };
                     xhr.onloadend = (e) => {
+                        this.xhr = null;
                         this.complete = true;
                         this.updateProgress(e);
                     };

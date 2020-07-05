@@ -302,6 +302,7 @@ namespace P.io {
         };
 
         xhr.onloadend = (e) => {
+          this.xhr = null;
           this.complete = true;
           this.updateProgress(e);
         };
