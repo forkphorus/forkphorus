@@ -3206,14 +3206,19 @@ namespace P.sb3.compiler {
       const WHENGREATERTHANMENU = compiler.getField(hat, 'WHENGREATERTHANMENU');
       const VALUE = compiler.compileInput(hat, 'VALUE', 'number');
 
-      let sensor = '0';
+      let executeWhen = 'false';
+      let stallUntil = 'false';
       switch (WHENGREATERTHANMENU) {
         case 'TIMER':
-          sensor = '(runtime.now() - runtime.timerStart) / 1000';
+          executeWhen = `(runtime.now() - runtime.timerStart) / 1000 > ${VALUE}`;
+          // wait until the timer was reset or the value changed to be less than the timer
+          // waiting until a reset matters for some low numbers where timer might never actually be eg. 0 in some rare instances
+          stallUntil = `runtime.timerStart !== R.timerStart || (runtime.now() - runtime.timerStart) / 1000 <= ${VALUE}`;
           break;
         case 'LOUDNESS':
           compiler.target.stage.initLoudness();
-          sensor = 'self.microphone.getLoudness()';
+          executeWhen = `self.microphone.getLoudness() > ${VALUE}`;
+          stallUntil = `self.microphone.getLoudness() <= ${VALUE}`;
           break;
         default:
           console.warn('unknown WHENGREATERTHANMENU', WHENGREATERTHANMENU);
@@ -3221,14 +3226,20 @@ namespace P.sb3.compiler {
 
       let source = '';
       source += 'if (!R.init) { R.init = true; R.stalled = false; }\n';
-      // Leave stalled state if the condition is false.
-      source += `if (R.stalled && ${sensor} <= ${VALUE}) { R.stalled = false; }\n`;
-      // Execute the script and enter stalled state if the condition is true. 
-      source += `else if (!R.stalled && ${sensor} > ${VALUE}) { R.stalled = true;\n`;
+      source += `if (R.stalled && (${stallUntil})) { R.stalled = false; }\n`;
+      source += `else if (!R.stalled && (${executeWhen})) { R.stalled = true;\n`;
       // if/else will be finished in postcompile
       return source;
     },
     postcompile(compiler, source, hat) {
+      const WHENGREATERTHANMENU = compiler.getField(hat, 'WHENGREATERTHANMENU');
+      switch (WHENGREATERTHANMENU) {
+        case 'TIMER':
+          // store the timerStart, this is used in precompile to determine whether the timer was reset
+          source += 'R.timerStart = runtime.timerStart;\n';
+          break;
+      }
+      // finish the if/else started in precompile
       source += '}\n';
       source += `forceQueue(${compiler.target.fns.length});`;
       return source;

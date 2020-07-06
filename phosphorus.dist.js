@@ -8641,25 +8641,34 @@ var P;
         precompile(compiler, hat) {
             const WHENGREATERTHANMENU = compiler.getField(hat, 'WHENGREATERTHANMENU');
             const VALUE = compiler.compileInput(hat, 'VALUE', 'number');
-            let sensor = '0';
+            let executeWhen = 'false';
+            let stallUntil = 'false';
             switch (WHENGREATERTHANMENU) {
                 case 'TIMER':
-                    sensor = '(runtime.now() - runtime.timerStart) / 1000';
+                    executeWhen = `(runtime.now() - runtime.timerStart) / 1000 > ${VALUE}`;
+                    stallUntil = `runtime.timerStart !== R.timerStart || (runtime.now() - runtime.timerStart) / 1000 <= ${VALUE}`;
                     break;
                 case 'LOUDNESS':
                     compiler.target.stage.initLoudness();
-                    sensor = 'self.microphone.getLoudness()';
+                    executeWhen = `self.microphone.getLoudness() > ${VALUE}`;
+                    stallUntil = `self.microphone.getLoudness() <= ${VALUE}`;
                     break;
                 default:
                     console.warn('unknown WHENGREATERTHANMENU', WHENGREATERTHANMENU);
             }
             let source = '';
             source += 'if (!R.init) { R.init = true; R.stalled = false; }\n';
-            source += `if (R.stalled && ${sensor} <= ${VALUE}) { R.stalled = false; }\n`;
-            source += `else if (!R.stalled && ${sensor} > ${VALUE}) { R.stalled = true;\n`;
+            source += `if (R.stalled && (${stallUntil})) { R.stalled = false; }\n`;
+            source += `else if (!R.stalled && (${executeWhen})) { R.stalled = true;\n`;
             return source;
         },
         postcompile(compiler, source, hat) {
+            const WHENGREATERTHANMENU = compiler.getField(hat, 'WHENGREATERTHANMENU');
+            switch (WHENGREATERTHANMENU) {
+                case 'TIMER':
+                    source += 'R.timerStart = runtime.timerStart;\n';
+                    break;
+            }
             source += '}\n';
             source += `forceQueue(${compiler.target.fns.length});`;
             return source;
