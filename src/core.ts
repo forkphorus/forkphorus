@@ -29,7 +29,6 @@ namespace P.core {
     whenKeyPressed: P.runtime.Fn[][];
     whenBackdropChanges: ObjectMap<P.runtime.Fn[]>;
     whenSceneStarts: ObjectMap<P.runtime.Fn[]>;
-    // whenSensorGreaterThan: P.runtime.Fn[]
   }
 
   export interface ActiveSound {
@@ -826,6 +825,8 @@ namespace P.core {
     public microphone: P.ext.microphone.MicrophoneExtension | null = null;
     private extensions: P.ext.Extension[] = [];
 
+    public useSpriteFencing: boolean = false;
+
     constructor() {
       super();
 
@@ -1504,6 +1505,27 @@ namespace P.core {
       this.moveTo(this.scratchX + steps * Math.cos(d), this.scratchY + steps * Math.sin(d));
     }
 
+    keepInView() {
+      const rb = this.rotatedBounds();
+      const width = rb.right - rb.left;
+      const height = rb.top - rb.bottom;
+
+      const bounds = Math.min(15, Math.floor(Math.min(width, height) / 2));
+
+      if (rb.right - bounds < -240) {
+        this.scratchX -= rb.right - bounds + 240;
+      }
+      if (rb.left + bounds > 240) {
+        this.scratchX -= rb.left + bounds - 240;
+      }
+      if (rb.bottom + bounds > 180) {
+        this.scratchY -= rb.bottom + bounds - 180;
+      }
+      if (rb.top - bounds < -180) {
+        this.scratchY -= rb.top - bounds + 180;
+      }
+    }
+
     // Moves the sprite to a coordinate
     // Draws a line if the pen is currently down.
     moveTo(x: number, y: number) {
@@ -1514,6 +1536,10 @@ namespace P.core {
       }
       this.scratchX = x;
       this.scratchY = y;
+
+      if (this.stage.useSpriteFencing) {
+        this.keepInView();
+      }
 
       if (this.isPenDown && !this.isDragging) {
         this.stage.renderer.penLine(this.penColor, this.penSize, ox, oy, x, y);

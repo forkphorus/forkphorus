@@ -531,8 +531,14 @@ namespace P.sb3 {
       if (this._rowHeight === -1) {
         // Space between each row, in pixels.
         const PADDING = 2;
-        const row = this.addRow();
-        const height = row.element.offsetHeight;
+        if (this.rows.length === 0) {
+          this.addRow();
+        }
+        const height = this.rows[0].element.offsetHeight;
+        if (height === 0) {
+          // happens sometimes when list is updated but not actually visible, make sure not to cache the result in this case
+          return 0;
+        }
         this._rowHeight = height + PADDING;
       }
       return this._rowHeight;
@@ -981,7 +987,7 @@ namespace P.sb3 {
   // Loads a .sb3 file
   export class SB3FileLoader extends BaseSB3Loader {
     private buffer: ArrayBuffer;
-    private zip: JSZip.Zip;
+    private zip: JSZip;
 
     constructor(buffer: ArrayBuffer) {
       super();
@@ -990,7 +996,11 @@ namespace P.sb3 {
 
     getAsText(path: string) {
       const task = this.addTask(new P.io.Manual());
-      return this.zip.file(path).async('text')
+      const file = this.zip.file(path);
+      if (!file) {
+        throw new Error('cannot find file as text: ' + path);
+      }
+      return file.async('text')
         .then((response) => {
           task.markComplete();
           return response;
@@ -999,7 +1009,11 @@ namespace P.sb3 {
 
     getAsArrayBuffer(path: string) {
       const task = this.addTask(new P.io.Manual());
-      return this.zip.file(path).async('arrayBuffer')
+      const file = this.zip.file(path);
+      if (!file) {
+        throw new Error('cannot find file as arraybuffer: ' + path);
+      }
+      return file.async('arraybuffer')
         .then((response) => {
           task.markComplete();
           return response;
@@ -1008,7 +1022,11 @@ namespace P.sb3 {
 
     getAsBase64(path: string) {
       const task = this.addTask(new P.io.Manual());
-      return this.zip.file(path).async('base64')
+      const file = this.zip.file(path);
+      if (!file) {
+        throw new Error('cannot find file as base64: ' + path);
+      }
+      return file.async('base64')
         .then((response) => {
           task.markComplete();
           return response;
@@ -1115,6 +1133,10 @@ namespace P.sb3.compiler {
     LIST = 13,
   }
 
+  export const enum InputFlags {
+    NaN = 1,
+  }
+
   /**
    * JS code with an associated type.
    * Returns the source when stringified, making the raw type safe to use in concatenation.
@@ -1128,9 +1150,18 @@ namespace P.sb3.compiler {
      *  - it is a string that represents a number or a boolean
      */
     public potentialNumber: boolean = true;
+    private flags: number = 0;
 
     constructor(public source: string, public type: InputType) {
 
+    }
+
+    enableFlag(n: number) {
+      this.flags &= n;
+    }
+
+    hasFlag(n: number) {
+      return this.flags & n;
     }
 
     toString() {
@@ -1171,8 +1202,9 @@ namespace P.sb3.compiler {
     postcompile?(compiler: Compiler, source: string, hat: SB3Block): string;
     /**
      * Optionally handle what happens before compilation begins.
+     * The result of this will be added to the script's source before the script begins.
      */
-    precompile?(compiler: Compiler, hat: SB3Block): void;
+    precompile?(compiler: Compiler, hat: SB3Block): string;
   };
 
   export type InputType = 'string' | 'boolean' | 'number' | 'any' | 'list';
@@ -1268,6 +1300,18 @@ namespace P.sb3.compiler {
      */
     asType(input: string, type: InputType): string {
       return this.compiler.asType(input, type)
+    }
+
+    /**
+     * Evaluate a compiled input.
+     * May throw if there is an error evaluating the input.
+     * As the input is always evaluated once, changes will not be reflected.
+     * The input will have access to runtime objects and data, including the target sprite and runtime methods.
+     * @param input The input to evaluate.
+     */
+    evaluateInputOnce(input: CompiledInput): any {
+      const fn = P.runtime.scopedEval(`(function() { return ${input}; })`);
+      return this.target.stage.runtime.evaluateExpression(this.target, fn);
     }
   }
 
@@ -1446,14 +1490,27 @@ namespace P.sb3.compiler {
      * Total number of labels created by this compiler.
      */
     public labelCount: number = 0;
+    /**
+     * Compilation state metadata.
+     */
     public state: CompilerState;
+    /**
+     * Whether the compiled scripts depend on music assets to exist.
+     */
     public needsMusic: boolean = false;
-    public disableStringToNumberConversion: boolean = false;
+    /**
+     * Set of the names of all costumes in this sprite.
+     * This affects some optimizations.
+     */
+    public costumeNames: Set<string> = new Set();
 
     constructor(target: Target) {
       this.target = target;
       this.data = target.sb3data;
       this.blocks = this.data.blocks;
+      for (const costume of target.costumes) {
+        this.costumeNames.add(costume.name);
+      }
     }
 
     /**
@@ -1528,6 +1585,10 @@ namespace P.sb3.compiler {
     convertInputType(input: CompiledInput, type: InputType): CompiledInput {
       // If the types are already identical, no changes are necessary
       if (input.type === type) {
+        // if the input could be NaN, number conversion is always required (NaN will be converted to 0)
+        if (type === 'number' && input.hasFlag(InputFlags.NaN)) {
+          return new CompiledInput('(' + input.source + ' || 0)', type);
+        }
         return input;
       }
       // The 'any' type is a little bit special.
@@ -1631,6 +1692,13 @@ namespace P.sb3.compiler {
     }
 
     /**
+     * Determine whether some text is used as the name of a costume.
+     */
+    isCostumeName(text: string) {
+      return this.costumeNames.has(text);
+    }
+
+    /**
      * Compile a native or primitive value.
      */
     compileNativeInput(native: any[], desiredType: InputType): CompiledInput {
@@ -1644,7 +1712,7 @@ namespace P.sb3.compiler {
         case NativeTypes.ANGLE_NUM: {
           // [type, value]
           const number = +native[1];
-          if (this.disableStringToNumberConversion || isNaN(number) || desiredType === 'string') {
+          if (isNaN(number) || desiredType === 'string') {
             return this.sanitizedInput('' + native[1]);
           } else {
             // Using number.toString() instead of native[1] fixes syntax errors
@@ -1656,8 +1724,11 @@ namespace P.sb3.compiler {
         case NativeTypes.TEXT: {
           // [type, value]
           const value = native[1];
-          // Do not attempt any conversions if the desired type is string or if the value does not appear to be number-like
-          if (desiredType !== 'string' && /\d|Infinity/.test(value)) {
+          // Do not attempt any conversions if:
+          //  - desired type is string
+          //  - value does not appear to be number-like
+          //  - this is the name of a costume (as that breaks setCostume #264)
+          if (desiredType !== 'string' && /\d|Infinity/.test(value) && !this.isCostumeName(value)) {
             const number = +value;
             // If the stringification of the number is not the same as the original value, do not convert.
             // This fixes issues where the stringification is used instead of the number itself.
@@ -1851,13 +1922,14 @@ namespace P.sb3.compiler {
 
       this.state = this.getNewState();
 
-      if (hatCompiler.precompile) {
-        hatCompiler.precompile(this, hat);
-      }
-
       // There is always a label placed at the beginning of the script.
       // If you're clever, you may be able to remove this at some point.
       let script = `{{${this.labelCount++}}}`;
+
+      if (hatCompiler.precompile) {
+        script += hatCompiler.precompile(this, hat);
+      }
+
       script += this.compileStack(startingBlock);
 
       // If a block wants to do some changes to the script after script generation but before compilation, let it.
@@ -1874,8 +1946,8 @@ namespace P.sb3.compiler {
         this.target.fns[label] = P.runtime.createContinuation(parsedScript.slice(parseResult.labels[label]));
       }
 
-      const startingFn = this.target.fns[startFn];
-      const util = new HatUtil(this, hat, startingFn);
+      const startingFunction = this.target.fns[startFn];
+      const util = new HatUtil(this, hat, startingFunction);
       hatCompiler.handle(util);
 
       if (P.config.debug) {
@@ -2297,18 +2369,16 @@ namespace P.sb3.compiler {
     util.updateBubble();
   };
   statementLibrary['looks_switchbackdropto'] = function(util) {
-    util.compiler.disableStringToNumberConversion = true;
+    // BACKDROP cannot be casted: setCostume behavior depends on type
     const BACKDROP = util.getInput('BACKDROP', 'any');
-    util.compiler.disableStringToNumberConversion = false;
     util.writeLn(`self.setCostume(${BACKDROP});`);
     util.visual('always');
     util.writeLn('var threads = backdropChange();');
     util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
   };
   statementLibrary['looks_switchcostumeto'] = function(util) {
-    util.compiler.disableStringToNumberConversion = true;
+    // COSTUME cannot be casted: setCostume behavior depends on type
     const COSTUME = util.getInput('COSTUME', 'any');
-    util.compiler.disableStringToNumberConversion = false;
     util.writeLn(`S.setCostume(${COSTUME});`);
     util.visual('visible');
   };
@@ -2850,7 +2920,9 @@ namespace P.sb3.compiler {
   inputLibrary['operator_divide'] = function(util) {
     const NUM1 = util.getInput('NUM1', 'number');
     const NUM2 = util.getInput('NUM2', 'number');
-    return util.numberInput(`(${NUM1} / ${NUM2} || 0)`);
+    const input = util.numberInput(`(${NUM1} / ${NUM2})`);
+    input.enableFlag(P.sb3.compiler.InputFlags.NaN);
+    return input;
   };
   inputLibrary['operator_equals'] = function(util) {
     const OPERAND1 = util.getInput('OPERAND1', 'any');
@@ -2915,8 +2987,11 @@ namespace P.sb3.compiler {
         return util.numberInput(`Math.abs(${NUM})`);
       case 'floor':
         return util.numberInput(`Math.floor(${NUM})`);
-      case 'sqrt':
-        return util.numberInput(`Math.sqrt(${NUM})`);
+      case 'sqrt': {
+        const input = util.numberInput(`Math.sqrt(${NUM})`);
+        input.enableFlag(P.sb3.compiler.InputFlags.NaN);
+        return input;
+      }
       case 'ceiling':
         return util.numberInput(`Math.ceil(${NUM})`);
       case 'cos':
@@ -3126,6 +3201,53 @@ namespace P.sb3.compiler {
       util.target.listeners.whenGreenFlag.push(util.startingFunction);
     },
   };
+  hatLibrary['event_whengreaterthan'] = {
+    precompile(compiler, hat) {
+      const WHENGREATERTHANMENU = compiler.getField(hat, 'WHENGREATERTHANMENU');
+      const VALUE = compiler.compileInput(hat, 'VALUE', 'number');
+
+      let executeWhen = 'false';
+      let stallUntil = 'false';
+      switch (WHENGREATERTHANMENU) {
+        case 'TIMER':
+          executeWhen = `(runtime.now() - runtime.timerStart) / 1000 > ${VALUE}`;
+          // wait until the timer was reset or the value changed to be less than the timer
+          // waiting until a reset matters for some low numbers where timer might never actually be eg. 0 in some rare instances
+          stallUntil = `runtime.timerStart !== R.timerStart || (runtime.now() - runtime.timerStart) / 1000 <= ${VALUE}`;
+          break;
+        case 'LOUDNESS':
+          compiler.target.stage.initLoudness();
+          executeWhen = `self.microphone.getLoudness() > ${VALUE}`;
+          stallUntil = `self.microphone.getLoudness() <= ${VALUE}`;
+          break;
+        default:
+          console.warn('unknown WHENGREATERTHANMENU', WHENGREATERTHANMENU);
+      }
+
+      let source = '';
+      source += 'if (!R.init) { R.init = true; R.stalled = false; }\n';
+      source += `if (R.stalled && (${stallUntil})) { R.stalled = false; }\n`;
+      source += `else if (!R.stalled && (${executeWhen})) { R.stalled = true;\n`;
+      // if/else will be finished in postcompile
+      return source;
+    },
+    postcompile(compiler, source, hat) {
+      const WHENGREATERTHANMENU = compiler.getField(hat, 'WHENGREATERTHANMENU');
+      switch (WHENGREATERTHANMENU) {
+        case 'TIMER':
+          // store the timerStart, this is used in precompile to determine whether the timer was reset
+          source += 'R.timerStart = runtime.timerStart;\n';
+          break;
+      }
+      // finish the if/else started in precompile
+      source += '}\n';
+      source += `forceQueue(${compiler.target.fns.length});`;
+      return source;
+    },
+    handle(util) {
+      util.target.listeners.whenGreenFlag.push(util.startingFunction);
+    },
+  };
   hatLibrary['event_whenkeypressed'] = {
     handle(util) {
       const KEY_OPTION = util.getField('KEY_OPTION');
@@ -3152,12 +3274,20 @@ namespace P.sb3.compiler {
       util.target.listeners.whenClicked.push(util.startingFunction);
     },
   };
+  function makeymakeyParseKey(key: string): number | 'any' {
+    key = key.toLowerCase();
+    if (key === 'up' || key === 'down' || key === 'left' || key === 'right') {
+      return P.runtime.getKeyCode(key + ' arrow') as number;
+    }
+    return P.runtime.getKeyCode(key);
+  }
   hatLibrary['makeymakey_whenMakeyKeyPressed'] = {
     handle(util) {
       const KEY = util.getInput('KEY', 'string');
       try {
-        const value = P.runtime.scopedEval(KEY.source);
-        var keyCode = P.runtime.getKeyCode(value);
+        const keyValue = '' + util.evaluateInputOnce(KEY);
+        if (typeof keyValue !== 'string') throw new Error('cannot accept type: ' + typeof keyValue);
+        var keyCode = makeymakeyParseKey(keyValue);
       } catch (e) {
         util.compiler.warn('makeymakey key generation error', e);
         return;
@@ -3178,23 +3308,24 @@ namespace P.sb3.compiler {
     handle(util) {
       const SEQUENCE = util.getInput('SEQUENCE', 'string');
       try {
-        var sequence = P.runtime.scopedEval(SEQUENCE.source);
+        var sequence = '' + util.evaluateInputOnce(SEQUENCE);
       } catch (e) {
-        util.compiler.warn('makeymakey sequence generation error', e);
+        util.compiler.warn('makeymakey key generation error', e);
         return;
       }
-      const ARROWS = ['up', 'down', 'left', 'right'];
-      const keys = sequence.toLowerCase().split(' ')
-        .map((key) => {
-          if (ARROWS.indexOf(key) > -1) {
-            return P.runtime.getKeyCode(key + ' arrow');
-          } else {
-            return P.runtime.getKeyCode(key);
-          }
-        });
+      const keys = sequence
+        .toLowerCase()
+        .split(' ')
+        .map((key: string) => makeymakeyParseKey(key));
+      // prevent the use of "any"
+      if (keys.some((i) => typeof i !== 'number')) {
+        util.compiler.warn('makeymakey whenCodePressed found unexpected string in sequence');
+        return;
+      }
       const targetFunction = util.startingFunction;
       let sequenceIndex = 0;
       for (let key = 128; key--;) {
+        // `key` is captured in this function's body
         util.target.listeners.whenKeyPressed[key].push(function() {
           const expectedKey = keys[sequenceIndex];
           if (key !== expectedKey) {
@@ -3236,6 +3367,7 @@ namespace P.sb3.compiler {
       if (warp) {
         // compiler.state.isWarp = true;
       }
+      return '';
     },
   };
   hatLibrary['speech2text_whenIHearHat'] = {

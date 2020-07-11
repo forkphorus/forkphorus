@@ -83,6 +83,7 @@
     </div>
   </div>
 
+  <script src="lib/scratch-sb1-converter.js"></script>
   <script src="lib/jszip.min.js"></script>
   <script src="lib/fontfaceobserver.standalone.js"></script>
   <script src="lib/stackblur.min.js"></script>
@@ -115,7 +116,7 @@
 
     document.addEventListener('touchmove', function(e) {
       e.preventDefault();
-    });
+    }, { passive: false });
 
     Common.parseSearch(function(key, value) {
       switch (key) {

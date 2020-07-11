@@ -1006,6 +1006,7 @@ var P;
                 this.speech2text = null;
                 this.microphone = null;
                 this.extensions = [];
+                this.useSpriteFencing = false;
                 this.runtime = new P.runtime.Runtime(this);
                 this.keys = [];
                 this.keys.any = 0;
@@ -1546,6 +1547,24 @@ var P;
                 const d = (90 - this.direction) * Math.PI / 180;
                 this.moveTo(this.scratchX + steps * Math.cos(d), this.scratchY + steps * Math.sin(d));
             }
+            keepInView() {
+                const rb = this.rotatedBounds();
+                const width = rb.right - rb.left;
+                const height = rb.top - rb.bottom;
+                const bounds = Math.min(15, Math.floor(Math.min(width, height) / 2));
+                if (rb.right - bounds < -240) {
+                    this.scratchX -= rb.right - bounds + 240;
+                }
+                if (rb.left + bounds > 240) {
+                    this.scratchX -= rb.left + bounds - 240;
+                }
+                if (rb.bottom + bounds > 180) {
+                    this.scratchY -= rb.bottom + bounds - 180;
+                }
+                if (rb.top - bounds < -180) {
+                    this.scratchY -= rb.top - bounds + 180;
+                }
+            }
             moveTo(x, y) {
                 var ox = this.scratchX;
                 var oy = this.scratchY;
@@ -1554,6 +1573,9 @@ var P;
                 }
                 this.scratchX = x;
                 this.scratchY = y;
+                if (this.stage.useSpriteFencing) {
+                    this.keepInView();
+                }
                 if (this.isPenDown && !this.isDragging) {
                     this.stage.renderer.penLine(this.penColor, this.penSize, ox, oy, x, y);
                 }
@@ -1995,9 +2017,7 @@ var P;
             'player.controls.flag.title.enabled': 'Turbo mode is enabled. Shift+click to disable turbo mode.',
             'player.controls.flag.title.disabled': 'Turbo mode is disabled. Shift+click to enable turbo mode.',
             'player.errorhandler.error': 'An internal error occurred. <a $attrs>Click here</a> to file a bug report.',
-            'player.errorhandler.error.unsupported': 'This project type ($type) is not supported. For more information and workarounds, <a href="https://github.com/forkphorus/forkphorus/wiki/On-Scratch-1-Projects" target="_blank" rel="noopener">visit this help page</a>.',
             'player.errorhandler.error.doesnotexist': 'There is no project with ID $id (Project was probably deleted, never existed, or you made a typo.)',
-            'player.errorhandler.instructions': 'Describe what you were doing to cause this error:',
         });
         addTranslations('es', {
             'player.controls.turboIndicator': 'Modo Turbo',
@@ -2082,6 +2102,47 @@ var P;
             globalAssetManager = newManager;
         }
         io.setAssetManager = setAssetManager;
+        class Throttler {
+            constructor() {
+                this.maxConcurrentTasks = 20;
+                this.concurrentTasks = 0;
+                this.queue = [];
+            }
+            startNextTask() {
+                if (this.queue.length === 0)
+                    return;
+                if (this.concurrentTasks >= this.maxConcurrentTasks)
+                    return;
+                const fn = this.queue.shift();
+                this.concurrentTasks++;
+                fn();
+            }
+            run(fn) {
+                return new Promise((resolve, reject) => {
+                    const run = () => {
+                        fn()
+                            .then((r) => {
+                            this.concurrentTasks--;
+                            this.startNextTask();
+                            resolve(r);
+                        })
+                            .catch((e) => {
+                            this.concurrentTasks--;
+                            this.startNextTask();
+                            reject(e);
+                        });
+                    };
+                    if (this.concurrentTasks < this.maxConcurrentTasks) {
+                        this.concurrentTasks++;
+                        run();
+                    }
+                    else {
+                        this.queue.push(run);
+                    }
+                });
+            }
+        }
+        const requestThrottler = new Throttler();
         class AbstractTask {
             setLoader(loader) {
                 this.loader = loader;
@@ -2168,6 +2229,9 @@ var P;
                 this.updateLoaderProgress();
             }
             _load() {
+                if (this.aborted) {
+                    return Promise.reject(new Error(`Cannot download ${this.url} -- aborted.`));
+                }
                 return new Promise((resolve, reject) => {
                     const xhr = new XMLHttpRequest();
                     xhr.open('GET', this.url);
@@ -2186,6 +2250,7 @@ var P;
                         this.updateProgress(e);
                     };
                     xhr.onloadend = (e) => {
+                        this.xhr = null;
                         this.complete = true;
                         this.updateProgress(e);
                     };
@@ -2201,7 +2266,7 @@ var P;
             }
             load(type) {
                 this.responseType = type;
-                return this.try(() => this._load());
+                return this.try(() => requestThrottler.run(() => this._load()));
             }
             getRetryWarningDescription() {
                 return `download ${this.url}`;
@@ -2245,7 +2310,7 @@ var P;
                 });
             }
             load() {
-                return this.try(() => this._load());
+                return this.try(() => requestThrottler.run(() => this._load()));
             }
             getRetryWarningDescription() {
                 return `download image ${this.src}`;
@@ -2782,14 +2847,6 @@ var P;
             }
         }
         player_1.PlayerError = PlayerError;
-        class ProjectNotSupportedError extends PlayerError {
-            constructor(type) {
-                super('Project type (' + type + ') is not supported');
-                this.type = type;
-                this.name = 'ProjectNotSupportedError';
-            }
-        }
-        player_1.ProjectNotSupportedError = ProjectNotSupportedError;
         class ProjectDoesNotExistError extends PlayerError {
             constructor(id) {
                 super('Project with ID ' + id + ' does not exist');
@@ -2906,9 +2963,10 @@ var P;
                 this.MAGIC = {
                     LARGE_Z_INDEX: '9999999999',
                     CLOUD_HISTORY_API: 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100',
-                    PROJECT_API: 'https://cdn.projects.scratch.mit.edu/$id',
+                    PROJECT_API: 'https://projects.scratch.mit.edu/$id',
                     CLOUD_DATA_SERVER: 'wss://stratus.garbomuffin.com',
                 };
+                this.stage = null;
                 this.projectMeta = null;
                 this.currentLoader = null;
                 this.fullscreenEnabled = false;
@@ -3085,6 +3143,7 @@ var P;
                 }
                 this.stage.username = this.options.username;
                 this.stage.runtime.isTurbo = this.options.turbo;
+                this.stage.useSpriteFencing = this.options.spriteFencing;
                 this.stage.renderer.imageSmoothingEnabled = this.options.imageSmoothing;
             }
             throwWithoutStage() {
@@ -3327,6 +3386,9 @@ var P;
                 }
                 switch (policy) {
                     case 'once':
+                        if (!meta.isFromScratch()) {
+                            throw new Error('once cloudVariables does not work with projects not from scratch.mit.edu');
+                        }
                         this.applyCloudVariablesOnce(stage, meta.getId());
                         break;
                     case 'ws':
@@ -3411,6 +3473,17 @@ var P;
                 }
                 return true;
             }
+            convertScratch1Project(buffer) {
+                const sb1 = new ScratchSB1Converter.SB1File(buffer);
+                const projectData = sb1.json;
+                const zipFiles = sb1.zip.files;
+                const zip = new JSZip();
+                zip.file('project.json', JSON.stringify(projectData));
+                for (const fileName of Object.keys(zipFiles)) {
+                    zip.file(fileName, zipFiles[fileName].bytes);
+                }
+                return zip.generateAsync({ type: 'arraybuffer' });
+            }
             fetchProject(id) {
                 const request = new P.io.Request(this.MAGIC.PROJECT_API.replace('$id', id));
                 return request
@@ -3464,9 +3537,9 @@ var P;
                             }
                         }
                         catch (e) {
-                            const buffer = yield P.io.readers.toArrayBuffer(blob);
+                            let buffer = yield P.io.readers.toArrayBuffer(blob);
                             if (this.isScratch1Project(buffer)) {
-                                throw new ProjectNotSupportedError('Scratch 1');
+                                buffer = yield this.convertScratch1Project(buffer);
                             }
                             return new P.sb2.SB2FileLoader(buffer);
                         }
@@ -3487,6 +3560,10 @@ var P;
             loadProjectFromBufferWithType(loaderId, buffer, type) {
                 return __awaiter(this, void 0, void 0, function* () {
                     let loader;
+                    if (type === 'sb') {
+                        buffer = yield this.convertScratch1Project(buffer);
+                        type = 'sb2';
+                    }
                     switch (type) {
                         case 'sb2':
                             loader = new P.sb2.SB2FileLoader(buffer);
@@ -3507,6 +3584,7 @@ var P;
                         const extension = file.name.split('.').pop() || '';
                         const buffer = yield P.io.readers.toArrayBuffer(file);
                         switch (extension) {
+                            case 'sb': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb');
                             case 'sb2': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb2');
                             case 'sb3': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb3');
                             default: throw new Error('Unrecognized file extension: ' + extension);
@@ -3546,11 +3624,15 @@ var P;
             fullscreenMaxWidth: Infinity,
             imageSmoothing: false,
             focusOnLoad: true,
+            spriteFencing: false,
         };
         player_1.Player = Player;
         class ErrorHandler {
             constructor(player, options = {}) {
                 this.player = player;
+                this.errorEl = null;
+                this.errorContainer = null;
+                this.generatedErrorLink = null;
                 this.player = player;
                 player.onerror.subscribe(this.onerror.bind(this));
                 player.oncleanup.subscribe(this.oncleanup.bind(this));
@@ -3569,21 +3651,20 @@ var P;
                 if (error.stack) {
                     return 'Message: ' + error.message + '\nStack:\n' + error.stack;
                 }
-                return error.toString();
+                return '' + error;
             }
-            createBugReportLink(bodyBefore, bodyAfter) {
-                var title = this.getBugReportTitle();
-                bodyAfter = bodyAfter || '';
-                var body = bodyBefore +
-                    '\n\n\n-----\n' +
-                    this.getBugReportMetadata() +
-                    '\n' +
-                    bodyAfter;
+            createBugReportLink(error) {
+                const type = error ? '[Error]' : '[Bug]';
+                const title = `${type} ${this.getBugReportTitle()}`;
+                const body = this.getBugReportBody(error);
                 return ErrorHandler.BUG_REPORT_LINK
                     .replace('$title', encodeURIComponent(title))
                     .replace('$body', encodeURIComponent(body));
             }
             getBugReportTitle() {
+                if (!this.player.hasProjectMeta()) {
+                    return 'Unknown Project';
+                }
                 const meta = this.player.getProjectMeta();
                 const title = meta.getTitle();
                 const id = meta.getId();
@@ -3595,47 +3676,70 @@ var P;
                 }
                 return 'Unknown Project';
             }
-            getBugReportMetadata() {
-                var meta = '';
-                meta += 'Project ID: ' + this.player.getProjectMeta().getId() + '\n';
-                meta += location.href + '\n';
-                meta += navigator.userAgent;
-                return meta;
+            getBugReportBody(error) {
+                const sections = [];
+                sections.push({
+                    title: 'Describe the bug, including any steps to reproduce it',
+                    body: '',
+                });
+                sections.push({
+                    title: 'Project ID, URL, or file',
+                    body: this.getProjectInformation(),
+                });
+                let debug = '';
+                debug += location.href + '\n';
+                debug += navigator.userAgent + '\n';
+                if (error) {
+                    debug += '```\n' + this.stringifyError(error) + '\n```';
+                }
+                sections.push({
+                    title: 'Debug information <!-- DO NOT EDIT -->',
+                    body: debug,
+                });
+                return sections
+                    .map((i) => `**${i.title}**\n${i.body}\n`)
+                    .join('\n')
+                    .trim();
             }
-            createErrorLink(error) {
-                var body = P.i18n.translate('player.errorhandler.instructions');
-                return this.createBugReportLink(body, '```\n' + this.stringifyError(error) + '\n```');
+            getProjectInformation() {
+                if (!this.player.hasProjectMeta()) {
+                    return 'no project meta loaded';
+                }
+                const projectMeta = this.player.getProjectMeta();
+                if (projectMeta.isFromScratch()) {
+                    if (projectMeta.getTitle()) {
+                        return 'https://scratch.mit.edu/projects/' + projectMeta.getId();
+                    }
+                    else {
+                        return 'https://scratch.mit.edu/projects/' + projectMeta.getId() + ' (probably unshared)';
+                    }
+                }
+                return 'Not from Scratch: ' + projectMeta.getId();
             }
             oncleanup() {
                 if (this.errorEl && this.errorEl.parentNode) {
                     this.errorEl.parentNode.removeChild(this.errorEl);
                     this.errorEl = null;
                 }
+                this.generatedErrorLink = null;
             }
             handleError(error) {
-                var el = document.createElement('div');
-                var errorLink = this.createErrorLink(error);
-                var attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
+                const el = document.createElement('div');
+                const errorLink = this.createBugReportLink(error);
+                this.generatedErrorLink = errorLink;
+                const attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
                 el.innerHTML = P.i18n.translate('player.errorhandler.error').replace('$attrs', attributes);
                 return el;
             }
-            handleNotSupportedError(error) {
-                var el = document.createElement('div');
-                el.innerHTML = P.i18n.translate('player.errorhandler.error.unsupported').replace('$type', error.type);
-                return el;
-            }
             handleDoesNotExistError(error) {
-                var el = document.createElement('div');
+                const el = document.createElement('div');
                 el.textContent = P.i18n.translate('player.errorhandler.error.doesnotexist').replace('$id', error.id);
                 return el;
             }
             onerror(error) {
-                var el = document.createElement('div');
+                const el = document.createElement('div');
                 el.className = 'player-error';
-                if (error instanceof ProjectNotSupportedError) {
-                    el.appendChild(this.handleNotSupportedError(error));
-                }
-                else if (error instanceof ProjectDoesNotExistError) {
+                if (error instanceof ProjectDoesNotExistError) {
                     el.appendChild(this.handleDoesNotExistError(error));
                 }
                 else {
@@ -3653,7 +3757,7 @@ var P;
                 this.errorEl = el;
             }
         }
-        ErrorHandler.BUG_REPORT_LINK = 'https://github.com/forkphorus/forkphorus/issues/new?title=$title&body=$body';
+        ErrorHandler.BUG_REPORT_LINK = 'https://github.com/forkphorus/forkphorus/issues/new?template=bug_report.md&labels=bug&title=$title&body=$body&';
         player_1.ErrorHandler = ErrorHandler;
         class ProgressBar {
             constructor(player, options = {}) {
@@ -4178,7 +4282,7 @@ var P;
                 this.onError = this.onError.bind(this);
                 this.step = this.step.bind(this);
             }
-            startThread(sprite, base) {
+            startThread(sprite, base, replaceExisting) {
                 const thread = {
                     sprite: sprite,
                     base: base,
@@ -4191,7 +4295,9 @@ var P;
                 for (let i = 0; i < this.queue.length; i++) {
                     const q = this.queue[i];
                     if (q && q.sprite === sprite && q.base === base) {
-                        this.queue[i] = thread;
+                        if (replaceExisting) {
+                            this.queue[i] = thread;
+                        }
                         return;
                     }
                 }
@@ -4199,6 +4305,7 @@ var P;
             }
             triggerFor(sprite, event, arg) {
                 let threads;
+                let replaceExisting = true;
                 switch (event) {
                     case 'whenClicked':
                         threads = sprite.listeners.whenClicked;
@@ -4210,6 +4317,7 @@ var P;
                         threads = sprite.listeners.whenGreenFlag;
                         break;
                     case 'whenKeyPressed':
+                        replaceExisting = false;
                         threads = sprite.listeners.whenKeyPressed[arg];
                         break;
                     case 'whenSceneStarts':
@@ -4226,7 +4334,7 @@ var P;
                 }
                 if (threads) {
                     for (let i = 0; i < threads.length; i++) {
-                        this.startThread(sprite, threads[i]);
+                        this.startThread(sprite, threads[i], replaceExisting);
                     }
                 }
                 return threads || [];
@@ -4977,9 +5085,12 @@ var P;
             }
             loadMD5(hash, id, isAudio = false) {
                 const f = isAudio ? (this.zip.file(id + '.wav') || this.zip.file(id + '.mp3')) : this.zip.file(id + '.gif') || (this.zip.file(id + '.png') || this.zip.file(id + '.jpg') || this.zip.file(id + '.svg'));
+                if (!f) {
+                    throw new Error('cannot find md5: ' + hash + ' (isAudio=' + isAudio + ')');
+                }
                 hash = f.name;
                 if (isAudio) {
-                    return f.async('arrayBuffer')
+                    return f.async('arraybuffer')
                         .then((buffer) => P.audio.decodeAudio(buffer));
                 }
                 const ext = hash.split('.').pop();
@@ -5007,7 +5118,11 @@ var P;
                 return JSZip.loadAsync(this.buffer)
                     .then((data) => {
                     this.zip = data;
-                    return this.zip.file('project.json').async('text');
+                    const project = this.zip.file('project.json');
+                    if (!project) {
+                        throw new Error('project.json is missing');
+                    }
+                    return project.async('text');
                 })
                     .then((project) => {
                     this.projectData = P.json.parse(project);
@@ -6425,8 +6540,13 @@ var P;
             getRowHeight() {
                 if (this._rowHeight === -1) {
                     const PADDING = 2;
-                    const row = this.addRow();
-                    const height = row.element.offsetHeight;
+                    if (this.rows.length === 0) {
+                        this.addRow();
+                    }
+                    const height = this.rows[0].element.offsetHeight;
+                    if (height === 0) {
+                        return 0;
+                    }
                     this._rowHeight = height + PADDING;
                 }
                 return this._rowHeight;
@@ -6795,7 +6915,11 @@ var P;
             }
             getAsText(path) {
                 const task = this.addTask(new P.io.Manual());
-                return this.zip.file(path).async('text')
+                const file = this.zip.file(path);
+                if (!file) {
+                    throw new Error('cannot find file as text: ' + path);
+                }
+                return file.async('text')
                     .then((response) => {
                     task.markComplete();
                     return response;
@@ -6803,7 +6927,11 @@ var P;
             }
             getAsArrayBuffer(path) {
                 const task = this.addTask(new P.io.Manual());
-                return this.zip.file(path).async('arrayBuffer')
+                const file = this.zip.file(path);
+                if (!file) {
+                    throw new Error('cannot find file as arraybuffer: ' + path);
+                }
+                return file.async('arraybuffer')
                     .then((response) => {
                     task.markComplete();
                     return response;
@@ -6811,7 +6939,11 @@ var P;
             }
             getAsBase64(path) {
                 const task = this.addTask(new P.io.Manual());
-                return this.zip.file(path).async('base64')
+                const file = this.zip.file(path);
+                if (!file) {
+                    throw new Error('cannot find file as base64: ' + path);
+                }
+                return file.async('base64')
                     .then((response) => {
                     task.markComplete();
                     return response;
@@ -6896,6 +7028,13 @@ var P;
                     this.source = source;
                     this.type = type;
                     this.potentialNumber = true;
+                    this.flags = 0;
+                }
+                enableFlag(n) {
+                    this.flags &= n;
+                }
+                hasFlag(n) {
+                    return this.flags & n;
                 }
                 toString() {
                     return this.source;
@@ -6950,6 +7089,10 @@ var P;
                 }
                 asType(input, type) {
                     return this.compiler.asType(input, type);
+                }
+                evaluateInputOnce(input) {
+                    const fn = P.runtime.scopedEval(`(function() { return ${input}; })`);
+                    return this.target.stage.runtime.evaluateExpression(this.target, fn);
                 }
             }
             compiler_1.BlockUtil = BlockUtil;
@@ -7042,10 +7185,13 @@ var P;
                 constructor(target) {
                     this.labelCount = 0;
                     this.needsMusic = false;
-                    this.disableStringToNumberConversion = false;
+                    this.costumeNames = new Set();
                     this.target = target;
                     this.data = target.sb3data;
                     this.blocks = this.data.blocks;
+                    for (const costume of target.costumes) {
+                        this.costumeNames.add(costume.name);
+                    }
                 }
                 getHatBlocks() {
                     return Object.keys(this.blocks)
@@ -7091,6 +7237,9 @@ var P;
                 }
                 convertInputType(input, type) {
                     if (input.type === type) {
+                        if (type === 'number' && input.hasFlag(1)) {
+                            return new CompiledInput('(' + input.source + ' || 0)', type);
+                        }
                         return input;
                     }
                     if (type === 'any') {
@@ -7155,6 +7304,9 @@ var P;
                 isStringLiteralPotentialNumber(text) {
                     return /\d|true|false|Infinity/.test(text);
                 }
+                isCostumeName(text) {
+                    return this.costumeNames.has(text);
+                }
                 compileNativeInput(native, desiredType) {
                     const type = native[0];
                     switch (type) {
@@ -7164,7 +7316,7 @@ var P;
                         case 7:
                         case 8: {
                             const number = +native[1];
-                            if (this.disableStringToNumberConversion || isNaN(number) || desiredType === 'string') {
+                            if (isNaN(number) || desiredType === 'string') {
                                 return this.sanitizedInput('' + native[1]);
                             }
                             else {
@@ -7173,7 +7325,7 @@ var P;
                         }
                         case 10: {
                             const value = native[1];
-                            if (desiredType !== 'string' && /\d|Infinity/.test(value)) {
+                            if (desiredType !== 'string' && /\d|Infinity/.test(value) && !this.isCostumeName(value)) {
                                 const number = +value;
                                 if (number.toString() === value) {
                                     if (!isNaN(number)) {
@@ -7299,10 +7451,10 @@ var P;
                         return;
                     }
                     this.state = this.getNewState();
-                    if (hatCompiler.precompile) {
-                        hatCompiler.precompile(this, hat);
-                    }
                     let script = `{{${this.labelCount++}}}`;
+                    if (hatCompiler.precompile) {
+                        script += hatCompiler.precompile(this, hat);
+                    }
                     script += this.compileStack(startingBlock);
                     if (hatCompiler.postcompile) {
                         script = hatCompiler.postcompile(this, script, hat);
@@ -7313,8 +7465,8 @@ var P;
                     for (let label of Object.keys(parseResult.labels)) {
                         this.target.fns[label] = P.runtime.createContinuation(parsedScript.slice(parseResult.labels[label]));
                     }
-                    const startingFn = this.target.fns[startFn];
-                    const util = new HatUtil(this, hat, startingFn);
+                    const startingFunction = this.target.fns[startFn];
+                    const util = new HatUtil(this, hat, startingFunction);
                     hatCompiler.handle(util);
                     if (P.config.debug) {
                         this.log(`[${this.target.name}] compiled sb3 script "${hat.opcode}"`, script, this.target);
@@ -7711,18 +7863,14 @@ var P;
         util.updateBubble();
     };
     statementLibrary['looks_switchbackdropto'] = function (util) {
-        util.compiler.disableStringToNumberConversion = true;
         const BACKDROP = util.getInput('BACKDROP', 'any');
-        util.compiler.disableStringToNumberConversion = false;
         util.writeLn(`self.setCostume(${BACKDROP});`);
         util.visual('always');
         util.writeLn('var threads = backdropChange();');
         util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
     };
     statementLibrary['looks_switchcostumeto'] = function (util) {
-        util.compiler.disableStringToNumberConversion = true;
         const COSTUME = util.getInput('COSTUME', 'any');
-        util.compiler.disableStringToNumberConversion = false;
         util.writeLn(`S.setCostume(${COSTUME});`);
         util.visual('visible');
     };
@@ -8243,7 +8391,9 @@ var P;
     inputLibrary['operator_divide'] = function (util) {
         const NUM1 = util.getInput('NUM1', 'number');
         const NUM2 = util.getInput('NUM2', 'number');
-        return util.numberInput(`(${NUM1} / ${NUM2} || 0)`);
+        const input = util.numberInput(`(${NUM1} / ${NUM2})`);
+        input.enableFlag(1);
+        return input;
     };
     inputLibrary['operator_equals'] = function (util) {
         const OPERAND1 = util.getInput('OPERAND1', 'any');
@@ -8303,8 +8453,11 @@ var P;
                 return util.numberInput(`Math.abs(${NUM})`);
             case 'floor':
                 return util.numberInput(`Math.floor(${NUM})`);
-            case 'sqrt':
-                return util.numberInput(`Math.sqrt(${NUM})`);
+            case 'sqrt': {
+                const input = util.numberInput(`Math.sqrt(${NUM})`);
+                input.enableFlag(1);
+                return input;
+            }
             case 'ceiling':
                 return util.numberInput(`Math.ceil(${NUM})`);
             case 'cos':
@@ -8503,6 +8656,46 @@ var P;
             util.target.listeners.whenGreenFlag.push(util.startingFunction);
         },
     };
+    hatLibrary['event_whengreaterthan'] = {
+        precompile(compiler, hat) {
+            const WHENGREATERTHANMENU = compiler.getField(hat, 'WHENGREATERTHANMENU');
+            const VALUE = compiler.compileInput(hat, 'VALUE', 'number');
+            let executeWhen = 'false';
+            let stallUntil = 'false';
+            switch (WHENGREATERTHANMENU) {
+                case 'TIMER':
+                    executeWhen = `(runtime.now() - runtime.timerStart) / 1000 > ${VALUE}`;
+                    stallUntil = `runtime.timerStart !== R.timerStart || (runtime.now() - runtime.timerStart) / 1000 <= ${VALUE}`;
+                    break;
+                case 'LOUDNESS':
+                    compiler.target.stage.initLoudness();
+                    executeWhen = `self.microphone.getLoudness() > ${VALUE}`;
+                    stallUntil = `self.microphone.getLoudness() <= ${VALUE}`;
+                    break;
+                default:
+                    console.warn('unknown WHENGREATERTHANMENU', WHENGREATERTHANMENU);
+            }
+            let source = '';
+            source += 'if (!R.init) { R.init = true; R.stalled = false; }\n';
+            source += `if (R.stalled && (${stallUntil})) { R.stalled = false; }\n`;
+            source += `else if (!R.stalled && (${executeWhen})) { R.stalled = true;\n`;
+            return source;
+        },
+        postcompile(compiler, source, hat) {
+            const WHENGREATERTHANMENU = compiler.getField(hat, 'WHENGREATERTHANMENU');
+            switch (WHENGREATERTHANMENU) {
+                case 'TIMER':
+                    source += 'R.timerStart = runtime.timerStart;\n';
+                    break;
+            }
+            source += '}\n';
+            source += `forceQueue(${compiler.target.fns.length});`;
+            return source;
+        },
+        handle(util) {
+            util.target.listeners.whenGreenFlag.push(util.startingFunction);
+        },
+    };
     hatLibrary['event_whenkeypressed'] = {
         handle(util) {
             const KEY_OPTION = util.getField('KEY_OPTION');
@@ -8530,12 +8723,21 @@ var P;
             util.target.listeners.whenClicked.push(util.startingFunction);
         },
     };
+    function makeymakeyParseKey(key) {
+        key = key.toLowerCase();
+        if (key === 'up' || key === 'down' || key === 'left' || key === 'right') {
+            return P.runtime.getKeyCode(key + ' arrow');
+        }
+        return P.runtime.getKeyCode(key);
+    }
     hatLibrary['makeymakey_whenMakeyKeyPressed'] = {
         handle(util) {
             const KEY = util.getInput('KEY', 'string');
             try {
-                const value = P.runtime.scopedEval(KEY.source);
-                var keyCode = P.runtime.getKeyCode(value);
+                const keyValue = '' + util.evaluateInputOnce(KEY);
+                if (typeof keyValue !== 'string')
+                    throw new Error('cannot accept type: ' + typeof keyValue);
+                var keyCode = makeymakeyParseKey(keyValue);
             }
             catch (e) {
                 util.compiler.warn('makeymakey key generation error', e);
@@ -8558,22 +8760,20 @@ var P;
         handle(util) {
             const SEQUENCE = util.getInput('SEQUENCE', 'string');
             try {
-                var sequence = P.runtime.scopedEval(SEQUENCE.source);
+                var sequence = '' + util.evaluateInputOnce(SEQUENCE);
             }
             catch (e) {
-                util.compiler.warn('makeymakey sequence generation error', e);
+                util.compiler.warn('makeymakey key generation error', e);
                 return;
             }
-            const ARROWS = ['up', 'down', 'left', 'right'];
-            const keys = sequence.toLowerCase().split(' ')
-                .map((key) => {
-                if (ARROWS.indexOf(key) > -1) {
-                    return P.runtime.getKeyCode(key + ' arrow');
-                }
-                else {
-                    return P.runtime.getKeyCode(key);
-                }
-            });
+            const keys = sequence
+                .toLowerCase()
+                .split(' ')
+                .map((key) => makeymakeyParseKey(key));
+            if (keys.some((i) => typeof i !== 'number')) {
+                util.compiler.warn('makeymakey whenCodePressed found unexpected string in sequence');
+                return;
+            }
             const targetFunction = util.startingFunction;
             let sequenceIndex = 0;
             for (let key = 128; key--;) {
@@ -8612,6 +8812,7 @@ var P;
             const warp = typeof mutation.warp === 'string' ? mutation.warp === 'true' : mutation.warp;
             if (warp) {
             }
+            return '';
         },
     };
     hatLibrary['speech2text_whenIHearHat'] = {
@@ -8840,7 +9041,7 @@ var P;
                         this.stopUpdateInterval();
                         return;
                     }
-                    if (this.ws === null || this.ws.readyState !== this.ws.OPEN) {
+                    if (this.ws === null || this.ws.readyState !== this.ws.OPEN || this.ws.bufferedAmount > 16384) {
                         return;
                     }
                     const variableName = this.queuedVariableChanges.shift();
@@ -9205,7 +9406,7 @@ var P;
                         const startingFunction = hat.startingFunction;
                         const value = this.stage.runtime.evaluateExpression(target, phraseFunction);
                         if (value === transcript) {
-                            this.stage.runtime.startThread(target, startingFunction);
+                            this.stage.runtime.startThread(target, startingFunction, true);
                         }
                     }
                 }

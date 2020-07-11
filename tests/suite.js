@@ -28,7 +28,7 @@ var P = P || {};
 
 /**
  * Identifies the version of Scratch a project is made for.
- * @typedef {2|3} ProjectType
+ * @typedef {'sb'|'sb2'|'sb3'} ProjectType
  */
 
 /**
@@ -41,6 +41,10 @@ P.suite = (function() {
   const containerEl = document.getElementById('suite-container');
   const tableBodyEl = document.getElementById('suite-table');
   const finalResultsEl = document.getElementById('suite-final-results');
+
+  // Project player
+  const player = new P.player.Player();
+  containerEl.appendChild(player.root);
 
   // Configure IO to fetch files from the right place.
   P.io.config.localPath = '../';
@@ -86,8 +90,9 @@ P.suite = (function() {
   function getProjectType(path) {
     const extension = path.match(/\..*$/)[0];
     switch (extension) {
-      case '.sb3': return 3;
-      case '.sb2': return 2;
+      case '.sb': return 'sb';
+      case '.sb2': return 'sb2';
+      case '.sb3': return 'sb3';
     }
     throw new Error('unknown project type: ' + extension);
   }
@@ -96,17 +101,9 @@ P.suite = (function() {
    * Load a project
    * @param {ArrayBuffer} buffer
    * @param {ProjectType} type
-   * @returns {Promise<P.core.Stage>}
    */
   function loadProjectBuffer(buffer, type) {
-    if (type === 2) {
-      const loader = new P.sb2.SB2FileLoader(buffer);
-      return loader.load();
-    } else if (type === 3) {
-      const loader = new P.sb3.SB3FileLoader(buffer);
-      return loader.load();
-    }
-    throw new Error('unknown type: ' + type);
+    return player.loadProjectFromBuffer(buffer, type);
   }
 
   function stringifyError(error) {
@@ -132,7 +129,7 @@ P.suite = (function() {
 
     return new Promise((_resolve, _reject) => {
       /**
-       * @param {TestResult} result
+       * @param {Partial<TestResult>} result
        */
       const resolve = (result) => {
         const endTime = performance.now();
@@ -143,7 +140,7 @@ P.suite = (function() {
         stage.runtime.stopAll();
 
         _resolve(result);
-      }
+      };
 
       /**
        * The test has failed.
@@ -210,7 +207,7 @@ P.suite = (function() {
   function runProject(metadata, buffer, type) {
     const startTime = performance.now();
     return loadProjectBuffer(buffer, type)
-      .then((stage) => testStage(stage, metadata))
+      .then(() => testStage(player.getStage(), metadata))
       .then((result) => {
         const endTime = performance.now();
         result.totalTime = endTime - startTime;
@@ -294,13 +291,14 @@ P.suite = (function() {
   }
 
   /**
-   * Start the test suite
+   * Run tests on a list of project metadata.
    * @param {ProjectMeta[]} projectList
    * @returns {Promise<void>} Resolves when the test is done.
    */
-  async function run(projectList) {
+  async function runTests(projectList) {
     removeChildren(tableBodyEl);
 
+    /** @type {TestResult[]} */
     const allTestResults = [];
     const startTime = performance.now();
 
@@ -335,6 +333,20 @@ P.suite = (function() {
     // Allow automated test runners to learn the final results.
     if (window.testsFinishedHook) {
       window.testsFinishedHook(finalResults);
+    }
+  }
+
+  /**
+   * Start the test suite
+   * @param {ProjectMeta[]} projectList
+   * @returns {Promise<void>} Resolves when the test is done.
+   */
+  async function run(projectList) {
+    try {
+      return await runTests(projectList);
+    } catch (e) {
+      console.error(e);
+      throw e;
     }
   }
 
@@ -396,12 +408,12 @@ P.suite = (function() {
 (function(compiler) {
   // The Scratch 2 compiler has very limited internals exposed, but we can replace the entire listener compiler.
   // (which is where all top level blocks, such as procedure definitions, are compiled)
-  // We replace the custom block definition instead of the call.
+  // We replace custom block definitions and some broadcast receivers instead of the calls because that's easier.
 
   const originalCompileListener = compiler.compileListener;
   compiler.compileListener = function compileListener(object, script) {
     const opcode = script[0][0];
-    if (opcode !== 'procDef') {
+    if (opcode !== 'procDef' && opcode !== 'whenIReceive') {
       return originalCompileListener(object, script);
     }
 
@@ -432,9 +444,16 @@ P.suite = (function() {
       default:
         return originalCompileListener(object, script);
     }
+
     source += 'endCall();\n';
     const f = P.runtime.createContinuation(source);
     object.fns.push(f);
-    object.procedures[proccode] = new compiler.Scratch2Procedure(f, false, []);
+
+    if (opcode === 'procDef') {
+      object.procedures[proccode] = new compiler.Scratch2Procedure(f, false, []);
+    }
+    if (opcode === 'whenIReceive') {
+      (object.listeners.whenIReceive[proccode] || (object.listeners.whenIReceive[proccode] = [])).push(f);
+    }
   };
 }(P.sb2.compiler));

@@ -102,6 +102,47 @@ namespace P.io {
     globalAssetManager = newManager;
   }
 
+  class Throttler<T> {
+    public maxConcurrentTasks: number = 20;
+    private concurrentTasks: number = 0;
+    private queue: Array<() => void> = [];
+
+    private startNextTask() {
+      if (this.queue.length === 0) return;
+      if (this.concurrentTasks >= this.maxConcurrentTasks) return;
+      const fn = this.queue.shift()!;
+      this.concurrentTasks++;
+      fn();
+    }
+
+    run(fn: () => Promise<T>): Promise<T> {
+      return new Promise((resolve, reject) => {
+        const run = () => {
+          fn()
+            .then((r) => {
+              this.concurrentTasks--;
+              this.startNextTask();
+              resolve(r);
+            })
+            .catch((e) => {
+              this.concurrentTasks--;
+              this.startNextTask();
+              reject(e);
+            });
+        };
+
+        if (this.concurrentTasks < this.maxConcurrentTasks) {
+          this.concurrentTasks++;
+          run();
+        } else {
+          this.queue.push(run);
+        }
+      })
+    }
+  }
+
+  const requestThrottler = new Throttler();
+
   interface Task {
     /**
      * Return whether this task is known to be complete.
@@ -241,6 +282,9 @@ namespace P.io {
     }
 
     private _load(): Promise<any> {
+      if (this.aborted) {
+        return Promise.reject(new Error(`Cannot download ${this.url} -- aborted.`));
+      }
       return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open('GET', this.url);
@@ -261,6 +305,7 @@ namespace P.io {
         };
 
         xhr.onloadend = (e) => {
+          this.xhr = null;
           this.complete = true;
           this.updateProgress(e);
         };
@@ -284,7 +329,7 @@ namespace P.io {
     load(type: 'blob'): Promise<Blob>;
     load(type: XMLHttpRequestResponseType): Promise<any> {
       this.responseType = type;
-      return this.try(() => this._load());
+      return this.try(() => requestThrottler.run(() => this._load()));
     }
 
     getRetryWarningDescription() {
@@ -334,7 +379,7 @@ namespace P.io {
     }
 
     load(): Promise<HTMLImageElement> {
-      return this.try(() => this._load());
+      return this.try(() => requestThrottler.run(() => this._load())) as Promise<HTMLImageElement>;
     }
 
     getRetryWarningDescription() {

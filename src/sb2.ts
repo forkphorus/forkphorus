@@ -586,7 +586,7 @@ namespace P.sb2 {
 
   export class SB2FileLoader extends BaseSB2Loader {
     private buffer: ArrayBuffer;
-    private zip: JSZip.Zip;
+    private zip: JSZip;
 
     constructor(buffer: ArrayBuffer) {
       super();
@@ -597,10 +597,13 @@ namespace P.sb2 {
     loadMD5(hash: string, id: string, isAudio?: false): Promise<HTMLImageElement | HTMLCanvasElement | null>;
     loadMD5(hash: string, id: string, isAudio: boolean = false): Promise<HTMLImageElement | HTMLCanvasElement | AudioBuffer | null> {
       const f = isAudio ? (this.zip.file(id + '.wav') || this.zip.file(id + '.mp3')) : this.zip.file(id + '.gif') || (this.zip.file(id + '.png') || this.zip.file(id + '.jpg') || this.zip.file(id + '.svg'));
+      if (!f) {
+        throw new Error('cannot find md5: ' + hash + ' (isAudio=' + isAudio + ')');
+      }
       hash = f.name;
 
       if (isAudio) {
-        return f.async('arrayBuffer')
+        return f.async('arraybuffer')
           .then((buffer) => P.audio.decodeAudio(buffer));
       }
 
@@ -629,7 +632,11 @@ namespace P.sb2 {
       return JSZip.loadAsync(this.buffer)
         .then((data) => {
           this.zip = data;
-          return this.zip.file('project.json').async('text');
+          const project = this.zip.file('project.json');
+          if (!project) {
+            throw new Error('project.json is missing');
+          }
+          return project.async('text');
         })
         .then((project) => {
           this.projectData = P.json.parse(project);

@@ -30,16 +30,6 @@ namespace P.player {
   }
 
   /**
-   * An error that indicates that this project type is knowingly not supported.
-   */
-  export class ProjectNotSupportedError extends PlayerError {
-    constructor(public type: string) {
-      super('Project type (' + type + ') is not supported');
-      this.name = 'ProjectNotSupportedError';
-    }
-  }
-
-  /**
    * An error that indicates that this project does not exist.
    */
   export class ProjectDoesNotExistError extends PlayerError {
@@ -48,6 +38,8 @@ namespace P.player {
       this.name = 'ProjectDoesNotExistError';
     }
   }
+
+  type ProjectType = 'sb' | 'sb2' | 'sb3';
 
   interface ProjectPlayer {
     /** Emitted when there has been an update on loading progress. */
@@ -96,7 +88,7 @@ namespace P.player {
 
     loadProjectById(id: string): Promise<void>;
     loadProjectFromFile(file: File): Promise<void>;
-    loadProjectFromBuffer(buffer: ArrayBuffer, type: 'sb2' | 'sb3'): Promise<void>;
+    loadProjectFromBuffer(buffer: ArrayBuffer, type: ProjectType): Promise<void>;
 
     hasStage(): boolean;
     getStage(): P.core.Stage;
@@ -126,6 +118,7 @@ namespace P.player {
     fullscreenMaxWidth: number;
     imageSmoothing: boolean;
     focusOnLoad: boolean;
+    spriteFencing: boolean;
   }
 
   interface ControlsOptions {
@@ -232,6 +225,7 @@ namespace P.player {
     }
 
     getId() {
+      // do not change -- that could break cloud variables for some projects in the packager.
       return '#buffer#';
     }
 
@@ -289,6 +283,7 @@ namespace P.player {
       fullscreenMaxWidth: Infinity,
       imageSmoothing: false,
       focusOnLoad: true,
+      spriteFencing: false,
     };
 
     public onprogress = new Slot<number>();
@@ -312,14 +307,14 @@ namespace P.player {
       // $id is replaced with the project's ID
       CLOUD_HISTORY_API: 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100',
       // $id is replaced with the project's ID
-      PROJECT_API: 'https://cdn.projects.scratch.mit.edu/$id',
+      PROJECT_API: 'https://projects.scratch.mit.edu/$id',
       // an instance of https://github.com/forkphorus/cloud-server
       // CLOUD_DATA_SERVER: 'ws://localhost:9080', // for cloud-server development
       CLOUD_DATA_SERVER: 'wss://stratus.garbomuffin.com',
     };
 
     private options: Readonly<PlayerOptions>;
-    private stage: P.core.Stage;
+    private stage: P.core.Stage = null!; // making this nullable forces some very verbose type checking
     private projectMeta: ProjectMeta | null = null;
     private currentLoader: LoaderIdentifier | null = null;
     private fullscreenEnabled: boolean = false;
@@ -536,6 +531,7 @@ namespace P.player {
       }
       this.stage.username = this.options.username;
       this.stage.runtime.isTurbo = this.options.turbo;
+      this.stage.useSpriteFencing = this.options.spriteFencing;
       (this.stage.renderer as P.renderer.canvas2d.ProjectRenderer2D).imageSmoothingEnabled = this.options.imageSmoothing;
     }
 
@@ -830,6 +826,9 @@ namespace P.player {
 
       switch (policy) {
         case 'once':
+          if (!meta.isFromScratch()) {
+            throw new Error('once cloudVariables does not work with projects not from scratch.mit.edu');
+          }
           this.applyCloudVariablesOnce(stage, meta.getId());
           break;
         case 'ws':
@@ -929,7 +928,7 @@ namespace P.player {
     /**
      * Determine if a project file is a Scratch 1 project.
      */
-    private isScratch1Project(buffer: ArrayBuffer) {
+    private isScratch1Project(buffer: ArrayBuffer): boolean {
       const MAGIC = 'ScratchV0';
       const array = new Uint8Array(buffer);
       for (var i = 0; i < MAGIC.length; i++) {
@@ -938,6 +937,24 @@ namespace P.player {
         }
       }
       return true;
+    }
+
+    /**
+     * Convert a Scratch 1 project to a Scratch 2 project.
+     * @param buffer The binary data of the Scratch 1 project.
+     * @returns The binary data of the Scratch 2 project.
+     */
+    private convertScratch1Project(buffer: ArrayBuffer): Promise<ArrayBuffer> {
+      const sb1 = new ScratchSB1Converter.SB1File(buffer);
+      const projectData = sb1.json;
+      const zipFiles = sb1.zip.files;
+
+      const zip = new JSZip();
+      zip.file('project.json', JSON.stringify(projectData));
+      for (const fileName of Object.keys(zipFiles)) {
+        zip.file(fileName, zipFiles[fileName].bytes);
+      }
+      return zip.generateAsync({ type: 'arraybuffer' });
     }
 
     /**
@@ -1017,11 +1034,11 @@ namespace P.player {
           }
         } catch (e) {
           // if the project cannot be loaded as JSON, it may be a binary project.
-          const buffer = await P.io.readers.toArrayBuffer(blob);
+          let buffer = await P.io.readers.toArrayBuffer(blob);
 
-          // check for Scratch 1, which we do not support
+          // Scratch 1 is converted to Scratch 2.
           if (this.isScratch1Project(buffer)) {
-            throw new ProjectNotSupportedError('Scratch 1');
+            buffer = await this.convertScratch1Project(buffer);
           }
 
           return new P.sb2.SB2FileLoader(buffer);
@@ -1040,8 +1057,15 @@ namespace P.player {
       }
     }
 
-    private async loadProjectFromBufferWithType(loaderId: LoaderIdentifier, buffer: ArrayBuffer, type: 'sb2' | 'sb3'): Promise<void> {
+    private async loadProjectFromBufferWithType(loaderId: LoaderIdentifier, buffer: ArrayBuffer, type: ProjectType): Promise<void> {
       let loader: P.io.Loader<P.core.Stage>;
+
+      // Scratch 1 is converted to Scratch 2.
+      if (type === 'sb') {
+        buffer = await this.convertScratch1Project(buffer);
+        type = 'sb2';
+      }
+
       switch (type) {
         case 'sb2': loader = new P.sb2.SB2FileLoader(buffer); break;
         case 'sb3': loader = new P.sb3.SB3FileLoader(buffer); break;
@@ -1059,6 +1083,7 @@ namespace P.player {
         const buffer = await P.io.readers.toArrayBuffer(file);
 
         switch (extension) {
+          case 'sb': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb');
           case 'sb2': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb2');
           case 'sb3': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb3');
           default: throw new Error('Unrecognized file extension: ' + extension);
@@ -1070,7 +1095,7 @@ namespace P.player {
       }
     }
 
-    async loadProjectFromBuffer(buffer: ArrayBuffer, type: 'sb2' | 'sb3'): Promise<void> {
+    async loadProjectFromBuffer(buffer: ArrayBuffer, type: ProjectType): Promise<void> {
       const { loaderId } = this.beginLoadingProject();
 
       try {
@@ -1092,10 +1117,16 @@ namespace P.player {
    * Error handler UI for Player
    */
   export class ErrorHandler {
-    public static BUG_REPORT_LINK = 'https://github.com/forkphorus/forkphorus/issues/new?title=$title&body=$body';
+    /**
+     * The URL to report bugs to.
+     * $title is replaced with the project title (encoded)
+     * $body is replaced with the bug report body (encoded)
+     */
+    public static BUG_REPORT_LINK = 'https://github.com/forkphorus/forkphorus/issues/new?template=bug_report.md&labels=bug&title=$title&body=$body&';
 
-    private errorEl: HTMLElement | null;
-    private errorContainer: HTMLElement | null;
+    private errorEl: HTMLElement | null = null;
+    private errorContainer: HTMLElement | null = null;
+    public generatedErrorLink: string | null = null;
 
     constructor(public player: ProjectPlayer, options: ErrorHandlerOptions = {}) {
       this.player = player;
@@ -1112,28 +1143,25 @@ namespace P.player {
     /**
      * Create a string representation of an error.
      */
-    stringifyError(error: any): string {
+    private stringifyError(error: any): string {
       if (!error) {
         return 'unknown error';
       }
       if (error.stack) {
         return 'Message: ' + error.message + '\nStack:\n' + error.stack;
       }
-      return error.toString();
+      return '' + error;
     }
 
     /**
-     * Generate the link to report a bug to, including title and metadata.
+     * Generate the link to report a bug to, including project and device information.
+     * @param error An error to include in the bug report
      */
-    createBugReportLink(bodyBefore: string, bodyAfter: string): string {
-      var title = this.getBugReportTitle();
-      bodyAfter = bodyAfter || '';
-      var body =
-        bodyBefore +
-        '\n\n\n-----\n' +
-        this.getBugReportMetadata() +
-        '\n' +
-        bodyAfter;
+    createBugReportLink(error?: any): string {
+      const type = error ? '[Error]' : '[Bug]';
+      const title = `${type} ${this.getBugReportTitle()}`;
+      const body = this.getBugReportBody(error);
+
       return ErrorHandler.BUG_REPORT_LINK
         .replace('$title', encodeURIComponent(title))
         .replace('$body', encodeURIComponent(body));
@@ -1142,7 +1170,10 @@ namespace P.player {
     /**
      * Get the title for bug reports.
      */
-    getBugReportTitle(): string {
+    private getBugReportTitle(): string {
+      if (!this.player.hasProjectMeta()) {
+        return 'Unknown Project';
+      }
       const meta = this.player.getProjectMeta();
       const title = meta.getTitle();
       const id = meta.getId();
@@ -1156,69 +1187,92 @@ namespace P.player {
     }
 
     /**
-     * Get the metadata to include in bug reports.
+     * Generate the body of an error report.
+     * @param error An error to include, if any.
      */
-    getBugReportMetadata(): string {
-      var meta = '';
-      meta += 'Project ID: ' + this.player.getProjectMeta().getId() + '\n';
-      meta += location.href + '\n';
-      meta += navigator.userAgent;
-      return meta;
+    private getBugReportBody(error: any): string {
+      const sections: {title: string; body: string;}[] = [];
+
+      sections.push({
+        title: 'Describe the bug, including any steps to reproduce it',
+        body: '',
+      });
+
+      sections.push({
+        title: 'Project ID, URL, or file',
+        body: this.getProjectInformation(),
+      });
+
+      let debug = '';
+      debug += location.href + '\n';
+      debug += navigator.userAgent + '\n';
+      if (error) {
+        debug += '```\n' + this.stringifyError(error) + '\n```';
+      }
+      sections.push({
+        title: 'Debug information <!-- DO NOT EDIT -->',
+        body: debug,
+      });
+
+      return sections
+        .map((i) => `**${i.title}**\n${i.body}\n`)
+        .join('\n')
+        .trim();
     }
 
     /**
-     * Get the URL to report an error to.
+     * Get the information to display to describe where to find the project.
      */
-    createErrorLink(error: any): string {
-      var body = P.i18n.translate('player.errorhandler.instructions');
-      return this.createBugReportLink(body, '```\n' + this.stringifyError(error) + '\n```');
+    private getProjectInformation(): string {
+      if (!this.player.hasProjectMeta()) {
+        return 'no project meta loaded';
+      }
+      const projectMeta = this.player.getProjectMeta();
+      if (projectMeta.isFromScratch()) {
+        if (projectMeta.getTitle()) {
+          return 'https://scratch.mit.edu/projects/' + projectMeta.getId();
+        } else {
+          return 'https://scratch.mit.edu/projects/' + projectMeta.getId() + ' (probably unshared)';
+        }
+      }
+      return 'Not from Scratch: ' + projectMeta.getId();
     }
 
-    oncleanup(): void {
+    private oncleanup(): void {
       if (this.errorEl && this.errorEl.parentNode) {
         this.errorEl.parentNode.removeChild(this.errorEl);
         this.errorEl = null;
       }
+      this.generatedErrorLink = null;
     }
 
     /**
      * Create an error element indicating that forkphorus has crashed, and where to report the bug.
      */
     handleError(error: any): HTMLElement {
-      var el = document.createElement('div');
-      var errorLink = this.createErrorLink(error);
-      var attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
+      const el = document.createElement('div');
+      const errorLink = this.createBugReportLink(error);
+      this.generatedErrorLink = errorLink;
+      const attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
       // use of innerHTML intentional
       el.innerHTML = P.i18n.translate('player.errorhandler.error').replace('$attrs', attributes);
       return el;
     }
 
     /**
-     * Create an error element indicating this project is not supported.
-     */
-    handleNotSupportedError(error: ProjectNotSupportedError): HTMLElement {
-      var el = document.createElement('div');
-      // use of innerHTML intentional
-      el.innerHTML = P.i18n.translate('player.errorhandler.error.unsupported').replace('$type', error.type);
-      return el;
-    }
-
-    /**
      * Create an error element indicating this project does not exist.
      */
-    handleDoesNotExistError(error: ProjectDoesNotExistError): HTMLElement {
-      var el = document.createElement('div');
+    private handleDoesNotExistError(error: ProjectDoesNotExistError): HTMLElement {
+      const el = document.createElement('div');
       el.textContent = P.i18n.translate('player.errorhandler.error.doesnotexist').replace('$id', error.id);
       return el;
     }
 
-    onerror(error: any): void {
-      var el = document.createElement('div');
+    private onerror(error: any): void {
+      const el = document.createElement('div');
       el.className = 'player-error';
       // Special handling for certain errors to provide a better error message
-      if (error instanceof ProjectNotSupportedError) {
-        el.appendChild(this.handleNotSupportedError(error));
-      } else if (error instanceof ProjectDoesNotExistError) {
+      if (error instanceof ProjectDoesNotExistError) {
         el.appendChild(this.handleDoesNotExistError(error));
       } else {
         el.appendChild(this.handleError(error));
