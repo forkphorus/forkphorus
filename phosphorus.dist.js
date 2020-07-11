@@ -2310,7 +2310,7 @@ var P;
                 });
             }
             load() {
-                return this.try(() => this._load());
+                return this.try(() => requestThrottler.run(() => this._load()));
             }
             getRetryWarningDescription() {
                 return `download image ${this.src}`;

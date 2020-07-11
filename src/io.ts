@@ -379,7 +379,7 @@ namespace P.io {
     }
 
     load(): Promise<HTMLImageElement> {
-      return this.try(() => this._load());
+      return this.try(() => requestThrottler.run(() => this._load())) as Promise<HTMLImageElement>;
     }
 
     getRetryWarningDescription() {
