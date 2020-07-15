@@ -3095,11 +3095,11 @@ namespace P.sb3.compiler {
     return util.booleanInput(`!!self.keys[getKeyCode3(${KEY_OPTION})]`);
   };
   inputLibrary['sensing_loud'] = function(util) {
-    util.stage.initLoudness();
+    util.stage.initMicrophone();
     return util.booleanInput('(self.microphone.getLoudness() > 10)');
   };
   inputLibrary['sensing_loudness'] = function(util) {
-    util.stage.initLoudness();
+    util.stage.initMicrophone();
     return util.numberInput('self.microphone.getLoudness()');
   };
   inputLibrary['sensing_mousedown'] = function(util) {
@@ -3216,7 +3216,7 @@ namespace P.sb3.compiler {
           stallUntil = `runtime.timerStart !== R.timerStart || (runtime.now() - runtime.timerStart) / 1000 <= ${VALUE}`;
           break;
         case 'LOUDNESS':
-          compiler.target.stage.initLoudness();
+          compiler.target.stage.initMicrophone();
           executeWhen = `self.microphone.getLoudness() > ${VALUE}`;
           stallUntil = `self.microphone.getLoudness() <= ${VALUE}`;
           break;
@@ -3480,7 +3480,7 @@ namespace P.sb3.compiler {
   };
   watcherLibrary['sensing_loudness'] = {
     init(watcher) {
-      watcher.stage.initLoudness();
+      watcher.stage.initMicrophone();
     },
     evaluate(watcher) {
       if (watcher.stage.microphone) {

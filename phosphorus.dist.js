@@ -1399,7 +1399,7 @@ var P;
                     this.addExtension(this.speech2text);
                 }
             }
-            initLoudness() {
+            initMicrophone() {
                 if (!this.microphone) {
                     this.microphone = new P.ext.microphone.MicrophoneExtension(this);
                     this.addExtension(this.microphone);
@@ -5498,7 +5498,7 @@ var P;
                         return 'S.distanceTo(' + val(e[1]) + ')';
                     }
                     else if (e[0] === 'soundLevel') {
-                        object.stage.initLoudness();
+                        object.stage.initMicrophone();
                         return 'self.microphone.getLoudness()';
                     }
                     else if (e[0] === 'timestamp') {
@@ -8540,11 +8540,11 @@ var P;
         return util.booleanInput(`!!self.keys[getKeyCode3(${KEY_OPTION})]`);
     };
     inputLibrary['sensing_loud'] = function (util) {
-        util.stage.initLoudness();
+        util.stage.initMicrophone();
         return util.booleanInput('(self.microphone.getLoudness() > 10)');
     };
     inputLibrary['sensing_loudness'] = function (util) {
-        util.stage.initLoudness();
+        util.stage.initMicrophone();
         return util.numberInput('self.microphone.getLoudness()');
     };
     inputLibrary['sensing_mousedown'] = function (util) {
@@ -8649,7 +8649,7 @@ var P;
                     stallUntil = `runtime.timerStart !== R.timerStart || (runtime.now() - runtime.timerStart) / 1000 <= ${VALUE}`;
                     break;
                 case 'LOUDNESS':
-                    compiler.target.stage.initLoudness();
+                    compiler.target.stage.initMicrophone();
                     executeWhen = `self.microphone.getLoudness() > ${VALUE}`;
                     stallUntil = `self.microphone.getLoudness() <= ${VALUE}`;
                     break;
@@ -8906,7 +8906,7 @@ var P;
     };
     watcherLibrary['sensing_loudness'] = {
         init(watcher) {
-            watcher.stage.initLoudness();
+            watcher.stage.initMicrophone();
         },
         evaluate(watcher) {
             if (watcher.stage.microphone) {

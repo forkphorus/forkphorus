@@ -1289,7 +1289,7 @@ namespace P.core {
       }
     }
 
-    initLoudness() {
+    initMicrophone() {
       if (!this.microphone) {
         this.microphone = new P.ext.microphone.MicrophoneExtension(this);
         this.addExtension(this.microphone);
