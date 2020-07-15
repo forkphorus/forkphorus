@@ -47,6 +47,10 @@ namespace P.ext.microphone {
       .then((mediaStream) => {
         const source = P.audio.context!.createMediaStreamSource(mediaStream);
         const analyzer = P.audio.context!.createAnalyser();
+        if (!analyzer.getFloatTimeDomainData) {
+          // Safari is missing this API
+          throw new Error('Missing API getFloatTimeDomainData');
+        }
         source.connect(analyzer);
         microphone = {
           source: source,
