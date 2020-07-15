@@ -2,17 +2,39 @@ body {
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-size: 16px;
   line-height: 1.5;
-  font-weight: 300;
+}
+.dark {
+  background-color: #111;
+  color: #ddd;
+  scrollbar-color: #444 #222;
 }
 
 b {
   font-weight: bold;
 }
+a {
+  cursor: pointer;
+  color: #25d;
+  text-decoration: underline;
+}
+a:visited {
+  color: #73c;
+}
+a:active {
+  color: #03a;
+}
+.dark a {
+  color: #4af;
+}
+.dark a:visited {
+  color: #b381ef;
+}
+.dark a:active {
+  color: #58f;
+}
 
-.dark {
-  background-color: #111;
-  color: #ddd;
-  scrollbar-color: #444 #222;
+input[disabled] {
+  cursor: not-allowed;
 }
 
 #app {
@@ -54,6 +76,7 @@ b {
 .dark .url:focus {
   color: #fff;
 }
+
 .player-progress {
   position: absolute;
   top: 0;
@@ -62,7 +85,6 @@ b {
   height: 100%;
   z-index: -1;
 }
-
 .project-link {
   position: absolute;
   top: 0;
@@ -76,27 +98,6 @@ b {
   background-position-y: -32px;
 }
 
-a {
-  cursor: pointer;
-  color: #25d;
-  text-decoration: underline;
-}
-a:visited {
-  color: #73c;
-}
-a:active {
-  color: #03a;
-}
-.dark a {
-  color: #4af;
-}
-.dark a:visited {
-  color: #b381ef;
-}
-.dark a:active {
-  color: #58f;
-}
-
 .area {
   overflow: hidden;
   margin: 0 -24px;
@@ -108,6 +109,10 @@ a:active {
 }
 #player-area, #project-area {
   height: 0;
+}
+.player-stage {
+  width: 480px;
+  height: 360px;
 }
 
 .project-link {
@@ -130,7 +135,7 @@ h1, p {
 h1 {
   font-size: 24px;
   line-height: 32px;
-  font-weight: 300;
+  font-weight: normal;
   margin: 16px 0 0;
 }
 h1.title {
@@ -171,8 +176,16 @@ code {
     0 0 0 1px rgba(0, 0, 0, .5),
     inset 0 2px 5px rgba(0, 0, 0, .15);
 }
+#package-other-width, #package-other-height, #embed-other-width, #embed-other-height {
+  width: 55px;
+  margin: 0;
+}
+.package-other-divider {
+  margin: 0 -2px;
+  pointer-events: none;
+}
 .package input[type=checkbox] {
-  margin: 0 0 0 16px;
+  margin: 0 0 0 12px;
 }
 #embed-code {
   background-color: white;
@@ -233,7 +246,6 @@ code {
   padding: 0;
   border: 0;
   width: 100%;
-  height: 100%;
   background: transparent;
   color: inherit;
 }
@@ -268,6 +280,10 @@ code {
 #settings input:invalid {
   /* box-shadow is used to modify border and background color because the background/opacity/border styles don't work very well in chrome */
   box-shadow: inset 0 0 0 24px rgba(255, 0, 0, 0.2), 0 0 0 2px #ff6262;
+}
+
+.advanced input[type=checkbox] {
+  margin-left: 12px;
 }
 
 .player-root:not([fullscreen]) .player-stage {

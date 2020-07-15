@@ -4,14 +4,14 @@
     "sourceMap": true,
     "inlineSources": true,
     "target": "es6",
-    // Make TypeScript more strict than it is by default without
-    // making it restrictive.
+    "removeComments": true,
+    // Make TypeScript more strict than it is by default without making it restrictive.
     "alwaysStrict": true,
     "noImplicitThis": true,
     "strictBindCallApply": true,
-    "strictNullChecks": true,
+    "strictNullChecks": true
   },
   "include": [
-    "phosphorus/**/*",
-  ],
+    "src/**/*"
+  ]
 }

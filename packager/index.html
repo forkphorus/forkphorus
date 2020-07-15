@@ -2,32 +2,100 @@
 <html>
 
 <head>
-  <meta charset="utf8">
+  <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="canonical" href="https://forkphorus.github.io/packager/" />
   <style>
     body {
       max-width: 480px;
       margin: auto;
-      font-family: sans-serif;
+      font-family: Helvetica, Arial, sans-serif;
+      line-height: 1.3;
+      margin-bottom: 50px;
     }
+
+    #loading-message {
+      text-align: center;
+      font-style: italic;
+    }
+    #interface-container {
+      position: relative;
+    }
+    #interface-container[data-usable=false] {
+      pointer-events: none;
+      opacity: 0.75;
+    }
+    #interface-container[data-usable=true] #click-disabler {
+      display: none;
+    }
+    #interface-container[data-usable=false] #click-disabler {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      cursor: not-allowed;
+      pointer-events: auto;
+    }
+
     table {
       width: 100%;
       margin-bottom: 10px;
-      border-bottom: 1px solid #aaa;
+      border-bottom: 1px solid rgb(200, 200, 200);
     }
-    textarea, input:not([type="radio"]) {
-      width: 100%;
-    }
+
     .label {
-      width: 150px;
+      width: 120px;
       text-align: center;
       font-weight: bold;
     }
-    .desc {
+
+    .description {
       font-size: smaller;
     }
+
+    input[type=text], input[type=number], input[type=checkbox], select {
+      box-sizing: border-box;
+      width: 100%;
+      color: black;
+      padding: 2px;
+    }
+    label ~ label input[type=radio] {
+      /* apply extra margin to all but the first radio */
+      margin-left: 10px;
+    }
+    textarea {
+      box-sizing: border-box;
+      width: 100%;
+      height: 100px;
+    }
+
+    .progress-label {
+      padding-left: 5px;
+      font-style: italic;
+    }
+
     summary {
       cursor: pointer;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        background-color: #111;
+        color: #ddd;
+      }
+      a {
+        color: #4af;
+      }
+      a:visited {
+        color: #b381ef;
+      }
+      a:active {
+        color: #58f;
+      }
+      table.option {
+        border-color: rgb(53, 53, 53);
+      }
     }
   </style>
   <title>HTML Packager - forkphorus</title>
@@ -36,89 +104,727 @@
 <body>
   <h1>HTML Packager</h1>
 
-  <p>The HTML packager allows you to generate an HTML file for a project, which <a href="guide.html">can be packaged into an EXE file</a> (somewhat) easily.</p>
+  <p>The HTML packager allows you to generate an HTML file for a Scratch project.</p>
 
-  <p>While the packager on the homepage creates a link to a website, this packager generates an easily embedable HTML file that functions independently of this website.</p>
+  <noscript><b>This page requires JavaScript to work properly.</b></noscript>
 
-  <p>Some icons and all note blocks will not work.</p>
+  <ul>
+    <li>Guide: <a href="guide.html" target="_blank">Forkphorus Packager Guide (Windows, Mac, Linux, Android)</a></li>
+    <li>Additional Help: Create an issue on <a href="https://github.com/forkphorus/forkphorus/issues" target="_blank" rel="noopener">GitHub</a></li>
+  </ul>
 
-  <table>
-    <tr>
-      <td class="label">Project Source</td>
-      <td>
-        <label><input type="radio" name="project-type" value="id" checked> Project ID</label>
-        <label><input type="radio" name="project-type" value="file"> Project File</label>
-      </td>
-    </tr>
-    <tr id="project-id-section">
-      <td class="label"><label for="project-id-input">Project ID</label></td>
-      <td><input type="number" id="project-id-input" value="10128407"></td>
-    </tr>
-    <tr id="project-file-section" hidden>
-      <td class="label"><label for="project-file-input">Project File</label></td>
-      <td><input type="file" id="project-file-input" accept=".sb2,.sb3"></td>
-    </tr>
-    <tr>
-      <td colspan="2" class="desc">You can select a project from the scratch.mit.edu website, or choose a project file. Scratch 2 (sb2) and Scratch 3 (sb3) projects are supported.</td>
-    </tr>
-  </table>
+  <div id="loading-message">Loading...</div>
 
-  <table>
-    <tr>
-      <td class="label"><label for="loading-text-input">Loading Text</label></td>
-      <td><input id="loading-text-input" type="text" value="forkphorus"></td>
-    </tr>
-    <tr>
-      <td colspan="2" class="desc"><a href="https://user-images.githubusercontent.com/17209175/58766078-219f4d00-8540-11e9-93f0-b04088efb0a8.png" target="_blank">Displayed while the project is loading.</a> Set to empty to display only a loading bar. <span title="Using HTML is definitely a feature and not just me being lazy.">You can use HTML if you're careful.</span></td>
-    </tr>
-  </table>
+  <div id="interface-container" data-usable="true" hidden>
+    <div id="click-disabler" title="please wait for the packager to finish..."></div>
 
-  <table>
-    <tr>
-      <td class="label"><label for="turbo-input">Turbo Mode?</label></td>
-      <td><input id="turbo-input" type="checkbox"></td>
-    </tr>
-    <tr>
-      <td colspan="2" class="desc">Enable Turbo Mode? This option will be in effect for the entire project, and cannot be changed while it is running.</td>
-    </tr>
-  </table>
+    <div id="options">
+      <!-- JS injects options into here -->
+    </div>
 
-  <details>
-    <!-- wont work in edge/ie but whatever -->
-    <summary>Advanced options</summary>
-    <table>
-      <tr>
-        <td class="label"><label for="post-load-script-input">Custom JS</label></td>
-        <td><textarea id="post-load-script-input">player.stage.username = '';
-player.stage.runtime.framerate = 30;</textarea></td>
-      </tr>
-      <tr>
-        <td colspan="2" class="desc">Custom JavaScript to execute after the project has loaded. The sample script shows how you could change the framerate or username.</td>
-      </tr>
-    </table>
+    <section>
+      <button id="package-html">Package Project</button>
+    </section>
 
-    <table>
-      <tr>
-        <td class="label"><label for="custom-style-input">Custom CSS</label></td>
-        <td><textarea id="custom-style-input">.progress { border-color: white; }
-.progress-bar { background: white; }</textarea></td>
-      </tr>
-      <tr>
-        <td colspan="2" class="desc">Customize the look of the player. The example shows how you can change the color of the progress bar.</td>
-      </tr>
-    </table>
-  </details>
-
-  <p>
-    <button id="package-html">Package to HTML</button>
-  </p>
-
-  <section id="loading-section"></section>
+    <section id="loading-section">
+      <!-- JS injects progress bars here -->
+    </section>
+  </div>
 
   <script src="../lib/details-element-polyfill.js"></script>
   <script src="../lib/jszip.min.js"></script>
   <script src="loader.js"></script>
-  <script src="packager.js"></script>
+  <script src="packer.js"></script>
+
+  <!-- Core File Loader & Assets -->
+  <script>
+    const fileLoader = new Packer.FileLoader();
+
+    fileLoader.files = [
+      { type: 'style', src: 'phosphorus.css', inlineSources: [
+        'icons.svg',
+        'icons/click-to-play.svg',
+        'fonts/DonegalOne-Regular.woff',
+        'fonts/GloriaHallelujah.woff',
+        'fonts/MysteryQuest-Regular.woff',
+        'fonts/PermanentMarker-Regular.woff',
+      ]},
+      { type: 'script', src: 'lib/scratch-sb1-converter.js', },
+      { type: 'script', src: 'lib/canvg.min.js', },
+      { type: 'script', src: 'lib/fontfaceobserver.standalone.js', },
+      { type: 'script', src: 'lib/jszip.min.js', },
+      { type: 'script', src: 'lib/rgbcolor.js', },
+      { type: 'script', src: 'lib/stackblur.min.js', },
+      { type: 'script', src: 'phosphorus.dist.js', inlineSources: ['icons.svg'] },
+    ];
+
+    fileLoader.assets = [
+      { src: 'soundbank/sb2/instruments/AcousticGuitar_F3_22k.wav', },
+      { src: 'soundbank/sb2/instruments/AcousticPiano(5)_A%233_22k.wav', },
+      { src: 'soundbank/sb2/instruments/AcousticPiano(5)_C4_22k.wav', },
+      { src: 'soundbank/sb2/instruments/AcousticPiano(5)_G4_22k.wav', },
+      { src: 'soundbank/sb2/instruments/AcousticPiano(5)_F5_22k.wav', },
+      { src: 'soundbank/sb2/instruments/AcousticPiano(5)_C6_22k.wav', },
+      { src: 'soundbank/sb2/instruments/AcousticPiano(5)_D%236_22k.wav', },
+      { src: 'soundbank/sb2/instruments/AcousticPiano(5)_D7_22k.wav', },
+      { src: 'soundbank/sb2/instruments/AltoSax_A3_22K.wav', },
+      { src: 'soundbank/sb2/instruments/AltoSax(3)_C6_22k.wav', },
+      { src: 'soundbank/sb2/instruments/Bassoon_C3_22k.wav', },
+      { src: 'soundbank/sb2/instruments/BassTrombone_A2(2)_22k.wav', },
+      { src: 'soundbank/sb2/instruments/BassTrombone_A2(3)_22k.wav', },
+      { src: 'soundbank/sb2/instruments/Cello(3b)_C2_22k.wav', },
+      { src: 'soundbank/sb2/instruments/Cello(3)_A%232_22k.wav', },
+      { src: 'soundbank/sb2/instruments/Choir(4)_F3_22k.wav', },
+      { src: 'soundbank/sb2/instruments/Choir(4)_F4_22k.wav', },
+      { src: 'soundbank/sb2/instruments/Choir(4)_F5_22k.wav', },
+      { src: 'soundbank/sb2/instruments/Clarinet_C4_22k.wav', },
+      { src: 'soundbank/sb2/instruments/ElectricBass(2)_G1_22k.wav', },
+      { src: 'soundbank/sb2/instruments/ElectricGuitar(2)_F3(1)_22k.wav', },
+      { src: 'soundbank/sb2/instruments/ElectricPiano_C2_22k.wav', },
+      { src: 'soundbank/sb2/instruments/ElectricPiano_C4_22k.wav', },
+      { src: 'soundbank/sb2/instruments/EnglishHorn(1)_D4_22k.wav', },
+      { src: 'soundbank/sb2/instruments/EnglishHorn(1)_F3_22k.wav', },
+      { src: 'soundbank/sb2/instruments/Flute(3)_B5(1)_22k.wav', },
+      { src: 'soundbank/sb2/instruments/Flute(3)_B5(2)_22k.wav', },
+      { src: 'soundbank/sb2/instruments/Marimba_C4_22k.wav', },
+      { src: 'soundbank/sb2/instruments/MusicBox_C4_22k.wav', },
+      { src: 'soundbank/sb2/instruments/Organ(2)_G2_22k.wav', },
+      { src: 'soundbank/sb2/instruments/Pizz(2)_A3_22k.wav', },
+      { src: 'soundbank/sb2/instruments/Pizz(2)_E4_22k.wav', },
+      { src: 'soundbank/sb2/instruments/Pizz(2)_G2_22k.wav', },
+      { src: 'soundbank/sb2/instruments/SteelDrum_D5_22k.wav', },
+      { src: 'soundbank/sb2/instruments/SynthLead(6)_C4_22k.wav', },
+      { src: 'soundbank/sb2/instruments/SynthLead(6)_C6_22k.wav', },
+      { src: 'soundbank/sb2/instruments/SynthPad(2)_A3_22k.wav', },
+      { src: 'soundbank/sb2/instruments/SynthPad(2)_C6_22k.wav', },
+      { src: 'soundbank/sb2/instruments/TenorSax(1)_C3_22k.wav', },
+      { src: 'soundbank/sb2/instruments/Trombone_B3_22k.wav', },
+      { src: 'soundbank/sb2/instruments/Trumpet_E5_22k.wav', },
+      { src: 'soundbank/sb2/instruments/Vibraphone_C3_22k.wav', },
+      { src: 'soundbank/sb2/instruments/Violin(2)_D4_22K.wav', },
+      { src: 'soundbank/sb2/instruments/Violin(3)_A4_22k.wav', },
+      { src: 'soundbank/sb2/instruments/Violin(3b)_E5_22k.wav', },
+      { src: 'soundbank/sb2/instruments/WoodenFlute_C5_22k.wav', },
+      { src: 'soundbank/sb2/drums/BassDrum(1b)_22k.wav', },
+      { src: 'soundbank/sb2/drums/Bongo_22k.wav', },
+      { src: 'soundbank/sb2/drums/Cabasa(1)_22k.wav', },
+      { src: 'soundbank/sb2/drums/Clap(1)_22k.wav', },
+      { src: 'soundbank/sb2/drums/Claves(1)_22k.wav', },
+      { src: 'soundbank/sb2/drums/Conga(1)_22k.wav', },
+      { src: 'soundbank/sb2/drums/Cowbell(3)_22k.wav', },
+      { src: 'soundbank/sb2/drums/Crash(2)_22k.wav', },
+      { src: 'soundbank/sb2/drums/Cuica(2)_22k.wav', },
+      { src: 'soundbank/sb2/drums/GuiroLong(1)_22k.wav', },
+      { src: 'soundbank/sb2/drums/GuiroShort(1)_22k.wav', },
+      { src: 'soundbank/sb2/drums/HiHatClosed(1)_22k.wav', },
+      { src: 'soundbank/sb2/drums/HiHatOpen(2)_22k.wav', },
+      { src: 'soundbank/sb2/drums/HiHatPedal(1)_22k.wav', },
+      { src: 'soundbank/sb2/drums/Maracas(1)_22k.wav', },
+      { src: 'soundbank/sb2/drums/SideStick(1)_22k.wav', },
+      { src: 'soundbank/sb2/drums/SnareDrum(1)_22k.wav', },
+      { src: 'soundbank/sb2/drums/Tambourine(3)_22k.wav', },
+      { src: 'soundbank/sb2/drums/Tom(1)_22k.wav', },
+      { src: 'soundbank/sb2/drums/Triangle(1)_22k.wav', },
+      { src: 'soundbank/sb2/drums/Vibraslap(1)_22k.wav', },
+      { src: 'soundbank/sb2/drums/WoodBlock(1)_22k.wav', },
+      { src: 'fonts/Knewave-Regular.woff', },
+      { src: 'fonts/Handlee-Regular.woff', },
+      { src: 'fonts/Grand9K-Pixel.ttf', },
+      { src: 'fonts/Griffy-Regular.woff', },
+      { src: 'fonts/SourceSerifPro-Regular.woff', },
+      { src: 'fonts/NotoSans-Regular.woff', },
+    ];
+  </script>
+
+  <!-- Core Option Logic (no options implemented here) -->
+  <script>
+    class Option {
+      constructor(options) {
+        // Init main structure
+        this.root = document.createElement('table');
+        this.root.className = 'option';
+
+        this.labelContainer = document.createElement('td');
+        this.labelContainer.className = 'label';
+
+        this.inputContainer = document.createElement('td');
+        this.inputContainer.className = 'input';
+
+        const row = document.createElement('tr');
+        row.appendChild(this.labelContainer);
+        row.appendChild(this.inputContainer);
+        this.root.appendChild(row);
+
+        this.parserFunction = (v) => v;
+
+        // Init data
+        this._value = null;
+      }
+
+      // Add a label to this Option.
+      label(label) {
+        this.labelText = document.createElement('label');
+        this.labelText.textContent = label;
+        this.labelContainer.appendChild(this.labelText);
+        return this;
+      }
+
+      // Add a radio input (multiple choice)
+      radio(id, choices) {
+        for (const i of choices) {
+          const el = document.createElement('label');
+          const radio = document.createElement('input');
+          radio.name = id;
+          radio.type = 'radio';
+          radio.value = i.value;
+
+          radio.onclick = () => {
+            this.setValue(radio.value);
+          };
+          if (i.checked) {
+            radio.checked = true;
+            this.setValue(radio.value);
+          }
+
+          el.appendChild(radio);
+          el.appendChild(document.createTextNode(i.label));
+          this.inputContainer.appendChild(el);
+        }
+        return this;
+      }
+
+      // Add a text, checkbox, or number input
+      input(options = {}) {
+        const input = document.createElement('input');
+
+        input.type = options.type || 'text';
+        if (options.pattern) input.pattern = options.pattern;
+        if (options.value) input.value = options.value;
+
+        const getValue = () => {
+          if (options.type === 'checkbox') {
+            return input.checked;
+          } else if (options.type === 'number') {
+            return +input.value;
+          } else {
+            return input.value;
+          }
+        };
+
+        input.onchange = () => {
+          this.setValue(getValue());
+        };
+        this.setValue(getValue());
+
+        this.inputContainer.appendChild(input);
+        return this;
+      }
+
+      // Add a multiline textarea
+      textarea(options = {}) {
+        const textarea = document.createElement('textarea');
+
+        if (options.value) textarea.value = options.value;
+
+        textarea.onchange = () => {
+          this.setValue(textarea.value);
+        };
+        this.setValue(textarea.value);
+
+        this.inputContainer.appendChild(textarea);
+        return this;
+      }
+
+      // Add a file input
+      file(options = {}) {
+        const input = document.createElement('input');
+        input.type = 'file';
+
+        if (options.accept) {
+          input.accept = options.accept;
+        }
+
+        input.onchange = () => {
+          this.setValue(input.files[0]);
+        };
+
+        this.inputContainer.appendChild(input);
+        return this;
+      }
+
+      // Add a dropdown input
+      select(options) {
+        const el = document.createElement('select');
+
+        for (const i of options) {
+          const opt = document.createElement('option');
+          opt.value = i.value;
+          opt.textContent = i.label;
+          el.appendChild(opt);
+        }
+
+        this.setValue(el.value);
+        el.onchange = () => {
+          this.setValue(el.value);
+        };
+
+        this.inputContainer.appendChild(el);
+        return this;
+      }
+
+      // Set parser
+      parser(p) {
+        this.parserFunction = p;
+        return this;
+      }
+
+      // Add a description
+      description(content) {
+        const row = document.createElement('tr');
+        row.className = 'description';
+
+        const description = document.createElement('td');
+        description.colSpan = 2;
+        // innerHTML intentional: allows use of HTML in descriptions
+        // allow values of `content` are in the source code already so this is not a security vulnerability
+        description.innerHTML = content;
+
+        row.appendChild(description);
+        this.root.appendChild(row);
+        return this;
+      }
+
+      setValue(v) {
+        this._value = this.parserFunction(v);
+        this.onchange(this._value);
+      }
+
+      get value() {
+        return this._value;
+      }
+
+      // Show this option
+      show() {
+        this.root.hidden = false;
+        return this;
+      }
+
+      // Hide this option
+      hide() {
+        this.root.hidden = true;
+        return this;
+      }
+
+      setVisible(visible) {
+        if (visible) {
+          this.show();
+        } else {
+          this.hide();
+        }
+        return this;
+      }
+
+      add(section = defaultSection) {
+        section._sectionRoot.appendChild(this.root);
+        return this;
+      }
+
+      onchange(value) {
+
+      }
+    }
+
+    class Section {
+      constructor(title, options = {}) {
+        if ('collapsable' in options ? options.collapsable : true) {
+          this._sectionRoot = document.createElement('details');
+          this._sectionRoot.open = 'open' in options ? options.open : false;
+          const summary = document.createElement('summary');
+          summary.textContent = title;
+          this._sectionRoot.appendChild(summary);
+        } else {
+          this._sectionRoot = document.createElement('div');
+        }
+
+        optionsContainer.appendChild(this._sectionRoot);
+      }
+    }
+
+    const optionsContainer = document.querySelector('#options');
+    const defaultSection = new Section('Options', { collapsable: false });
+  </script>
+
+  <!-- Base Options -->
+  <script>
+    const projectSource = new Option()
+      .label('Project Source')
+      .radio('select-project-type', [
+        { value: 'id', label: 'Project ID', checked: true },
+        { value: 'file', label: 'Project File', checked: false },
+      ])
+      .add();
+
+    const projectId = new Option()
+      .label('Project ID')
+      .input({ pattern: '.*[0-9]+.*', value: location.hash ? location.hash.substr(1) : '10128407' })
+      .parser((input) => input.match(/\d+/)[0])
+      .description('Load a project from scratch.mit.edu. Project ID or URL are accepted. Note: Projects on scratch.mit.edu are licensed under <a href="https://creativecommons.org/licenses/by-sa/2.0/" target="_blank" rel="noopener">CC BY-SA 2.0</a>. Please ensure you comply with this license if this is not your project.')
+      .add();
+
+    const projectFile = new Option()
+      .label('Project File')
+      .file({ accept: '.sb,.sb2,.sb3' })
+      .description('.sb, .sb2, and .sb3 files are supported.')
+      .hide()
+      .add();
+
+    projectSource.onchange = (value) => {
+      projectId.hide();
+      projectFile.hide();
+      if (value === 'id') projectId.show();
+      if (value === 'file') projectFile.show();
+    };
+
+    const playerOptionsSection = new Section('Player Options', { open: true });
+
+    const turbo = new Option()
+      .label('Turbo Mode')
+      .input({ type: 'checkbox' })
+      .description('Enables Turbo Mode')
+      .add(playerOptionsSection);
+
+    const showControls = new Option()
+      .label('Show Controls')
+      .input({ type: 'checkbox' })
+      .description('Show or hide the control widget. This includes the flag, stop sign, pause, but not fullscreen (for now). The user can enable or disable Turbo Mode with this enabled.')
+      .add(playerOptionsSection);
+
+    const username = new Option()
+      .label('Username')
+      .input()
+      .description('The value of the "username" block.')
+      .add(playerOptionsSection);
+
+    const autoplay = new Option()
+      .label('Autoplay')
+      .select([
+        { value: 'always', label: 'Always', selected: true },
+        { value: 'never', label: 'Never' },
+        { value: 'if-audio-playable', label: 'If audio can be played' },
+      ])
+      .description('Controls whether the project automatically begins.')
+      .add(playerOptionsSection);
+
+    const fps = new Option()
+      .label('Framerate')
+      .input({ type: 'number', value: 30 })
+      .description('Framerate in frames per second.')
+      .add(playerOptionsSection);
+
+    const cloudVariables = new Section('Cloud Variable Options (BETA)');
+    cloudVariables.storeInLocalStorage = new Option()
+      .label('Store Cloud Variables')
+      .input({ type: 'checkbox' })
+      .description('Stores Cloud Variables in the browser\'s localStorage. This means that they will be remembered even after closing and reopening the app. Note: This is in beta, and has not been fully tested. Please test it yourself (and let us know if it works)')
+      .add(cloudVariables);
+
+    const loadingScreen = new Section('Loading Screen Options');
+    loadingScreen.text = new Option()
+      .label('Loading screen text')
+      .input({ value: 'forkphorus' })
+      .description('Text to be displayed while the project is loading. Set to blank to display only a progress bar.')
+      .add(loadingScreen);
+  </script>
+
+  <!-- Environment -->
+  <script>
+    const environment = new Section('Environment Options');
+
+    environment.loader = new Packer.FileLoader();
+    environment.defaultIconAsset = { src: 'packager/defaultIcon.png' };
+    environment.loader.assets.push(environment.defaultIconAsset);
+
+    environment.environment = new Option()
+      .label('Packager Environment')
+      .select([
+        { value: 'none', label: 'None (Plain HTML)', selected: true },
+        { value: 'phonegap', label: 'PhoneGap' },
+        { value: 'nwjs-win', label: 'NW.js (Windows/Linux)' },
+        { value: 'nwjs-mac', label: 'NW.js (Mac)' },
+      ])
+      .description('Enable special behavior for certain environments. You <b>must</b> read <a href="guide.html" target="_blank">the guide</a> before changing this value. This setting does not do anything on its own, additional configuration and steps are required.')
+      .add(environment);
+
+    environment.icon = new Option()
+      .label('Icon (.png)')
+      .file({ accept: '.png' })
+      .description('The icon that to be used. If you do not select an icon, a default will be used instead.')
+      .hide()
+      .add(environment);
+
+    environment.environment.onchange = (value) => {
+      environment.icon.setVisible(value !== 'none' && value !== 'nwjs-mac');
+      phonegap.setVisible(value === 'phonegap');
+      nwjs.setVisible(value === 'nwjs-win' || value === 'nwjs-mac');
+    };
+  </script>
+
+  <!-- PhoneGap Environment -->
+  <script>
+    const phonegap = {};
+
+    phonegap.xml = new Option()
+      .label('PhoneGap config.xml')
+      .textarea({ value: `<?xml version="1.0" encoding="UTF-8" ?>
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:gap="http://phonegap.com/ns/1.0" id="io.github.forkphorus.example" version="1.0.0" >
+
+  <name>Forkphorus Packaged App</name>
+
+  <description>Some description.</description>
+
+  <author href="https://scratch.mit.edu/users/you" email="you@example.com">You</author>
+
+  <icon src="icon.png" />
+
+</widget>`})
+      .description('This is the config file for PhoneGap apps. It allows you to control name, ID, description, author, version, etc. This is XML, so formatting like quotes, angled brackets, and case are important.')
+      .hide()
+      .add(environment);
+
+    phonegap.setVisible = (visible) => {
+      phonegap.xml.setVisible(visible);
+    };
+  </script>
+
+  <!-- NW.js Environment -->
+  <script>
+    const nwjs = {};
+
+    nwjs.json = new Option()
+      .label('NW.js package.json')
+      .textarea({ value: `{
+  "name": "Name of the project",
+  "main": "project.html",
+  "window": {
+    "title": "The title of the window",
+    "width": 480,
+    "height": 360,
+    "resizable": true,
+    "icon": "icon.png"
+  }
+}`})
+      .description('This is the config file for NW.js apps. You can use the <a href="config_generator.html" target="_blank">the config generator</a> to generate this text automatically.')
+      .hide()
+      .add(environment);
+
+    nwjs.setVisible = (visible) => {
+      nwjs.json.setVisible(visible);
+    };
+  </script>
+
+  <!-- Interface Logic -->
+  <script>
+    const interfaceContainer = document.getElementById('interface-container');
+    const loadingSection = document.getElementById('loading-section');
+    let progressBar = null;
+
+    function resetProgress() {
+      while (loadingSection.firstChild) {
+        loadingSection.removeChild(loadingSection.firstChild);
+      }
+    }
+
+    function setProgress(p) {
+      progressBar.progressElement.value = p;
+    }
+
+    function updateProgress() {
+      setProgress(progressBar.finishedTasks / progressBar.totalTasks || 0);
+    }
+
+    function setAction(action) {
+      if (progressBar) {
+        setProgress(1);
+      }
+
+      const el = document.createElement('div');
+      const progress = document.createElement('progress');
+      progress.value = 0;
+      progress.className = 'progress-bar';
+      const label = document.createElement('span');
+      label.className = 'progress-label';
+      label.textContent = action;
+      el.appendChild(progress);
+      el.appendChild(label);
+      loadingSection.appendChild(el);
+
+      progressBar = {
+        name: action,
+        progressElement: progress,
+        totalTasks: 0,
+        finishedTasks: 0,
+      };
+    }
+
+    function newTask() {
+      progressBar.totalTasks++;
+      updateProgress();
+    }
+
+    function endTask() {
+      progressBar.finishedTasks++;
+      updateProgress();
+    }
+
+    function bindProgress(name, progress) {
+      progress.start = () => setAction(name);
+      fileLoader.progress.newTask = () => newTask();
+      fileLoader.progress.endTask = () => endTask();
+      fileLoader.progress.setProgress = (progress) => setProgress(progress);
+    }
+
+    function setInputsUsable(usable) {
+      interfaceContainer.dataset.usable = usable;
+      for (const element of document.querySelectorAll('input, button')) {
+        element.disabled = !usable;
+      }
+    }
+
+    SBDL.progressHooks.start = () => setAction('Loading project files');
+    SBDL.progressHooks.newTask = () => newTask();
+    SBDL.progressHooks.finishTask = () => endTask();
+
+    bindProgress('Loading internal files', fileLoader.progress);
+
+    function addDownloadLink(content, fileName) {
+      function getBlob() {
+        if (content instanceof Blob) {
+          return content;
+        }
+        if ('TextEncoder' in window) {
+          // firefox, chrome
+          const encoder = new TextEncoder();
+          return new Blob([encoder.encode(content)]);
+        } else {
+          // Using TextEncoder is the best method, but Edge doesn't support it.
+          const bytes = new Array(content.length);
+          for (let i = 0; i < content.length; i++) {
+            bytes[i] = content.charCodeAt(i);
+          }
+          return new Blob([new Uint8Array(bytes)]);
+        }
+      }
+      const link = document.createElement('a');
+      const blob = getBlob();
+      const size = blob.size / 1024 / 1024;
+      link.href = URL.createObjectURL(blob);
+      link.textContent = `Download ${fileName} (${size.toFixed(2)} MiB)`;
+      link.download = fileName;
+      loadingSection.appendChild(link);
+      link.click();
+    }
+
+    document.querySelector('#package-html').onclick = async function() {
+      try {
+        resetProgress();
+        setInputsUsable(false);
+
+        // Init Packager
+        const packager = new Packer.Packager({ fileLoader });
+        bindProgress('Creating archive', packager.archiveProgress);
+
+        // Set options
+        packager.playerOptions.turbo = turbo.value;
+        packager.playerOptions.autoplayPolicy = autoplay.value;
+        packager.playerOptions.username = username.value;
+        packager.playerOptions.fps = fps.value;
+        packager.playerOptions.cloudVariables = cloudVariables.storeInLocalStorage.value ? 'localStorage' : 'off';
+        if (showControls.value) {
+          packager.controlsOptions = { enableFullscreen: false };
+        }
+
+        packager.loadingScreenOptions.text = loadingScreen.text.value;
+
+        // Fetch the project
+        setAction('Loading project data');
+        if (projectSource.value === 'id') {
+          if (!/^\d+$/.test(projectId.value)) {
+            throw new Error('Invalid Project ID');
+          }
+          // Comply with CC BY-SA 2.0
+          packager.projectAttribution = 'Project is loaded from: https://scratch.mit.edu/projects/' + projectId.value + '. Projects from scratch.mit.edu are generally licensed under CC BY-SA 2.0';
+          await packager.loadProjectById(projectId.value);
+        } else if (projectSource.value === 'file') {
+          if (!projectFile.value) {
+            throw new Error('No file selected');
+          }
+          await packager.loadProjectFromFile(projectFile.value);
+          packager.projectAttribution = 'No license assumed.';
+        } else {
+          throw new Error('projectSource is an unknown value: ' + projectSource.value);
+        }
+
+        // Package to HTML
+        let filename = 'project';
+        let filetype = 'html';
+        let result = await packager.run();
+
+        // Environments
+        const environmentType = environment.environment.value;
+        if (environment.environment.value !== 'none') {
+          let icon = environment.icon.value;
+          if (!icon) {
+            // Apply & load default icon
+            if (!environment.defaultIconAsset.blob) {
+              bindProgress('Loading default icon', environment.loader.progress);
+              await environment.loader.loadMissingAssets();
+            }
+            icon = environment.defaultIconAsset.blob;
+          }
+
+          const zipper = new Packer.Zipper();
+
+          if (environmentType === 'phonegap') {
+            bindProgress('Packaging for PhoneGap', zipper.progress);
+            filetype = 'zip';
+            zipper.addFile('index.html', result);
+            zipper.addFile('icon.png', icon);
+            zipper.addFile('config.xml', phonegap.xml.value);
+          } else if (environmentType === 'nwjs-win' || environmentType === 'nwjs-mac') {
+            bindProgress('Packaging for NW.js', zipper.progress);
+            if (environmentType === 'nwjs-win') {
+              filename = 'package';
+            } else {
+              filename = 'app';
+            }
+            filetype = 'nw';
+            zipper.addFile('project.html', result);
+            zipper.addFile('icon.png', icon);
+            zipper.addFile('package.json', nwjs.json.value);
+          } else {
+            throw new Error('Unknown environment: ' + environmentType);
+          }
+
+          result = await zipper.zip();
+        }
+
+        // Finalize loading and download the file
+        setProgress(1);
+        addDownloadLink(result, `${filename}.${filetype}`);
+      } catch (e) {
+        console.error(e);
+        alert('There was an error running the packager:\n' + e);
+      }
+
+      // Always reset this state, even when an error occurs.
+      progressBar = null;
+      setInputsUsable(true);
+    }
+
+    // Show the interface
+    document.getElementById('loading-message').hidden = true;
+    document.getElementById('interface-container').hidden = false;
+  </script>
 
 </body>
 

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="robots" content="noindex">
+    <style>
+      body {
+        font-family: sans-serif;
+      }
+    </style>
+  </head>
+
+  <body>
+
+    <p>All of these errors are entirely intentional.</p>
+
+    <p><a href="/app.html?id=354049970&debug">Also in the packaged app</a></p>
+
+    <h2>Basic with controls</h2>
+    <iframe src="/embed.html?id=354049970&auto-start=true&light-content=false&debug" width="482" height="393" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
+
+    <h2>Dark with controls</h2>
+    <div style="padding: 10px; width: 480px; background: #111;">
+      <iframe src="/embed.html?id=354049970&auto-start=true&light-content=true&debug" width="482" height="393" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
+    </div>
+
+    <h2>No controls</h2>
+    <iframe src="/embed.html?id=354049970&ui=false&debug" width="480" height="360" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
+
+    <h2>Does not exist</h2>
+    <iframe src="/embed.html?id=-1&ui=false&debug" width="480" height="360" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
+
+    <h2>Legacy embed.js</h2>
+    <script src="/embed.js?id=354049970&debug"></script>
+
+  </body>
+</html>

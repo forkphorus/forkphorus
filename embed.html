@@ -1,15 +1,17 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
   <title>forkphorus</title>
   <link rel="stylesheet" href="phosphorus.css">
-  <link rel="stylesheet" href="player.css">
 
   <style>
     body {
       margin: 0 auto;
+      overflow: hidden;
     }
     .hide-ui .player {
       box-shadow: none;
@@ -28,75 +30,109 @@
 <body>
   <div class="player"></div>
 
+  <script src="lib/scratch-sb1-converter.js"></script>
   <script src="lib/jszip.min.js"></script>
   <script src="lib/fontfaceobserver.standalone.js"></script>
   <script src="lib/stackblur.min.js"></script>
   <script src="lib/rgbcolor.js"></script>
   <script src="lib/canvg.min.js"></script>
   <script src="phosphorus.dist.js"></script>
-  <script src="player.js"></script>
+  <script src="common.js"></script>
 
   <script>
   (function() {
     'use strict';
 
-    var stage;
+    var player = new P.player.Player();
 
-    var projectId = 17088932;
-    var autoStart = true;
-    var lightContent = false;
     var hasUI = true;
+    Common.parseSearch(function(key, value) {
+      switch (key) {
+        case 'auto-start':
+          if (value === 'true') {
+            player.setOptions({ autoplayPolicy: 'always' });
+          } else {
+            player.setOptions({ autoplayPolicy: 'never' });
+          }
+          break;
+        case 'light-content':
+          if (value === 'true') {
+            player.setOptions({ theme: 'dark' });
+          } else {
+            player.setOptions({ theme: 'light' });
+          }
+          break;
+        case 'ui':
+          hasUI = value !== 'false';
+          break;
+      }
+    });
 
-    // Reads URL parameters.
-    var params = location.search.substr(1).split('&');
-    params.forEach(function(p) {
-      const parts = p.split('=');
-      if (parts.length > 1) {
-        switch (parts[0]) {
-          case 'id':
-            projectId = Number(parts[1]);
-            break;
-          case 'auto-start':
-            autoStart = parts[1] !== 'false';
-            break;
-          case 'light-content':
-            lightContent = parts[1] !== 'false';
-            break;
-          case 'ui':
-            hasUI = parts[1] !== 'false';
-            break;
+    var width = window.innerWidth;
+
+    player.setOptions(Common.playerOptions);
+    player.setOptions({ focusOnLoad: false });
+
+    if (hasUI) {
+      document.body.classList.add('has-ui');
+      player.addControls();
+      // space for border
+      width -= 2;
+      new P.player.ProgressBar(player, {position: 'controls'});
+    }
+    new P.player.ErrorHandler(player);
+    document.querySelector('.player').appendChild(player.root);
+
+    // Implement Parent -> Embed API
+    window.addEventListener('message', function(e) {
+      var data = e.data;
+      var type = data.type;
+      switch (type) {
+        case 'start': {
+          player.resume();
+          break;
+        }
+        case 'pause': {
+          player.pause();
+          break;
+        }
+        default: {
+          console.warn('Unknown message type from parent', type);
         }
       }
     });
 
-    // Combination of project ID, auto start, light content, ui, current time, and some randomness.
-    var id = projectId + '-' + +autoStart + +lightContent + +hasUI + '-' + Date.now() + '-' + Math.random().toString().substr(2, 5);
-
-    function postMessage(type, payload) {
-      if (window.parent && window.parent.postMessage) {
-        window.parent.postMessage({
+    // Implement Embed -> Parent API
+    var id = Math.random().toString().substr(2, 5) + '-' + Common.projectId + '-' + Date.now();
+    function postMessage(type, data) {
+      if (window.parent && window.parent !== window && window.parent.postMessage) {
+        var data = Object.assign({
           id: id,
           type: type,
-          payload: payload,
-        }, '*');
+        }, data || {});
+        window.parent.postMessage(data, '*');
       }
     }
+    player.onprogress.subscribe(function(progress) {
+      postMessage('progress', { progress: progress });
+    });
+    player.onload.subscribe(function() {
+      postMessage('load');
+    });
+    player.onstartload.subscribe(function() {
+      postMessage('startload');
+    });
+    player.onerror.subscribe(function(error) {
+      postMessage('error');
+    });
+    player.onpause.subscribe(function(error) {
+      postMessage('pause');
+    });
+    postMessage('hello', { version: 1 });
 
-    if (hasUI) {
-      document.body.classList.add('has-ui');
-    }
-
-    var player = new P.Player({theme: lightContent ? 'dark' : 'light'});
-    if (hasUI) {
-      player.addControls();
-      new P.Player.ProgressBar(player, {position: 'controls'});
-    }
-    document.querySelector('.player').appendChild(player.root);
-    postMessage('stateChange', 'loading');
-
-    player.loadProjectId(projectId, { start: autoStart })
+    player.loadProjectById(Common.projectId)
       .then(function() {
-        postMessage('stateChange', 'ready');
+        player.stage.setZoom(width / 480);
       });
   }());
   </script>

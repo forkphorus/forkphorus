@@ -4,7 +4,9 @@
 <head>
   <title>Test Suite</title>
 
+  <meta charset="utf-8">
   <link rel="stylesheet" href="../phosphorus.css">
+  <script src="../lib/scratch-sb1-converter.js"></script>
   <script src="../lib/jszip.min.js"></script>
   <script src="../lib/fontfaceobserver.standalone.js"></script>
   <script src="../lib/stackblur.min.js"></script>
@@ -20,6 +22,12 @@
     height: 360px;
     margin: 5px 0;
   }
+  .suite-failed {
+    background-color: rgb(255, 204, 204);
+  }
+  .suite-passed {
+    background-color: rgb(204, 255, 204);
+  }
 
   table {
     border-collapse: collapse;
@@ -27,13 +35,11 @@
   th {
     min-width: 100px;
   }
-  table, td, th {
-    border: 1px solid black;
+  td {
+    vertical-align: top;
   }
-
-  .table-placeholder {
-    text-align: center;
-    font-style: italic;
+  table.border, table.border td, table.border th {
+    border: 1px solid black;
   }
 
   .cell-name {
@@ -58,17 +64,16 @@
 <body>
   <h1>Test suite</h1>
 
-  <p>
-    Test suite for forkphorus. Some tests will fail; that is normal.
-    <a href="https://github.com/forkphorus/forkphorus/tree/master/tests#readme">More information</a>.
-  </p>
+  <p>Test suite for forkphorus. <a href="https://github.com/forkphorus/forkphorus/tree/master/tests#readme">More information</a>.</p>
 
-  <button id="ui-run-sb3">Run Scratch 3 tests</button>
-  <button id="ui-run-sb2">Run Scratch 2 tests</button>
-
-  <div id="suite-container"></div>
-  <div id="suite-final-results"></div>
   <table>
+    <tr>
+      <td><div id="suite-container"></div></td>
+      <td><div id="suite-final-results"></div></td>
+    </tr>
+  </table>
+
+  <table class="border">
     <thead>
       <tr>
         <th><!-- Project Path --></th>
@@ -77,11 +82,7 @@
         <th>Project Time</th>
       </tr>
     </thead>
-    <tbody id="suite-table">
-      <tr>
-        <td class="table-placeholder" colspan="4">waiting for tests...</td>
-      </tr>
-    </tbody>
+    <tbody id="suite-table"></tbody>
   </table>
 
   <script src="suite.js"></script>
@@ -98,43 +99,14 @@
         P.suite.defaults.repeatCount = 50;
       }
 
-      const sb3button = document.getElementById('ui-run-sb3');
-      const sb2button = document.getElementById('ui-run-sb2');
+      P.audio.context = null;
 
-      function toggleInputs(enabled) {
-        sb3button.disabled = !enabled;
-        sb2button.disabled = !enabled;
-      }
-  
-      function runSuite(tests) {
-        toggleInputs(false);
-        return P.suite.run(tests)
-          .then(() => {
-            toggleInputs(true);
-          });
-      }
-
-      function runSB3() {
-        return runSuite(P.suite.sb3());
-      }
-      function runSB2() {
-        return runSuite(P.suite.sb2());
-      }
-
-      sb3button.addEventListener('click', function() {
-        runSB3();
-        location.hash = '#sb3';
-      });
-      sb2button.addEventListener('click', function() {
-        runSB2();
-        location.hash = '#sb2';
-      });
-
-      if (location.hash === '#sb3') {
-        runSB3();
-      }
-      if (location.hash === '#sb2') {
-        runSB2();
+      if (location.search.indexOf('nostart') === -1) {
+        P.suite.run(P.suite.tests());
+      } else {
+        window.runTests = function() {
+          P.suite.run(P.suite.tests());
+        };
       }
     }());
   </script>

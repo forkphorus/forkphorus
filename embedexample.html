@@ -2,18 +2,22 @@
 
 <html>
   <head>
+    <meta charset="utf-8">
+    <meta name="robots" content="noindex">
     <style>
-      /* How to apply styles to the forkphorus embed <iframe> */
-      .forkphorus-embed {
-        margin: 10px;
+      body {
+        font-family: sans-serif;
+      }
+      input {
+        width: 200px;
+      }
+      iframe {
         display: block;
       }
     </style>
   </head>
 
   <body>
-    Something before.<br>
-
     <!-- Example of using the embed API -->
     <script>
 
@@ -24,35 +28,88 @@
           return;
         }
 
-        // data will be sent from forkphorus to the parent website.
         var data = e.data;
-        console.log('got message from forkphorus', data);
 
         // `id` (string) - The unique (random) ID of the forkphorus embed that sent this message.
         var id = data.id;
         // `type` (string) - The type of message that this is. (we'll see what this means later)
         var type = data.type;
-        // `payload` (varies) - The payload part of the message. (varies by type)
-        var payload = data.payload;
 
-        switch (type) {
-          case 'stateChange':
-            // payload is a string of the current state ('loading', 'ready')
-            console.log('forkphorus state changed to', payload);
-            break;
+        if (type === 'hello') {
+          if (data.version !== 1) {
+            // That's not supposed to happen.
+            // You should probably log a warning somewhere, but not more than that.
+            console.warn('unexpected api version', data.version);
+          }
+          console.log(id, 'says hello with API version', data.version);
+        }
+
+        if (type === 'startload') {
+          console.log(id, 'is starting to load');
+        }
+
+        if (type === 'progress') {
+          console.log(id, 'has progressed to ' + data.progress * 100 + '% complete')
+        }
+
+        if (type === 'load') {
+          console.log(id, 'is ready to start');
+        }
+
+        if (type === 'start') {
+          console.log(id, 'has started');
+        }
+
+        if (type === 'pause') {
+          console.log(id, 'has paused');
+        }
+
+        if (type === 'error') {
+          console.log(id, 'has encountered an error');
         }
       });
     </script>
 
-    <script src="http://localhost:8080/embed.js?id=280227362&auto-start=true&light-content=false"></script>
+    <p>Examples of the embed.</p>
 
-    <script src="http://localhost:8080/embed.js?id=280227362&auto-start=false&light-content=false"></script>
+    <p>The project being shown here is <a href="https://scratch.mit.edu/projects/280227362">Spring Physics by HowToLogic</a>.</p>
 
-    <script src="http://localhost:8080/embed.js?id=280227362&auto-start=false&light-content=true"></script>
+    <h2>no autostart, 480x360</h2>
+    <iframe src="/embed.html?id=280227362&auto-start=false&light-content=false" width="482" height="393" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
 
-    <script src="http://localhost:8080/embed.js?id=280227362&ui=false"></script>
+    <h2>no autostart, 960x720</h2>
+    <iframe src="/embed.html?id=280227362&auto-start=false&light-content=false" width="962" height="753" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
 
-    <br>Something after.
+    <h2>no autostart, 240x180</h2>
+    <iframe src="/embed.html?id=280227362&auto-start=false&light-content=false" width="242" height="213" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
+
+    <h2>autostart, 480x360</h2>
+    <iframe src="/embed.html?id=280227362&auto-start=true&light-content=false" width="482" height="393" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
+
+    <h2>autostart, 480x360, 60 fps</h2>
+    <iframe src="/embed.html?id=280227362&auto-start=true&light-content=false&fps=60" width="482" height="393" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
+
+    <h2>Light controls (for dark themes)</h2>
+    <p>(black background not set by the embed, the embed is transparent so set background-color on the iframe or its container)</p>
+    <div style="background-color: #111; width: 480px; padding: 10px;">
+      <iframe src="/embed.html?id=280227362&auto-start=false&light-content=true" width="482" height="393" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
+    </div>
+
+    <h2>Hide UI (autostart)</h2>
+    <iframe src="/embed.html?id=280227362&ui=false" width="480" height="360" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
+
+    <script>
+      for (var i of document.querySelectorAll('iframe')) {
+        var input = document.createElement('input');
+        input.value = i.outerHTML.replace('src="', 'src="' + location.origin).replace(/\&amp;/g, '&');
+        input.readOnly = true;
+        input.onclick = function() {
+          this.focus();
+          this.select();
+        };
+        i.insertAdjacentElement('afterend', input);
+      }
+    </script>
 
   </body>
 </html>

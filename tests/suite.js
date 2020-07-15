@@ -28,7 +28,7 @@ var P = P || {};
 
 /**
  * Identifies the version of Scratch a project is made for.
- * @typedef {2|3} ProjectType
+ * @typedef {'sb'|'sb2'|'sb3'} ProjectType
  */
 
 /**
@@ -42,9 +42,16 @@ P.suite = (function() {
   const tableBodyEl = document.getElementById('suite-table');
   const finalResultsEl = document.getElementById('suite-final-results');
 
+  // Project player
+  const player = new P.player.Player();
+  containerEl.appendChild(player.root);
+
+  // Configure IO to fetch files from the right place.
+  P.io.config.localPath = '../';
+
   /**
    * Removes all children of an HTML element
-   * @param {HTMLElement} element 
+   * @param {HTMLElement} element
    */
   function removeChildren(element) {
     while (element.firstChild) {
@@ -69,10 +76,10 @@ P.suite = (function() {
 
   /**
    * @param {string} path The path to fetch
-   * @returns {ArrayBuffer} The ArrayBuffer representing the fetched content
+   * @returns {Promise<ArrayBuffer>} The ArrayBuffer representing the fetched content
    */
   function fetchAsArrayBuffer(path) {
-    return new P.IO.ArrayBufferRequest(path, {local: true}).load();
+    return new P.io.Request(path).load('arraybuffer');
   }
 
   /**
@@ -83,26 +90,30 @@ P.suite = (function() {
   function getProjectType(path) {
     const extension = path.match(/\..*$/)[0];
     switch (extension) {
-      case '.sb3': return 3;
-      case '.sb2': return 2;
+      case '.sb': return 'sb';
+      case '.sb2': return 'sb2';
+      case '.sb3': return 'sb3';
     }
     throw new Error('unknown project type: ' + extension);
   }
 
   /**
    * Load a project
-   * @param {ArrayBuffer} buffer 
+   * @param {ArrayBuffer} buffer
    * @param {ProjectType} type
-   * @returns {Promise<P.core.Stage>}
    */
   function loadProjectBuffer(buffer, type) {
-    if (type === 2) {
-      return P.sb2.loadSB2Project(buffer);
-    } else if (type === 3) {
-      const loader = new P.sb3.SB3FileLoader(buffer);
-      return loader.load();
+    return player.loadProjectFromBuffer(buffer, type);
+  }
+
+  function stringifyError(error) {
+    if (!error) {
+      return 'unknown error';
     }
-    throw new Error('unknown type: ' + type);
+    if (error.stack) {
+      return 'Message: ' + error.message + '\nStack:\n' + error.stack;
+    }
+    return error.toString();
   }
 
   /**
@@ -118,7 +129,7 @@ P.suite = (function() {
 
     return new Promise((_resolve, _reject) => {
       /**
-       * @param {TestResult} result
+       * @param {Partial<TestResult>} result
        */
       const resolve = (result) => {
         const endTime = performance.now();
@@ -129,7 +140,7 @@ P.suite = (function() {
         stage.runtime.stopAll();
 
         _resolve(result);
-      }
+      };
 
       /**
        * The test has failed.
@@ -162,7 +173,7 @@ P.suite = (function() {
        * testFail() when the project encounters an error
        */
       const handleError = (e) => {
-        const message = P.utils.stringifyError(e);
+        const message = stringifyError(e);
         stage.runtime.testFail('ERROR: ' + message);
       };
 
@@ -196,7 +207,7 @@ P.suite = (function() {
   function runProject(metadata, buffer, type) {
     const startTime = performance.now();
     return loadProjectBuffer(buffer, type)
-      .then((stage) => testStage(stage, metadata))
+      .then(() => testStage(player.getStage(), metadata))
       .then((result) => {
         const endTime = performance.now();
         result.totalTime = endTime - startTime;
@@ -230,7 +241,10 @@ P.suite = (function() {
       href: projectMeta.path,
     }));
 
-    const message = (result.success ? 'OKAY: ' : 'FAIL: ') + result.message;
+    let message = result.success ? 'OKAY' : 'FAIL';
+    if (result.message) {
+      message += ': ' + result.message;
+    }
     const successClass = result.success ? 'cell-result-okay' : 'cell-result-fail';
     row.appendChild(createElement('td', {
       className: 'cell-result ' + successClass,
@@ -259,7 +273,7 @@ P.suite = (function() {
     listEl.appendChild(createElement('li', {
       textContent: 'Done in ' + formatTime(result.time),
     }));
-    
+
     const totalTests = result.tests.length;
     const passingTests = result.tests.filter((i) => i.success).length;
     const failingTests = totalTests - passingTests;
@@ -267,18 +281,24 @@ P.suite = (function() {
     listEl.appendChild(createElement('li', {
       textContent: `Of ${totalTests} test, ${passingTests} passed and ${failingTests} failed. (${percentPassing}% passing)`,
     }));
+    if (failingTests > 0) {
+      listEl.classList.add('suite-failed');
+    } else {
+      listEl.classList.add('suite-passed');
+    }
 
     finalResultsEl.appendChild(listEl);
   }
 
   /**
-   * Start the test suite
+   * Run tests on a list of project metadata.
    * @param {ProjectMeta[]} projectList
    * @returns {Promise<void>} Resolves when the test is done.
    */
-  async function run(projectList) {
+  async function runTests(projectList) {
     removeChildren(tableBodyEl);
 
+    /** @type {TestResult[]} */
     const allTestResults = [];
     const startTime = performance.now();
 
@@ -288,7 +308,12 @@ P.suite = (function() {
       const repeatCount = projectMetadata.repeatCount;
 
       const projectType = getProjectType(path);
-      const buffer = await fetchAsArrayBuffer('/tests/' + path);
+      const buffer = await fetchAsArrayBuffer(path);
+
+      // Allow allow automated test runners to monitor progress.
+      if (window.startProjectHook) {
+        window.startProjectHook(projectMetadata);
+      }
 
       for (let i = 0; i < repeatCount; i++) {
         const result = await runProject(projectMetadata, buffer, projectType);
@@ -305,9 +330,23 @@ P.suite = (function() {
     };
     displayFinalResults(finalResults);
 
-    // Allow the deploy bot to learn about test results.
+    // Allow automated test runners to learn the final results.
     if (window.testsFinishedHook) {
       window.testsFinishedHook(finalResults);
+    }
+  }
+
+  /**
+   * Start the test suite
+   * @param {ProjectMeta[]} projectList
+   * @returns {Promise<void>} Resolves when the test is done.
+   */
+  async function run(projectList) {
+    try {
+      return await runTests(projectList);
+    } catch (e) {
+      console.error(e);
+      throw e;
     }
   }
 
@@ -369,12 +408,12 @@ P.suite = (function() {
 (function(compiler) {
   // The Scratch 2 compiler has very limited internals exposed, but we can replace the entire listener compiler.
   // (which is where all top level blocks, such as procedure definitions, are compiled)
-  // We replace the custom block definition instead of the call.
+  // We replace custom block definitions and some broadcast receivers instead of the calls because that's easier.
 
   const originalCompileListener = compiler.compileListener;
   compiler.compileListener = function compileListener(object, script) {
     const opcode = script[0][0];
-    if (opcode !== 'procDef') {
+    if (opcode !== 'procDef' && opcode !== 'whenIReceive') {
       return originalCompileListener(object, script);
     }
 
@@ -392,7 +431,7 @@ P.suite = (function() {
       case 'OKAY %n':
         source = 'runtime.testOkay(C.args[0]); return;\n';
         break;
-      
+
       case 'FAIL':
         source = 'if (runtime.testFail("no message")) { return; }\n';
         break;
@@ -401,13 +440,20 @@ P.suite = (function() {
       case 'FAIL %n':
         source = 'if (runtime.testFail(C.args[0])) { return; }\n';
         break;
-      
+
       default:
         return originalCompileListener(object, script);
     }
+
     source += 'endCall();\n';
     const f = P.runtime.createContinuation(source);
     object.fns.push(f);
-    object.procedures[proccode] = new compiler.Scratch2Procedure(f, false, []);
+
+    if (opcode === 'procDef') {
+      object.procedures[proccode] = new compiler.Scratch2Procedure(f, false, []);
+    }
+    if (opcode === 'whenIReceive') {
+      (object.listeners.whenIReceive[proccode] || (object.listeners.whenIReceive[proccode] = [])).push(f);
+    }
   };
 }(P.sb2.compiler));
