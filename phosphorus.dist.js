@@ -9235,12 +9235,28 @@ var P;
             let microphone = null;
             let state = 0;
             const CACHE_TIME = 1000 / 30;
+            function createAnalyzerDataArray(analyzer) {
+                if (!!analyzer.getFloatTimeDomainData) {
+                    return new Float32Array(analyzer.fftSize);
+                }
+                else if (!!analyzer.getByteTimeDomainData) {
+                    return new Uint8Array(analyzer.fftSize);
+                }
+                else {
+                    throw new Error('Analyzer node does not support getFloatTimeDomainData or getByteTimeDomainData');
+                }
+            }
             function connect() {
                 if (state !== 0) {
                     return;
                 }
                 if (!P.audio.context) {
                     console.warn('Cannot connect to microphone without audio context.');
+                    state = 3;
+                    return;
+                }
+                if (!navigator.mediaDevices) {
+                    console.warn('Cannot access media devices, probably running in insecure (non-HTTPS) context.');
                     state = 3;
                     return;
                 }
@@ -9254,7 +9270,7 @@ var P;
                         source: source,
                         stream: mediaStream,
                         analyzer,
-                        dataArray: new Float32Array(analyzer.fftSize),
+                        dataArray: createAnalyzerDataArray(analyzer),
                         lastValue: -1,
                         lastCheck: 0,
                     };
@@ -9274,7 +9290,7 @@ var P;
                 microphone.source.connect(analyzer);
                 microphone.analyzer = analyzer;
                 if (microphone.dataArray.length !== analyzer.fftSize) {
-                    microphone.dataArray = new Float32Array(analyzer.fftSize);
+                    microphone.dataArray = createAnalyzerDataArray(analyzer);
                 }
             }
             function getLoudness() {
@@ -9288,10 +9304,18 @@ var P;
                 if (Date.now() - microphone.lastCheck < CACHE_TIME) {
                     return microphone.lastValue;
                 }
-                microphone.analyzer.getFloatTimeDomainData(microphone.dataArray);
                 let sum = 0;
-                for (let i = 0; i < microphone.dataArray.length; i++) {
-                    sum += Math.pow(microphone.dataArray[i], 2);
+                if (microphone.dataArray instanceof Float32Array) {
+                    microphone.analyzer.getFloatTimeDomainData(microphone.dataArray);
+                    for (let i = 0; i < microphone.dataArray.length; i++) {
+                        sum += Math.pow(microphone.dataArray[i], 2);
+                    }
+                }
+                else {
+                    microphone.analyzer.getByteTimeDomainData(microphone.dataArray);
+                    for (let i = 0; i < microphone.dataArray.length; i++) {
+                        sum += Math.pow((microphone.dataArray[i] - 128) / 128, 2);
+                    }
                 }
                 let rms = Math.sqrt(sum / microphone.dataArray.length);
                 if (microphone.lastValue !== -1) {
