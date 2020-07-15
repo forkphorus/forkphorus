@@ -9466,18 +9466,18 @@ var P;
     (function (ext) {
         var tts;
         (function (tts) {
-            const supported = 'speechSynthesis' in window;
             class TextToSpeechExtension extends P.ext.Extension {
                 constructor(stage) {
                     super(stage);
                     this.voice = 'alto';
                     this.language = 'en';
-                    if (!supported) {
-                        console.warn('TTS extension is not supported in this browser: it requires the SpeechSynthesis API https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesis');
+                    this.supported = 'speechSynthesis' in window;
+                    if (!this.supported) {
+                        console.warn('TTS extension is not supported in this browser: it requires the speechSynthesis API https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesis');
                     }
                 }
                 speak(text) {
-                    if (!supported) {
+                    if (!this.supported) {
                         return Promise.resolve();
                     }
                     return new Promise((resolve, reject) => {
@@ -9487,10 +9487,24 @@ var P;
                         utterance.onerror = end;
                         utterance.onend = end;
                         speechSynthesis.speak(utterance);
+                        speechSynthesis.resume();
                     });
                 }
+                onstart() {
+                    if (this.supported) {
+                        speechSynthesis.cancel();
+                        speechSynthesis.resume();
+                    }
+                }
+                onpause() {
+                    if (this.supported) {
+                        speechSynthesis.pause();
+                    }
+                }
                 destroy() {
-                    speechSynthesis.cancel();
+                    if (this.supported) {
+                        speechSynthesis.cancel();
+                    }
                 }
             }
             tts.TextToSpeechExtension = TextToSpeechExtension;
