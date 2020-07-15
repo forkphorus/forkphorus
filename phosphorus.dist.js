@@ -1005,6 +1005,7 @@ var P;
                 this.cloudVariables = [];
                 this.speech2text = null;
                 this.microphone = null;
+                this.tts = null;
                 this.extensions = [];
                 this.useSpriteFencing = false;
                 this.runtime = new P.runtime.Runtime(this);
@@ -1399,10 +1400,16 @@ var P;
                     this.addExtension(this.speech2text);
                 }
             }
-            initLoudness() {
+            initMicrophone() {
                 if (!this.microphone) {
                     this.microphone = new P.ext.microphone.MicrophoneExtension(this);
                     this.addExtension(this.microphone);
+                }
+            }
+            initTextToSpeech() {
+                if (!this.tts) {
+                    this.tts = new P.ext.tts.TextToSpeechExtension(this);
+                    this.addExtension(this.tts);
                 }
             }
             setCloudHandler(cloudHandler) {
@@ -3824,10 +3831,6 @@ var P;
         const INSTRUMENTS = P.audio.instruments;
         const DRUMS = P.audio.drums;
         const DIGIT = /\d/;
-        const tts = {
-            voice: 'alto',
-            language: 'en',
-        };
         var bool = function (v) {
             return +v !== 0 && v !== '' && v !== 'false' && v !== false;
         };
@@ -4179,9 +4182,6 @@ var P;
                 node.connect(S.getAudioNode());
             };
         }
-        var ttsSpeak = function (text) {
-            return P.ext.tts.speak(text, tts.voice, tts.language);
-        };
         var save = function () {
             STACK.push(R);
             R = {};
@@ -5505,7 +5505,7 @@ var P;
                         return 'S.distanceTo(' + val(e[1]) + ')';
                     }
                     else if (e[0] === 'soundLevel') {
-                        object.stage.initLoudness();
+                        object.stage.initMicrophone();
                         return 'self.microphone.getLoudness()';
                     }
                     else if (e[0] === 'timestamp') {
@@ -8249,15 +8249,18 @@ var P;
     };
     statementLibrary['text2speech_setVoice'] = function (util) {
         const VOICE = util.getInput('VOICE', 'string');
-        util.writeLn(`tts.voice = ${VOICE};`);
+        util.stage.initTextToSpeech();
+        util.writeLn(`self.tts.voice = ${VOICE};`);
     };
     statementLibrary['text2speech_setLanguage'] = function (util) {
         const LANGUAGE = util.getInput('LANGUAGE', 'string');
-        util.writeLn(`tts.language = ${LANGUAGE};`);
+        util.stage.initTextToSpeech();
+        util.writeLn(`self.tts.language = ${LANGUAGE};`);
     };
     statementLibrary['text2speech_speakAndWait'] = function (util) {
         const WORDS = util.getInput('WORDS', 'string');
-        util.sleepUntilSettles(`ttsSpeak(${WORDS})`);
+        util.stage.initTextToSpeech();
+        util.sleepUntilSettles(`self.tts.speak(${WORDS})`);
     };
     statementLibrary['speech2text_listenAndWait'] = function (util) {
         util.stage.initSpeech2Text();
@@ -8572,11 +8575,11 @@ var P;
         return util.booleanInput(`!!self.keys[getKeyCode3(${KEY_OPTION})]`);
     };
     inputLibrary['sensing_loud'] = function (util) {
-        util.stage.initLoudness();
+        util.stage.initMicrophone();
         return util.booleanInput('(self.microphone.getLoudness() > 10)');
     };
     inputLibrary['sensing_loudness'] = function (util) {
-        util.stage.initLoudness();
+        util.stage.initMicrophone();
         return util.numberInput('self.microphone.getLoudness()');
     };
     inputLibrary['sensing_mousedown'] = function (util) {
@@ -8687,7 +8690,7 @@ var P;
                     stallUntil = `runtime.timerStart !== R.timerStart || (runtime.now() - runtime.timerStart) / 1000 <= ${VALUE}`;
                     break;
                 case 'LOUDNESS':
-                    compiler.target.stage.initLoudness();
+                    compiler.target.stage.initMicrophone();
                     executeWhen = `self.microphone.getLoudness() > ${VALUE}`;
                     stallUntil = `self.microphone.getLoudness() <= ${VALUE}`;
                     break;
@@ -8944,7 +8947,7 @@ var P;
     };
     watcherLibrary['sensing_loudness'] = {
         init(watcher) {
-            watcher.stage.initLoudness();
+            watcher.stage.initMicrophone();
         },
         evaluate(watcher) {
             if (watcher.stage.microphone) {
@@ -9287,6 +9290,9 @@ var P;
                     .then((mediaStream) => {
                     const source = P.audio.context.createMediaStreamSource(mediaStream);
                     const analyzer = P.audio.context.createAnalyser();
+                    if (!analyzer.getFloatTimeDomainData) {
+                        throw new Error('Missing API getFloatTimeDomainData');
+                    }
                     source.connect(analyzer);
                     microphone = {
                         source: source,
@@ -9460,28 +9466,34 @@ var P;
     (function (ext) {
         var tts;
         (function (tts) {
-            tts.mode = 1;
-            function speak(message, voice, language) {
-                if (tts.mode === 0) {
-                    return Promise.resolve();
+            const supported = 'speechSynthesis' in window;
+            class TextToSpeechExtension extends P.ext.Extension {
+                constructor(stage) {
+                    super(stage);
+                    this.voice = 'alto';
+                    this.language = 'en';
+                    if (!supported) {
+                        console.warn('TTS extension is not supported in this browser: it requires the SpeechSynthesis API https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesis');
+                    }
                 }
-                return new Promise((resolve, reject) => {
-                    if (tts.mode === 1) {
-                        const utterance = new SpeechSynthesisUtterance(message);
-                        utterance.lang = language;
-                        utterance.onerror = function () {
-                            resolve();
-                        };
-                        utterance.onend = function () {
-                            resolve();
-                        };
+                speak(text) {
+                    if (!supported) {
+                        return Promise.resolve();
+                    }
+                    return new Promise((resolve, reject) => {
+                        const end = () => resolve();
+                        const utterance = new SpeechSynthesisUtterance(text);
+                        utterance.lang = this.language;
+                        utterance.onerror = end;
+                        utterance.onend = end;
                         speechSynthesis.speak(utterance);
-                    }
-                    else {
-                    }
-                });
+                    });
+                }
+                destroy() {
+                    speechSynthesis.cancel();
+                }
             }
-            tts.speak = speak;
+            tts.TextToSpeechExtension = TextToSpeechExtension;
         })(tts = ext.tts || (ext.tts = {}));
     })(ext = P.ext || (P.ext = {}));
 })(P || (P = {}));

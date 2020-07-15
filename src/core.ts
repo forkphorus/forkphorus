@@ -823,6 +823,7 @@ namespace P.core {
     private videoElement: HTMLVideoElement;
     public speech2text: P.ext.speech2text.SpeechToTextExtension | null = null;
     public microphone: P.ext.microphone.MicrophoneExtension | null = null;
+    public tts: P.ext.tts.TextToSpeechExtension | null = null;
     private extensions: P.ext.Extension[] = [];
 
     public useSpriteFencing: boolean = false;
@@ -1293,6 +1294,13 @@ namespace P.core {
       if (!this.microphone) {
         this.microphone = new P.ext.microphone.MicrophoneExtension(this);
         this.addExtension(this.microphone);
+      }
+    }
+
+    initTextToSpeech() {
+      if (!this.tts) {
+        this.tts = new P.ext.tts.TextToSpeechExtension(this);
+        this.addExtension(this.tts);
       }
     }
 

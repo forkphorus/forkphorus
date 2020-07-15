@@ -42,10 +42,6 @@ namespace P.runtime {
   const INSTRUMENTS = P.audio.instruments;
   const DRUMS = P.audio.drums;
   const DIGIT = /\d/;
-  const tts = {
-    voice: 'alto',
-    language: 'en',
-  };
 
   var bool = function(v) {
     return +v !== 0 && v !== '' && v !== 'false' && v !== false;
@@ -424,10 +420,6 @@ namespace P.runtime {
       node.connect(S.getAudioNode());
     };
   }
-
-  var ttsSpeak = function(text: string) {
-    return P.ext.tts.speak(text, tts.voice, tts.language);
-  };
 
   var save = function() {
     STACK.push(R);
