@@ -1992,7 +1992,7 @@ namespace P.sb3.compiler {
      * Log a warning
      */
     warn(...args: any[]) {
-      args.unshift('[sb3 compiler]');
+      args.unshift(`[sb3 compiler ${this.target.name}]`);
       console.warn.apply(console, args);
     }
 
@@ -2000,7 +2000,7 @@ namespace P.sb3.compiler {
      * Log info
      */
     log(...args: any[]) {
-      args.unshift('[sb3 compiler]');
+      args.unshift(`[sb3 compiler ${this.target.name}]`);
       console.log.apply(console, args);
     }
 

@@ -7476,11 +7476,11 @@ var P;
                     };
                 }
                 warn(...args) {
-                    args.unshift('[sb3 compiler]');
+                    args.unshift(`[sb3 compiler ${this.target.name}]`);
                     console.warn.apply(console, args);
                 }
                 log(...args) {
-                    args.unshift('[sb3 compiler]');
+                    args.unshift(`[sb3 compiler ${this.target.name}]`);
                     console.log.apply(console, args);
                 }
                 compile() {
