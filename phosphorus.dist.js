@@ -1003,7 +1003,6 @@ var P;
                 this.counter = 0;
                 this.cloudHandler = null;
                 this.cloudVariables = [];
-                this.speech2text = null;
                 this.microphone = null;
                 this.tts = null;
                 this.extensions = [];
@@ -1393,12 +1392,6 @@ var P;
             }
             addExtension(extension) {
                 this.extensions.push(extension);
-            }
-            initSpeech2Text() {
-                if (!this.speech2text && P.ext.speech2text.isSupported()) {
-                    this.speech2text = new P.ext.speech2text.SpeechToTextExtension(this);
-                    this.addExtension(this.speech2text);
-                }
             }
             initMicrophone() {
                 if (!this.microphone) {
@@ -8262,20 +8255,6 @@ var P;
         util.stage.initTextToSpeech();
         util.sleepUntilSettles(`self.tts.speak(${WORDS})`);
     };
-    statementLibrary['speech2text_listenAndWait'] = function (util) {
-        util.stage.initSpeech2Text();
-        util.writeLn('if (self.speech2text) {');
-        util.writeLn('  save();');
-        util.writeLn('  self.speech2text.startListen();');
-        util.writeLn('  R.id = self.speech2text.id();');
-        const label = util.addLabel();
-        util.writeLn('  if (self.speech2text.id() === R.id) {');
-        util.forceQueue(label);
-        util.writeLn('  }');
-        util.writeLn('  self.speech2text.endListen();');
-        util.writeLn('  restore();');
-        util.writeLn('}');
-    };
     statementLibrary['videoSensing_videoToggle'] = function (util) {
         const VIDEO_STATE = util.getInput('VIDEO_STATE', 'string');
         util.writeLn(`switch (${VIDEO_STATE}) {`);
@@ -8628,10 +8607,6 @@ var P;
     inputLibrary['text2speech_menu_languages'] = function (util) {
         return util.fieldInput('languages');
     };
-    inputLibrary['speech2text_getSpeech'] = function (util) {
-        util.stage.initSpeech2Text();
-        return util.stringInput('(self.speech2text ? self.speech2text.speech : "")');
-    };
     inputLibrary['translate_menu_languages'] = function (util) {
         return util.fieldInput('languages');
     };
@@ -8838,20 +8813,6 @@ var P;
             return '';
         },
     };
-    hatLibrary['speech2text_whenIHearHat'] = {
-        handle(util) {
-            util.stage.initSpeech2Text();
-            if (util.stage.speech2text) {
-                const PHRASE = util.getInput('PHRASE', 'string');
-                const phraseFunction = `return ${PHRASE}`;
-                util.stage.speech2text.addHat({
-                    target: util.target,
-                    startingFunction: util.startingFunction,
-                    phraseFunction: P.runtime.createContinuation(phraseFunction),
-                });
-            }
-        },
-    };
     watcherLibrary['data_variable'] = {
         init(watcher) {
             const name = watcher.params.VARIABLE;
@@ -8972,18 +8933,6 @@ var P;
     watcherLibrary['sound_volume'] = {
         evaluate(watcher) { return watcher.target.volume * 100; },
         getLabel() { return 'volume'; },
-    };
-    watcherLibrary['speech2text_getSpeech'] = {
-        init(watcher) {
-            watcher.stage.initSpeech2Text();
-        },
-        evaluate(watcher) {
-            if (watcher.stage.speech2text) {
-                return watcher.stage.speech2text.speech;
-            }
-            return '';
-        },
-        getLabel(watcher) { return 'Speech to text: speech'; },
     };
 }());
 var P;
@@ -9384,104 +9333,6 @@ var P;
             }
             microphone_1.MicrophoneExtension = MicrophoneExtension;
         })(microphone = ext.microphone || (ext.microphone = {}));
-    })(ext = P.ext || (P.ext = {}));
-})(P || (P = {}));
-var P;
-(function (P) {
-    var ext;
-    (function (ext) {
-        var speech2text;
-        (function (speech2text) {
-            var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || window.mozSpeechRecognition || window.msSpeechRecognition;
-            let supported = null;
-            function isSupported() {
-                if (supported === null) {
-                    supported = typeof SpeechRecognition !== 'undefined';
-                    if (!supported) {
-                        console.warn('Speech to text is not supported in this browser. (https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition)');
-                    }
-                }
-                return supported;
-            }
-            speech2text.isSupported = isSupported;
-            class SpeechToTextExtension extends P.ext.Extension {
-                constructor(stage) {
-                    super(stage);
-                    this.speech = '';
-                    this.listeners = 0;
-                    this.hats = [];
-                    this.initRecognition();
-                    this.initOverlay();
-                }
-                initRecognition() {
-                    this.recognition = new SpeechRecognition();
-                    this.recognition.lang = 'en-US';
-                    this.recognition.continuous = true;
-                    this.recognition.onresult = (event) => this.onresult(event);
-                    this.recognition.onerror = (event) => {
-                        console.warn('speech2text error', event);
-                    };
-                    this.recognition.onend = () => {
-                        console.warn('speech2text disconnected, reconnecting');
-                        this.initRecognition();
-                    };
-                    this.recognition.start();
-                }
-                initOverlay() {
-                    if (this.overlayElement) {
-                        throw new Error('initializing overlay twice');
-                    }
-                    const container = document.createElement('div');
-                    container.className = 'speech2text-container';
-                    const indicator = document.createElement('div');
-                    indicator.className = 'speech2text-indicator';
-                    const animation = document.createElement('div');
-                    animation.className = 'speech2text-animation';
-                    container.appendChild(animation);
-                    container.appendChild(indicator);
-                    this.stage.ui.appendChild(container);
-                    this.overlayElement = container;
-                }
-                onresult(event) {
-                    this.lastResultIndex = event.resultIndex;
-                    const lastResult = event.results[event.resultIndex];
-                    const message = lastResult[0];
-                    const transcript = message.transcript.trim();
-                    if (this.listeners !== 0) {
-                        this.speech = transcript;
-                    }
-                    for (const hat of this.hats) {
-                        const target = hat.target;
-                        const phraseFunction = hat.phraseFunction;
-                        const startingFunction = hat.startingFunction;
-                        const value = this.stage.runtime.evaluateExpression(target, phraseFunction);
-                        if (value === transcript) {
-                            this.stage.runtime.startThread(target, startingFunction, true);
-                        }
-                    }
-                }
-                addHat(hat) {
-                    this.hats.push(hat);
-                }
-                startListen() {
-                    this.listeners++;
-                    this.overlayElement.setAttribute('listening', '');
-                }
-                endListen() {
-                    this.listeners--;
-                    if (this.listeners === 0) {
-                        this.overlayElement.removeAttribute('listening');
-                    }
-                }
-                destroy() {
-                    this.recognition.abort();
-                }
-                id() {
-                    return this.lastResultIndex;
-                }
-            }
-            speech2text.SpeechToTextExtension = SpeechToTextExtension;
-        })(speech2text = ext.speech2text || (ext.speech2text = {}));
     })(ext = P.ext || (P.ext = {}));
 })(P || (P = {}));
 var P;

@@ -821,7 +821,6 @@ namespace P.core {
     public cloudVariables: string[] = [];
 
     private videoElement: HTMLVideoElement;
-    public speech2text: P.ext.speech2text.SpeechToTextExtension | null = null;
     public microphone: P.ext.microphone.MicrophoneExtension | null = null;
     public tts: P.ext.tts.TextToSpeechExtension | null = null;
     private extensions: P.ext.Extension[] = [];
@@ -1281,13 +1280,6 @@ namespace P.core {
 
     addExtension(extension: P.ext.Extension) {
       this.extensions.push(extension);
-    }
-
-    initSpeech2Text() {
-      if (!this.speech2text && P.ext.speech2text.isSupported()) {
-        this.speech2text = new P.ext.speech2text.SpeechToTextExtension(this);
-        this.addExtension(this.speech2text);
-      }
     }
 
     initMicrophone() {

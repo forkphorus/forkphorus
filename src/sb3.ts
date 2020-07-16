@@ -2803,20 +2803,6 @@ namespace P.sb3.compiler {
     util.stage.initTextToSpeech();
     util.sleepUntilSettles(`self.tts.speak(${WORDS})`);
   };
-  statementLibrary['speech2text_listenAndWait'] = function(util) {
-    util.stage.initSpeech2Text();
-    util.writeLn('if (self.speech2text) {');
-    util.writeLn('  save();');
-    util.writeLn('  self.speech2text.startListen();');
-    util.writeLn('  R.id = self.speech2text.id();');
-    const label = util.addLabel();
-    util.writeLn('  if (self.speech2text.id() === R.id) {')
-    util.forceQueue(label);
-    util.writeLn('  }');
-    util.writeLn('  self.speech2text.endListen();');
-    util.writeLn('  restore();');
-    util.writeLn('}');
-  };
   statementLibrary['videoSensing_videoToggle'] = function(util) {
     const VIDEO_STATE = util.getInput('VIDEO_STATE', 'string');
     util.writeLn(`switch (${VIDEO_STATE}) {`);
@@ -3180,10 +3166,6 @@ namespace P.sb3.compiler {
   inputLibrary['text2speech_menu_languages'] = function(util) {
     return util.fieldInput('languages');
   };
-  inputLibrary['speech2text_getSpeech'] = function(util) {
-    util.stage.initSpeech2Text();
-    return util.stringInput('(self.speech2text ? self.speech2text.speech : "")');
-  };
   inputLibrary['translate_menu_languages'] = function(util) {
     return util.fieldInput('languages');
   };
@@ -3408,20 +3390,6 @@ namespace P.sb3.compiler {
       return '';
     },
   };
-  hatLibrary['speech2text_whenIHearHat'] = {
-    handle(util) {
-      util.stage.initSpeech2Text();
-      if (util.stage.speech2text) {
-        const PHRASE = util.getInput('PHRASE', 'string');
-        const phraseFunction = `return ${PHRASE}`;
-        util.stage.speech2text.addHat({
-          target: util.target,
-          startingFunction: util.startingFunction,
-          phraseFunction: P.runtime.createContinuation(phraseFunction),
-        });
-      }
-    },
-  };
 
   /* Watchers */
   watcherLibrary['data_variable'] = {
@@ -3542,17 +3510,5 @@ namespace P.sb3.compiler {
   watcherLibrary['sound_volume'] = {
     evaluate(watcher) { return watcher.target.volume * 100; },
     getLabel() { return 'volume'; },
-  };
-  watcherLibrary['speech2text_getSpeech'] = {
-    init(watcher) {
-      watcher.stage.initSpeech2Text();
-    },
-    evaluate(watcher) {
-      if (watcher.stage.speech2text) {
-        return watcher.stage.speech2text.speech;
-      }
-      return '';
-    },
-    getLabel(watcher) { return 'Speech to text: speech'; },
   };
 }());
