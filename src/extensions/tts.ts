@@ -6,7 +6,7 @@
  */
 namespace P.ext.tts {
   export class TextToSpeechExtension extends P.ext.Extension {
-    public voice: string = 'alto'; // unused
+    public voice: string = 'ALTO'; // unused
     public language: string = 'en';
     private supported: boolean;
 
@@ -22,6 +22,11 @@ namespace P.ext.tts {
       if (!this.supported) {
         return Promise.resolve();
       }
+
+      if (this.voice === 'KITTEN') {
+        text = text.replace(/\w+?\b/g, 'meow');
+      }
+
       return new Promise((resolve, reject) => {
         const end = () => resolve();
         const utterance = new SpeechSynthesisUtterance(text);

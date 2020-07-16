@@ -9469,7 +9469,7 @@ var P;
             class TextToSpeechExtension extends P.ext.Extension {
                 constructor(stage) {
                     super(stage);
-                    this.voice = 'alto';
+                    this.voice = 'ALTO';
                     this.language = 'en';
                     this.supported = 'speechSynthesis' in window;
                     if (!this.supported) {
@@ -9479,6 +9479,9 @@ var P;
                 speak(text) {
                     if (!this.supported) {
                         return Promise.resolve();
+                    }
+                    if (this.voice === 'KITTEN') {
+                        text = text.replace(/\w+?\b/g, 'meow');
                     }
                     return new Promise((resolve, reject) => {
                         const end = () => resolve();
