@@ -35,7 +35,6 @@ namespace P.ext.tts {
 
     onstart() {
       if (this.supported) {
-        speechSynthesis.cancel();
         speechSynthesis.resume();
       }
     }

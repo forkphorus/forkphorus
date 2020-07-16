@@ -9492,7 +9492,6 @@ var P;
                 }
                 onstart() {
                     if (this.supported) {
-                        speechSynthesis.cancel();
                         speechSynthesis.resume();
                     }
                 }
