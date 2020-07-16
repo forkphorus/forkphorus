@@ -7,7 +7,6 @@
 namespace P.runtime {
   export type Fn = () => void;
 
-  // Global variables expected by scripts at runtime:
   // Current runtime
   var runtime: Runtime;
   // Current stage

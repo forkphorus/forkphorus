@@ -1405,6 +1405,23 @@ namespace P.sb3.compiler {
     }
 
     /**
+     * Write JS to pause script execution until a Promise is settled (regardless of resolve/reject)
+     */
+    sleepUntilSettles(source: string): void {
+      this.writeLn('save();');
+      this.writeLn('R.resume = false;');
+      this.writeLn('var localR = R;');
+      this.writeLn(`${source}`);
+      this.writeLn('  .then(function() { localR.resume = true; })');
+      this.writeLn('  .catch(function() { localR.resume = true; });');
+      const label = this.addLabel();
+      this.writeLn('if (!R.resume) {');
+      this.forceQueue(label);
+      this.writeLn('}');
+      this.writeLn('restore();');
+    }
+
+    /**
      * Append to the content
      */
     write(content: string): void {
@@ -2771,6 +2788,21 @@ namespace P.sb3.compiler {
       util.writeLn('S.isDraggable = false;');
     }
   };
+  statementLibrary['text2speech_setVoice'] = function(util) {
+    const VOICE = util.getInput('VOICE', 'string');
+    util.stage.initTextToSpeech();
+    util.writeLn(`self.tts.setVoice(${VOICE});`);
+  };
+  statementLibrary['text2speech_setLanguage'] = function(util) {
+    const LANGUAGE = util.getInput('LANGUAGE', 'string');
+    util.stage.initTextToSpeech();
+    util.writeLn(`self.tts.setLanguage(${LANGUAGE});`);
+  };
+  statementLibrary['text2speech_speakAndWait'] = function(util) {
+    const WORDS = util.getInput('WORDS', 'string');
+    util.stage.initTextToSpeech();
+    util.sleepUntilSettles(`self.tts.speak(${WORDS})`);
+  };
   statementLibrary['speech2text_listenAndWait'] = function(util) {
     util.stage.initSpeech2Text();
     util.writeLn('if (self.speech2text) {');
@@ -3141,6 +3173,12 @@ namespace P.sb3.compiler {
   };
   inputLibrary['sound_volume'] = function(util) {
     return util.numberInput('(S.volume * 100)');
+  };
+  inputLibrary['text2speech_menu_voices'] = function(util) {
+    return util.fieldInput('voices');
+  };
+  inputLibrary['text2speech_menu_languages'] = function(util) {
+    return util.fieldInput('languages');
   };
   inputLibrary['speech2text_getSpeech'] = function(util) {
     util.stage.initSpeech2Text();
