@@ -8250,12 +8250,12 @@ var P;
     statementLibrary['text2speech_setVoice'] = function (util) {
         const VOICE = util.getInput('VOICE', 'string');
         util.stage.initTextToSpeech();
-        util.writeLn(`self.tts.voice = ${VOICE};`);
+        util.writeLn(`self.tts.setVoice(${VOICE});`);
     };
     statementLibrary['text2speech_setLanguage'] = function (util) {
         const LANGUAGE = util.getInput('LANGUAGE', 'string');
         util.stage.initTextToSpeech();
-        util.writeLn(`self.tts.language = ${LANGUAGE};`);
+        util.writeLn(`self.tts.setLanguage(${LANGUAGE});`);
     };
     statementLibrary['text2speech_speakAndWait'] = function (util) {
         const WORDS = util.getInput('WORDS', 'string');
@@ -9466,27 +9466,79 @@ var P;
     (function (ext) {
         var tts;
         (function (tts) {
+            const femaleVoices = [
+                /Zira/,
+                /female/i,
+            ];
+            const maleVoices = [
+                /David/,
+                /\bmale/i,
+            ];
+            const scratchVoices = {
+                ALTO: { gender: 1, pitch: 1, rate: 1 },
+                TENOR: { gender: 0, pitch: 1.5, rate: 1 },
+                GIANT: { gender: 0, pitch: 0.5, rate: 0.75 },
+                SQUEAK: { gender: 1, pitch: 2, rate: 1.5 },
+                KITTEN: { gender: 1, pitch: 2, rate: 1 },
+            };
             class TextToSpeechExtension extends P.ext.Extension {
                 constructor(stage) {
                     super(stage);
-                    this.voice = 'ALTO';
                     this.language = 'en';
+                    this.voice = 'ALTO';
                     this.supported = 'speechSynthesis' in window;
                     if (!this.supported) {
                         console.warn('TTS extension is not supported in this browser: it requires the speechSynthesis API https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesis');
                     }
                 }
+                chooseVoice(voice) {
+                    const matchesGender = (voice) => {
+                        if (femaleVoices.some((i) => i.test(voice.name)))
+                            return voiceGender === 1;
+                        if (maleVoices.some((i) => i.test(voice.name)))
+                            return voiceGender === 0;
+                        return voiceGender === 2;
+                    };
+                    const voiceGender = scratchVoices[this.voice].gender;
+                    const matchesLanguageCountry = speechSynthesis.getVoices().filter((i) => i.lang.substr(0, 2) === this.language.substr(0, 2));
+                    const matchesLanguageExact = speechSynthesis.getVoices().filter((i) => i.lang === this.language);
+                    let candidates = matchesLanguageExact.filter(matchesGender);
+                    if (candidates.length === 0)
+                        candidates = matchesLanguageCountry.filter(matchesGender);
+                    if (candidates.length === 0)
+                        candidates = matchesLanguageExact;
+                    if (candidates.length === 0)
+                        candidates = matchesLanguageCountry;
+                    if (candidates.length === 0)
+                        candidates = speechSynthesis.getVoices();
+                    const defaultVoice = candidates.find((i) => i.default);
+                    if (defaultVoice)
+                        return defaultVoice;
+                    return candidates[0];
+                }
+                setVoice(voice) {
+                    if (!scratchVoices.hasOwnProperty(voice)) {
+                        return;
+                    }
+                    this.voice = voice;
+                }
+                setLanguage(language) {
+                    this.language = language;
+                }
                 speak(text) {
                     if (!this.supported) {
                         return Promise.resolve();
                     }
-                    if (this.voice === 'KITTEN') {
+                    if (this.voice === 'KITTEN')
                         text = text.replace(/\w+?\b/g, 'meow');
-                    }
                     return new Promise((resolve, reject) => {
                         const end = () => resolve();
                         const utterance = new SpeechSynthesisUtterance(text);
+                        const voice = scratchVoices[this.voice];
                         utterance.lang = this.language;
+                        utterance.voice = this.chooseVoice(voice);
+                        utterance.rate = voice.rate;
+                        utterance.pitch = voice.pitch;
                         utterance.onerror = end;
                         utterance.onend = end;
                         speechSynthesis.speak(utterance);

@@ -2791,12 +2791,12 @@ namespace P.sb3.compiler {
   statementLibrary['text2speech_setVoice'] = function(util) {
     const VOICE = util.getInput('VOICE', 'string');
     util.stage.initTextToSpeech();
-    util.writeLn(`self.tts.voice = ${VOICE};`);
+    util.writeLn(`self.tts.setVoice(${VOICE});`);
   };
   statementLibrary['text2speech_setLanguage'] = function(util) {
     const LANGUAGE = util.getInput('LANGUAGE', 'string');
     util.stage.initTextToSpeech();
-    util.writeLn(`self.tts.language = ${LANGUAGE};`);
+    util.writeLn(`self.tts.setLanguage(${LANGUAGE});`);
   };
   statementLibrary['text2speech_speakAndWait'] = function(util) {
     const WORDS = util.getInput('WORDS', 'string');
