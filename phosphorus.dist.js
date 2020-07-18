@@ -9365,6 +9365,9 @@ var P;
                     if (!this.supported) {
                         console.warn('TTS extension is not supported in this browser: it requires the speechSynthesis API https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesis');
                     }
+                    else {
+                        speechSynthesis.getVoices();
+                    }
                 }
                 chooseVoice(voice) {
                     const matchesGender = (voice) => {

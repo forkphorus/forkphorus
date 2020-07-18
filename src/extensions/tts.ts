@@ -43,6 +43,9 @@ namespace P.ext.tts {
       this.supported = 'speechSynthesis' in window;
       if (!this.supported) {
         console.warn('TTS extension is not supported in this browser: it requires the speechSynthesis API https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesis');
+      } else {
+        // browsers load the voices list async, so we attempt to fetch them once so that they will have them ready before the first TTS
+        speechSynthesis.getVoices();
       }
     }
 
