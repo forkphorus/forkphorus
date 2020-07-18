@@ -34,12 +34,11 @@ namespace P.ext.tts {
 
   export class TextToSpeechExtension extends P.ext.Extension {
     private language: string = 'en';
-    private voice: string = 'ALTO'; // unused
-    private supported: boolean;
+    private voice: string = 'ALTO';
+    private supported: boolean = 'speechSynthesis' in window;
 
     constructor(stage: P.core.Stage) {
       super(stage);
-      this.supported = 'speechSynthesis' in window;
       if (!this.supported) {
         console.warn('TTS extension is not supported in this browser: it requires the speechSynthesis API https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesis');
       } else {
@@ -56,19 +55,20 @@ namespace P.ext.tts {
       };
 
       const voiceGender = scratchVoices[this.voice].gender;
+      const voices = speechSynthesis.getVoices();
 
-      const matchesLanguageCountry = speechSynthesis.getVoices().filter((i) => i.lang.substr(0, 2) === this.language.substr(0, 2));
-      const matchesLanguageExact = speechSynthesis.getVoices().filter((i) => i.lang === this.language);
+      const matchesLanguageExact = voices.filter((i) => i.lang === this.language);
+      const partialLanguageMatch = voices.filter((i) => i.lang.substr(0, 2) === this.language.substr(0, 2));
 
       // try to find a voice that matches the language and gender exactly
       let candidates = matchesLanguageExact.filter(matchesGender);
       // ... relax the language requirement
-      if (candidates.length === 0) candidates = matchesLanguageCountry.filter(matchesGender);
+      if (candidates.length === 0) candidates = partialLanguageMatch.filter(matchesGender);
       // ... remove the gender requirement
       if (candidates.length === 0) candidates = matchesLanguageExact;
-      if (candidates.length === 0) candidates = matchesLanguageCountry;
+      if (candidates.length === 0) candidates = partialLanguageMatch;
       // ... just use any voice
-      if (candidates.length === 0) candidates = speechSynthesis.getVoices();
+      if (candidates.length === 0) candidates = voices;
 
       // return the default, if it is found
       const defaultVoice = candidates.find((i) => i.default);

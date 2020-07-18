@@ -9378,17 +9378,18 @@ var P;
                         return false;
                     };
                     const voiceGender = scratchVoices[this.voice].gender;
-                    const matchesLanguageCountry = speechSynthesis.getVoices().filter((i) => i.lang.substr(0, 2) === this.language.substr(0, 2));
-                    const matchesLanguageExact = speechSynthesis.getVoices().filter((i) => i.lang === this.language);
+                    const voices = speechSynthesis.getVoices();
+                    const matchesLanguageExact = voices.filter((i) => i.lang === this.language);
+                    const partialLanguageMatch = voices.filter((i) => i.lang.substr(0, 2) === this.language.substr(0, 2));
                     let candidates = matchesLanguageExact.filter(matchesGender);
                     if (candidates.length === 0)
-                        candidates = matchesLanguageCountry.filter(matchesGender);
+                        candidates = partialLanguageMatch.filter(matchesGender);
                     if (candidates.length === 0)
                         candidates = matchesLanguageExact;
                     if (candidates.length === 0)
-                        candidates = matchesLanguageCountry;
+                        candidates = partialLanguageMatch;
                     if (candidates.length === 0)
-                        candidates = speechSynthesis.getVoices();
+                        candidates = voices;
                     const defaultVoice = candidates.find((i) => i.default);
                     if (defaultVoice)
                         return defaultVoice;
