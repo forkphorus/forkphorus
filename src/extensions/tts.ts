@@ -55,18 +55,14 @@ namespace P.ext.tts {
       };
 
       const voiceGender = scratchVoices[this.voice].gender;
+      // we have to refetch and filter the voices list every time because it can (and does) change at runtime.
       const voices = speechSynthesis.getVoices();
+      const matchesLanguage = voices.filter((i) => i.lang.substr(0, 2) === this.language.substr(0, 2));
 
-      const matchesLanguageExact = voices.filter((i) => i.lang === this.language);
-      const partialLanguageMatch = voices.filter((i) => i.lang.substr(0, 2) === this.language.substr(0, 2));
-
-      // try to find a voice that matches the language and gender exactly
-      let candidates = matchesLanguageExact.filter(matchesGender);
-      // ... relax the language requirement
-      if (candidates.length === 0) candidates = partialLanguageMatch.filter(matchesGender);
+      // try to find a voice that matches the language and gender
+      let candidates = matchesLanguage.filter(matchesGender);
       // ... remove the gender requirement
-      if (candidates.length === 0) candidates = matchesLanguageExact;
-      if (candidates.length === 0) candidates = partialLanguageMatch;
+      if (candidates.length === 0) candidates = matchesLanguage;
       // ... just use any voice
       if (candidates.length === 0) candidates = voices;
 
