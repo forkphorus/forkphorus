@@ -892,6 +892,7 @@ var P;
                     this.bubbleContainer.style.display = 'none';
                     return;
                 }
+                this.bubbleContainer.style.display = 'block';
                 const b = this.rotatedBounds();
                 const left = 240 + b.right;
                 var bottom = 180 + b.top;

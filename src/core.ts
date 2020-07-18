@@ -634,6 +634,7 @@ namespace P.core {
         return;
       }
 
+      this.bubbleContainer.style.display = 'block';
       const b = this.rotatedBounds();
       const left = 240 + b.right;
       var bottom = 180 + b.top;
