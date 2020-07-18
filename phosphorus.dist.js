@@ -9375,7 +9375,7 @@ var P;
                             return voiceGender === 1;
                         if (maleVoices.some((i) => i.test(voice.name)))
                             return voiceGender === 0;
-                        return voiceGender === 2;
+                        return false;
                     };
                     const voiceGender = scratchVoices[this.voice].gender;
                     const matchesLanguageCountry = speechSynthesis.getVoices().filter((i) => i.lang.substr(0, 2) === this.language.substr(0, 2));

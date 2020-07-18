@@ -8,7 +8,6 @@ namespace P.ext.tts {
   const enum Gender {
     Male,
     Female,
-    Other,
   }
 
   // TODO: need a larger list of languages here
@@ -53,7 +52,7 @@ namespace P.ext.tts {
       const matchesGender = (voice: SpeechSynthesisVoice) => {
         if (femaleVoices.some((i) => i.test(voice.name))) return voiceGender === Gender.Female;
         if (maleVoices.some((i) => i.test(voice.name))) return voiceGender === Gender.Male;
-        return voiceGender === Gender.Other;
+        return false;
       };
 
       const voiceGender = scratchVoices[this.voice].gender;
