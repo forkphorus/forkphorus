@@ -5,9 +5,10 @@
  * Text-to-speech
  */
 namespace P.ext.tts {
-  const enum Gender {
+  export enum Gender {
     Male,
     Female,
+    Unknown,
   }
 
   // TODO: need a larger list of languages here
@@ -47,12 +48,18 @@ namespace P.ext.tts {
       }
     }
 
-    private chooseVoice(voice: Voice): SpeechSynthesisVoice | null {
-      const matchesGender = (voice: SpeechSynthesisVoice) => {
-        if (femaleVoices.some((i) => i.test(voice.name))) return voiceGender === Gender.Female;
-        if (maleVoices.some((i) => i.test(voice.name))) return voiceGender === Gender.Male;
-        return false;
-      };
+    private getVoiceGender(voice: SpeechSynthesisVoice): Gender {
+      if (femaleVoices.some((i) => i.test(voice.name))) return Gender.Female;
+      if (maleVoices.some((i) => i.test(voice.name))) return Gender.Male;
+      return Gender.Unknown;
+    }
+
+    private getVoiceData(voiceName: string): { voice: SpeechSynthesisVoice | null, rate: number, pitch: number; } {
+      const matchesGender = (voice: SpeechSynthesisVoice) => this.getVoiceGender(voice) === voiceGender;
+
+      const voice = scratchVoices[voiceName];
+      const rate = voice.rate;
+      const pitch = voice.pitch;
 
       const voiceGender = scratchVoices[this.voice].gender;
       // we have to refetch and filter the voices list every time because it can (and does) change at runtime.
@@ -66,12 +73,13 @@ namespace P.ext.tts {
       // ... just use any voice
       if (candidates.length === 0) candidates = voices;
 
-      // return the default, if it is found
       const defaultVoice = candidates.find((i) => i.default);
-      if (defaultVoice) return defaultVoice;
 
-      // just use the first voice, should be good enough
-      return candidates[0];
+      return {
+        voice: defaultVoice || candidates[0] || null,
+        pitch,
+        rate,
+      }
     }
 
     setVoice(voice: string) {
@@ -95,11 +103,11 @@ namespace P.ext.tts {
       return new Promise((resolve, reject) => {
         const end = () => resolve();
         const utterance = new SpeechSynthesisUtterance(text);
-        const voice = scratchVoices[this.voice];
         utterance.lang = this.language;
-        utterance.voice = this.chooseVoice(voice);
-        utterance.rate = voice.rate;
-        utterance.pitch = voice.pitch;
+        const { voice, rate, pitch } = this.getVoiceData(this.voice);
+        utterance.voice = voice;
+        utterance.rate = rate;
+        utterance.pitch = pitch;
         utterance.onerror = end;
         utterance.onend = end;
         speechSynthesis.speak(utterance);

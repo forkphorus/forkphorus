@@ -9342,6 +9342,12 @@ var P;
     (function (ext) {
         var tts;
         (function (tts) {
+            let Gender;
+            (function (Gender) {
+                Gender[Gender["Male"] = 0] = "Male";
+                Gender[Gender["Female"] = 1] = "Female";
+                Gender[Gender["Unknown"] = 2] = "Unknown";
+            })(Gender = tts.Gender || (tts.Gender = {}));
             const femaleVoices = [
                 /Zira/,
                 /female/i,
@@ -9351,11 +9357,11 @@ var P;
                 /\bmale/i,
             ];
             const scratchVoices = {
-                ALTO: { gender: 1, pitch: 1, rate: 1 },
-                TENOR: { gender: 0, pitch: 1.5, rate: 1 },
-                GIANT: { gender: 0, pitch: 0.5, rate: 0.75 },
-                SQUEAK: { gender: 1, pitch: 2, rate: 1.5 },
-                KITTEN: { gender: 1, pitch: 2, rate: 1 },
+                ALTO: { gender: Gender.Female, pitch: 1, rate: 1 },
+                TENOR: { gender: Gender.Male, pitch: 1.5, rate: 1 },
+                GIANT: { gender: Gender.Male, pitch: 0.5, rate: 0.75 },
+                SQUEAK: { gender: Gender.Female, pitch: 2, rate: 1.5 },
+                KITTEN: { gender: Gender.Female, pitch: 2, rate: 1 },
             };
             class TextToSpeechExtension extends P.ext.Extension {
                 constructor(stage) {
@@ -9370,14 +9376,18 @@ var P;
                         speechSynthesis.getVoices();
                     }
                 }
-                chooseVoice(voice) {
-                    const matchesGender = (voice) => {
-                        if (femaleVoices.some((i) => i.test(voice.name)))
-                            return voiceGender === 1;
-                        if (maleVoices.some((i) => i.test(voice.name)))
-                            return voiceGender === 0;
-                        return false;
-                    };
+                getVoiceGender(voice) {
+                    if (femaleVoices.some((i) => i.test(voice.name)))
+                        return Gender.Female;
+                    if (maleVoices.some((i) => i.test(voice.name)))
+                        return Gender.Male;
+                    return Gender.Unknown;
+                }
+                getVoiceData(voiceName) {
+                    const matchesGender = (voice) => this.getVoiceGender(voice) === voiceGender;
+                    const voice = scratchVoices[voiceName];
+                    const rate = voice.rate;
+                    const pitch = voice.pitch;
                     const voiceGender = scratchVoices[this.voice].gender;
                     const voices = speechSynthesis.getVoices();
                     const matchesLanguage = voices.filter((i) => i.lang.substr(0, 2) === this.language.substr(0, 2));
@@ -9387,9 +9397,11 @@ var P;
                     if (candidates.length === 0)
                         candidates = voices;
                     const defaultVoice = candidates.find((i) => i.default);
-                    if (defaultVoice)
-                        return defaultVoice;
-                    return candidates[0];
+                    return {
+                        voice: defaultVoice || candidates[0] || null,
+                        pitch,
+                        rate,
+                    };
                 }
                 setVoice(voice) {
                     if (!scratchVoices.hasOwnProperty(voice)) {
@@ -9409,11 +9421,11 @@ var P;
                     return new Promise((resolve, reject) => {
                         const end = () => resolve();
                         const utterance = new SpeechSynthesisUtterance(text);
-                        const voice = scratchVoices[this.voice];
                         utterance.lang = this.language;
-                        utterance.voice = this.chooseVoice(voice);
-                        utterance.rate = voice.rate;
-                        utterance.pitch = voice.pitch;
+                        const { voice, rate, pitch } = this.getVoiceData(this.voice);
+                        utterance.voice = voice;
+                        utterance.rate = rate;
+                        utterance.pitch = pitch;
                         utterance.onerror = end;
                         utterance.onend = end;
                         speechSynthesis.speak(utterance);
