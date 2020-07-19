@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 /*!
 === NOTE ===
 This file is generated from source files in https://github.com/forkphorus/forkphorus
@@ -3330,30 +3321,28 @@ var P;
                     this.exitFullscreen();
                 }
             }
-            getCloudVariablesFromLogs(id) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    const data = yield new P.io.Request(this.MAGIC.CLOUD_HISTORY_API.replace('$id', id)).load('json');
-                    const variables = Object.create(null);
-                    for (const entry of data.reverse()) {
-                        const { verb, name, value } = entry;
-                        switch (verb) {
-                            case 'create_var':
-                            case 'set_var':
-                                variables[name] = value;
-                                break;
-                            case 'del_var':
-                                delete variables[name];
-                                break;
-                            case 'rename_var':
-                                variables[value] = variables[name];
-                                delete variables[name];
-                                break;
-                            default:
-                                console.warn('unknown cloud variable log verb', verb);
-                        }
+            async getCloudVariablesFromLogs(id) {
+                const data = await new P.io.Request(this.MAGIC.CLOUD_HISTORY_API.replace('$id', id)).load('json');
+                const variables = Object.create(null);
+                for (const entry of data.reverse()) {
+                    const { verb, name, value } = entry;
+                    switch (verb) {
+                        case 'create_var':
+                        case 'set_var':
+                            variables[name] = value;
+                            break;
+                        case 'del_var':
+                            delete variables[name];
+                            break;
+                        case 'rename_var':
+                            variables[value] = variables[name];
+                            delete variables[name];
+                            break;
+                        default:
+                            console.warn('unknown cloud variable log verb', verb);
                     }
-                    return variables;
-                });
+                }
+                return variables;
             }
             applyCloudVariablesOnce(stage, id) {
                 this.getCloudVariablesFromLogs(id).then((variables) => {
@@ -3510,107 +3499,97 @@ var P;
                 this.applyCloudVariables(this.options.cloudVariables);
                 this.applyAutoplayPolicy(this.options.autoplayPolicy);
             }
-            loadLoader(loaderId, loader) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    loaderId.setLoader(loader);
-                    loader.onprogress = (progress) => {
-                        if (loaderId.isActive()) {
-                            this.onprogress.emit(progress);
-                        }
-                    };
-                    const stage = yield loader.load();
-                    this.setStage(stage);
-                    this.currentLoader = null;
-                    loader.cleanup();
-                    return stage;
-                });
+            async loadLoader(loaderId, loader) {
+                loaderId.setLoader(loader);
+                loader.onprogress = (progress) => {
+                    if (loaderId.isActive()) {
+                        this.onprogress.emit(progress);
+                    }
+                };
+                const stage = await loader.load();
+                this.setStage(stage);
+                this.currentLoader = null;
+                loader.cleanup();
+                return stage;
             }
-            loadProjectById(id) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    const { loaderId } = this.beginLoadingProject();
-                    const getLoader = (blob) => __awaiter(this, void 0, void 0, function* () {
-                        try {
-                            const projectText = yield P.io.readers.toText(blob);
-                            const projectJson = P.json.parse(projectText);
-                            switch (this.determineProjectType(projectJson)) {
-                                case 'sb2': return new P.sb2.Scratch2Loader(projectJson);
-                                case 'sb3': return new P.sb3.Scratch3Loader(projectJson);
-                            }
-                        }
-                        catch (e) {
-                            let buffer = yield P.io.readers.toArrayBuffer(blob);
-                            if (this.isScratch1Project(buffer)) {
-                                buffer = yield this.convertScratch1Project(buffer);
-                            }
-                            return new P.sb2.SB2FileLoader(buffer);
-                        }
-                    });
+            async loadProjectById(id) {
+                const { loaderId } = this.beginLoadingProject();
+                const getLoader = async (blob) => {
                     try {
-                        this.projectMeta = new RemoteProjectMeta(id);
-                        const blob = yield this.fetchProject(id);
-                        const loader = yield getLoader(blob);
-                        yield this.loadLoader(loaderId, loader);
-                    }
-                    catch (e) {
-                        if (loaderId.isActive()) {
-                            this.handleError(e);
-                        }
-                    }
-                });
-            }
-            loadProjectFromBufferWithType(loaderId, buffer, type) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    let loader;
-                    if (type === 'sb') {
-                        buffer = yield this.convertScratch1Project(buffer);
-                        type = 'sb2';
-                    }
-                    switch (type) {
-                        case 'sb2':
-                            loader = new P.sb2.SB2FileLoader(buffer);
-                            break;
-                        case 'sb3':
-                            loader = new P.sb3.SB3FileLoader(buffer);
-                            break;
-                        default: throw new Error('Unknown type: ' + type);
-                    }
-                    yield this.loadLoader(loaderId, loader);
-                });
-            }
-            loadProjectFromFile(file) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    const { loaderId } = this.beginLoadingProject();
-                    try {
-                        this.projectMeta = new LocalProjectMeta(file.name);
-                        const extension = file.name.split('.').pop() || '';
-                        const buffer = yield P.io.readers.toArrayBuffer(file);
-                        switch (extension) {
-                            case 'sb': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb');
-                            case 'sb2': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb2');
-                            case 'sb3': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb3');
-                            default: throw new Error('Unrecognized file extension: ' + extension);
+                        const projectText = await P.io.readers.toText(blob);
+                        const projectJson = P.json.parse(projectText);
+                        switch (this.determineProjectType(projectJson)) {
+                            case 'sb2': return new P.sb2.Scratch2Loader(projectJson);
+                            case 'sb3': return new P.sb3.Scratch3Loader(projectJson);
                         }
                     }
                     catch (e) {
-                        if (loaderId.isActive()) {
-                            this.handleError(e);
+                        let buffer = await P.io.readers.toArrayBuffer(blob);
+                        if (this.isScratch1Project(buffer)) {
+                            buffer = await this.convertScratch1Project(buffer);
                         }
+                        return new P.sb2.SB2FileLoader(buffer);
                     }
-                });
+                };
+                try {
+                    this.projectMeta = new RemoteProjectMeta(id);
+                    const blob = await this.fetchProject(id);
+                    const loader = await getLoader(blob);
+                    await this.loadLoader(loaderId, loader);
+                }
+                catch (e) {
+                    if (loaderId.isActive()) {
+                        this.handleError(e);
+                    }
+                }
             }
-            loadProjectFromBuffer(buffer, type) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    const { loaderId } = this.beginLoadingProject();
-                    try {
-                        this.projectMeta = new BinaryProjectMeta();
-                        return yield this.loadProjectFromBufferWithType(loaderId, buffer, type);
+            async loadProjectFromBufferWithType(loaderId, buffer, type) {
+                let loader;
+                if (type === 'sb') {
+                    buffer = await this.convertScratch1Project(buffer);
+                    type = 'sb2';
+                }
+                switch (type) {
+                    case 'sb2':
+                        loader = new P.sb2.SB2FileLoader(buffer);
+                        break;
+                    case 'sb3':
+                        loader = new P.sb3.SB3FileLoader(buffer);
+                        break;
+                    default: throw new Error('Unknown type: ' + type);
+                }
+                await this.loadLoader(loaderId, loader);
+            }
+            async loadProjectFromFile(file) {
+                const { loaderId } = this.beginLoadingProject();
+                try {
+                    this.projectMeta = new LocalProjectMeta(file.name);
+                    const extension = file.name.split('.').pop() || '';
+                    const buffer = await P.io.readers.toArrayBuffer(file);
+                    switch (extension) {
+                        case 'sb': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb');
+                        case 'sb2': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb2');
+                        case 'sb3': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb3');
+                        default: throw new Error('Unrecognized file extension: ' + extension);
                     }
-                    catch (e) {
-                        if (loaderId.isActive()) {
-                            this.handleError(e);
-                        }
+                }
+                catch (e) {
+                    if (loaderId.isActive()) {
+                        this.handleError(e);
                     }
-                });
+                }
+            }
+            async loadProjectFromBuffer(buffer, type) {
+                const { loaderId } = this.beginLoadingProject();
+                try {
+                    this.projectMeta = new BinaryProjectMeta();
+                    return await this.loadProjectFromBufferWithType(loaderId, buffer, type);
+                }
+                catch (e) {
+                    if (loaderId.isActive()) {
+                        this.handleError(e);
+                    }
+                }
             }
         }
         Player.DEFAULT_OPTIONS = {
@@ -6856,40 +6835,38 @@ var P;
                     console.timeEnd('Scratch 3 compile');
                 }
             }
-            load() {
-                return __awaiter(this, void 0, void 0, function* () {
-                    if (!this.projectData) {
-                        throw new Error('Project data is missing or invalid');
-                    }
-                    if (!Array.isArray(this.projectData.targets)) {
-                        throw new Error('Invalid project data: missing targets');
-                    }
-                    yield this.loadRequiredAssets();
-                    this.resetTasks();
-                    const targets = yield Promise.all(this.projectData.targets
-                        .sort((a, b) => a.layerOrder - b.layerOrder)
-                        .map((data) => this.loadTarget(data)));
-                    if (this.aborted) {
-                        throw new Error('Loading aborting.');
-                    }
-                    const stage = targets.filter((i) => i.isStage)[0];
-                    if (!stage) {
-                        throw new Error('Project does not have a Stage');
-                    }
-                    const sprites = targets.filter((i) => i.isSprite);
-                    sprites.forEach((sprite) => sprite.stage = stage);
-                    stage.children = sprites;
-                    stage.allWatchers = this.projectData.monitors
-                        .map((data) => this.loadWatcher(data, stage))
-                        .filter((i) => i && i.valid);
-                    stage.allWatchers.forEach((watcher) => watcher.init());
-                    this.compileTargets(targets, stage);
-                    if (this.needsMusic) {
-                        yield this.loadSoundbank();
-                    }
-                    this.projectData = null;
-                    return stage;
-                });
+            async load() {
+                if (!this.projectData) {
+                    throw new Error('Project data is missing or invalid');
+                }
+                if (!Array.isArray(this.projectData.targets)) {
+                    throw new Error('Invalid project data: missing targets');
+                }
+                await this.loadRequiredAssets();
+                this.resetTasks();
+                const targets = await Promise.all(this.projectData.targets
+                    .sort((a, b) => a.layerOrder - b.layerOrder)
+                    .map((data) => this.loadTarget(data)));
+                if (this.aborted) {
+                    throw new Error('Loading aborting.');
+                }
+                const stage = targets.filter((i) => i.isStage)[0];
+                if (!stage) {
+                    throw new Error('Project does not have a Stage');
+                }
+                const sprites = targets.filter((i) => i.isSprite);
+                sprites.forEach((sprite) => sprite.stage = stage);
+                stage.children = sprites;
+                stage.allWatchers = this.projectData.monitors
+                    .map((data) => this.loadWatcher(data, stage))
+                    .filter((i) => i && i.valid);
+                stage.allWatchers.forEach((watcher) => watcher.init());
+                this.compileTargets(targets, stage);
+                if (this.needsMusic) {
+                    await this.loadSoundbank();
+                }
+                this.projectData = null;
+                return stage;
             }
         }
         sb3.BaseSB3Loader = BaseSB3Loader;
@@ -9127,7 +9104,7 @@ var P;
                         this.failures++;
                     }
                     this.setStatusText('Connection lost, reconnecting...');
-                    const delayTime = Math.pow(2, this.failures) * 1000;
+                    const delayTime = 2 ** this.failures * 1000;
                     console.log(this.logPrefix, 'reconnecting in', delayTime);
                     this.reconnectTimeout = setTimeout(() => {
                         this.reconnectTimeout = null;
