@@ -6986,7 +6986,7 @@ var P;
                     this.flags = 0;
                 }
                 enableFlag(n) {
-                    this.flags &= n;
+                    this.flags |= n;
                 }
                 hasFlag(n) {
                     return this.flags & n;

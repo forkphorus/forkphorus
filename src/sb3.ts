@@ -1160,7 +1160,7 @@ namespace P.sb3.compiler {
     }
 
     enableFlag(n: number) {
-      this.flags &= n;
+      this.flags |= n;
     }
 
     hasFlag(n: number) {
