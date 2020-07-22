@@ -6985,11 +6985,11 @@ var P;
                     this.potentialNumber = true;
                     this.flags = 0;
                 }
-                enableFlag(n) {
-                    this.flags |= n;
+                enableFlag(flag) {
+                    this.flags |= flag;
                 }
-                hasFlag(n) {
-                    return this.flags & n;
+                hasFlag(flag) {
+                    return (this.flags & flag) !== 0;
                 }
                 toString() {
                     return this.source;

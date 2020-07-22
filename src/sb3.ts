@@ -1159,15 +1159,15 @@ namespace P.sb3.compiler {
 
     }
 
-    enableFlag(n: number) {
-      this.flags |= n;
+    enableFlag(flag: number): void {
+      this.flags |= flag;
     }
 
-    hasFlag(n: number) {
-      return this.flags & n;
+    hasFlag(flag: number): boolean {
+      return (this.flags & flag) !== 0;
     }
 
-    toString() {
+    toString(): string {
       return this.source;
     }
   }
