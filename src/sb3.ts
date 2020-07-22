@@ -2974,14 +2974,13 @@ namespace P.sb3.compiler {
     if (!OPERAND1.potentialNumber || !OPERAND2.potentialNumber) {
       return util.booleanInput(`strEqual(${OPERAND1}, ${OPERAND2})`);
     }
-    if (P.config.experimentalOptimizations) {
-      // If we know at compile-time that an input is a number, we will use the faster numEqual method.
-      // The first argument to numEqual must be a number, the other will be converted if necessary.
+    // If we know at compile-time that an input will always be a number and neither will be NaN, we will use the faster numEqual.
+    if (!OPERAND1.hasFlag(P.sb3.compiler.InputFlags.NaN) && !OPERAND2.hasFlag(P.sb3.compiler.InputFlags.NaN)) {
       if (OPERAND1.type === 'number') {
-        return util.booleanInput(`numEqualExperimental(${OPERAND1}, ${OPERAND2})`);
+        return util.booleanInput(`numEqual(${OPERAND1}, ${OPERAND2})`);
       }
       if (OPERAND2.type === 'number') {
-        return util.booleanInput(`numEqualExperimental(${OPERAND2}, ${OPERAND1})`);
+        return util.booleanInput(`numEqual(${OPERAND2}, ${OPERAND1})`);
       }
     }
     return util.booleanInput(`equal(${OPERAND1}, ${OPERAND2})`);
