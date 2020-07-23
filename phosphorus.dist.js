@@ -4195,6 +4195,12 @@ var P;
                     stack: STACK = [],
                     warp: procedure.warp,
                 };
+                for (const procCode of Object.keys(S.procedures)) {
+                    if (S.procedures[procCode] === procedure) {
+                        C.procCode = procCode;
+                        break;
+                    }
+                }
                 R = {};
                 if (C.warp || WARP) {
                     WARP++;
