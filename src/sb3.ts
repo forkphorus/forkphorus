@@ -117,14 +117,12 @@ namespace P.sb3 {
   export class Scratch3Stage extends P.core.Stage {
     public sb3data: SB3Target;
     public listIds: ObjectMap<string> = {};
-    public varIds: ObjectMap<string> = {};
   }
 
   // Implements a Scratch 3 Sprite.
   export class Scratch3Sprite extends P.core.Sprite {
     public sb3data: SB3Target;
     public listIds: ObjectMap<string> = {};
-    public varIds: ObjectMap<string> = {};
 
     _clone() {
       return new Scratch3Sprite(this.stage);
@@ -853,7 +851,6 @@ namespace P.sb3 {
           }
         }
         target.vars[name] = value;
-        target.varIds[id] = name;
       }
 
       for (const id of Object.keys(data.lists)) {
@@ -1267,21 +1264,21 @@ namespace P.sb3.compiler {
      * Gets a field's reference to a variable.
      */
     getVariableReference(field: string): string {
-      return this.compiler.getVariableReference(this.compiler.getVariableField(this.block, field));
+      return this.compiler.getVariableReference(this.getField(field));
     }
 
     /**
      * Gets a field's reference to a list.
      */
-    getListReference(field: string) {
-      return this.compiler.getListReference(this.compiler.getVariableField(this.block, field));
+    getListReference(field: string): string {
+      return this.compiler.getListReference(this.getField(field));
     }
 
     /**
      * Gets the scope of a field's reference to a variable.
      */
     getVariableScope(field: string): string {
-      return this.compiler.findVariable(this.compiler.getVariableField(this.block, field)).scope;
+      return this.compiler.getVariableScope(this.getField(field));
     }
 
     /**
@@ -1295,7 +1292,7 @@ namespace P.sb3.compiler {
      * Gets the scope of a field's reference to a list.
      */
     getListScope(field: string): string {
-      return this.compiler.findVariable(this.compiler.getVariableField(this.block, field)).scope;
+      return this.compiler.getListScope(this.getField(field));
     }
 
     /**
@@ -1657,57 +1654,49 @@ namespace P.sb3.compiler {
     }
 
     /**
-     * Find the scope and name of a variable from its ID.
-     * The variable may be created if it does not exist.
+     * Determines the runtime object that owns a variable in the runtime.
+     * The variable may be created if it cannot be found.
      */
-    findVariable(id: string): { scope: string; name: string; } {
-      const stage = this.target.stage as Target;
-      if (stage.varIds.hasOwnProperty(id)) {
-        return { scope: 'self', name: stage.varIds[id] };
-      } else if (this.target.varIds.hasOwnProperty(id)) {
-        return { scope: 'S', name: this.target.varIds[id] };
+    getVariableScope(name: string): string {
+      if (name in this.target.stage.vars) {
+        return 'self';
+      } else if (name in this.target.vars) {
+        return 'S';
       } else {
-        // Create missing variables in the sprite.
-        // We use the variable ID as the name, and store this in varIds for future lookups.
-        this.target.vars[id] = 0;
-        this.target.varIds[id] = id;
-        return { scope: 'S', name: id };
+        // Create missing variables in the sprite scope.
+        this.target.vars[name] = 0;
+        return 'S';
       }
     }
 
     /**
-     * Find the scope and name of a list from its ID.
-     * The list may be created if it does not exist.
+     * Determines the runtime object that owns a list in the runtime.
+     * The list may be created if it cannot be found.
      */
-    findList(id: string): { scope: string; name: string; } {
-      const stage = this.target.stage as Target;
-      if (stage.listIds.hasOwnProperty(id)) {
-        return { scope: 'self', name: stage.listIds[id] };
-      } else if (this.target.listIds.hasOwnProperty(id)) {
-        return { scope: 'S', name: this.target.listIds[id] };
+    getListScope(name: string): string {
+      if (name in this.target.stage.lists) {
+        return 'self';
+      } else if (name in this.target.lists) {
+        return 'S';
       } else {
-        // Create missing lists in the sprite.
-        // We use the list ID as the name, and store this in listIds for future lookups.
-        this.target.lists[id] = createList();
-        this.target.listIds[id] = id;
-        return { scope: 'S', name: id };
+        // Create missing lists in the sprite scope.
+        this.target.lists[name] = createList();
+        return 'S';
       }
     }
 
     /**
      * Gets the runtime reference to a variable.
      */
-    getVariableReference(id: string): string {
-      const { scope, name } = this.findVariable(id);
-      return `${scope}.vars[${this.sanitizedString(name)}]`;
+    getVariableReference(name: string): string {
+      return `${this.getVariableScope(name)}.vars[${this.sanitizedString(name)}]`;
     }
 
     /**
      * Gets the runtime reference to a list.
      */
-    getListReference(id: string): string {
-      const { scope, name } = this.findList(id);
-      return `${scope}.lists[${this.sanitizedString(name)}]`;
+    getListReference(name: string): string {
+      return `${this.getListScope(name)}.lists[${this.sanitizedString(name)}]`;
     }
 
     /**
@@ -1774,11 +1763,11 @@ namespace P.sb3.compiler {
 
         case NativeTypes.VAR:
           // [type, name, id]
-          return anyInput(this.getVariableReference(native[2]));
+          return anyInput(this.getVariableReference(native[1]));
 
         case NativeTypes.LIST:
           // [type, name, id]
-          return new CompiledInput(this.getListReference(native[2]), 'list');
+          return new CompiledInput(this.getListReference(native[1]), 'list');
 
         case NativeTypes.BROADCAST:
           // [type, name, id]
@@ -1861,20 +1850,6 @@ namespace P.sb3.compiler {
         return '';
       }
       return '' + value[0];
-    }
-
-    /**
-     * Get the value of a variable field of a block.
-     * @returns The variable ID
-     */
-    getVariableField(block: SB3Block, fieldName: string): string {
-      const value = block.fields[fieldName];
-      if (!value) {
-        // This could be a sign of another issue, so log a warning.
-        this.warn('missing variable field', fieldName);
-        return '';
-      }
-      return '' + value[1];
     }
 
     /**

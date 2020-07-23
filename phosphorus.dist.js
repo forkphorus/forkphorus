@@ -6197,7 +6197,6 @@ var P;
             constructor() {
                 super(...arguments);
                 this.listIds = {};
-                this.varIds = {};
             }
         }
         sb3.Scratch3Stage = Scratch3Stage;
@@ -6205,7 +6204,6 @@ var P;
             constructor() {
                 super(...arguments);
                 this.listIds = {};
-                this.varIds = {};
             }
             _clone() {
                 return new Scratch3Sprite(this.stage);
@@ -6754,7 +6752,6 @@ var P;
                         }
                     }
                     target.vars[name] = value;
-                    target.varIds[id] = name;
                 }
                 for (const id of Object.keys(data.lists)) {
                     const list = data.lists[id];
@@ -7028,19 +7025,19 @@ var P;
                     return this.compiler.sanitizedString(string);
                 }
                 getVariableReference(field) {
-                    return this.compiler.getVariableReference(this.compiler.getVariableField(this.block, field));
+                    return this.compiler.getVariableReference(this.getField(field));
                 }
                 getListReference(field) {
-                    return this.compiler.getListReference(this.compiler.getVariableField(this.block, field));
+                    return this.compiler.getListReference(this.getField(field));
                 }
                 getVariableScope(field) {
-                    return this.compiler.findVariable(this.compiler.getVariableField(this.block, field)).scope;
+                    return this.compiler.getVariableScope(this.getField(field));
                 }
                 isCloudVariable(field) {
                     return this.target.stage.cloudVariables.indexOf(this.getField(field)) > -1;
                 }
                 getListScope(field) {
-                    return this.compiler.findVariable(this.compiler.getVariableField(this.block, field)).scope;
+                    return this.compiler.getListScope(this.getField(field));
                 }
                 asType(input, type) {
                     return this.compiler.asType(input, type);
@@ -7239,41 +7236,35 @@ var P;
                         .replace(/\*\//g, '');
                     return `/* ${content} */`;
                 }
-                findVariable(id) {
-                    const stage = this.target.stage;
-                    if (stage.varIds.hasOwnProperty(id)) {
-                        return { scope: 'self', name: stage.varIds[id] };
+                getVariableScope(name) {
+                    if (name in this.target.stage.vars) {
+                        return 'self';
                     }
-                    else if (this.target.varIds.hasOwnProperty(id)) {
-                        return { scope: 'S', name: this.target.varIds[id] };
-                    }
-                    else {
-                        this.target.vars[id] = 0;
-                        this.target.varIds[id] = id;
-                        return { scope: 'S', name: id };
-                    }
-                }
-                findList(id) {
-                    const stage = this.target.stage;
-                    if (stage.listIds.hasOwnProperty(id)) {
-                        return { scope: 'self', name: stage.listIds[id] };
-                    }
-                    else if (this.target.listIds.hasOwnProperty(id)) {
-                        return { scope: 'S', name: this.target.listIds[id] };
+                    else if (name in this.target.vars) {
+                        return 'S';
                     }
                     else {
-                        this.target.lists[id] = sb3.createList();
-                        this.target.listIds[id] = id;
-                        return { scope: 'S', name: id };
+                        this.target.vars[name] = 0;
+                        return 'S';
                     }
                 }
-                getVariableReference(id) {
-                    const { scope, name } = this.findVariable(id);
-                    return `${scope}.vars[${this.sanitizedString(name)}]`;
+                getListScope(name) {
+                    if (name in this.target.stage.lists) {
+                        return 'self';
+                    }
+                    else if (name in this.target.lists) {
+                        return 'S';
+                    }
+                    else {
+                        this.target.lists[name] = sb3.createList();
+                        return 'S';
+                    }
                 }
-                getListReference(id) {
-                    const { scope, name } = this.findList(id);
-                    return `${scope}.lists[${this.sanitizedString(name)}]`;
+                getVariableReference(name) {
+                    return `${this.getVariableScope(name)}.vars[${this.sanitizedString(name)}]`;
+                }
+                getListReference(name) {
+                    return `${this.getListScope(name)}.lists[${this.sanitizedString(name)}]`;
                 }
                 isStringLiteralPotentialNumber(text) {
                     return /\d|true|false|Infinity/.test(text);
@@ -7312,9 +7303,9 @@ var P;
                             return input;
                         }
                         case 12:
-                            return anyInput(this.getVariableReference(native[2]));
+                            return anyInput(this.getVariableReference(native[1]));
                         case 13:
-                            return new CompiledInput(this.getListReference(native[2]), 'list');
+                            return new CompiledInput(this.getListReference(native[1]), 'list');
                         case 11:
                             return this.sanitizedInput(native[1]);
                         case 9: {
@@ -7368,14 +7359,6 @@ var P;
                         return '';
                     }
                     return '' + value[0];
-                }
-                getVariableField(block, fieldName) {
-                    const value = block.fields[fieldName];
-                    if (!value) {
-                        this.warn('missing variable field', fieldName);
-                        return '';
-                    }
-                    return '' + value[1];
                 }
                 compileSubstackInput(block, substackName) {
                     if (!block.inputs[substackName]) {
