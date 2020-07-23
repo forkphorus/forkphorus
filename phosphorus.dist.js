@@ -8384,12 +8384,12 @@ var P;
         if (!OPERAND1.potentialNumber || !OPERAND2.potentialNumber) {
             return util.booleanInput(`strEqual(${OPERAND1}, ${OPERAND2})`);
         }
-        if (!OPERAND1.hasFlag(1) && !OPERAND2.hasFlag(1)) {
+        if (P.config.experimentalOptimizations) {
             if (OPERAND1.type === 'number') {
-                return util.booleanInput(`numEqual(${OPERAND1}, ${OPERAND2})`);
+                return util.booleanInput(`numEqualExperimental(${OPERAND1}, ${OPERAND2})`);
             }
             if (OPERAND2.type === 'number') {
-                return util.booleanInput(`numEqual(${OPERAND2}, ${OPERAND1})`);
+                return util.booleanInput(`numEqualExperimental(${OPERAND2}, ${OPERAND1})`);
             }
         }
         return util.booleanInput(`equal(${OPERAND1}, ${OPERAND2})`);
