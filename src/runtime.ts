@@ -97,6 +97,14 @@ namespace P.runtime {
 
   // Equality testing optimized for the first argument always being a number.
   var numEqual = function(nx: number, y: any) {
+    if (typeof y === 'number' || DIGIT.test(y)) {
+      var ny = +y;
+      return ny === ny && nx === ny;
+    }
+    return false;
+  };
+
+  var numEqualExperimental = function(nx: number, y: any) {
     var ny = +y;
     return ny === ny && nx === ny;
   };

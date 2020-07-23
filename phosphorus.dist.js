@@ -3852,6 +3852,13 @@ var P;
             return xs === ys;
         };
         var numEqual = function (nx, y) {
+            if (typeof y === 'number' || DIGIT.test(y)) {
+                var ny = +y;
+                return ny === ny && nx === ny;
+            }
+            return false;
+        };
+        var numEqualExperimental = function (nx, y) {
             var ny = +y;
             return ny === ny && nx === ny;
         };
