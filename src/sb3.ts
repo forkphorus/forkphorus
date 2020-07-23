@@ -1295,7 +1295,7 @@ namespace P.sb3.compiler {
      * Gets the scope of a field's reference to a list.
      */
     getListScope(field: string): string {
-      return this.compiler.findVariable(this.compiler.getVariableField(this.block, field)).scope;
+      return this.compiler.findList(this.compiler.getVariableField(this.block, field)).scope;
     }
 
     /**

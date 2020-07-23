@@ -7040,7 +7040,7 @@ var P;
                     return this.target.stage.cloudVariables.indexOf(this.getField(field)) > -1;
                 }
                 getListScope(field) {
-                    return this.compiler.findVariable(this.compiler.getVariableField(this.block, field)).scope;
+                    return this.compiler.findList(this.compiler.getVariableField(this.block, field)).scope;
                 }
                 asType(input, type) {
                     return this.compiler.asType(input, type);
