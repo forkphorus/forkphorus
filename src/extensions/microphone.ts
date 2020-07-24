@@ -17,7 +17,7 @@ namespace P.ext.microphone {
     source: MediaStreamAudioSourceNode;
     stream: MediaStream;
     analyzer: AnalyserNode;
-    dataArray: Float32Array;
+    dataArray: Uint8Array | Float32Array;
     lastValue: number;
     lastCheck: number;
   }
@@ -28,6 +28,18 @@ namespace P.ext.microphone {
   // The loudness will be cached for this long, in milliseconds.
   // getLoudness() has side effects (such as affecting smoothing) so a cache is needed.
   const CACHE_TIME = 1000 / 30;
+
+  function createAnalyzerDataArray(analyzer: AnalyserNode) {
+    // TODO: it might be good to just always use byte mode because we likely don't benefit much from the accuracy of floats
+    if (!!analyzer.getFloatTimeDomainData) {
+      return new Float32Array(analyzer.fftSize);
+    } else if (!!analyzer.getByteTimeDomainData) {
+      // Safari does not support getFloatTimeDomainData
+      return new Uint8Array(analyzer.fftSize);
+    } else {
+      throw new Error('Analyzer node does not support getFloatTimeDomainData or getByteTimeDomainData');
+    }
+  }
 
   /**
    * Begin the process of connecting to the microphone.
@@ -41,18 +53,27 @@ namespace P.ext.microphone {
       state = MicrophoneState.Error;
       return;
     }
+    if (!navigator.mediaDevices) {
+      console.warn('Cannot access media devices, probably running in insecure (non-HTTPS) context.');
+      state = MicrophoneState.Error;
+      return;
+    }
 
     state = MicrophoneState.Connecting;
-    navigator.mediaDevices.getUserMedia({audio: true})
+    navigator.mediaDevices.getUserMedia({ audio: true })
       .then((mediaStream) => {
         const source = P.audio.context!.createMediaStreamSource(mediaStream);
         const analyzer = P.audio.context!.createAnalyser();
+        if (!analyzer.getFloatTimeDomainData) {
+          // Safari is missing this API
+          throw new Error('Missing API getFloatTimeDomainData');
+        }
         source.connect(analyzer);
         microphone = {
           source: source,
           stream: mediaStream,
           analyzer,
-          dataArray: new Float32Array(analyzer.fftSize),
+          dataArray: createAnalyzerDataArray(analyzer),
           lastValue: -1,
           lastCheck: 0,
         };
@@ -81,9 +102,9 @@ namespace P.ext.microphone {
     microphone.source.connect(analyzer);
     microphone.analyzer = analyzer;
 
-    // It's possible fftSize might change with this new analyser
+    // Check if fftSize changed, not sure if this is necessary
     if (microphone.dataArray.length !== analyzer.fftSize) {
-      microphone.dataArray = new Float32Array(analyzer.fftSize);
+      microphone.dataArray = createAnalyzerDataArray(analyzer);
     }
   }
 
@@ -103,11 +124,20 @@ namespace P.ext.microphone {
       return microphone.lastValue;
     }
 
-    microphone.analyzer.getFloatTimeDomainData(microphone.dataArray);
     let sum = 0;
-    for (let i = 0; i < microphone.dataArray.length; i++){
-      sum += Math.pow(microphone.dataArray[i], 2);
+
+    if (microphone.dataArray instanceof Float32Array) {
+      microphone.analyzer.getFloatTimeDomainData(microphone.dataArray);
+      for (let i = 0; i < microphone.dataArray.length; i++) {
+        sum += Math.pow(microphone.dataArray[i], 2);
+      }
+    } else {
+      microphone.analyzer.getByteTimeDomainData(microphone.dataArray);
+      for (let i = 0; i < microphone.dataArray.length; i++) {
+        sum += Math.pow((microphone.dataArray[i] - 128) / 128, 2);
+      }
     }
+
     let rms = Math.sqrt(sum / microphone.dataArray.length);
     if (microphone.lastValue !== -1) {
       rms = Math.max(rms, microphone.lastValue * 0.6);

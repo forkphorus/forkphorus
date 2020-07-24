@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 /*!
 === NOTE ===
 This file is generated from source files in https://github.com/forkphorus/forkphorus
@@ -892,6 +883,7 @@ var P;
                     this.bubbleContainer.style.display = 'none';
                     return;
                 }
+                this.bubbleContainer.style.display = 'block';
                 const b = this.rotatedBounds();
                 const left = 240 + b.right;
                 var bottom = 180 + b.top;
@@ -1003,8 +995,8 @@ var P;
                 this.counter = 0;
                 this.cloudHandler = null;
                 this.cloudVariables = [];
-                this.speech2text = null;
                 this.microphone = null;
+                this.tts = null;
                 this.extensions = [];
                 this.useSpriteFencing = false;
                 this.runtime = new P.runtime.Runtime(this);
@@ -1393,16 +1385,16 @@ var P;
             addExtension(extension) {
                 this.extensions.push(extension);
             }
-            initSpeech2Text() {
-                if (!this.speech2text && P.ext.speech2text.isSupported()) {
-                    this.speech2text = new P.ext.speech2text.SpeechToTextExtension(this);
-                    this.addExtension(this.speech2text);
-                }
-            }
-            initLoudness() {
+            initMicrophone() {
                 if (!this.microphone) {
                     this.microphone = new P.ext.microphone.MicrophoneExtension(this);
                     this.addExtension(this.microphone);
+                }
+            }
+            initTextToSpeech() {
+                if (!this.tts) {
+                    this.tts = new P.ext.tts.TextToSpeechExtension(this);
+                    this.addExtension(this.tts);
                 }
             }
             setCloudHandler(cloudHandler) {
@@ -3329,30 +3321,28 @@ var P;
                     this.exitFullscreen();
                 }
             }
-            getCloudVariablesFromLogs(id) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    const data = yield new P.io.Request(this.MAGIC.CLOUD_HISTORY_API.replace('$id', id)).load('json');
-                    const variables = Object.create(null);
-                    for (const entry of data.reverse()) {
-                        const { verb, name, value } = entry;
-                        switch (verb) {
-                            case 'create_var':
-                            case 'set_var':
-                                variables[name] = value;
-                                break;
-                            case 'del_var':
-                                delete variables[name];
-                                break;
-                            case 'rename_var':
-                                variables[value] = variables[name];
-                                delete variables[name];
-                                break;
-                            default:
-                                console.warn('unknown cloud variable log verb', verb);
-                        }
+            async getCloudVariablesFromLogs(id) {
+                const data = await new P.io.Request(this.MAGIC.CLOUD_HISTORY_API.replace('$id', id)).load('json');
+                const variables = Object.create(null);
+                for (const entry of data.reverse()) {
+                    const { verb, name, value } = entry;
+                    switch (verb) {
+                        case 'create_var':
+                        case 'set_var':
+                            variables[name] = value;
+                            break;
+                        case 'del_var':
+                            delete variables[name];
+                            break;
+                        case 'rename_var':
+                            variables[value] = variables[name];
+                            delete variables[name];
+                            break;
+                        default:
+                            console.warn('unknown cloud variable log verb', verb);
                     }
-                    return variables;
-                });
+                }
+                return variables;
             }
             applyCloudVariablesOnce(stage, id) {
                 this.getCloudVariablesFromLogs(id).then((variables) => {
@@ -3509,107 +3499,97 @@ var P;
                 this.applyCloudVariables(this.options.cloudVariables);
                 this.applyAutoplayPolicy(this.options.autoplayPolicy);
             }
-            loadLoader(loaderId, loader) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    loaderId.setLoader(loader);
-                    loader.onprogress = (progress) => {
-                        if (loaderId.isActive()) {
-                            this.onprogress.emit(progress);
-                        }
-                    };
-                    const stage = yield loader.load();
-                    this.setStage(stage);
-                    this.currentLoader = null;
-                    loader.cleanup();
-                    return stage;
-                });
+            async loadLoader(loaderId, loader) {
+                loaderId.setLoader(loader);
+                loader.onprogress = (progress) => {
+                    if (loaderId.isActive()) {
+                        this.onprogress.emit(progress);
+                    }
+                };
+                const stage = await loader.load();
+                this.setStage(stage);
+                this.currentLoader = null;
+                loader.cleanup();
+                return stage;
             }
-            loadProjectById(id) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    const { loaderId } = this.beginLoadingProject();
-                    const getLoader = (blob) => __awaiter(this, void 0, void 0, function* () {
-                        try {
-                            const projectText = yield P.io.readers.toText(blob);
-                            const projectJson = P.json.parse(projectText);
-                            switch (this.determineProjectType(projectJson)) {
-                                case 'sb2': return new P.sb2.Scratch2Loader(projectJson);
-                                case 'sb3': return new P.sb3.Scratch3Loader(projectJson);
-                            }
-                        }
-                        catch (e) {
-                            let buffer = yield P.io.readers.toArrayBuffer(blob);
-                            if (this.isScratch1Project(buffer)) {
-                                buffer = yield this.convertScratch1Project(buffer);
-                            }
-                            return new P.sb2.SB2FileLoader(buffer);
-                        }
-                    });
+            async loadProjectById(id) {
+                const { loaderId } = this.beginLoadingProject();
+                const getLoader = async (blob) => {
                     try {
-                        this.projectMeta = new RemoteProjectMeta(id);
-                        const blob = yield this.fetchProject(id);
-                        const loader = yield getLoader(blob);
-                        yield this.loadLoader(loaderId, loader);
-                    }
-                    catch (e) {
-                        if (loaderId.isActive()) {
-                            this.handleError(e);
-                        }
-                    }
-                });
-            }
-            loadProjectFromBufferWithType(loaderId, buffer, type) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    let loader;
-                    if (type === 'sb') {
-                        buffer = yield this.convertScratch1Project(buffer);
-                        type = 'sb2';
-                    }
-                    switch (type) {
-                        case 'sb2':
-                            loader = new P.sb2.SB2FileLoader(buffer);
-                            break;
-                        case 'sb3':
-                            loader = new P.sb3.SB3FileLoader(buffer);
-                            break;
-                        default: throw new Error('Unknown type: ' + type);
-                    }
-                    yield this.loadLoader(loaderId, loader);
-                });
-            }
-            loadProjectFromFile(file) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    const { loaderId } = this.beginLoadingProject();
-                    try {
-                        this.projectMeta = new LocalProjectMeta(file.name);
-                        const extension = file.name.split('.').pop() || '';
-                        const buffer = yield P.io.readers.toArrayBuffer(file);
-                        switch (extension) {
-                            case 'sb': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb');
-                            case 'sb2': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb2');
-                            case 'sb3': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb3');
-                            default: throw new Error('Unrecognized file extension: ' + extension);
+                        const projectText = await P.io.readers.toText(blob);
+                        const projectJson = P.json.parse(projectText);
+                        switch (this.determineProjectType(projectJson)) {
+                            case 'sb2': return new P.sb2.Scratch2Loader(projectJson);
+                            case 'sb3': return new P.sb3.Scratch3Loader(projectJson);
                         }
                     }
                     catch (e) {
-                        if (loaderId.isActive()) {
-                            this.handleError(e);
+                        let buffer = await P.io.readers.toArrayBuffer(blob);
+                        if (this.isScratch1Project(buffer)) {
+                            buffer = await this.convertScratch1Project(buffer);
                         }
+                        return new P.sb2.SB2FileLoader(buffer);
                     }
-                });
+                };
+                try {
+                    this.projectMeta = new RemoteProjectMeta(id);
+                    const blob = await this.fetchProject(id);
+                    const loader = await getLoader(blob);
+                    await this.loadLoader(loaderId, loader);
+                }
+                catch (e) {
+                    if (loaderId.isActive()) {
+                        this.handleError(e);
+                    }
+                }
             }
-            loadProjectFromBuffer(buffer, type) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    const { loaderId } = this.beginLoadingProject();
-                    try {
-                        this.projectMeta = new BinaryProjectMeta();
-                        return yield this.loadProjectFromBufferWithType(loaderId, buffer, type);
+            async loadProjectFromBufferWithType(loaderId, buffer, type) {
+                let loader;
+                if (type === 'sb') {
+                    buffer = await this.convertScratch1Project(buffer);
+                    type = 'sb2';
+                }
+                switch (type) {
+                    case 'sb2':
+                        loader = new P.sb2.SB2FileLoader(buffer);
+                        break;
+                    case 'sb3':
+                        loader = new P.sb3.SB3FileLoader(buffer);
+                        break;
+                    default: throw new Error('Unknown type: ' + type);
+                }
+                await this.loadLoader(loaderId, loader);
+            }
+            async loadProjectFromFile(file) {
+                const { loaderId } = this.beginLoadingProject();
+                try {
+                    this.projectMeta = new LocalProjectMeta(file.name);
+                    const extension = file.name.split('.').pop() || '';
+                    const buffer = await P.io.readers.toArrayBuffer(file);
+                    switch (extension) {
+                        case 'sb': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb');
+                        case 'sb2': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb2');
+                        case 'sb3': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb3');
+                        default: throw new Error('Unrecognized file extension: ' + extension);
                     }
-                    catch (e) {
-                        if (loaderId.isActive()) {
-                            this.handleError(e);
-                        }
+                }
+                catch (e) {
+                    if (loaderId.isActive()) {
+                        this.handleError(e);
                     }
-                });
+                }
+            }
+            async loadProjectFromBuffer(buffer, type) {
+                const { loaderId } = this.beginLoadingProject();
+                try {
+                    this.projectMeta = new BinaryProjectMeta();
+                    return await this.loadProjectFromBufferWithType(loaderId, buffer, type);
+                }
+                catch (e) {
+                    if (loaderId.isActive()) {
+                        this.handleError(e);
+                    }
+                }
             }
         }
         Player.DEFAULT_OPTIONS = {
@@ -5523,7 +5503,7 @@ var P;
                         return 'S.distanceTo(' + val(e[1]) + ')';
                     }
                     else if (e[0] === 'soundLevel') {
-                        object.stage.initLoudness();
+                        object.stage.initMicrophone();
                         return 'self.microphone.getLoudness()';
                     }
                     else if (e[0] === 'timestamp') {
@@ -6249,6 +6229,7 @@ var P;
             constructor() {
                 super(...arguments);
                 this.listIds = {};
+                this.varIds = {};
             }
         }
         sb3.Scratch3Stage = Scratch3Stage;
@@ -6256,6 +6237,7 @@ var P;
             constructor() {
                 super(...arguments);
                 this.listIds = {};
+                this.varIds = {};
             }
             _clone() {
                 return new Scratch3Sprite(this.stage);
@@ -6804,6 +6786,7 @@ var P;
                         }
                     }
                     target.vars[name] = value;
+                    target.varIds[id] = name;
                 }
                 for (const id of Object.keys(data.lists)) {
                     const list = data.lists[id];
@@ -6877,40 +6860,38 @@ var P;
                     console.timeEnd('Scratch 3 compile');
                 }
             }
-            load() {
-                return __awaiter(this, void 0, void 0, function* () {
-                    if (!this.projectData) {
-                        throw new Error('Project data is missing or invalid');
-                    }
-                    if (!Array.isArray(this.projectData.targets)) {
-                        throw new Error('Invalid project data: missing targets');
-                    }
-                    yield this.loadRequiredAssets();
-                    this.resetTasks();
-                    const targets = yield Promise.all(this.projectData.targets
-                        .sort((a, b) => a.layerOrder - b.layerOrder)
-                        .map((data) => this.loadTarget(data)));
-                    if (this.aborted) {
-                        throw new Error('Loading aborting.');
-                    }
-                    const stage = targets.filter((i) => i.isStage)[0];
-                    if (!stage) {
-                        throw new Error('Project does not have a Stage');
-                    }
-                    const sprites = targets.filter((i) => i.isSprite);
-                    sprites.forEach((sprite) => sprite.stage = stage);
-                    stage.children = sprites;
-                    stage.allWatchers = this.projectData.monitors
-                        .map((data) => this.loadWatcher(data, stage))
-                        .filter((i) => i && i.valid);
-                    stage.allWatchers.forEach((watcher) => watcher.init());
-                    this.compileTargets(targets, stage);
-                    if (this.needsMusic) {
-                        yield this.loadSoundbank();
-                    }
-                    this.projectData = null;
-                    return stage;
-                });
+            async load() {
+                if (!this.projectData) {
+                    throw new Error('Project data is missing or invalid');
+                }
+                if (!Array.isArray(this.projectData.targets)) {
+                    throw new Error('Invalid project data: missing targets');
+                }
+                await this.loadRequiredAssets();
+                this.resetTasks();
+                const targets = await Promise.all(this.projectData.targets
+                    .sort((a, b) => a.layerOrder - b.layerOrder)
+                    .map((data) => this.loadTarget(data)));
+                if (this.aborted) {
+                    throw new Error('Loading aborting.');
+                }
+                const stage = targets.filter((i) => i.isStage)[0];
+                if (!stage) {
+                    throw new Error('Project does not have a Stage');
+                }
+                const sprites = targets.filter((i) => i.isSprite);
+                sprites.forEach((sprite) => sprite.stage = stage);
+                stage.children = sprites;
+                stage.allWatchers = this.projectData.monitors
+                    .map((data) => this.loadWatcher(data, stage))
+                    .filter((i) => i && i.valid);
+                stage.allWatchers.forEach((watcher) => watcher.init());
+                this.compileTargets(targets, stage);
+                if (this.needsMusic) {
+                    await this.loadSoundbank();
+                }
+                this.projectData = null;
+                return stage;
             }
         }
         sb3.BaseSB3Loader = BaseSB3Loader;
@@ -7036,11 +7017,11 @@ var P;
                     this.potentialNumber = true;
                     this.flags = 0;
                 }
-                enableFlag(n) {
-                    this.flags &= n;
+                enableFlag(flag) {
+                    this.flags |= flag;
                 }
-                hasFlag(n) {
-                    return this.flags & n;
+                hasFlag(flag) {
+                    return (this.flags & flag) !== 0;
                 }
                 toString() {
                     return this.source;
@@ -7079,19 +7060,19 @@ var P;
                     return this.compiler.sanitizedString(string);
                 }
                 getVariableReference(field) {
-                    return this.compiler.getVariableReference(this.getField(field));
+                    return this.compiler.getVariableReference(this.compiler.getVariableField(this.block, field));
                 }
                 getListReference(field) {
-                    return this.compiler.getListReference(this.getField(field));
+                    return this.compiler.getListReference(this.compiler.getVariableField(this.block, field));
                 }
                 getVariableScope(field) {
-                    return this.compiler.getVariableScope(this.getField(field));
+                    return this.compiler.findVariable(this.compiler.getVariableField(this.block, field)).scope;
                 }
                 isCloudVariable(field) {
                     return this.target.stage.cloudVariables.indexOf(this.getField(field)) > -1;
                 }
                 getListScope(field) {
-                    return this.compiler.getListScope(this.getField(field));
+                    return this.compiler.findList(this.compiler.getVariableField(this.block, field)).scope;
                 }
                 asType(input, type) {
                     return this.compiler.asType(input, type);
@@ -7157,6 +7138,19 @@ var P;
                     const label = this.addLabel();
                     this.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
                     this.writeLn('  var first;');
+                    this.forceQueue(label);
+                    this.writeLn('}');
+                    this.writeLn('restore();');
+                }
+                sleepUntilSettles(source) {
+                    this.writeLn('save();');
+                    this.writeLn('R.resume = false;');
+                    this.writeLn('var localR = R;');
+                    this.writeLn(`${source}`);
+                    this.writeLn('  .then(function() { localR.resume = true; })');
+                    this.writeLn('  .catch(function() { localR.resume = true; });');
+                    const label = this.addLabel();
+                    this.writeLn('if (!R.resume) {');
                     this.forceQueue(label);
                     this.writeLn('}');
                     this.writeLn('restore();');
@@ -7277,35 +7271,41 @@ var P;
                         .replace(/\*\//g, '');
                     return `/* ${content} */`;
                 }
-                getVariableScope(name) {
-                    if (name in this.target.stage.vars) {
-                        return 'self';
+                findVariable(id) {
+                    const stage = this.target.stage;
+                    if (stage.varIds.hasOwnProperty(id)) {
+                        return { scope: 'self', name: stage.varIds[id] };
                     }
-                    else if (name in this.target.vars) {
-                        return 'S';
-                    }
-                    else {
-                        this.target.vars[name] = 0;
-                        return 'S';
-                    }
-                }
-                getListScope(name) {
-                    if (name in this.target.stage.lists) {
-                        return 'self';
-                    }
-                    else if (name in this.target.lists) {
-                        return 'S';
+                    else if (this.target.varIds.hasOwnProperty(id)) {
+                        return { scope: 'S', name: this.target.varIds[id] };
                     }
                     else {
-                        this.target.lists[name] = sb3.createList();
-                        return 'S';
+                        this.target.vars[id] = 0;
+                        this.target.varIds[id] = id;
+                        return { scope: 'S', name: id };
                     }
                 }
-                getVariableReference(name) {
-                    return `${this.getVariableScope(name)}.vars[${this.sanitizedString(name)}]`;
+                findList(id) {
+                    const stage = this.target.stage;
+                    if (stage.listIds.hasOwnProperty(id)) {
+                        return { scope: 'self', name: stage.listIds[id] };
+                    }
+                    else if (this.target.listIds.hasOwnProperty(id)) {
+                        return { scope: 'S', name: this.target.listIds[id] };
+                    }
+                    else {
+                        this.target.lists[id] = sb3.createList();
+                        this.target.listIds[id] = id;
+                        return { scope: 'S', name: id };
+                    }
                 }
-                getListReference(name) {
-                    return `${this.getListScope(name)}.lists[${this.sanitizedString(name)}]`;
+                getVariableReference(id) {
+                    const { scope, name } = this.findVariable(id);
+                    return `${scope}.vars[${this.sanitizedString(name)}]`;
+                }
+                getListReference(id) {
+                    const { scope, name } = this.findList(id);
+                    return `${scope}.lists[${this.sanitizedString(name)}]`;
                 }
                 isStringLiteralPotentialNumber(text) {
                     return /\d|true|false|Infinity/.test(text);
@@ -7344,9 +7344,9 @@ var P;
                             return input;
                         }
                         case 12:
-                            return anyInput(this.getVariableReference(native[1]));
+                            return anyInput(this.getVariableReference(native[2]));
                         case 13:
-                            return new CompiledInput(this.getListReference(native[1]), 'list');
+                            return new CompiledInput(this.getListReference(native[2]), 'list');
                         case 11:
                             return this.sanitizedInput(native[1]);
                         case 9: {
@@ -7400,6 +7400,14 @@ var P;
                         return '';
                     }
                     return '' + value[0];
+                }
+                getVariableField(block, fieldName) {
+                    const value = block.fields[fieldName];
+                    if (!value) {
+                        this.warn('missing variable field', fieldName);
+                        return '';
+                    }
+                    return '' + value[1];
                 }
                 compileSubstackInput(block, substackName) {
                     if (!block.inputs[substackName]) {
@@ -7501,11 +7509,11 @@ var P;
                     };
                 }
                 warn(...args) {
-                    args.unshift('[sb3 compiler]');
+                    args.unshift(`[sb3 compiler ${this.target.name}]`);
                     console.warn.apply(console, args);
                 }
                 log(...args) {
-                    args.unshift('[sb3 compiler]');
+                    args.unshift(`[sb3 compiler ${this.target.name}]`);
                     console.log.apply(console, args);
                 }
                 compile() {
@@ -8252,19 +8260,20 @@ var P;
             util.writeLn('S.isDraggable = false;');
         }
     };
-    statementLibrary['speech2text_listenAndWait'] = function (util) {
-        util.stage.initSpeech2Text();
-        util.writeLn('if (self.speech2text) {');
-        util.writeLn('  save();');
-        util.writeLn('  self.speech2text.startListen();');
-        util.writeLn('  R.id = self.speech2text.id();');
-        const label = util.addLabel();
-        util.writeLn('  if (self.speech2text.id() === R.id) {');
-        util.forceQueue(label);
-        util.writeLn('  }');
-        util.writeLn('  self.speech2text.endListen();');
-        util.writeLn('  restore();');
-        util.writeLn('}');
+    statementLibrary['text2speech_setVoice'] = function (util) {
+        const VOICE = util.getInput('VOICE', 'string');
+        util.stage.initTextToSpeech();
+        util.writeLn(`self.tts.setVoice(${VOICE});`);
+    };
+    statementLibrary['text2speech_setLanguage'] = function (util) {
+        const LANGUAGE = util.getInput('LANGUAGE', 'string');
+        util.stage.initTextToSpeech();
+        util.writeLn(`self.tts.setLanguage(${LANGUAGE});`);
+    };
+    statementLibrary['text2speech_speakAndWait'] = function (util) {
+        const WORDS = util.getInput('WORDS', 'string');
+        util.stage.initTextToSpeech();
+        util.sleepUntilSettles(`self.tts.speak(${WORDS})`);
     };
     statementLibrary['videoSensing_videoToggle'] = function (util) {
         const VIDEO_STATE = util.getInput('VIDEO_STATE', 'string');
@@ -8565,11 +8574,11 @@ var P;
         return util.booleanInput(`!!self.keys[getKeyCode3(${KEY_OPTION})]`);
     };
     inputLibrary['sensing_loud'] = function (util) {
-        util.stage.initLoudness();
+        util.stage.initMicrophone();
         return util.booleanInput('(self.microphone.getLoudness() > 10)');
     };
     inputLibrary['sensing_loudness'] = function (util) {
-        util.stage.initLoudness();
+        util.stage.initMicrophone();
         return util.numberInput('self.microphone.getLoudness()');
     };
     inputLibrary['sensing_mousedown'] = function (util) {
@@ -8612,9 +8621,11 @@ var P;
     inputLibrary['sound_volume'] = function (util) {
         return util.numberInput('(S.volume * 100)');
     };
-    inputLibrary['speech2text_getSpeech'] = function (util) {
-        util.stage.initSpeech2Text();
-        return util.stringInput('(self.speech2text ? self.speech2text.speech : "")');
+    inputLibrary['text2speech_menu_voices'] = function (util) {
+        return util.fieldInput('voices');
+    };
+    inputLibrary['text2speech_menu_languages'] = function (util) {
+        return util.fieldInput('languages');
     };
     inputLibrary['translate_menu_languages'] = function (util) {
         return util.fieldInput('languages');
@@ -8674,7 +8685,7 @@ var P;
                     stallUntil = `runtime.timerStart !== R.timerStart || (runtime.now() - runtime.timerStart) / 1000 <= ${VALUE}`;
                     break;
                 case 'LOUDNESS':
-                    compiler.target.stage.initLoudness();
+                    compiler.target.stage.initMicrophone();
                     executeWhen = `self.microphone.getLoudness() > ${VALUE}`;
                     stallUntil = `self.microphone.getLoudness() <= ${VALUE}`;
                     break;
@@ -8821,20 +8832,6 @@ var P;
             return '';
         },
     };
-    hatLibrary['speech2text_whenIHearHat'] = {
-        handle(util) {
-            util.stage.initSpeech2Text();
-            if (util.stage.speech2text) {
-                const PHRASE = util.getInput('PHRASE', 'string');
-                const phraseFunction = `return ${PHRASE}`;
-                util.stage.speech2text.addHat({
-                    target: util.target,
-                    startingFunction: util.startingFunction,
-                    phraseFunction: P.runtime.createContinuation(phraseFunction),
-                });
-            }
-        },
-    };
     watcherLibrary['data_variable'] = {
         init(watcher) {
             const name = watcher.params.VARIABLE;
@@ -8930,7 +8927,7 @@ var P;
     };
     watcherLibrary['sensing_loudness'] = {
         init(watcher) {
-            watcher.stage.initLoudness();
+            watcher.stage.initMicrophone();
         },
         evaluate(watcher) {
             if (watcher.stage.microphone) {
@@ -8955,18 +8952,6 @@ var P;
     watcherLibrary['sound_volume'] = {
         evaluate(watcher) { return watcher.target.volume * 100; },
         getLabel() { return 'volume'; },
-    };
-    watcherLibrary['speech2text_getSpeech'] = {
-        init(watcher) {
-            watcher.stage.initSpeech2Text();
-        },
-        evaluate(watcher) {
-            if (watcher.stage.speech2text) {
-                return watcher.stage.speech2text.speech;
-            }
-            return '';
-        },
-        getLabel(watcher) { return 'Speech to text: speech'; },
     };
 }());
 var P;
@@ -9143,7 +9128,7 @@ var P;
                         this.failures++;
                     }
                     this.setStatusText('Connection lost, reconnecting...');
-                    const delayTime = Math.pow(2, this.failures) * 1000;
+                    const delayTime = 2 ** this.failures * 1000;
                     console.log(this.logPrefix, 'reconnecting in', delayTime);
                     this.reconnectTimeout = setTimeout(() => {
                         this.reconnectTimeout = null;
@@ -9259,6 +9244,17 @@ var P;
             let microphone = null;
             let state = 0;
             const CACHE_TIME = 1000 / 30;
+            function createAnalyzerDataArray(analyzer) {
+                if (!!analyzer.getFloatTimeDomainData) {
+                    return new Float32Array(analyzer.fftSize);
+                }
+                else if (!!analyzer.getByteTimeDomainData) {
+                    return new Uint8Array(analyzer.fftSize);
+                }
+                else {
+                    throw new Error('Analyzer node does not support getFloatTimeDomainData or getByteTimeDomainData');
+                }
+            }
             function connect() {
                 if (state !== 0) {
                     return;
@@ -9268,17 +9264,25 @@ var P;
                     state = 3;
                     return;
                 }
+                if (!navigator.mediaDevices) {
+                    console.warn('Cannot access media devices, probably running in insecure (non-HTTPS) context.');
+                    state = 3;
+                    return;
+                }
                 state = 2;
                 navigator.mediaDevices.getUserMedia({ audio: true })
                     .then((mediaStream) => {
                     const source = P.audio.context.createMediaStreamSource(mediaStream);
                     const analyzer = P.audio.context.createAnalyser();
+                    if (!analyzer.getFloatTimeDomainData) {
+                        throw new Error('Missing API getFloatTimeDomainData');
+                    }
                     source.connect(analyzer);
                     microphone = {
                         source: source,
                         stream: mediaStream,
                         analyzer,
-                        dataArray: new Float32Array(analyzer.fftSize),
+                        dataArray: createAnalyzerDataArray(analyzer),
                         lastValue: -1,
                         lastCheck: 0,
                     };
@@ -9298,7 +9302,7 @@ var P;
                 microphone.source.connect(analyzer);
                 microphone.analyzer = analyzer;
                 if (microphone.dataArray.length !== analyzer.fftSize) {
-                    microphone.dataArray = new Float32Array(analyzer.fftSize);
+                    microphone.dataArray = createAnalyzerDataArray(analyzer);
                 }
             }
             function getLoudness() {
@@ -9312,10 +9316,18 @@ var P;
                 if (Date.now() - microphone.lastCheck < CACHE_TIME) {
                     return microphone.lastValue;
                 }
-                microphone.analyzer.getFloatTimeDomainData(microphone.dataArray);
                 let sum = 0;
-                for (let i = 0; i < microphone.dataArray.length; i++) {
-                    sum += Math.pow(microphone.dataArray[i], 2);
+                if (microphone.dataArray instanceof Float32Array) {
+                    microphone.analyzer.getFloatTimeDomainData(microphone.dataArray);
+                    for (let i = 0; i < microphone.dataArray.length; i++) {
+                        sum += Math.pow(microphone.dataArray[i], 2);
+                    }
+                }
+                else {
+                    microphone.analyzer.getByteTimeDomainData(microphone.dataArray);
+                    for (let i = 0; i < microphone.dataArray.length; i++) {
+                        sum += Math.pow((microphone.dataArray[i] - 128) / 128, 2);
+                    }
                 }
                 let rms = Math.sqrt(sum / microphone.dataArray.length);
                 if (microphone.lastValue !== -1) {
@@ -9346,98 +9358,116 @@ var P;
 (function (P) {
     var ext;
     (function (ext) {
-        var speech2text;
-        (function (speech2text) {
-            var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || window.mozSpeechRecognition || window.msSpeechRecognition;
-            let supported = null;
-            function isSupported() {
-                if (supported === null) {
-                    supported = typeof SpeechRecognition !== 'undefined';
-                    if (!supported) {
-                        console.warn('Speech to text is not supported in this browser. (https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition)');
-                    }
-                }
-                return supported;
-            }
-            speech2text.isSupported = isSupported;
-            class SpeechToTextExtension extends P.ext.Extension {
+        var tts;
+        (function (tts) {
+            let Gender;
+            (function (Gender) {
+                Gender[Gender["Male"] = 0] = "Male";
+                Gender[Gender["Female"] = 1] = "Female";
+                Gender[Gender["Unknown"] = 2] = "Unknown";
+            })(Gender = tts.Gender || (tts.Gender = {}));
+            const femaleVoices = [
+                /Zira/,
+                /female/i,
+            ];
+            const maleVoices = [
+                /David/,
+                /\bmale/i,
+            ];
+            const scratchVoices = {
+                ALTO: { gender: Gender.Female, pitch: 1, rate: 1 },
+                TENOR: { gender: Gender.Male, pitch: 1.5, rate: 1 },
+                GIANT: { gender: Gender.Male, pitch: 0.5, rate: 0.75 },
+                SQUEAK: { gender: Gender.Female, pitch: 2, rate: 1.5 },
+                KITTEN: { gender: Gender.Female, pitch: 2, rate: 1 },
+            };
+            class TextToSpeechExtension extends P.ext.Extension {
                 constructor(stage) {
                     super(stage);
-                    this.speech = '';
-                    this.listeners = 0;
-                    this.hats = [];
-                    this.initRecognition();
-                    this.initOverlay();
+                    this.language = 'en';
+                    this.voice = 'ALTO';
+                    this.supported = 'speechSynthesis' in window;
+                    if (!this.supported) {
+                        console.warn('TTS extension is not supported in this browser: it requires the speechSynthesis API https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesis');
+                    }
+                    else {
+                        speechSynthesis.getVoices();
+                    }
                 }
-                initRecognition() {
-                    this.recognition = new SpeechRecognition();
-                    this.recognition.lang = 'en-US';
-                    this.recognition.continuous = true;
-                    this.recognition.onresult = (event) => this.onresult(event);
-                    this.recognition.onerror = (event) => {
-                        console.warn('speech2text error', event);
+                getVoiceGender(voice) {
+                    if (femaleVoices.some((i) => i.test(voice.name)))
+                        return Gender.Female;
+                    if (maleVoices.some((i) => i.test(voice.name)))
+                        return Gender.Male;
+                    return Gender.Unknown;
+                }
+                getVoiceData(voiceName) {
+                    const matchesGender = (voice) => this.getVoiceGender(voice) === voiceGender;
+                    const voice = scratchVoices[voiceName];
+                    const rate = voice.rate;
+                    const pitch = voice.pitch;
+                    const voiceGender = scratchVoices[this.voice].gender;
+                    const voices = speechSynthesis.getVoices();
+                    const matchesLanguage = voices.filter((i) => i.lang.substr(0, 2) === this.language.substr(0, 2));
+                    let candidates = matchesLanguage.filter(matchesGender);
+                    if (candidates.length === 0)
+                        candidates = matchesLanguage;
+                    if (candidates.length === 0)
+                        candidates = voices;
+                    const defaultVoice = candidates.find((i) => i.default);
+                    return {
+                        voice: defaultVoice || candidates[0] || null,
+                        pitch,
+                        rate,
                     };
-                    this.recognition.onend = () => {
-                        console.warn('speech2text disconnected, reconnecting');
-                        this.initRecognition();
-                    };
-                    this.recognition.start();
                 }
-                initOverlay() {
-                    if (this.overlayElement) {
-                        throw new Error('initializing overlay twice');
+                setVoice(voice) {
+                    if (!scratchVoices.hasOwnProperty(voice)) {
+                        return;
                     }
-                    const container = document.createElement('div');
-                    container.className = 'speech2text-container';
-                    const indicator = document.createElement('div');
-                    indicator.className = 'speech2text-indicator';
-                    const animation = document.createElement('div');
-                    animation.className = 'speech2text-animation';
-                    container.appendChild(animation);
-                    container.appendChild(indicator);
-                    this.stage.ui.appendChild(container);
-                    this.overlayElement = container;
+                    this.voice = voice;
                 }
-                onresult(event) {
-                    this.lastResultIndex = event.resultIndex;
-                    const lastResult = event.results[event.resultIndex];
-                    const message = lastResult[0];
-                    const transcript = message.transcript.trim();
-                    if (this.listeners !== 0) {
-                        this.speech = transcript;
+                setLanguage(language) {
+                    this.language = language;
+                }
+                speak(text) {
+                    if (!this.supported) {
+                        return Promise.resolve();
                     }
-                    for (const hat of this.hats) {
-                        const target = hat.target;
-                        const phraseFunction = hat.phraseFunction;
-                        const startingFunction = hat.startingFunction;
-                        const value = this.stage.runtime.evaluateExpression(target, phraseFunction);
-                        if (value === transcript) {
-                            this.stage.runtime.startThread(target, startingFunction, true);
-                        }
+                    if (this.voice === 'KITTEN')
+                        text = text.replace(/\w+?\b/g, 'meow');
+                    return new Promise((resolve, reject) => {
+                        const end = () => resolve();
+                        const utterance = new SpeechSynthesisUtterance(text);
+                        utterance.lang = this.language;
+                        const { voice, rate, pitch } = this.getVoiceData(this.voice);
+                        utterance.voice = voice;
+                        utterance.rate = rate;
+                        utterance.pitch = pitch;
+                        utterance.onerror = end;
+                        utterance.onend = end;
+                        speechSynthesis.speak(utterance);
+                        speechSynthesis.resume();
+                    });
+                }
+                onstart() {
+                    if (this.supported) {
+                        speechSynthesis.resume();
                     }
                 }
-                addHat(hat) {
-                    this.hats.push(hat);
-                }
-                startListen() {
-                    this.listeners++;
-                    this.overlayElement.setAttribute('listening', '');
-                }
-                endListen() {
-                    this.listeners--;
-                    if (this.listeners === 0) {
-                        this.overlayElement.removeAttribute('listening');
+                onpause() {
+                    if (this.supported) {
+                        speechSynthesis.pause();
                     }
                 }
                 destroy() {
-                    this.recognition.abort();
-                }
-                id() {
-                    return this.lastResultIndex;
+                    if (this.supported) {
+                        speechSynthesis.cancel();
+                    }
                 }
             }
-            speech2text.SpeechToTextExtension = SpeechToTextExtension;
-        })(speech2text = ext.speech2text || (ext.speech2text = {}));
+            tts.TextToSpeechExtension = TextToSpeechExtension;
+        })(tts = ext.tts || (ext.tts = {}));
     })(ext = P.ext || (P.ext = {}));
 })(P || (P = {}));
 var P;

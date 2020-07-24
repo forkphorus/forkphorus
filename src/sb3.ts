@@ -117,12 +117,14 @@ namespace P.sb3 {
   export class Scratch3Stage extends P.core.Stage {
     public sb3data: SB3Target;
     public listIds: ObjectMap<string> = {};
+    public varIds: ObjectMap<string> = {};
   }
 
   // Implements a Scratch 3 Sprite.
   export class Scratch3Sprite extends P.core.Sprite {
     public sb3data: SB3Target;
     public listIds: ObjectMap<string> = {};
+    public varIds: ObjectMap<string> = {};
 
     _clone() {
       return new Scratch3Sprite(this.stage);
@@ -851,6 +853,7 @@ namespace P.sb3 {
           }
         }
         target.vars[name] = value;
+        target.varIds[id] = name;
       }
 
       for (const id of Object.keys(data.lists)) {
@@ -1156,15 +1159,15 @@ namespace P.sb3.compiler {
 
     }
 
-    enableFlag(n: number) {
-      this.flags &= n;
+    enableFlag(flag: number): void {
+      this.flags |= flag;
     }
 
-    hasFlag(n: number) {
-      return this.flags & n;
+    hasFlag(flag: number): boolean {
+      return (this.flags & flag) !== 0;
     }
 
-    toString() {
+    toString(): string {
       return this.source;
     }
   }
@@ -1264,21 +1267,21 @@ namespace P.sb3.compiler {
      * Gets a field's reference to a variable.
      */
     getVariableReference(field: string): string {
-      return this.compiler.getVariableReference(this.getField(field));
+      return this.compiler.getVariableReference(this.compiler.getVariableField(this.block, field));
     }
 
     /**
      * Gets a field's reference to a list.
      */
-    getListReference(field: string): string {
-      return this.compiler.getListReference(this.getField(field));
+    getListReference(field: string) {
+      return this.compiler.getListReference(this.compiler.getVariableField(this.block, field));
     }
 
     /**
      * Gets the scope of a field's reference to a variable.
      */
     getVariableScope(field: string): string {
-      return this.compiler.getVariableScope(this.getField(field));
+      return this.compiler.findVariable(this.compiler.getVariableField(this.block, field)).scope;
     }
 
     /**
@@ -1292,7 +1295,7 @@ namespace P.sb3.compiler {
      * Gets the scope of a field's reference to a list.
      */
     getListScope(field: string): string {
-      return this.compiler.getListScope(this.getField(field));
+      return this.compiler.findList(this.compiler.getVariableField(this.block, field)).scope;
     }
 
     /**
@@ -1399,6 +1402,23 @@ namespace P.sb3.compiler {
       const label = this.addLabel();
       this.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
       this.writeLn('  var first;');
+      this.forceQueue(label);
+      this.writeLn('}');
+      this.writeLn('restore();');
+    }
+
+    /**
+     * Write JS to pause script execution until a Promise is settled (regardless of resolve/reject)
+     */
+    sleepUntilSettles(source: string): void {
+      this.writeLn('save();');
+      this.writeLn('R.resume = false;');
+      this.writeLn('var localR = R;');
+      this.writeLn(`${source}`);
+      this.writeLn('  .then(function() { localR.resume = true; })');
+      this.writeLn('  .catch(function() { localR.resume = true; });');
+      const label = this.addLabel();
+      this.writeLn('if (!R.resume) {');
       this.forceQueue(label);
       this.writeLn('}');
       this.writeLn('restore();');
@@ -1637,49 +1657,57 @@ namespace P.sb3.compiler {
     }
 
     /**
-     * Determines the runtime object that owns a variable in the runtime.
-     * The variable may be created if it cannot be found.
+     * Find the scope and name of a variable from its ID.
+     * The variable may be created if it does not exist.
      */
-    getVariableScope(name: string): string {
-      if (name in this.target.stage.vars) {
-        return 'self';
-      } else if (name in this.target.vars) {
-        return 'S';
+    findVariable(id: string): { scope: string; name: string; } {
+      const stage = this.target.stage as Target;
+      if (stage.varIds.hasOwnProperty(id)) {
+        return { scope: 'self', name: stage.varIds[id] };
+      } else if (this.target.varIds.hasOwnProperty(id)) {
+        return { scope: 'S', name: this.target.varIds[id] };
       } else {
-        // Create missing variables in the sprite scope.
-        this.target.vars[name] = 0;
-        return 'S';
+        // Create missing variables in the sprite.
+        // We use the variable ID as the name, and store this in varIds for future lookups.
+        this.target.vars[id] = 0;
+        this.target.varIds[id] = id;
+        return { scope: 'S', name: id };
       }
     }
 
     /**
-     * Determines the runtime object that owns a list in the runtime.
-     * The list may be created if it cannot be found.
+     * Find the scope and name of a list from its ID.
+     * The list may be created if it does not exist.
      */
-    getListScope(name: string): string {
-      if (name in this.target.stage.lists) {
-        return 'self';
-      } else if (name in this.target.lists) {
-        return 'S';
+    findList(id: string): { scope: string; name: string; } {
+      const stage = this.target.stage as Target;
+      if (stage.listIds.hasOwnProperty(id)) {
+        return { scope: 'self', name: stage.listIds[id] };
+      } else if (this.target.listIds.hasOwnProperty(id)) {
+        return { scope: 'S', name: this.target.listIds[id] };
       } else {
-        // Create missing lists in the sprite scope.
-        this.target.lists[name] = createList();
-        return 'S';
+        // Create missing lists in the sprite.
+        // We use the list ID as the name, and store this in listIds for future lookups.
+        this.target.lists[id] = createList();
+        this.target.listIds[id] = id;
+        return { scope: 'S', name: id };
       }
     }
 
     /**
      * Gets the runtime reference to a variable.
      */
-    getVariableReference(name: string): string {
-      return `${this.getVariableScope(name)}.vars[${this.sanitizedString(name)}]`;
+    getVariableReference(id: string): string {
+      const { scope, name } = this.findVariable(id);
+      return `${scope}.vars[${this.sanitizedString(name)}]`;
     }
 
     /**
      * Gets the runtime reference to a list.
      */
-    getListReference(name: string): string {
-      return `${this.getListScope(name)}.lists[${this.sanitizedString(name)}]`;
+    getListReference(id: string): string {
+      const { scope, name } = this.findList(id);
+      return `${scope}.lists[${this.sanitizedString(name)}]`;
     }
 
     /**
@@ -1746,11 +1774,11 @@ namespace P.sb3.compiler {
 
         case NativeTypes.VAR:
           // [type, name, id]
-          return anyInput(this.getVariableReference(native[1]));
+          return anyInput(this.getVariableReference(native[2]));
 
         case NativeTypes.LIST:
           // [type, name, id]
-          return new CompiledInput(this.getListReference(native[1]), 'list');
+          return new CompiledInput(this.getListReference(native[2]), 'list');
 
         case NativeTypes.BROADCAST:
           // [type, name, id]
@@ -1833,6 +1861,20 @@ namespace P.sb3.compiler {
         return '';
       }
       return '' + value[0];
+    }
+
+    /**
+     * Get the value of a variable field of a block.
+     * @returns The variable ID
+     */
+    getVariableField(block: SB3Block, fieldName: string): string {
+      const value = block.fields[fieldName];
+      if (!value) {
+        // This could be a sign of another issue, so log a warning.
+        this.warn('missing variable field', fieldName);
+        return '';
+      }
+      return '' + value[1];
     }
 
     /**
@@ -1992,7 +2034,7 @@ namespace P.sb3.compiler {
      * Log a warning
      */
     warn(...args: any[]) {
-      args.unshift('[sb3 compiler]');
+      args.unshift(`[sb3 compiler ${this.target.name}]`);
       console.warn.apply(console, args);
     }
 
@@ -2000,7 +2042,7 @@ namespace P.sb3.compiler {
      * Log info
      */
     log(...args: any[]) {
-      args.unshift('[sb3 compiler]');
+      args.unshift(`[sb3 compiler ${this.target.name}]`);
       console.log.apply(console, args);
     }
 
@@ -2771,19 +2813,20 @@ namespace P.sb3.compiler {
       util.writeLn('S.isDraggable = false;');
     }
   };
-  statementLibrary['speech2text_listenAndWait'] = function(util) {
-    util.stage.initSpeech2Text();
-    util.writeLn('if (self.speech2text) {');
-    util.writeLn('  save();');
-    util.writeLn('  self.speech2text.startListen();');
-    util.writeLn('  R.id = self.speech2text.id();');
-    const label = util.addLabel();
-    util.writeLn('  if (self.speech2text.id() === R.id) {')
-    util.forceQueue(label);
-    util.writeLn('  }');
-    util.writeLn('  self.speech2text.endListen();');
-    util.writeLn('  restore();');
-    util.writeLn('}');
+  statementLibrary['text2speech_setVoice'] = function(util) {
+    const VOICE = util.getInput('VOICE', 'string');
+    util.stage.initTextToSpeech();
+    util.writeLn(`self.tts.setVoice(${VOICE});`);
+  };
+  statementLibrary['text2speech_setLanguage'] = function(util) {
+    const LANGUAGE = util.getInput('LANGUAGE', 'string');
+    util.stage.initTextToSpeech();
+    util.writeLn(`self.tts.setLanguage(${LANGUAGE});`);
+  };
+  statementLibrary['text2speech_speakAndWait'] = function(util) {
+    const WORDS = util.getInput('WORDS', 'string');
+    util.stage.initTextToSpeech();
+    util.sleepUntilSettles(`self.tts.speak(${WORDS})`);
   };
   statementLibrary['videoSensing_videoToggle'] = function(util) {
     const VIDEO_STATE = util.getInput('VIDEO_STATE', 'string');
@@ -3095,11 +3138,11 @@ namespace P.sb3.compiler {
     return util.booleanInput(`!!self.keys[getKeyCode3(${KEY_OPTION})]`);
   };
   inputLibrary['sensing_loud'] = function(util) {
-    util.stage.initLoudness();
+    util.stage.initMicrophone();
     return util.booleanInput('(self.microphone.getLoudness() > 10)');
   };
   inputLibrary['sensing_loudness'] = function(util) {
-    util.stage.initLoudness();
+    util.stage.initMicrophone();
     return util.numberInput('self.microphone.getLoudness()');
   };
   inputLibrary['sensing_mousedown'] = function(util) {
@@ -3142,9 +3185,11 @@ namespace P.sb3.compiler {
   inputLibrary['sound_volume'] = function(util) {
     return util.numberInput('(S.volume * 100)');
   };
-  inputLibrary['speech2text_getSpeech'] = function(util) {
-    util.stage.initSpeech2Text();
-    return util.stringInput('(self.speech2text ? self.speech2text.speech : "")');
+  inputLibrary['text2speech_menu_voices'] = function(util) {
+    return util.fieldInput('voices');
+  };
+  inputLibrary['text2speech_menu_languages'] = function(util) {
+    return util.fieldInput('languages');
   };
   inputLibrary['translate_menu_languages'] = function(util) {
     return util.fieldInput('languages');
@@ -3216,7 +3261,7 @@ namespace P.sb3.compiler {
           stallUntil = `runtime.timerStart !== R.timerStart || (runtime.now() - runtime.timerStart) / 1000 <= ${VALUE}`;
           break;
         case 'LOUDNESS':
-          compiler.target.stage.initLoudness();
+          compiler.target.stage.initMicrophone();
           executeWhen = `self.microphone.getLoudness() > ${VALUE}`;
           stallUntil = `self.microphone.getLoudness() <= ${VALUE}`;
           break;
@@ -3370,20 +3415,6 @@ namespace P.sb3.compiler {
       return '';
     },
   };
-  hatLibrary['speech2text_whenIHearHat'] = {
-    handle(util) {
-      util.stage.initSpeech2Text();
-      if (util.stage.speech2text) {
-        const PHRASE = util.getInput('PHRASE', 'string');
-        const phraseFunction = `return ${PHRASE}`;
-        util.stage.speech2text.addHat({
-          target: util.target,
-          startingFunction: util.startingFunction,
-          phraseFunction: P.runtime.createContinuation(phraseFunction),
-        });
-      }
-    },
-  };
 
   /* Watchers */
   watcherLibrary['data_variable'] = {
@@ -3480,7 +3511,7 @@ namespace P.sb3.compiler {
   };
   watcherLibrary['sensing_loudness'] = {
     init(watcher) {
-      watcher.stage.initLoudness();
+      watcher.stage.initMicrophone();
     },
     evaluate(watcher) {
       if (watcher.stage.microphone) {
@@ -3504,17 +3535,5 @@ namespace P.sb3.compiler {
   watcherLibrary['sound_volume'] = {
     evaluate(watcher) { return watcher.target.volume * 100; },
     getLabel() { return 'volume'; },
-  };
-  watcherLibrary['speech2text_getSpeech'] = {
-    init(watcher) {
-      watcher.stage.initSpeech2Text();
-    },
-    evaluate(watcher) {
-      if (watcher.stage.speech2text) {
-        return watcher.stage.speech2text.speech;
-      }
-      return '';
-    },
-    getLabel(watcher) { return 'Speech to text: speech'; },
   };
 }());

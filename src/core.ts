@@ -634,6 +634,7 @@ namespace P.core {
         return;
       }
 
+      this.bubbleContainer.style.display = 'block';
       const b = this.rotatedBounds();
       const left = 240 + b.right;
       var bottom = 180 + b.top;
@@ -821,8 +822,8 @@ namespace P.core {
     public cloudVariables: string[] = [];
 
     private videoElement: HTMLVideoElement;
-    public speech2text: P.ext.speech2text.SpeechToTextExtension | null = null;
     public microphone: P.ext.microphone.MicrophoneExtension | null = null;
+    public tts: P.ext.tts.TextToSpeechExtension | null = null;
     private extensions: P.ext.Extension[] = [];
 
     public useSpriteFencing: boolean = false;
@@ -1282,17 +1283,17 @@ namespace P.core {
       this.extensions.push(extension);
     }
 
-    initSpeech2Text() {
-      if (!this.speech2text && P.ext.speech2text.isSupported()) {
-        this.speech2text = new P.ext.speech2text.SpeechToTextExtension(this);
-        this.addExtension(this.speech2text);
-      }
-    }
-
-    initLoudness() {
+    initMicrophone() {
       if (!this.microphone) {
         this.microphone = new P.ext.microphone.MicrophoneExtension(this);
         this.addExtension(this.microphone);
+      }
+    }
+
+    initTextToSpeech() {
+      if (!this.tts) {
+        this.tts = new P.ext.tts.TextToSpeechExtension(this);
+        this.addExtension(this.tts);
       }
     }
 

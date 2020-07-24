@@ -129,7 +129,14 @@ input[disabled] {
 section {
   margin: 24px 0;
 }
-h1, p {
+footer {
+  font-size: small;
+  opacity: 0.75;
+}
+footer a {
+  color: inherit !important;
+}
+h1, p, ul, footer {
   margin: 0 0 16px;
 }
 h1 {

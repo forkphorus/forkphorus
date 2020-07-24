@@ -1097,7 +1097,7 @@ namespace P.sb2.compiler {
 
       } else if (e[0] === 'soundLevel') {
 
-        object.stage.initLoudness();
+        object.stage.initMicrophone();
         return 'self.microphone.getLoudness()';
 
       } else if (e[0] === 'timestamp') {
