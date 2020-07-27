@@ -959,10 +959,10 @@ namespace P.core {
       const key = e.key;
       switch (key) {
         case 'Enter': return SpecialKeys.Enter;
-        case 'ArrowLeft': return SpecialKeys.Left;
-        case 'ArrowUp': return SpecialKeys.Up;
-        case 'ArrowRight': return SpecialKeys.Right;
-        case 'ArrowDown': return SpecialKeys.Down;
+        case 'ArrowLeft': case 'Left': return SpecialKeys.Left;
+        case 'ArrowUp': case 'Up': return SpecialKeys.Up;
+        case 'ArrowRight': case 'Right': return SpecialKeys.Right;
+        case 'ArrowDown': case 'Down': return SpecialKeys.Down;
       }
       if (key.length !== 1) {
         // Additional keys that we don't care about such as volume keys (AudioVolumeUp/Down) and modifier keys (Shift)

@@ -1109,10 +1109,14 @@ var P;
                 const key = e.key;
                 switch (key) {
                     case 'Enter': return 13;
-                    case 'ArrowLeft': return 37;
-                    case 'ArrowUp': return 38;
-                    case 'ArrowRight': return 39;
-                    case 'ArrowDown': return 40;
+                    case 'ArrowLeft':
+                    case 'Left': return 37;
+                    case 'ArrowUp':
+                    case 'Up': return 38;
+                    case 'ArrowRight':
+                    case 'Right': return 39;
+                    case 'ArrowDown':
+                    case 'Down': return 40;
                 }
                 if (key.length !== 1) {
                     return -1;
