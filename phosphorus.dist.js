@@ -2151,23 +2151,24 @@ var P;
                 super(...arguments);
                 this.aborted = false;
             }
-            try(handle) {
-                return new Promise((resolve, reject) => {
-                    handle()
-                        .then((response) => resolve(response))
-                        .catch((err) => {
+            async try(handle) {
+                const MAX_ATTEMPST = 4;
+                let lastErr;
+                for (let i = 0; i < MAX_ATTEMPST; i++) {
+                    try {
+                        return await handle();
+                    }
+                    catch (err) {
                         if (this.aborted) {
-                            reject(err);
-                            return;
+                            throw err;
                         }
-                        console.warn(`First attempt to ${this.getRetryWarningDescription()} failed, trying again.`, err);
-                        setTimeout(() => {
-                            handle()
-                                .then((response) => resolve(response))
-                                .catch((err) => reject(err));
-                        }, 2000);
-                    });
-                });
+                        lastErr = err;
+                        const retryIn = 2 ** i * 500 * Math.random();
+                        console.warn(`Attempt #${i + 1} to ${this.getRetryWarningDescription()} failed, trying again in ${retryIn}ms`, err);
+                        await P.utils.sleep(retryIn);
+                    }
+                }
+                throw lastErr;
             }
             getRetryWarningDescription() {
                 return 'complete task';
@@ -2826,6 +2827,10 @@ var P;
             });
         }
         utils.settled = settled;
+        function sleep(ms) {
+            return new Promise((resolve) => setTimeout(resolve, ms));
+        }
+        utils.sleep = sleep;
     })(utils = P.utils || (P.utils = {}));
 })(P || (P = {}));
 var P;

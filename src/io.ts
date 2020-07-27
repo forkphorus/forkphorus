@@ -198,23 +198,27 @@ namespace P.io {
   export abstract class Retry extends AbstractTask {
     protected aborted: boolean = false;
 
-    try<T>(handle: () => Promise<T>): Promise<T> {
-      return new Promise((resolve, reject) => {
-        handle()
-          .then((response) => resolve(response))
-          .catch((err) => {
-            if (this.aborted) {
-              reject(err);
-              return;
-            }
-            console.warn(`First attempt to ${this.getRetryWarningDescription()} failed, trying again.`, err);
-            setTimeout(() => {
-              handle()
-                .then((response) => resolve(response))
-                .catch((err) => reject(err));
-            }, 2000);
-          });
-      });
+    async try<T>(handle: () => Promise<T>): Promise<T> {
+      const MAX_ATTEMPST = 4;
+      let lastErr;
+      for (let i = 0; i < MAX_ATTEMPST; i++) {
+        try {
+          return await handle();
+        } catch (err) {
+          if (this.aborted) {
+            throw err;
+          }
+          lastErr = err;
+          // exponential backoff with randomness
+          // 500 ms, 1000 ms, 2000 ms, etc.
+          // randomness will help stagger retries in case of many errors
+          // always at least 50 ms
+          const retryIn = 2 ** i * 500 * Math.random() + 50;
+          console.warn(`Attempt #${i + 1} to ${this.getRetryWarningDescription()} failed, trying again in ${retryIn}ms`, err);
+          await P.utils.sleep(retryIn);
+        }
+      }
+      throw lastErr;
     }
 
     protected getRetryWarningDescription(): string {
