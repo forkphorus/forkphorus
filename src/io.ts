@@ -333,7 +333,7 @@ namespace P.io {
     load(type: 'blob'): Promise<Blob>;
     load(type: XMLHttpRequestResponseType): Promise<any> {
       this.responseType = type;
-      return this.try(() => requestThrottler.run(() => this._load()));
+      return requestThrottler.run(() => this.try(() => this._load()));
     }
 
     getRetryWarningDescription() {
@@ -383,7 +383,7 @@ namespace P.io {
     }
 
     load(): Promise<HTMLImageElement> {
-      return this.try(() => requestThrottler.run(() => this._load())) as Promise<HTMLImageElement>;
+      return requestThrottler.run(() => this.try(() => this._load())) as Promise<HTMLImageElement>;
     }
 
     getRetryWarningDescription() {

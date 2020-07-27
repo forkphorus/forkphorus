@@ -2163,7 +2163,7 @@ var P;
                             throw err;
                         }
                         lastErr = err;
-                        const retryIn = 2 ** i * 500 * Math.random();
+                        const retryIn = 2 ** i * 500 * Math.random() + 50;
                         console.warn(`Attempt #${i + 1} to ${this.getRetryWarningDescription()} failed, trying again in ${retryIn}ms`, err);
                         await P.utils.sleep(retryIn);
                     }
@@ -2259,7 +2259,7 @@ var P;
             }
             load(type) {
                 this.responseType = type;
-                return this.try(() => requestThrottler.run(() => this._load()));
+                return requestThrottler.run(() => this.try(() => this._load()));
             }
             getRetryWarningDescription() {
                 return `download ${this.url}`;
@@ -2303,7 +2303,7 @@ var P;
                 });
             }
             load() {
-                return this.try(() => requestThrottler.run(() => this._load()));
+                return requestThrottler.run(() => this.try(() => this._load()));
             }
             getRetryWarningDescription() {
                 return `download image ${this.src}`;
