@@ -415,6 +415,14 @@ namespace P.runtime {
     };
 
     var startSound = function(sound: P.core.Sound) {
+      // todo: this is a hack, won't work with clones
+      // https://github.com/forkphorus/forkphorus/issues/298
+      for (const s of S.activeSounds) {
+        if (s.node === sound.source) {
+          s.stopped = true;
+          break;
+        }
+      }
       const node = sound.createSourceNode();
       applySoundEffects(node);
       node.connect(S.getAudioNode());
