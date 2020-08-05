@@ -521,6 +521,12 @@
       .description('Framerate in frames per second.')
       .add(playerOptionsSection);
 
+    const spriteFencing = new Option()
+      .label('Sprite Fencing')
+      .input({ type: 'checkbox' })
+      .description('Sprite Fencing forces sprites to stay on screen when they move.')
+      .add(playerOptionsSection);
+
     const cloudVariables = new Section('Cloud Variable Options (BETA)');
     cloudVariables.storeInLocalStorage = new Option()
       .label('Store Cloud Variables')
@@ -738,6 +744,7 @@
         packager.playerOptions.autoplayPolicy = autoplay.value;
         packager.playerOptions.username = username.value;
         packager.playerOptions.fps = fps.value;
+        packager.playerOptions.spriteFencing = spriteFencing.value;
         packager.playerOptions.cloudVariables = cloudVariables.storeInLocalStorage.value ? 'localStorage' : 'off';
         if (showControls.value) {
           packager.controlsOptions = { enableFullscreen: false };
