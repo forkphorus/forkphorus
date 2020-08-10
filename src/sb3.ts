@@ -1482,6 +1482,8 @@ namespace P.sb3.compiler {
 
   interface CompilerState {
     isWarp: boolean;
+    isProcedure: boolean;
+    argumentNames: string[];
   }
 
   // Block definitions
@@ -1903,6 +1905,8 @@ namespace P.sb3.compiler {
     getNewState(): CompilerState {
       return {
         isWarp: false,
+        isProcedure: false,
+        argumentNames: []
       };
     }
 
@@ -2849,12 +2853,23 @@ namespace P.sb3.compiler {
 
   /* Inputs */
   inputLibrary['argument_reporter_boolean'] = function(util) {
-    const VALUE = util.sanitizedString(util.getField('VALUE'));
-    return util.booleanInput(util.asType(`C.args[${VALUE}]`, 'boolean'));
+    const VALUE = util.getField('VALUE');
+    if (!util.compiler.state.isProcedure || util.compiler.state.argumentNames.indexOf(VALUE) === -1) {
+      const lowerCaseName = VALUE.toLowerCase();
+      if (lowerCaseName === 'is compiled?' || lowerCaseName === 'is forkphorus?') {
+        return util.booleanInput('true');
+      }
+      // Missing boolean reporters are 0, not false.
+      return util.numberInput('0');
+    }
+    return util.booleanInput(util.asType(`C.args[${util.sanitizedString(VALUE)}]`, 'boolean'));
   };
   inputLibrary['argument_reporter_string_number'] = function(util) {
-    const VALUE = util.sanitizedString(util.getField('VALUE'));
-    return util.anyInput(`C.args[${VALUE}]`);
+    const VALUE = util.getField('VALUE');
+    if (!util.compiler.state.isProcedure || util.compiler.state.argumentNames.indexOf(VALUE) === -1) {
+      return util.numberInput('0');
+    }
+    return util.anyInput(`C.args[${util.sanitizedString(VALUE)}]`);
   };
   inputLibrary['control_create_clone_of_menu'] = function(util) {
     return util.fieldInput('CLONE_OPTION');
@@ -3406,12 +3421,18 @@ namespace P.sb3.compiler {
       return source + 'endCall(); return;\n';
     },
     precompile(compiler, hat) {
+      // see `handle()` above for what these do
       const customBlockId = hat.inputs.custom_block[1];
       const mutation = compiler.blocks[customBlockId].mutation;
       const warp = typeof mutation.warp === 'string' ? mutation.warp === 'true' : mutation.warp;
+      const argumentNames = JSON.parse(mutation.argumentnames);
+
+      compiler.state.isProcedure = true;
+      compiler.state.argumentNames = argumentNames;
       if (warp) {
         compiler.state.isWarp = true;
       }
+
       return '';
     },
   };
