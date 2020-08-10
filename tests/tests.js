@@ -27,6 +27,7 @@
     'sb3/263-NaN.sb3',
     'sb3/285-variable-id-name-desync.sb3',
     'sb3/when-greater-than.sb3',
+    'sb3/detector.sb3',
   ];
 
   /**
