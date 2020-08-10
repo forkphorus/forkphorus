@@ -6521,7 +6521,7 @@ var P;
                     if (this.rows.length === 0) {
                         this.addRow();
                     }
-                    const height = this.rows[0].element.offsetHeight;
+                    const height = this.rows[0].element.offsetHeight / this.stage.zoom;
                     if (height === 0) {
                         return 0;
                     }

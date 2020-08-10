@@ -536,7 +536,7 @@ namespace P.sb3 {
         if (this.rows.length === 0) {
           this.addRow();
         }
-        const height = this.rows[0].element.offsetHeight;
+        const height = this.rows[0].element.offsetHeight / this.stage.zoom;
         if (height === 0) {
           // happens sometimes when list is updated but not actually visible, make sure not to cache the result in this case
           return 0;
