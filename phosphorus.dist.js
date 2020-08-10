@@ -838,7 +838,7 @@ var P;
                 stage.prompt.focus();
             }
             say(text, thinking = false) {
-                text = text.toString();
+                text = '' + text;
                 if (text.length === 0) {
                     this.saying = false;
                     if (this.bubbleContainer)

@@ -582,7 +582,7 @@ namespace P.core {
      * @returns A unique ID for this bubble
      */
     say(text: string, thinking: boolean = false): number {
-      text = text.toString();
+      text = '' + text;
 
       // Empty strings disable saying anything.
       if (text.length === 0) {
