@@ -647,7 +647,7 @@
     });
     advancedLegacy.checked = player.getOptions().projectHost === 'https://projects.scratch.mit.edu/internalapi/project/$id/get/';
     advancedLegacy.addEventListener('click', function(e) {
-      setSearchParam('phost', e.target.checked ? 'legacy' : false);
+      setSearchParam('phost', e.target.checked ? 'legacy' : false, e);
     });
     function setSearchParam(key, value, event) {
       if (!confirm(P.i18n.translate('index.advanced.confirmation'))) {
