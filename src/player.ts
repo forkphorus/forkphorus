@@ -119,6 +119,11 @@ namespace P.player {
     imageSmoothing: boolean;
     focusOnLoad: boolean;
     spriteFencing: boolean;
+    // $id is replaced with project ID
+    projectHost: string;
+    cloudHost: string;
+    // $id is replaced with project ID
+    cloudHistoryHost: string;
   }
 
   interface ControlsOptions {
@@ -284,6 +289,10 @@ namespace P.player {
       imageSmoothing: false,
       focusOnLoad: true,
       spriteFencing: false,
+      projectHost: 'https://projects.scratch.mit.edu/$id',
+      // cloudHost: 'ws://localhost:9080', // for cloud-server development
+      cloudHost: 'wss://stratus.garbomuffin.com',
+      cloudHistoryHost: 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100'
     };
 
     public onprogress = new Slot<number>();
@@ -300,17 +309,10 @@ namespace P.player {
     public playerContainer: HTMLElement;
     public controlsContainer: HTMLElement;
 
-    /** Magic values (such as URLs) that you may want to change. */
+    /** Magic values. */
     public MAGIC = {
       // A large z-index, used for some fullscreen modes to display on top of everything.
       LARGE_Z_INDEX: '9999999999',
-      // $id is replaced with the project's ID
-      CLOUD_HISTORY_API: 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100',
-      // $id is replaced with the project's ID
-      PROJECT_API: 'https://projects.scratch.mit.edu/$id',
-      // an instance of https://github.com/forkphorus/cloud-server
-      // CLOUD_DATA_SERVER: 'ws://localhost:9080', // for cloud-server development
-      CLOUD_DATA_SERVER: 'wss://stratus.garbomuffin.com',
     };
 
     private options: Readonly<PlayerOptions>;
@@ -765,7 +767,7 @@ namespace P.player {
     private async getCloudVariablesFromLogs(id: string): Promise<ObjectMap<any>> {
       // To get the cloud variables of a project, we will fetch the history logs and essentially replay the latest changes.
       // This is primarily designed so that highscores in projects can remain up-to-date, and nothing more than that.
-      const data = await new P.io.Request(this.MAGIC.CLOUD_HISTORY_API.replace('$id', id)).load('json');
+      const data = await new P.io.Request(this.options.cloudHistoryHost.replace('$id', id)).load('json');
       const variables = Object.create(null);
       for (const entry of data.reverse()) {
         const { verb, name, value } = entry;
@@ -802,7 +804,7 @@ namespace P.player {
     }
 
     private applyCloudVariablesSocket(stage: P.core.Stage, id: string) {
-      const handler = new P.ext.cloud.WebSocketCloudHandler(stage, this.MAGIC.CLOUD_DATA_SERVER, id);
+      const handler = new P.ext.cloud.WebSocketCloudHandler(stage, this.options.cloudHost, id);
       stage.setCloudHandler(handler);
     }
 
@@ -961,7 +963,7 @@ namespace P.player {
      * Download a project from the scratch.mit.edu using its ID.
      */
     private fetchProject(id: string): Promise<Blob> {
-      const request = new P.io.Request(this.MAGIC.PROJECT_API.replace('$id', id));
+      const request = new P.io.Request(this.options.projectHost.replace('$id', id));
       return request
         .ignoreErrors()
         .load('blob')

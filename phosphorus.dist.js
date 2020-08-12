@@ -2972,9 +2972,6 @@ var P;
                 this.onoptionschange = new Slot();
                 this.MAGIC = {
                     LARGE_Z_INDEX: '9999999999',
-                    CLOUD_HISTORY_API: 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100',
-                    PROJECT_API: 'https://projects.scratch.mit.edu/$id',
-                    CLOUD_DATA_SERVER: 'wss://stratus.garbomuffin.com',
                 };
                 this.stage = null;
                 this.projectMeta = null;
@@ -3340,7 +3337,7 @@ var P;
                 }
             }
             async getCloudVariablesFromLogs(id) {
-                const data = await new P.io.Request(this.MAGIC.CLOUD_HISTORY_API.replace('$id', id)).load('json');
+                const data = await new P.io.Request(this.options.cloudHistoryHost.replace('$id', id)).load('json');
                 const variables = Object.create(null);
                 for (const entry of data.reverse()) {
                     const { verb, name, value } = entry;
@@ -3375,7 +3372,7 @@ var P;
                 });
             }
             applyCloudVariablesSocket(stage, id) {
-                const handler = new P.ext.cloud.WebSocketCloudHandler(stage, this.MAGIC.CLOUD_DATA_SERVER, id);
+                const handler = new P.ext.cloud.WebSocketCloudHandler(stage, this.options.cloudHost, id);
                 stage.setCloudHandler(handler);
             }
             applyCloudVariablesLocalStorage(stage, id) {
@@ -3493,7 +3490,7 @@ var P;
                 return zip.generateAsync({ type: 'arraybuffer' });
             }
             fetchProject(id) {
-                const request = new P.io.Request(this.MAGIC.PROJECT_API.replace('$id', id));
+                const request = new P.io.Request(this.options.projectHost.replace('$id', id));
                 return request
                     .ignoreErrors()
                     .load('blob')
@@ -3623,6 +3620,9 @@ var P;
             imageSmoothing: false,
             focusOnLoad: true,
             spriteFencing: false,
+            projectHost: 'https://projects.scratch.mit.edu/$id',
+            cloudHost: 'wss://stratus.garbomuffin.com',
+            cloudHistoryHost: 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100'
         };
         player_1.Player = Player;
         class ErrorHandler {
