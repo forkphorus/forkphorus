@@ -490,9 +490,14 @@ namespace P.core {
     }
 
     setSoundFilter(name: string, value: number) {
+      // convert NaN to 0
+      // todo: NaN should never even be able to get here, see if this is necessary
+      value = value || 0;
       switch (name.toLowerCase()) {
         case 'pitch':
           this.soundFilters.pitch = value;
+          if (this.soundFilters.pitch > 360) this.soundFilters.pitch = 360;
+          if (this.soundFilters.pitch < -360) this.soundFilters.pitch = -360;
           break;
       }
     }
@@ -501,6 +506,8 @@ namespace P.core {
       switch (name.toLowerCase()) {
         case 'pitch':
           this.soundFilters.pitch += value;
+          if (this.soundFilters.pitch > 360) this.soundFilters.pitch = 360;
+          if (this.soundFilters.pitch < -360) this.soundFilters.pitch = -360;
           break;
       }
     }

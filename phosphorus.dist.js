@@ -758,9 +758,14 @@ var P;
                 };
             }
             setSoundFilter(name, value) {
+                value = value || 0;
                 switch (name.toLowerCase()) {
                     case 'pitch':
                         this.soundFilters.pitch = value;
+                        if (this.soundFilters.pitch > 360)
+                            this.soundFilters.pitch = 360;
+                        if (this.soundFilters.pitch < -360)
+                            this.soundFilters.pitch = -360;
                         break;
                 }
             }
@@ -768,6 +773,10 @@ var P;
                 switch (name.toLowerCase()) {
                     case 'pitch':
                         this.soundFilters.pitch += value;
+                        if (this.soundFilters.pitch > 360)
+                            this.soundFilters.pitch = 360;
+                        if (this.soundFilters.pitch < -360)
+                            this.soundFilters.pitch = -360;
                         break;
                 }
             }
