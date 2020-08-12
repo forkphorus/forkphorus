@@ -96,6 +96,16 @@ var Common = (function() {
         setPlayerEnum('cloudVariables', value, ['once', 'off', 'ws', 'localStorage']);
         if (value === 'ws') usernameNeeded = true; // ws needs username
         break;
+      case 'chost':
+        setPlayerFlag('cloudHost', value);
+        break;
+      case 'phost':
+        if (value === 'legacy') value = 'https://projects.scratch.mit.edu/internalapi/project/$id/get/';
+        setPlayerFlag('projectHost', value);
+        break;
+      case 'chhost':
+        setPlayerFlag('cloudHistoryHost', value);
+        break;
       // Project ID
       case 'id':
         // projectId is also read from location.hash if not found here.
