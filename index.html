@@ -131,6 +131,7 @@
       <div class="advanced">
         <label><input id="advanced-webgl" class="advanced-feature" type="checkbox"> WebGL Renderer</label>
         <label><input id="advanced-cloud" class="advanced-feature" type="checkbox"> Cloud Variables</label>
+        <label><input id="advanced-legacy" class="advanced-feature" type="checkbox"> Legacy Mode</label>
       </div>
     </div>
 
@@ -635,6 +636,7 @@
     /** Advanced Settings Menu **/
     var advancedWebGL = querySelector('#advanced-webgl');
     var advancedCloud = querySelector('#advanced-cloud');
+    var advancedLegacy = querySelector('#advanced-legacy');
     advancedWebGL.checked = P.config.useWebGL;
     advancedWebGL.addEventListener('click', function(e) {
       setSearchParam('webgl', e.target.checked, e);
@@ -642,6 +644,10 @@
     advancedCloud.checked = player.getOptions().cloudVariables === 'ws';
     advancedCloud.addEventListener('click', function(e) {
       setSearchParam('cloud', e.target.checked ? 'ws' : false, e);
+    });
+    advancedLegacy.checked = player.getOptions().projectHost === 'https://projects.scratch.mit.edu/internalapi/project/$id/get/';
+    advancedLegacy.addEventListener('click', function(e) {
+      setSearchParam('phost', e.target.checked ? 'legacy' : false);
     });
     function setSearchParam(key, value, event) {
       if (!confirm(P.i18n.translate('index.advanced.confirmation'))) {
