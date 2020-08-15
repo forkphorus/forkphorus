@@ -197,11 +197,13 @@ namespace P.io {
 
   export abstract class Retry extends AbstractTask {
     protected aborted: boolean = false;
+    protected retries: number = 0;
 
     async try<T>(handle: () => Promise<T>): Promise<T> {
-      const MAX_ATTEMPST = 4;
+      const MAX_ATTEMPTS = 4;
       let lastErr;
-      for (let i = 0; i < MAX_ATTEMPST; i++) {
+      for (let i = 0; i < MAX_ATTEMPTS; i++) {
+        this.retries = i;
         try {
           return await handle();
         } catch (err) {
@@ -315,12 +317,12 @@ namespace P.io {
         };
 
         xhr.onerror = (err) => {
-          reject(new Error(`Error while downloading ${this.url} (error) (${xhr.status}/${xhr.statusText}/${this.aborted}/${xhr.readyState})`));
+          reject(new Error(`Error while downloading ${this.url} (error) (r=${this.retries} s=${xhr.readyState}/${xhr.status}/${xhr.statusText})`));
         };
 
         xhr.onabort = (err) => {
           this.aborted = true;
-          reject(new Error(`Error while downloading ${this.url} (abort) (${xhr.status}/${xhr.statusText}/${xhr.readyState})`));
+          reject(new Error(`Error while downloading ${this.url} (abort)`));
         };
 
         xhr.send();
@@ -373,7 +375,7 @@ namespace P.io {
           resolve(image);
         };
         image.onerror = (err) => {
-          reject(new Error('Failed to load image: ' + image.src));
+          reject(new Error(`Failed to load image: ${image.src} (r=${this.retries})`));
         };
         image.crossOrigin = 'anonymous';
         setTimeout(() => {
