@@ -2211,6 +2211,7 @@ namespace P.sb3.compiler {
   };
   statementLibrary['control_wait'] = function(util) {
     const DURATION = util.getInput('DURATION', 'any');
+    util.visual('always');
     util.writeLn('save();');
     util.writeLn('R.start = runtime.now();');
     util.writeLn(`R.duration = ${DURATION};`);
