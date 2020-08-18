@@ -261,6 +261,9 @@
 
     var initialId = Common.projectId || '';
     player.setOptions(Common.playerOptions);
+    player.setOptions({
+      autoplayPolicy: 'never'
+    });
 
     playerArea.style.height = projectArea.style.height = 'auto';
     var titleAreaHeight = titleArea.offsetHeight;
@@ -672,10 +675,8 @@
     }
 
     if (initialId) {
-      player.setOptions({ autoplayPolicy: 'never' });
       loadProjectId(initialId);
     } else {
-      player.setOptions({ autoplayPolicy: 'always' });
       urlInput.focus();
       urlInput.setSelectionRange(urlInput.value.length, urlInput.value.length);
     }
