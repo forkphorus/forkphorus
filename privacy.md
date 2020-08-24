@@ -34,4 +34,4 @@ Notably this includes:
 
 ## Contact
 
-Open a [GitHub issue](https://github.com/forkphorus/forkphorus/issues/new) or send an email to the address listed [on this GitHub account](https://github.com/GarboMuffin).
+For any privacy concerns, open a [GitHub issue](https://github.com/forkphorus/forkphorus/issues/new) or send an email to forkphorus@garbomuffin.com
