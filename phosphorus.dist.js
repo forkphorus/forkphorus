@@ -927,7 +927,6 @@ var P;
             remove() {
                 if (this.bubbleContainer) {
                     this.stage.ui.removeChild(this.bubbleContainer);
-                    delete this.bubbleContainer;
                 }
                 if (this.node && this.isClone && !this.isStage) {
                     for (const sound of this.activeSounds) {
