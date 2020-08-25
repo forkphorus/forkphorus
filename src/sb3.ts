@@ -3060,11 +3060,11 @@ namespace P.sb3.compiler {
       case 'tan':
         return util.numberInput(`Math.tan(${NUM} * Math.PI / 180)`);
       case 'asin':
-        return util.numberInput(`(Math.asin(${NUM}) * 180 / Math.PI)`)
+        return util.numberInput(`(Math.asin(${NUM}) * 180 / Math.PI)`);
       case 'acos':
-        return util.numberInput(`(Math.acos(${NUM}) * 180 / Math.PI)`)
+        return util.numberInput(`(Math.acos(${NUM}) * 180 / Math.PI)`);
       case 'atan':
-        return util.numberInput(`(Math.atan(${NUM}) * 180 / Math.PI)`)
+        return util.numberInput(`(Math.atan(${NUM}) * 180 / Math.PI)`);
       case 'ln':
         return util.numberInput(`Math.log(${NUM})`);
       case 'log':
