@@ -4911,7 +4911,7 @@ var P;
                     }
                     object.name = data.objName;
                     object.costumes = costumes;
-                    object.currentCostumeIndex = data.currentCostumeIndex;
+                    object.currentCostumeIndex = Math.floor(data.currentCostumeIndex);
                     sounds.forEach((sound) => sound && object.addSound(sound));
                     if (isStage) {
                     }
