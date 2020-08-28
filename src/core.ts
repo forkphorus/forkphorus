@@ -675,8 +675,6 @@ namespace P.core {
     remove() {
       if (this.bubbleContainer) {
         this.stage.ui.removeChild(this.bubbleContainer);
-        // I don't think doing this is necessary.
-        delete this.bubbleContainer;
       }
       if (this.node && this.isClone && !this.isStage) {
         // Continue playing sounds started with "start sound" after this sprite has been removed.
