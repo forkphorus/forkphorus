@@ -247,7 +247,8 @@ namespace P.player {
     }
 
     load() {
-      return new P.io.Request('https://scratch.garbomuffin.com/proxy/projects/$id'.replace('$id', this.id))
+      // todo: don't hardcode this URL
+      return new P.io.Request('https://trampoline.turbowarp.org/proxy/projects/$id'.replace('$id', this.id))
         .ignoreErrors() // errors are common for this request due to unshared projects (P.io.Request throws if 404), and project meta is not critical regardless
         .load('json')
         .then((data) => {
@@ -291,8 +292,8 @@ namespace P.player {
       spriteFencing: false,
       projectHost: 'https://projects.scratch.mit.edu/$id',
       // cloudHost: 'ws://localhost:9080', // for cloud-server development
-      cloudHost: 'wss://stratus.garbomuffin.com',
-      cloudHistoryHost: 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100'
+      cloudHost: 'wss://stratus.turbowarp.org',
+      cloudHistoryHost: 'https://trampoline.turbowarp.org/cloud-proxy/logs/$id?limit=100'
     };
 
     public onprogress = new Slot<number>();

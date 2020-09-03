@@ -2940,7 +2940,7 @@ var P;
                 this.title = null;
             }
             load() {
-                return new P.io.Request('https://scratch.garbomuffin.com/proxy/projects/$id'.replace('$id', this.id))
+                return new P.io.Request('https://trampoline.turbowarp.org/proxy/projects/$id'.replace('$id', this.id))
                     .ignoreErrors()
                     .load('json')
                     .then((data) => {
@@ -3622,8 +3622,8 @@ var P;
             focusOnLoad: true,
             spriteFencing: false,
             projectHost: 'https://projects.scratch.mit.edu/$id',
-            cloudHost: 'wss://stratus.garbomuffin.com',
-            cloudHistoryHost: 'https://scratch.garbomuffin.com/cloud-proxy/logs/$id?limit=100'
+            cloudHost: 'wss://stratus.turbowarp.org',
+            cloudHistoryHost: 'https://trampoline.turbowarp.org/cloud-proxy/logs/$id?limit=100'
         };
         player_1.Player = Player;
         class ErrorHandler {
