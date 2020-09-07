@@ -1,7 +1,7 @@
 # Privacy Policy
 
 <!-- UPDATE THIS WHEN MAKING EDITS -->
-*Updated July 16, 2020.*
+*Updated September 6, 2020.*
 
 This page will explain what information is collected through the forkphorus website: https://forkphorus.github.io/ ("the Site").
 
@@ -11,9 +11,7 @@ This page will explain what information is collected through the forkphorus webs
 
 When you use the Site, some information is automatically logged through automated methods such as webserver logs. This includes IP addresses, user agents (which includes browser, operating system, and device information), referring websites, and information about usage of the site. Some of this information may be personally-identifiable, such as IP addresses.
 
-### Optional features
-
-When using the "Cloud Variables" option, some additional information such as usernames and project IDs are also logged.
+When using projects that contain "cloud variables", some additional information such as usernames (chosen by the user or randomly generated) and project IDs are also logged.
 
 ## How this information is used
 
