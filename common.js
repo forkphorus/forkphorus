@@ -26,7 +26,6 @@ var Common = (function() {
 
   var playerOptions = {};
   var projectId = null;
-  var usernameNeeded = false;
 
   parseSearch(function(key, value) {
     function setPlayerOption(name, value) {
@@ -94,7 +93,6 @@ var Common = (function() {
         break;
       case 'cloud':
         setPlayerEnum('cloudVariables', value, ['once', 'off', 'ws', 'localStorage']);
-        if (value === 'ws') usernameNeeded = true; // ws needs username
         break;
       case 'chost':
         setPlayerFlag('cloudHost', value);
@@ -134,11 +132,6 @@ var Common = (function() {
     if (/^\d+$/.test(hash)) {
       projectId = hash;
     }
-  }
-
-  // If the options indicate a username is necessary but none was provided, we will generate a random one.
-  if (usernameNeeded && !playerOptions.username) {
-    playerOptions.username = 'player' + Math.random().toString().substr(2, 5);
   }
 
   return {

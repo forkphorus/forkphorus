@@ -3154,6 +3154,13 @@ var P;
                 this.stage.useSpriteFencing = this.options.spriteFencing;
                 this.stage.renderer.imageSmoothingEnabled = this.options.imageSmoothing;
             }
+            generateUsernameIfMissing() {
+                if (!this.options.username) {
+                    this.setOptions({
+                        username: 'player' + Math.random().toString().substr(2, 5)
+                    });
+                }
+            }
             throwWithoutStage() {
                 if (!this.stage) {
                     throw new Error('Missing stage.');
@@ -3373,6 +3380,7 @@ var P;
                 });
             }
             applyCloudVariablesSocket(stage, id) {
+                this.generateUsernameIfMissing();
                 const handler = new P.ext.cloud.WebSocketCloudHandler(stage, this.options.cloudHost, id);
                 stage.setCloudHandler(handler);
             }
@@ -3610,7 +3618,7 @@ var P;
         }
         Player.DEFAULT_OPTIONS = {
             autoplayPolicy: 'always',
-            cloudVariables: 'once',
+            cloudVariables: 'ws',
             fps: 30,
             theme: 'light',
             turbo: false,

@@ -279,7 +279,7 @@ namespace P.player {
   export class Player implements ProjectPlayer {
     public static readonly DEFAULT_OPTIONS: PlayerOptions = {
       autoplayPolicy: 'always',
-      cloudVariables: 'once',
+      cloudVariables: 'ws',
       fps: 30,
       theme: 'light',
       turbo: false,
@@ -536,6 +536,14 @@ namespace P.player {
       this.stage.runtime.isTurbo = this.options.turbo;
       this.stage.useSpriteFencing = this.options.spriteFencing;
       (this.stage.renderer as P.renderer.canvas2d.ProjectRenderer2D).imageSmoothingEnabled = this.options.imageSmoothing;
+    }
+
+    generateUsernameIfMissing() {
+      if (!this.options.username) {
+        this.setOptions({
+          username: 'player' + Math.random().toString().substr(2, 5)
+        });
+      }
     }
 
     // COMMON OPERATIONS
@@ -805,6 +813,7 @@ namespace P.player {
     }
 
     private applyCloudVariablesSocket(stage: P.core.Stage, id: string) {
+      this.generateUsernameIfMissing();
       const handler = new P.ext.cloud.WebSocketCloudHandler(stage, this.options.cloudHost, id);
       stage.setCloudHandler(handler);
     }
