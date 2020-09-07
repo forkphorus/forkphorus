@@ -616,24 +616,29 @@
     var settingImageSmoothing = querySelector('#settings-image-smoothing');
     var settingSpriteFencing = querySelector('#settings-sprite-fencing');
 
-    settingFps.value = player.options.fps;
+    function syncOptionValues() {
+      settingFps.value = player.options.fps;
+      settingUsername.value = player.options.username;
+      settingImageSmoothing.checked = player.options.imageSmoothing;
+      settingSpriteFencing.checked = player.options.spriteFencing;
+    }
+
     settingFps.addEventListener('input', (e) => {
       if (settingFps.checkValidity()) {
         player.setOptions({ fps: +settingFps.value });
       }
     });
-    settingUsername.value = player.options.username;
     settingUsername.addEventListener('input', (e) => {
       player.setOptions({ username: settingUsername.value });
     });
-    settingImageSmoothing.checked = player.options.imageSmoothing;
     settingImageSmoothing.addEventListener('change', (e) => {
       player.setOptions({ imageSmoothing: settingImageSmoothing.checked });
     });
-    settingSpriteFencing.checked = player.options.spriteFencing;
     settingSpriteFencing.addEventListener('change', (e) => {
       player.setOptions({ spriteFencing: settingSpriteFencing.checked });
     });
+    syncOptionValues();
+    player.onoptionschange.subscribe(syncOptionValues);
 
     /** Advanced Settings Menu **/
     var advancedWebGL = querySelector('#advanced-webgl');
