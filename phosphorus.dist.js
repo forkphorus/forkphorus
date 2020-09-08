@@ -4336,7 +4336,7 @@ var P;
                         threads = sprite.listeners.whenSceneStarts[('' + arg).toLowerCase()];
                         break;
                     case 'whenBackdropChanges':
-                        threads = sprite.listeners.whenBackdropChanges['' + arg];
+                        threads = sprite.listeners.whenBackdropChanges[('' + arg).toLowerCase()];
                         break;
                     case 'whenIReceive':
                         arg = '' + arg;
@@ -8673,7 +8673,7 @@ var P;
     };
     hatLibrary['event_whenbackdropswitchesto'] = {
         handle(util) {
-            const BACKDROP = util.getField('BACKDROP');
+            const BACKDROP = util.getField('BACKDROP').toLowerCase();
             if (!util.target.listeners.whenBackdropChanges[BACKDROP]) {
                 util.target.listeners.whenBackdropChanges[BACKDROP] = [];
             }

@@ -3241,7 +3241,7 @@ namespace P.sb3.compiler {
   };
   hatLibrary['event_whenbackdropswitchesto'] = {
     handle(util) {
-      const BACKDROP = util.getField('BACKDROP');
+      const BACKDROP = util.getField('BACKDROP').toLowerCase();
       if (!util.target.listeners.whenBackdropChanges[BACKDROP]) {
         util.target.listeners.whenBackdropChanges[BACKDROP] = [];
       }

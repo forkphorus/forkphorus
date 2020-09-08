@@ -603,7 +603,7 @@ namespace P.runtime {
           threads = sprite.listeners.whenKeyPressed[arg];
           break;
         case 'whenSceneStarts': threads = sprite.listeners.whenSceneStarts[('' + arg).toLowerCase()]; break;
-        case 'whenBackdropChanges': threads = sprite.listeners.whenBackdropChanges['' + arg]; break;
+        case 'whenBackdropChanges': threads = sprite.listeners.whenBackdropChanges[('' + arg).toLowerCase()]; break;
         case 'whenIReceive':
           arg = '' + arg;
           // TODO: remove toLowerCase() check?
