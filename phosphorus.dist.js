@@ -621,7 +621,6 @@ var P;
                     whenGreenFlag: [],
                     whenIReceive: {},
                     whenKeyPressed: [],
-                    whenBackdropChanges: {},
                     whenSceneStarts: {},
                 };
                 this.fns = [];
@@ -4252,9 +4251,6 @@ var P;
         var sceneChange = function () {
             return runtime.trigger('whenSceneStarts', self.getCostumeName());
         };
-        var backdropChange = function () {
-            return runtime.trigger('whenBackdropChanges', self.getCostumeName());
-        };
         var broadcast = function (name) {
             return runtime.trigger('whenIReceive', name);
         };
@@ -4334,9 +4330,6 @@ var P;
                         break;
                     case 'whenSceneStarts':
                         threads = sprite.listeners.whenSceneStarts[('' + arg).toLowerCase()];
-                        break;
-                    case 'whenBackdropChanges':
-                        threads = sprite.listeners.whenBackdropChanges[('' + arg).toLowerCase()];
                         break;
                     case 'whenIReceive':
                         arg = '' + arg;
@@ -7842,7 +7835,7 @@ var P;
     statementLibrary['looks_nextbackdrop'] = function (util) {
         util.writeLn('self.showNextCostume();');
         util.visual('always');
-        util.writeLn('var threads = backdropChange();');
+        util.writeLn('var threads = sceneChange();');
         util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
     };
     statementLibrary['looks_nextcostume'] = function (util) {
@@ -7891,7 +7884,7 @@ var P;
         const BACKDROP = util.getInput('BACKDROP', 'any');
         util.writeLn(`self.setCostume(${BACKDROP});`);
         util.visual('always');
-        util.writeLn('var threads = backdropChange();');
+        util.writeLn('var threads = sceneChange();');
         util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
     };
     statementLibrary['looks_switchcostumeto'] = function (util) {
@@ -8674,10 +8667,10 @@ var P;
     hatLibrary['event_whenbackdropswitchesto'] = {
         handle(util) {
             const BACKDROP = util.getField('BACKDROP').toLowerCase();
-            if (!util.target.listeners.whenBackdropChanges[BACKDROP]) {
-                util.target.listeners.whenBackdropChanges[BACKDROP] = [];
+            if (!util.target.listeners.whenSceneStarts[BACKDROP]) {
+                util.target.listeners.whenSceneStarts[BACKDROP] = [];
             }
-            util.target.listeners.whenBackdropChanges[BACKDROP].push(util.startingFunction);
+            util.target.listeners.whenSceneStarts[BACKDROP].push(util.startingFunction);
         },
     };
     hatLibrary['event_whenbroadcastreceived'] = {

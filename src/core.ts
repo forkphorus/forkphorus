@@ -27,7 +27,6 @@ namespace P.core {
     whenGreenFlag: P.runtime.Fn[];
     whenIReceive: ObjectMap<P.runtime.Fn[]>;
     whenKeyPressed: P.runtime.Fn[][];
-    whenBackdropChanges: ObjectMap<P.runtime.Fn[]>;
     whenSceneStarts: ObjectMap<P.runtime.Fn[]>;
   }
 
@@ -343,7 +342,6 @@ namespace P.core {
       whenGreenFlag: [],
       whenIReceive: {},
       whenKeyPressed: [],
-      whenBackdropChanges: {},
       whenSceneStarts: {},
     };
     public fns: P.runtime.Fn[] = [];

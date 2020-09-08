@@ -2370,7 +2370,7 @@ namespace P.sb3.compiler {
   statementLibrary['looks_nextbackdrop'] = function(util) {
     util.writeLn('self.showNextCostume();');
     util.visual('always');
-    util.writeLn('var threads = backdropChange();');
+    util.writeLn('var threads = sceneChange();');
     util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
   };
   statementLibrary['looks_nextcostume'] = function(util) {
@@ -2420,7 +2420,7 @@ namespace P.sb3.compiler {
     const BACKDROP = util.getInput('BACKDROP', 'any');
     util.writeLn(`self.setCostume(${BACKDROP});`);
     util.visual('always');
-    util.writeLn('var threads = backdropChange();');
+    util.writeLn('var threads = sceneChange();');
     util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
   };
   statementLibrary['looks_switchcostumeto'] = function(util) {
@@ -3242,10 +3242,10 @@ namespace P.sb3.compiler {
   hatLibrary['event_whenbackdropswitchesto'] = {
     handle(util) {
       const BACKDROP = util.getField('BACKDROP').toLowerCase();
-      if (!util.target.listeners.whenBackdropChanges[BACKDROP]) {
-        util.target.listeners.whenBackdropChanges[BACKDROP] = [];
+      if (!util.target.listeners.whenSceneStarts[BACKDROP]) {
+        util.target.listeners.whenSceneStarts[BACKDROP] = [];
       }
-      util.target.listeners.whenBackdropChanges[BACKDROP].push(util.startingFunction);
+      util.target.listeners.whenSceneStarts[BACKDROP].push(util.startingFunction);
     },
   };
   hatLibrary['event_whenbroadcastreceived'] = {

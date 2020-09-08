@@ -500,10 +500,6 @@ namespace P.runtime {
     return runtime.trigger('whenSceneStarts', self.getCostumeName());
   };
 
-  var backdropChange = function() {
-    return runtime.trigger('whenBackdropChanges', self.getCostumeName());
-  };
-
   var broadcast = function(name) {
     return runtime.trigger('whenIReceive', name);
   };
@@ -603,7 +599,6 @@ namespace P.runtime {
           threads = sprite.listeners.whenKeyPressed[arg];
           break;
         case 'whenSceneStarts': threads = sprite.listeners.whenSceneStarts[('' + arg).toLowerCase()]; break;
-        case 'whenBackdropChanges': threads = sprite.listeners.whenBackdropChanges[('' + arg).toLowerCase()]; break;
         case 'whenIReceive':
           arg = '' + arg;
           // TODO: remove toLowerCase() check?
