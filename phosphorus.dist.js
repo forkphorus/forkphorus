@@ -4221,6 +4221,7 @@ var P;
                                     base: BASE,
                                     fn: procedure.fn,
                                     calls: CALLS,
+                                    warp: WARP
                                 };
                                 return;
                             }
@@ -4275,6 +4276,7 @@ var P;
                 base: BASE,
                 fn: S.fns[id],
                 calls: CALLS,
+                warp: WARP
             };
         };
         class Runtime {
@@ -4299,6 +4301,7 @@ var P;
                             args: [],
                             stack: [{}],
                         }],
+                    warp: 0
                 };
                 for (let i = 0; i < this.queue.length; i++) {
                     const q = this.queue[i];
@@ -4450,7 +4453,7 @@ var P;
                             STACK = C.stack;
                             R = STACK.pop();
                             queue[THREAD] = undefined;
-                            WARP = 0;
+                            WARP = thread.warp;
                             while (IMMEDIATE) {
                                 const fn = IMMEDIATE;
                                 IMMEDIATE = null;

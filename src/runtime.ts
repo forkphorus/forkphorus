@@ -468,6 +468,7 @@ namespace P.runtime {
                 base: BASE,
                 fn: procedure.fn,
                 calls: CALLS,
+                warp: WARP
               };
               return;
             }
@@ -525,6 +526,7 @@ namespace P.runtime {
       base: BASE,
       fn: S.fns[id],
       calls: CALLS,
+      warp: WARP
     };
   };
 
@@ -537,10 +539,11 @@ namespace P.runtime {
   }
 
   interface Thread {
-    sprite: P.core.Base,
-    base: Fn,
-    fn: Fn,
-    calls: ThreadCall[],
+    sprite: P.core.Base;
+    base: Fn;
+    fn: Fn;
+    calls: ThreadCall[];
+    warp: number;
   }
 
   export class Runtime {
@@ -560,7 +563,7 @@ namespace P.runtime {
     }
 
     startThread(sprite: core.Base, base: Fn, replaceExisting: boolean) {
-      const thread = {
+      const thread: Thread = {
         sprite: sprite,
         base: base,
         fn: base,
@@ -568,6 +571,7 @@ namespace P.runtime {
           args: [],
           stack: [{}],
         }],
+        warp: 0
       };
 
       // Find if this spread is already being executed.
@@ -759,7 +763,7 @@ namespace P.runtime {
             STACK = C.stack;
             R = STACK.pop();
             queue[THREAD] = undefined;
-            WARP = 0;
+            WARP = thread.warp;
 
             while (IMMEDIATE) {
               const fn = IMMEDIATE;
