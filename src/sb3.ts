@@ -1392,25 +1392,9 @@ namespace P.sb3.compiler {
     }
 
     /**
-     * Writes JS to pause the script for a known duration of time.
-     */
-    wait(seconds: string) {
-      this.writeLn('save();');
-      this.writeLn('R.start = runtime.now();');
-      this.writeLn(`R.duration = ${seconds}`);
-      this.writeLn('var first = true;');
-      const label = this.addLabel();
-      this.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
-      this.writeLn('  var first;');
-      this.forceQueue(label);
-      this.writeLn('}');
-      this.writeLn('restore();');
-    }
-
-    /**
      * Write JS to pause script execution until a Promise is settled (regardless of resolve/reject)
      */
-    sleepUntilSettles(source: string): void {
+    waitUntilSettles(source: string): void {
       this.writeLn('save();');
       this.writeLn('R.resume = false;');
       this.writeLn('var localR = R;');
@@ -1422,6 +1406,15 @@ namespace P.sb3.compiler {
       this.forceQueue(label);
       this.writeLn('}');
       this.writeLn('restore();');
+    }
+
+    /**
+     * Write JS to pause script execution for one tick.
+     */
+    waitOneTick() {
+      const label = this.claimNextLabel();
+      this.forceQueue(label);
+      this.addLabel(label);
     }
 
     /**
@@ -2328,6 +2321,7 @@ namespace P.sb3.compiler {
     const CHANGE = util.getInput('CHANGE', 'number');
     util.writeLn(`S.changeFilter(${EFFECT}, ${CHANGE});`);
     util.visual('visible');
+    util.waitOneTick();
   };
   statementLibrary['looks_changesizeby'] = function(util) {
     const CHANGE = util.getInput('CHANGE', 'any');
@@ -2742,6 +2736,7 @@ namespace P.sb3.compiler {
     const VOLUME = util.getInput('VOLUME', 'number');
     util.writeLn(`S.volume = Math.max(0, Math.min(1, S.volume + ${VOLUME} / 100));`);
     util.writeLn('if (S.node) S.node.gain.value = S.volume;');
+    util.waitOneTick();
   };
   statementLibrary['sound_cleareffects'] = function(util) {
     util.writeLn('S.resetSoundFilters();');
@@ -2778,11 +2773,13 @@ namespace P.sb3.compiler {
     const EFFECT = util.sanitizedString(util.getField('EFFECT'));
     const VALUE = util.getInput('VALUE', 'number');
     util.writeLn(`S.setSoundFilter(${EFFECT}, ${VALUE});`);
+    util.waitOneTick();
   };
   statementLibrary['sound_setvolumeto'] = function(util) {
     const VOLUME = util.getInput('VOLUME', 'number');
     util.writeLn(`S.volume = Math.max(0, Math.min(1, ${VOLUME} / 100));`);
     util.writeLn('if (S.node) S.node.gain.value = S.volume;');
+    util.waitOneTick();
   };
   statementLibrary['sound_stopallsounds'] = function(util) {
     if (P.audio.context) {
@@ -2831,7 +2828,7 @@ namespace P.sb3.compiler {
   statementLibrary['text2speech_speakAndWait'] = function(util) {
     const WORDS = util.getInput('WORDS', 'string');
     util.stage.initTextToSpeech();
-    util.sleepUntilSettles(`self.tts.speak(${WORDS})`);
+    util.waitUntilSettles(`self.tts.speak(${WORDS})`);
   };
   statementLibrary['videoSensing_videoToggle'] = function(util) {
     const VIDEO_STATE = util.getInput('VIDEO_STATE', 'string');
