@@ -7150,9 +7150,13 @@ var P;
                     this.writeLn('restore();');
                 }
                 waitOneTick() {
-                    const label = this.claimNextLabel();
+                    this.writeLn('save();\n');
+                    this.writeLn('R.start = runtime.currentMSecs;\n');
+                    const label = this.addLabel();
+                    this.writeLn('if (runtime.currentMSecs === R.start) {\n');
                     this.forceQueue(label);
-                    this.addLabel(label);
+                    this.writeLn('}\n');
+                    this.writeLn('restore();\n');
                 }
                 write(content) {
                     this.content += content;
