@@ -555,6 +555,7 @@ namespace P.runtime {
     public interval: number;
     public isTurbo: boolean = false;
     public framerate: number = 30;
+    public currentMSecs: number = 0;
 
     constructor(public stage: P.core.Stage) {
       // Fix scoping
@@ -749,6 +750,7 @@ namespace P.runtime {
       }
 
       const start = Date.now();
+      this.currentMSecs = this.now();
       const queue = this.queue;
       do {
         for (THREAD = 0; THREAD < queue.length; THREAD++) {

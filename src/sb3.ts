@@ -2206,11 +2206,11 @@ namespace P.sb3.compiler {
     const DURATION = util.getInput('DURATION', 'any');
     util.visual('always');
     util.writeLn('save();');
-    util.writeLn('R.start = runtime.now();');
+    util.writeLn('R.start = runtime.currentMSecs;');
     util.writeLn(`R.duration = ${DURATION};`);
     util.writeLn(`var first = true;`);
     const label = util.addLabel();
-    util.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
+    util.writeLn('if (runtime.currentMSecs - R.start < R.duration * 1000 || first) {');
     util.writeLn('  var first;');
     util.forceQueue(label);
     util.writeLn('}');

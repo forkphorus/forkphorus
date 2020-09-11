@@ -4289,6 +4289,7 @@ var P;
                 this.baseNow = 0;
                 this.isTurbo = false;
                 this.framerate = 30;
+                this.currentMSecs = 0;
                 this.onError = this.onError.bind(this);
                 this.step = this.step.bind(this);
             }
@@ -4440,6 +4441,7 @@ var P;
                     audioContext.resume();
                 }
                 const start = Date.now();
+                this.currentMSecs = this.now();
                 const queue = this.queue;
                 do {
                     for (THREAD = 0; THREAD < queue.length; THREAD++) {
@@ -7671,11 +7673,11 @@ var P;
         const DURATION = util.getInput('DURATION', 'any');
         util.visual('always');
         util.writeLn('save();');
-        util.writeLn('R.start = runtime.now();');
+        util.writeLn('R.start = runtime.currentMSecs;');
         util.writeLn(`R.duration = ${DURATION};`);
         util.writeLn(`var first = true;`);
         const label = util.addLabel();
-        util.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
+        util.writeLn('if (runtime.currentMSecs - R.start < R.duration * 1000 || first) {');
         util.writeLn('  var first;');
         util.forceQueue(label);
         util.writeLn('}');
