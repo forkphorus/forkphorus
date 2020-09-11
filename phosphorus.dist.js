@@ -7150,13 +7150,13 @@ var P;
                     this.writeLn('restore();');
                 }
                 waitOneTick() {
-                    this.writeLn('save();\n');
-                    this.writeLn('R.start = runtime.currentMSecs;\n');
+                    this.writeLn('save();');
+                    this.writeLn('R.start = runtime.currentMSecs;');
                     const label = this.addLabel();
-                    this.writeLn('if (runtime.currentMSecs === R.start) {\n');
+                    this.writeLn('if (runtime.currentMSecs === R.start) {');
                     this.forceQueue(label);
-                    this.writeLn('}\n');
-                    this.writeLn('restore();\n');
+                    this.writeLn('}');
+                    this.writeLn('restore();');
                 }
                 write(content) {
                     this.content += content;

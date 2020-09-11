@@ -1412,13 +1412,13 @@ namespace P.sb3.compiler {
      * Write JS to pause script execution for one tick.
      */
     waitOneTick() {
-      this.writeLn('save();\n');
-      this.writeLn('R.start = runtime.currentMSecs;\n');
+      this.writeLn('save();');
+      this.writeLn('R.start = runtime.currentMSecs;');
       const label = this.addLabel();
-      this.writeLn('if (runtime.currentMSecs === R.start) {\n');
+      this.writeLn('if (runtime.currentMSecs === R.start) {');
       this.forceQueue(label);
-      this.writeLn('}\n');
-      this.writeLn('restore();\n');
+      this.writeLn('}');
+      this.writeLn('restore();');
     }
 
     /**
