@@ -2257,7 +2257,7 @@ namespace P.sb3.compiler {
   };
   statementLibrary['data_deletealloflist'] = function(util) {
     const LIST = util.getListReference('LIST');
-    util.writeLn(`${LIST}.length = 0;`);
+    util.writeLn(`watchedDeleteAllOfList(${LIST});`);
   };
   statementLibrary['data_deleteoflist'] = function(util) {
     const LIST = util.getListReference('LIST');

@@ -4026,6 +4026,11 @@ var P;
             if (!list.modified)
                 list.modified = true;
         };
+        var watchedDeleteAllOfList = function (list) {
+            list.length = 0;
+            if (!list.modified)
+                list.modified = true;
+        };
         var watchedInsertInList = function (list, index, value) {
             insertInList(list, index, value);
             if (!list.modified)
@@ -7725,7 +7730,7 @@ var P;
     };
     statementLibrary['data_deletealloflist'] = function (util) {
         const LIST = util.getListReference('LIST');
-        util.writeLn(`${LIST}.length = 0;`);
+        util.writeLn(`watchedDeleteAllOfList(${LIST});`);
     };
     statementLibrary['data_deleteoflist'] = function (util) {
         const LIST = util.getListReference('LIST');

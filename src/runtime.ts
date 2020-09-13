@@ -255,6 +255,10 @@ namespace P.runtime {
     deleteLineOfList(list, index);
     if (!list.modified) list.modified = true;
   };
+  var watchedDeleteAllOfList = function(list) {
+    list.length = 0;
+    if (!list.modified) list.modified = true;
+  };
   var watchedInsertInList = function(list, index, value) {
     insertInList(list, index, value);
     if (!list.modified) list.modified = true;
