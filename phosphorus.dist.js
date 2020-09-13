@@ -8151,6 +8151,7 @@ var P;
         util.writeLn('S.penColor.toHSLA();');
         util.writeLn(`S.penColor.x = ${HUE} * 360 / 200;`);
         util.writeLn('S.penColor.y = 100;');
+        util.writeLn('S.penColor.a = 1;');
     };
     statementLibrary['pen_setPenShadeToNumber'] = function (util) {
         const SHADE = util.getInput('SHADE', 'number');
