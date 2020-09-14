@@ -2088,6 +2088,7 @@ namespace P.sb3.compiler {
   };
   statementLibrary['control_delete_this_clone'] = function(util) {
     util.writeLn('if (S.isClone) {');
+    util.visual('visible');
     util.writeLn('  S.remove();');
     util.writeLn('  var i = self.children.indexOf(S);');
     util.writeLn('  if (i !== -1) self.children.splice(i, 1);');
