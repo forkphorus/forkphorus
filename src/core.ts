@@ -28,6 +28,7 @@ namespace P.core {
     whenIReceive: ObjectMap<P.runtime.Fn[]>;
     whenKeyPressed: P.runtime.Fn[][];
     whenSceneStarts: ObjectMap<P.runtime.Fn[]>;
+    edgeActivated: P.runtime.Fn[];
   }
 
   export interface ActiveSound {
@@ -343,6 +344,7 @@ namespace P.core {
       whenIReceive: {},
       whenKeyPressed: [],
       whenSceneStarts: {},
+      edgeActivated: [],
     };
     public fns: P.runtime.Fn[] = [];
     public filters: Filters = {

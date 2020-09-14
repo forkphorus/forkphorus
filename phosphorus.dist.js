@@ -622,6 +622,7 @@ var P;
                     whenIReceive: {},
                     whenKeyPressed: [],
                     whenSceneStarts: {},
+                    edgeActivated: [],
                 };
                 this.fns = [];
                 this.filters = {
@@ -4307,6 +4308,7 @@ var P;
                 this.isTurbo = false;
                 this.framerate = 30;
                 this.currentMSecs = 0;
+                this.whenTimerMSecs = 0;
                 this.onError = this.onError.bind(this);
                 this.step = this.step.bind(this);
             }
@@ -4356,6 +4358,9 @@ var P;
                         arg = '' + arg;
                         threads = sprite.listeners.whenIReceive[arg] || sprite.listeners.whenIReceive[arg.toLowerCase()];
                         break;
+                    case 'edgeActivated':
+                        threads = sprite.listeners.edgeActivated;
+                        break;
                     default: throw new Error('Unknown trigger event: ' + event);
                 }
                 if (threads) {
@@ -4375,6 +4380,7 @@ var P;
             triggerGreenFlag() {
                 this.timerStart = this.now();
                 this.trigger('whenGreenFlag');
+                this.trigger('edgeActivated');
             }
             start() {
                 this.isRunning = true;
@@ -4433,6 +4439,10 @@ var P;
             now() {
                 return this.baseNow + Date.now() - this.baseTime;
             }
+            resetTimer() {
+                this.timerStart = this.now();
+                this.whenTimerMSecs = 0;
+            }
             evaluateExpression(sprite, fn) {
                 self = this.stage;
                 runtime = this;
@@ -4458,7 +4468,7 @@ var P;
                     audioContext.resume();
                 }
                 const start = Date.now();
-                this.currentMSecs = this.now();
+                this.currentMSecs = this.whenTimerMSecs = this.now();
                 const queue = this.queue;
                 do {
                     for (THREAD = 0; THREAD < queue.length; THREAD++) {
@@ -8277,7 +8287,7 @@ var P;
         util.visual('always');
     };
     statementLibrary['sensing_resettimer'] = function (util) {
-        util.writeLn('runtime.timerStart = runtime.now();');
+        util.writeLn('runtime.resetTimer();');
     };
     statementLibrary['sensing_setdragmode'] = function (util) {
         const DRAG_MODE = util.getField('DRAG_MODE');
@@ -8719,8 +8729,8 @@ var P;
             let stallUntil = 'false';
             switch (WHENGREATERTHANMENU) {
                 case 'TIMER':
-                    executeWhen = `(runtime.now() - runtime.timerStart) / 1000 > ${VALUE}`;
-                    stallUntil = `runtime.timerStart !== R.timerStart || (runtime.now() - runtime.timerStart) / 1000 <= ${VALUE}`;
+                    executeWhen = `runtime.whenTimerMSecs / 1000 > ${VALUE}`;
+                    stallUntil = `runtime.whenTimerMSecs / 1000 <= ${VALUE}`;
                     break;
                 case 'LOUDNESS':
                     compiler.target.stage.initMicrophone();
@@ -8748,7 +8758,7 @@ var P;
             return source;
         },
         handle(util) {
-            util.target.listeners.whenGreenFlag.push(util.startingFunction);
+            util.target.listeners.edgeActivated.push(util.startingFunction);
         },
     };
     hatLibrary['event_whenkeypressed'] = {

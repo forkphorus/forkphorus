@@ -560,6 +560,7 @@ namespace P.runtime {
     public isTurbo: boolean = false;
     public framerate: number = 30;
     public currentMSecs: number = 0;
+    public whenTimerMSecs: number = 0;
 
     constructor(public stage: P.core.Stage) {
       // Fix scoping
@@ -613,6 +614,7 @@ namespace P.runtime {
           // TODO: remove toLowerCase() check?
           threads = sprite.listeners.whenIReceive[arg] || sprite.listeners.whenIReceive[arg.toLowerCase()];
           break;
+        case 'edgeActivated': threads = sprite.listeners.edgeActivated; break;
         default: throw new Error('Unknown trigger event: ' + event);
       }
       if (threads) {
@@ -640,6 +642,7 @@ namespace P.runtime {
     triggerGreenFlag() {
       this.timerStart = this.now();
       this.trigger('whenGreenFlag');
+      this.trigger('edgeActivated');
     }
 
     /**
@@ -719,6 +722,11 @@ namespace P.runtime {
       return this.baseNow + Date.now() - this.baseTime;
     }
 
+    resetTimer() {
+      this.timerStart = this.now();
+      this.whenTimerMSecs = 0;
+    }
+
     evaluateExpression(sprite: P.core.Base, fn: () => any) {
       // We will load a few runtime values for this.
       // These are the values that are most commonly used in expressions, in addition the runtime methods.
@@ -754,7 +762,7 @@ namespace P.runtime {
       }
 
       const start = Date.now();
-      this.currentMSecs = this.now();
+      this.currentMSecs = this.whenTimerMSecs = this.now();
       const queue = this.queue;
       do {
         for (THREAD = 0; THREAD < queue.length; THREAD++) {

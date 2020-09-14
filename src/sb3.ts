@@ -2810,7 +2810,7 @@ namespace P.sb3.compiler {
     util.visual('always');
   };
   statementLibrary['sensing_resettimer'] = function(util) {
-    util.writeLn('runtime.timerStart = runtime.now();');
+    util.writeLn('runtime.resetTimer();');
   };
   statementLibrary['sensing_setdragmode'] = function(util) {
     const DRAG_MODE = util.getField('DRAG_MODE');
@@ -3273,10 +3273,8 @@ namespace P.sb3.compiler {
       let stallUntil = 'false';
       switch (WHENGREATERTHANMENU) {
         case 'TIMER':
-          executeWhen = `(runtime.now() - runtime.timerStart) / 1000 > ${VALUE}`;
-          // wait until the timer was reset or the value changed to be less than the timer
-          // waiting until a reset matters for some low numbers where timer might never actually be eg. 0 in some rare instances
-          stallUntil = `runtime.timerStart !== R.timerStart || (runtime.now() - runtime.timerStart) / 1000 <= ${VALUE}`;
+          executeWhen = `runtime.whenTimerMSecs / 1000 > ${VALUE}`;
+          stallUntil = `runtime.whenTimerMSecs / 1000 <= ${VALUE}`;
           break;
         case 'LOUDNESS':
           compiler.target.stage.initMicrophone();
@@ -3308,7 +3306,7 @@ namespace P.sb3.compiler {
       return source;
     },
     handle(util) {
-      util.target.listeners.whenGreenFlag.push(util.startingFunction);
+      util.target.listeners.edgeActivated.push(util.startingFunction);
     },
   };
   hatLibrary['event_whenkeypressed'] = {
