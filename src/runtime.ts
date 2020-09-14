@@ -164,6 +164,9 @@ namespace P.runtime {
     const c = parent.clone();
     self.children.splice(self.children.indexOf(parent), 0, c);
     runtime.triggerFor(c, 'whenCloned');
+    if (c.visible) {
+      VISUAL = true;
+    }
   };
 
   var getVars = function(name) {
