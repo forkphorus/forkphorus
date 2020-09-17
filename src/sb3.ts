@@ -3272,12 +3272,12 @@ namespace P.sb3.compiler {
 
       let executeWhen = 'false';
       let stallUntil = 'false';
-      switch (WHENGREATERTHANMENU) {
-        case 'TIMER':
+      switch (WHENGREATERTHANMENU.toLowerCase()) {
+        case 'timer':
           executeWhen = `runtime.whenTimerMSecs / 1000 > ${VALUE}`;
           stallUntil = `runtime.whenTimerMSecs / 1000 <= ${VALUE}`;
           break;
-        case 'LOUDNESS':
+        case 'loudness':
           compiler.target.stage.initMicrophone();
           executeWhen = `self.microphone.getLoudness() > ${VALUE}`;
           stallUntil = `self.microphone.getLoudness() <= ${VALUE}`;
@@ -3294,13 +3294,6 @@ namespace P.sb3.compiler {
       return source;
     },
     postcompile(compiler, source, hat) {
-      const WHENGREATERTHANMENU = compiler.getField(hat, 'WHENGREATERTHANMENU');
-      switch (WHENGREATERTHANMENU) {
-        case 'TIMER':
-          // store the timerStart, this is used in precompile to determine whether the timer was reset
-          source += 'R.timerStart = runtime.timerStart;\n';
-          break;
-      }
       // finish the if/else started in precompile
       source += '}\n';
       source += `forceQueue(${compiler.target.fns.length});`;

@@ -8731,12 +8731,12 @@ var P;
             const VALUE = compiler.compileInput(hat, 'VALUE', 'number');
             let executeWhen = 'false';
             let stallUntil = 'false';
-            switch (WHENGREATERTHANMENU) {
-                case 'TIMER':
+            switch (WHENGREATERTHANMENU.toLowerCase()) {
+                case 'timer':
                     executeWhen = `runtime.whenTimerMSecs / 1000 > ${VALUE}`;
                     stallUntil = `runtime.whenTimerMSecs / 1000 <= ${VALUE}`;
                     break;
-                case 'LOUDNESS':
+                case 'loudness':
                     compiler.target.stage.initMicrophone();
                     executeWhen = `self.microphone.getLoudness() > ${VALUE}`;
                     stallUntil = `self.microphone.getLoudness() <= ${VALUE}`;
@@ -8751,12 +8751,6 @@ var P;
             return source;
         },
         postcompile(compiler, source, hat) {
-            const WHENGREATERTHANMENU = compiler.getField(hat, 'WHENGREATERTHANMENU');
-            switch (WHENGREATERTHANMENU) {
-                case 'TIMER':
-                    source += 'R.timerStart = runtime.timerStart;\n';
-                    break;
-            }
             source += '}\n';
             source += `forceQueue(${compiler.target.fns.length});`;
             return source;
