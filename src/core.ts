@@ -487,6 +487,9 @@ namespace P.core {
         brightness: 0,
         ghost: 0
       };
+      this.soundFilters = {
+        pitch: 0
+      };
     }
 
     setSoundFilter(name: string, value: number) {
