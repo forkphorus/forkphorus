@@ -1518,17 +1518,19 @@ namespace P.sb3.compiler {
      */
     public needsMusic: boolean = false;
     /**
-     * Set of the names of all costumes in this sprite.
-     * This affects some optimizations.
+     * Set of the names of all costumes and sounds in the sprite.
      */
-    public costumeNames: Set<string> = new Set();
+    public costumeAndSoundNames: Set<string> = new Set();
 
     constructor(target: Target) {
       this.target = target;
       this.data = target.sb3data;
       this.blocks = this.data.blocks;
       for (const costume of target.costumes) {
-        this.costumeNames.add(costume.name);
+        this.costumeAndSoundNames.add(costume.name);
+      }
+      for (const sound of target.sounds) {
+        this.costumeAndSoundNames.add(sound.name);
       }
     }
 
@@ -1719,10 +1721,10 @@ namespace P.sb3.compiler {
     }
 
     /**
-     * Determine whether some text is used as the name of a costume.
+     * Determine whether text is the name of a costume or a sound.
      */
-    isCostumeName(text: string) {
-      return this.costumeNames.has(text);
+    isNameOfCostumeOrSound(text: string): boolean {
+      return this.costumeAndSoundNames.has(text);
     }
 
     /**
@@ -1754,8 +1756,8 @@ namespace P.sb3.compiler {
           // Do not attempt any conversions if:
           //  - desired type is string
           //  - value does not appear to be number-like
-          //  - this is the name of a costume (as that breaks setCostume #264)
-          if (desiredType !== 'string' && /\d|Infinity/.test(value) && !this.isCostumeName(value)) {
+          //  - this is the name of a costume or sound (https://github.com/forkphorus/forkphorus/issues/264)
+          if (desiredType !== 'string' && /\d|Infinity/.test(value) && !this.isNameOfCostumeOrSound(value)) {
             const number = +value;
             // If the stringification of the number is not the same as the original value, do not convert.
             // This fixes issues where the stringification is used instead of the number itself.

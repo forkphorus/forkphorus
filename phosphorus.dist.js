@@ -7221,12 +7221,15 @@ var P;
                 constructor(target) {
                     this.labelCount = 0;
                     this.needsMusic = false;
-                    this.costumeNames = new Set();
+                    this.costumeAndSoundNames = new Set();
                     this.target = target;
                     this.data = target.sb3data;
                     this.blocks = this.data.blocks;
                     for (const costume of target.costumes) {
-                        this.costumeNames.add(costume.name);
+                        this.costumeAndSoundNames.add(costume.name);
+                    }
+                    for (const sound of target.sounds) {
+                        this.costumeAndSoundNames.add(sound.name);
                     }
                 }
                 getHatBlocks() {
@@ -7346,8 +7349,8 @@ var P;
                 isStringLiteralPotentialNumber(text) {
                     return /\d|true|false|Infinity/.test(text);
                 }
-                isCostumeName(text) {
-                    return this.costumeNames.has(text);
+                isNameOfCostumeOrSound(text) {
+                    return this.costumeAndSoundNames.has(text);
                 }
                 compileNativeInput(native, desiredType) {
                     const type = native[0];
@@ -7367,7 +7370,7 @@ var P;
                         }
                         case 10: {
                             const value = native[1];
-                            if (desiredType !== 'string' && /\d|Infinity/.test(value) && !this.isCostumeName(value)) {
+                            if (desiredType !== 'string' && /\d|Infinity/.test(value) && !this.isNameOfCostumeOrSound(value)) {
                                 const number = +value;
                                 if (number.toString() === value) {
                                     if (!isNaN(number)) {
