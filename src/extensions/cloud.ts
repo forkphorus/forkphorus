@@ -26,12 +26,12 @@ namespace P.ext.cloud {
   }
 
   interface CloudDataMessage {
-    kind: string;
+    method: string;
   }
 
   interface CloudSetMessage {
-    kind: 'set';
-    var: string;
+    method: 'set';
+    name: string;
     value: string;
   }
 
@@ -39,11 +39,11 @@ namespace P.ext.cloud {
     if (typeof data !== 'object' || !data) {
       return false;
     }
-    return typeof (data as CloudDataMessage).kind === 'string';
+    return typeof (data as CloudDataMessage).method === 'string';
   }
 
   function isCloudSetMessage(data: unknown): data is CloudSetMessage {
-    return isCloudDataMessage(data) && typeof (data as CloudSetMessage).var === 'string' && typeof (data as CloudSetMessage).value === 'string';
+    return isCloudDataMessage(data) && typeof (data as CloudSetMessage).name === 'string' && typeof (data as CloudSetMessage).value === 'string';
   }
 
   /**
@@ -103,8 +103,9 @@ namespace P.ext.cloud {
       const variableName = this.queuedVariableChanges.shift()!;
       const value = this.getVariable(variableName);
       this.send({
-        kind: 'set',
-        var: variableName,
+        method: 'set',
+        user: this.username,
+        name: variableName,
         value: value,
       });
     }
@@ -149,10 +150,10 @@ namespace P.ext.cloud {
         this.failures = 0;
 
         this.send({
-          kind: 'handshake',
-          id: this.id,
-          username: this.username,
-          variables: getAllCloudVariables(this.stage),
+          method: 'handshake',
+          project_id: this.id,
+          user: this.username,
+          initial_data: getAllCloudVariables(this.stage),
         });
       };
 
@@ -228,7 +229,7 @@ namespace P.ext.cloud {
       if (!isCloudSetMessage(data)) {
         return;
       }
-      const { var: variableName, value } = data;
+      const { name: variableName, value } = data;
       if (this.stage.cloudVariables.indexOf(variableName) === -1) {
         throw new Error('invalid variable name');
       }

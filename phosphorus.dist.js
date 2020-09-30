@@ -9049,10 +9049,10 @@ var P;
                 if (typeof data !== 'object' || !data) {
                     return false;
                 }
-                return typeof data.kind === 'string';
+                return typeof data.method === 'string';
             }
             function isCloudSetMessage(data) {
-                return isCloudDataMessage(data) && typeof data.var === 'string' && typeof data.value === 'string';
+                return isCloudDataMessage(data) && typeof data.name === 'string' && typeof data.value === 'string';
             }
             class WebSocketCloudHandler extends P.ext.Extension {
                 constructor(stage, host, id) {
@@ -9094,8 +9094,9 @@ var P;
                     const variableName = this.queuedVariableChanges.shift();
                     const value = this.getVariable(variableName);
                     this.send({
-                        kind: 'set',
-                        var: variableName,
+                        method: 'set',
+                        user: this.username,
+                        name: variableName,
                         value: value,
                     });
                 }
@@ -9130,10 +9131,10 @@ var P;
                         this.setStatusVisible(false);
                         this.failures = 0;
                         this.send({
-                            kind: 'handshake',
-                            id: this.id,
-                            username: this.username,
-                            variables: getAllCloudVariables(this.stage),
+                            method: 'handshake',
+                            project_id: this.id,
+                            user: this.username,
+                            initial_data: getAllCloudVariables(this.stage),
                         });
                     };
                     this.ws.onmessage = (e) => {
@@ -9200,7 +9201,7 @@ var P;
                     if (!isCloudSetMessage(data)) {
                         return;
                     }
-                    const { var: variableName, value } = data;
+                    const { name: variableName, value } = data;
                     if (this.stage.cloudVariables.indexOf(variableName) === -1) {
                         throw new Error('invalid variable name');
                     }
