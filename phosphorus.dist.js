@@ -1433,6 +1433,8 @@ var P;
             }
             moveTo() {
             }
+            gotoObject() {
+            }
             forward() {
             }
             setDirection(direction) {

@@ -1331,6 +1331,10 @@ namespace P.core {
       // no-op
     }
 
+    gotoObject() {
+      // no-op
+    }
+
     forward() {
       // no-op
     }
