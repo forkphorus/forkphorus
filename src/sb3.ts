@@ -969,10 +969,12 @@ namespace P.sb3 {
       sprites.forEach((sprite) => sprite.stage = stage);
       stage.children = sprites;
 
-      stage.allWatchers = this.projectData.monitors
-        .map((data) => this.loadWatcher(data, stage))
-        .filter((i) => i && i.valid);
-      stage.allWatchers.forEach((watcher) => watcher.init());
+      if (this.projectData.monitors) {
+        stage.allWatchers = this.projectData.monitors
+          .map((data) => this.loadWatcher(data, stage))
+          .filter((i) => i && i.valid);
+        stage.allWatchers.forEach((watcher) => watcher.init());
+      }
 
       this.compileTargets(targets, stage);
 

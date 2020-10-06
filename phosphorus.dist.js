@@ -6923,10 +6923,12 @@ var P;
                 const sprites = targets.filter((i) => i.isSprite);
                 sprites.forEach((sprite) => sprite.stage = stage);
                 stage.children = sprites;
-                stage.allWatchers = this.projectData.monitors
-                    .map((data) => this.loadWatcher(data, stage))
-                    .filter((i) => i && i.valid);
-                stage.allWatchers.forEach((watcher) => watcher.init());
+                if (this.projectData.monitors) {
+                    stage.allWatchers = this.projectData.monitors
+                        .map((data) => this.loadWatcher(data, stage))
+                        .filter((i) => i && i.valid);
+                    stage.allWatchers.forEach((watcher) => watcher.init());
+                }
                 this.compileTargets(targets, stage);
                 if (this.needsMusic) {
                     await this.loadSoundbank();
