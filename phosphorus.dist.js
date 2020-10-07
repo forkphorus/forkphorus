@@ -6680,16 +6680,20 @@ var P;
             if (invalidNamespace) {
                 svg = fixSVGNamespace(svg);
                 if (svg.firstElementChild && svg.firstElementChild.tagName !== 'g') {
-                    const group = document.createElementNS(SVG_NAMESPACE, 'g');
-                    const transform = svg.createSVGTransform();
-                    for (const el of svg.children) {
-                        group.appendChild(el);
+                    const width = svg.width.baseVal;
+                    const height = svg.height.baseVal;
+                    if (width.unitType !== width.SVG_LENGTHTYPE_PERCENTAGE && height.unitType !== width.SVG_LENGTHTYPE_PERCENTAGE) {
+                        const group = document.createElementNS(SVG_NAMESPACE, 'g');
+                        const transform = svg.createSVGTransform();
+                        for (const el of svg.children) {
+                            group.appendChild(el);
+                        }
+                        transform.setTranslate(-width.value / 2, height.value / 2);
+                        group.transform.baseVal.appendItem(transform);
+                        costumeOptions.rotationCenterX -= width.value / 2;
+                        costumeOptions.rotationCenterY += height.value / 2;
+                        svg.appendChild(group);
                     }
-                    transform.setTranslate(-svg.width.baseVal.value / 2, svg.height.baseVal.value / 2);
-                    group.transform.baseVal.appendItem(transform);
-                    costumeOptions.rotationCenterX -= svg.width.baseVal.value / 2;
-                    costumeOptions.rotationCenterY += svg.height.baseVal.value / 2;
-                    svg.appendChild(group);
                 }
             }
             if (svg.hasAttribute('viewBox')) {

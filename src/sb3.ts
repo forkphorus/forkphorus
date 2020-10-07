@@ -682,18 +682,21 @@ namespace P.sb3 {
       // https://forkphorus.github.io/#374570920
       if (svg.firstElementChild && svg.firstElementChild.tagName !== 'g') {
         // create a new <g> (group) and transform
-        const group = document.createElementNS(SVG_NAMESPACE, 'g');
-        const transform = svg.createSVGTransform();
-        // move the children to the new group
-        for (const el of svg.children) {
-          group.appendChild(el);
-        }
         // translate the SVG to fix the center
-        transform.setTranslate(-svg.width.baseVal.value / 2, svg.height.baseVal.value / 2);
-        group.transform.baseVal.appendItem(transform);
-        costumeOptions.rotationCenterX -= svg.width.baseVal.value / 2;
-        costumeOptions.rotationCenterY += svg.height.baseVal.value / 2;
-        svg.appendChild(group);
+        const width = svg.width.baseVal;
+        const height = svg.height.baseVal;
+        if (width.unitType !== width.SVG_LENGTHTYPE_PERCENTAGE && height.unitType !== width.SVG_LENGTHTYPE_PERCENTAGE) {
+          const group = document.createElementNS(SVG_NAMESPACE, 'g');
+          const transform = svg.createSVGTransform();
+          for (const el of svg.children) {
+            group.appendChild(el);
+          }
+          transform.setTranslate(-width.value / 2, height.value / 2);
+          group.transform.baseVal.appendItem(transform);
+          costumeOptions.rotationCenterX -= width.value / 2;
+          costumeOptions.rotationCenterY += height.value / 2;
+          svg.appendChild(group);
+        }
       }
     }
 
