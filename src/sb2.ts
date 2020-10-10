@@ -372,7 +372,6 @@ namespace P.sb2 {
         this.addTask(new P.io.PromiseTask((P.utils.settled(P.fonts.loadWebFont('Gloria Hallelujah'))))),
         this.addTask(new P.io.PromiseTask((P.utils.settled(P.fonts.loadWebFont('Mystery Quest'))))),
         this.addTask(new P.io.PromiseTask((P.utils.settled(P.fonts.loadWebFont('Permanent Marker'))))),
-        this.addTask(new P.io.PromiseTask((P.utils.settled(P.fonts.loadWebFont('Scratch'))))),
       ]).then(() => undefined);
     }
 
