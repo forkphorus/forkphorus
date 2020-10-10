@@ -506,10 +506,10 @@ namespace P.sb2 {
     }
 
     loadSVG(source: string): Promise<HTMLCanvasElement | HTMLImageElement> {
-      // canvg needs and actual SVG element, not the source.
       const parser = new DOMParser();
       var doc = parser.parseFromString(source, 'image/svg+xml');
       var svg = doc.documentElement as any;
+      DOMPurify.sanitize(svg, { IN_PLACE: true });
       if (!svg.style) {
         doc = parser.parseFromString('<body>' + source, 'text/html');
         svg = doc.querySelector('svg');
