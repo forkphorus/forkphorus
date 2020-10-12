@@ -1,7 +1,7 @@
 # Privacy Policy
 
 <!-- UPDATE THIS WHEN MAKING EDITS -->
-*Updated September 15th, 2020.*
+*Updated October 11th, 2020.*
 
 This page will explain what information is collected through the forkphorus website: https://forkphorus.github.io/ ("the Site").
 
@@ -9,9 +9,9 @@ This page will explain what information is collected through the forkphorus webs
 
 ### Automatically collected information
 
-When you use the Site, some information is automatically logged through automated methods such as webserver logs. This includes IP addresses, user agents (which includes browser, operating system, and device information), referring websites, and information about usage of the site. Some of this information may be personally-identifiable, such as IP addresses.
+A self-hosted instance of Plausible Analytics is used to track website usage. You can see the information collected by this on https://stats.turbowarp.org/forkphorus.github.io. This server stores no personal information.
 
-When using projects that contain "cloud variables", some additional information such as usernames (chosen by the user or randomly generated) and project IDs are also logged.
+When loading projects that contain "cloud variables", your IP address, supplied username, and project ID are logged. This information is deleted within 14 days. The data stored in cloud variables is purged within 24 hours of no users being connected to a given project.
 
 ## How this information is used
 
@@ -32,4 +32,4 @@ Notably this includes:
 
 ## Contact
 
-For any privacy concerns, open a [GitHub issue](https://github.com/forkphorus/forkphorus/issues/new) or send an email to forkphorus@turbowarp.org
+For any privacy concerns, send an email to contacts@turbowarp.org
