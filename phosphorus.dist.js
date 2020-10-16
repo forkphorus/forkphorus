@@ -5041,6 +5041,7 @@ var P;
                 const parser = new DOMParser();
                 var doc = parser.parseFromString(source, 'image/svg+xml');
                 var svg = doc.documentElement;
+                DOMPurify.sanitize(svg, { IN_PLACE: true });
                 if (!svg.style) {
                     doc = parser.parseFromString('<body>' + source, 'text/html');
                     svg = doc.querySelector('svg');
@@ -6667,7 +6668,8 @@ var P;
         sb3.createList = createList;
         const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
         function fixSVGNamespace(svg) {
-            const newSVG = document.createElementNS(SVG_NAMESPACE, 'svg');
+            const newDocument = document.implementation.createHTMLDocument();
+            const newSVG = newDocument.createElementNS(SVG_NAMESPACE, 'svg');
             for (const attribute of svg.attributes) {
                 newSVG.setAttribute(attribute.name, attribute.value);
             }

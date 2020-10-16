@@ -658,7 +658,9 @@ namespace P.sb3 {
    */
   function fixSVGNamespace(svg: SVGSVGElement): SVGSVGElement {
     // To fix the namespace, we create a new SVG and copy its content.
-    const newSVG = document.createElementNS(SVG_NAMESPACE, 'svg');
+    // Create the SVG in a new document to avoid XSS
+    const newDocument = document.implementation.createHTMLDocument();
+    const newSVG = newDocument.createElementNS(SVG_NAMESPACE, 'svg');
     for (const attribute of svg.attributes) {
       newSVG.setAttribute(attribute.name, attribute.value);
     }
