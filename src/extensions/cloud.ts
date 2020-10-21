@@ -20,18 +20,18 @@ namespace P.ext.cloud {
   export function getAllCloudVariables(stage: P.core.Stage) {
     const result = {};
     for (const variable of stage.cloudVariables) {
-      result[variable] = stage.vars[variable] + '';
+      result[variable] = stage.vars[variable];
     }
     return result;
   }
 
   interface CloudDataMessage {
-    kind: string;
+    method: string;
   }
 
   interface CloudSetMessage {
-    kind: 'set';
-    var: string;
+    method: 'set';
+    name: string;
     value: string;
   }
 
@@ -39,18 +39,19 @@ namespace P.ext.cloud {
     if (typeof data !== 'object' || !data) {
       return false;
     }
-    return typeof (data as CloudDataMessage).kind === 'string';
+    return typeof (data as CloudDataMessage).method === 'string';
   }
 
   function isCloudSetMessage(data: unknown): data is CloudSetMessage {
-    return isCloudDataMessage(data) && typeof (data as CloudSetMessage).var === 'string' && typeof (data as CloudSetMessage).value === 'string';
+    return isCloudDataMessage(data) &&
+      typeof (data as CloudSetMessage).name === 'string' &&
+      typeof (data as CloudSetMessage).value !== 'undefined';
   }
 
   /**
    * Implements cloud variables over WebSocket.
-   *
    * Intended Server Code: https://github.com/forkphorus/cloud-server
-   * Protocol: https://github.com/forkphorus/cloud-server/blob/master/protocol.md (this is NOT the same as Scratch's protocol)
+   * Protocol docs: https://github.com/forkphorus/cloud-server/blob/master/doc/protocol.md
    */
   export class WebSocketCloudHandler extends P.ext.Extension implements CloudHandler {
     private readonly logPrefix: string;
@@ -103,8 +104,8 @@ namespace P.ext.cloud {
       const variableName = this.queuedVariableChanges.shift()!;
       const value = this.getVariable(variableName);
       this.send({
-        kind: 'set',
-        var: variableName,
+        method: 'set',
+        name: variableName,
         value: value,
       });
     }
@@ -115,7 +116,7 @@ namespace P.ext.cloud {
     }
 
     private getVariable(name: string): string {
-      return this.stage.vars[name] + '';
+      return this.stage.vars[name];
     }
 
     private setVariable(name: string, value: string): void {
@@ -149,10 +150,9 @@ namespace P.ext.cloud {
         this.failures = 0;
 
         this.send({
-          kind: 'handshake',
-          id: this.id,
-          username: this.username,
-          variables: getAllCloudVariables(this.stage),
+          method: 'handshake',
+          project_id: this.id,
+          user: this.username
         });
       };
 
@@ -178,12 +178,7 @@ namespace P.ext.cloud {
         const code = e.code;
         this.ws = null;
         console.warn(this.logPrefix, 'closed', code);
-        // see the protocol document
-        if (code === 4001) { // Incompatibility
-          this.setStatusText('Cannot connect: Incompatible with room.');
-          console.error(this.logPrefix, 'error: Incompatibility');
-          this.shouldReconnect = false;
-        } else if (code === 4002) { // Username Error
+        if (code === 4002) { // Username Error, see protocol document
           this.setStatusText('Username is invalid. Change your username to connect.');
           console.error(this.logPrefix, 'error: Username');
         } else {
@@ -210,7 +205,7 @@ namespace P.ext.cloud {
         this.failures++;
       }
       this.setStatusText('Connection lost, reconnecting...');
-      const delayTime = 2 ** this.failures * 1000;
+      const delayTime = 2 ** this.failures * 1000 * Math.random();
       console.log(this.logPrefix, 'reconnecting in', delayTime);
       this.reconnectTimeout = setTimeout(() => {
         this.reconnectTimeout = null;
@@ -228,7 +223,7 @@ namespace P.ext.cloud {
       if (!isCloudSetMessage(data)) {
         return;
       }
-      const { var: variableName, value } = data;
+      const { name: variableName, value } = data;
       if (this.stage.cloudVariables.indexOf(variableName) === -1) {
         throw new Error('invalid variable name');
       }

@@ -541,7 +541,7 @@ namespace P.player {
     generateUsernameIfMissing() {
       if (!this.options.username) {
         this.setOptions({
-          username: 'player' + Math.random().toString().substr(2, 5)
+          username: 'player' + Math.random().toFixed(10).substr(2, 6)
         });
       }
     }

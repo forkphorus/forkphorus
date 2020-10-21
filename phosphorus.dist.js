@@ -3162,7 +3162,7 @@ var P;
             generateUsernameIfMissing() {
                 if (!this.options.username) {
                     this.setOptions({
-                        username: 'player' + Math.random().toString().substr(2, 5)
+                        username: 'player' + Math.random().toFixed(10).substr(2, 6)
                     });
                 }
             }
@@ -9052,7 +9052,7 @@ var P;
             function getAllCloudVariables(stage) {
                 const result = {};
                 for (const variable of stage.cloudVariables) {
-                    result[variable] = stage.vars[variable] + '';
+                    result[variable] = stage.vars[variable];
                 }
                 return result;
             }
@@ -9061,10 +9061,12 @@ var P;
                 if (typeof data !== 'object' || !data) {
                     return false;
                 }
-                return typeof data.kind === 'string';
+                return typeof data.method === 'string';
             }
             function isCloudSetMessage(data) {
-                return isCloudDataMessage(data) && typeof data.var === 'string' && typeof data.value === 'string';
+                return isCloudDataMessage(data) &&
+                    typeof data.name === 'string' &&
+                    typeof data.value !== 'undefined';
             }
             class WebSocketCloudHandler extends P.ext.Extension {
                 constructor(stage, host, id) {
@@ -9106,8 +9108,8 @@ var P;
                     const variableName = this.queuedVariableChanges.shift();
                     const value = this.getVariable(variableName);
                     this.send({
-                        kind: 'set',
-                        var: variableName,
+                        method: 'set',
+                        name: variableName,
                         value: value,
                     });
                 }
@@ -9117,7 +9119,7 @@ var P;
                     this.ws.send(JSON.stringify(data));
                 }
                 getVariable(name) {
-                    return this.stage.vars[name] + '';
+                    return this.stage.vars[name];
                 }
                 setVariable(name, value) {
                     this.stage.vars[name] = value;
@@ -9142,10 +9144,9 @@ var P;
                         this.setStatusVisible(false);
                         this.failures = 0;
                         this.send({
-                            kind: 'handshake',
-                            id: this.id,
-                            username: this.username,
-                            variables: getAllCloudVariables(this.stage),
+                            method: 'handshake',
+                            project_id: this.id,
+                            user: this.username
                         });
                     };
                     this.ws.onmessage = (e) => {
@@ -9167,12 +9168,7 @@ var P;
                         const code = e.code;
                         this.ws = null;
                         console.warn(this.logPrefix, 'closed', code);
-                        if (code === 4001) {
-                            this.setStatusText('Cannot connect: Incompatible with room.');
-                            console.error(this.logPrefix, 'error: Incompatibility');
-                            this.shouldReconnect = false;
-                        }
-                        else if (code === 4002) {
+                        if (code === 4002) {
                             this.setStatusText('Username is invalid. Change your username to connect.');
                             console.error(this.logPrefix, 'error: Username');
                         }
@@ -9196,7 +9192,7 @@ var P;
                         this.failures++;
                     }
                     this.setStatusText('Connection lost, reconnecting...');
-                    const delayTime = 2 ** this.failures * 1000;
+                    const delayTime = 2 ** this.failures * 1000 * Math.random();
                     console.log(this.logPrefix, 'reconnecting in', delayTime);
                     this.reconnectTimeout = setTimeout(() => {
                         this.reconnectTimeout = null;
@@ -9212,7 +9208,7 @@ var P;
                     if (!isCloudSetMessage(data)) {
                         return;
                     }
-                    const { var: variableName, value } = data;
+                    const { name: variableName, value } = data;
                     if (this.stage.cloudVariables.indexOf(variableName) === -1) {
                         throw new Error('invalid variable name');
                     }
