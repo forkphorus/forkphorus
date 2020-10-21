@@ -9052,7 +9052,9 @@ var P;
                 return typeof data.method === 'string';
             }
             function isCloudSetMessage(data) {
-                return isCloudDataMessage(data) && typeof data.name === 'string' && typeof data.value === 'string';
+                return isCloudDataMessage(data) &&
+                    typeof data.name === 'string' &&
+                    typeof data.value !== 'undefined';
             }
             class WebSocketCloudHandler extends P.ext.Extension {
                 constructor(stage, host, id) {
@@ -9154,12 +9156,7 @@ var P;
                         const code = e.code;
                         this.ws = null;
                         console.warn(this.logPrefix, 'closed', code);
-                        if (code === 4001) {
-                            this.setStatusText('Cannot connect: Incompatible with room.');
-                            console.error(this.logPrefix, 'error: Incompatibility');
-                            this.shouldReconnect = false;
-                        }
-                        else if (code === 4002) {
+                        if (code === 4002) {
                             this.setStatusText('Username is invalid. Change your username to connect.');
                             console.error(this.logPrefix, 'error: Username');
                         }

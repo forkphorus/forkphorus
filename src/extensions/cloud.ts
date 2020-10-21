@@ -43,14 +43,15 @@ namespace P.ext.cloud {
   }
 
   function isCloudSetMessage(data: unknown): data is CloudSetMessage {
-    return isCloudDataMessage(data) && typeof (data as CloudSetMessage).name === 'string' && typeof (data as CloudSetMessage).value === 'string';
+    return isCloudDataMessage(data) &&
+      typeof (data as CloudSetMessage).name === 'string' &&
+      typeof (data as CloudSetMessage).value !== 'undefined';
   }
 
   /**
    * Implements cloud variables over WebSocket.
-   *
    * Intended Server Code: https://github.com/forkphorus/cloud-server
-   * Protocol: https://github.com/forkphorus/cloud-server/blob/master/protocol.md (this is NOT the same as Scratch's protocol)
+   * Protocol docs: https://github.com/forkphorus/cloud-server/blob/master/doc/protocol.md
    */
   export class WebSocketCloudHandler extends P.ext.Extension implements CloudHandler {
     private readonly logPrefix: string;
@@ -177,12 +178,7 @@ namespace P.ext.cloud {
         const code = e.code;
         this.ws = null;
         console.warn(this.logPrefix, 'closed', code);
-        // see the protocol document
-        if (code === 4001) { // Incompatibility
-          this.setStatusText('Cannot connect: Incompatible with room.');
-          console.error(this.logPrefix, 'error: Incompatibility');
-          this.shouldReconnect = false;
-        } else if (code === 4002) { // Username Error
+        if (code === 4002) { // Username Error, see protocol document
           this.setStatusText('Username is invalid. Change your username to connect.');
           console.error(this.logPrefix, 'error: Username');
         } else {
