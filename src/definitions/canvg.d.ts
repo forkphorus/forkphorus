@@ -76,7 +76,11 @@ declare namespace canvg {
     anonymousCrossOrigin?: boolean;
   }
 
+  interface CanvgImage {
+    render(): Promise<void>;
+  }
+
   export namespace Canvg {
-    export function from(canvas: HTMLCanvasElement | CanvasRenderingContext2D, source: string, options: IOptions): void;
+    export function from(canvas: HTMLCanvasElement | CanvasRenderingContext2D, source: string, options: IOptions): Promise<CanvgImage>;
   }
 }

@@ -537,6 +537,9 @@ namespace P.sb2 {
 
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('unable to get rendering context for drawing svg');
+      }
       return canvg.Canvg.from(ctx, new XMLSerializer().serializeToString(svg), {
         ignoreMouse: true,
         ignoreAnimation: true,
