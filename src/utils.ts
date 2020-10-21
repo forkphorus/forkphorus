@@ -198,4 +198,10 @@ namespace P.utils {
     });
   }
 
+  /**
+   * Create a promise that will resolve after `ms` milliseconds.
+   */
+  export function sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
 }

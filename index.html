@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Forkphorus is a JavaScript compiler for Scratch 2 and Scratch 3 projects.">
+  <meta name="description" content="Forkphorus is a JavaScript compiler for Scratch 3, 2, and 1 projects.">
   <link rel="canonical" href="https://forkphorus.github.io/" />
   <title>forkphorus - phosphorus for Scratch 3</title>
   <script>
@@ -34,7 +34,7 @@
 
     <div class="area" id="title-area">
       <h1 class="title">forkphorus</h1>
-      <p>forkphorus runs Scratch 2 and Scratch 3 projects really fast by compiling them to JavaScript. Try it out by pasting a project ID or URL into the field below, <a class="upload-button"><input id="upload-file-input" type="file" autocomplete="off" accept=".sb2,.sb3">selecting a project file</a>, dropping a file on the page, or <a id="examples">exploring the examples studio</a>.</p>
+      <p>forkphorus runs Scratch 3, 2, and 1 projects really fast by compiling them to JavaScript. Try it out by pasting a project ID or URL into the field below, <a class="upload-button"><input id="upload-file-input" type="file" autocomplete="off" accept=".sb,.sb2,.sb3">selecting a project file</a>, dropping a file on the page, or <a id="examples">exploring the examples studio</a>.</p>
     </div>
 
     <div id="examples-container" class="area">
@@ -87,6 +87,8 @@
           <a href="#" target="_blank" id="package-link" data-i18n="index.package.button">Package</a>
           <input type="checkbox" id="package-turbo">
           <label for="package-turbo" data-i18n="index.package.turbo">Turbo mode</label>
+          <input type="checkbox" id="package-controls">
+          <label for="package-controls" data-i18n="index.package.controls">Controls</label>
           <span>
             <input type="radio" name="package-resolution" id="package-full-screen" checked>
             <label for="package-full-screen" data-i18n="index.package.fullscreen">Full screen</label>
@@ -117,27 +119,42 @@
           <td class="name" title="Controls whether the renderer tries to make images look smoother."><label for="settings-image-smoothing">Image Smoothing</label></td>
           <td class="value"><input id="settings-image-smoothing" type="checkbox" autocomplete="off"></td>
         </tr>
+        <tr>
+          <td class="name" title="Prevents sprites from moving offscreen."><label for="settings-sprite-fencing">Sprite Fencing</label></td>
+          <td class="value"><input id="settings-sprite-fencing" type="checkbox" autocomplete="off"></td>
+        </tr>
       </table>
       <p>Changes are applied automatically.</p>
+
+      <h1 data-i18n="index.advanced">Advanced Settings</h1>
+      <p>Help test unfinished features. These require a refresh to apply.</b> <a href="https://github.com/forkphorus/forkphorus/wiki/Advanced-Features" target="_blank">Please read this first</a>.</p>
+      <div class="advanced">
+        <label><input id="advanced-webgl" class="advanced-feature" type="checkbox"> WebGL Renderer</label>
+        <label><input id="advanced-legacy" class="advanced-feature" type="checkbox"> Legacy Mode</label>
+      </div>
     </div>
 
     <section>
       <h1 data-i18n="index.credits">Credits</h1>
-      <p>forkphorus is a based on <a href="https://github.com/nathan">Nathan</a>'s <a href="https://phosphorus.github.io/">phosphorus</a>. Its CPS-style compilation and overall design was inspired by <a href="https://github.com/RHY3756547">Rhys</a>'s <a href="https://code.google.com/p/sb2-js/">sb2.js</a>. It would have more bugs if not for <a href="https://github.com/trumank">Truman</a> and <a href="https://github.com/tjvr">Tim</a>. The <a href="https://stuk.github.io/jszip/">JSZip</a> library is used to read <code>.sb2</code> and <code>.sb3</code> files, and the <a href="https://github.com/canvg/canvg">canvg</a> library is used to render SVGs in <code>&lt;canvas&gt;</code> elements for some projects.</p>
+      <p>forkphorus is maintained by <a href="https://scratch.mit.edu/users/GarboMuffin/">GarboMuffin</a> and <a href="https://github.com/forkphorus/forkphorus/graphs/contributors">other contributors</a>. It is a fork of <a href="https://github.com/nathan">Nathan</a>'s <a href="https://phosphorus.github.io/">phosphorus</a>. Its CPS-style compilation was inspired by <a href="https://github.com/RHY3756547">Rhys</a>'s <a href="https://code.google.com/p/sb2-js/">sb2.js</a>. The <a href="https://stuk.github.io/jszip/">JSZip</a> library is used to read <code>.sb2</code> and <code>.sb3</code> files. The <a href="https://github.com/canvg/canvg">canvg</a> library is used to render SVGs for Scratch 2 projects. The <a href="https://github.com/LLK/scratch-sb1-converter">scratch-sb1-converter</a> library is used to support Scratch 1 projects. The cloud variable server is hosted by <a href="https://fosshost.org/">fosshost.org</a>.</p>
 
       <h1 data-i18n="index.code">Code</h1>
       <p>The source code for forkphorus is available <a href=https://github.com/forkphorus/forkphorus>on GitHub</a>.</p>
 
-      <!-- the deploy bot for forkphorus.github.io will replace this next line with the version info -->
-      <!-- __deploybotinfosection__ -->
+      <footer>
+        <a data-i18n="index.privacy" href="privacy">Privacy Policy</a>
+      </footer>
     </section>
+
   </div>
 
+  <script src="lib/scratch-sb1-converter.js"></script>
   <script src="lib/jszip.min.js"></script>
   <script src="lib/fontfaceobserver.standalone.js"></script>
   <script src="lib/stackblur.min.js"></script>
   <script src="lib/rgbcolor.js"></script>
   <script src="lib/canvg.min.js"></script>
+  <script src="lib/purify.min.js"></script>
   <script src="phosphorus.dist.js"></script>
   <script src="common.js"></script>
   <script src="studioview/studioview.js"></script>
@@ -146,7 +163,6 @@
     P.i18n.addTranslations('en', {
       'studioview.authorAttribution': 'by $author',
       'studioview.projectHoverText': '$title by $author',
-      'index.report.instructions': 'Describe the issue:',
       'index.document.title': 'forkphorus - phosphorus for Scratch 3',
       'index.report': 'Report a problem',
       'index.embed': 'Embed this project',
@@ -157,6 +173,7 @@
       'index.studio.view': 'View studio on Scratch.',
       'index.package.button': 'Package',
       'index.package.turbo': 'Turbo mode',
+      'index.package.controls': 'Controls',
       'index.package.fullscreen': 'Full screen',
       'index.package.480': '480\u00D7360',
       'index.package.custom': 'Other:',
@@ -165,6 +182,9 @@
       'index.embed.autostart': 'Start automatically',
       'index.embed.lightControls': 'Light controls',
       'index.embed.hideUI': 'Hide UI',
+      'index.advanced': 'Advanced Settings',
+      'index.advanced.confirmation': 'This will refresh this page, resetting the project. Continue?',
+      'index.privacy': 'Privacy Policy',
     });
     P.i18n.addTranslations('es', {
       'studioview.authorAttribution': 'por $author',
@@ -212,7 +232,6 @@
     var projectArea = querySelector('#project-area');
 
     var player = new P.player.Player();
-    window.player = player;
     player.addControls();
     new P.player.ProgressBar(player, {
       position: querySelector('.url').parentNode,
@@ -227,11 +246,24 @@
       var el = document.createElement('div');
       el.innerHTML = `Alternatively, <a href="https://scratch.mit.edu/projects/366001364/" target="_blank">post a Scratch comment</a> and include: "<span style="font-family: monospace; user-select: all">${err.replace(/<>/g, '')} (${player.getProjectMeta().getId()})</span>"`;
       errorHandler.errorEl.appendChild(el);
+      if (errorHandler.generatedErrorLink) {
+        bugLink.href = errorHandler.generatedErrorLink;
+      }
     });
     playerArea.appendChild(player.root);
 
+    // expose player on the global object
+    window.player = player;
+    console.log('forkphorus is open source https://github.com/forkphorus/forkphorus');
+    console.log('The project player is exposed as `player`');
+    console.log('The project is exposed as `player.stage`');
+    console.log('Sprites are exposed in `player.stage.children`');
+
     var initialId = Common.projectId || '';
     player.setOptions(Common.playerOptions);
+    player.setOptions({
+      autoplayPolicy: 'never'
+    });
 
     playerArea.style.height = projectArea.style.height = 'auto';
     var titleAreaHeight = titleArea.offsetHeight;
@@ -249,17 +281,11 @@
 
     var timeout;
     urlInput.addEventListener('input', function() {
-      var ss = urlInput.selectionStart;
-      var se = urlInput.selectionEnd;
       var url = urlInput.value;
-      var id = url.match(/\d+/g) || [''];
       var pid = player.hasProjectMeta() ? player.getProjectMeta().getId() : -1;
-      while (id.length > 1 && id.indexOf(pid) > -1) {
-        id.splice(id.indexOf(pid), 1);
-      }
-      id = id[0];
+      var id = url.match(/\d+/g) || [''];
+      id = id[0].replace(/^0+/, '');
       urlInput.value = url = PROJECT_PREFIX + id;
-      urlInput.selectionStart = urlInput.selectionEnd = Math.max(PROJECT_PREFIX.length, ss);
       clearTimeout(timeout);
       if (pid !== id) {
         timeout = setTimeout(function() {
@@ -324,20 +350,23 @@
     }
     function loadProjectFile(file) {
       var extension = file.name.split('.').pop();
-      if (!['sb2', 'sb3'].includes(extension)) {
+      if (!['sb', 'sb2', 'sb3'].includes(extension)) {
         return;
       }
       silentChangeHash('#' + file.name);
       showPlayerArea();
       player.loadProjectFromFile(file);
       updateLinks();
-      resetTitle();
+      setTitleToProjectTitle();
     }
     function updateLinks() {
-      bugLink.href = errorHandler.createBugReportLink(P.i18n.translate('index.report.instructions'));
-      if (player.getProjectMeta().getId()) {
+      bugLink.href = errorHandler.createBugReportLink();
+      if (player.getProjectMeta().isFromScratch()) {
         projectLink.href = 'https://scratch.mit.edu/projects/' + player.getProjectMeta().getId();
         htmlPackagerLink.href = 'packager/#' + player.getProjectMeta().getId();
+      } else {
+        projectLink.href = 'https://scratch.mit.edu/';
+        htmlPackagerLink.href = 'packager';
       }
       updatePackageLink();
       updateEmbedCode();
@@ -371,6 +400,7 @@
     var packageOther = querySelector('#package-other');
     var packageOtherWidth = querySelector('#package-other-width');
     var packageOtherHeight = querySelector('#package-other-height');
+    var packageControls = querySelector('#package-controls');
 
     // Bind two inputs together so that changes to one reflect a change in the other.
     function bindInputs(first, other, multiplier) {
@@ -383,7 +413,7 @@
     }
     function updatePackageLink() {
       packageOtherWidth.disabled = packageOtherHeight.disabled = !packageOther.checked;
-      if (player.getProjectMeta().getId()) {
+      if (player.getProjectMeta().isFromScratch()) {
         var url = location.origin + location.pathname + 'app.html?id=' + player.getProjectMeta().getId();
         if (packageTurbo.checked) url += '&turbo';
         if (packageFullScreen.checked) {
@@ -392,6 +422,9 @@
           url += '&w=480';
         } else {
           url += '&w=' + packageOtherWidth.value;
+        }
+        if (packageControls.checked) {
+          url += '&controls';
         }
         packageLink.href = url;
       } else {
@@ -405,6 +438,7 @@
     packageOther.addEventListener('change', updatePackageLink);
     packageOtherHeight.addEventListener('change', updatePackageLink);
     packageOtherWidth.addEventListener('change', updatePackageLink);
+    packageControls.addEventListener('change', updatePackageLink);
 
     /** Embedding **/
     var embedCode = querySelector('#embed-code');
@@ -426,7 +460,7 @@
       }
       embedOtherWidth.disabled = embedOtherHeight.disabled = !embedOther.checked;
 
-      if (player.getProjectMeta().getId()) {
+      if (player.getProjectMeta().isFromScratch()) {
         var source = location.protocol + '//' + location.host + location.pathname + 'embed.html?id=' + player.getProjectMeta().getId();
         if (embedHideControls.checked) {
           source += '&ui=false';
@@ -581,27 +615,68 @@
     var settingFps = querySelector('#settings-fps');
     var settingUsername = querySelector('#settings-username');
     var settingImageSmoothing = querySelector('#settings-image-smoothing');
+    var settingSpriteFencing = querySelector('#settings-sprite-fencing');
 
-    settingFps.value = player.options.fps;
+    function syncOptionValues() {
+      settingFps.value = player.options.fps;
+      settingUsername.value = player.options.username;
+      settingImageSmoothing.checked = player.options.imageSmoothing;
+      settingSpriteFencing.checked = player.options.spriteFencing;
+    }
+
     settingFps.addEventListener('input', (e) => {
       if (settingFps.checkValidity()) {
         player.setOptions({ fps: +settingFps.value });
       }
     });
-    settingUsername.value = player.options.username;
     settingUsername.addEventListener('input', (e) => {
       player.setOptions({ username: settingUsername.value });
     });
-    settingImageSmoothing.checked = player.options.imageSmoothing;
     settingImageSmoothing.addEventListener('change', (e) => {
       player.setOptions({ imageSmoothing: settingImageSmoothing.checked });
     });
+    settingSpriteFencing.addEventListener('change', (e) => {
+      player.setOptions({ spriteFencing: settingSpriteFencing.checked });
+    });
+    syncOptionValues();
+    player.onoptionschange.subscribe(syncOptionValues);
+
+    /** Advanced Settings Menu **/
+    var advancedWebGL = querySelector('#advanced-webgl');
+    var advancedLegacy = querySelector('#advanced-legacy');
+    advancedWebGL.checked = P.config.useWebGL;
+    advancedWebGL.addEventListener('click', function(e) {
+      setSearchParam('webgl', e.target.checked, e);
+    });
+    advancedLegacy.checked = player.getOptions().projectHost === 'https://projects.scratch.mit.edu/internalapi/project/$id/get/';
+    advancedLegacy.addEventListener('click', function(e) {
+      setSearchParam('phost', e.target.checked ? 'legacy' : false, e);
+    });
+    function setSearchParam(key, value, event) {
+      if (!confirm(P.i18n.translate('index.advanced.confirmation'))) {
+        event.preventDefault();
+        return;
+      }
+      // if value === false, remove the key
+      // if value === true, add a key with no value
+      // else, add a key with the given value
+      if (value === false) {
+        var searchParams = new URLSearchParams(location.search);
+        searchParams.delete(key);
+        location.search = searchParams.toString();
+      } else {
+        var query = value === true ? key : key + '=' + value;
+        if (location.search.length > 1) {
+          location.search += '&' + query;
+        } else {
+          location.search = '?' + query;
+        }
+      }
+    }
 
     if (initialId) {
-      player.setOptions({ autoplayPolicy: 'never' });
       loadProjectId(initialId);
     } else {
-      player.setOptions({ autoplayPolicy: 'always' });
       urlInput.focus();
       urlInput.setSelectionRange(urlInput.value.length, urlInput.value.length);
     }

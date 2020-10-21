@@ -62,8 +62,9 @@ function startServer() {
 
   async function findFile(root, path) {
     const indexes = ['index.html', 'README.md'];
+    const extensions = ['', '.html', '.md'];
 
-    // check for null bytes, probably not too important but doesn't hurt
+    // prevent null bytes
     if (path.indexOf('\0') !== -1) {
       return null;
     }
@@ -83,14 +84,14 @@ function startServer() {
       return null;
     }
 
+    const originalPath = path;
+
     try {
       if ((await lstat(path)).isDirectory()) {
-        // try to find an index file
         let found = false;
-        let origPath = path;
         for (const i of indexes) {
           try {
-            path = pathUtil.join(origPath, i);
+            path = pathUtil.join(originalPath, i);
             if ((await lstat(path)).isFile()) {
               found = true;
               break;
@@ -102,7 +103,19 @@ function startServer() {
         if (!found) return null;
       }
     } catch (e) {
-      return null;
+      let found = false;
+      for (const i of extensions) {
+        try {
+          path = originalPath + i;
+          if ((await lstat(path)).isFile()) {
+            found = true;
+            break;
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+      if (!found) return null;
     }
 
     return path;

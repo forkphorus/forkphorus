@@ -27,9 +27,8 @@ namespace P.core {
     whenGreenFlag: P.runtime.Fn[];
     whenIReceive: ObjectMap<P.runtime.Fn[]>;
     whenKeyPressed: P.runtime.Fn[][];
-    whenBackdropChanges: ObjectMap<P.runtime.Fn[]>;
     whenSceneStarts: ObjectMap<P.runtime.Fn[]>;
-    // whenSensorGreaterThan: P.runtime.Fn[]
+    edgeActivated: P.runtime.Fn[];
   }
 
   export interface ActiveSound {
@@ -282,7 +281,7 @@ namespace P.core {
     /**
      * Maps the names of sounds to the corresponding Sound
      */
-    public soundRefs: ObjectMap<Sound> = Object.create(null);
+    public soundRefs: ObjectMap<Sound> = {};
     /**
      * Currently selected instrument
      */
@@ -302,23 +301,23 @@ namespace P.core {
     /**
      * Variable watchers that this object owns.
      */
-    public watchers: ObjectMap<Watcher> = Object.create(null);
+    public watchers: ObjectMap<Watcher> = {};
     /**
      * List watchers that this object owns.
      */
-    public listWatchers: ObjectMap<Watcher> = Object.create(null);
+    public listWatchers: ObjectMap<Watcher> = {};
     /**
      * Variables of this object.
      * Maps variable names (or ids) to their value.
      * Values can be of any type and should likely be converted first.
      */
-    public vars: ObjectMap<any> = Object.create(null);
+    public vars: ObjectMap<any> = {};
     /**
      * Lists of this object.
      * Maps list names (or ids) to their list.
      * Each list can contain objects of any type, and should be converted first.
      */
-    public lists: ObjectMap<Array<any>> = Object.create(null);
+    public lists: ObjectMap<Array<any>> = {};
     /**
      * Is this object saying something?
      */
@@ -337,15 +336,15 @@ namespace P.core {
     /**
      * Maps procedure names (usually includes parameters) to the Procedure object
      */
-    public procedures: ObjectMap<Procedure> = Object.create(null);
+    public procedures: ObjectMap<Procedure> = {};
     public listeners: Listeners = {
       whenClicked: [],
       whenCloned: [],
       whenGreenFlag: [],
-      whenIReceive: Object.create(null),
+      whenIReceive: {},
       whenKeyPressed: [],
-      whenBackdropChanges: Object.create(null),
-      whenSceneStarts: Object.create(null),
+      whenSceneStarts: {},
+      edgeActivated: [],
     };
     public fns: P.runtime.Fn[] = [];
     public filters: Filters = {
@@ -488,12 +487,20 @@ namespace P.core {
         brightness: 0,
         ghost: 0
       };
+      this.soundFilters = {
+        pitch: 0
+      };
     }
 
     setSoundFilter(name: string, value: number) {
+      // convert NaN to 0
+      // todo: NaN should never even be able to get here, see if this is necessary
+      value = value || 0;
       switch (name.toLowerCase()) {
         case 'pitch':
           this.soundFilters.pitch = value;
+          if (this.soundFilters.pitch > 360) this.soundFilters.pitch = 360;
+          if (this.soundFilters.pitch < -360) this.soundFilters.pitch = -360;
           break;
       }
     }
@@ -502,6 +509,8 @@ namespace P.core {
       switch (name.toLowerCase()) {
         case 'pitch':
           this.soundFilters.pitch += value;
+          if (this.soundFilters.pitch > 360) this.soundFilters.pitch = 360;
+          if (this.soundFilters.pitch < -360) this.soundFilters.pitch = -360;
           break;
       }
     }
@@ -583,7 +592,7 @@ namespace P.core {
      * @returns A unique ID for this bubble
      */
     say(text: string, thinking: boolean = false): number {
-      text = text.toString();
+      text = '' + text;
 
       // Empty strings disable saying anything.
       if (text.length === 0) {
@@ -635,6 +644,7 @@ namespace P.core {
         return;
       }
 
+      this.bubbleContainer.style.display = 'block';
       const b = this.rotatedBounds();
       const left = 240 + b.right;
       var bottom = 180 + b.top;
@@ -668,8 +678,6 @@ namespace P.core {
     remove() {
       if (this.bubbleContainer) {
         this.stage.ui.removeChild(this.bubbleContainer);
-        // I don't think doing this is necessary.
-        delete this.bubbleContainer;
       }
       if (this.node && this.isClone && !this.isStage) {
         // Continue playing sounds started with "start sound" after this sprite has been removed.
@@ -818,10 +826,15 @@ namespace P.core {
     public promptButton: HTMLElement;
     public mouseSprite: Sprite | undefined;
 
+    public cloudHandler: P.ext.cloud.CloudHandler | null = null;
+    public cloudVariables: string[] = [];
+
     private videoElement: HTMLVideoElement;
-    public speech2text: P.ext.speech2text.SpeechToTextExtension | null = null;
     public microphone: P.ext.microphone.MicrophoneExtension | null = null;
+    public tts: P.ext.tts.TextToSpeechExtension | null = null;
     private extensions: P.ext.Extension[] = [];
+
+    public useSpriteFencing: boolean = false;
 
     constructor() {
       super();
@@ -954,10 +967,10 @@ namespace P.core {
       const key = e.key;
       switch (key) {
         case 'Enter': return SpecialKeys.Enter;
-        case 'ArrowLeft': return SpecialKeys.Left;
-        case 'ArrowUp': return SpecialKeys.Up;
-        case 'ArrowRight': return SpecialKeys.Right;
-        case 'ArrowDown': return SpecialKeys.Down;
+        case 'ArrowLeft': case 'Left': return SpecialKeys.Left;
+        case 'ArrowUp': case 'Up': return SpecialKeys.Up;
+        case 'ArrowRight': case 'Right': return SpecialKeys.Right;
+        case 'ArrowDown': case 'Down': return SpecialKeys.Down;
       }
       if (key.length !== 1) {
         // Additional keys that we don't care about such as volume keys (AudioVolumeUp/Down) and modifier keys (Shift)
@@ -1091,6 +1104,14 @@ namespace P.core {
       }
     }
 
+    updateExtensions() {
+      if (this.extensions.length) {
+        for (const extension of this.extensions) {
+          extension.update();
+        }
+      }
+    }
+
     /**
      * Give browser focus to the Stage.
      */
@@ -1126,12 +1147,10 @@ namespace P.core {
       this.root.style.height = (360 * zoom | 0) + 'px';
       this.root.style.fontSize = (zoom*10) + 'px';
       this.zoom = zoom;
-      // Temporary fix to make Scratch 3 list watchers properly resize when paused
-      if (!this.runtime.isRunning) {
-        for (const watcher of this.allWatchers) {
-          if (watcher instanceof P.sb3.Scratch3ListWatcher) {
-            watcher.updateList();
-          }
+      // Temporary fix to make Scratch 3 list watchers properly resize
+      for (const watcher of this.allWatchers) {
+        if (watcher instanceof P.sb3.Scratch3ListWatcher) {
+          watcher.updateList();
         }
       }
     }
@@ -1272,18 +1291,23 @@ namespace P.core {
       this.extensions.push(extension);
     }
 
-    initSpeech2Text() {
-      if (!this.speech2text && P.ext.speech2text.isSupported()) {
-        this.speech2text = new P.ext.speech2text.SpeechToTextExtension(this);
-        this.addExtension(this.speech2text);
-      }
-    }
-
-    initLoudness() {
+    initMicrophone() {
       if (!this.microphone) {
         this.microphone = new P.ext.microphone.MicrophoneExtension(this);
         this.addExtension(this.microphone);
       }
+    }
+
+    initTextToSpeech() {
+      if (!this.tts) {
+        this.tts = new P.ext.tts.TextToSpeechExtension(this);
+        this.addExtension(this.tts);
+      }
+    }
+
+    setCloudHandler(cloudHandler: P.ext.cloud.CloudHandler) {
+      this.cloudHandler = cloudHandler;
+      this.addExtension(cloudHandler);
     }
 
     stopAllSounds() {
@@ -1304,6 +1328,10 @@ namespace P.core {
     }
 
     moveTo() {
+      // no-op
+    }
+
+    gotoObject() {
       // no-op
     }
 
@@ -1490,6 +1518,27 @@ namespace P.core {
       this.moveTo(this.scratchX + steps * Math.cos(d), this.scratchY + steps * Math.sin(d));
     }
 
+    keepInView() {
+      const rb = this.rotatedBounds();
+      const width = rb.right - rb.left;
+      const height = rb.top - rb.bottom;
+
+      const bounds = Math.min(15, Math.floor(Math.min(width, height) / 2));
+
+      if (rb.right - bounds < -240) {
+        this.scratchX -= rb.right - bounds + 240;
+      }
+      if (rb.left + bounds > 240) {
+        this.scratchX -= rb.left + bounds - 240;
+      }
+      if (rb.bottom + bounds > 180) {
+        this.scratchY -= rb.bottom + bounds - 180;
+      }
+      if (rb.top - bounds < -180) {
+        this.scratchY -= rb.top - bounds + 180;
+      }
+    }
+
     // Moves the sprite to a coordinate
     // Draws a line if the pen is currently down.
     moveTo(x: number, y: number) {
@@ -1500,6 +1549,10 @@ namespace P.core {
       }
       this.scratchX = x;
       this.scratchY = y;
+
+      if (this.stage.useSpriteFencing) {
+        this.keepInView();
+      }
 
       if (this.isPenDown && !this.isDragging) {
         this.stage.renderer.penLine(this.penColor, this.penSize, ox, oy, x, y);
@@ -1680,7 +1733,7 @@ namespace P.core {
     }
   }
 
-  interface CostumeOptions {
+  export interface CostumeOptions {
     name: string;
     bitmapResolution: number;
     rotationCenterX: number;
@@ -1771,9 +1824,11 @@ namespace P.core {
 
   export class VectorCostume extends Costume {
     /** Maximum scale factor of a Vector costume. */
-    public static MAX_SCALE = 8;
+    public static MAX_SCALE = 16;
     /** Maximum width or height of a Vector costume. Overrides MAX_SCALE. */
-    public static MAX_SIZE = 1024;
+    public static MAX_SIZE = 2048;
+    /** Disables rasterize/zoom. */
+    public static DISABLE_RASTERIZE = false;
 
     private svg: HTMLImageElement;
     public currentScale: number;
@@ -1828,6 +1883,9 @@ namespace P.core {
     }
 
     requestSize(costumeScale: number) {
+      if (VectorCostume.DISABLE_RASTERIZE) {
+        return;
+      }
       const scale = Math.min(Math.ceil(costumeScale), this.maxScale);
       if (this.currentScale < scale) {
         this.currentScale = scale;
@@ -1844,6 +1902,9 @@ namespace P.core {
     }
 
     getImage() {
+      if (VectorCostume.DISABLE_RASTERIZE) {
+        return this.svg;
+      }
       if (this.canvas) {
         return this.canvas;
       }
@@ -1854,11 +1915,10 @@ namespace P.core {
 
   // TEMPORARY FIX:
   // Disable image scaling on Safari.
-  // TODO: see if this is not necessary anymore due to changes in scaling
   // detection method from https://stackoverflow.com/a/23522755
   if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
-    console.log('Vector scaling is disabled');
-    VectorCostume.MAX_SCALE = 1;
+    console.log('Vector rasterization is disabled. This may affect performance.');
+    VectorCostume.DISABLE_RASTERIZE = true;
   }
 
   interface SoundOptions {

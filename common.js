@@ -66,6 +66,14 @@ var Common = (function() {
       setPlayerOption(name, value || 'true');
     }
 
+    function setPlayerEnum(name, value, values) {
+      if (values.indexOf(value) > -1) {
+        setPlayerOption(name, value);
+      } else {
+        console.warn(value, 'is not one of', values.join(', '));
+      }
+    }
+
     switch (key) {
       // Player options
       case 'fps':
@@ -80,13 +88,31 @@ var Common = (function() {
       case 'imageSmoothing':
         setPlayerFlag('imageSmoothing', value);
         break;
+      case 'fencing':
+        setPlayerFlag('spriteFencing', value);
+        break;
+      case 'cloud':
+        setPlayerEnum('cloudVariables', value, ['once', 'off', 'ws', 'localStorage']);
+        break;
+      case 'chost':
+        setPlayerFlag('cloudHost', value);
+        break;
+      case 'phost':
+        if (value === 'legacy') value = 'https://projects.scratch.mit.edu/internalapi/project/$id/get/';
+        setPlayerFlag('projectHost', value);
+        break;
+      case 'chhost':
+        setPlayerFlag('cloudHistoryHost', value);
+        break;
       // Project ID
       case 'id':
+        // projectId is also read from location.hash if not found here.
         projectId = value;
         break;
-      // P.config feature flags
+      // Feature flags
       case 'webgl':
         P.config.useWebGL = true;
+        P.core.VectorCostume.DISABLE_RASTERIZE = false; // temporary
         break;
       case 'debug':
         P.config.debug = true;

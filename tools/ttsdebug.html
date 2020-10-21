@@ -1,0 +1,43 @@
+<script src="../phosphorus.dist.js"></script>
+
+<pre id="debug">
+
+</pre>
+
+<script>
+const ext = new P.ext.tts.TextToSpeechExtension();
+const dbg = document.querySelector('#debug');
+
+function update() {
+  let txt = '';
+  txt = 'YOUR SYSTEM\'S VOICES\n';
+  for (const voice of speechSynthesis.getVoices()) {
+    txt += ` - ${voice.name}`;
+    if (voice.default) txt += ' (default)';
+    if (!voice.localService) txt += ' (non-local)';
+    txt += '\n';
+    txt += `    voice URI: ${voice.voiceURI}\n`;
+    txt += `    lang: ${voice.lang}\n`;
+    txt += `    detected gender: ${P.ext.tts.Gender[ext.getVoiceGender(voice)]}\n`;
+  }
+
+  txt += '\nSCRATCH VOICES\n';
+  for (const voice of ['ALTO', 'TENOR', 'GIANT', 'SQUEAK', 'KITTEN']) {
+    ext.setVoice(voice);
+    if (ext.voice !== voice) {
+      txt += '!!! could not set voice to: ' + voice + '\n';
+      continue;
+    }
+    const v = ext.getVoiceData(ext.voice);
+    txt += ` - ${ext.voice}\n`;
+    txt += `    voice: ${v.voice ? v.voice.name : null}\n`;
+    txt += `    rate: ${v.rate}\n`;
+    txt += `    pitch: ${v.pitch}\n`;
+  }
+
+  dbg.textContent = txt;
+}
+
+update();
+speechSynthesis.onvoiceschanged = update;
+</script>

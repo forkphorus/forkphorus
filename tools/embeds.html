@@ -98,8 +98,12 @@
     <h2>Hide UI (autostart)</h2>
     <iframe src="/embed.html?id=280227362&ui=false" width="480" height="360" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
 
+    <h2>Legacy embed.js</h2>
+    <script src="/embed.js?id=280227362"></script>
+
     <script>
       for (var i of document.querySelectorAll('iframe')) {
+        if (i.classList.contains('forkphorus-embed')) continue; // legacy embed.js
         var input = document.createElement('input');
         input.value = i.outerHTML.replace('src="', 'src="' + location.origin).replace(/\&amp;/g, '&');
         input.readOnly = true;

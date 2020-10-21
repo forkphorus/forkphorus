@@ -104,25 +104,27 @@ namespace P.sb3 {
   }
 
   /**
-   * Tuple of name and initial value
+   * Tuple of name, value
    */
   type SB3List = [string, any[]];
 
   /**
-   * Tuple of name and initial value
+   * Tuple of name, value, and sometimes cloud.
    */
-  type SB3Variable = [string, any];
+  type SB3Variable = [string, any, boolean?];
 
   // Implements a Scratch 3 Stage.
   export class Scratch3Stage extends P.core.Stage {
     public sb3data: SB3Target;
-    public listIds: ObjectMap<string> = Object.create(null);
+    public listIds: ObjectMap<string> = {};
+    public varIds: ObjectMap<string> = {};
   }
 
   // Implements a Scratch 3 Sprite.
   export class Scratch3Sprite extends P.core.Sprite {
     public sb3data: SB3Target;
-    public listIds: ObjectMap<string> = Object.create(null);
+    public listIds: ObjectMap<string> = {};
+    public varIds: ObjectMap<string> = {};
 
     _clone() {
       return new Scratch3Sprite(this.stage);
@@ -450,8 +452,8 @@ namespace P.sb3 {
         return;
       }
 
-      const height = this.list.length * this.getRowHeight();
-      this.endpointEl.style.transform = 'translateY(' + (height * this.stage.zoom) + 'px)';
+      const height = this.list.length * this.getRowHeight() * this.stage.zoom;
+      this.endpointEl.style.transform = 'translateY(' + height + 'px)';
 
       const topVisible = this.scrollTop;
       const bottomVisible = topVisible + this.getContentHeight();
@@ -480,12 +482,11 @@ namespace P.sb3 {
       while (this.rows.length <= visibleRows) {
         this.addRow();
       }
-
       for (var listIndex = startingIndex, rowIndex = 0; listIndex <= endingIndex; listIndex++, rowIndex++) {
         let row = this.rows[rowIndex];
         row.setIndex(listIndex);
         row.setValue(this.list[listIndex]);
-        row.setY(listIndex * this._rowHeight);
+        row.setY(listIndex * this._rowHeight * this.stage.zoom);
         row.setVisible(true);
       }
       while (rowIndex < this.rows.length) {
@@ -532,8 +533,14 @@ namespace P.sb3 {
       if (this._rowHeight === -1) {
         // Space between each row, in pixels.
         const PADDING = 2;
-        const row = this.addRow();
-        const height = row.element.offsetHeight;
+        if (this.rows.length === 0) {
+          this.addRow();
+        }
+        const height = this.rows[0].element.offsetHeight / this.stage.zoom;
+        if (height === 0) {
+          // happens sometimes when list is updated but not actually visible, make sure not to cache the result in this case
+          return 0;
+        }
         this._rowHeight = height + PADDING;
       }
       return this._rowHeight;
@@ -643,11 +650,58 @@ namespace P.sb3 {
     return list;
   }
 
+  const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
+
   /**
-   * Patches and modifies an SVG element in-place to make it function properly in the forkphorus environment.
-   * Fixes fonts and viewBox.
+   * Convert an SVG with an improper or missing namespace to a proper namespaced SVG
+   * @param svg An SVG with an improper or missing namespace
    */
-  function patchSVG(svg: SVGElement): void {
+  function fixSVGNamespace(svg: SVGSVGElement): SVGSVGElement {
+    // To fix the namespace, we create a new SVG and copy its content.
+    // Create the SVG in a new document to avoid XSS
+    const newDocument = document.implementation.createHTMLDocument();
+    const newSVG = newDocument.createElementNS(SVG_NAMESPACE, 'svg');
+    for (const attribute of svg.attributes) {
+      newSVG.setAttribute(attribute.name, attribute.value);
+    }
+    newSVG.innerHTML = svg.innerHTML;
+    return newSVG;
+  }
+
+  /**
+   * Patches and modifies an SVG element to make it function properly in the forkphorus environment.
+   */
+  function patchSVG(svg: SVGSVGElement, costumeOptions: P.core.CostumeOptions): SVGSVGElement {
+    // Fix missing namespace
+    const invalidNamespace = svg.namespaceURI !== SVG_NAMESPACE;
+    if (invalidNamespace) {
+      svg = fixSVGNamespace(svg);
+
+      // fix some edge case SVGs
+      // this could apply to any SVG with or without a namespace, but right now we only do this on projects that are missing a namespace
+      // (they tend to be more likely to be invalid)
+      // https://github.com/forkphorus/forkphorus/issues/210
+      // https://forkphorus.github.io/#374570920
+      if (svg.firstElementChild && svg.firstElementChild.tagName !== 'g') {
+        // create a new <g> (group) and transform
+        // translate the SVG to fix the center
+        const width = svg.width.baseVal;
+        const height = svg.height.baseVal;
+        if (width.unitType !== width.SVG_LENGTHTYPE_PERCENTAGE && height.unitType !== width.SVG_LENGTHTYPE_PERCENTAGE) {
+          const group = document.createElementNS(SVG_NAMESPACE, 'g');
+          const transform = svg.createSVGTransform();
+          for (const el of svg.children) {
+            group.appendChild(el);
+          }
+          transform.setTranslate(-width.value / 2, height.value / 2);
+          group.transform.baseVal.appendItem(transform);
+          costumeOptions.rotationCenterX -= width.value / 2;
+          costumeOptions.rotationCenterY += height.value / 2;
+          svg.appendChild(group);
+        }
+      }
+    }
+
     // Special treatment for the viewBox attribute
     if (svg.hasAttribute('viewBox')) {
       const viewBox = svg.getAttribute('viewBox')!.split(/ |,/).map((i) => +i);
@@ -662,6 +716,7 @@ namespace P.sb3 {
       svg.removeAttribute('viewBox');
     }
 
+    // Search for used fonts
     const textElements = svg.querySelectorAll('text');
     const usedFonts: string[] = [];
     const addFont = (font: string) => {
@@ -669,7 +724,6 @@ namespace P.sb3 {
         usedFonts.push(font);
       }
     };
-
     for (var i = 0; i < textElements.length; i++) {
       const el = textElements[i];
       let fonts = (el.getAttribute('font-family') || '')
@@ -684,6 +738,7 @@ namespace P.sb3 {
         } else if (family === 'sans-serif') {
           found = true;
           // We let the system handle their respective 'sans-serif' fonts
+          // This is different from Scratch's 'Sans Serif' font.
           // https://scratch.mit.edu/projects/319138929/
           break;
         }
@@ -695,21 +750,9 @@ namespace P.sb3 {
         el.setAttribute('font-family', font);
       }
     }
-
     P.fonts.addFontRules(svg, usedFonts);
-  }
 
-  /**
-   * Convert an SVG with an improper or missing namespace to a proper namespaced SVG
-   * @param svg An SVG with an improper or missing namespace
-   */
-  function fixVectorNamespace(svg: SVGSVGElement): SVGSVGElement {
-    var newSVG = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    for (const attribute of svg.attributes) {
-      newSVG.setAttribute(attribute.name, attribute.value);
-    }
-    newSVG.innerHTML = svg.innerHTML;
-    return newSVG;
+    return svg;
   }
 
   // Implements base SB3 loading logic.
@@ -717,26 +760,18 @@ namespace P.sb3 {
   // Implementations are expected to set `this.projectData` to something before calling super.load()
   export abstract class BaseSB3Loader extends P.io.Loader<P.core.Stage> {
     protected projectData: SB3Project;
-    // private totalTasks: number = 0;
-    // private finishedTasks: number = 0;
-    // private requests: XMLHttpRequest[] = [];
+    private needsMusic: boolean = false;
 
     protected abstract getAsText(path: string): Promise<string>;
     protected abstract getAsArrayBuffer(path: string): Promise<ArrayBuffer>;
     protected abstract getAsImage(path: string, format: string): Promise<HTMLImageElement>;
 
-    getSVG(path: string): Promise<HTMLImageElement> {
+    getSVG(path: string, costumeOptions: P.core.CostumeOptions): Promise<HTMLImageElement> {
       return this.getAsText(path)
         .then((source) => {
           const parser = new DOMParser();
           const doc = parser.parseFromString(source, 'image/svg+xml');
-
-          let svg = doc.documentElement as any;
-          if (svg.namespaceURI !== 'http://www.w3.org/2000/svg') {
-            svg = fixVectorNamespace(svg);
-          }
-
-          patchSVG(svg);
+          const svg = patchSVG(doc.documentElement as any, costumeOptions);
 
           return new Promise((resolve, reject) => {
             const image = new Image();
@@ -744,7 +779,7 @@ namespace P.sb3 {
               resolve(image);
             };
             image.onerror = (e) => {
-              reject('Failed to load SVG: ' + path);
+              reject(new Error('Failed to load SVG: ' + path));
             };
             image.src = 'data:image/svg+xml,' + encodeURIComponent(new XMLSerializer().serializeToString(svg));
           });
@@ -764,7 +799,7 @@ namespace P.sb3 {
         rotationCenterY: data.rotationCenterY,
       };
       if (data.dataFormat === 'svg') {
-        return this.getSVG(path)
+        return this.getSVG(path, costumeOptions)
           .then((svg) => new P.core.VectorCostume(svg, costumeOptions));
       } else {
         return this.getBitmapImage(path, data.dataFormat)
@@ -812,7 +847,18 @@ namespace P.sb3 {
         const variable = data.variables[id];
         const name = variable[0];
         const value = variable[1];
+        if (variable.length > 2) {
+          const cloud = variable[2];
+          if (cloud) {
+            if (data.isStage) {
+              (target as Scratch3Stage).cloudVariables.push(name);
+            } else {
+              console.warn('Cloud variable found on a non-stage object. Skipping.');
+            }
+          }
+        }
         target.vars[name] = value;
+        target.varIds[id] = name;
       }
 
       for (const id of Object.keys(data.lists)) {
@@ -864,9 +910,8 @@ namespace P.sb3 {
         });
     }
 
-    loadAssets() {
+    loadRequiredAssets() {
       return Promise.all([
-        this.loadSoundbank(),
         this.loadFonts(),
       ]);
     }
@@ -892,13 +937,16 @@ namespace P.sb3 {
       for (const target of targets) {
         const compiler = new P.sb3.compiler.Compiler(target);
         compiler.compile();
+        if (compiler.needsMusic) {
+          this.needsMusic = true;
+        }
       }
       if (P.config.debug) {
         console.timeEnd('Scratch 3 compile');
       }
     }
 
-    load() {
+    async load() {
       if (!this.projectData) {
         throw new Error('Project data is missing or invalid');
       }
@@ -906,43 +954,50 @@ namespace P.sb3 {
         throw new Error('Invalid project data: missing targets');
       }
 
-      const targets = this.projectData.targets;
-      // sort targets by their layerOrder to match how they will display
-      targets.sort((a, b) => a.layerOrder - b.layerOrder);
+      await this.loadRequiredAssets();
 
-      return this.loadAssets()
-        .then(() => {
-          this.resetTasks();
-          return Promise.all(targets.map((data) => this.loadTarget(data)));
-        })
-        .then((targets: any) => {
-          if (this.aborted) {
-            throw new Error('Loading aborting.');
-          }
-          const stage = targets.filter((i) => i.isStage)[0] as Scratch3Stage;
-          if (!stage) {
-            throw new Error('Project does not have a Stage');
-          }
-          const sprites = targets.filter((i) => i.isSprite) as Scratch3Sprite[];
-          sprites.forEach((sprite) => sprite.stage = stage);
-          stage.children = sprites;
+      this.resetTasks();
+      const targets = await Promise.all(this.projectData.targets
+        .sort((a, b) => a.layerOrder - b.layerOrder)
+        .map((data) => this.loadTarget(data))
+      );
 
-          stage.allWatchers = this.projectData.monitors
-            .map((data) => this.loadWatcher(data, stage))
-            .filter((i) => i && i.valid);
-          stage.allWatchers.forEach((watcher) => watcher.init());
+      if (this.aborted) {
+        throw new Error('Loading aborting.');
+      }
 
-          this.compileTargets(targets, stage);
+      const stage = targets.filter((i) => i.isStage)[0] as Scratch3Stage;
+      if (!stage) {
+        throw new Error('Project does not have a Stage');
+      }
+      const sprites = targets.filter((i) => i.isSprite) as Scratch3Sprite[];
+      sprites.forEach((sprite) => sprite.stage = stage);
+      stage.children = sprites;
 
-          return stage;
-        });
+      if (this.projectData.monitors) {
+        stage.allWatchers = this.projectData.monitors
+          .map((data) => this.loadWatcher(data, stage))
+          .filter((i) => i && i.valid);
+        stage.allWatchers.forEach((watcher) => watcher.init());
+      }
+
+      this.compileTargets(targets, stage);
+
+      if (this.needsMusic) {
+        await this.loadSoundbank();
+      }
+
+      // projectData is now unused and can be removed. This reduces memory usage
+      this.projectData = null as any;
+
+      return stage;
     }
   }
 
   // Loads a .sb3 file
   export class SB3FileLoader extends BaseSB3Loader {
     private buffer: ArrayBuffer;
-    private zip: JSZip.Zip;
+    private zip: JSZip;
 
     constructor(buffer: ArrayBuffer) {
       super();
@@ -951,7 +1006,11 @@ namespace P.sb3 {
 
     getAsText(path: string) {
       const task = this.addTask(new P.io.Manual());
-      return this.zip.file(path).async('text')
+      const file = this.zip.file(path);
+      if (!file) {
+        throw new Error('cannot find file as text: ' + path);
+      }
+      return file.async('text')
         .then((response) => {
           task.markComplete();
           return response;
@@ -960,7 +1019,11 @@ namespace P.sb3 {
 
     getAsArrayBuffer(path: string) {
       const task = this.addTask(new P.io.Manual());
-      return this.zip.file(path).async('arrayBuffer')
+      const file = this.zip.file(path);
+      if (!file) {
+        throw new Error('cannot find file as arraybuffer: ' + path);
+      }
+      return file.async('arraybuffer')
         .then((response) => {
           task.markComplete();
           return response;
@@ -969,7 +1032,11 @@ namespace P.sb3 {
 
     getAsBase64(path: string) {
       const task = this.addTask(new P.io.Manual());
-      return this.zip.file(path).async('base64')
+      const file = this.zip.file(path);
+      if (!file) {
+        throw new Error('cannot find file as base64: ' + path);
+      }
+      return file.async('base64')
         .then((response) => {
           task.markComplete();
           return response;
@@ -987,7 +1054,7 @@ namespace P.sb3 {
               resolve(image);
             };
             image.onerror = (error) => {
-              reject('Failed to load image: ' + path + '.' + format);
+              reject(new Error('Failed to load image: ' + path + '.' + format));
             };
             image.src = 'data:image/' + format + ';base64,' + imageData;
           });
@@ -1076,6 +1143,10 @@ namespace P.sb3.compiler {
     LIST = 13,
   }
 
+  export const enum InputFlags {
+    NaN = 1,
+  }
+
   /**
    * JS code with an associated type.
    * Returns the source when stringified, making the raw type safe to use in concatenation.
@@ -1089,12 +1160,21 @@ namespace P.sb3.compiler {
      *  - it is a string that represents a number or a boolean
      */
     public potentialNumber: boolean = true;
+    private flags: number = 0;
 
     constructor(public source: string, public type: InputType) {
 
     }
 
-    toString() {
+    enableFlag(flag: number): void {
+      this.flags |= flag;
+    }
+
+    hasFlag(flag: number): boolean {
+      return (this.flags & flag) !== 0;
+    }
+
+    toString(): string {
       return this.source;
     }
   }
@@ -1132,8 +1212,9 @@ namespace P.sb3.compiler {
     postcompile?(compiler: Compiler, source: string, hat: SB3Block): string;
     /**
      * Optionally handle what happens before compilation begins.
+     * The result of this will be added to the script's source before the script begins.
      */
-    precompile?(compiler: Compiler, hat: SB3Block): void;
+    precompile?(compiler: Compiler, hat: SB3Block): string;
   };
 
   export type InputType = 'string' | 'boolean' | 'number' | 'any' | 'list';
@@ -1193,28 +1274,35 @@ namespace P.sb3.compiler {
      * Gets a field's reference to a variable.
      */
     getVariableReference(field: string): string {
-      return this.compiler.getVariableReference(this.getField(field));
+      return this.compiler.getVariableReference(this.compiler.getVariableField(this.block, field));
     }
 
     /**
      * Gets a field's reference to a list.
      */
-    getListReference(field: string): string {
-      return this.compiler.getListReference(this.getField(field));
+    getListReference(field: string) {
+      return this.compiler.getListReference(this.compiler.getVariableField(this.block, field));
     }
 
     /**
      * Gets the scope of a field's reference to a variable.
      */
     getVariableScope(field: string): string {
-      return this.compiler.getVariableScope(this.getField(field));
+      return this.compiler.findVariable(this.compiler.getVariableField(this.block, field)).scope;
+    }
+
+    /**
+     * Determine whether a variable is a cloud variable.
+     */
+    isCloudVariable(field: string): boolean {
+      return this.target.stage.cloudVariables.indexOf(this.getField(field)) > -1;
     }
 
     /**
      * Gets the scope of a field's reference to a list.
      */
     getListScope(field: string): string {
-      return this.compiler.getListScope(this.getField(field));
+      return this.compiler.findList(this.compiler.getVariableField(this.block, field)).scope;
     }
 
     /**
@@ -1222,6 +1310,18 @@ namespace P.sb3.compiler {
      */
     asType(input: string, type: InputType): string {
       return this.compiler.asType(input, type)
+    }
+
+    /**
+     * Evaluate a compiled input.
+     * May throw if there is an error evaluating the input.
+     * As the input is always evaluated once, changes will not be reflected.
+     * The input will have access to runtime objects and data, including the target sprite and runtime methods.
+     * @param input The input to evaluate.
+     */
+    evaluateInputOnce(input: CompiledInput): any {
+      const fn = P.runtime.scopedEval(`(function() { return ${input}; })`);
+      return this.target.stage.runtime.evaluateExpression(this.target, fn);
     }
   }
 
@@ -1299,16 +1399,30 @@ namespace P.sb3.compiler {
     }
 
     /**
-     * Writes JS to pause the script for a known duration of time.
+     * Write JS to pause script execution until a Promise is settled (regardless of resolve/reject)
      */
-    wait(seconds: string) {
+    waitUntilSettles(source: string): void {
       this.writeLn('save();');
-      this.writeLn('R.start = runtime.now();');
-      this.writeLn(`R.duration = ${seconds}`);
-      this.writeLn('var first = true;');
+      this.writeLn('R.resume = false;');
+      this.writeLn('var localR = R;');
+      this.writeLn(`${source}`);
+      this.writeLn('  .then(function() { localR.resume = true; })');
+      this.writeLn('  .catch(function() { localR.resume = true; });');
       const label = this.addLabel();
-      this.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
-      this.writeLn('  var first;');
+      this.writeLn('if (!R.resume) {');
+      this.forceQueue(label);
+      this.writeLn('}');
+      this.writeLn('restore();');
+    }
+
+    /**
+     * Write JS to pause script execution for one tick.
+     */
+    waitOneTick() {
+      this.writeLn('save();');
+      this.writeLn('R.start = runtime.currentMSecs;');
+      const label = this.addLabel();
+      this.writeLn('if (runtime.currentMSecs === R.start) {');
       this.forceQueue(label);
       this.writeLn('}');
       this.writeLn('restore();');
@@ -1372,6 +1486,8 @@ namespace P.sb3.compiler {
 
   interface CompilerState {
     isWarp: boolean;
+    isProcedure: boolean;
+    argumentNames: string[];
   }
 
   // Block definitions
@@ -1400,12 +1516,29 @@ namespace P.sb3.compiler {
      * Total number of labels created by this compiler.
      */
     public labelCount: number = 0;
+    /**
+     * Compilation state metadata.
+     */
     public state: CompilerState;
+    /**
+     * Whether the compiled scripts depend on music assets to exist.
+     */
+    public needsMusic: boolean = false;
+    /**
+     * Set of the names of all costumes and sounds in the sprite.
+     */
+    public costumeAndSoundNames: Set<string> = new Set();
 
     constructor(target: Target) {
       this.target = target;
       this.data = target.sb3data;
       this.blocks = this.data.blocks;
+      for (const costume of target.costumes) {
+        this.costumeAndSoundNames.add(costume.name);
+      }
+      for (const sound of target.sounds) {
+        this.costumeAndSoundNames.add(sound.name);
+      }
     }
 
     /**
@@ -1480,6 +1613,10 @@ namespace P.sb3.compiler {
     convertInputType(input: CompiledInput, type: InputType): CompiledInput {
       // If the types are already identical, no changes are necessary
       if (input.type === type) {
+        // if the input could be NaN, number conversion is always required (NaN will be converted to 0)
+        if (type === 'number' && input.hasFlag(InputFlags.NaN)) {
+          return new CompiledInput('(' + input.source + ' || 0)', type);
+        }
         return input;
       }
       // The 'any' type is a little bit special.
@@ -1528,49 +1665,57 @@ namespace P.sb3.compiler {
     }
 
     /**
-     * Determines the runtime object that owns a variable in the runtime.
-     * The variable may be created if it cannot be found.
+     * Find the scope and name of a variable from its ID.
+     * The variable may be created if it does not exist.
      */
-    getVariableScope(name: string): string {
-      if (name in this.target.stage.vars) {
-        return 'self';
-      } else if (name in this.target.vars) {
-        return 'S';
+    findVariable(id: string): { scope: string; name: string; } {
+      const stage = this.target.stage as Target;
+      if (stage.varIds.hasOwnProperty(id)) {
+        return { scope: 'self', name: stage.varIds[id] };
+      } else if (this.target.varIds.hasOwnProperty(id)) {
+        return { scope: 'S', name: this.target.varIds[id] };
       } else {
-        // Create missing variables in the sprite scope.
-        this.target.vars[name] = 0;
-        return 'S';
+        // Create missing variables in the sprite.
+        // We use the variable ID as the name, and store this in varIds for future lookups.
+        this.target.vars[id] = 0;
+        this.target.varIds[id] = id;
+        return { scope: 'S', name: id };
       }
     }
 
     /**
-     * Determines the runtime object that owns a list in the runtime.
-     * The list may be created if it cannot be found.
+     * Find the scope and name of a list from its ID.
+     * The list may be created if it does not exist.
      */
-    getListScope(name: string): string {
-      if (name in this.target.stage.lists) {
-        return 'self';
-      } else if (name in this.target.lists) {
-        return 'S';
+    findList(id: string): { scope: string; name: string; } {
+      const stage = this.target.stage as Target;
+      if (stage.listIds.hasOwnProperty(id)) {
+        return { scope: 'self', name: stage.listIds[id] };
+      } else if (this.target.listIds.hasOwnProperty(id)) {
+        return { scope: 'S', name: this.target.listIds[id] };
       } else {
-        // Create missing lists in the sprite scope.
-        this.target.lists[name] = createList();
-        return 'S';
+        // Create missing lists in the sprite.
+        // We use the list ID as the name, and store this in listIds for future lookups.
+        this.target.lists[id] = createList();
+        this.target.listIds[id] = id;
+        return { scope: 'S', name: id };
       }
     }
 
     /**
      * Gets the runtime reference to a variable.
      */
-    getVariableReference(name: string): string {
-      return `${this.getVariableScope(name)}.vars[${this.sanitizedString(name)}]`;
+    getVariableReference(id: string): string {
+      const { scope, name } = this.findVariable(id);
+      return `${scope}.vars[${this.sanitizedString(name)}]`;
     }
 
     /**
      * Gets the runtime reference to a list.
      */
-    getListReference(name: string): string {
-      return `${this.getListScope(name)}.lists[${this.sanitizedString(name)}]`;
+    getListReference(id: string): string {
+      const { scope, name } = this.findList(id);
+      return `${scope}.lists[${this.sanitizedString(name)}]`;
     }
 
     /**
@@ -1580,6 +1725,13 @@ namespace P.sb3.compiler {
      */
     isStringLiteralPotentialNumber(text: string) {
       return /\d|true|false|Infinity/.test(text);
+    }
+
+    /**
+     * Determine whether text is the name of a costume or a sound.
+     */
+    isNameOfCostumeOrSound(text: string): boolean {
+      return this.costumeAndSoundNames.has(text);
     }
 
     /**
@@ -1608,8 +1760,11 @@ namespace P.sb3.compiler {
         case NativeTypes.TEXT: {
           // [type, value]
           const value = native[1];
-          // Do not attempt any conversions if the desired type is string or if the value does not appear to be number-like
-          if (desiredType !== 'string' && /\d|Infinity/.test(value)) {
+          // Do not attempt any conversions if:
+          //  - desired type is string
+          //  - value does not appear to be number-like
+          //  - this is the name of a costume or sound (https://github.com/forkphorus/forkphorus/issues/264)
+          if (desiredType !== 'string' && /\d|Infinity/.test(value) && !this.isNameOfCostumeOrSound(value)) {
             const number = +value;
             // If the stringification of the number is not the same as the original value, do not convert.
             // This fixes issues where the stringification is used instead of the number itself.
@@ -1627,11 +1782,11 @@ namespace P.sb3.compiler {
 
         case NativeTypes.VAR:
           // [type, name, id]
-          return anyInput(this.getVariableReference(native[1]));
+          return anyInput(this.getVariableReference(native[2]));
 
         case NativeTypes.LIST:
           // [type, name, id]
-          return new CompiledInput(this.getListReference(native[1]), 'list');
+          return new CompiledInput(this.getListReference(native[2]), 'list');
 
         case NativeTypes.BROADCAST:
           // [type, name, id]
@@ -1717,6 +1872,20 @@ namespace P.sb3.compiler {
     }
 
     /**
+     * Get the value of a variable field of a block.
+     * @returns The variable ID
+     */
+    getVariableField(block: SB3Block, fieldName: string): string {
+      const value = block.fields[fieldName];
+      if (!value) {
+        // This could be a sign of another issue, so log a warning.
+        this.warn('missing variable field', fieldName);
+        return '';
+      }
+      return '' + value[1];
+    }
+
+    /**
      * Compile a script within a script.
      */
     compileSubstackInput(block: SB3Block, substackName: string): string {
@@ -1742,6 +1911,8 @@ namespace P.sb3.compiler {
     getNewState(): CompilerState {
       return {
         isWarp: false,
+        isProcedure: false,
+        argumentNames: []
       };
     }
 
@@ -1803,13 +1974,14 @@ namespace P.sb3.compiler {
 
       this.state = this.getNewState();
 
-      if (hatCompiler.precompile) {
-        hatCompiler.precompile(this, hat);
-      }
-
       // There is always a label placed at the beginning of the script.
       // If you're clever, you may be able to remove this at some point.
       let script = `{{${this.labelCount++}}}`;
+
+      if (hatCompiler.precompile) {
+        script += hatCompiler.precompile(this, hat);
+      }
+
       script += this.compileStack(startingBlock);
 
       // If a block wants to do some changes to the script after script generation but before compilation, let it.
@@ -1826,8 +1998,8 @@ namespace P.sb3.compiler {
         this.target.fns[label] = P.runtime.createContinuation(parsedScript.slice(parseResult.labels[label]));
       }
 
-      const startingFn = this.target.fns[startFn];
-      const util = new HatUtil(this, hat, startingFn);
+      const startingFunction = this.target.fns[startFn];
+      const util = new HatUtil(this, hat, startingFunction);
       hatCompiler.handle(util);
 
       if (P.config.debug) {
@@ -1872,7 +2044,7 @@ namespace P.sb3.compiler {
      * Log a warning
      */
     warn(...args: any[]) {
-      args.unshift('[sb3 compiler]');
+      args.unshift(`[sb3 compiler ${this.target.name}]`);
       console.warn.apply(console, args);
     }
 
@@ -1880,7 +2052,7 @@ namespace P.sb3.compiler {
      * Log info
      */
     log(...args: any[]) {
-      args.unshift('[sb3 compiler]');
+      args.unshift(`[sb3 compiler ${this.target.name}]`);
       console.log.apply(console, args);
     }
 
@@ -1894,6 +2066,9 @@ namespace P.sb3.compiler {
         const hat = this.blocks[hatId];
         this.compileHat(hat);
       }
+
+      // Remove data that is now unused
+      this.target.sb3data = null as any;
     }
   }
 }
@@ -1922,6 +2097,7 @@ namespace P.sb3.compiler {
   };
   statementLibrary['control_delete_this_clone'] = function(util) {
     util.writeLn('if (S.isClone) {');
+    util.visual('visible');
     util.writeLn('  S.remove();');
     util.writeLn('  var i = self.children.indexOf(S);');
     util.writeLn('  if (i !== -1) self.children.splice(i, 1);');
@@ -2042,12 +2218,13 @@ namespace P.sb3.compiler {
   };
   statementLibrary['control_wait'] = function(util) {
     const DURATION = util.getInput('DURATION', 'any');
+    util.visual('always');
     util.writeLn('save();');
-    util.writeLn('R.start = runtime.now();');
+    util.writeLn('R.start = runtime.currentMSecs;');
     util.writeLn(`R.duration = ${DURATION};`);
     util.writeLn(`var first = true;`);
     const label = util.addLabel();
-    util.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
+    util.writeLn('if (runtime.currentMSecs - R.start < R.duration * 1000 || first) {');
     util.writeLn('  var first;');
     util.forceQueue(label);
     util.writeLn('}');
@@ -2084,10 +2261,13 @@ namespace P.sb3.compiler {
     const VARIABLE = util.getVariableReference('VARIABLE');
     const VALUE = util.getInput('VALUE', 'number');
     util.writeLn(`${VARIABLE} = (${util.asType(VARIABLE, 'number')} + ${VALUE});`);
+    if (util.isCloudVariable('VARIABLE')) {
+      util.writeLn(`cloudVariableChanged(${util.sanitizedString(util.getField('VARIABLE'))})`);
+    }
   };
   statementLibrary['data_deletealloflist'] = function(util) {
     const LIST = util.getListReference('LIST');
-    util.writeLn(`${LIST}.length = 0;`);
+    util.writeLn(`watchedDeleteAllOfList(${LIST});`);
   };
   statementLibrary['data_deleteoflist'] = function(util) {
     const LIST = util.getListReference('LIST');
@@ -2120,6 +2300,9 @@ namespace P.sb3.compiler {
     const VARIABLE = util.getVariableReference('VARIABLE');
     const VALUE = util.getInput('VALUE', 'any');
     util.writeLn(`${VARIABLE} = ${VALUE};`);
+    if (util.isCloudVariable('VARIABLE')) {
+      util.writeLn(`cloudVariableChanged(${util.sanitizedString(util.getField('VARIABLE'))})`);
+    }
   };
   statementLibrary['data_showlist'] = function(util) {
     const LIST = util.sanitizedString(util.getField('LIST'));
@@ -2194,7 +2377,7 @@ namespace P.sb3.compiler {
   statementLibrary['looks_nextbackdrop'] = function(util) {
     util.writeLn('self.showNextCostume();');
     util.visual('always');
-    util.writeLn('var threads = backdropChange();');
+    util.writeLn('var threads = sceneChange();');
     util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
   };
   statementLibrary['looks_nextcostume'] = function(util) {
@@ -2240,13 +2423,15 @@ namespace P.sb3.compiler {
     util.updateBubble();
   };
   statementLibrary['looks_switchbackdropto'] = function(util) {
+    // BACKDROP cannot be casted: setCostume behavior depends on type
     const BACKDROP = util.getInput('BACKDROP', 'any');
     util.writeLn(`self.setCostume(${BACKDROP});`);
     util.visual('always');
-    util.writeLn('var threads = backdropChange();');
+    util.writeLn('var threads = sceneChange();');
     util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
   };
   statementLibrary['looks_switchcostumeto'] = function(util) {
+    // COSTUME cannot be casted: setCostume behavior depends on type
     const COSTUME = util.getInput('COSTUME', 'any');
     util.writeLn(`S.setCostume(${COSTUME});`);
     util.visual('visible');
@@ -2392,6 +2577,8 @@ namespace P.sb3.compiler {
     const BEATS = util.getInput('BEATS', 'number');
     const DRUM = util.getInput('DRUM', 'number');
 
+    util.compiler.needsMusic = true;
+
     util.writeLn('save();');
     util.writeLn('R.start = runtime.now();');
     util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
@@ -2415,6 +2602,8 @@ namespace P.sb3.compiler {
   statementLibrary['music_playNoteForBeats'] = function(util) {
     const BEATS = util.getInput('BEATS', 'number');
     const NOTE = util.getInput('NOTE', 'number');
+
+    util.compiler.needsMusic = true;
 
     util.writeLn('save();');
     util.writeLn('R.start = runtime.now();');
@@ -2509,6 +2698,7 @@ namespace P.sb3.compiler {
     util.writeLn('S.penColor.toHSLA();');
     util.writeLn(`S.penColor.x = ${HUE} * 360 / 200;`);
     util.writeLn('S.penColor.y = 100;');
+    util.writeLn('S.penColor.a = 1;');
   };
   statementLibrary['pen_setPenShadeToNumber'] = function(util) {
     const SHADE = util.getInput('SHADE', 'number');
@@ -2555,11 +2745,13 @@ namespace P.sb3.compiler {
     const EFFECT = util.sanitizedString(util.getField('EFFECT'));
     const VALUE = util.getInput('VALUE', 'number');
     util.writeLn(`S.changeSoundFilter(${EFFECT}, ${VALUE});`);
+    util.waitOneTick();
   };
   statementLibrary['sound_changevolumeby'] = function(util) {
     const VOLUME = util.getInput('VOLUME', 'number');
     util.writeLn(`S.volume = Math.max(0, Math.min(1, S.volume + ${VOLUME} / 100));`);
     util.writeLn('if (S.node) S.node.gain.value = S.volume;');
+    util.waitOneTick();
   };
   statementLibrary['sound_cleareffects'] = function(util) {
     util.writeLn('S.resetSoundFilters();');
@@ -2596,11 +2788,13 @@ namespace P.sb3.compiler {
     const EFFECT = util.sanitizedString(util.getField('EFFECT'));
     const VALUE = util.getInput('VALUE', 'number');
     util.writeLn(`S.setSoundFilter(${EFFECT}, ${VALUE});`);
+    util.waitOneTick();
   };
   statementLibrary['sound_setvolumeto'] = function(util) {
     const VOLUME = util.getInput('VOLUME', 'number');
     util.writeLn(`S.volume = Math.max(0, Math.min(1, ${VOLUME} / 100));`);
     util.writeLn('if (S.node) S.node.gain.value = S.volume;');
+    util.waitOneTick();
   };
   statementLibrary['sound_stopallsounds'] = function(util) {
     if (P.audio.context) {
@@ -2626,7 +2820,7 @@ namespace P.sb3.compiler {
     util.visual('always');
   };
   statementLibrary['sensing_resettimer'] = function(util) {
-    util.writeLn('runtime.timerStart = runtime.now();');
+    util.writeLn('runtime.resetTimer();');
   };
   statementLibrary['sensing_setdragmode'] = function(util) {
     const DRAG_MODE = util.getField('DRAG_MODE');
@@ -2636,19 +2830,20 @@ namespace P.sb3.compiler {
       util.writeLn('S.isDraggable = false;');
     }
   };
-  statementLibrary['speech2text_listenAndWait'] = function(util) {
-    util.stage.initSpeech2Text();
-    util.writeLn('if (self.speech2text) {');
-    util.writeLn('  save();');
-    util.writeLn('  self.speech2text.startListen();');
-    util.writeLn('  R.id = self.speech2text.id();');
-    const label = util.addLabel();
-    util.writeLn('  if (self.speech2text.id() === R.id) {')
-    util.forceQueue(label);
-    util.writeLn('  }');
-    util.writeLn('  self.speech2text.endListen();');
-    util.writeLn('  restore();');
-    util.writeLn('}');
+  statementLibrary['text2speech_setVoice'] = function(util) {
+    const VOICE = util.getInput('VOICE', 'string');
+    util.stage.initTextToSpeech();
+    util.writeLn(`self.tts.setVoice(${VOICE});`);
+  };
+  statementLibrary['text2speech_setLanguage'] = function(util) {
+    const LANGUAGE = util.getInput('LANGUAGE', 'string');
+    util.stage.initTextToSpeech();
+    util.writeLn(`self.tts.setLanguage(${LANGUAGE});`);
+  };
+  statementLibrary['text2speech_speakAndWait'] = function(util) {
+    const WORDS = util.getInput('WORDS', 'string');
+    util.stage.initTextToSpeech();
+    util.waitUntilSettles(`self.tts.speak(${WORDS})`);
   };
   statementLibrary['videoSensing_videoToggle'] = function(util) {
     const VIDEO_STATE = util.getInput('VIDEO_STATE', 'string');
@@ -2671,12 +2866,23 @@ namespace P.sb3.compiler {
 
   /* Inputs */
   inputLibrary['argument_reporter_boolean'] = function(util) {
-    const VALUE = util.sanitizedString(util.getField('VALUE'));
-    return util.booleanInput(util.asType(`C.args[${VALUE}]`, 'boolean'));
+    const VALUE = util.getField('VALUE');
+    if (!util.compiler.state.isProcedure || util.compiler.state.argumentNames.indexOf(VALUE) === -1) {
+      const lowerCaseName = VALUE.toLowerCase();
+      if (lowerCaseName === 'is compiled?' || lowerCaseName === 'is forkphorus?') {
+        return util.booleanInput('true');
+      }
+      // Missing boolean reporters are 0, not false.
+      return util.numberInput('0');
+    }
+    return util.booleanInput(util.asType(`C.args[${util.sanitizedString(VALUE)}]`, 'boolean'));
   };
   inputLibrary['argument_reporter_string_number'] = function(util) {
-    const VALUE = util.sanitizedString(util.getField('VALUE'));
-    return util.anyInput(`C.args[${VALUE}]`);
+    const VALUE = util.getField('VALUE');
+    if (!util.compiler.state.isProcedure || util.compiler.state.argumentNames.indexOf(VALUE) === -1) {
+      return util.numberInput('0');
+    }
+    return util.anyInput(`C.args[${util.sanitizedString(VALUE)}]`);
   };
   inputLibrary['control_create_clone_of_menu'] = function(util) {
     return util.fieldInput('CLONE_OPTION');
@@ -2726,7 +2932,7 @@ namespace P.sb3.compiler {
     }
   };
   inputLibrary['looks_size'] = function(util) {
-    return util.numberInput('(S.scale * 100)');
+    return util.numberInput('Math.round(S.scale * 100)');
   };
   inputLibrary['makeymakey_menu_KEY'] = function(util) {
     return util.fieldInput('KEY');
@@ -2785,7 +2991,9 @@ namespace P.sb3.compiler {
   inputLibrary['operator_divide'] = function(util) {
     const NUM1 = util.getInput('NUM1', 'number');
     const NUM2 = util.getInput('NUM2', 'number');
-    return util.numberInput(`(${NUM1} / ${NUM2} || 0)`);
+    const input = util.numberInput(`(${NUM1} / ${NUM2})`);
+    input.enableFlag(P.sb3.compiler.InputFlags.NaN);
+    return input;
   };
   inputLibrary['operator_equals'] = function(util) {
     const OPERAND1 = util.getInput('OPERAND1', 'any');
@@ -2850,8 +3058,11 @@ namespace P.sb3.compiler {
         return util.numberInput(`Math.abs(${NUM})`);
       case 'floor':
         return util.numberInput(`Math.floor(${NUM})`);
-      case 'sqrt':
-        return util.numberInput(`Math.sqrt(${NUM})`);
+      case 'sqrt': {
+        const input = util.numberInput(`Math.sqrt(${NUM})`);
+        input.enableFlag(P.sb3.compiler.InputFlags.NaN);
+        return input;
+      }
       case 'ceiling':
         return util.numberInput(`Math.ceil(${NUM})`);
       case 'cos':
@@ -2861,11 +3072,11 @@ namespace P.sb3.compiler {
       case 'tan':
         return util.numberInput(`Math.tan(${NUM} * Math.PI / 180)`);
       case 'asin':
-        return util.numberInput(`(Math.asin(${NUM}) * 180 / Math.PI)`)
+        return util.numberInput(`(Math.asin(${NUM}) * 180 / Math.PI)`);
       case 'acos':
-        return util.numberInput(`(Math.acos(${NUM}) * 180 / Math.PI)`)
+        return util.numberInput(`(Math.acos(${NUM}) * 180 / Math.PI)`);
       case 'atan':
-        return util.numberInput(`(Math.atan(${NUM}) * 180 / Math.PI)`)
+        return util.numberInput(`(Math.atan(${NUM}) * 180 / Math.PI)`);
       case 'ln':
         return util.numberInput(`Math.log(${NUM})`);
       case 'log':
@@ -2955,11 +3166,11 @@ namespace P.sb3.compiler {
     return util.booleanInput(`!!self.keys[getKeyCode3(${KEY_OPTION})]`);
   };
   inputLibrary['sensing_loud'] = function(util) {
-    util.stage.initLoudness();
+    util.stage.initMicrophone();
     return util.booleanInput('(self.microphone.getLoudness() > 10)');
   };
   inputLibrary['sensing_loudness'] = function(util) {
-    util.stage.initLoudness();
+    util.stage.initMicrophone();
     return util.numberInput('self.microphone.getLoudness()');
   };
   inputLibrary['sensing_mousedown'] = function(util) {
@@ -3002,9 +3213,11 @@ namespace P.sb3.compiler {
   inputLibrary['sound_volume'] = function(util) {
     return util.numberInput('(S.volume * 100)');
   };
-  inputLibrary['speech2text_getSpeech'] = function(util) {
-    util.stage.initSpeech2Text();
-    return util.stringInput('(self.speech2text ? self.speech2text.speech : "")');
+  inputLibrary['text2speech_menu_voices'] = function(util) {
+    return util.fieldInput('voices');
+  };
+  inputLibrary['text2speech_menu_languages'] = function(util) {
+    return util.fieldInput('languages');
   };
   inputLibrary['translate_menu_languages'] = function(util) {
     return util.fieldInput('languages');
@@ -3040,11 +3253,11 @@ namespace P.sb3.compiler {
   };
   hatLibrary['event_whenbackdropswitchesto'] = {
     handle(util) {
-      const BACKDROP = util.getField('BACKDROP');
-      if (!util.target.listeners.whenBackdropChanges[BACKDROP]) {
-        util.target.listeners.whenBackdropChanges[BACKDROP] = [];
+      const BACKDROP = util.getField('BACKDROP').toLowerCase();
+      if (!util.target.listeners.whenSceneStarts[BACKDROP]) {
+        util.target.listeners.whenSceneStarts[BACKDROP] = [];
       }
-      util.target.listeners.whenBackdropChanges[BACKDROP].push(util.startingFunction);
+      util.target.listeners.whenSceneStarts[BACKDROP].push(util.startingFunction);
     },
   };
   hatLibrary['event_whenbroadcastreceived'] = {
@@ -3059,6 +3272,44 @@ namespace P.sb3.compiler {
   hatLibrary['event_whenflagclicked'] = {
     handle(util) {
       util.target.listeners.whenGreenFlag.push(util.startingFunction);
+    },
+  };
+  hatLibrary['event_whengreaterthan'] = {
+    precompile(compiler, hat) {
+      const WHENGREATERTHANMENU = compiler.getField(hat, 'WHENGREATERTHANMENU');
+      const VALUE = compiler.compileInput(hat, 'VALUE', 'number');
+
+      let executeWhen = 'false';
+      let stallUntil = 'false';
+      switch (WHENGREATERTHANMENU.toLowerCase()) {
+        case 'timer':
+          executeWhen = `runtime.whenTimerMSecs / 1000 > ${VALUE}`;
+          stallUntil = `runtime.whenTimerMSecs / 1000 <= ${VALUE}`;
+          break;
+        case 'loudness':
+          compiler.target.stage.initMicrophone();
+          executeWhen = `self.microphone.getLoudness() > ${VALUE}`;
+          stallUntil = `self.microphone.getLoudness() <= ${VALUE}`;
+          break;
+        default:
+          console.warn('unknown WHENGREATERTHANMENU', WHENGREATERTHANMENU);
+      }
+
+      let source = '';
+      source += 'if (!R.init) { R.init = true; R.stalled = false; }\n';
+      source += `if (R.stalled && (${stallUntil})) { R.stalled = false; }\n`;
+      source += `else if (!R.stalled && (${executeWhen})) { R.stalled = true;\n`;
+      // if/else will be finished in postcompile
+      return source;
+    },
+    postcompile(compiler, source, hat) {
+      // finish the if/else started in precompile
+      source += '}\n';
+      source += `forceQueue(${compiler.target.fns.length});`;
+      return source;
+    },
+    handle(util) {
+      util.target.listeners.edgeActivated.push(util.startingFunction);
     },
   };
   hatLibrary['event_whenkeypressed'] = {
@@ -3087,12 +3338,20 @@ namespace P.sb3.compiler {
       util.target.listeners.whenClicked.push(util.startingFunction);
     },
   };
+  function makeymakeyParseKey(key: string): number | 'any' {
+    key = key.toLowerCase();
+    if (key === 'up' || key === 'down' || key === 'left' || key === 'right') {
+      return P.runtime.getKeyCode(key + ' arrow') as number;
+    }
+    return P.runtime.getKeyCode(key);
+  }
   hatLibrary['makeymakey_whenMakeyKeyPressed'] = {
     handle(util) {
       const KEY = util.getInput('KEY', 'string');
       try {
-        const value = P.runtime.scopedEval(KEY.source);
-        var keyCode = P.runtime.getKeyCode(value);
+        const keyValue = '' + util.evaluateInputOnce(KEY);
+        if (typeof keyValue !== 'string') throw new Error('cannot accept type: ' + typeof keyValue);
+        var keyCode = makeymakeyParseKey(keyValue);
       } catch (e) {
         util.compiler.warn('makeymakey key generation error', e);
         return;
@@ -3113,23 +3372,24 @@ namespace P.sb3.compiler {
     handle(util) {
       const SEQUENCE = util.getInput('SEQUENCE', 'string');
       try {
-        var sequence = P.runtime.scopedEval(SEQUENCE.source);
+        var sequence = '' + util.evaluateInputOnce(SEQUENCE);
       } catch (e) {
-        util.compiler.warn('makeymakey sequence generation error', e);
+        util.compiler.warn('makeymakey key generation error', e);
         return;
       }
-      const ARROWS = ['up', 'down', 'left', 'right'];
-      const keys = sequence.toLowerCase().split(' ')
-        .map((key) => {
-          if (ARROWS.indexOf(key) > -1) {
-            return P.runtime.getKeyCode(key + ' arrow');
-          } else {
-            return P.runtime.getKeyCode(key);
-          }
-        });
+      const keys = sequence
+        .toLowerCase()
+        .split(' ')
+        .map((key: string) => makeymakeyParseKey(key));
+      // prevent the use of "any"
+      if (keys.some((i) => typeof i !== 'number')) {
+        util.compiler.warn('makeymakey whenCodePressed found unexpected string in sequence');
+        return;
+      }
       const targetFunction = util.startingFunction;
       let sequenceIndex = 0;
       for (let key = 128; key--;) {
+        // `key` is captured in this function's body
         util.target.listeners.whenKeyPressed[key].push(function() {
           const expectedKey = keys[sequenceIndex];
           if (key !== expectedKey) {
@@ -3165,26 +3425,19 @@ namespace P.sb3.compiler {
       return source + 'endCall(); return;\n';
     },
     precompile(compiler, hat) {
+      // see `handle()` above for what these do
       const customBlockId = hat.inputs.custom_block[1];
       const mutation = compiler.blocks[customBlockId].mutation;
       const warp = typeof mutation.warp === 'string' ? mutation.warp === 'true' : mutation.warp;
+      const argumentNames = JSON.parse(mutation.argumentnames);
+
+      compiler.state.isProcedure = true;
+      compiler.state.argumentNames = argumentNames;
       if (warp) {
         compiler.state.isWarp = true;
       }
-    },
-  };
-  hatLibrary['speech2text_whenIHearHat'] = {
-    handle(util) {
-      util.stage.initSpeech2Text();
-      if (util.stage.speech2text) {
-        const PHRASE = util.getInput('PHRASE', 'string');
-        const phraseFunction = `return ${PHRASE}`;
-        util.stage.speech2text.addHat({
-          target: util.target,
-          startingFunction: util.startingFunction,
-          phraseFunction: P.runtime.createContinuation(phraseFunction),
-        });
-      }
+
+      return '';
     },
   };
 
@@ -3283,7 +3536,7 @@ namespace P.sb3.compiler {
   };
   watcherLibrary['sensing_loudness'] = {
     init(watcher) {
-      watcher.stage.initLoudness();
+      watcher.stage.initMicrophone();
     },
     evaluate(watcher) {
       if (watcher.stage.microphone) {
@@ -3307,17 +3560,5 @@ namespace P.sb3.compiler {
   watcherLibrary['sound_volume'] = {
     evaluate(watcher) { return watcher.target.volume * 100; },
     getLabel() { return 'volume'; },
-  };
-  watcherLibrary['speech2text_getSpeech'] = {
-    init(watcher) {
-      watcher.stage.initSpeech2Text();
-    },
-    evaluate(watcher) {
-      if (watcher.stage.speech2text) {
-        return watcher.stage.speech2text.speech;
-      }
-      return '';
-    },
-    getLabel(watcher) { return 'Speech to text: speech'; },
   };
 }());

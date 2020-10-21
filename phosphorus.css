@@ -194,47 +194,6 @@
   font-size: 1.2em;
 }
 
-/* Speech to text */
-.speech2text-container {
-  display: none;
-  transform: translate(40em, 28em);
-  width: 5em;
-  height: 5em;
-}
-.speech2text-container[listening] {
-  display: block;
-}
-.speech2text-animation, .speech2text-indicator {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-}
-.speech2text-animation, .speech2text-indicator {
-  border-radius: 100%;
-}
-.speech2text-indicator {
-  background: #ff5e5e;
-}
-@keyframes speech2text-animation {
-  from {
-    transform: scale(1);
-    opacity: 1;
-  }
-  to {
-    transform: scale(1.7);
-    opacity: 0;
-  }
-}
-.speech2text-animation {
-  background: #ff9a9a;
-  animation-name: speech2text-animation;
-  animation-iteration-count: infinite;
-  animation-duration: 1.5s;
-  animation-delay: 0.5s;
-}
-
 /* Player Styles */
 .player-root {
   color: #000;
@@ -430,4 +389,23 @@
   height: 10em;
   background-image: url(icons/click-to-play.svg);
   background-size: 100% 100%;
+}
+
+/* Cloud variable status */
+.phosphorus-cloud-status-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  font-size: 1.2em;
+  color: white;
+  background-color: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(2px);
+  text-align: center;
+  z-index: 10;
+}
+.phosphorus-cloud-status-indicator.phosphorus-cloud-status-indicator-hidden {
+  opacity: 0;
+  transition: opacity 0.5s;
+  transition-delay: 1s;
 }

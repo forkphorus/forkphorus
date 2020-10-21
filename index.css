@@ -129,7 +129,14 @@ input[disabled] {
 section {
   margin: 24px 0;
 }
-h1, p {
+footer {
+  font-size: small;
+  opacity: 0.75;
+}
+footer a {
+  color: inherit !important;
+}
+h1, p, ul, footer {
   margin: 0 0 16px;
 }
 h1 {
@@ -280,6 +287,10 @@ code {
 #settings input:invalid {
   /* box-shadow is used to modify border and background color because the background/opacity/border styles don't work very well in chrome */
   box-shadow: inset 0 0 0 24px rgba(255, 0, 0, 0.2), 0 0 0 2px #ff6262;
+}
+
+.advanced input[type=checkbox] {
+  margin-left: 12px;
 }
 
 .player-root:not([fullscreen]) .player-stage {

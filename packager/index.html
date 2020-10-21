@@ -4,6 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="canonical" href="https://forkphorus.github.io/packager/" />
   <style>
     body {
       max-width: 480px;
@@ -17,17 +18,17 @@
       text-align: center;
       font-style: italic;
     }
-    #options {
+    #interface-container {
       position: relative;
     }
-    #options[data-usable=false] {
+    #interface-container[data-usable=false] {
       pointer-events: none;
       opacity: 0.75;
     }
-    #options[data-usable=true] #click-disabler {
+    #interface-container[data-usable=true] #click-disabler {
       display: none;
     }
-    #options[data-usable=false] #click-disabler {
+    #interface-container[data-usable=false] #click-disabler {
       position: absolute;
       top: 0;
       left: 0;
@@ -56,8 +57,13 @@
     input[type=text], input[type=number], input[type=checkbox], select {
       box-sizing: border-box;
       width: 100%;
+      color: black;
+      padding: 2px;
     }
-
+    label ~ label input[type=radio] {
+      /* apply extra margin to all but the first radio */
+      margin-left: 10px;
+    }
     textarea {
       box-sizing: border-box;
       width: 100%;
@@ -100,24 +106,26 @@
 
   <p>The HTML packager allows you to generate an HTML file for a Scratch project.</p>
 
+  <noscript><b>This page requires JavaScript to work properly.</b></noscript>
+
   <ul>
-    <li>Guide: <a href="guide.html">Packaging to .EXE</a> (Windows/Mac OS/Linux)</li>
-    <li>Guide: <a href="android.html">Packaging to .APK</a> (Android, maybe iOS)</li>
-    <li>Additional Help: Create an issue on <a href="https://github.com/forkphorus/forkphorus/issues">GitHub</a></li>
+    <li>Guide: <a href="guide.html" target="_blank">Forkphorus Packager Guide (Windows, Mac, Linux, Android)</a></li>
+    <li>Additional Help: Create an issue on <a href="https://github.com/forkphorus/forkphorus/issues" target="_blank" rel="noopener">GitHub</a></li>
   </ul>
 
   <div id="loading-message">Loading...</div>
 
-  <div id="interface-container" hidden>
-    <div id="options" data-usable="true">
-      <div id="click-disabler" title="please wait for the packager to finish..."></div>
+  <div id="interface-container" data-usable="true" hidden>
+    <div id="click-disabler" title="please wait for the packager to finish..."></div>
+
+    <div id="options">
       <!-- JS injects options into here -->
     </div>
-  
+
     <section>
       <button id="package-html">Package Project</button>
     </section>
-  
+
     <section id="loading-section">
       <!-- JS injects progress bars here -->
     </section>
@@ -141,11 +149,13 @@
         'fonts/MysteryQuest-Regular.woff',
         'fonts/PermanentMarker-Regular.woff',
       ]},
+      { type: 'script', src: 'lib/scratch-sb1-converter.js', },
       { type: 'script', src: 'lib/canvg.min.js', },
       { type: 'script', src: 'lib/fontfaceobserver.standalone.js', },
       { type: 'script', src: 'lib/jszip.min.js', },
       { type: 'script', src: 'lib/rgbcolor.js', },
       { type: 'script', src: 'lib/stackblur.min.js', },
+      { type: 'script', src: 'lib/purify.min.js', },
       { type: 'script', src: 'phosphorus.dist.js', inlineSources: ['icons.svg'] },
     ];
 
@@ -351,18 +361,13 @@
           const opt = document.createElement('option');
           opt.value = i.value;
           opt.textContent = i.label;
-
-          if (i.selected) {
-            opt.selected = true;
-            this.setValue(opt.value);
-          }
-
-          opt.onclick = () => {
-            this.setValue(opt.value);
-          };
-
           el.appendChild(opt);
         }
+
+        this.setValue(el.value);
+        el.onchange = () => {
+          this.setValue(el.value);
+        };
 
         this.inputContainer.appendChild(el);
         return this;
@@ -381,7 +386,9 @@
 
         const description = document.createElement('td');
         description.colSpan = 2;
-        description.textContent = content;
+        // innerHTML intentional: allows use of HTML in descriptions
+        // allow values of `content` are in the source code already so this is not a security vulnerability
+        description.innerHTML = content;
 
         row.appendChild(description);
         this.root.appendChild(row);
@@ -406,6 +413,15 @@
       // Hide this option
       hide() {
         this.root.hidden = true;
+        return this;
+      }
+
+      setVisible(visible) {
+        if (visible) {
+          this.show();
+        } else {
+          this.hide();
+        }
         return this;
       }
 
@@ -451,15 +467,15 @@
 
     const projectId = new Option()
       .label('Project ID')
-      .input({ pattern: '.*[0-9]+.*', value: location.hash ? location.hash.substr(1) : '' })
+      .input({ pattern: '.*[0-9]+.*', value: location.hash ? location.hash.substr(1) : '10128407' })
       .parser((input) => input.match(/\d+/)[0])
-      .description('Load a project from scratch.mit.edu. Project ID or URL are accepted.')
+      .description('Load a project from scratch.mit.edu. Project ID or URL are accepted. Note: Projects on scratch.mit.edu are licensed under <a href="https://creativecommons.org/licenses/by-sa/2.0/" target="_blank" rel="noopener">CC BY-SA 2.0</a>. Please ensure you comply with this license if this is not your project.')
       .add();
 
     const projectFile = new Option()
       .label('Project File')
-      .file({ accept: '.sb3,.sb2' })
-      .description('.sb2 and .sb3 files are supported.')
+      .file({ accept: '.sb,.sb2,.sb3' })
+      .description('.sb, .sb2, and .sb3 files are supported.')
       .hide()
       .add();
 
@@ -505,32 +521,68 @@
       .input({ type: 'number', value: 30 })
       .description('Framerate in frames per second.')
       .add(playerOptionsSection);
-    
+
+    const spriteFencing = new Option()
+      .label('Sprite Fencing')
+      .input({ type: 'checkbox' })
+      .description('Sprite Fencing forces sprites to stay on screen when they move.')
+      .add(playerOptionsSection);
+
+    const cloudVariables = new Section('Cloud Variable Options (BETA)');
+    cloudVariables.storeInLocalStorage = new Option()
+      .label('Store Cloud Variables')
+      .input({ type: 'checkbox' })
+      .description('Stores Cloud Variables in the browser\'s localStorage. This means that they will be remembered even after closing and reopening the app. Note: This is in beta, and has not been fully tested. Please test it yourself (and let us know if it works)')
+      .add(cloudVariables);
+
     const loadingScreen = new Section('Loading Screen Options');
     loadingScreen.text = new Option()
       .label('Loading screen text')
       .input({ value: 'forkphorus' })
-      .description('Text to be displayed while the project is loading. Set to blank to display nothing.')
+      .description('Text to be displayed while the project is loading. Set to blank to display only a progress bar.')
       .add(loadingScreen);
   </script>
 
-  <!-- PhoneGap -->
+  <!-- Environment -->
   <script>
-    const phonegap = new Section('PhoneGap Options');
+    const environment = new Section('Environment Options');
 
-    phonegap.loader = new Packer.FileLoader();
-    phonegap.defaultIconAsset = { src: 'packager/defaultIcon.png' }
-    phonegap.loader.assets.push(phonegap.defaultIconAsset);
+    environment.loader = new Packer.FileLoader();
+    environment.defaultIconAsset = { src: 'packager/defaultIcon.png' };
+    environment.loader.assets.push(environment.defaultIconAsset);
 
-    phonegap.enabled = new Option()
-        .label('Enable Phonegap')
-        .input({ type: 'checkbox' })
-        .description('Enables special behavior and options related to PhoneGap. This will make the output of this packager a ZIP archive instead of HTML.')
-        .add(phonegap);
+    environment.environment = new Option()
+      .label('Packager Environment')
+      .select([
+        { value: 'none', label: 'None (Plain HTML)', selected: true },
+        { value: 'phonegap', label: 'PhoneGap' },
+        { value: 'nwjs-win', label: 'NW.js (Windows/Linux)' },
+        { value: 'nwjs-mac', label: 'NW.js (Mac)' },
+      ])
+      .description('Enable special behavior for certain environments. You <b>must</b> read <a href="guide.html" target="_blank">the guide</a> before changing this value. This setting does not do anything on its own, additional configuration and steps are required.')
+      .add(environment);
+
+    environment.icon = new Option()
+      .label('Icon (.png)')
+      .file({ accept: '.png' })
+      .description('The icon that to be used. If you do not select an icon, a default will be used instead.')
+      .hide()
+      .add(environment);
+
+    environment.environment.onchange = (value) => {
+      environment.icon.setVisible(value !== 'none' && value !== 'nwjs-mac');
+      phonegap.setVisible(value === 'phonegap');
+      nwjs.setVisible(value === 'nwjs-win' || value === 'nwjs-mac');
+    };
+  </script>
+
+  <!-- PhoneGap Environment -->
+  <script>
+    const phonegap = {};
 
     phonegap.xml = new Option()
-        .label('PhoneGap config.xml')
-        .textarea({ value: `<?xml version="1.0" encoding="UTF-8" ?>
+      .label('PhoneGap config.xml')
+      .textarea({ value: `<?xml version="1.0" encoding="UTF-8" ?>
 <widget xmlns="http://www.w3.org/ns/widgets" xmlns:gap="http://phonegap.com/ns/1.0" id="io.github.forkphorus.example" version="1.0.0" >
 
   <name>Forkphorus Packaged App</name>
@@ -542,30 +594,44 @@
   <icon src="icon.png" />
 
 </widget>`})
-        .description('This is the config file for PhoneGap apps. It allows you to control name, ID, description, author, version, etc. This is XML, so formatting like quotes, angled brackets, and case are important.')
-        .hide()
-        .add(phonegap);
+      .description('This is the config file for PhoneGap apps. It allows you to control name, ID, description, author, version, etc. This is XML, so formatting like quotes, angled brackets, and case are important.')
+      .hide()
+      .add(environment);
 
-    phonegap.icon = new Option()
-        .label('Phonegap Icon (.png)')
-        .file({ accept: '.png' })
-        .description('The icon that PhoneGap will use. If you do not select an icon, a default will be used instead.')
-        .hide()
-        .add(phonegap);
+    phonegap.setVisible = (visible) => {
+      phonegap.xml.setVisible(visible);
+    };
+  </script>
 
-    phonegap.enabled.onchange = (value) => {
-      if (value) {
-        phonegap.xml.show();
-        phonegap.icon.show();
-      } else {
-        phonegap.xml.hide();
-        phonegap.icon.hide();
-      }
-    }
+  <!-- NW.js Environment -->
+  <script>
+    const nwjs = {};
+
+    nwjs.json = new Option()
+      .label('NW.js package.json')
+      .textarea({ value: `{
+  "name": "Name of the project",
+  "main": "project.html",
+  "window": {
+    "title": "The title of the window",
+    "width": 480,
+    "height": 360,
+    "resizable": true,
+    "icon": "icon.png"
+  }
+}`})
+      .description('This is the config file for NW.js apps. You can use the <a href="config_generator.html" target="_blank">the config generator</a> to generate this text automatically.')
+      .hide()
+      .add(environment);
+
+    nwjs.setVisible = (visible) => {
+      nwjs.json.setVisible(visible);
+    };
   </script>
 
   <!-- Interface Logic -->
   <script>
+    const interfaceContainer = document.getElementById('interface-container');
     const loadingSection = document.getElementById('loading-section');
     let progressBar = null;
 
@@ -625,7 +691,10 @@
     }
 
     function setInputsUsable(usable) {
-      optionsContainer.dataset.usable = usable;
+      interfaceContainer.dataset.usable = usable;
+      for (const element of document.querySelectorAll('input, button')) {
+        element.disabled = !usable;
+      }
     }
 
     SBDL.progressHooks.start = () => setAction('Loading project files');
@@ -676,6 +745,8 @@
         packager.playerOptions.autoplayPolicy = autoplay.value;
         packager.playerOptions.username = username.value;
         packager.playerOptions.fps = fps.value;
+        packager.playerOptions.spriteFencing = spriteFencing.value;
+        packager.playerOptions.cloudVariables = cloudVariables.storeInLocalStorage.value ? 'localStorage' : 'off';
         if (showControls.value) {
           packager.controlsOptions = { enableFullscreen: false };
         }
@@ -688,12 +759,17 @@
           if (!/^\d+$/.test(projectId.value)) {
             throw new Error('Invalid Project ID');
           }
+          // Comply with CC BY-SA 2.0
+          packager.projectAttribution = 'Project is loaded from: https://scratch.mit.edu/projects/' + projectId.value + '. Projects from scratch.mit.edu are generally licensed under CC BY-SA 2.0';
           await packager.loadProjectById(projectId.value);
         } else if (projectSource.value === 'file') {
           if (!projectFile.value) {
             throw new Error('No file selected');
           }
           await packager.loadProjectFromFile(projectFile.value);
+          packager.projectAttribution = 'No license assumed.';
+        } else {
+          throw new Error('projectSource is an unknown value: ' + projectSource.value);
         }
 
         // Package to HTML
@@ -701,18 +777,43 @@
         let filetype = 'html';
         let result = await packager.run();
 
-        // PhoneGap support
-        if (phonegap.enabled.value) {
-          const pg = new Packer.PhoneGap();
-          bindProgress('Converting to PhoneGap', pg.progress);
-          pg.configXML = phonegap.xml.value;
-          pg.icon = phonegap.icon.value;
-          if (!pg.icon) {
-            await phonegap.loader.loadMissingAssets();
-            pg.icon = phonegap.defaultIconAsset.blob;
+        // Environments
+        const environmentType = environment.environment.value;
+        if (environment.environment.value !== 'none') {
+          let icon = environment.icon.value;
+          if (!icon) {
+            // Apply & load default icon
+            if (!environment.defaultIconAsset.blob) {
+              bindProgress('Loading default icon', environment.loader.progress);
+              await environment.loader.loadMissingAssets();
+            }
+            icon = environment.defaultIconAsset.blob;
           }
-          result = await pg.package(result);
-          filetype = 'zip';
+
+          const zipper = new Packer.Zipper();
+
+          if (environmentType === 'phonegap') {
+            bindProgress('Packaging for PhoneGap', zipper.progress);
+            filetype = 'zip';
+            zipper.addFile('index.html', result);
+            zipper.addFile('icon.png', icon);
+            zipper.addFile('config.xml', phonegap.xml.value);
+          } else if (environmentType === 'nwjs-win' || environmentType === 'nwjs-mac') {
+            bindProgress('Packaging for NW.js', zipper.progress);
+            if (environmentType === 'nwjs-win') {
+              filename = 'package';
+            } else {
+              filename = 'app';
+            }
+            filetype = 'nw';
+            zipper.addFile('project.html', result);
+            zipper.addFile('icon.png', icon);
+            zipper.addFile('package.json', nwjs.json.value);
+          } else {
+            throw new Error('Unknown environment: ' + environmentType);
+          }
+
+          result = await zipper.zip();
         }
 
         // Finalize loading and download the file
