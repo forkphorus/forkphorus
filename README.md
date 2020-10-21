@@ -4,18 +4,6 @@
 
 A JavaScript/TypeScript compiler for Scratch 3, 2, and 1 projects. forkphorus is a *fork* of [phos*phorus*](https://phosphorus.github.io/).
 
-## Performance
-
-Projects should, in general, run faster in forkphorus than in Scratch 3 and much faster than Scratch 2. Here's an unscientific benchmark of running [quicksort](https://scratch.mit.edu/projects/310372816/) on 200000 random items:
-
-| Environment | Min | Avg | Max |
-| ----------- | --- | --- | --- |
-| Forkphorus (sb3 compiler) | 0.19 | 0.198 | 0.221 |
-| Scratch 3 | 11.043 | 11.2131 | 11.599 |
-| Scratch 2 |  | 17.55 |  |
-
-(September 2019, Chrome 76)
-
 ## Build Steps
 
 You will need Git and Node.js.
