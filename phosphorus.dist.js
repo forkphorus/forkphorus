@@ -9185,7 +9185,7 @@ var P;
                         this.failures++;
                     }
                     this.setStatusText('Connection lost, reconnecting...');
-                    const delayTime = 2 ** this.failures * 1000;
+                    const delayTime = 2 ** this.failures * 1000 * Math.random();
                     console.log(this.logPrefix, 'reconnecting in', delayTime);
                     this.reconnectTimeout = setTimeout(() => {
                         this.reconnectTimeout = null;
