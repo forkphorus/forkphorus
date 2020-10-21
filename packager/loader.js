@@ -208,6 +208,9 @@ window.SBDL = (function() {
     const IMAGE_EXTENSIONS = [
       'svg',
       'png',
+      'jpg',
+      'jpeg',
+      'bmp'
     ];
     const SOUND_EXTENSIONS = [
       'wav',
