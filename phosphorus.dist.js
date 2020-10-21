@@ -9040,7 +9040,7 @@ var P;
             function getAllCloudVariables(stage) {
                 const result = {};
                 for (const variable of stage.cloudVariables) {
-                    result[variable] = stage.vars[variable] + '';
+                    result[variable] = stage.vars[variable];
                 }
                 return result;
             }
@@ -9095,7 +9095,6 @@ var P;
                     const value = this.getVariable(variableName);
                     this.send({
                         method: 'set',
-                        user: this.username,
                         name: variableName,
                         value: value,
                     });
@@ -9106,7 +9105,7 @@ var P;
                     this.ws.send(JSON.stringify(data));
                 }
                 getVariable(name) {
-                    return this.stage.vars[name] + '';
+                    return this.stage.vars[name];
                 }
                 setVariable(name, value) {
                     this.stage.vars[name] = value;
@@ -9133,8 +9132,7 @@ var P;
                         this.send({
                             method: 'handshake',
                             project_id: this.id,
-                            user: this.username,
-                            initial_data: getAllCloudVariables(this.stage),
+                            user: this.username
                         });
                     };
                     this.ws.onmessage = (e) => {

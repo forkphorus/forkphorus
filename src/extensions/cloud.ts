@@ -20,7 +20,7 @@ namespace P.ext.cloud {
   export function getAllCloudVariables(stage: P.core.Stage) {
     const result = {};
     for (const variable of stage.cloudVariables) {
-      result[variable] = stage.vars[variable] + '';
+      result[variable] = stage.vars[variable];
     }
     return result;
   }
@@ -104,7 +104,6 @@ namespace P.ext.cloud {
       const value = this.getVariable(variableName);
       this.send({
         method: 'set',
-        user: this.username,
         name: variableName,
         value: value,
       });
@@ -116,7 +115,7 @@ namespace P.ext.cloud {
     }
 
     private getVariable(name: string): string {
-      return this.stage.vars[name] + '';
+      return this.stage.vars[name];
     }
 
     private setVariable(name: string, value: string): void {
@@ -152,8 +151,7 @@ namespace P.ext.cloud {
         this.send({
           method: 'handshake',
           project_id: this.id,
-          user: this.username,
-          initial_data: getAllCloudVariables(this.stage),
+          user: this.username
         });
       };
 
