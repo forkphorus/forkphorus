@@ -49,6 +49,9 @@
       <a target="_blank" class="project-link" title="View project on Scratch" rel="noopener" href="https://scratch.mit.edu/"></a>
     </div>
 
+    <h1>Try out TurboWarp</h1>
+    <p style="margin-bottom: 0;"><a id="turbowarp" href="https://turbowarp.org/">TurboWarp</a> is similar to forkphorus but faster and has greatly improved compatibility. Give it a try, you might like it.</p>
+
     <div class="area" id="project-area">
 
       <section>
@@ -368,6 +371,7 @@
       }
       updatePackageLink();
       updateEmbedCode();
+      document.getElementById('turbowarp').href = 'https://turbowarp.org/#' + player.getProjectMeta().getId();
     }
     var initialTitle = document.title;
     function resetTitle() {
