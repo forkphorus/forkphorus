@@ -1,7 +1,7 @@
 # Privacy Policy
 
 <!-- UPDATE THIS WHEN MAKING EDITS -->
-*Updated October 11th, 2020.*
+*Updated October 24th, 2020.*
 
 This page will explain what information is collected through the forkphorus website: https://forkphorus.github.io/ ("the Site").
 
@@ -32,4 +32,4 @@ Notably this includes:
 
 ## Contact
 
-For any privacy concerns, send an email to contacts@turbowarp.org
+For any privacy concerns, send an email to contact@turbowarp.org
