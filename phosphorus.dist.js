@@ -3564,9 +3564,13 @@ var P;
                                 throw new Error('zip is missing project.json');
                             }
                             const projectDataText = await projectJSON.async('text');
-                            const projectData = JSON.parse(projectDataText);
-                            if (this.determineProjectType(projectData) === 'sb3') {
-                                return new P.sb3.SB3FileLoader(buffer);
+                            try {
+                                const projectData = JSON.parse(projectDataText);
+                                if (this.determineProjectType(projectData) === 'sb3') {
+                                    return new P.sb3.SB3FileLoader(buffer);
+                                }
+                            }
+                            catch (e) {
                             }
                         }
                         return new P.sb2.SB2FileLoader(buffer);
