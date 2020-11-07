@@ -50,7 +50,7 @@
     </div>
 
     <h1>Try out TurboWarp</h1>
-    <p style="margin-bottom: 0;"><a id="turbowarp" href="https://turbowarp.org/">TurboWarp</a> is similar to forkphorus but faster and has greatly improved compatibility. Give it a try, you might like it.</p>
+    <p style="margin-bottom: 0;"><a id="turbowarp" href="https://turbowarp.org/" target="_black" rel="noopener">TurboWarp</a> is similar to forkphorus but faster and has greatly improved compatibility. Give it a try, you might like it.</p>
 
     <div class="area" id="project-area">
 
@@ -371,7 +371,11 @@
       }
       updatePackageLink();
       updateEmbedCode();
-      document.getElementById('turbowarp').href = 'https://turbowarp.org/#' + player.getProjectMeta().getId();
+      if (player.getProjectMeta().isFromScratch()) {
+        document.getElementById('turbowarp').href = 'https://turbowarp.org/' + player.getProjectMeta().getId();
+      } else {
+        document.getElementById('turbowarp').href = 'https://turbowarp.org/';
+      }
     }
     var initialTitle = document.title;
     function resetTitle() {
