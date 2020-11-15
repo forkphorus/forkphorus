@@ -9630,8 +9630,8 @@ var P;
                     }
                     ctx.imageSmoothingEnabled = costume.isScalable || this.imageSmoothingEnabled;
                     const image = costume.getImage();
-                    const x = -costume.rotationCenterX * objectScale;
-                    const y = -costume.rotationCenterY * objectScale;
+                    const x = -costume.rotationCenterX * objectScale | 0;
+                    const y = -costume.rotationCenterY * objectScale | 0;
                     const w = costume.width * objectScale;
                     const h = costume.height * objectScale;
                     if (w < 1 || h < 1) {
