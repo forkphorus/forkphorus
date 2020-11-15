@@ -90,9 +90,8 @@ namespace P.renderer.canvas2d {
 
       ctx.save();
 
-      // Make sprites render at integer positions, even when fullscreen or on a retina display.
       const globalScale = c.stage.zoom * P.config.scale;
-      ctx.translate((Math.round((c.scratchX + 240) * globalScale)) / globalScale, (Math.round((180 - c.scratchY) * globalScale)) / globalScale);
+      ctx.translate(((c.scratchX + 240) * globalScale | 0) / globalScale, ((180 - c.scratchY) * globalScale | 0) / globalScale);
 
       let objectScale = costume.scale;
       if (P.core.isSprite(c)) {
