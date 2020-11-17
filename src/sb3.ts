@@ -3413,13 +3413,16 @@ namespace P.sb3.compiler {
       const mutation = util.compiler.blocks[customBlockId].mutation;
 
       const proccode = mutation.proccode;
-      // Warp is either a boolean or a string representation of that boolean for some reason.
-      const warp = typeof mutation.warp === 'string' ? mutation.warp === 'true' : mutation.warp;
-      // It's a stringified JSON array.
-      const argumentNames = JSON.parse(mutation.argumentnames);
 
-      const procedure = new P.sb3.Scratch3Procedure(util.startingFunction, warp, argumentNames);
-      util.target.procedures[proccode] = procedure;
+      if (!util.target.procedures[proccode]) {
+        // Warp is either a boolean or a string representation of that boolean for some reason.
+        const warp = typeof mutation.warp === 'string' ? mutation.warp === 'true' : mutation.warp;
+        // It's a stringified JSON array.
+        const argumentNames = JSON.parse(mutation.argumentnames);
+
+        const procedure = new P.sb3.Scratch3Procedure(util.startingFunction, warp, argumentNames);
+        util.target.procedures[proccode] = procedure;
+      }
     },
     postcompile(compiler, source, hat) {
       return source + 'endCall(); return;\n';

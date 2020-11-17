@@ -8883,10 +8883,12 @@ var P;
             const customBlockId = util.block.inputs.custom_block[1];
             const mutation = util.compiler.blocks[customBlockId].mutation;
             const proccode = mutation.proccode;
-            const warp = typeof mutation.warp === 'string' ? mutation.warp === 'true' : mutation.warp;
-            const argumentNames = JSON.parse(mutation.argumentnames);
-            const procedure = new P.sb3.Scratch3Procedure(util.startingFunction, warp, argumentNames);
-            util.target.procedures[proccode] = procedure;
+            if (!util.target.procedures[proccode]) {
+                const warp = typeof mutation.warp === 'string' ? mutation.warp === 'true' : mutation.warp;
+                const argumentNames = JSON.parse(mutation.argumentnames);
+                const procedure = new P.sb3.Scratch3Procedure(util.startingFunction, warp, argumentNames);
+                util.target.procedures[proccode] = procedure;
+            }
         },
         postcompile(compiler, source, hat) {
             return source + 'endCall(); return;\n';

@@ -28,6 +28,7 @@
     'sb3/285-variable-id-name-desync.sb3',
     'sb3/when-greater-than.sb3',
     'sb3/detector.sb3',
+    'sb3/procedure-definition-order.sb3',
   ];
 
   /**
