@@ -7942,6 +7942,19 @@ var P;
         util.writeLn('var threads = sceneChange();');
         util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
     };
+    statementLibrary['looks_switchbackdroptoandwait'] = function (util) {
+        const BACKDROP = util.getInput('BACKDROP', 'any');
+        util.writeLn(`self.setCostume(${BACKDROP});`);
+        util.visual('always');
+        util.writeLn('save();');
+        util.writeLn('R.threads = sceneChange();');
+        util.writeLn('if (R.threads.indexOf(BASE) !== -1) {return;}');
+        const label = util.addLabel();
+        util.writeLn('if (running(R.threads)) {');
+        util.forceQueue(label);
+        util.writeLn('}');
+        util.writeLn('restore();');
+    };
     statementLibrary['looks_switchcostumeto'] = function (util) {
         const COSTUME = util.getInput('COSTUME', 'any');
         util.writeLn(`S.setCostume(${COSTUME});`);
