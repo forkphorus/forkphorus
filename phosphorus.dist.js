@@ -6708,8 +6708,10 @@ var P;
                 const viewBox = svg.getAttribute('viewBox').split(/ |,/).map((i) => +i);
                 if (viewBox.every((i) => !isNaN(i)) && viewBox.length === 4) {
                     const [x, y, w, h] = viewBox;
-                    svg.setAttribute('width', (w + x).toString());
-                    svg.setAttribute('height', (h + y).toString());
+                    const width = Math.max(1, w + x);
+                    const height = Math.max(1, h + y);
+                    svg.setAttribute('width', width.toString());
+                    svg.setAttribute('height', height.toString());
                 }
                 else {
                     console.warn('weird viewBox', svg.getAttribute('viewBox'));
