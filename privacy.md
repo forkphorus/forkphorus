@@ -1,25 +1,23 @@
 # Privacy Policy
 
 <!-- UPDATE THIS WHEN MAKING EDITS -->
-*Updated October 24th, 2020.*
+*Updated November 26th, 2020.*
 
-This page will explain what information is collected through the forkphorus website: https://forkphorus.github.io/ ("the Site").
+This page will explain what information is collected through the forkphorus website: [https://forkphorus.github.io/](https://forkphorus.github.io/) ("the Site").
 
 ## What information is collected
 
-### Automatically collected information
+A self-hosted instance of Plausible Analytics is used to track website usage. You can opt out of this tracking by enabling your browser's "Do Not Track" setting. The data is publicly viewable at [https://stats.turbowarp.org/forkphorus.github.io](https://stats.turbowarp.org/forkphorus.github.io).
 
-A self-hosted instance of Plausible Analytics is used to track website usage. You can see the information collected by this on https://stats.turbowarp.org/forkphorus.github.io. This server stores no personal information.
+We may record anonymous aggregated access logs when you interact with the site. For example, we may log the number of requests, type of requests, how the request was processed (cache hit, cache miss, 404, etc.), errors, referrers, and similar aggregated information. These logs do not contain IP addresses or other identifiable information.
 
-When loading projects that contain "cloud variables", your IP address, supplied username, and project ID are logged. This information is deleted within 14 days. The data stored in cloud variables is purged within 24 hours of no users being connected to a given project.
+When using projects that contain "cloud variables", your username (supplied by user or randomly generated), project ID, and some technical details may be logged. This information is deleted within 14 days. The data stored in cloud variables is purged within 24 hours of no users being connected to a given project. You can opt out of this data collection by disabling cloud variables. It may be possible to use a combination of logged usernames and project IDs to identify users.
 
 ## How this information is used
 
-This information is used to monitor usage of the service and prevent abuse. Things like anonymous aggregated statistics may be shared but all personally identifiable information will not be shared.
+The data we collect is used to monitor usage, prevent abuse, optimize processes, etc.
 
-## Data Retention
-
-All logs are deleted after up to 14 days, unless there are extenuating circumstances that require keeping the logs for a longer period of time (eg. if required by law).
+Personal information that we collect is never shared or sold to any third party, unless necessary to provide the service (such as hosting providers) or to comply with local laws (like a government subpoena).
 
 ## Third Parties
 
@@ -32,4 +30,4 @@ Notably this includes:
 
 ## Contact
 
-For any privacy concerns, send an email to contact@turbowarp.org
+For any privacy concerns, send an email to contact@turbowarp.org. Please mention "forkphorus" in the message subject or body.
