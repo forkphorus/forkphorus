@@ -2,13 +2,6 @@
 /// <reference path="extension.ts" />
 
 namespace P.ext.cloud {
-  const enum State {
-    Disconnected,
-    Connecting,
-    Connected,
-    Error,
-  }
-
   export interface CloudHandler extends P.ext.Extension {
     variableChanged(name: string): void;
   }
