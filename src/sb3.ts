@@ -2694,8 +2694,6 @@ namespace P.sb3.compiler {
     util.visual('always');
   };
   statementLibrary['pen_penUp'] = function(util) {
-    // TODO: determine visual variant
-    // definitely not 'always' or 'visible', might be a 'if (S.isPenDown)'
     util.writeLn('S.isPenDown = false;');
   };
   statementLibrary['pen_setPenColorParamTo'] = function(util) {
