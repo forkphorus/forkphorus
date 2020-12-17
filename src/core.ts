@@ -95,6 +95,17 @@ namespace P.core {
       this.mode = PenMode.RGBA;
     }
 
+    /**
+     * Set this color to an RGB(A) color, encoded in a single number, accounting for Scratch 3's inaccurate colors.
+     */
+    setShiftedRGBA(rgba: number) {
+      this.setRGBA(rgba);
+      // Scratch 3 internally stores all colors as HSV, and floors the RGB components resulting in the
+      // actual color being displayed to sometimes be slightly different.
+      // For example, set pen color to #ff00ff actually draws #ff00fe.... brilliant.
+      this.toHSVA();
+    }
+
     toHSLA() {
       switch (this.mode) {
         case PenMode.RGBA: {

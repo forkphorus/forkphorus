@@ -2699,7 +2699,7 @@ namespace P.sb3.compiler {
   };
   statementLibrary['pen_setPenColorToColor'] = function(util) {
     const COLOR = util.getInput('COLOR', 'color');
-    util.writeLn(`S.setPenColor(${COLOR});`);
+    util.writeLn(`S.penColor.setShiftedRGBA(${COLOR});`);
   };
   statementLibrary['pen_setPenHueToNumber'] = function(util) {
     // This is an old pen hue block, which functions differently from the new one.

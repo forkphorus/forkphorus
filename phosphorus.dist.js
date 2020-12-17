@@ -471,6 +471,10 @@ var P;
                 this.css = 'rgba(' + this.x + ', ' + this.y + ', ' + this.z + ', ' + this.a + ')';
                 this.mode = 0;
             }
+            setShiftedRGBA(rgba) {
+                this.setRGBA(rgba);
+                this.toHSVA();
+            }
             toHSLA() {
                 switch (this.mode) {
                     case 0: {
@@ -8225,7 +8229,7 @@ var P;
     };
     statementLibrary['pen_setPenColorToColor'] = function (util) {
         const COLOR = util.getInput('COLOR', 'color');
-        util.writeLn(`S.setPenColor(${COLOR});`);
+        util.writeLn(`S.penColor.setShiftedRGBA(${COLOR});`);
     };
     statementLibrary['pen_setPenHueToNumber'] = function (util) {
         const HUE = util.getInput('HUE', 'number');
