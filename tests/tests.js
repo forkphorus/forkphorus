@@ -8,6 +8,7 @@
 
     'sb2/sb2-template.sb2',
     'sb2/non-standard-json.sb2',
+    'sb2/color-formats.sb2',
 
     'sb3/sb3-template.sb3',
     'sb3/quicksort.sb3',
@@ -29,6 +30,7 @@
     'sb3/when-greater-than.sb3',
     'sb3/detector.sb3',
     'sb3/procedure-definition-order.sb3',
+    'sb3/color-formats.sb3',
   ];
 
   /**
