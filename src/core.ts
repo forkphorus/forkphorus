@@ -959,7 +959,7 @@ namespace P.core {
     }
 
     private keyEventToCode(e: KeyboardEvent): number {
-      const key = e.key;
+      const key = e.key || '';
       switch (key) {
         case 'Enter': return SpecialKeys.Enter;
         case 'ArrowLeft': case 'Left': return SpecialKeys.Left;

@@ -1107,7 +1107,7 @@ var P;
                 }
             }
             keyEventToCode(e) {
-                const key = e.key;
+                const key = e.key || '';
                 switch (key) {
                     case 'Enter': return 13;
                     case 'ArrowLeft':
