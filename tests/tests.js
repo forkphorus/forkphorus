@@ -31,6 +31,7 @@
     'sb3/detector.sb3',
     'sb3/procedure-definition-order.sb3',
     'sb3/color-formats.sb3',
+    'sb3/pen-color-shift.sb3',
   ];
 
   /**
