@@ -115,7 +115,7 @@ namespace P.utils {
       case 5: r = v, g = p, b = q; break;
     }
   
-    return [r! * 255, g! * 255, b! * 255];
+    return [r! * 255 | 0, g! * 255 | 0, b! * 255 | 0];
   }
 
   /**

@@ -2780,7 +2780,7 @@ var P;
                     r = v, g = p, b = q;
                     break;
             }
-            return [r * 255, g * 255, b * 255];
+            return [r * 255 | 0, g * 255 | 0, b * 255 | 0];
         }
         utils.hsvToRGB = hsvToRGB;
         function hslToRGB(h, s, l) {
