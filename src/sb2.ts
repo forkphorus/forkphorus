@@ -1557,7 +1557,7 @@ namespace P.sb2.compiler {
 
       } else if (block[0] === 'penColor:') {
 
-        source += 'S.setPenColor(' + num(block[1]) + ');\n';
+        source += 'S.penColor.setRGBA(' + num(block[1]) + ');\n';
 
       } else if (block[0] === 'setPenHueTo:') {
 

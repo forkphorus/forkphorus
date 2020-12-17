@@ -768,13 +768,6 @@ namespace P.core {
     stamp() {
       this.stage.renderer.penStamp(this);
     }
-
-    /**
-     * Set the color of the pen.
-     */
-    setPenColor(color: number | string) {
-      this.penColor.setRGBA(+color);
-    }
   }
 
   type KeyList = Array<boolean | undefined> & { any: number; };
