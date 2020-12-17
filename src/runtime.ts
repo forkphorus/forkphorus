@@ -504,6 +504,10 @@ namespace P.runtime {
     }
   };
 
+  var parseColor = function(color: any): number {
+    return P.utils.parseColor(color);
+  };
+
   var sceneChange = function() {
     return runtime.trigger('whenSceneStarts', self.getCostumeName());
   };

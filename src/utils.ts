@@ -204,4 +204,34 @@ namespace P.utils {
   export function sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
+
+  export function parseColor(color: any): number {
+    if (color === '0xff0')debugger;
+    if (typeof color === 'number') {
+      return color;
+    }
+    if (typeof color === 'string') {
+      const nValue = +color;
+      if (!isNaN(nValue)) {
+        return nValue;
+      }
+      if (color.startsWith('#')) {
+        const hex = color.substr(1);
+        const parsedHex = parseInt(hex, 16);
+        if (hex.length === 6) {
+          return parsedHex;
+        } else if (hex.length === 3) {
+          const r = parsedHex >> 8 & 0xf;
+          const g = parsedHex >> 4 & 0xf;
+          const b = parsedHex & 0xf;
+          return (
+            ((r << 4) | r) << 16 |
+            ((g << 4) | g) << 8 |
+            ((b << 4) | b)
+          );
+        }
+      }
+    }
+    return 0;
+  };
 }

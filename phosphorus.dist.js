@@ -969,18 +969,7 @@ var P;
                 this.stage.renderer.penStamp(this);
             }
             setPenColor(color) {
-                if (typeof color === 'string') {
-                    if (color.startsWith('#')) {
-                        color = parseInt(color.substr(1), 16);
-                    }
-                    else if (color.startsWith('0x')) {
-                        color = parseInt(color.substr(2), 16);
-                    }
-                    else {
-                        color = +color;
-                    }
-                }
-                this.penColor.setRGBA(color);
+                this.penColor.setRGBA(+color);
             }
         }
         core.Base = Base;
@@ -2850,6 +2839,37 @@ var P;
             return new Promise((resolve) => setTimeout(resolve, ms));
         }
         utils.sleep = sleep;
+        function parseColor(color) {
+            if (color === '0xff0')
+                debugger;
+            if (typeof color === 'number') {
+                return color;
+            }
+            if (typeof color === 'string') {
+                const nValue = +color;
+                if (!isNaN(nValue)) {
+                    return nValue;
+                }
+                if (color.startsWith('#')) {
+                    const hex = color.substr(1);
+                    const parsedHex = parseInt(hex, 16);
+                    if (hex.length === 6) {
+                        return parsedHex;
+                    }
+                    else if (hex.length === 3) {
+                        const r = parsedHex >> 8 & 0xf;
+                        const g = parsedHex >> 4 & 0xf;
+                        const b = parsedHex & 0xf;
+                        return (((r << 4) | r) << 16 |
+                            ((g << 4) | g) << 8 |
+                            ((b << 4) | b));
+                    }
+                }
+            }
+            return 0;
+        }
+        utils.parseColor = parseColor;
+        ;
     })(utils = P.utils || (P.utils = {}));
 })(P || (P = {}));
 var P;
@@ -4278,6 +4298,9 @@ var P;
             if (self.cloudHandler) {
                 self.cloudHandler.variableChanged(name);
             }
+        };
+        var parseColor = function (color) {
+            return P.utils.parseColor(color);
         };
         var sceneChange = function () {
             return runtime.trigger('whenSceneStarts', self.getCostumeName());
@@ -7279,6 +7302,7 @@ var P;
                         case 'string': return '""';
                         case 'any': return '""';
                         case 'list': return '""';
+                        case 'color': return '0';
                     }
                     assertNever(type);
                 }
@@ -7289,6 +7313,7 @@ var P;
                         case 'boolean': return 'bool(' + input + ')';
                         case 'any': return input;
                         case 'list': throw new Error("Converting to 'list' type is not something you're supposed to do");
+                        case 'color': return 'parseColor(' + input + ')';
                     }
                     assertNever(type);
                 }
@@ -7408,14 +7433,8 @@ var P;
                             return this.sanitizedInput(native[1]);
                         case 9: {
                             const color = native[1];
-                            const hex = color.substr(1);
-                            if (/^[0-9a-f]{6,8}$/.test(hex)) {
-                                return numberInput('0x' + hex);
-                            }
-                            else {
-                                this.warn('expected hex color code but got', hex);
-                                return numberInput('0x0');
-                            }
+                            const rgb = P.utils.parseColor(color);
+                            return new CompiledInput('' + rgb, 'color');
                         }
                         default:
                             this.warn('unknown native', type, native);
@@ -8205,7 +8224,7 @@ var P;
         util.writeLn(`S.penColor.setParam(${COLOR_PARAM}, ${VALUE});`);
     };
     statementLibrary['pen_setPenColorToColor'] = function (util) {
-        const COLOR = util.getInput('COLOR', 'any');
+        const COLOR = util.getInput('COLOR', 'color');
         util.writeLn(`S.setPenColor(${COLOR});`);
     };
     statementLibrary['pen_setPenHueToNumber'] = function (util) {
@@ -8628,8 +8647,8 @@ var P;
         return util.stringInput('self.answer');
     };
     inputLibrary['sensing_coloristouchingcolor'] = function (util) {
-        const COLOR = util.getInput('COLOR', 'any');
-        const COLOR2 = util.getInput('COLOR2', 'any');
+        const COLOR = util.getInput('COLOR', 'color');
+        const COLOR2 = util.getInput('COLOR2', 'color');
         return util.booleanInput(`S.colorTouchingColor(${COLOR}, ${COLOR2})`);
     };
     inputLibrary['sensing_current'] = function (util) {
@@ -8691,7 +8710,7 @@ var P;
         return util.numberInput('((runtime.now() - runtime.timerStart) / 1000)');
     };
     inputLibrary['sensing_touchingcolor'] = function (util) {
-        const COLOR = util.getInput('COLOR', 'any');
+        const COLOR = util.getInput('COLOR', 'color');
         return util.booleanInput(`S.touchingColor(${COLOR})`);
     };
     inputLibrary['sensing_touchingobject'] = function (util) {

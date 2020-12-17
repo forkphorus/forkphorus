@@ -1219,7 +1219,7 @@ namespace P.sb3.compiler {
     precompile?(compiler: Compiler, hat: SB3Block): string;
   };
 
-  export type InputType = 'string' | 'boolean' | 'number' | 'any' | 'list';
+  export type InputType = 'string' | 'boolean' | 'number' | 'any' | 'list' | 'color';
 
   /**
    * General block generation utilities.
@@ -1591,6 +1591,7 @@ namespace P.sb3.compiler {
         case 'string': return '""';
         case 'any': return '""';
         case 'list': return '""';
+        case 'color': return '0';
       }
       assertNever(type);
     }
@@ -1605,6 +1606,7 @@ namespace P.sb3.compiler {
         case 'boolean': return 'bool(' + input + ')';
         case 'any': return input;
         case 'list': throw new Error("Converting to 'list' type is not something you're supposed to do");
+        case 'color': return 'parseColor(' + input + ')';
       }
       assertNever(type);
     }
@@ -1798,14 +1800,8 @@ namespace P.sb3.compiler {
           // [type, color]
           // Color is a value like "#abcdef"
           const color = native[1];
-          const hex = color.substr(1);
-          // Ensure that it is actually a hex number.
-          if (/^[0-9a-f]{6,8}$/.test(hex)) {
-            return numberInput('0x' + hex);
-          } else {
-            this.warn('expected hex color code but got', hex);
-            return numberInput('0x0');
-          }
+          const rgb = P.utils.parseColor(color);
+          return new CompiledInput('' + rgb, 'color');
         }
 
         default:
@@ -2702,7 +2698,7 @@ namespace P.sb3.compiler {
     util.writeLn(`S.penColor.setParam(${COLOR_PARAM}, ${VALUE});`);
   };
   statementLibrary['pen_setPenColorToColor'] = function(util) {
-    const COLOR = util.getInput('COLOR', 'any');
+    const COLOR = util.getInput('COLOR', 'color');
     util.writeLn(`S.setPenColor(${COLOR});`);
   };
   statementLibrary['pen_setPenHueToNumber'] = function(util) {
@@ -3142,8 +3138,8 @@ namespace P.sb3.compiler {
     return util.stringInput('self.answer');
   };
   inputLibrary['sensing_coloristouchingcolor'] = function(util) {
-    const COLOR = util.getInput('COLOR', 'any');
-    const COLOR2 = util.getInput('COLOR2', 'any');
+    const COLOR = util.getInput('COLOR', 'color');
+    const COLOR2 = util.getInput('COLOR2', 'color');
     return util.booleanInput(`S.colorTouchingColor(${COLOR}, ${COLOR2})`);
   };
   inputLibrary['sensing_current'] = function(util) {
@@ -3207,7 +3203,7 @@ namespace P.sb3.compiler {
     return util.numberInput('((runtime.now() - runtime.timerStart) / 1000)');
   };
   inputLibrary['sensing_touchingcolor'] = function(util) {
-    const COLOR = util.getInput('COLOR', 'any');
+    const COLOR = util.getInput('COLOR', 'color');
     return util.booleanInput(`S.touchingColor(${COLOR})`);
   };
   inputLibrary['sensing_touchingobject'] = function(util) {

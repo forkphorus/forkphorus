@@ -762,16 +762,7 @@ namespace P.core {
      * Set the color of the pen.
      */
     setPenColor(color: number | string) {
-      if (typeof color === 'string') {
-        if (color.startsWith('#')) {
-          color = parseInt(color.substr(1), 16);
-        } else if (color.startsWith('0x')) {
-          color = parseInt(color.substr(2), 16);
-        } else {
-          color = +color;
-        }
-      }
-      this.penColor.setRGBA(color);
+      this.penColor.setRGBA(+color);
     }
   }
 
