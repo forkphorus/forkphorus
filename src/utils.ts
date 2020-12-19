@@ -206,7 +206,6 @@ namespace P.utils {
   }
 
   export function parseColor(color: any): number {
-    if (color === '0xff0')debugger;
     if (typeof color === 'number') {
       return color;
     }

@@ -2841,8 +2841,6 @@ var P;
         }
         utils.sleep = sleep;
         function parseColor(color) {
-            if (color === '0xff0')
-                debugger;
             if (typeof color === 'number') {
                 return color;
             }
