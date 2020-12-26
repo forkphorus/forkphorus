@@ -536,7 +536,7 @@ namespace P.core {
       if (typeof name === 'string') {
         var s = this.soundRefs[name];
         if (s) return s;
-        name = +name;
+        name = parseInt(name, 10);
       }
       var l = this.sounds.length;
       if (l && typeof name === 'number' && name === name) {
