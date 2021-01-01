@@ -33,6 +33,7 @@
     'sb3/color-formats.sb3',
     'sb3/pen-color-shift.sb3',
     'sb3/384-touching.sb3',
+    'sb3/empty-sound-does-not-play-last.sb3',
   ];
 
   /**
