@@ -394,21 +394,21 @@ namespace P.renderer.canvas2d {
       workingRenderer.canvas.width = width;
       workingRenderer.canvas.height = height;
 
+      workingRenderer.ctx.fillStyle = 'white';
+      workingRenderer.ctx.fillRect(0, 0, workingRenderer.canvas.width, workingRenderer.canvas.height);
+
       workingRenderer.ctx.save();
       workingRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
 
       this.drawAllExcept(workingRenderer, sprite);
       workingRenderer.ctx.globalCompositeOperation = 'destination-in';
-      workingRenderer.noEffects = true;
       workingRenderer.drawChild(sprite);
-      workingRenderer.noEffects = false;
 
       workingRenderer.ctx.restore();
 
-      const data = workingRenderer.ctx.getImageData(0, 0, b.right - b.left, b.top - b.bottom).data;
-
+      const data = workingRenderer.ctx.getImageData(0, 0, width, height).data;
       color = color & COLOR_MASK;
-      const length = (b.right - b.left) * (b.top - b.bottom) * 4;
+      const length = data.length;
       for (var i = 0; i < length; i += 4) {
         if (((data[i] << 16 | data[i + 1] << 8 | data[i + 2]) & COLOR_MASK) === color && data[i + 3]) {
           return true;
