@@ -2192,24 +2192,12 @@ var P;
                 super();
                 this.url = url;
                 this.shouldIgnoreErrors = false;
-                this.workComputable = false;
-                this.totalWork = 0;
-                this.completedWork = 0;
                 this.complete = false;
                 this.status = 0;
                 this.xhr = null;
             }
             isComplete() {
                 return this.complete;
-            }
-            isWorkComputable() {
-                return this.workComputable;
-            }
-            getTotalWork() {
-                return this.totalWork;
-            }
-            getCompletedWork() {
-                return this.completedWork;
             }
             abort() {
                 super.abort();
@@ -2223,12 +2211,6 @@ var P;
             }
             getStatus() {
                 return this.status;
-            }
-            updateProgress(event) {
-                this.workComputable = event.lengthComputable;
-                this.totalWork = event.total;
-                this.completedWork = event.loaded;
-                this.updateLoaderProgress();
             }
             _load() {
                 if (this.aborted) {
@@ -2248,13 +2230,10 @@ var P;
                             reject(new Error(`HTTP Error ${xhr.status} while downloading ${this.url}`));
                         }
                     };
-                    xhr.onloadstart = (e) => {
-                        this.updateProgress(e);
-                    };
                     xhr.onloadend = (e) => {
                         this.xhr = null;
                         this.complete = true;
-                        this.updateProgress(e);
+                        this.updateLoaderProgress();
                     };
                     xhr.onerror = (err) => {
                         reject(new Error(`Error while downloading ${this.url} (error) (r=${this.retries} s=${xhr.readyState}/${xhr.status}/${xhr.statusText})`));
@@ -2284,15 +2263,6 @@ var P;
             }
             isComplete() {
                 return this.complete;
-            }
-            isWorkComputable() {
-                return false;
-            }
-            getTotalWork() {
-                return 0;
-            }
-            getCompletedWork() {
-                return 0;
             }
             _load() {
                 return new Promise((resolve, reject) => {
@@ -2331,15 +2301,6 @@ var P;
             }
             isComplete() {
                 return this.complete;
-            }
-            isWorkComputable() {
-                return false;
-            }
-            getTotalWork() {
-                return 0;
-            }
-            getCompletedWork() {
-                return 0;
             }
             abort() {
                 this.aborted = true;

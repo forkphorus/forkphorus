@@ -149,23 +149,6 @@ namespace P.io {
      */
     isComplete(): boolean;
     /**
-     * Return the "work" of this task.
-     * This value could represent anything but usually represents something akin to bytes of a download.
-     */
-    isWorkComputable(): boolean;
-    /**
-     * Return the total amount of work to complete this task.
-     * Should return 0 if isLengthKnown() === false
-     * Should be same as getFinishedWork() when isComplete() === true.
-     */
-    getTotalWork(): number;
-    /**
-     * Amount of work already performed.
-     * Should return 0 if isLengthKnown() === false.
-     * Should be same as getTotalWork() when isComplete() === true.
-     */
-    getCompletedWork(): number;
-    /**
      * Cancel this task.
      */
     abort(): void;
@@ -189,9 +172,6 @@ namespace P.io {
     }
 
     abstract isComplete(): boolean;
-    abstract isWorkComputable(): boolean;
-    abstract getTotalWork(): number;
-    abstract getCompletedWork(): number;
     abstract abort(): void;
   }
 
@@ -237,9 +217,6 @@ namespace P.io {
 
     private responseType: XMLHttpRequestResponseType;
     private shouldIgnoreErrors: boolean = false;
-    private workComputable: boolean = false;
-    private totalWork: number = 0;
-    private completedWork: number = 0;
     private complete: boolean = false;
     private status: number = 0;
     private xhr: XMLHttpRequest | null = null;
@@ -250,18 +227,6 @@ namespace P.io {
 
     isComplete() {
       return this.complete;
-    }
-
-    isWorkComputable() {
-      return this.workComputable;
-    }
-
-    getTotalWork() {
-      return this.totalWork;
-    }
-
-    getCompletedWork() {
-      return this.completedWork;
     }
 
     abort() {
@@ -278,13 +243,6 @@ namespace P.io {
 
     getStatus(): number {
       return this.status;
-    }
-
-    private updateProgress(event: ProgressEvent) {
-      this.workComputable = event.lengthComputable;
-      this.totalWork = event.total;
-      this.completedWork = event.loaded;
-      this.updateLoaderProgress();
     }
 
     private _load(): Promise<any> {
@@ -306,14 +264,10 @@ namespace P.io {
           }
         };
 
-        xhr.onloadstart = (e) => {
-          this.updateProgress(e);
-        };
-
         xhr.onloadend = (e) => {
           this.xhr = null;
           this.complete = true;
-          this.updateProgress(e);
+          this.updateLoaderProgress();
         };
 
         xhr.onerror = (err) => {
@@ -354,18 +308,6 @@ namespace P.io {
       return this.complete;
     }
 
-    isWorkComputable(): boolean {
-      return false;
-    }
-
-    getTotalWork(): number {
-      return 0;
-    }
-
-    getCompletedWork(): number {
-      return 0;
-    }
-
     private _load(): Promise<HTMLImageElement> {
       return new Promise((resolve, reject) => {
         const image = new Image();
@@ -404,18 +346,6 @@ namespace P.io {
 
     isComplete(): boolean {
       return this.complete;
-    }
-
-    isWorkComputable(): boolean {
-      return false;
-    }
-
-    getTotalWork(): number {
-      return 0;
-    }
-
-    getCompletedWork(): number {
-      return 0;
     }
 
     abort(): void {
