@@ -2265,6 +2265,9 @@ var P;
                 return this.complete;
             }
             _load() {
+                if (this.aborted) {
+                    return Promise.reject(new Error(`Cannot download ${this.src} -- aborted.`));
+                }
                 return new Promise((resolve, reject) => {
                     const image = new Image();
                     image.onload = () => {
