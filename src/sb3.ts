@@ -1837,6 +1837,10 @@ namespace P.sb3.compiler {
       }
 
       const inputBlock = this.blocks[inputBlockId];
+      if (!inputBlock) {
+        return new CompiledInput(this.getInputFallback(type), type);
+      }
+
       const opcode = inputBlock.opcode;
       const compiler = this.getInputCompiler(opcode);
 

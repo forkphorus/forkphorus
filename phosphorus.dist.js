@@ -7419,6 +7419,9 @@ var P;
                         return new CompiledInput(this.getInputFallback(type), type);
                     }
                     const inputBlock = this.blocks[inputBlockId];
+                    if (!inputBlock) {
+                        return new CompiledInput(this.getInputFallback(type), type);
+                    }
                     const opcode = inputBlock.opcode;
                     const compiler = this.getInputCompiler(opcode);
                     if (!compiler) {
