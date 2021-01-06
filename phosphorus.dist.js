@@ -3537,24 +3537,24 @@ var P;
                     }
                     catch (e) {
                         let buffer = await P.io.readers.toArrayBuffer(blob);
-                        if (this.isScratch1Project(buffer)) {
-                            buffer = await this.convertScratch1Project(buffer);
-                        }
-                        else {
-                            const zip = await JSZip.loadAsync(buffer);
-                            const projectJSON = zip.file('project.json');
-                            if (!projectJSON) {
-                                throw new Error('zip is missing project.json');
+                        try {
+                            if (this.isScratch1Project(buffer)) {
+                                buffer = await this.convertScratch1Project(buffer);
                             }
-                            const projectDataText = await projectJSON.async('text');
-                            try {
+                            else {
+                                const zip = await JSZip.loadAsync(buffer);
+                                const projectJSON = zip.file('project.json');
+                                if (!projectJSON) {
+                                    throw new Error('zip is missing project.json');
+                                }
+                                const projectDataText = await projectJSON.async('text');
                                 const projectData = JSON.parse(projectDataText);
                                 if (this.determineProjectType(projectData) === 'sb3') {
                                     return new P.sb3.SB3FileLoader(buffer);
                                 }
                             }
-                            catch (e) {
-                            }
+                        }
+                        catch (e) {
                         }
                         return new P.sb2.SB2FileLoader(buffer);
                     }
@@ -3595,9 +3595,9 @@ var P;
                     const extension = file.name.split('.').pop() || '';
                     const buffer = await P.io.readers.toArrayBuffer(file);
                     switch (extension) {
-                        case 'sb': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb');
-                        case 'sb2': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb2');
-                        case 'sb3': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb3');
+                        case 'sb': return await this.loadProjectFromBufferWithType(loaderId, buffer, 'sb');
+                        case 'sb2': return await this.loadProjectFromBufferWithType(loaderId, buffer, 'sb2');
+                        case 'sb3': return await this.loadProjectFromBufferWithType(loaderId, buffer, 'sb3');
                         default: throw new Error('Unrecognized file extension: ' + extension);
                     }
                 }

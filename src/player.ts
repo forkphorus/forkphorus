@@ -1049,25 +1049,25 @@ namespace P.player {
           // if the project cannot be loaded as JSON, it may be a binary project.
           let buffer = await P.io.readers.toArrayBuffer(blob);
 
-          // Scratch 1 is converted to Scratch 2.
-          if (this.isScratch1Project(buffer)) {
-            buffer = await this.convertScratch1Project(buffer);
-          } else {
-            // Examine project.json to determine project type.
-            const zip = await JSZip.loadAsync(buffer);
-            const projectJSON = zip.file('project.json');
-            if (!projectJSON) {
-              throw new Error('zip is missing project.json');
-            }
-            const projectDataText = await projectJSON.async('text');
-            try {
+          try {
+            // Scratch 1 is converted to Scratch 2.
+            if (this.isScratch1Project(buffer)) {
+              buffer = await this.convertScratch1Project(buffer);
+            } else {
+              // Examine project.json to determine project type.
+              const zip = await JSZip.loadAsync(buffer);
+              const projectJSON = zip.file('project.json');
+              if (!projectJSON) {
+                throw new Error('zip is missing project.json');
+              }
+              const projectDataText = await projectJSON.async('text');
               const projectData = JSON.parse(projectDataText);
               if (this.determineProjectType(projectData) === 'sb3') {
                 return new P.sb3.SB3FileLoader(buffer);
               }
-            } catch (e) {
-              // ignore
             }
+          } catch (e) {
+            // ignore
           }
 
           return new P.sb2.SB2FileLoader(buffer);
@@ -1112,9 +1112,9 @@ namespace P.player {
         const buffer = await P.io.readers.toArrayBuffer(file);
 
         switch (extension) {
-          case 'sb': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb');
-          case 'sb2': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb2');
-          case 'sb3': return this.loadProjectFromBufferWithType(loaderId, buffer, 'sb3');
+          case 'sb': return await this.loadProjectFromBufferWithType(loaderId, buffer, 'sb');
+          case 'sb2': return await this.loadProjectFromBufferWithType(loaderId, buffer, 'sb2');
+          case 'sb3': return await this.loadProjectFromBufferWithType(loaderId, buffer, 'sb3');
           default: throw new Error('Unrecognized file extension: ' + extension);
         }
       } catch (e) {
