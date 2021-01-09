@@ -3364,44 +3364,6 @@ namespace P.sb3.compiler {
       util.target.addWhenKeyPressedHandler(key, util.startingFunction);
     },
   };
-  // TODO: fix this
-  /*hatLibrary['makeymakey_whenCodePressed'] = {
-    handle(util) {
-      const SEQUENCE = util.getInput('SEQUENCE', 'string');
-      try {
-        var sequence = '' + util.evaluateInputOnce(SEQUENCE);
-      } catch (e) {
-        util.compiler.warn('makeymakey key generation error', e);
-        return;
-      }
-      const keys = sequence
-        .toLowerCase()
-        .split(' ')
-        .map((key: string) => makeymakeyParseKey(key));
-      // prevent the use of "any"
-      if (keys.some((i) => typeof i !== 'number')) {
-        util.compiler.warn('makeymakey whenCodePressed found unexpected string in sequence');
-        return;
-      }
-      const targetFunction = util.startingFunction;
-      let sequenceIndex = 0;
-      for (let key = 128; key--;) {
-        // `key` is captured in this function's body
-        util.target.listeners.whenKeyPressed[key].push(function() {
-          const expectedKey = keys[sequenceIndex];
-          if (key !== expectedKey) {
-            sequenceIndex = 0;
-          } else {
-            sequenceIndex++;
-            if (sequenceIndex === keys.length) {
-              sequenceIndex = 0;
-              targetFunction();
-            }
-          }
-        });
-      }
-    },
-  };*/
   hatLibrary['procedures_definition'] = {
     handle(util) {
       // TODO: HatUtil helpers for this
