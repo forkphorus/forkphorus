@@ -357,7 +357,7 @@ namespace P.runtime {
   /**
    * Converts the name of a key to its code
    */
-  export function getKeyCode(keyName: any): number | 'any' {
+  export function getKeyCode(keyName: any): string {
     keyName = keyName + '';
     switch (keyName.toLowerCase()) {
       case 'space': return P.core.SpecialKeys.Space;
@@ -367,10 +367,10 @@ namespace P.runtime {
       case 'down arrow': return P.core.SpecialKeys.Down;
       case 'any': return 'any';
     }
-    return keyName.toUpperCase().charCodeAt(0);
+    return '' + keyName.toUpperCase().charCodeAt(0);
   }
 
-  var getKeyCode3 = function(keyName: string): number | 'any' {
+  var getKeyCode3 = function(keyName: any): string {
     switch (keyName.toLowerCase()) {
       case 'space': return P.core.SpecialKeys.Space;
       case 'left arrow': return P.core.SpecialKeys.Left;
@@ -381,7 +381,7 @@ namespace P.runtime {
       case 'enter': return P.core.SpecialKeys.Enter;
       case 'any': return 'any';
     }
-    return keyName.toUpperCase().charCodeAt(0);
+    return '' + keyName.toUpperCase().charCodeAt(0);
   };
 
   // Load audio methods if audio is supported
@@ -613,7 +613,13 @@ namespace P.runtime {
         case 'whenGreenFlag': threads = sprite.listeners.whenGreenFlag; break;
         case 'whenKeyPressed':
           replaceExisting = false;
-          threads = sprite.listeners.whenKeyPressed[arg];
+          threads = sprite.listeners.whenKeyPressed[arg] || [];
+          if (arg !== 'any') {
+            const anyThreads = sprite.listeners.whenKeyPressed.any;
+            if (anyThreads) {
+              threads = threads.concat(anyThreads);
+            }
+          }
           break;
         case 'whenSceneStarts': threads = sprite.listeners.whenSceneStarts[('' + arg).toLowerCase()]; break;
         case 'whenIReceive':

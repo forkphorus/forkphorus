@@ -26,7 +26,7 @@ namespace P.core {
     whenCloned: P.runtime.Fn[];
     whenGreenFlag: P.runtime.Fn[];
     whenIReceive: ObjectMap<P.runtime.Fn[]>;
-    whenKeyPressed: P.runtime.Fn[][];
+    whenKeyPressed: ObjectMap<P.runtime.Fn[]>;
     whenSceneStarts: ObjectMap<P.runtime.Fn[]>;
     edgeActivated: P.runtime.Fn[];
   }
@@ -236,12 +236,12 @@ namespace P.core {
   }
 
   export const enum SpecialKeys {
-    Enter = 13,
-    Space = 32,
-    Left = 37,
-    Up = 38,
-    Right = 39,
-    Down = 40,
+    Enter = 'enter',
+    Space = '32',
+    Left = 'left arrow',
+    Up = 'up arrow',
+    Right = 'right arrow',
+    Down = 'down arrow',
   }
 
   export abstract class Base {
@@ -353,7 +353,7 @@ namespace P.core {
       whenCloned: [],
       whenGreenFlag: [],
       whenIReceive: {},
-      whenKeyPressed: [],
+      whenKeyPressed: {},
       whenSceneStarts: {},
       edgeActivated: [],
     };
@@ -375,12 +375,6 @@ namespace P.core {
     public penSize: number = 1;
     public penColor: PenColor = new PenColor();
     public isPenDown: boolean = false;
-
-    constructor() {
-      for (var i = 0; i < 128; i++) {
-        this.listeners.whenKeyPressed.push([]);
-      }
-    }
 
     // Data/Loading methods
 
@@ -768,6 +762,14 @@ namespace P.core {
     stamp() {
       this.stage.renderer.penStamp(this);
     }
+
+    addWhenKeyPressedHandler(key: string, fn: P.runtime.Fn) {
+      if (this.listeners.whenKeyPressed[key]) {
+        this.listeners.whenKeyPressed[key].push(fn);
+      } else {
+        this.listeners.whenKeyPressed[key] = [fn];
+      }
+    }
   }
 
   type KeyList = Array<boolean | undefined> & { any: number; };
@@ -958,7 +960,7 @@ namespace P.core {
       }
     }
 
-    private keyEventToCode(e: KeyboardEvent): number {
+    private keyEventToCode(e: KeyboardEvent): string | null {
       const key = e.key || '';
       switch (key) {
         case 'Enter': return SpecialKeys.Enter;
@@ -970,14 +972,14 @@ namespace P.core {
       if (key.length !== 1) {
         // Additional keys that we don't care about such as volume keys (AudioVolumeUp/Down) and modifier keys (Shift)
         // TODO: see if we can support Shift because Scratch 2 did
-        return -1;
+        return null;
       }
-      return key.toUpperCase().charCodeAt(0);
+      return '' + key.toUpperCase().charCodeAt(0);
     }
 
     private _onkeyup(e: KeyboardEvent) {
       const c = this.keyEventToCode(e);
-      if (c === -1) return;
+      if (c === null) return;
       if (this.keys[c]) this.keys.any--;
       this.keys[c] = false;
       e.stopPropagation();
@@ -988,10 +990,10 @@ namespace P.core {
 
     private _onkeydown(e: KeyboardEvent) {
       const c = this.keyEventToCode(e);
-      if (c === -1) return;
+      if (c === null) return;
       if (!this.keys[c]) this.keys.any++;
       this.keys[c] = true;
-      if (e.ctrlKey || e.altKey || e.metaKey || c === 27) return;
+      if (e.ctrlKey || e.altKey || e.metaKey || c === '27') return;
       e.stopPropagation();
       if (e.target === this.canvas) {
         e.preventDefault();

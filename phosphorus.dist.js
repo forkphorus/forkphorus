@@ -624,7 +624,7 @@ var P;
                     whenCloned: [],
                     whenGreenFlag: [],
                     whenIReceive: {},
-                    whenKeyPressed: [],
+                    whenKeyPressed: {},
                     whenSceneStarts: {},
                     edgeActivated: [],
                 };
@@ -644,9 +644,6 @@ var P;
                 this.penSize = 1;
                 this.penColor = new PenColor();
                 this.isPenDown = false;
-                for (var i = 0; i < 128; i++) {
-                    this.listeners.whenKeyPressed.push([]);
-                }
             }
             addSound(sound) {
                 this.soundRefs[sound.name] = sound;
@@ -972,6 +969,14 @@ var P;
             stamp() {
                 this.stage.renderer.penStamp(this);
             }
+            addWhenKeyPressedHandler(key, fn) {
+                if (this.listeners.whenKeyPressed[key]) {
+                    this.listeners.whenKeyPressed[key].push(fn);
+                }
+                else {
+                    this.listeners.whenKeyPressed[key] = [fn];
+                }
+            }
         }
         core.Base = Base;
         class Stage extends Base {
@@ -1100,33 +1105,33 @@ var P;
             }
             _onwheel(e) {
                 if (e.deltaY > 0) {
-                    this.runtime.trigger('whenKeyPressed', 40);
+                    this.runtime.trigger('whenKeyPressed', "down arrow");
                 }
                 else if (e.deltaY < 0) {
-                    this.runtime.trigger('whenKeyPressed', 38);
+                    this.runtime.trigger('whenKeyPressed', "up arrow");
                 }
             }
             keyEventToCode(e) {
                 const key = e.key || '';
                 switch (key) {
-                    case 'Enter': return 13;
+                    case 'Enter': return "enter";
                     case 'ArrowLeft':
-                    case 'Left': return 37;
+                    case 'Left': return "left arrow";
                     case 'ArrowUp':
-                    case 'Up': return 38;
+                    case 'Up': return "up arrow";
                     case 'ArrowRight':
-                    case 'Right': return 39;
+                    case 'Right': return "right arrow";
                     case 'ArrowDown':
-                    case 'Down': return 40;
+                    case 'Down': return "down arrow";
                 }
                 if (key.length !== 1) {
-                    return -1;
+                    return null;
                 }
-                return key.toUpperCase().charCodeAt(0);
+                return '' + key.toUpperCase().charCodeAt(0);
             }
             _onkeyup(e) {
                 const c = this.keyEventToCode(e);
-                if (c === -1)
+                if (c === null)
                     return;
                 if (this.keys[c])
                     this.keys.any--;
@@ -1138,12 +1143,12 @@ var P;
             }
             _onkeydown(e) {
                 const c = this.keyEventToCode(e);
-                if (c === -1)
+                if (c === null)
                     return;
                 if (!this.keys[c])
                     this.keys.any++;
                 this.keys[c] = true;
-                if (e.ctrlKey || e.altKey || e.metaKey || c === 27)
+                if (e.ctrlKey || e.altKey || e.metaKey || c === '27')
                     return;
                 e.stopPropagation();
                 if (e.target === this.canvas) {
@@ -4133,27 +4138,27 @@ var P;
         function getKeyCode(keyName) {
             keyName = keyName + '';
             switch (keyName.toLowerCase()) {
-                case 'space': return 32;
-                case 'left arrow': return 37;
-                case 'up arrow': return 38;
-                case 'right arrow': return 39;
-                case 'down arrow': return 40;
+                case 'space': return "32";
+                case 'left arrow': return "left arrow";
+                case 'up arrow': return "up arrow";
+                case 'right arrow': return "right arrow";
+                case 'down arrow': return "down arrow";
                 case 'any': return 'any';
             }
-            return keyName.toUpperCase().charCodeAt(0);
+            return '' + keyName.toUpperCase().charCodeAt(0);
         }
         runtime_1.getKeyCode = getKeyCode;
         var getKeyCode3 = function (keyName) {
             switch (keyName.toLowerCase()) {
-                case 'space': return 32;
-                case 'left arrow': return 37;
-                case 'up arrow': return 38;
-                case 'right arrow': return 39;
-                case 'down arrow': return 40;
-                case 'enter': return 13;
+                case 'space': return "32";
+                case 'left arrow': return "left arrow";
+                case 'up arrow': return "up arrow";
+                case 'right arrow': return "right arrow";
+                case 'down arrow': return "down arrow";
+                case 'enter': return "enter";
                 case 'any': return 'any';
             }
-            return keyName.toUpperCase().charCodeAt(0);
+            return '' + keyName.toUpperCase().charCodeAt(0);
         };
         const audioContext = P.audio.context;
         if (audioContext) {
@@ -4347,7 +4352,13 @@ var P;
                         break;
                     case 'whenKeyPressed':
                         replaceExisting = false;
-                        threads = sprite.listeners.whenKeyPressed[arg];
+                        threads = sprite.listeners.whenKeyPressed[arg] || [];
+                        if (arg !== 'any') {
+                            const anyThreads = sprite.listeners.whenKeyPressed.any;
+                            if (anyThreads) {
+                                threads = threads.concat(anyThreads);
+                            }
+                        }
                         break;
                     case 'whenSceneStarts':
                         threads = sprite.listeners.whenSceneStarts[('' + arg).toLowerCase()];
@@ -6206,14 +6217,8 @@ var P;
                     (object.listeners.whenIReceive[key] || (object.listeners.whenIReceive[key] = [])).push(f);
                 }
                 else if (script[0][0] === 'whenKeyPressed') {
-                    if (script[0][1] === 'any') {
-                        for (var i = 128; i--;) {
-                            object.listeners.whenKeyPressed[i].push(f);
-                        }
-                    }
-                    else {
-                        object.listeners.whenKeyPressed[P.runtime.getKeyCode(script[0][1])].push(f);
-                    }
+                    const key = P.runtime.getKeyCode(script[0][1]);
+                    object.addWhenKeyPressedHandler(key, f);
                 }
                 else if (script[0][0] === 'whenSceneStarts') {
                     var key = script[0][1].toLowerCase();
@@ -8784,18 +8789,8 @@ var P;
     hatLibrary['event_whenkeypressed'] = {
         handle(util) {
             const KEY_OPTION = util.getField('KEY_OPTION');
-            if (KEY_OPTION === 'any') {
-                for (var i = 128; i--;) {
-                    util.target.listeners.whenKeyPressed[i].push(util.startingFunction);
-                }
-            }
-            else {
-                const keyCode = P.runtime.getKeyCode(KEY_OPTION);
-                if (!util.target.listeners.whenKeyPressed[keyCode]) {
-                    util.target.listeners.whenKeyPressed[keyCode] = [];
-                }
-                util.target.listeners.whenKeyPressed[keyCode].push(util.startingFunction);
-            }
+            const key = P.runtime.getKeyCode(KEY_OPTION);
+            util.target.addWhenKeyPressedHandler(key, util.startingFunction);
         },
     };
     hatLibrary['event_whenstageclicked'] = {
@@ -8828,54 +8823,8 @@ var P;
                 util.compiler.warn('makeymakey key generation error', e);
                 return;
             }
-            if (keyCode === 'any') {
-                for (var i = 128; i--;) {
-                    util.target.listeners.whenKeyPressed[i].push(util.startingFunction);
-                }
-            }
-            else {
-                if (!util.target.listeners.whenKeyPressed[keyCode]) {
-                    util.target.listeners.whenKeyPressed[keyCode] = [];
-                }
-                util.target.listeners.whenKeyPressed[keyCode].push(util.startingFunction);
-            }
-        },
-    };
-    hatLibrary['makeymakey_whenCodePressed'] = {
-        handle(util) {
-            const SEQUENCE = util.getInput('SEQUENCE', 'string');
-            try {
-                var sequence = '' + util.evaluateInputOnce(SEQUENCE);
-            }
-            catch (e) {
-                util.compiler.warn('makeymakey key generation error', e);
-                return;
-            }
-            const keys = sequence
-                .toLowerCase()
-                .split(' ')
-                .map((key) => makeymakeyParseKey(key));
-            if (keys.some((i) => typeof i !== 'number')) {
-                util.compiler.warn('makeymakey whenCodePressed found unexpected string in sequence');
-                return;
-            }
-            const targetFunction = util.startingFunction;
-            let sequenceIndex = 0;
-            for (let key = 128; key--;) {
-                util.target.listeners.whenKeyPressed[key].push(function () {
-                    const expectedKey = keys[sequenceIndex];
-                    if (key !== expectedKey) {
-                        sequenceIndex = 0;
-                    }
-                    else {
-                        sequenceIndex++;
-                        if (sequenceIndex === keys.length) {
-                            sequenceIndex = 0;
-                            targetFunction();
-                        }
-                    }
-                });
-            }
+            const key = P.runtime.getKeyCode(keyCode);
+            util.target.addWhenKeyPressedHandler(key, util.startingFunction);
         },
     };
     hatLibrary['procedures_definition'] = {

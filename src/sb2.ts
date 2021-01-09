@@ -1902,13 +1902,8 @@ namespace P.sb2.compiler {
       var key = script[0][1].toLowerCase();
       (object.listeners.whenIReceive[key] || (object.listeners.whenIReceive[key] = [])).push(f);
     } else if (script[0][0] === 'whenKeyPressed') {
-      if (script[0][1] === 'any') {
-        for (var i = 128; i--;) {
-          object.listeners.whenKeyPressed[i].push(f);
-        }
-      } else {
-        object.listeners.whenKeyPressed[P.runtime.getKeyCode(script[0][1])].push(f);
-      }
+      const key = P.runtime.getKeyCode(script[0][1]);
+      object.addWhenKeyPressedHandler(key, f);
     } else if (script[0][0] === 'whenSceneStarts') {
       var key = script[0][1].toLowerCase();
       (object.listeners.whenSceneStarts[key] || (object.listeners.whenSceneStarts[key] = [])).push(f);

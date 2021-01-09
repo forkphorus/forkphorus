@@ -3328,17 +3328,8 @@ namespace P.sb3.compiler {
   hatLibrary['event_whenkeypressed'] = {
     handle(util) {
       const KEY_OPTION = util.getField('KEY_OPTION');
-      if (KEY_OPTION === 'any') {
-        for (var i = 128; i--;) {
-          util.target.listeners.whenKeyPressed[i].push(util.startingFunction);
-        }
-      } else {
-        const keyCode = P.runtime.getKeyCode(KEY_OPTION);
-        if (!util.target.listeners.whenKeyPressed[keyCode]) {
-          util.target.listeners.whenKeyPressed[keyCode] = [];
-        }
-        util.target.listeners.whenKeyPressed[keyCode].push(util.startingFunction);
-      }
+      const key = P.runtime.getKeyCode(KEY_OPTION);
+      util.target.addWhenKeyPressedHandler(key, util.startingFunction);
     },
   };
   hatLibrary['event_whenstageclicked'] = {
@@ -3351,10 +3342,10 @@ namespace P.sb3.compiler {
       util.target.listeners.whenClicked.push(util.startingFunction);
     },
   };
-  function makeymakeyParseKey(key: string): number | 'any' {
+  function makeymakeyParseKey(key: string): string {
     key = key.toLowerCase();
     if (key === 'up' || key === 'down' || key === 'left' || key === 'right') {
-      return P.runtime.getKeyCode(key + ' arrow') as number;
+      return P.runtime.getKeyCode(key + ' arrow');
     }
     return P.runtime.getKeyCode(key);
   }
@@ -3369,19 +3360,12 @@ namespace P.sb3.compiler {
         util.compiler.warn('makeymakey key generation error', e);
         return;
       }
-      if (keyCode === 'any') {
-        for (var i = 128; i--;) {
-          util.target.listeners.whenKeyPressed[i].push(util.startingFunction);
-        }
-      } else {
-        if (!util.target.listeners.whenKeyPressed[keyCode]) {
-          util.target.listeners.whenKeyPressed[keyCode] = [];
-        }
-        util.target.listeners.whenKeyPressed[keyCode].push(util.startingFunction);
-      }
+      const key = P.runtime.getKeyCode(keyCode);
+      util.target.addWhenKeyPressedHandler(key, util.startingFunction);
     },
   };
-  hatLibrary['makeymakey_whenCodePressed'] = {
+  // TODO: fix this
+  /*hatLibrary['makeymakey_whenCodePressed'] = {
     handle(util) {
       const SEQUENCE = util.getInput('SEQUENCE', 'string');
       try {
@@ -3417,7 +3401,7 @@ namespace P.sb3.compiler {
         });
       }
     },
-  };
+  };*/
   hatLibrary['procedures_definition'] = {
     handle(util) {
       // TODO: HatUtil helpers for this
