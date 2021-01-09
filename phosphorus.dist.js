@@ -3537,11 +3537,11 @@ var P;
                     }
                     catch (e) {
                         let buffer = await P.io.readers.toArrayBuffer(blob);
-                        try {
-                            if (this.isScratch1Project(buffer)) {
-                                buffer = await this.convertScratch1Project(buffer);
-                            }
-                            else {
+                        if (this.isScratch1Project(buffer)) {
+                            buffer = await this.convertScratch1Project(buffer);
+                        }
+                        else {
+                            try {
                                 const zip = await JSZip.loadAsync(buffer);
                                 const projectJSON = zip.file('project.json');
                                 if (!projectJSON) {
@@ -3553,8 +3553,8 @@ var P;
                                     return new P.sb3.SB3FileLoader(buffer);
                                 }
                             }
-                        }
-                        catch (e) {
+                            catch (e) {
+                            }
                         }
                         return new P.sb2.SB2FileLoader(buffer);
                     }

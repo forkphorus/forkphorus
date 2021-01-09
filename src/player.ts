@@ -1049,11 +1049,11 @@ namespace P.player {
           // if the project cannot be loaded as JSON, it may be a binary project.
           let buffer = await P.io.readers.toArrayBuffer(blob);
 
-          try {
-            // Scratch 1 is converted to Scratch 2.
-            if (this.isScratch1Project(buffer)) {
-              buffer = await this.convertScratch1Project(buffer);
-            } else {
+          // Scratch 1 is converted to Scratch 2.
+          if (this.isScratch1Project(buffer)) {
+            buffer = await this.convertScratch1Project(buffer);
+          } else {
+              try {
               // Examine project.json to determine project type.
               const zip = await JSZip.loadAsync(buffer);
               const projectJSON = zip.file('project.json');
@@ -1065,9 +1065,9 @@ namespace P.player {
               if (this.determineProjectType(projectData) === 'sb3') {
                 return new P.sb3.SB3FileLoader(buffer);
               }
+            } catch (e) {
+              // ignore
             }
-          } catch (e) {
-            // ignore
           }
 
           return new P.sb2.SB2FileLoader(buffer);
