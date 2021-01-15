@@ -624,7 +624,9 @@
     var settingSpriteFencing = querySelector('#settings-sprite-fencing');
 
     function syncOptionValues() {
-      settingFps.value = player.options.fps;
+      if (+settingFps.value !== player.options.fps) {
+        settingFps.value = player.options.fps;
+      }
       settingUsername.value = player.options.username;
       settingImageSmoothing.checked = player.options.imageSmoothing;
       settingSpriteFencing.checked = player.options.spriteFencing;
