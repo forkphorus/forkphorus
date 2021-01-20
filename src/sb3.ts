@@ -2722,7 +2722,8 @@ namespace P.sb3.compiler {
   };
   statementLibrary['pen_setPenSizeTo'] = function(util) {
     const SIZE = util.getInput('SIZE', 'number');
-    util.writeLn(`S.penSize = Math.max(1, ${SIZE});`);
+    // clamping per https://github.com/LLK/scratch-vm/blob/015a095dfd30b229511f174cea96dbdb612af8eb/src/extensions/scratch3_pen/index.js#L101
+    util.writeLn(`S.penSize = Math.max(1, Math.min(${SIZE}, 1200));`);
   };
   statementLibrary['pen_stamp'] = function(util) {
     util.writeLn('S.stamp();');

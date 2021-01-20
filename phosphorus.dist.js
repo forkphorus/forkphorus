@@ -8214,7 +8214,7 @@ var P;
     };
     statementLibrary['pen_setPenSizeTo'] = function (util) {
         const SIZE = util.getInput('SIZE', 'number');
-        util.writeLn(`S.penSize = Math.max(1, ${SIZE});`);
+        util.writeLn(`S.penSize = Math.max(1, Math.min(${SIZE}, 1200));`);
     };
     statementLibrary['pen_stamp'] = function (util) {
         util.writeLn('S.stamp();');
