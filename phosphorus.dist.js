@@ -7856,10 +7856,10 @@ var P;
         util.writeLn('if (i !== -1) {');
         util.writeLn('  self.children.splice(i, 1);');
         if (FORWARD_BACKWARD === 'forward') {
-            util.writeLn(`  self.children.splice(Math.min(self.children.length - 1, i + ${NUM}), 0, S);`);
+            util.writeLn(`  self.children.splice(Math.max(0, Math.min(self.children.length - 1, i + ${NUM})), 0, S);`);
         }
         else {
-            util.writeLn(`  self.children.splice(Math.max(0, i - ${NUM}), 0, S);`);
+            util.writeLn(`  self.children.splice(Math.max(0, Math.min(self.children.length - 1, i - ${NUM})), 0, S);`);
         }
         util.writeLn('}');
     };
