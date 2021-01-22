@@ -509,14 +509,14 @@ namespace P.sb2 {
       const parser = new DOMParser();
       var doc = parser.parseFromString(source, 'image/svg+xml');
       var svg = doc.documentElement as any;
-      DOMPurify.sanitize(svg, {
-        IN_PLACE: true,
-        USE_PROFILES: { svg: true }
-      });
       if (!svg.style) {
         doc = parser.parseFromString('<body>' + source, 'text/html');
         svg = doc.querySelector('svg');
       }
+      DOMPurify.sanitize(svg, {
+        IN_PLACE: true,
+        USE_PROFILES: { svg: true }
+      });
       svg.style.visibility = 'hidden';
       svg.style.position = 'absolute';
       svg.style.left = '-10000px';
