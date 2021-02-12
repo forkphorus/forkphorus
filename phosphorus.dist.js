@@ -4183,6 +4183,13 @@ var P;
             var applySoundEffects = function (node) {
                 node.playbackRate.value = Math.pow(2, (S.soundFilters.pitch / 10 / 12));
             };
+            var updateSoundEffectsOnAllSounds = function () {
+                for (const sound of S.activeSounds) {
+                    if (sound.node) {
+                        applySoundEffects(sound.node);
+                    }
+                }
+            };
             var playSound = function (sound) {
                 const node = sound.createSourceNode();
                 applySoundEffects(node);
@@ -8246,6 +8253,7 @@ var P;
         const EFFECT = util.sanitizedString(util.getField('EFFECT'));
         const VALUE = util.getInput('VALUE', 'number');
         util.writeLn(`S.changeSoundFilter(${EFFECT}, ${VALUE});`);
+        util.writeLn('if (updateSoundEffectsOnAllSounds) updateSoundEffectsOnAllSounds();\n');
         util.waitOneTick();
     };
     statementLibrary['sound_changevolumeby'] = function (util) {
@@ -8289,6 +8297,7 @@ var P;
         const EFFECT = util.sanitizedString(util.getField('EFFECT'));
         const VALUE = util.getInput('VALUE', 'number');
         util.writeLn(`S.setSoundFilter(${EFFECT}, ${VALUE});`);
+        util.writeLn('if (updateSoundEffectsOnAllSounds) updateSoundEffectsOnAllSounds();\n');
         util.waitOneTick();
     };
     statementLibrary['sound_setvolumeto'] = function (util) {

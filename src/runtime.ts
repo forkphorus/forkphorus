@@ -410,6 +410,14 @@ namespace P.runtime {
       node.playbackRate.value = Math.pow(2, (S.soundFilters.pitch / 10 / 12));
     };
 
+    var updateSoundEffectsOnAllSounds = function() {
+      for (const sound of S.activeSounds) {
+        if (sound.node) {
+          applySoundEffects(sound.node as AudioBufferSourceNode);
+        }
+      }
+    };
+
     var playSound = function(sound: P.core.Sound): P.core.ActiveSound {
       const node = sound.createSourceNode();
       applySoundEffects(node);

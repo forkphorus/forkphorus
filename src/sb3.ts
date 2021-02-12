@@ -2759,6 +2759,7 @@ namespace P.sb3.compiler {
     const EFFECT = util.sanitizedString(util.getField('EFFECT'));
     const VALUE = util.getInput('VALUE', 'number');
     util.writeLn(`S.changeSoundFilter(${EFFECT}, ${VALUE});`);
+    util.writeLn('if (updateSoundEffectsOnAllSounds) updateSoundEffectsOnAllSounds();\n');
     util.waitOneTick();
   };
   statementLibrary['sound_changevolumeby'] = function(util) {
@@ -2802,6 +2803,7 @@ namespace P.sb3.compiler {
     const EFFECT = util.sanitizedString(util.getField('EFFECT'));
     const VALUE = util.getInput('VALUE', 'number');
     util.writeLn(`S.setSoundFilter(${EFFECT}, ${VALUE});`);
+    util.writeLn('if (updateSoundEffectsOnAllSounds) updateSoundEffectsOnAllSounds();\n');
     util.waitOneTick();
   };
   statementLibrary['sound_setvolumeto'] = function(util) {
