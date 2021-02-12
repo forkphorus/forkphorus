@@ -2788,7 +2788,7 @@ namespace P.sb3.compiler {
       util.writeLn('  S.activeSounds.add(R.sound);')
       util.writeLn('  var first = true;');
       const label = util.addLabel();
-      util.writeLn('  if (!R.sound.node.ended) {');
+      util.writeLn('  if (!first && !R.sound.node.ended) {');
       util.writeLn('    var first;');
       util.forceQueue(label);
       util.writeLn('  }');
