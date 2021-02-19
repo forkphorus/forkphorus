@@ -556,6 +556,7 @@
         { value: 'phonegap', label: 'PhoneGap' },
         { value: 'nwjs-win', label: 'NW.js (Windows/Linux)' },
         { value: 'nwjs-mac', label: 'NW.js (Mac)' },
+        { value: 'zip', label: 'Zip (Project in separate file)' },
       ])
       .description('Enable special behavior for certain environments. You <b>must</b> read <a href="guide.html" target="_blank">the guide</a> before changing this value. This setting does not do anything on its own, additional configuration and steps are required.')
       .add(environment);
@@ -568,7 +569,7 @@
       .add(environment);
 
     environment.environment.onchange = (value) => {
-      environment.icon.setVisible(value !== 'none' && value !== 'nwjs-mac');
+      environment.icon.setVisible(value !== 'none' && value !== 'nwjs-mac' && value !== 'zip');
       phonegap.setVisible(value === 'phonegap');
       nwjs.setVisible(value === 'nwjs-win' || value === 'nwjs-mac');
     };
@@ -731,6 +732,8 @@
 
     document.querySelector('#package-html').onclick = async function() {
       try {
+        const environmentType = environment.environment.value;
+
         resetProgress();
         setInputsUsable(false);
 
@@ -770,16 +773,21 @@
           throw new Error('projectSource is an unknown value: ' + projectSource.value);
         }
 
+        let originalProjectData;
+        if (environmentType === 'zip') {
+          originalProjectData = packager.projectData;
+          packager.projectData = 'project.zip';
+        }
+
         // Package to HTML
         let filename = 'project';
         let filetype = 'html';
         let result = await packager.run();
 
         // Environments
-        const environmentType = environment.environment.value;
         if (environment.environment.value !== 'none') {
           let icon = environment.icon.value;
-          if (!icon) {
+          if (!icon && !(environment.environment.value === 'nwjs-mac' || environment.environment.value === 'zip')) {
             // Apply & load default icon
             if (!environment.defaultIconAsset.blob) {
               bindProgress('Loading default icon', environment.loader.progress);
@@ -807,6 +815,12 @@
             zipper.addFile('project.html', result);
             zipper.addFile('icon.png', icon);
             zipper.addFile('package.json', nwjs.json.value);
+          } else if (environmentType === 'zip') {
+            const res = await fetch(originalProjectData);
+            const blob = await res.blob();
+            filetype = 'zip';
+            zipper.addFile('project.zip', blob);
+            zipper.addFile('index.html', result);
           } else {
             throw new Error('Unknown environment: ' + environmentType);
           }
