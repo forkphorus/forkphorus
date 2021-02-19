@@ -1943,10 +1943,6 @@ namespace P.core {
       }
       this.source = P.audio.context!.createBufferSource();
       this.source.buffer = this.buffer;
-      this.source.addEventListener('ended', () => {
-        // @ts-expect-error
-        this.source.ended = true;
-      });
       this.source.start();
       return this.source;
     }
