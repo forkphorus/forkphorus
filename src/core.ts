@@ -1941,11 +1941,12 @@ namespace P.core {
       if (this.source) {
         this.source.disconnect();
       }
-      this.source = P.audio.context!.createBufferSource();
+      const source = P.audio.context!.createBufferSource();
+      this.source = source;
       this.source.buffer = this.buffer;
       this.source.addEventListener('ended', () => {
         // @ts-expect-error
-        this.source.ended = true;
+        source.ended = true;
       });
       this.source.start();
       return this.source;
