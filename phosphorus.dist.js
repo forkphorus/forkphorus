@@ -766,10 +766,12 @@ var P;
                 switch (name.toLowerCase()) {
                     case 'pitch':
                         this.soundFilters.pitch = value;
-                        if (this.soundFilters.pitch > 360)
-                            this.soundFilters.pitch = 360;
-                        if (this.soundFilters.pitch < -360)
-                            this.soundFilters.pitch = -360;
+                        if (!this.stage.removeLimits) {
+                            if (this.soundFilters.pitch > 360)
+                                this.soundFilters.pitch = 360;
+                            if (this.soundFilters.pitch < -360)
+                                this.soundFilters.pitch = -360;
+                        }
                         break;
                 }
             }
@@ -777,10 +779,12 @@ var P;
                 switch (name.toLowerCase()) {
                     case 'pitch':
                         this.soundFilters.pitch += value;
-                        if (this.soundFilters.pitch > 360)
-                            this.soundFilters.pitch = 360;
-                        if (this.soundFilters.pitch < -360)
-                            this.soundFilters.pitch = -360;
+                        if (!this.stage.removeLimits) {
+                            if (this.soundFilters.pitch > 360)
+                                this.soundFilters.pitch = 360;
+                            if (this.soundFilters.pitch < -360)
+                                this.soundFilters.pitch = -360;
+                        }
                         break;
                 }
             }
@@ -1005,6 +1009,7 @@ var P;
                 this.tts = null;
                 this.extensions = [];
                 this.useSpriteFencing = false;
+                this.removeLimits = false;
                 this.runtime = new P.runtime.Runtime(this);
                 this.keys = [];
                 this.keys.any = 0;
@@ -3149,6 +3154,7 @@ var P;
                 this.stage.username = this.options.username;
                 this.stage.runtime.isTurbo = this.options.turbo;
                 this.stage.useSpriteFencing = this.options.spriteFencing;
+                this.stage.removeLimits = this.options.removeLimits;
                 this.stage.renderer.imageSmoothingEnabled = this.options.imageSmoothing;
             }
             generateUsernameIfMissing() {
@@ -3642,6 +3648,7 @@ var P;
             imageSmoothing: false,
             focusOnLoad: true,
             spriteFencing: false,
+            removeLimits: false,
             projectHost: 'https://projects.scratch.mit.edu/$id',
             cloudHost: 'wss://stratus.turbowarp.org',
             cloudHistoryHost: 'https://trampoline.turbowarp.org/cloud-proxy/logs/$id?limit=100'

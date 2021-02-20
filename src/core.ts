@@ -504,8 +504,10 @@ namespace P.core {
       switch (name.toLowerCase()) {
         case 'pitch':
           this.soundFilters.pitch = value;
-          if (this.soundFilters.pitch > 360) this.soundFilters.pitch = 360;
-          if (this.soundFilters.pitch < -360) this.soundFilters.pitch = -360;
+          if (!this.stage.removeLimits) {
+            if (this.soundFilters.pitch > 360) this.soundFilters.pitch = 360;
+            if (this.soundFilters.pitch < -360) this.soundFilters.pitch = -360;
+          }
           break;
       }
     }
@@ -514,8 +516,10 @@ namespace P.core {
       switch (name.toLowerCase()) {
         case 'pitch':
           this.soundFilters.pitch += value;
-          if (this.soundFilters.pitch > 360) this.soundFilters.pitch = 360;
-          if (this.soundFilters.pitch < -360) this.soundFilters.pitch = -360;
+          if (!this.stage.removeLimits) {
+            if (this.soundFilters.pitch > 360) this.soundFilters.pitch = 360;
+            if (this.soundFilters.pitch < -360) this.soundFilters.pitch = -360;
+          }
           break;
       }
     }
@@ -832,6 +836,7 @@ namespace P.core {
     private extensions: P.ext.Extension[] = [];
 
     public useSpriteFencing: boolean = false;
+    public removeLimits: boolean = false;
 
     constructor() {
       super();

@@ -119,6 +119,7 @@ namespace P.player {
     imageSmoothing: boolean;
     focusOnLoad: boolean;
     spriteFencing: boolean;
+    removeLimits: boolean;
     // $id is replaced with project ID
     projectHost: string;
     cloudHost: string;
@@ -290,6 +291,7 @@ namespace P.player {
       imageSmoothing: false,
       focusOnLoad: true,
       spriteFencing: false,
+      removeLimits: false,
       projectHost: 'https://projects.scratch.mit.edu/$id',
       // cloudHost: 'ws://localhost:9080', // for cloud-server development
       cloudHost: 'wss://stratus.turbowarp.org',
@@ -535,6 +537,7 @@ namespace P.player {
       this.stage.username = this.options.username;
       this.stage.runtime.isTurbo = this.options.turbo;
       this.stage.useSpriteFencing = this.options.spriteFencing;
+      this.stage.removeLimits = this.options.removeLimits;
       (this.stage.renderer as P.renderer.canvas2d.ProjectRenderer2D).imageSmoothingEnabled = this.options.imageSmoothing;
     }
 

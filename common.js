@@ -91,6 +91,9 @@ var Common = (function() {
       case 'fencing':
         setPlayerFlag('spriteFencing', value);
         break;
+      case 'limits':
+        setPlayerFlag('removeLimits', value);
+        break;
       case 'cloud':
         setPlayerEnum('cloudVariables', value, ['once', 'off', 'ws', 'localStorage']);
         break;

@@ -126,6 +126,10 @@
           <td class="name" title="Prevents sprites from moving offscreen."><label for="settings-sprite-fencing">Sprite Fencing</label></td>
           <td class="value"><input id="settings-sprite-fencing" type="checkbox" autocomplete="off"></td>
         </tr>
+        <tr>
+          <td class="name" title="Removes some limits."><label for="settings-remove-limits">Remove some limits</label></td>
+          <td class="value"><input id="settings-remove-limits" type="checkbox" autocomplete="off"></td>
+        </tr>
       </table>
       <p>Changes are applied automatically.</p>
 
@@ -622,6 +626,7 @@
     var settingUsername = querySelector('#settings-username');
     var settingImageSmoothing = querySelector('#settings-image-smoothing');
     var settingSpriteFencing = querySelector('#settings-sprite-fencing');
+    var settingRemoveLimits = querySelector('#settings-remove-limits');
 
     function syncOptionValues() {
       if (+settingFps.value !== player.options.fps) {
@@ -630,6 +635,7 @@
       settingUsername.value = player.options.username;
       settingImageSmoothing.checked = player.options.imageSmoothing;
       settingSpriteFencing.checked = player.options.spriteFencing;
+      settingRemoveLimits.checked = player.options.removeLimits;
     }
 
     settingFps.addEventListener('input', (e) => {
@@ -645,6 +651,9 @@
     });
     settingSpriteFencing.addEventListener('change', (e) => {
       player.setOptions({ spriteFencing: settingSpriteFencing.checked });
+    });
+    settingRemoveLimits.addEventListener('change', (e) => {
+      player.setOptions({ removeLimits: settingRemoveLimits.checked });
     });
     syncOptionValues();
     player.onoptionschange.subscribe(syncOptionValues);
