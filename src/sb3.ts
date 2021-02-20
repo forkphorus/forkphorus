@@ -2786,11 +2786,9 @@ namespace P.sb3.compiler {
       util.writeLn('  save();');
       util.writeLn('  R.sound = playSound(sound);');
       util.writeLn('  S.activeSounds.add(R.sound);')
-      util.writeLn('  R.start = runtime.now();');
-      util.writeLn('  R.duration = sound.duration;');
       util.writeLn('  var first = true;');
       const label = util.addLabel();
-      util.writeLn('  if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
+      util.writeLn('  if (!R.sound.node.ended) {');
       util.writeLn('    var first;');
       util.forceQueue(label);
       util.writeLn('  }');
