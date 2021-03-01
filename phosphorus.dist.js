@@ -8292,7 +8292,7 @@ var P;
             util.writeLn('  R.sound = playSound(sound);');
             util.writeLn('  S.activeSounds.add(R.sound);');
             const label = util.addLabel();
-            util.writeLn('  if (!R.sound.node.ended) {');
+            util.writeLn('  if (!R.sound.node.ended && !R.sound.stopped) {');
             util.forceQueue(label);
             util.writeLn('  }');
             util.writeLn('  S.activeSounds.delete(R.sound);');
