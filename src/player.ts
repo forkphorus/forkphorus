@@ -841,16 +841,14 @@ namespace P.player {
 
       switch (policy) {
         case 'once':
-          if (!meta.isFromScratch()) {
-            throw new Error('once cloudVariables does not work with projects not from scratch.mit.edu');
+          if (meta.isFromScratch()) {
+            this.applyCloudVariablesOnce(stage, meta.getId());
           }
-          this.applyCloudVariablesOnce(stage, meta.getId());
           break;
         case 'ws':
-          if (!meta.isFromScratch()) {
-            throw new Error('ws cloudVariables does not work with projects not from scratch.mit.edu');
+          if (meta.isFromScratch()) {
+            this.applyCloudVariablesSocket(stage, meta.getId());
           }
-          this.applyCloudVariablesSocket(stage, meta.getId());
           break;
         case 'localStorage':
           this.applyCloudVariablesLocalStorage(stage, meta.getId());
