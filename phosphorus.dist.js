@@ -8303,13 +8303,17 @@ var P;
         const VALUE = util.getInput('VALUE', 'number');
         util.writeLn(`S.setSoundFilter(${EFFECT}, ${VALUE});`);
         util.writeLn('if (updateSoundEffectsOnAllSounds) updateSoundEffectsOnAllSounds();');
+        util.writeLn('if (!self.removeLimits) {');
         util.waitOneTick();
+        util.writeLn('}');
     };
     statementLibrary['sound_setvolumeto'] = function (util) {
         const VOLUME = util.getInput('VOLUME', 'number');
         util.writeLn(`S.volume = Math.max(0, Math.min(1, ${VOLUME} / 100));`);
         util.writeLn('if (S.node) S.node.gain.value = S.volume;');
+        util.writeLn('if (!self.removeLimits) {');
         util.waitOneTick();
+        util.writeLn('}');
     };
     statementLibrary['sound_stopallsounds'] = function (util) {
         if (P.audio.context) {
