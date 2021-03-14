@@ -1815,7 +1815,7 @@ namespace P.sb3.compiler {
      */
     compileInput(parentBlock: SB3Block, inputName: string, type: InputType): CompiledInput {
       // Handling when the block does not contain an input entry.
-      if (!parentBlock.inputs[inputName]) {
+      if (!parentBlock.inputs || !parentBlock.inputs[inputName]) {
         // This could be a sign of another issue, so log a warning.
         this.warn('missing input', inputName);
         return new CompiledInput(this.getInputFallback(type), type);

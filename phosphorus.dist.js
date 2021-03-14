@@ -7426,7 +7426,7 @@ var P;
                     }
                 }
                 compileInput(parentBlock, inputName, type) {
-                    if (!parentBlock.inputs[inputName]) {
+                    if (!parentBlock.inputs || !parentBlock.inputs[inputName]) {
                         this.warn('missing input', inputName);
                         return new CompiledInput(this.getInputFallback(type), type);
                     }
