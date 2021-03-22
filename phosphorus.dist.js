@@ -9088,7 +9088,7 @@ var P;
                 }
                 send(data) {
                     if (!this.ws)
-                        throw new Error('not connected');
+                        return;
                     this.ws.send(JSON.stringify(data));
                 }
                 getVariable(name) {

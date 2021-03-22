@@ -104,7 +104,7 @@ namespace P.ext.cloud {
     }
 
     private send(data: any) {
-      if (!this.ws) throw new Error('not connected');
+      if (!this.ws) return;
       this.ws.send(JSON.stringify(data));
     }
 
