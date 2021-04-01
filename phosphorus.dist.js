@@ -9993,7 +9993,7 @@ var P;
                         if (!info) {
                             throw new Error('attribute at index ' + index + ' does not exist');
                         }
-                        this.attributeLocations[info.name] = index;
+                        this.attributeLocations[info.name] = gl.getAttribLocation(program, info.name);
                     }
                 }
                 uniform1f(name, value) {

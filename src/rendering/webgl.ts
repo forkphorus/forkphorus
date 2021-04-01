@@ -43,8 +43,7 @@ namespace P.renderer.webgl {
         if (!info) {
           throw new Error('attribute at index ' + index + ' does not exist');
         }
-        // Attribute index is location, I believe.
-        this.attributeLocations[info.name] = index;
+        this.attributeLocations[info.name] = gl.getAttribLocation(program, info.name);
       }
     }
 
