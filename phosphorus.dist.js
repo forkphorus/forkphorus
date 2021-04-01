@@ -10290,7 +10290,9 @@ var P;
       vec2 texcoord = v_texcoord;
 
       #ifdef ENABLE_MOSAIC
+      if (u_mosaic != 1.0) {
         texcoord = fract(u_mosaic * v_texcoord);
+      }
       #endif
 
       #ifdef ENABLE_PIXELATE
