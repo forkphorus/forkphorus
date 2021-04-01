@@ -9609,14 +9609,20 @@ var P;
                     }
                     if (!this.noEffects) {
                         ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
-                        if (c.filters.brightness === 100) {
+                        if (c.filters.brightness !== 0 && c.filters.color === 0) {
                             workingRenderer.canvas.width = w;
                             workingRenderer.canvas.height = h;
                             workingRenderer.ctx.save();
                             workingRenderer.ctx.translate(0, 0);
                             workingRenderer.ctx.drawImage(image, 0, 0, w, h);
-                            workingRenderer.ctx.globalCompositeOperation = 'source-in';
-                            workingRenderer.ctx.fillStyle = 'white';
+                            workingRenderer.ctx.globalCompositeOperation = 'source-atop';
+                            workingRenderer.ctx.globalAlpha = Math.abs(c.filters.brightness / 100);
+                            if (c.filters.brightness > 0) {
+                                workingRenderer.ctx.fillStyle = 'white';
+                            }
+                            else {
+                                workingRenderer.ctx.fillStyle = 'black';
+                            }
                             workingRenderer.ctx.fillRect(0, 0, w, h);
                             ctx.drawImage(workingRenderer.canvas, x, y);
                             workingRenderer.ctx.restore();
@@ -9624,7 +9630,7 @@ var P;
                         else {
                             const filter = getCSSFilter(c.filters);
                             if (filter !== '') {
-                                ctx.filter = getCSSFilter(c.filters);
+                                ctx.filter = filter;
                             }
                             ctx.drawImage(image, x, y, w, h);
                         }
