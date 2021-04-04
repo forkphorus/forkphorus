@@ -10066,7 +10066,7 @@ var P;
                         'ENABLE_PIXELATE',
                     ]);
                     this.gl.enable(this.gl.BLEND);
-                    this.gl.blendFunc(this.gl.ONE, this.gl.ONE_MINUS_SRC_ALPHA);
+                    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
                     this.quadBuffer = this.gl.createBuffer();
                     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
                     this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
@@ -10374,8 +10374,6 @@ var P;
           color = vec4(0.0, 0.0, 0.0, 0.0);
         }
       #endif
-
-      color.rgb *= color.a;
 
       gl_FragColor = color;
     }
