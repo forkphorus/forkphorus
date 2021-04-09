@@ -9613,6 +9613,7 @@ var P;
                             workingRenderer.canvas.width = w;
                             workingRenderer.canvas.height = h;
                             workingRenderer.ctx.save();
+                            workingRenderer.ctx.imageSmoothingEnabled = false;
                             workingRenderer.ctx.translate(0, 0);
                             workingRenderer.ctx.drawImage(image, 0, 0, w, h);
                             workingRenderer.ctx.globalCompositeOperation = 'source-atop';
