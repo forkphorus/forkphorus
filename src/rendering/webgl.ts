@@ -1130,6 +1130,10 @@ namespace P.renderer.webgl {
     }
 
     penClear(): void {
+      this.dirty = true;
+      this.penCoordsIndex = 0;
+      this.penLinesIndex = 0;
+      this.penColorsIndex = 0;
       this.gl.clearColor(0, 0, 0, 0);
       this.gl.clear(this.gl.COLOR_BUFFER_BIT);
     }
