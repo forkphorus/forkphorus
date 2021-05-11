@@ -1,33 +1,12 @@
-(function(scope) {
+(function (scope) {
   'use strict';
-
-  /**
-   * Determines if an element is visible, accounting for parents and their bounding rects.
-   */
-  function isElementVisible(el) {
-    // see https://stackoverflow.com/a/21627295
-    var rect = el.getBoundingClientRect();
-    var top = rect.top;
-    var height = rect.height;
-    var el = el.parentNode;
-
-    if (rect.bottom < 0) return false;
-    if (top > document.documentElement.clientHeight) return false;
-    do {
-      rect = el.getBoundingClientRect();
-      if (top <= rect.bottom === false) return false;
-      if ((top + height) <= rect.top) return false;
-      el = el.parentNode;
-    } while (el != document.body)
-    return true;
-  }
 
   /**
    * @class
    */
-  var StudioView = function(studioId) {
+  var StudioView = function (studioId) {
     this.studioId = studioId;
-    this.page = 1;
+    this.offset = 0;
     this.ended = false;
     this.loadingPage = false;
     this.unusedPlaceholders = [];
@@ -36,7 +15,6 @@
     this.root.className = 'studioview-root';
     this.projectList = document.createElement('div');
     this.projectList.className = 'studioview-list';
-    this.projectList.addEventListener('scroll', this.handleScroll.bind(this), {passive: true});
     this.root.appendChild(this.projectList);
     this.setTheme('light');
 
@@ -45,8 +23,12 @@
         root: this.projectList,
         rootMargin: '25px 0px 25px 0px',
       });
+      this.loadNextPageObserver = new IntersectionObserver(this.handleLoadNextPageIntersection.bind(this), {
+        root: this.projectList
+      });
     } else {
       this.intersectionObserver = null;
+      this.loadNextPageObserver = null;
     }
   };
 
@@ -54,7 +36,7 @@
    * Add a project to the view.
    * An unused placeholder element may be used, or it may be created.
    */
-  StudioView.prototype.addProject = function(details) {
+  StudioView.prototype.addProject = function (details) {
     var el;
     if (this.unusedPlaceholders.length) {
       el = this.unusedPlaceholders.shift();
@@ -68,7 +50,7 @@
   /**
    * Create an <img> element that will load only when it becomes visible.
    */
-  StudioView.prototype.createLazyImage = function(src) {
+  StudioView.prototype.createLazyImage = function (src) {
     var el = document.createElement('img');
     if (this.intersectionObserver) {
       this.intersectionObserver.observe(el);
@@ -84,7 +66,7 @@
   /**
    * Create a placeholder or placeholder element.
    */
-  StudioView.prototype.createPlaceholder = function() {
+  StudioView.prototype.createPlaceholder = function () {
     var el = document.createElement('a');
     el.className = 'studioview-project studioview-placeholder';
 
@@ -111,7 +93,7 @@
   /**
    * Convert a placeholder element made by createPlaceholder to a project element.
    */
-  StudioView.prototype.placeholderToProject = function(el, id, title, author) {
+  StudioView.prototype.placeholderToProject = function (el, id, title, author) {
     el.className = 'studioview-project studioview-loaded';
     el.dataset.id = id;
     el.dataset.title = title;
@@ -135,22 +117,24 @@
   /**
    * Adds an error message to the list.
    */
-  StudioView.prototype.addErrorElement = function() {
+  StudioView.prototype.addErrorElement = function () {
     var el = document.createElement('div');
     el.innerText = StudioView.LOAD_ERROR;
     el.className = 'studioview-error';
     this.projectList.appendChild(el);
   };
 
-  // Called when the project list is scrolled
-  StudioView.prototype.handleScroll = function(e) {
-    if (this.canLoadNext() && isElementVisible(this.projectList.lastChild)) {
-      this.loadNextPage();
+  StudioView.prototype.handleLoadNextPageIntersection = function (e) {
+    for (var i = 0; i < e.length; i++) {
+      var intersection = e[i];
+      if (intersection.intersectionRatio > 0 && this.canLoadNext()) {
+        this.loadNextPage();
+      }
     }
   };
 
   // Click a project element or a child of a project element
-  StudioView.prototype.clickProject = function(el) {
+  StudioView.prototype.clickProject = function (el) {
     while (!el.classList.contains('studioview-project')) {
       el = el.parentNode;
     }
@@ -159,13 +143,13 @@
   }
 
   // Called when click is fired on a project element
-  StudioView.prototype.handleClick = function(e) {
+  StudioView.prototype.handleClick = function (e) {
     e.preventDefault();
     this.clickProject(e.target);
   };
 
   // Called when keydown is fired on a project element
-  StudioView.prototype.handleKeyDown = function(e) {
+  StudioView.prototype.handleKeyDown = function (e) {
     if (e.keyCode === 13) {
       // treat enter (13) as click
       e.preventDefault();
@@ -174,8 +158,8 @@
   };
 
   // Called by the IntersectionObserver when it sees an intersection
-  StudioView.prototype.handleIntersection = function(entries, observer) {
-    entries.forEach(function(entry) {
+  StudioView.prototype.handleIntersection = function (entries, observer) {
+    entries.forEach(function (entry) {
       if (entry.isIntersecting) {
         var target = entry.target;
         target.src = target.dataset.src;
@@ -189,24 +173,32 @@
   /**
    * Determines whether it is safe to attempt to load the next page.
    */
-  StudioView.prototype.canLoadNext = function() {
+  StudioView.prototype.canLoadNext = function () {
     return !this.loadingPage && !this.ended;
   };
 
   /**
    * Remove all unused placeholder elements.
    */
-  StudioView.prototype.cleanupPlaceholders = function() {
+  StudioView.prototype.cleanupPlaceholders = function () {
     while (this.unusedPlaceholders.length) {
       var el = this.unusedPlaceholders.pop();
       this.projectList.removeChild(el);
+    }
+    if (this.loadNextPageObserver) {
+      // If it doesn't exist, then I guess you won't be loading any more pages :shrug:
+      this.loadNextPageObserver.disconnect();
+      this.loadNextPageObserver.observe(this.projectList.lastChild);
     }
   };
 
   /**
    * Add placeholder placeholder elements.
    */
-  StudioView.prototype.addPlaceholders = function() {
+  StudioView.prototype.addPlaceholders = function () {
+    if (this.loadNextPageObserver) {
+      this.loadNextPageObserver.disconnect();
+    }
     for (var i = 0; i < StudioView.PLACEHOLDER_COUNT; i++) {
       var el = this.createPlaceholder();
       this.unusedPlaceholders.push(el);
@@ -218,14 +210,14 @@
    * Make changes to the order of projects.
    * Default shuffler does nothing.
    */
-  StudioView.prototype.shuffler = function(projects) {
+  StudioView.prototype.shuffler = function (projects) {
     return projects;
   };
 
   /**
    * Begins loading the next page.
    */
-  StudioView.prototype.loadNextPage = function() {
+  StudioView.prototype.loadNextPage = function () {
     if (this.loadingPage) {
       throw new Error('Already loading the next page');
     }
@@ -238,36 +230,20 @@
     this.loadingPage = true;
 
     var xhr = new XMLHttpRequest();
-    xhr.onload = function() {
-      // We cannot just set xhr.responseType="document" because the proxy returns text/plain
-      var docSource = xhr.response;
-      var doc = new DOMParser().parseFromString(docSource, 'text/html');
-
+    xhr.responseType = 'json';
+    xhr.onload = function () {
+      var rawProjects = xhr.response;
+      if (!Array.isArray(rawProjects)) {
+        xhr.onerror();
+        return;
+      }
       var projects = [];
-      var projectElements = doc.querySelectorAll('.project');
-      /*
-      Each project element should be:
-      <li class="project thumb item" data-id="12345">
-        <a href="/projects/12345/">
-          <img class="lazy image" data-original="//cdn2.scratch.mit.edu/get_image/project/12345_144x108.png" width="144" height="108" />
-        </a>
-        <span class="title">
-          <a href="/projects/12345/">Title</a>
-        </span>
-        <span class="owner" >
-          by <a href="/users/Author/">Author</a>
-        </span>
-      </li>
-      */
-      for (var i = 0; i < projectElements.length; i++) {
-        var project = projectElements[i];
-        var id = project.getAttribute('data-id');
-        var title = project.querySelector('.title').textContent.trim();
-        var author = project.querySelector('.owner a').textContent.trim();
+      for (var i = 0; i < rawProjects.length; i++) {
+        var p = rawProjects[i];
         projects.push({
-          id: id,
-          title: title,
-          author: author,
+          id: p.id,
+          title: p.title,
+          author: p.username,
         });
       }
       projects = this.shuffler(projects);
@@ -276,20 +252,23 @@
       }
       this.cleanupPlaceholders();
 
-      // All pages except the last have a next page button.
-      if (!doc.querySelector('.next-page')) {
+      if (rawProjects.length === 40) {
+        if (this.loadNextPageObserver) {
+          this.loadNextPageObserver.observe(this.projectList.lastChild);
+        }
+      } else {
         this.ended = true;
         this.onend();
       }
 
-      this.page++;
+      this.offset += projects.length;
       this.loadingPage = false;
       this.root.removeAttribute('loading');
 
       this.onpageload();
     }.bind(this);
 
-    xhr.onerror = function() {
+    xhr.onerror = function () {
       this.root.setAttribute('error', '');
       this.cleanupPlaceholders();
       this.addErrorElement();
@@ -298,22 +277,22 @@
 
     var url = StudioView.STUDIO_API
       .replace('$id', this.studioId)
-      .replace('$page', '' + this.page);
+      .replace('$offset', '' + this.offset);
     xhr.open('GET', url);
     xhr.send();
   };
 
-  StudioView.prototype.setTheme = function(theme) {
+  StudioView.prototype.setTheme = function (theme) {
     this.root.setAttribute('theme', theme);
   };
 
-  StudioView.prototype.getURL = function() {
+  StudioView.prototype.getURL = function () {
     return StudioView.STUDIO_PAGE.replace('$id', this.studioId);
   };
 
-  StudioView.prototype.onselect = function(id, el) {};
-  StudioView.prototype.onpageload = function() {};
-  StudioView.prototype.onend = function() {};
+  StudioView.prototype.onselect = function (id, el) { };
+  StudioView.prototype.onpageload = function () { };
+  StudioView.prototype.onend = function () { };
 
   // Types of shufflers
   function shuffleList(list) {
@@ -326,9 +305,9 @@
     }
   }
   StudioView.Shufflers = {};
-  StudioView.Shufflers.random = function(groupSize) {
+  StudioView.Shufflers.random = function (groupSize) {
     groupSize = groupSize || Infinity;
-    return function(projects) {
+    return function (projects) {
       if (groupSize === Infinity) {
         shuffleList(projects);
         return projects;
@@ -345,10 +324,7 @@
     };
   };
 
-  // This can be any URL that is a proxy for https://scratch.mit.edu/site-api/projects/in/5235006/1/
-  // Understandably scratch does not set CORS headers on this URL, but a proxy can set it manually.
-  // $id will be replaced with the studio ID, and $page with the page.
-  StudioView.STUDIO_API = 'https://trampoline.turbowarp.org/site-proxy/projects/in/$id/$page/';
+  StudioView.STUDIO_API = 'https://trampoline.turbowarp.org/proxy/studios/$id/projectstemporary/$offset';
 
   // The URL to download thumbnails from.
   // $id is replaced with the project's ID.
