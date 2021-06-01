@@ -10476,6 +10476,10 @@ var P;
                     return false;
                 }
                 spriteTouchesPoint(sprite, x, y) {
+                    const bounds = sprite.rotatedBounds();
+                    if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top || sprite.scale === 0) {
+                        return false;
+                    }
                     const cx = 240 + x | 0;
                     const cy = 180 + y | 0;
                     this.gl.scissor(cx, cy, 1, 1);
