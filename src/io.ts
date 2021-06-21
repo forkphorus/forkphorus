@@ -317,9 +317,15 @@ namespace P.io {
         image.onload = () => {
           this.complete = true;
           this.updateLoaderProgress();
+          // We've found that explicitly setting these to null helps ensure that this class can get GC'd
+          image.onload = null;
+          image.onerror = null;
           resolve(image);
         };
-        image.onerror = (err) => {
+        image.onerror = () => {
+          // We've found that explicitly setting these to null helps ensure that this class can get GC'd
+          image.onload = null;
+          image.onerror = null;
           reject(new Error(`Failed to load image: ${image.src} (r=${this.retries})`));
         };
         image.crossOrigin = 'anonymous';

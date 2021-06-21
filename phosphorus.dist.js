@@ -2325,9 +2325,13 @@ var P;
                     image.onload = () => {
                         this.complete = true;
                         this.updateLoaderProgress();
+                        image.onload = null;
+                        image.onerror = null;
                         resolve(image);
                     };
-                    image.onerror = (err) => {
+                    image.onerror = () => {
+                        image.onload = null;
+                        image.onerror = null;
                         reject(new Error(`Failed to load image: ${image.src} (r=${this.retries})`));
                     };
                     image.crossOrigin = 'anonymous';
