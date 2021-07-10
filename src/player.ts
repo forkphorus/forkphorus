@@ -123,8 +123,6 @@ namespace P.player {
     // $id is replaced with project ID
     projectHost: string;
     cloudHost: string;
-    // $id is replaced with project ID
-    cloudHistoryHost: string;
   }
 
   interface ControlsOptions {
@@ -294,8 +292,7 @@ namespace P.player {
       removeLimits: false,
       projectHost: 'https://projects.scratch.mit.edu/$id',
       // cloudHost: 'ws://localhost:9080', // for cloud-server development
-      cloudHost: 'wss://stratus.turbowarp.org',
-      cloudHistoryHost: 'https://trampoline.turbowarp.org/cloud-proxy/logs/$id?limit=100'
+      cloudHost: 'wss://stratus.turbowarp.org'
     };
 
     public onprogress = new Slot<number>();
@@ -776,45 +773,6 @@ namespace P.player {
 
     // CLOUD VARIABLES
 
-    private async getCloudVariablesFromLogs(id: string): Promise<ObjectMap<any>> {
-      // To get the cloud variables of a project, we will fetch the history logs and essentially replay the latest changes.
-      // This is primarily designed so that highscores in projects can remain up-to-date, and nothing more than that.
-      const data = await new P.io.Request(this.options.cloudHistoryHost.replace('$id', id)).load('json');
-      const variables = Object.create(null);
-      for (const entry of data.reverse()) {
-        const { verb, name, value } = entry;
-        switch (verb) {
-          case 'create_var':
-          case 'set_var':
-            variables[name] = value;
-            break;
-          case 'del_var':
-            delete variables[name];
-            break;
-          case 'rename_var':
-            variables[value] = variables[name];
-            delete variables[name];
-            break;
-          default:
-            console.warn('unknown cloud variable log verb', verb);
-        }
-      }
-      return variables;
-    }
-
-    private applyCloudVariablesOnce(stage: P.core.Stage, id: string) {
-      this.getCloudVariablesFromLogs(id).then((variables) => {
-        for (const name of Object.keys(variables)) {
-          // check that the variables are actually cloud variables before setting
-          if (stage.cloudVariables.indexOf(name) > -1) {
-            stage.vars[name] = variables[name];
-          } else {
-            console.warn('not applying unknown cloud variable:', name);
-          }
-        }
-      });
-    }
-
     private applyCloudVariablesSocket(stage: P.core.Stage, id: string) {
       this.generateUsernameIfMissing();
       const handler = new P.ext.cloud.WebSocketCloudHandler(stage, this.options.cloudHost, id);
@@ -840,11 +798,6 @@ namespace P.player {
       }
 
       switch (policy) {
-        case 'once':
-          if (meta.isFromScratch()) {
-            this.applyCloudVariablesOnce(stage, meta.getId());
-          }
-          break;
         case 'ws':
           if (meta.isFromScratch()) {
             this.applyCloudVariablesSocket(stage, meta.getId());

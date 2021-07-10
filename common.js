@@ -95,7 +95,7 @@ var Common = (function() {
         setPlayerFlag('removeLimits', value);
         break;
       case 'cloud':
-        setPlayerEnum('cloudVariables', value, ['once', 'off', 'ws', 'localStorage']);
+        setPlayerEnum('cloudVariables', value, ['off', 'ws', 'localStorage']);
         break;
       case 'chost':
         setPlayerFlag('cloudHost', value);
