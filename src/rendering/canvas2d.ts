@@ -71,8 +71,8 @@ namespace P.renderer.canvas2d {
 
     protected _reset(ctx: CanvasRenderingContext2D, scale: number) {
       const effectiveScale = scale * P.config.scale;
-      const width = 480 * effectiveScale;
-      const height = 360 * effectiveScale;
+      const width = Math.max(1, 480 * effectiveScale);
+      const height = Math.max(1, 360 * effectiveScale);
       if (ctx.canvas.width !== width || ctx.canvas.height !== height) {
         ctx.canvas.width = width;
         ctx.canvas.height = height;
