@@ -348,7 +348,7 @@ window.SBDL = (function() {
       const knownIds = new Set();
 
       for (const i of assets) {
-        const id = i.assetId;
+        const id = i.md5ext;
         if (knownIds.has(id)) {
           continue;
         }
