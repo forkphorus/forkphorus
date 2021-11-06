@@ -126,6 +126,9 @@ var Common = (function() {
       case 'opt':
         P.config.experimentalOptimizations = true;
         break;
+      case 'svgr':
+        P.core.VectorCostume.DISABLE_RASTERIZE = true;
+        break;
     }
   });
 
