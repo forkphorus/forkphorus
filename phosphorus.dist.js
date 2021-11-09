@@ -7892,7 +7892,6 @@ var P;
         }
     };
     statementLibrary['looks_hide'] = function (util) {
-        util.visual('visible');
         util.writeLn('S.visible = false;');
         util.updateBubble();
     };

@@ -2372,7 +2372,6 @@ namespace P.sb3.compiler {
     }
   };
   statementLibrary['looks_hide'] = function(util) {
-    util.visual('visible');
     util.writeLn('S.visible = false;');
     util.updateBubble();
   };
