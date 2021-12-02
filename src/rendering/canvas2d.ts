@@ -73,13 +73,11 @@ namespace P.renderer.canvas2d {
       const effectiveScale = scale * P.config.scale;
       const width = Math.max(1, 480 * effectiveScale);
       const height = Math.max(1, 360 * effectiveScale);
-      if (ctx.canvas.width !== width || ctx.canvas.height !== height) {
-        ctx.canvas.width = width;
-        ctx.canvas.height = height;
-        ctx.scale(effectiveScale, effectiveScale);
-      } else {
-        ctx.clearRect(0, 0, 480, 360);
-      }
+      // This is not optimal, but necessary to avoid issues caused by some browsers resetting canvas data
+      // and transforms without informing us.
+      ctx.canvas.width = width;
+      ctx.canvas.height = height;
+      ctx.scale(effectiveScale, effectiveScale);
     }
 
     protected _drawChild(c: P.core.Base, ctx: CanvasRenderingContext2D) {
