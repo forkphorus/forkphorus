@@ -48,6 +48,7 @@ namespace P.ext.cloud {
    */
   export class WebSocketCloudHandler extends P.ext.Extension implements CloudHandler {
     private readonly logPrefix: string;
+    private hosts: string[];
     private ws: WebSocket | null = null;
     private queuedVariableChanges: string[] = [];
     private updateInterval: number | null = null;
@@ -57,9 +58,10 @@ namespace P.ext.cloud {
     private username: string;
     private interfaceStatusIndicator: HTMLElement;
 
-    constructor(stage: P.core.Stage, private host: string, private id: string) {
+    constructor(stage: P.core.Stage, hosts: string[] | string, private id: string) {
       super(stage);
-      this.logPrefix = '[cloud-ws ' + host + ']';
+      this.hosts = Array.isArray(hosts) ? hosts : [hosts];
+      this.logPrefix = '[cloud-ws ' + this.hosts[0] + ']';
       this.username = this.stage.username;
 
       this.interfaceStatusIndicator = document.createElement('div');
@@ -131,7 +133,7 @@ namespace P.ext.cloud {
 
       this.setStatusText('Connecting...');
       console.log(this.logPrefix, 'connecting');
-      this.ws = new WebSocket(this.host);
+      this.ws = new WebSocket(this.hosts[this.failures % this.hosts.length]);
       this.shouldReconnect = true;
 
       this.ws.onopen = () => {

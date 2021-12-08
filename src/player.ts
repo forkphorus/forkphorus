@@ -122,7 +122,7 @@ namespace P.player {
     removeLimits: boolean;
     // $id is replaced with project ID
     projectHost: string;
-    cloudHost: string;
+    cloudHost: string[] | string;
   }
 
   interface ControlsOptions {
@@ -292,7 +292,7 @@ namespace P.player {
       removeLimits: false,
       projectHost: 'https://projects.scratch.mit.edu/$id',
       // cloudHost: 'ws://localhost:9080', // for cloud-server development
-      cloudHost: 'wss://stratus.turbowarp.org'
+      cloudHost: ['wss://stratus.turbowarp.org', 'wss://stratus.turbowarp.xyz']
     };
 
     public onprogress = new Slot<number>();

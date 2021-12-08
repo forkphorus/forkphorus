@@ -3650,7 +3650,7 @@ var P;
             spriteFencing: false,
             removeLimits: false,
             projectHost: 'https://projects.scratch.mit.edu/$id',
-            cloudHost: 'wss://stratus.turbowarp.org'
+            cloudHost: ['wss://stratus.turbowarp.org', 'wss://stratus.turbowarp.xyz']
         };
         player_1.Player = Player;
         class ErrorHandler {
@@ -9042,9 +9042,8 @@ var P;
                     typeof data.value !== 'undefined';
             }
             class WebSocketCloudHandler extends P.ext.Extension {
-                constructor(stage, host, id) {
+                constructor(stage, hosts, id) {
                     super(stage);
-                    this.host = host;
                     this.id = id;
                     this.ws = null;
                     this.queuedVariableChanges = [];
@@ -9052,7 +9051,8 @@ var P;
                     this.reconnectTimeout = null;
                     this.shouldReconnect = true;
                     this.failures = 0;
-                    this.logPrefix = '[cloud-ws ' + host + ']';
+                    this.hosts = Array.isArray(hosts) ? hosts : [hosts];
+                    this.logPrefix = '[cloud-ws ' + this.hosts[0] + ']';
                     this.username = this.stage.username;
                     this.interfaceStatusIndicator = document.createElement('div');
                     this.interfaceStatusIndicator.className = 'phosphorus-cloud-status-indicator';
@@ -9109,7 +9109,7 @@ var P;
                     }
                     this.setStatusText('Connecting...');
                     console.log(this.logPrefix, 'connecting');
-                    this.ws = new WebSocket(this.host);
+                    this.ws = new WebSocket(this.hosts[this.failures % this.hosts.length]);
                     this.shouldReconnect = true;
                     this.ws.onopen = () => {
                         console.log(this.logPrefix, 'connected');
