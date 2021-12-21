@@ -7250,6 +7250,12 @@ var P;
             compiler_1.inputLibrary = Object.create(null);
             compiler_1.hatLibrary = Object.create(null);
             compiler_1.watcherLibrary = Object.create(null);
+            const safeNumberToString = (n) => {
+                if (Object.is(n, -0)) {
+                    return '-0';
+                }
+                return n.toString();
+            };
             class Compiler {
                 constructor(target) {
                     this.labelCount = 0;
@@ -7399,9 +7405,7 @@ var P;
                             if (isNaN(number) || desiredType === 'string') {
                                 return this.sanitizedInput('' + native[1]);
                             }
-                            else {
-                                return numberInput(number.toString());
-                            }
+                            return numberInput(safeNumberToString(number));
                         }
                         case 10: {
                             const value = native[1];
