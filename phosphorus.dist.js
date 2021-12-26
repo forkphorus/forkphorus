@@ -6874,6 +6874,9 @@ var P;
                 }
                 target.name = data.name;
                 target.currentCostumeIndex = data.currentCostume;
+                if ('volume' in data) {
+                    target.volume = data.volume / 100;
+                }
                 target.sb3data = data;
                 if (target.isStage) {
                 }

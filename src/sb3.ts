@@ -40,6 +40,7 @@ namespace P.sb3 {
     variables: ObjectMap<SB3Variable>;
     blocks: ObjectMap<SB3Block>;
     broadcasts: ObjectMap<string>;
+    volume: number;
   }
 
   interface SB3Costume {
@@ -882,6 +883,9 @@ namespace P.sb3 {
 
       target.name = data.name;
       target.currentCostumeIndex = data.currentCostume;
+      if ('volume' in data) {
+        target.volume = data.volume / 100;
+      }
       target.sb3data = data;
 
       if (target.isStage) {
