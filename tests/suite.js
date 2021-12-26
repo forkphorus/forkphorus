@@ -128,6 +128,8 @@ P.suite = (function() {
     P.suite.stage = stage;
 
     return new Promise((_resolve, _reject) => {
+      console.log('Starting test', metadata.path);
+
       /**
        * @param {Partial<TestResult>} result
        */
