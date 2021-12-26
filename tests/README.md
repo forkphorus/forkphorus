@@ -4,8 +4,6 @@ Test suite for forkphorus. Automatically runs a few Scratch projects and validat
 
 To visit the test suite: [https://forkphorus.github.io/tests/suite.html](https://forkphorus.github.io/tests/suite.html)
 
-All project files (names ending with `.sb`, `.sb2`, or `.sb3`) are [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/) licensed as this is what projects on scratch.mit.edu use.
-
 Files that start with numbers are referring to GitHub issues.
 
 ## Writing Tests
