@@ -420,11 +420,11 @@ P.suite = (function() {
   compiler.statementLibrary['procedures_call'] = function procedureCall(util) {
     switch (util.block.mutation.proccode) {
       case 'FAIL':
-        util.writeLn('if (runtime.testFail("no message")) { return; }');
+        util.writeLn('if (runtime.testFail("")) { return; }');
         break;
 
       case 'FAIL %s':
-        util.writeLn('if (runtime.testFail(' + getArguments(util) + ' || "no message")) { return; }');
+        util.writeLn('if (runtime.testFail(' + getArguments(util) + ' || "")) { return; }');
         break;
 
       case 'OKAY':
@@ -463,7 +463,7 @@ P.suite = (function() {
     switch (proccode) {
       case 'OK':
       case 'OKAY':
-        source = 'runtime.testOkay("no message"); return;\n';
+        source = 'runtime.testOkay(""); return;\n';
         break;
 
       case 'OK %s':
@@ -474,7 +474,7 @@ P.suite = (function() {
         break;
 
       case 'FAIL':
-        source = 'if (runtime.testFail("no message")) { return; }\n';
+        source = 'if (runtime.testFail("")) { return; }\n';
         break;
 
       case 'FAIL %s':
