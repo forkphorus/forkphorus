@@ -904,7 +904,7 @@ namespace P.sb3 {
       const costumesPromise = Promise.all<P.core.Costume>(data.costumes.map((c: any, i: any) => this.loadCostume(c, i)));
       const soundsPromise = Promise.all<P.core.Sound | null>(data.sounds.map((c) => this.loadSound(c)));
 
-      return Promise.all<P.core.Costume[], Array<P.core.Sound | null>>([costumesPromise, soundsPromise])
+      return Promise.all([costumesPromise, soundsPromise])
         .then((result) => {
           const costumes = result[0];
           const sounds = result[1];

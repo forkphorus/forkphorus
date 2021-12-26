@@ -1,4 +1,4 @@
-// https://github.com/canvg/canvg/blob/f2363191ccc23b7a7d711bfdc02e6ffcf10f3787/dist/node/canvg.d.ts
+// Based on https://github.com/canvg/canvg/blob/f2363191ccc23b7a7d711bfdc02e6ffcf10f3787/dist/node/canvg.d.ts
 
 declare namespace canvg {
   interface IOptions {
@@ -65,7 +65,7 @@ declare namespace canvg {
     /**
      * Function to create new canvas.
      */
-    createCanvas?: (width: number, height: number) => HTMLCanvasElement | OffscreenCanvas;
+    createCanvas?: (width: number, height: number) => HTMLCanvasElement;
     /**
      * Function to create new image.
      */
