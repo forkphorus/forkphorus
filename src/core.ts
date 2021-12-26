@@ -632,7 +632,7 @@ namespace P.core {
         this.bubblePointer.style.position = 'absolute';
         this.bubblePointer.style.height = (21 / 14) + 'em';
         this.bubblePointer.style.width = (44 / 14) + 'em';
-        this.bubblePointer.style.background = 'url("icons.svg")';
+        this.bubblePointer.style.background = `url("${P.io.config.localPath}icons.svg")`;
         this.bubblePointer.style.backgroundSize = (384/14) + 'em ' + (64/14) + 'em';
         this.bubblePointer.style.backgroundPositionY = (-4/14) + 'em';
         this.stage.ui.appendChild(this.bubbleContainer);
@@ -912,7 +912,7 @@ namespace P.core {
       this.promptButton.style.position = 'absolute';
       this.promptButton.style.right = '.4em';
       this.promptButton.style.bottom = '.4em';
-      this.promptButton.style.background = 'url(icons.svg) -22.8em -0.4em';
+      this.promptButton.style.background = `url("${P.io.config.localPath}icons.svg") -22.8em -0.4em`;
       this.promptButton.style.backgroundSize = '38.4em 6.4em';
 
       this.addEventListeners();
