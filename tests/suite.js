@@ -169,12 +169,50 @@ P.suite = (function() {
         });
       };
 
+      let plannedTests = null;
+      let passedTests = 0;
+      /**
+       * Handle scratch-vm-style test hook.
+       * Example messages:
+       * "plan 1"
+       * "pass name"
+       * "fail name"
+       * "end"
+       * @param {string} message 
+       */
+      const testVm = (message) => {
+        const [method] = message.split(' ');
+        const args = message.substring(method.length).trim();
+        if (method === 'plan') {
+          if (plannedTests !== null) {
+            testFail('already planned test');
+            return;
+          }
+          plannedTests = +args;
+        } else if (method === 'pass') {
+          console.log('Pass', args);
+          passedTests++;
+        } else if (method === 'fail') {
+          testFail(args);
+        } else if (method === 'end') {
+          if (plannedTests !== null) {
+            if (plannedTests === passedTests) {
+              testOkay(`Passed ${passedTests}`);
+            } else {
+              testFail(`Expected ${plannedTests} but only got ${passedTests}`);
+            }
+          } else {
+            testOkay('WARN: not did not plan');
+          }
+        }
+      };
+
       /**
        * testFail() when the project encounters an error
        */
       const handleError = (e) => {
         const message = stringifyError(e);
-        stage.runtime.testFail('ERROR: ' + message);
+        testFail('ERROR: ' + message);
       };
 
       /**
@@ -186,6 +224,7 @@ P.suite = (function() {
 
       stage.runtime.testFail = testFail;
       stage.runtime.testOkay = testOkay;
+      stage.runtime.testVm = testVm;
       stage.runtime.handleError = handleError;
 
       const timeoutId = setTimeout(timeout, metadata.timeout);
@@ -457,3 +496,14 @@ P.suite = (function() {
     }
   };
 }(P.sb2.compiler));
+
+/**
+ * scratch-vm-style hook
+ */
+(function() {
+  const originalSay = P.core.Base.prototype.say;
+  P.core.Base.prototype.say = function (message, thinking) {
+    this.stage.runtime.testVm(message);
+    return originalSay.call(this, message, thinking);
+  };
+}());
