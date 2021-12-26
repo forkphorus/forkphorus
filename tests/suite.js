@@ -320,7 +320,7 @@ P.suite = (function() {
     const failingTests = totalTests - passingTests;
     const percentPassing = Math.round((passingTests / totalTests) * 100);
     listEl.appendChild(createElement('li', {
-      textContent: `Of ${totalTests} test, ${passingTests} passed and ${failingTests} failed. (${percentPassing}% passing)`,
+      textContent: `Of ${totalTests} tests, ${passingTests} passed and ${failingTests} failed. (${percentPassing}% passing)`,
     }));
     if (failingTests > 0) {
       listEl.classList.add('suite-failed');
