@@ -507,6 +507,9 @@ ${scripts}
       splash.style.display = 'none';
     })
     .catch(function(e) {
+      if (location.protocol === 'file:' && project.endsWith('.zip')) {
+        alert('This project was created with the Zip environment which cannot be used from a file: URL, only from a website. It should use the Plain HTML environment instead.');
+      }
       player.handleError(e);
     });
 }());
