@@ -67,7 +67,7 @@
     // 'scratch-vm/order-immobile-stage.sb2',
     'scratch-vm/order-library-reverse.sb2',
     'scratch-vm/order-library-reverse.sb3',
-    'scratch-vm/order-library.sb2',
+    // 'scratch-vm/order-library.sb2',
     'scratch-vm/order-library.sb3',
     'scratch-vm/procedures-boolean-reporter-bug.sb2',
     'scratch-vm/procedures-nested-missing-boolean-param.sb2',
