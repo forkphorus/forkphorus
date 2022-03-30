@@ -57,6 +57,7 @@ namespace P.ext.cloud {
     private failures: number = 0;
     private username: string;
     private interfaceStatusIndicator: HTMLElement;
+    private hideStatusTimeout: number;
 
     constructor(stage: P.core.Stage, hosts: string[] | string, private id: string) {
       super(stage);
@@ -176,9 +177,11 @@ namespace P.ext.cloud {
         // https://github.com/TurboWarp/cloud-server/blob/master/doc/protocol.md
         if (code === 4002) {
           this.setStatusText('Username is invalid. Change your username to connect.');
+          this.hideStatusAfterDelay();
           console.error(this.logPrefix, 'error: Username');
         } else if (code === 4004) {
           this.setStatusText('Cloud variables are disabled for this project.');
+          this.hideStatusAfterDelay();
           console.error(this.logPrefix, 'error: Project is disabled.');
         } else {
           this.reconnect();
@@ -250,7 +253,14 @@ namespace P.ext.cloud {
     }
 
     private setStatusVisible(visible: boolean) {
+      clearTimeout(this.hideStatusTimeout);
       this.interfaceStatusIndicator.classList.toggle('phosphorus-cloud-status-indicator-hidden', !visible);
+    }
+
+    hideStatusAfterDelay() {
+      this.hideStatusTimeout = setTimeout(() => {
+        this.setStatusVisible(false);
+      }, 4000);
     }
 
     onstart() {

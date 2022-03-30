@@ -9157,10 +9157,12 @@ var P;
                         console.warn(this.logPrefix, 'closed', code);
                         if (code === 4002) {
                             this.setStatusText('Username is invalid. Change your username to connect.');
+                            this.hideStatusAfterDelay();
                             console.error(this.logPrefix, 'error: Username');
                         }
                         else if (code === 4004) {
                             this.setStatusText('Cloud variables are disabled for this project.');
+                            this.hideStatusAfterDelay();
                             console.error(this.logPrefix, 'error: Project is disabled.');
                         }
                         else {
@@ -9223,7 +9225,13 @@ var P;
                     this.setStatusVisible(true);
                 }
                 setStatusVisible(visible) {
+                    clearTimeout(this.hideStatusTimeout);
                     this.interfaceStatusIndicator.classList.toggle('phosphorus-cloud-status-indicator-hidden', !visible);
+                }
+                hideStatusAfterDelay() {
+                    this.hideStatusTimeout = setTimeout(() => {
+                        this.setStatusVisible(false);
+                    }, 4000);
                 }
                 onstart() {
                     if (this.queuedVariableChanges.length > 0) {
