@@ -173,9 +173,13 @@ namespace P.ext.cloud {
         const code = e.code;
         this.ws = null;
         console.warn(this.logPrefix, 'closed', code);
-        if (code === 4002) { // Username Error, see protocol document
+        // https://github.com/TurboWarp/cloud-server/blob/master/doc/protocol.md
+        if (code === 4002) {
           this.setStatusText('Username is invalid. Change your username to connect.');
           console.error(this.logPrefix, 'error: Username');
+        } else if (code === 4004) {
+          this.setStatusText('Cloud variables are disabled for this project.');
+          console.error(this.logPrefix, 'error: Project is disabled.');
         } else {
           this.reconnect();
         }
