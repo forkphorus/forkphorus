@@ -97,6 +97,15 @@
         border-color: rgb(53, 53, 53);
       }
     }
+
+    .migration {
+      border: 2px solid #ff4c4c;
+      border-radius: 8px;
+      padding: 8px;
+    }
+    .migration ul {
+      margin: 4px 0 0 0;
+    }
   </style>
   <title>HTML Packager - forkphorus</title>
 </head>
@@ -106,10 +115,21 @@
 
   <p>The HTML packager allows you to generate an HTML file for a Scratch project.</p>
 
+  <div class="migration">
+    <div>
+      The forkphorus packager still works and will always exist, but we think you should be using the <a href="https://packager.turbowarp.org/">TurboWarp Packager</a> instead:
+    </div>
+    <ul>
+      <li>It almost always generates faster and smaller files</li>
+      <li>It has a lot more customization options</li>
+      <li>It remembers all of your choices between visits</li>
+      <li>It can generate applications for Windows, macOS, or Linux completely automatically</li>
+    </ul>
+  </div>
+
   <noscript><b>This page requires JavaScript to work properly.</b></noscript>
 
   <ul>
-    <li>Consider trying out the new <a href="https://packager.turbowarp.org/">TurboWarp Packager</a></li>
     <li>Guide: <a href="guide.html" target="_blank">Forkphorus Packager Guide (Windows, Mac, Linux, Android)</a></li>
     <li>Additional Help: Create an issue on <a href="https://github.com/forkphorus/forkphorus/issues" target="_blank" rel="noopener">GitHub</a></li>
   </ul>
