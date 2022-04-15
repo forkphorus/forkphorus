@@ -398,7 +398,7 @@ namespace P.runtime {
       case 'control': return P.core.SpecialKeys.Control;
       case 'shift': return P.core.SpecialKeys.Shift;
     }
-    return '' + keyName.toUpperCase().charCodeAt(0);
+    return '' + keyName.toLowerCase().charCodeAt(0);
   };
 
   // Load audio methods if audio is supported

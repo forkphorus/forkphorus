@@ -4209,7 +4209,7 @@ var P;
                 case 'control': return "control";
                 case 'shift': return "_shift";
             }
-            return '' + keyName.toUpperCase().charCodeAt(0);
+            return '' + keyName.toLowerCase().charCodeAt(0);
         };
         const audioContext = P.audio.context;
         if (audioContext) {
