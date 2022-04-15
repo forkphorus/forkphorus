@@ -1166,11 +1166,22 @@ var P;
                     case 'Right': return "right arrow";
                     case 'ArrowDown':
                     case 'Down': return "down arrow";
+                    case 'Escape': return "esc";
+                    case 'Tab': return "tab";
+                    case 'Backspace': return "backspace";
+                    case 'Delete': return "delete";
+                    case 'Shift': return "_shift";
+                    case 'Control': return "control";
+                    case 'Insert': return "insert";
+                    case 'Home': return "home";
+                    case 'End': return "end";
+                    case 'PageUp': return "page up";
+                    case 'PageDown': return "page down";
                 }
                 if (key.length !== 1) {
                     return null;
                 }
-                return '' + key.toUpperCase().charCodeAt(0);
+                return '' + key.toLowerCase().charCodeAt(0);
             }
             _onkeyup(e) {
                 const c = this.keyEventToCode(e);
@@ -1188,10 +1199,12 @@ var P;
                 const c = this.keyEventToCode(e);
                 if (c === null)
                     return;
+                if (c == "tab" && !e.shiftKey)
+                    return;
                 if (!this.keys[c])
                     this.keys.any++;
                 this.keys[c] = true;
-                if (e.ctrlKey || e.altKey || e.metaKey || c === '27')
+                if (e.ctrlKey || e.altKey || e.metaKey || c === "esc")
                     return;
                 e.stopPropagation();
                 if (e.target === this.canvas) {
@@ -4155,25 +4168,46 @@ var P;
         function getKeyCode(keyName) {
             keyName = keyName + '';
             switch (keyName.toLowerCase()) {
-                case 'space': return "32";
-                case 'left arrow': return "left arrow";
-                case 'up arrow': return "up arrow";
-                case 'right arrow': return "right arrow";
-                case 'down arrow': return "down arrow";
+                case 'space':
+                case '\x20': return "space";
+                case 'left arrow':
+                case '\x1C': return "left arrow";
+                case 'up arrow':
+                case '\x1E': return "up arrow";
+                case 'right arrow':
+                case '\x1D': return "right arrow";
+                case 'down arrow':
+                case '\x1F': return "down arrow";
                 case 'any': return 'any';
+                case '\x0D': return "enter";
+                case '\x1B': return "esc";
+                case '\x09': return "tab";
+                case '\x08': return "backspace";
+                case '\x7F': return "delete";
+                case '': return "_shift";
             }
-            return '' + keyName.toUpperCase().charCodeAt(0);
+            return '' + keyName.charCodeAt(0);
         }
         runtime_1.getKeyCode = getKeyCode;
         var getKeyCode3 = function (keyName) {
             switch (keyName.toLowerCase()) {
-                case 'space': return "32";
+                case 'space': return "space";
                 case 'left arrow': return "left arrow";
                 case 'up arrow': return "up arrow";
                 case 'right arrow': return "right arrow";
                 case 'down arrow': return "down arrow";
-                case 'enter': return "enter";
                 case 'any': return 'any';
+                case 'enter': return "enter";
+                case 'escape': return "esc";
+                case 'backspace': return "backspace";
+                case 'delete': return "delete";
+                case 'insert': return "insert";
+                case 'home': return "home";
+                case 'end': return "end";
+                case 'page up': return "page up";
+                case 'page down': return "page down";
+                case 'control': return "control";
+                case 'shift': return "_shift";
             }
             return '' + keyName.toUpperCase().charCodeAt(0);
         };

@@ -237,11 +237,22 @@ namespace P.core {
 
   export const enum SpecialKeys {
     Enter = 'enter',
-    Space = '32',
+    Space = 'space',
     Left = 'left arrow',
     Up = 'up arrow',
     Right = 'right arrow',
     Down = 'down arrow',
+    Tab = 'tab',
+    Backspace = 'backspace',
+    Delete = 'delete',
+    Insert = 'insert',
+    Home = 'home',
+    End = 'end',
+    PageUp = 'page up',
+    PageDown = 'page down',
+    Escape = 'esc',
+    Control = 'control',
+    Shift = '_shift', // Using 'shift' causes issues because of it's prototypes
   }
 
   export abstract class Base {
@@ -973,13 +984,23 @@ namespace P.core {
         case 'ArrowUp': case 'Up': return SpecialKeys.Up;
         case 'ArrowRight': case 'Right': return SpecialKeys.Right;
         case 'ArrowDown': case 'Down': return SpecialKeys.Down;
+        case 'Escape': return SpecialKeys.Escape;
+        case 'Tab': return SpecialKeys.Tab;
+        case 'Backspace': return SpecialKeys.Backspace;
+        case 'Delete': return SpecialKeys.Delete;
+        case 'Shift': return SpecialKeys.Shift;
+        case 'Control': return SpecialKeys.Control;
+        case 'Insert': return SpecialKeys.Insert;
+        case 'Home': return SpecialKeys.Home;
+        case 'End': return SpecialKeys.End;
+        case 'PageUp': return SpecialKeys.PageUp;
+        case 'PageDown': return SpecialKeys.PageDown;
       }
       if (key.length !== 1) {
-        // Additional keys that we don't care about such as volume keys (AudioVolumeUp/Down) and modifier keys (Shift)
-        // TODO: see if we can support Shift because Scratch 2 did
+        // Additional keys that we don't care about such as volume keys (AudioVolumeUp/Down) and modifier keys
         return null;
       }
-      return '' + key.toUpperCase().charCodeAt(0);
+      return '' + key.toLowerCase().charCodeAt(0);
     }
 
     private _onkeyup(e: KeyboardEvent) {
@@ -996,9 +1017,10 @@ namespace P.core {
     private _onkeydown(e: KeyboardEvent) {
       const c = this.keyEventToCode(e);
       if (c === null) return;
+      if (c == SpecialKeys.Tab && !e.shiftKey) return;
       if (!this.keys[c]) this.keys.any++;
       this.keys[c] = true;
-      if (e.ctrlKey || e.altKey || e.metaKey || c === '27') return;
+      if (e.ctrlKey || e.altKey || e.metaKey || c === SpecialKeys.Escape) return;
       e.stopPropagation();
       if (e.target === this.canvas) {
         e.preventDefault();

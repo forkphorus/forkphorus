@@ -360,14 +360,20 @@ namespace P.runtime {
   export function getKeyCode(keyName: any): string {
     keyName = keyName + '';
     switch (keyName.toLowerCase()) {
-      case 'space': return P.core.SpecialKeys.Space;
-      case 'left arrow': return P.core.SpecialKeys.Left;
-      case 'up arrow': return P.core.SpecialKeys.Up;
-      case 'right arrow': return P.core.SpecialKeys.Right;
-      case 'down arrow': return P.core.SpecialKeys.Down;
+      case 'space': case '\x20': return P.core.SpecialKeys.Space;
+      case 'left arrow': case '\x1C': return P.core.SpecialKeys.Left;
+      case 'up arrow': case '\x1E': return P.core.SpecialKeys.Up;
+      case 'right arrow': case '\x1D': return P.core.SpecialKeys.Right;
+      case 'down arrow': case '\x1F': return P.core.SpecialKeys.Down;
       case 'any': return 'any';
+      case '\x0D': return P.core.SpecialKeys.Enter;
+      case '\x1B': return P.core.SpecialKeys.Escape;
+      case '\x09': return P.core.SpecialKeys.Tab;
+      case '\x08': return P.core.SpecialKeys.Backspace;
+      case '\x7F': return P.core.SpecialKeys.Delete;
+      case '': return P.core.SpecialKeys.Shift;
     }
-    return '' + keyName.toUpperCase().charCodeAt(0);
+    return '' + keyName.charCodeAt(0);
   }
 
   var getKeyCode3 = function(keyName: any): string {
@@ -377,9 +383,20 @@ namespace P.runtime {
       case 'up arrow': return P.core.SpecialKeys.Up;
       case 'right arrow': return P.core.SpecialKeys.Right;
       case 'down arrow': return P.core.SpecialKeys.Down;
+      case 'any': return 'any';
       // Scratch 3 added support for 'enter'
       case 'enter': return P.core.SpecialKeys.Enter;
-      case 'any': return 'any';
+      // Incomplete parity with TurboWarp
+      case 'escape': return P.core.SpecialKeys.Escape;
+      case 'backspace': return P.core.SpecialKeys.Backspace;
+      case 'delete': return P.core.SpecialKeys.Delete;
+      case 'insert': return P.core.SpecialKeys.Insert;
+      case 'home': return P.core.SpecialKeys.Home;
+      case 'end': return P.core.SpecialKeys.End;
+      case 'page up': return P.core.SpecialKeys.PageUp;
+      case 'page down': return P.core.SpecialKeys.PageDown;
+      case 'control': return P.core.SpecialKeys.Control;
+      case 'shift': return P.core.SpecialKeys.Shift;
     }
     return '' + keyName.toUpperCase().charCodeAt(0);
   };
