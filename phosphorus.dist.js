@@ -7393,13 +7393,19 @@ var P;
                         .replace(/\*\//g, '');
                     return `/* ${content} */`;
                 }
-                findVariable(id) {
+                findVariable({ id, name }) {
                     const stage = this.target.stage;
                     if (stage.varIds.hasOwnProperty(id)) {
                         return { scope: 'self', name: stage.varIds[id] };
                     }
+                    else if (stage.vars.hasOwnProperty(name)) {
+                        return { scope: 'self', name: name };
+                    }
                     else if (this.target.varIds.hasOwnProperty(id)) {
                         return { scope: 'S', name: this.target.varIds[id] };
+                    }
+                    else if (this.target.vars.hasOwnProperty(name)) {
+                        return { scope: 'S', name: name };
                     }
                     else {
                         this.target.vars[id] = 0;
@@ -7407,13 +7413,19 @@ var P;
                         return { scope: 'S', name: id };
                     }
                 }
-                findList(id) {
+                findList({ id, name }) {
                     const stage = this.target.stage;
                     if (stage.listIds.hasOwnProperty(id)) {
                         return { scope: 'self', name: stage.listIds[id] };
                     }
+                    else if (stage.lists.hasOwnProperty(name)) {
+                        return { scope: 'self', name: name };
+                    }
                     else if (this.target.listIds.hasOwnProperty(id)) {
                         return { scope: 'S', name: this.target.listIds[id] };
+                    }
+                    else if (this.target.lists.hasOwnProperty(name)) {
+                        return { scope: 'S', name: name };
                     }
                     else {
                         this.target.lists[id] = sb3.createList();
@@ -7421,13 +7433,13 @@ var P;
                         return { scope: 'S', name: id };
                     }
                 }
-                getVariableReference(id) {
-                    const { scope, name } = this.findVariable(id);
-                    return `${scope}.vars[${this.sanitizedString(name)}]`;
+                getVariableReference({ id, name }) {
+                    const varInfo = this.findVariable({ id: id, name: name });
+                    return `${varInfo.scope}.vars[${this.sanitizedString(varInfo.name)}]`;
                 }
-                getListReference(id) {
-                    const { scope, name } = this.findList(id);
-                    return `${scope}.lists[${this.sanitizedString(name)}]`;
+                getListReference({ id, name }) {
+                    const listInfo = this.findList({ id: id, name: name });
+                    return `${listInfo.scope}.lists[${this.sanitizedString(listInfo.name)}]`;
                 }
                 isStringLiteralPotentialNumber(text) {
                     return /\d|true|false|Infinity/.test(text);
@@ -7464,9 +7476,9 @@ var P;
                             return input;
                         }
                         case 12:
-                            return anyInput(this.getVariableReference(native[2]));
+                            return anyInput(this.getVariableReference({ id: native[2], name: native[1] }));
                         case 13:
-                            return new CompiledInput(this.getListReference(native[2]), 'list');
+                            return new CompiledInput(this.getListReference({ id: native[2], name: native[1] }), 'list');
                         case 11:
                             return this.sanitizedInput(native[1]);
                         case 9: {
@@ -7522,9 +7534,9 @@ var P;
                     const value = block.fields[fieldName];
                     if (!value) {
                         this.warn('missing variable field', fieldName);
-                        return '';
+                        return { id: '', name: '' };
                     }
-                    return '' + value[1];
+                    return { id: '' + value[1], name: '' + value[0] };
                 }
                 compileSubstackInput(block, substackName) {
                     if (!block.inputs[substackName]) {
