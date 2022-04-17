@@ -1589,6 +1589,7 @@ namespace P.core {
 
     // Faces in a direction.
     setDirection(degrees: number) {
+      if (!isFinite(degrees)) return;
       var d = degrees % 360;
       if (d > 180) d -= 360;
       if (d <= -180) d += 360;
@@ -1752,7 +1753,9 @@ namespace P.core {
       }
       const dx = position.x - this.scratchX;
       const dy = position.y - this.scratchY;
-      this.direction = dx === 0 && dy === 0 ? 90 : Math.atan2(dx, dy) * 180 / Math.PI;
+      const dir = dx === 0 && dy === 0 ? 90 : Math.atan2(dx, dy) * 180 / Math.PI;
+      if (!isFinite(dir)) return;
+      this.direction = dir;
       if (this.saying) this.updateBubble();
     }
   }
