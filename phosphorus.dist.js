@@ -3879,7 +3879,7 @@ var P;
             return +v !== 0 && v !== '' && v !== 'false' && v !== false;
         };
         var compare = function (x, y) {
-            if ((typeof x === 'number' || DIGIT.test(x)) && (typeof y === 'number' || DIGIT.test(y))) {
+            if ((typeof x !== 'string' || DIGIT.test(x)) && (typeof y !== 'string' || DIGIT.test(y))) {
                 var nx = +x;
                 var ny = +y;
                 if (nx === nx && ny === ny) {
