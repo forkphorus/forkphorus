@@ -406,8 +406,10 @@ namespace P.renderer.canvas2d {
 
       this.drawAllExcept(workingRenderer, sprite);
       workingRenderer.ctx.globalCompositeOperation = 'destination-in';
+      workingRenderer.noEffects = true;
       workingRenderer.drawChild(sprite);
-
+      
+      workingRenderer.noEffects = false;
       workingRenderer.ctx.restore();
 
       const data = workingRenderer.ctx.getImageData(0, 0, width, height).data;
@@ -440,8 +442,10 @@ namespace P.renderer.canvas2d {
       workingRenderer2.ctx.translate(-(240 + rb.left), -(180 - rb.top));
 
       this.drawAllExcept(workingRenderer, sprite);
+      workingRenderer2.noEffects = true;
       workingRenderer2.drawChild(sprite);
-
+      workingRenderer2.noEffects = false;
+      
       workingRenderer.ctx.restore();
       workingRenderer2.ctx.restore();
 
