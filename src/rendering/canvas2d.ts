@@ -109,8 +109,8 @@ namespace P.renderer.canvas2d {
       const image = costume.getImage();
       const x = -costume.rotationCenterX * objectScale | 0;
       const y = -costume.rotationCenterY * objectScale | 0;
-      const w = costume.width * objectScale;
-      const h = costume.height * objectScale;
+      const w = costume.width * objectScale | 0;
+      const h = costume.height * objectScale | 0;
       if (w < 1 || h < 1) {
         ctx.restore();
         return;
