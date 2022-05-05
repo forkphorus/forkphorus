@@ -1884,14 +1884,21 @@ namespace P.core {
       this.ctx.drawImage(this.svg, 0, 0, width, height);
     }
 
+    // This only has effect when uploading svg directly to WebGL texture
+    private resizeSvg() {
+      this.svg.width = Math.floor(Math.max(1, this.width * this.currentScale));
+      this.svg.height = Math.floor(Math.max(1, this.height * this.currentScale));
+    }
+
     requestSize(costumeScale: number) {
-      if (VectorCostume.DISABLE_RASTERIZE) {
-        return;
-      }
       const scale = Math.min(Math.ceil(costumeScale), this.maxScale);
       if (this.currentScale < scale) {
         this.currentScale = scale;
-        this.render();
+        if (VectorCostume.DISABLE_RASTERIZE) {
+          this.resizeSvg();
+        } else {
+          this.render();
+        }
       }
     }
 
