@@ -1020,10 +1020,10 @@ namespace P.renderer.webgl {
           continue;
         }
 
-        const left = Math.round(Math.max(mb.left, ob.left));
-        const top = Math.round(Math.min(mb.top, ob.top));
-        const right = Math.round(Math.min(mb.right, ob.right));
-        const bottom = Math.round(Math.max(mb.bottom, ob.bottom));
+        const left = Math.round(Math.max(-240, mb.left, ob.left));
+        const top = Math.round(Math.min(180, mb.top, ob.top));
+        const right = Math.round(Math.min(240, mb.right, ob.right));
+        const bottom = Math.round(Math.max(-180, mb.bottom, ob.bottom));
 
         const width = Math.max(right - left, 1);
         const height = Math.max(top - bottom, 1);
@@ -1074,10 +1074,10 @@ namespace P.renderer.webgl {
       
       const mb = sprite.rotatedBounds();
 
-      const left = Math.round(mb.left);
-      const top = Math.round(mb.top);
-      const right = Math.round(mb.right);
-      const bottom = Math.round(mb.bottom);
+      const left = Math.max(-240, Math.round(mb.left));
+      const top = Math.min(180, Math.round(mb.top));
+      const right = Math.min(240, Math.round(mb.right));
+      const bottom = Math.max(-180, Math.round(mb.bottom));
 
       const width = Math.max(right - left, 1);
       const height = Math.max(top - bottom, 1);
@@ -1128,10 +1128,10 @@ namespace P.renderer.webgl {
       
       const mb = sprite.rotatedBounds();
 
-      const left = Math.round(mb.left);
-      const top = Math.round(mb.top);
-      const right = Math.round(mb.right);
-      const bottom = Math.round(mb.bottom);
+      const left = Math.max(-240, Math.round(mb.left));
+      const top = Math.min(180, Math.round(mb.top));
+      const right = Math.min(240, Math.round(mb.right));
+      const bottom = Math.max(-180, Math.round(mb.bottom));
 
       const width = Math.max(right - left, 1);
       const height = Math.max(top - bottom, 1);
