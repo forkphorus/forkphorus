@@ -3102,7 +3102,7 @@ namespace P.sb3.compiler {
       case 'sin':
         return util.numberInput(`(Math.round(Math.sin(${NUM} * Math.PI / 180) * 1e10) / 1e10)`);
       case 'tan':
-        return util.numberInput(`Math.tan(${NUM} * Math.PI / 180)`);
+        return util.numberInput(`tanS3(${NUM})`);
       case 'asin':
         return util.numberInput(`(Math.asin(${NUM}) * 180 / Math.PI)`);
       case 'acos':

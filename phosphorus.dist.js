@@ -4122,6 +4122,14 @@ var P;
             }
             return 0;
         };
+        var tanS3 = function (angle) {
+            angle = angle - Math.floor(angle / 360) * 360;
+            if (angle === 90)
+                return Infinity;
+            if (angle === 270)
+                return -Infinity;
+            return Math.round(Math.tan(angle * Math.PI / 180) * 1e10) / 1e10;
+        };
         var attribute = function (attr, objName) {
             const o = self.getObject(objName);
             if (!o)
@@ -8642,7 +8650,7 @@ var P;
             case 'sin':
                 return util.numberInput(`(Math.round(Math.sin(${NUM} * Math.PI / 180) * 1e10) / 1e10)`);
             case 'tan':
-                return util.numberInput(`Math.tan(${NUM} * Math.PI / 180)`);
+                return util.numberInput(`tanS3(${NUM})`);
             case 'asin':
                 return util.numberInput(`(Math.asin(${NUM}) * 180 / Math.PI)`);
             case 'acos':
