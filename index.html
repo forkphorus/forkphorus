@@ -49,6 +49,21 @@
       <a target="_blank" class="project-link" title="View project on Scratch" rel="noopener" href="https://scratch.mit.edu/"></a>
     </div>
 
+    <div class="area" id="unshared-projects">
+      <!-- 
+        I won't link these in the public website because there will be way too much spam if we do that, but here are the relevant links:
+        https://github.com/LLK/scratch-gui/pull/8269
+        https://github.com/LLK/scratch-www/pull/6773
+       -->
+      <h1>May 7, 2022 - Update on unshared projects</h1>
+      <p>The future of viewing unshared projects is uncertain.</p>
+      <p>The latest code changes to Scratch indicate the Scratch Team is finally making unshared projects inaccessible to anyone who isn't the owner of the project.</p>
+      <p>We aren't sure when the changes will happen or their exact impact, but we expect that unshared projects will no longer be viewable or embeddable in forkphorus or other third-party websites in the future. This includes your own unshared projects.</p>
+      <p>
+        <a href="https://docs.turbowarp.org/unshared-projects" target="_blank" rel="noopener noreferrer">More information</a>
+      </p>
+    </div>
+
     <div class="area" id="project-area">
 
       <section>
@@ -227,6 +242,7 @@
     var titleArea = querySelector('#title-area');
     var playerArea = querySelector('#player-area');
     var projectArea = querySelector('#project-area');
+    var unsharedProjectArea = querySelector('#unshared-projects');
 
     var player = new P.player.Player();
     player.addControls();
@@ -266,6 +282,7 @@
     var titleAreaHeight = titleArea.offsetHeight;
     var playerAreaHeight = playerArea.offsetHeight;
     var projectAreaHeight = projectArea.offsetHeight;
+    var unsharedProjectAreaHeight = unsharedProjectArea.offsetHeight;
     var studioViewAreaHeight = 330;
     playerArea.style.height = projectArea.style.height = 0;
 
@@ -330,6 +347,7 @@
         examplesViewContainer.appendChild(studioView.root);
         studioView.projectList.scrollTop = studioView.scrollTop;
       }
+      unsharedProjectArea.style.height = unsharedProjectAreaHeight + 'px';
       resetTitle();
     }
     function showPlayerArea() {
@@ -338,6 +356,7 @@
       projectArea.style.height = projectAreaHeight + 'px';
       hideStudioView();
       examplesContainer.style.height = '0px';
+      unsharedProjectArea.style.height = '0px';
     }
     function loadProjectId(id) {
       showPlayerArea();
@@ -388,6 +407,9 @@
               document.title = title + ' - forkphorus';
               updateLinks();
             } else {
+              if (title === null && meta.isFromScratch()) {
+                unsharedProjectArea.style.height = unsharedProjectAreaHeight + 'px';
+              }
               resetTitle();
             }
           }
