@@ -2071,9 +2071,6 @@ var P;
             'player.errorhandler.error.doesnotexist': 'There is no project with ID $id. It was probably deleted, never existed, or you made a typo.',
             'player.errorhandler.error.doesnotexistlegacy': 'The project with ID $id can not be used with legacy mode enabled. Turn off legacy mode to use this project.',
         });
-        addTranslations('es', {
-            'player.controls.turboIndicator': 'Modo Turbo',
-        });
     })(i18n = P.i18n || (P.i18n = {}));
 })(P || (P = {}));
 var P;
