@@ -668,8 +668,9 @@ namespace P.core {
       const b = this.rotatedBounds();
       const left = 240 + b.right;
       var bottom = 180 + b.top;
-      const width = this.bubbleContainer.offsetWidth / this.stage.zoom;
-      const height = this.bubbleContainer.offsetHeight / this.stage.zoom;
+      const bcr = this.bubbleContainer.getBoundingClientRect();
+      const height = (bcr.bottom - bcr.top) / this.stage.zoom;
+      const width = (bcr.right - bcr.left) / this.stage.zoom;
       this.bubblePointer.style.top = ((height - 6) / 14) + 'em';
       if (left + width + 2 > 480) {
         var d = (240 - b.left) / 14;
