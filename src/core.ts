@@ -980,6 +980,7 @@ namespace P.core {
     private keyEventToCode(e: KeyboardEvent): string | null {
       const key = e.key || '';
       switch (key) {
+        case ' ': return SpecialKeys.Space;
         case 'Enter': return SpecialKeys.Enter;
         case 'ArrowLeft': case 'Left': return SpecialKeys.Left;
         case 'ArrowUp': case 'Up': return SpecialKeys.Up;

@@ -1158,6 +1158,7 @@ var P;
             keyEventToCode(e) {
                 const key = e.key || '';
                 switch (key) {
+                    case ' ': return "space";
                     case 'Enter': return "enter";
                     case 'ArrowLeft':
                     case 'Left': return "left arrow";
@@ -4205,7 +4206,8 @@ var P;
         runtime_1.getKeyCode = getKeyCode;
         var getKeyCode3 = function (keyName) {
             switch (keyName.toLowerCase()) {
-                case 'space': return "space";
+                case 'space':
+                case '\x20': return "space";
                 case 'left arrow': return "left arrow";
                 case 'up arrow': return "up arrow";
                 case 'right arrow': return "right arrow";

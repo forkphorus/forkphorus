@@ -386,7 +386,7 @@ namespace P.runtime {
 
   var getKeyCode3 = function(keyName: any): string {
     switch (keyName.toLowerCase()) {
-      case 'space': return P.core.SpecialKeys.Space;
+      case 'space': case '\x20': return P.core.SpecialKeys.Space;
       case 'left arrow': return P.core.SpecialKeys.Left;
       case 'up arrow': return P.core.SpecialKeys.Up;
       case 'right arrow': return P.core.SpecialKeys.Right;
