@@ -7815,7 +7815,9 @@ var P;
         util.writeLn('save();');
         util.writeLn('R.start = runtime.currentMSecs;');
         util.writeLn(`R.duration = ${DURATION};`);
-        util.writeLn(`var first = true;`);
+        if (!util.compiler.state.isWarp || util.substacksQueue) {
+            util.writeLn(`var first = true;`);
+        }
         const label = util.addLabel();
         util.writeLn('if (runtime.currentMSecs - R.start < R.duration * 1000 || first) {');
         util.writeLn('  var first;');
