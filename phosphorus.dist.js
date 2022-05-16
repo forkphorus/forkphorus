@@ -5725,7 +5725,7 @@ var P;
                     source += 'save();\n';
                     source += 'R.start = runtime.now();\n';
                     source += 'R.duration = ' + num(dur) + ' * 60 / self.tempoBPM;\n';
-                    source += 'var first = true;\n';
+                    source += 'var first = !WARP;\n';
                 };
                 var beatTail = function () {
                     var id = label();
@@ -5742,7 +5742,7 @@ var P;
                     source += 'save();\n';
                     source += 'R.start = runtime.now();\n';
                     source += 'R.duration = ' + dur + ';\n';
-                    source += 'var first = true;\n';
+                    source += 'var first = !WARP;\n';
                     var id = label();
                     source += 'if (runtime.now() - R.start < R.duration * 1000 || first) {\n';
                     source += '  var first;\n';
@@ -5854,8 +5854,10 @@ var P;
                         source += 'R.id = S.say(' + val(block[1]) + ', false);\n';
                         source += 'R.start = runtime.now();\n';
                         source += 'R.duration = ' + num(block[2]) + ';\n';
+                        source += 'var first = !WARP;\n';
                         var id = label();
-                        source += 'if (runtime.now() - R.start < R.duration * 1000) {\n';
+                        source += 'if (runtime.now() - R.start < R.duration * 1000 || first) {\n';
+                        source += '  var first;\n';
                         forceQueue(id);
                         source += '}\n';
                         source += 'if (S.sayId === R.id) {\n';
@@ -5871,8 +5873,10 @@ var P;
                         source += 'R.id = S.say(' + val(block[1]) + ', true);\n';
                         source += 'R.start = runtime.now();\n';
                         source += 'R.duration = ' + num(block[2]) + ';\n';
+                        source += 'var first = !WARP;\n';
                         var id = label();
-                        source += 'if (runtime.now() - R.start < R.duration * 1000) {\n';
+                        source += 'if (runtime.now() - R.start < R.duration * 1000 || first) {\n';
+                        source += '  var first;\n';
                         forceQueue(id);
                         source += '}\n';
                         source += 'if (S.sayId === R.id) {\n';
@@ -7996,8 +8000,10 @@ var P;
         util.visual('visible');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${SECS};`);
+        util.writeLn(`var first = true;`);
         const label = util.addLabel();
-        util.writeLn('if (runtime.now() - R.start < R.duration * 1000) {');
+        util.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
+        util.writeLn('  var first;');
         util.forceQueue(label);
         util.writeLn('}');
         util.writeLn('if (S.sayId === R.id) {');
@@ -8059,8 +8065,10 @@ var P;
         util.visual('visible');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${SECS};`);
+        util.writeLn(`var first = true;`);
         const label = util.addLabel();
-        util.writeLn('if (runtime.now() - R.start < R.duration * 1000) {');
+        util.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
+        util.writeLn('  var first;');
         util.forceQueue(label);
         util.writeLn('}');
         util.writeLn('if (S.sayId === R.id) {');
@@ -8189,7 +8197,9 @@ var P;
         util.writeLn('save();');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
-        util.writeLn(`var first = true;`);
+        if (!util.compiler.state.isWarp || util.substacksQueue) {
+            util.writeLn(`var first = true;`);
+        }
         if (P.audio.context) {
             util.writeLn(`R.sound = playSpan(DRUMS[Math.round(${DRUM}) - 1] || DRUMS[2], 60, 10);`);
         }
@@ -8212,7 +8222,6 @@ var P;
         util.writeLn('save();');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
-        util.writeLn(`var first = true;`);
         if (P.audio.context) {
             util.writeLn(`R.sound = playNote(${NOTE}, R.duration);`);
         }
@@ -8221,8 +8230,7 @@ var P;
         }
         const id = util.addLabel();
         util.writeLn('S.activeSounds.add(R.sound);');
-        util.writeLn('if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
-        util.writeLn('  var first;');
+        util.writeLn('if ((runtime.now() - R.start < R.duration * 1000) && !R.sound.stopped) {');
         util.forceQueue(id);
         util.writeLn('}');
         util.writeLn('S.activeSounds.delete(R.sound);');
@@ -8233,7 +8241,9 @@ var P;
         util.writeLn('save();');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
-        util.writeLn(`var first = true;`);
+        if (!util.compiler.state.isWarp || util.substacksQueue) {
+            util.writeLn(`var first = true;`);
+        }
         const id = util.addLabel();
         util.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
         util.writeLn('  var first;');

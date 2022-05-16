@@ -2417,8 +2417,10 @@ namespace P.sb3.compiler {
     util.visual('visible');
     util.writeLn('R.start = runtime.now();');
     util.writeLn(`R.duration = ${SECS};`);
+    util.writeLn(`var first = true;`);
     const label = util.addLabel();
-    util.writeLn('if (runtime.now() - R.start < R.duration * 1000) {');
+    util.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
+    util.writeLn('  var first;');
     util.forceQueue(label);
     util.writeLn('}');
     util.writeLn('if (S.sayId === R.id) {');
@@ -2482,8 +2484,10 @@ namespace P.sb3.compiler {
     util.visual('visible');
     util.writeLn('R.start = runtime.now();');
     util.writeLn(`R.duration = ${SECS};`);
+    util.writeLn(`var first = true;`);
     const label = util.addLabel();
-    util.writeLn('if (runtime.now() - R.start < R.duration * 1000) {');
+    util.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
+    util.writeLn('  var first;');
     util.forceQueue(label);
     util.writeLn('}');
     util.writeLn('if (S.sayId === R.id) {');
@@ -2615,7 +2619,9 @@ namespace P.sb3.compiler {
     util.writeLn('save();');
     util.writeLn('R.start = runtime.now();');
     util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
-    util.writeLn(`var first = true;`);
+    if (!util.compiler.state.isWarp || util.substacksQueue) {
+      util.writeLn(`var first = true;`);
+    }
 
     if (P.audio.context) {
       util.writeLn(`R.sound = playSpan(DRUMS[Math.round(${DRUM}) - 1] || DRUMS[2], 60, 10);`);
@@ -2641,7 +2647,6 @@ namespace P.sb3.compiler {
     util.writeLn('save();');
     util.writeLn('R.start = runtime.now();');
     util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
-    util.writeLn(`var first = true;`);
 
     if (P.audio.context) {
       util.writeLn(`R.sound = playNote(${NOTE}, R.duration);`);
@@ -2651,8 +2656,7 @@ namespace P.sb3.compiler {
 
     const id = util.addLabel();
     util.writeLn('S.activeSounds.add(R.sound);')
-    util.writeLn('if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
-    util.writeLn('  var first;');
+    util.writeLn('if ((runtime.now() - R.start < R.duration * 1000) && !R.sound.stopped) {');
     util.forceQueue(id);
     util.writeLn('}');
     util.writeLn('S.activeSounds.delete(R.sound);');
@@ -2663,7 +2667,9 @@ namespace P.sb3.compiler {
     util.writeLn('save();');
     util.writeLn('R.start = runtime.now();');
     util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
-    util.writeLn(`var first = true;`);
+    if (!util.compiler.state.isWarp || util.substacksQueue) {
+      util.writeLn(`var first = true;`);
+    }
     const id = util.addLabel();
     util.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
     util.writeLn('  var first;');
