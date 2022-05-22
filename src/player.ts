@@ -152,6 +152,10 @@ namespace P.player {
      * Whether this project was loaded from scratch.mit.edu
      */
     isFromScratch(): boolean;
+    /**
+     * A token to be used for downloading the project, if any.
+     */
+    getToken(): string | null;
   }
 
   class LoaderIdentifier {
@@ -216,6 +220,10 @@ namespace P.player {
     isFromScratch() {
       return false;
     }
+
+    getToken() {
+      return null;
+    }
   }
 
   class BinaryProjectMeta implements ProjectMeta {
@@ -236,10 +244,15 @@ namespace P.player {
     isFromScratch() {
       return false;
     }
+    
+    getToken() {
+      return null;
+    }
   }
 
   class RemoteProjectMeta implements ProjectMeta {
     private title: string | null = null;
+    private token: string | null = null;
 
     constructor(private id: string) {
 
@@ -253,6 +266,9 @@ namespace P.player {
         .then((data) => {
           if (data.title) {
             this.title = data.title;
+          }
+          if (data.project_token) {
+            this.token = data.project_token;
           }
           return this;
         });
@@ -268,6 +284,10 @@ namespace P.player {
 
     isFromScratch() {
       return true;
+    }
+
+    getToken() {
+      return this.token;
     }
   }
 
@@ -926,8 +946,12 @@ namespace P.player {
     /**
      * Download a project from the scratch.mit.edu using its ID.
      */
-    private fetchProject(id: string): Promise<Blob> {
-      const request = new P.io.Request(this.options.projectHost.replace('$id', id));
+    private fetchProject(id: string, token: string | null): Promise<Blob> {
+      let url = this.options.projectHost.replace('$id', id);
+      if (token) {
+        url += `?token=${token}`;
+      }
+      const request = new P.io.Request(url);
       return request
         .ignoreErrors()
         .load('blob')
@@ -1029,8 +1053,10 @@ namespace P.player {
       };
 
       try {
-        this.projectMeta = new RemoteProjectMeta(id);
-        const blob = await this.fetchProject(id);
+        const meta = new RemoteProjectMeta(id);
+        this.projectMeta = meta;
+        await meta.load();
+        const blob = await this.fetchProject(id, meta.getToken());
         const loader = await getLoader(blob);
         await this.loadLoader(loaderId, loader);
       } catch (e) {

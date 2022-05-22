@@ -2961,6 +2961,9 @@ var P;
             isFromScratch() {
                 return false;
             }
+            getToken() {
+                return null;
+            }
         }
         class BinaryProjectMeta {
             load() {
@@ -2975,11 +2978,15 @@ var P;
             isFromScratch() {
                 return false;
             }
+            getToken() {
+                return null;
+            }
         }
         class RemoteProjectMeta {
             constructor(id) {
                 this.id = id;
                 this.title = null;
+                this.token = null;
             }
             load() {
                 return new P.io.Request('https://trampoline.turbowarp.org/proxy/projects/$id'.replace('$id', this.id))
@@ -2988,6 +2995,9 @@ var P;
                     .then((data) => {
                     if (data.title) {
                         this.title = data.title;
+                    }
+                    if (data.project_token) {
+                        this.token = data.project_token;
                     }
                     return this;
                 });
@@ -3000,6 +3010,9 @@ var P;
             }
             isFromScratch() {
                 return true;
+            }
+            getToken() {
+                return this.token;
             }
         }
         class Player {
@@ -3499,8 +3512,12 @@ var P;
                 }
                 return zip.generateAsync({ type: 'arraybuffer' });
             }
-            fetchProject(id) {
-                const request = new P.io.Request(this.options.projectHost.replace('$id', id));
+            fetchProject(id, token) {
+                let url = this.options.projectHost.replace('$id', id);
+                if (token) {
+                    url += `?token=${token}`;
+                }
+                const request = new P.io.Request(url);
                 return request
                     .ignoreErrors()
                     .load('blob')
@@ -3573,8 +3590,10 @@ var P;
                     }
                 };
                 try {
-                    this.projectMeta = new RemoteProjectMeta(id);
-                    const blob = await this.fetchProject(id);
+                    const meta = new RemoteProjectMeta(id);
+                    this.projectMeta = meta;
+                    await meta.load();
+                    const blob = await this.fetchProject(id, meta.getToken());
                     const loader = await getLoader(blob);
                     await this.loadLoader(loaderId, loader);
                 }
