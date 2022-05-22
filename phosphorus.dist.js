@@ -3009,8 +3009,11 @@ var P;
             load() {
                 if (!this.startedLoading) {
                     this.startedLoading = true;
-                    const request = new P.io.Request('https://trampoline.turbowarp.org/proxy/projects/$id'.replace('$id', this.id))
-                        .ignoreErrors()
+                    new P.io.Request([
+                        'https://trampoline.turbowarp.org/proxy/projects/$id'.replace('$id', this.id),
+                        'https://trampoline.turbowarp.xyz/proxy/projects/$id'.replace('$id', this.id),
+                    ])
+                        .setMaxAttempts(1)
                         .load('json')
                         .then((data) => {
                         if (data.title) {

@@ -266,8 +266,12 @@ namespace P.player {
     load() {
       if (!this.startedLoading) {
         this.startedLoading = true;
-        const request = new P.io.Request('https://trampoline.turbowarp.org/proxy/projects/$id'.replace('$id', this.id))
-          .ignoreErrors() // errors are common for this request due to unshared projects (P.io.Request throws if 404), and project meta is not critical regardless
+        new P.io.Request([
+          // Some school filters block turbowarp.org, so we'll try two URLs and hopefully one will work.
+          'https://trampoline.turbowarp.org/proxy/projects/$id'.replace('$id', this.id),
+          'https://trampoline.turbowarp.xyz/proxy/projects/$id'.replace('$id', this.id),
+        ])
+          .setMaxAttempts(1)
           .load('json')
           .then((data) => {
             if (data.title) {
