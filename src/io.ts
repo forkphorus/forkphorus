@@ -178,11 +178,11 @@ namespace P.io {
   export abstract class Retry extends AbstractTask {
     protected aborted: boolean = false;
     protected retries: number = 0;
+    public maxAttempts: number = 4;
 
     async try<T>(handle: () => Promise<T>): Promise<T> {
-      const MAX_ATTEMPTS = 4;
       let lastErr;
-      for (let i = 0; i < MAX_ATTEMPTS; i++) {
+      for (let i = 0; i < this.maxAttempts; i++) {
         this.retries = i;
         try {
           return await handle();
@@ -201,6 +201,11 @@ namespace P.io {
         }
       }
       throw lastErr;
+    }
+
+    public setMaxAttempts(attempts: number): this {
+      this.maxAttempts = attempts;
+      return this;
     }
 
     protected getRetryWarningDescription(): string {

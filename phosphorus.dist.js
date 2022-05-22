@@ -2208,11 +2208,11 @@ var P;
                 super(...arguments);
                 this.aborted = false;
                 this.retries = 0;
+                this.maxAttempts = 4;
             }
             async try(handle) {
-                const MAX_ATTEMPTS = 4;
                 let lastErr;
-                for (let i = 0; i < MAX_ATTEMPTS; i++) {
+                for (let i = 0; i < this.maxAttempts; i++) {
                     this.retries = i;
                     try {
                         return await handle();
@@ -2228,6 +2228,10 @@ var P;
                     }
                 }
                 throw lastErr;
+            }
+            setMaxAttempts(attempts) {
+                this.maxAttempts = attempts;
+                return this;
             }
             getRetryWarningDescription() {
                 return 'complete task';
