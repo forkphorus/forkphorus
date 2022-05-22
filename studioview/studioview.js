@@ -328,7 +328,7 @@
 
   // The URL to download thumbnails from.
   // $id is replaced with the project's ID.
-  StudioView.THUMBNAIL_SRC = 'https://cdn2.scratch.mit.edu/get_image/project/$id_144x108.png';
+  StudioView.THUMBNAIL_SRC = 'https://trampoline.turbowarp.org/thumbnails/$id?width=144&height=108';
 
   // The URL for project pages.
   // $id is replaced with the project ID.
