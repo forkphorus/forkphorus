@@ -2238,13 +2238,13 @@ var P;
         }
         io.Retry = Retry;
         class Request extends Retry {
-            constructor(url) {
+            constructor(urls) {
                 super();
-                this.url = url;
                 this.shouldIgnoreErrors = false;
                 this.complete = false;
                 this.status = 0;
                 this.xhr = null;
+                this.urls = Array.isArray(urls) ? urls : [urls];
             }
             isComplete() {
                 return this.complete;
@@ -2262,13 +2262,13 @@ var P;
             getStatus() {
                 return this.status;
             }
-            _load() {
+            async _load() {
                 if (this.aborted) {
-                    return Promise.reject(new Error(`Cannot download ${this.url} -- aborted.`));
+                    return Promise.reject(new Error(`Cannot download ${this.urls[0]} -- aborted.`));
                 }
-                return new Promise((resolve, reject) => {
+                const tryURL = (url) => new Promise((resolve, reject) => {
                     const xhr = new XMLHttpRequest();
-                    xhr.open('GET', this.url);
+                    xhr.open('GET', url);
                     xhr.responseType = this.responseType;
                     this.xhr = xhr;
                     xhr.onload = () => {
@@ -2277,7 +2277,7 @@ var P;
                             resolve(xhr.response);
                         }
                         else {
-                            reject(new Error(`HTTP Error ${xhr.status} while downloading ${this.url}`));
+                            reject(new Error(`HTTP Error ${xhr.status} while downloading ${url}`));
                         }
                     };
                     xhr.onloadend = (e) => {
@@ -2286,21 +2286,33 @@ var P;
                         this.updateLoaderProgress();
                     };
                     xhr.onerror = (err) => {
-                        reject(new Error(`Error while downloading ${this.url} (error) (r=${this.retries} s=${xhr.readyState}/${xhr.status}/${xhr.statusText})`));
+                        reject(new Error(`Error while downloading ${url} (error) (r=${this.retries} s=${xhr.readyState}/${xhr.status}/${xhr.statusText})`));
                     };
                     xhr.onabort = (err) => {
                         this.aborted = true;
-                        reject(new Error(`Error while downloading ${this.url} (abort)`));
+                        reject(new Error(`Error while downloading ${url} (abort)`));
                     };
                     xhr.send();
                 });
+                let errorToThrow;
+                for (const url of this.urls) {
+                    try {
+                        return await tryURL(url);
+                    }
+                    catch (e) {
+                        if (!errorToThrow) {
+                            errorToThrow = e;
+                        }
+                    }
+                }
+                throw errorToThrow;
             }
             load(type) {
                 this.responseType = type;
                 return requestThrottler.run(() => this.try(() => this._load()));
             }
             getRetryWarningDescription() {
-                return `download ${this.url}`;
+                return `download ${this.urls[0]}`;
             }
         }
         Request.acceptableResponseCodes = [0, 200];
