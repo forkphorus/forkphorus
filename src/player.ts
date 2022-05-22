@@ -39,6 +39,13 @@ namespace P.player {
     }
   }
 
+  export class CannotAccessProjectError extends PlayerError {
+    constructor(public id: string) {
+      super(`Cannot access project with ID ${id}`);
+      this.name = 'CannotAccessProjectError';
+    }
+  }
+
   type ProjectType = 'sb' | 'sb2' | 'sb3';
 
   interface ProjectPlayer {
@@ -1081,7 +1088,12 @@ namespace P.player {
       try {
         const meta = new RemoteProjectMeta(id);
         this.projectMeta = meta;
-        await meta.load();
+        try {
+          await meta.load();
+        } catch (e) {
+          console.error(e);
+          throw new CannotAccessProjectError(id);
+        }
         const blob = await this.fetchProject(id, meta.getToken());
         const loader = await getLoader(blob);
         await this.loadLoader(loaderId, loader);
@@ -1294,6 +1306,31 @@ namespace P.player {
       return el;
     }
 
+    private handleCannotAccessProjectError(error: CannotAccessProjectError): HTMLElement {
+      const el = document.createElement('div');
+
+      const section1 = document.createElement('div');
+      section1.textContent = "Can't access project metadata. This probably means the project is unshared, never existed, or the ID is invalid.";
+      section1.style.marginBottom = '4px';
+      el.appendChild(section1);
+
+      const section2 = document.createElement('div');
+      section2.textContent = 'Unshared projects are no longer accessible using their project ID due to Scratch API changes. Instead, you can save the project to your computer (File > Save to your computer) and load the downloaded file. ';
+      section2.appendChild(Object.assign(document.createElement('a'), {
+        textContent: 'More information',
+        href: 'https://docs.turbowarp.org/unshared-projects',
+      }));
+      section2.style.marginBottom = '4px';
+      section2.appendChild(document.createTextNode('.'));
+      el.appendChild(section2);
+
+      const section3 = document.createElement('div');
+      section3.textContent = 'If the project was shared recently, it may take up to an hour for this message to go away.';
+      el.appendChild(section3);
+
+      return el;
+    }
+
     /**
      * Create an error element indicating this project does not exist.
      */
@@ -1312,7 +1349,9 @@ namespace P.player {
       const el = document.createElement('div');
       el.className = 'player-error';
       // Special handling for certain errors to provide a better error message
-      if (error instanceof ProjectDoesNotExistError) {
+      if (error instanceof CannotAccessProjectError) {
+        el.appendChild(this.handleCannotAccessProjectError(error))
+      } else if (error instanceof ProjectDoesNotExistError) {
         el.appendChild(this.handleDoesNotExistError(error));
       } else {
         el.appendChild(this.handleError(error));
