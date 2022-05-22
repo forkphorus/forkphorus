@@ -137,7 +137,7 @@ namespace P.player {
     /**
      * Load the metadata. This may involve network requests, so the result is not immediately available.
      */
-    load(): Promise<this>;
+    load(): Promise<ProjectMeta>;
     /**
      * Returns the cached title loaded by loadMetadata(), if any
      */
@@ -253,25 +253,47 @@ namespace P.player {
   class RemoteProjectMeta implements ProjectMeta {
     private title: string | null = null;
     private token: string | null = null;
+    private loadCallbacks: Array<{
+      resolve: (meta: ProjectMeta) => void,
+      reject: (error: unknown) => void
+    }> = [];
+    private startedLoading: boolean = false;
 
     constructor(private id: string) {
 
     }
 
     load() {
-      // todo: don't hardcode this URL
-      return new P.io.Request('https://trampoline.turbowarp.org/proxy/projects/$id'.replace('$id', this.id))
-        .ignoreErrors() // errors are common for this request due to unshared projects (P.io.Request throws if 404), and project meta is not critical regardless
-        .load('json')
-        .then((data) => {
-          if (data.title) {
-            this.title = data.title;
-          }
-          if (data.project_token) {
-            this.token = data.project_token;
-          }
-          return this;
+      if (!this.startedLoading) {
+        this.startedLoading = true;
+        const request = new P.io.Request('https://trampoline.turbowarp.org/proxy/projects/$id'.replace('$id', this.id))
+          .ignoreErrors() // errors are common for this request due to unshared projects (P.io.Request throws if 404), and project meta is not critical regardless
+          .load('json')
+          .then((data) => {
+            if (data.title) {
+              this.title = data.title;
+            }
+            if (data.project_token) {
+              this.token = data.project_token;
+            }
+            for (const callback of this.loadCallbacks) {
+              callback.resolve(this);
+            }
+            this.loadCallbacks.length = 0;
+          })
+          .catch((err) => {
+            for (const callback of this.loadCallbacks) {
+              callback.reject(err);
+            }
+            this.loadCallbacks.length = 0;
+          });
+      }
+      return new Promise<ProjectMeta>((resolve, reject) => {
+        this.loadCallbacks.push({
+          resolve,
+          reject
         });
+      })
     }
 
     getTitle() {

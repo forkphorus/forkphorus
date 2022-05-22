@@ -2987,19 +2987,39 @@ var P;
                 this.id = id;
                 this.title = null;
                 this.token = null;
+                this.loadCallbacks = [];
+                this.startedLoading = false;
             }
             load() {
-                return new P.io.Request('https://trampoline.turbowarp.org/proxy/projects/$id'.replace('$id', this.id))
-                    .ignoreErrors()
-                    .load('json')
-                    .then((data) => {
-                    if (data.title) {
-                        this.title = data.title;
-                    }
-                    if (data.project_token) {
-                        this.token = data.project_token;
-                    }
-                    return this;
+                if (!this.startedLoading) {
+                    this.startedLoading = true;
+                    const request = new P.io.Request('https://trampoline.turbowarp.org/proxy/projects/$id'.replace('$id', this.id))
+                        .ignoreErrors()
+                        .load('json')
+                        .then((data) => {
+                        if (data.title) {
+                            this.title = data.title;
+                        }
+                        if (data.project_token) {
+                            this.token = data.project_token;
+                        }
+                        for (const callback of this.loadCallbacks) {
+                            callback.resolve(this);
+                        }
+                        this.loadCallbacks.length = 0;
+                    })
+                        .catch((err) => {
+                        for (const callback of this.loadCallbacks) {
+                            callback.reject(err);
+                        }
+                        this.loadCallbacks.length = 0;
+                    });
+                }
+                return new Promise((resolve, reject) => {
+                    this.loadCallbacks.push({
+                        resolve,
+                        reject
+                    });
                 });
             }
             getTitle() {
