@@ -120,13 +120,16 @@ namespace P.renderer.canvas2d {
         ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
 
         if (c.filters.brightness !== 0 && c.filters.color === 0) {
-          workingRenderer.canvas.width = w;
-          workingRenderer.canvas.height = h;
+          const ws = w * globalScale;
+          const hs = h * globalScale;
+          
+          workingRenderer.canvas.width = ws;
+          workingRenderer.canvas.height = hs;
           workingRenderer.ctx.save();
           workingRenderer.ctx.imageSmoothingEnabled = false;
 
           workingRenderer.ctx.translate(0, 0);
-          workingRenderer.ctx.drawImage(image, 0, 0, w, h);
+          workingRenderer.ctx.drawImage(image, 0, 0, ws, hs);
           workingRenderer.ctx.globalCompositeOperation = 'source-atop';
           workingRenderer.ctx.globalAlpha = Math.abs(c.filters.brightness / 100);
           if (c.filters.brightness > 0) {
@@ -134,8 +137,8 @@ namespace P.renderer.canvas2d {
           } else {
             workingRenderer.ctx.fillStyle = 'black';
           }
-          workingRenderer.ctx.fillRect(0, 0, w, h);
-          ctx.drawImage(workingRenderer.canvas, x, y);
+          workingRenderer.ctx.fillRect(0, 0, ws, hs);
+          ctx.drawImage(workingRenderer.canvas, x, y, w, h);
 
           workingRenderer.ctx.restore();
         } else {
