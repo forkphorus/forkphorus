@@ -6,7 +6,7 @@ body {
 .dark {
   background-color: #111;
   color: #ddd;
-  scrollbar-color: #444 #222;
+  color-scheme: dark;
 }
 
 b {
