@@ -217,6 +217,12 @@ namespace P.io {
     }
   }
 
+  class HTTPError extends Error {
+    constructor (message, public readonly status: number) {
+      super(message);
+    }
+  }
+
   export class Request extends Retry {
     private static readonly acceptableResponseCodes = [0, 200];
 
@@ -267,7 +273,7 @@ namespace P.io {
           if (Request.acceptableResponseCodes.indexOf(xhr.status) !== -1 || this.shouldIgnoreErrors) {
             resolve(xhr.response);
           } else {
-            reject(new Error(`HTTP Error ${xhr.status} while downloading ${url}`));
+            reject(new HTTPError(`HTTP Error ${xhr.status} while downloading ${this.urls[0]}`, xhr.status));
           }
         };
 

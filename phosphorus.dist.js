@@ -2241,6 +2241,12 @@ var P;
             }
         }
         io.Retry = Retry;
+        class HTTPError extends Error {
+            constructor(message, status) {
+                super(message);
+                this.status = status;
+            }
+        }
         class Request extends Retry {
             constructor(urls) {
                 super();
@@ -2281,7 +2287,7 @@ var P;
                             resolve(xhr.response);
                         }
                         else {
-                            reject(new Error(`HTTP Error ${xhr.status} while downloading ${url}`));
+                            reject(new HTTPError(`HTTP Error ${xhr.status} while downloading ${this.urls[0]}`, xhr.status));
                         }
                     };
                     xhr.onloadend = (e) => {
