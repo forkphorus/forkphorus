@@ -1106,8 +1106,8 @@ namespace P.player {
         try {
           await meta.load();
         } catch (e) {
+          // For now, this is not a critical error.
           console.error(e);
-          throw new CannotAccessProjectError(id);
         }
         const blob = await this.fetchProject(id, meta.getToken());
         const loader = await getLoader(blob);

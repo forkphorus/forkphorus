@@ -3659,7 +3659,6 @@ var P;
                     }
                     catch (e) {
                         console.error(e);
-                        throw new CannotAccessProjectError(id);
                     }
                     const blob = await this.fetchProject(id, meta.getToken());
                     const loader = await getLoader(blob);
