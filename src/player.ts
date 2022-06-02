@@ -163,6 +163,10 @@ namespace P.player {
      * A token to be used for downloading the project, if any.
      */
     getToken(): string | null;
+    /**
+     * Returns true if this is a project from scratch.mit.edu and it is probably unshared.
+     */
+    isUnshared(): boolean;
   }
 
   class LoaderIdentifier {
@@ -231,6 +235,10 @@ namespace P.player {
     getToken() {
       return null;
     }
+
+    isUnshared() {
+      return false;
+    }
   }
 
   class BinaryProjectMeta implements ProjectMeta {
@@ -255,15 +263,17 @@ namespace P.player {
     getToken() {
       return null;
     }
+
+    isUnshared() {
+      return false;
+    }
   }
 
   class RemoteProjectMeta implements ProjectMeta {
     private title: string | null = null;
     private token: string | null = null;
-    private loadCallbacks: Array<{
-      resolve: (meta: ProjectMeta) => void,
-      reject: (error: unknown) => void
-    }> = [];
+    private unshared: boolean = false;
+    private loadCallbacks: Array<(meta: ProjectMeta) => void> = [];
     private startedLoading: boolean = false;
 
     constructor(private id: string) {
@@ -281,6 +291,7 @@ namespace P.player {
           .setMaxAttempts(1)
           .load('json')
           .then((data) => {
+            // Project is shared.
             if (data.title) {
               this.title = data.title;
             }
@@ -288,22 +299,25 @@ namespace P.player {
               this.token = data.project_token;
             }
             for (const callback of this.loadCallbacks) {
-              callback.resolve(this);
+              callback(this);
             }
             this.loadCallbacks.length = 0;
           })
           .catch((err) => {
+            if (err && err.status === 404) {
+              // This project is unshared.
+              this.unshared = true;
+            } else {
+              // Inconclusive.
+            }
             for (const callback of this.loadCallbacks) {
-              callback.reject(err);
+              callback(this);
             }
             this.loadCallbacks.length = 0;
           });
       }
-      return new Promise<ProjectMeta>((resolve, reject) => {
-        this.loadCallbacks.push({
-          resolve,
-          reject
-        });
+      return new Promise<ProjectMeta>((resolve) => {
+        this.loadCallbacks.push(resolve);
       })
     }
 
@@ -321,6 +335,10 @@ namespace P.player {
 
     getToken() {
       return this.token;
+    }
+
+    isUnshared() {
+      return this.unshared;
     }
   }
 

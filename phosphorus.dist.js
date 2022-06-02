@@ -2994,6 +2994,9 @@ var P;
             getToken() {
                 return null;
             }
+            isUnshared() {
+                return false;
+            }
         }
         class BinaryProjectMeta {
             load() {
@@ -3011,12 +3014,16 @@ var P;
             getToken() {
                 return null;
             }
+            isUnshared() {
+                return false;
+            }
         }
         class RemoteProjectMeta {
             constructor(id) {
                 this.id = id;
                 this.title = null;
                 this.token = null;
+                this.unshared = false;
                 this.loadCallbacks = [];
                 this.startedLoading = false;
             }
@@ -3037,22 +3044,24 @@ var P;
                             this.token = data.project_token;
                         }
                         for (const callback of this.loadCallbacks) {
-                            callback.resolve(this);
+                            callback(this);
                         }
                         this.loadCallbacks.length = 0;
                     })
                         .catch((err) => {
+                        if (err && err.status === 404) {
+                            this.unshared = true;
+                        }
+                        else {
+                        }
                         for (const callback of this.loadCallbacks) {
-                            callback.reject(err);
+                            callback(this);
                         }
                         this.loadCallbacks.length = 0;
                     });
                 }
-                return new Promise((resolve, reject) => {
-                    this.loadCallbacks.push({
-                        resolve,
-                        reject
-                    });
+                return new Promise((resolve) => {
+                    this.loadCallbacks.push(resolve);
                 });
             }
             getTitle() {
@@ -3066,6 +3075,9 @@ var P;
             }
             getToken() {
                 return this.token;
+            }
+            isUnshared() {
+                return this.unshared;
             }
         }
         class Player {

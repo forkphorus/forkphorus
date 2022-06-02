@@ -400,16 +400,16 @@
       var stageId = player.stageId;
       player.getProjectMeta().load()
         .then(function(meta) {
-          var title = meta.getTitle();
           if (player.stageId === stageId) {
+            if (meta.isUnshared()) {
+              unsharedProjectArea.style.height = unsharedProjectAreaHeight + 'px';
+            }
+            var title = meta.getTitle();
             if (title) {
               player.projectTitle = title;
               document.title = title + ' - forkphorus';
               updateLinks();
             } else {
-              if (title === null && meta.isFromScratch()) {
-                unsharedProjectArea.style.height = unsharedProjectAreaHeight + 'px';
-              }
               resetTitle();
             }
           }
