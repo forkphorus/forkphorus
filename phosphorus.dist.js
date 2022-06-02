@@ -2310,7 +2310,7 @@ var P;
                         return await tryURL(url);
                     }
                     catch (e) {
-                        if (!errorToThrow) {
+                        if (!errorToThrow || (e instanceof HTTPError && !(errorToThrow instanceof HTTPError))) {
                             errorToThrow = e;
                         }
                     }
