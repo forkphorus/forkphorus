@@ -2208,11 +2208,11 @@ var P;
                 super(...arguments);
                 this.aborted = false;
                 this.retries = 0;
+                this.maxAttempts = 4;
             }
             async try(handle) {
-                const MAX_ATTEMPTS = 4;
                 let lastErr;
-                for (let i = 0; i < MAX_ATTEMPTS; i++) {
+                for (let i = 0; i < this.maxAttempts; i++) {
                     this.retries = i;
                     try {
                         return await handle();
@@ -2229,6 +2229,10 @@ var P;
                 }
                 throw lastErr;
             }
+            setMaxAttempts(attempts) {
+                this.maxAttempts = attempts;
+                return this;
+            }
             getRetryWarningDescription() {
                 return 'complete task';
             }
@@ -2237,14 +2241,20 @@ var P;
             }
         }
         io.Retry = Retry;
+        class HTTPError extends Error {
+            constructor(message, status) {
+                super(message);
+                this.status = status;
+            }
+        }
         class Request extends Retry {
-            constructor(url) {
+            constructor(urls) {
                 super();
-                this.url = url;
                 this.shouldIgnoreErrors = false;
                 this.complete = false;
                 this.status = 0;
                 this.xhr = null;
+                this.urls = Array.isArray(urls) ? urls : [urls];
             }
             isComplete() {
                 return this.complete;
@@ -2262,13 +2272,13 @@ var P;
             getStatus() {
                 return this.status;
             }
-            _load() {
+            async _load() {
                 if (this.aborted) {
-                    return Promise.reject(new Error(`Cannot download ${this.url} -- aborted.`));
+                    return Promise.reject(new Error(`Cannot download ${this.urls[0]} -- aborted.`));
                 }
-                return new Promise((resolve, reject) => {
+                const tryURL = (url) => new Promise((resolve, reject) => {
                     const xhr = new XMLHttpRequest();
-                    xhr.open('GET', this.url);
+                    xhr.open('GET', url);
                     xhr.responseType = this.responseType;
                     this.xhr = xhr;
                     xhr.onload = () => {
@@ -2277,7 +2287,7 @@ var P;
                             resolve(xhr.response);
                         }
                         else {
-                            reject(new Error(`HTTP Error ${xhr.status} while downloading ${this.url}`));
+                            reject(new HTTPError(`HTTP Error ${xhr.status} while downloading ${this.urls[0]}`, xhr.status));
                         }
                     };
                     xhr.onloadend = (e) => {
@@ -2286,21 +2296,33 @@ var P;
                         this.updateLoaderProgress();
                     };
                     xhr.onerror = (err) => {
-                        reject(new Error(`Error while downloading ${this.url} (error) (r=${this.retries} s=${xhr.readyState}/${xhr.status}/${xhr.statusText})`));
+                        reject(new Error(`Error while downloading ${url} (error) (r=${this.retries} s=${xhr.readyState}/${xhr.status}/${xhr.statusText})`));
                     };
                     xhr.onabort = (err) => {
                         this.aborted = true;
-                        reject(new Error(`Error while downloading ${this.url} (abort)`));
+                        reject(new Error(`Error while downloading ${url} (abort)`));
                     };
                     xhr.send();
                 });
+                let errorToThrow;
+                for (const url of this.urls) {
+                    try {
+                        return await tryURL(url);
+                    }
+                    catch (e) {
+                        if (!errorToThrow) {
+                            errorToThrow = e;
+                        }
+                    }
+                }
+                throw errorToThrow;
             }
             load(type) {
                 this.responseType = type;
                 return requestThrottler.run(() => this.try(() => this._load()));
             }
             getRetryWarningDescription() {
-                return `download ${this.url}`;
+                return `download ${this.urls[0]}`;
             }
         }
         Request.acceptableResponseCodes = [0, 200];
@@ -2908,6 +2930,14 @@ var P;
             }
         }
         player_1.ProjectDoesNotExistError = ProjectDoesNotExistError;
+        class CannotAccessProjectError extends PlayerError {
+            constructor(id) {
+                super(`Cannot access project with ID ${id}`);
+                this.id = id;
+                this.name = 'CannotAccessProjectError';
+            }
+        }
+        player_1.CannotAccessProjectError = CannotAccessProjectError;
         class LoaderIdentifier {
             constructor() {
                 this.active = true;
@@ -2961,6 +2991,12 @@ var P;
             isFromScratch() {
                 return false;
             }
+            getToken() {
+                return null;
+            }
+            isUnshared() {
+                return false;
+            }
         }
         class BinaryProjectMeta {
             load() {
@@ -2975,21 +3011,57 @@ var P;
             isFromScratch() {
                 return false;
             }
+            getToken() {
+                return null;
+            }
+            isUnshared() {
+                return false;
+            }
         }
         class RemoteProjectMeta {
             constructor(id) {
                 this.id = id;
                 this.title = null;
+                this.token = null;
+                this.unshared = false;
+                this.loadCallbacks = [];
+                this.startedLoading = false;
             }
             load() {
-                return new P.io.Request('https://trampoline.turbowarp.org/proxy/projects/$id'.replace('$id', this.id))
-                    .ignoreErrors()
-                    .load('json')
-                    .then((data) => {
-                    if (data.title) {
-                        this.title = data.title;
-                    }
-                    return this;
+                if (!this.startedLoading) {
+                    this.startedLoading = true;
+                    new P.io.Request([
+                        'https://trampoline.turbowarp.org/proxy/projects/$id'.replace('$id', this.id),
+                        'https://trampoline.turbowarp.xyz/proxy/projects/$id'.replace('$id', this.id),
+                    ])
+                        .setMaxAttempts(1)
+                        .load('json')
+                        .then((data) => {
+                        if (data.title) {
+                            this.title = data.title;
+                        }
+                        if (data.project_token) {
+                            this.token = data.project_token;
+                        }
+                        for (const callback of this.loadCallbacks) {
+                            callback(this);
+                        }
+                        this.loadCallbacks.length = 0;
+                    })
+                        .catch((err) => {
+                        if (err && err.status === 404) {
+                            this.unshared = true;
+                        }
+                        else {
+                        }
+                        for (const callback of this.loadCallbacks) {
+                            callback(this);
+                        }
+                        this.loadCallbacks.length = 0;
+                    });
+                }
+                return new Promise((resolve) => {
+                    this.loadCallbacks.push(resolve);
                 });
             }
             getTitle() {
@@ -3000,6 +3072,12 @@ var P;
             }
             isFromScratch() {
                 return true;
+            }
+            getToken() {
+                return this.token;
+            }
+            isUnshared() {
+                return this.unshared;
             }
         }
         class Player {
@@ -3499,8 +3577,12 @@ var P;
                 }
                 return zip.generateAsync({ type: 'arraybuffer' });
             }
-            fetchProject(id) {
-                const request = new P.io.Request(this.options.projectHost.replace('$id', id));
+            fetchProject(id, token) {
+                let url = this.options.projectHost.replace('$id', id);
+                if (token) {
+                    url += `?token=${token}`;
+                }
+                const request = new P.io.Request(url);
                 return request
                     .ignoreErrors()
                     .load('blob')
@@ -3573,8 +3655,16 @@ var P;
                     }
                 };
                 try {
-                    this.projectMeta = new RemoteProjectMeta(id);
-                    const blob = await this.fetchProject(id);
+                    const meta = new RemoteProjectMeta(id);
+                    this.projectMeta = meta;
+                    try {
+                        await meta.load();
+                    }
+                    catch (e) {
+                        console.error(e);
+                        throw new CannotAccessProjectError(id);
+                    }
+                    const blob = await this.fetchProject(id, meta.getToken());
                     const loader = await getLoader(blob);
                     await this.loadLoader(loaderId, loader);
                 }
@@ -3755,6 +3845,26 @@ var P;
                 el.innerHTML = P.i18n.translate('player.errorhandler.error').replace('$attrs', attributes);
                 return el;
             }
+            handleCannotAccessProjectError(error) {
+                const el = document.createElement('div');
+                const section1 = document.createElement('div');
+                section1.textContent = "Can't access project metadata. This probably means the project is unshared, never existed, or the ID is invalid.";
+                section1.style.marginBottom = '4px';
+                el.appendChild(section1);
+                const section2 = document.createElement('div');
+                section2.textContent = 'Unshared projects are no longer accessible using their project ID due to Scratch API changes. Instead, you can save the project to your computer (File > Save to your computer) and load the downloaded file. ';
+                section2.appendChild(Object.assign(document.createElement('a'), {
+                    textContent: 'More information',
+                    href: 'https://docs.turbowarp.org/unshared-projects',
+                }));
+                section2.style.marginBottom = '4px';
+                section2.appendChild(document.createTextNode('.'));
+                el.appendChild(section2);
+                const section3 = document.createElement('div');
+                section3.textContent = 'If the project was shared recently, it may take up to an hour for this message to go away.';
+                el.appendChild(section3);
+                return el;
+            }
             handleDoesNotExistError(error) {
                 const el = document.createElement('div');
                 const LEGACY_HOST = 'https://projects.scratch.mit.edu/internalapi/project/$id/get/';
@@ -3769,7 +3879,10 @@ var P;
             onerror(error) {
                 const el = document.createElement('div');
                 el.className = 'player-error';
-                if (error instanceof ProjectDoesNotExistError) {
+                if (error instanceof CannotAccessProjectError) {
+                    el.appendChild(this.handleCannotAccessProjectError(error));
+                }
+                else if (error instanceof ProjectDoesNotExistError) {
                     el.appendChild(this.handleDoesNotExistError(error));
                 }
                 else {

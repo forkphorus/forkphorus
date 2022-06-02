@@ -39,6 +39,13 @@ namespace P.player {
     }
   }
 
+  export class CannotAccessProjectError extends PlayerError {
+    constructor(public id: string) {
+      super(`Cannot access project with ID ${id}`);
+      this.name = 'CannotAccessProjectError';
+    }
+  }
+
   type ProjectType = 'sb' | 'sb2' | 'sb3';
 
   interface ProjectPlayer {
@@ -137,7 +144,7 @@ namespace P.player {
     /**
      * Load the metadata. This may involve network requests, so the result is not immediately available.
      */
-    load(): Promise<this>;
+    load(): Promise<ProjectMeta>;
     /**
      * Returns the cached title loaded by loadMetadata(), if any
      */
@@ -152,6 +159,14 @@ namespace P.player {
      * Whether this project was loaded from scratch.mit.edu
      */
     isFromScratch(): boolean;
+    /**
+     * A token to be used for downloading the project, if any.
+     */
+    getToken(): string | null;
+    /**
+     * Returns true if this is a project from scratch.mit.edu and it is probably unshared.
+     */
+    isUnshared(): boolean;
   }
 
   class LoaderIdentifier {
@@ -216,6 +231,14 @@ namespace P.player {
     isFromScratch() {
       return false;
     }
+
+    getToken() {
+      return null;
+    }
+
+    isUnshared() {
+      return false;
+    }
   }
 
   class BinaryProjectMeta implements ProjectMeta {
@@ -236,26 +259,66 @@ namespace P.player {
     isFromScratch() {
       return false;
     }
+    
+    getToken() {
+      return null;
+    }
+
+    isUnshared() {
+      return false;
+    }
   }
 
   class RemoteProjectMeta implements ProjectMeta {
     private title: string | null = null;
+    private token: string | null = null;
+    private unshared: boolean = false;
+    private loadCallbacks: Array<(meta: ProjectMeta) => void> = [];
+    private startedLoading: boolean = false;
 
     constructor(private id: string) {
 
     }
 
     load() {
-      // todo: don't hardcode this URL
-      return new P.io.Request('https://trampoline.turbowarp.org/proxy/projects/$id'.replace('$id', this.id))
-        .ignoreErrors() // errors are common for this request due to unshared projects (P.io.Request throws if 404), and project meta is not critical regardless
-        .load('json')
-        .then((data) => {
-          if (data.title) {
-            this.title = data.title;
-          }
-          return this;
-        });
+      if (!this.startedLoading) {
+        this.startedLoading = true;
+        new P.io.Request([
+          // Some school filters block turbowarp.org, so we'll try two URLs and hopefully one will work.
+          'https://trampoline.turbowarp.org/proxy/projects/$id'.replace('$id', this.id),
+          'https://trampoline.turbowarp.xyz/proxy/projects/$id'.replace('$id', this.id),
+        ])
+          .setMaxAttempts(1)
+          .load('json')
+          .then((data) => {
+            // Project is shared.
+            if (data.title) {
+              this.title = data.title;
+            }
+            if (data.project_token) {
+              this.token = data.project_token;
+            }
+            for (const callback of this.loadCallbacks) {
+              callback(this);
+            }
+            this.loadCallbacks.length = 0;
+          })
+          .catch((err) => {
+            if (err && err.status === 404) {
+              // This project is unshared.
+              this.unshared = true;
+            } else {
+              // Inconclusive.
+            }
+            for (const callback of this.loadCallbacks) {
+              callback(this);
+            }
+            this.loadCallbacks.length = 0;
+          });
+      }
+      return new Promise<ProjectMeta>((resolve) => {
+        this.loadCallbacks.push(resolve);
+      })
     }
 
     getTitle() {
@@ -268,6 +331,14 @@ namespace P.player {
 
     isFromScratch() {
       return true;
+    }
+
+    getToken() {
+      return this.token;
+    }
+
+    isUnshared() {
+      return this.unshared;
     }
   }
 
@@ -926,8 +997,12 @@ namespace P.player {
     /**
      * Download a project from the scratch.mit.edu using its ID.
      */
-    private fetchProject(id: string): Promise<Blob> {
-      const request = new P.io.Request(this.options.projectHost.replace('$id', id));
+    private fetchProject(id: string, token: string | null): Promise<Blob> {
+      let url = this.options.projectHost.replace('$id', id);
+      if (token) {
+        url += `?token=${token}`;
+      }
+      const request = new P.io.Request(url);
       return request
         .ignoreErrors()
         .load('blob')
@@ -1029,8 +1104,15 @@ namespace P.player {
       };
 
       try {
-        this.projectMeta = new RemoteProjectMeta(id);
-        const blob = await this.fetchProject(id);
+        const meta = new RemoteProjectMeta(id);
+        this.projectMeta = meta;
+        try {
+          await meta.load();
+        } catch (e) {
+          console.error(e);
+          throw new CannotAccessProjectError(id);
+        }
+        const blob = await this.fetchProject(id, meta.getToken());
         const loader = await getLoader(blob);
         await this.loadLoader(loaderId, loader);
       } catch (e) {
@@ -1242,6 +1324,31 @@ namespace P.player {
       return el;
     }
 
+    private handleCannotAccessProjectError(error: CannotAccessProjectError): HTMLElement {
+      const el = document.createElement('div');
+
+      const section1 = document.createElement('div');
+      section1.textContent = "Can't access project metadata. This probably means the project is unshared, never existed, or the ID is invalid.";
+      section1.style.marginBottom = '4px';
+      el.appendChild(section1);
+
+      const section2 = document.createElement('div');
+      section2.textContent = 'Unshared projects are no longer accessible using their project ID due to Scratch API changes. Instead, you can save the project to your computer (File > Save to your computer) and load the downloaded file. ';
+      section2.appendChild(Object.assign(document.createElement('a'), {
+        textContent: 'More information',
+        href: 'https://docs.turbowarp.org/unshared-projects',
+      }));
+      section2.style.marginBottom = '4px';
+      section2.appendChild(document.createTextNode('.'));
+      el.appendChild(section2);
+
+      const section3 = document.createElement('div');
+      section3.textContent = 'If the project was shared recently, it may take up to an hour for this message to go away.';
+      el.appendChild(section3);
+
+      return el;
+    }
+
     /**
      * Create an error element indicating this project does not exist.
      */
@@ -1260,7 +1367,9 @@ namespace P.player {
       const el = document.createElement('div');
       el.className = 'player-error';
       // Special handling for certain errors to provide a better error message
-      if (error instanceof ProjectDoesNotExistError) {
+      if (error instanceof CannotAccessProjectError) {
+        el.appendChild(this.handleCannotAccessProjectError(error))
+      } else if (error instanceof ProjectDoesNotExistError) {
         el.appendChild(this.handleDoesNotExistError(error));
       } else {
         el.appendChild(this.handleError(error));

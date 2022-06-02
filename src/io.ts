@@ -178,11 +178,11 @@ namespace P.io {
   export abstract class Retry extends AbstractTask {
     protected aborted: boolean = false;
     protected retries: number = 0;
+    public maxAttempts: number = 4;
 
     async try<T>(handle: () => Promise<T>): Promise<T> {
-      const MAX_ATTEMPTS = 4;
       let lastErr;
-      for (let i = 0; i < MAX_ATTEMPTS; i++) {
+      for (let i = 0; i < this.maxAttempts; i++) {
         this.retries = i;
         try {
           return await handle();
@@ -203,12 +203,23 @@ namespace P.io {
       throw lastErr;
     }
 
+    public setMaxAttempts(attempts: number): this {
+      this.maxAttempts = attempts;
+      return this;
+    }
+
     protected getRetryWarningDescription(): string {
       return 'complete task';
     }
 
     abort() {
       this.aborted = true;
+    }
+  }
+
+  class HTTPError extends Error {
+    constructor (message, public readonly status: number) {
+      super(message);
     }
   }
 
@@ -220,9 +231,11 @@ namespace P.io {
     private complete: boolean = false;
     private status: number = 0;
     private xhr: XMLHttpRequest | null = null;
+    private urls: string[];
 
-    constructor(private readonly url: string) {
+    constructor(urls: string | string[]) {
       super();
+      this.urls = Array.isArray(urls) ? urls : [urls];
     }
 
     isComplete() {
@@ -245,13 +258,13 @@ namespace P.io {
       return this.status;
     }
 
-    private _load(): Promise<any> {
+    private async _load(): Promise<any> {
       if (this.aborted) {
-        return Promise.reject(new Error(`Cannot download ${this.url} -- aborted.`));
+        return Promise.reject(new Error(`Cannot download ${this.urls[0]} -- aborted.`));
       }
-      return new Promise((resolve, reject) => {
+      const tryURL = (url) => new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        xhr.open('GET', this.url);
+        xhr.open('GET', url);
         xhr.responseType = this.responseType;
         this.xhr = xhr;
 
@@ -260,7 +273,7 @@ namespace P.io {
           if (Request.acceptableResponseCodes.indexOf(xhr.status) !== -1 || this.shouldIgnoreErrors) {
             resolve(xhr.response);
           } else {
-            reject(new Error(`HTTP Error ${xhr.status} while downloading ${this.url}`));
+            reject(new HTTPError(`HTTP Error ${xhr.status} while downloading ${this.urls[0]}`, xhr.status));
           }
         };
 
@@ -271,16 +284,28 @@ namespace P.io {
         };
 
         xhr.onerror = (err) => {
-          reject(new Error(`Error while downloading ${this.url} (error) (r=${this.retries} s=${xhr.readyState}/${xhr.status}/${xhr.statusText})`));
+          reject(new Error(`Error while downloading ${url} (error) (r=${this.retries} s=${xhr.readyState}/${xhr.status}/${xhr.statusText})`));
         };
 
         xhr.onabort = (err) => {
           this.aborted = true;
-          reject(new Error(`Error while downloading ${this.url} (abort)`));
+          reject(new Error(`Error while downloading ${url} (abort)`));
         };
 
         xhr.send();
       });
+
+      let errorToThrow;
+      for (const url of this.urls) {
+        try {
+          return await tryURL(url);
+        } catch (e) {
+          if (!errorToThrow) {
+            errorToThrow = e;
+          }
+        }
+      }
+      throw errorToThrow;
     }
 
     load(type: 'arraybuffer'): Promise<ArrayBuffer>;
@@ -293,7 +318,7 @@ namespace P.io {
     }
 
     getRetryWarningDescription() {
-      return `download ${this.url}`;
+      return `download ${this.urls[0]}`;
     }
   }
 

@@ -21,7 +21,14 @@ window.SBDL = (function() {
     }
   }
 
-  const SB_MAGIC = 'ScratchV01';
+  class CannotAccessProjectError extends Error {
+    constructor(message) {
+      super(message);
+      this.name = 'CannotAccessProjectError';
+    }
+  }
+
+  const SB_MAGIC = 'ScratchV0';
   const ZIP_MAGIC = 'PK';
 
   const fetchQueue = {
@@ -210,7 +217,8 @@ window.SBDL = (function() {
       'png',
       'jpg',
       'jpeg',
-      'bmp'
+      'bmp',
+      'gif'
     ];
     const SOUND_EXTENSIONS = [
       'wav',
@@ -319,9 +327,29 @@ window.SBDL = (function() {
       });
   }
 
+  async function fetchProjectDataWithToken(id) {
+    const metadataRequest = await fetch(`https://trampoline.turbowarp.org/proxy/projects/${id}`);
+    if (metadataRequest.status === 404) {
+      throw new CannotAccessProjectError("Cannot access project metadata. This probably means the project is unshared, never existed, or the ID is invalid.");
+    }
+    if (!metadataRequest.ok) {
+      throw new Error(`Unknown error fetching project metadata: status ${metadataRequest.status}`);
+    }
+    const metadata = await metadataRequest.json();
+    const token = metadata.project_token;
+
+    const projectRequest = await fetch(`https://projects.scratch.mit.edu/${id}?token=${token}`);
+    if (projectRequest.ok) {
+      return projectRequest;
+    }
+    if (projectRequest.status === 404) {
+      throw new Error('Project does not exist but could access metadata');
+    }
+    throw new Error(`Could not fetch project data: status ${projectRequest.status}`);
+  }
+
   // Loads a Scratch 3 project
   function loadScratch3Project(id) {
-    const PROJECTS_API = 'https://projects.scratch.mit.edu/$id';
     const ASSETS_API = 'https://assets.scratch.mit.edu/internalapi/asset/$path/get/';
 
     const result = {
@@ -362,7 +390,7 @@ window.SBDL = (function() {
     progressHooks.start();
     progressHooks.newTask();
 
-    return fetch(PROJECTS_API.replace('$id', id))
+    return fetchProjectDataWithToken(id)
       .then((request) => request.json())
       .then((projectData) => {
         if (typeof projectData.objName === 'string') {
@@ -428,6 +456,7 @@ window.SBDL = (function() {
     loadScratch1Project: loadScratch1Project,
     loadScratch2Project: loadScratch2Project,
     loadScratch3Project: loadScratch3Project,
+    fetchProjectDataWithToken: fetchProjectDataWithToken,
     loadProject: loadProject,
     createArchive: createArchive,
     progressHooks: progressHooks,
