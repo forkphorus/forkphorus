@@ -999,9 +999,6 @@ namespace P.player {
      */
     private fetchProject(id: string, token: string | null): Promise<Blob> {
       let url = this.options.projectHost.replace('$id', id);
-      if (token) {
-        url += `?token=${token}`;
-      }
       const request = new P.io.Request(url);
       return request
         .ignoreErrors()
