@@ -327,7 +327,7 @@ window.SBDL = (function() {
       });
   }
 
-  async function fetchProjectDataWithToken(id) {
+  async function fetchToken(id) {
     const metadataRequest = await fetch(`https://trampoline.turbowarp.org/proxy/projects/${id}`);
     if (metadataRequest.status === 404) {
       throw new CannotAccessProjectError("Cannot access project metadata. This probably means the project is unshared, never existed, or the ID is invalid.");
@@ -337,8 +337,19 @@ window.SBDL = (function() {
     }
     const metadata = await metadataRequest.json();
     const token = metadata.project_token;
+    // For now, we aren't actually going to use the token.
+    return null;
+  }
 
-    const projectRequest = await fetch(`https://projects.scratch.mit.edu/${id}?token=${token}`);
+  async function fetchProjectDataWithToken(id) {
+    const token = await fetchToken(id).catch((err) => {
+      // For now, this is a non-critical error.
+      console.error(err);
+      return null;
+    });
+    const tokenPart = token ? `?token=${token}` : '';
+    let url = `https://projects.scratch.mit.edu/${id}${tokenPart}`;
+    const projectRequest = await fetch(url);
     if (projectRequest.ok) {
       return projectRequest;
     }
