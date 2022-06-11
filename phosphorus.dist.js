@@ -2081,7 +2081,7 @@ var P;
             localPath: '',
         };
         if (['http:', 'https:'].indexOf(location.protocol) === -1) {
-            io.config.localPath = 'https://forkphorus.github.io';
+            io.config.localPath = 'https://forkphorus.github.io/';
         }
         let readers;
         (function (readers) {

@@ -16,7 +16,7 @@ namespace P.io {
 
   // non-http/https protocols cannot xhr request local files, so utilize forkphorus.github.io instead
   if (['http:', 'https:'].indexOf(location.protocol) === -1) {
-    config.localPath = 'https://forkphorus.github.io';
+    config.localPath = 'https://forkphorus.github.io/';
   }
 
   /**
