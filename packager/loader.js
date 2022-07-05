@@ -372,7 +372,7 @@ window.SBDL = (function() {
 
     function addFile(data) {
       progressHooks.newTask();
-      const path = data.md5ext || data.assetId + '.' + data.dataFormat;
+      const path = data.md5ext;
       return fetch(ASSETS_API.replace('$path', path))
         .then((request) => request.arrayBuffer())
         .then((buffer) => {
@@ -381,12 +381,18 @@ window.SBDL = (function() {
         });
     }
 
-    // Removes assets with the same ID
-    function dedupeAssets(assets) {
+    function processAssets(assets) {
       const result = [];
       const knownIds = new Set();
 
       for (const i of assets) {
+        // Make sure md5ext always exists.
+        // https://github.com/forkphorus/forkphorus/issues/504
+        if (!i.md5ext) {
+          i.md5ext = i.assetId + '.' + i.dataFormat;
+        }
+
+        // Deduplicate assets.
         const id = i.md5ext;
         if (knownIds.has(id)) {
           continue;
@@ -416,7 +422,7 @@ window.SBDL = (function() {
         const targets = projectData.targets;
         const costumes = [].concat.apply([], targets.map((t) => t.costumes || []));
         const sounds = [].concat.apply([], targets.map((t) => t.sounds || []));
-        const assets = dedupeAssets([].concat.apply([], [costumes, sounds]));
+        const assets = processAssets([].concat.apply([], [costumes, sounds]));
 
         return Promise.all(assets.map((a) => addFile(a)));
       })
