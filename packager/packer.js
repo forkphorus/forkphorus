@@ -240,6 +240,12 @@ window.Packer = (function() {
       }
     }
 
+    _getProjectTypeFromJSON(data) {
+      if ('targets' in data) return 'sb3';
+      if ('objName' in data) return 'sb2';
+      throw new Error('Unknown project type');
+    }
+
     /**
      * @param {string} id
      */
@@ -258,21 +264,20 @@ window.Packer = (function() {
       try {
         data = await res.json();
       } catch (e) {
+        console.warn('Project was not JSON, trying to interpret as zip', e);
         // binary file, try to see if it could be a Scratch 2 project
         const blob = await responseClone.blob();
         try {
-          await JSZip.loadAsync(blob);
-          // if loadAsync doesn't reject, this is valid zip, and is probably a Scratch 2 project
-          return 'sb2';
+          const zip = await JSZip.loadAsync(blob);
+          const zippedProjectJSON = JSON.parse(await zip.file('project.json').async('text'));
+          return this._getProjectTypeFromJSON(zippedProjectJSON);
         } catch (e) {
-          // not a zip, probably a .sb
+          // not a valid project zip, probably a .sb
           return 'sb';
         }
       }
 
-      if ('targets' in data) return 'sb3';
-      if ('objName' in data) return 'sb2';
-      throw new Error('Unknown project type');
+      return this._getProjectTypeFromJSON(data);
     }
 
     /**

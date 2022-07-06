@@ -407,7 +407,19 @@ window.SBDL = (function() {
     progressHooks.newTask();
 
     return fetchProjectDataWithToken(id)
-      .then((request) => request.json())
+      .then((request) => {
+        const clonedResponse = request.clone();
+        return request.json()
+          .catch((err) => {
+            // It's not JSON. It might be a full compressed zip project.
+            console.warn('Project was not JSON, trying to interpret as zip', err);
+            return clonedResponse.arrayBuffer()
+              .then((buffer) => JSZip.loadAsync(buffer))
+              .then((zip) => zip.file('project.json').async('text'))
+              .then((jsonText) => JSON.parse(jsonText));
+            // For now we won't try to use the files in the zip and will just re-fetch everything from Scratch.
+          });
+      })
       .then((projectData) => {
         if (typeof projectData.objName === 'string') {
           throw new ProjectFormatError('Not a Scratch 3 project (found objName)', 'sb2');
