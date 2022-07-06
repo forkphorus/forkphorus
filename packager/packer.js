@@ -447,6 +447,7 @@ ${scripts}
   var progressBarFill = document.querySelector('.progress-bar');
 
   var player = new P.player.Player();
+  window.player = player;
   player.setOptions({ theme: 'dark' });
   var errorHandler = new P.player.ErrorHandler(player, {
     container: document.querySelector('.error-report'),
