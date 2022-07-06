@@ -223,8 +223,6 @@ window.Packer = (function() {
       this.projectType = null;
       this.projectData = null;
 
-      this.projectAttribution = '';
-
       this.archiveProgress = new Progress();
     }
 
@@ -487,7 +485,6 @@ ${scripts}
   // Project type...
   var type = '${this.projectType}';
   // Project data...
-  // Attribution Notice: ${this.projectAttribution}
   var project = '${this.projectData}';
 
   // Player options...
