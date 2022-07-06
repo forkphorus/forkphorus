@@ -337,14 +337,13 @@ window.SBDL = (function() {
     }
     const metadata = await metadataRequest.json();
     const token = metadata.project_token;
-    // For now, we aren't actually going to use the token.
-    return null;
+    return token;
   }
 
   async function fetchProjectDataWithToken(id) {
     const token = await fetchToken(id).catch((err) => {
       // For now, this is a non-critical error.
-      console.error(err);
+      console.error('Error fetching project token', err);
       return null;
     });
     const tokenPart = token ? `?token=${token}` : '';
