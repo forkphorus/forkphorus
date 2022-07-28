@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Embedded unshared projects may stop working in the future</title>
+    <meta name="robots" content="noindex">
+    <style>
+      :root {
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      }
+      main {
+        max-width: 600px;
+        margin: auto;
+      }
+      section {
+        margin-bottom: 32px;
+      }
+      /* @media (prefers-color-scheme: dark) {
+        :root {
+          color: #eee;
+          background-color: #111;
+          color-scheme: dark;
+        }
+      } */
+
+      h1, h2, h3, p {
+        margin: 16px 0;
+      }
+      h2 {
+        font-size: 2em;
+      }
+      h3 {
+        font-size: 1.5em;
+      }
+    </style>
+    <script>
+      var website;
+      var projectID;
+      location.search.substr(1).split('&').forEach(function(p) {
+        var parts = p.split('=');
+        if (parts.length < 1) {
+          return;
+        }
+        var key = parts[0];
+        var value = decodeURIComponent(parts[1]);
+        if (key === 'website') {
+          website = value;
+        } else if (key === 'id') {
+          projectID = value;
+        }
+      });
+    </script>
+  </head>
+
+  <body>
+    <main>
+      <section>
+        <h2>For users:</h2>
+        <p>Make sure the operator of <span class="the-website">the website</span> is aware of this issue and direct them to the section below. Everything is fine for now, but action is needed for the future.</p>
+        <script>
+          if (website) {
+            document.querySelector('.the-website').textContent = '"' + website + '"';
+          }
+        </script>
+      </section>
+
+      <section>
+        <h2>For site operators:</h2>
+
+        <p>If you're seeing this page, that means your website is using a forkphorus embed of an unshared Scratch project. Scratch is fixing the API bug that allowed sites like forkphorus to access unshared projects, so your embed will stop working at an unknown point in the future if no action is taken.</p>
+        <p>A future update will replace the console warnings with a screen displayed to all users before the project starts, so please take action soon to avoid interruption.</p>
+        <p>Your options are listed below. You can read more about what's happening <a href="https://docs.turbowarp.org/unshared-projects">over here</a> if you're interested.</p>
+
+        <h3>Share the project</h3>
+        <p>If you have access to the Scratch accounts that owns the embedded project, the easiest solution is to login to Scratch, find the project in the "My Stuff" page, and just share it publicly. Public projects will always be able to load in forkphorus.</p>
+        <p>Warnings about the project being unshared might take a few minutes to go away due to caching.</p>
+
+        <h3>Use a packager</h3>
+        <p>If you don't own the project or if for some reason you can't share it publicly on Scratch, you should use a project packager:</p>
+        <ul>
+          <li><a href="https://packager.turbowarp.org/">TurboWarp Packager</a></li>
+          <li><a href="https://forkphorus.github.io/packager/">forkphorus packager</a></li>
+          <li><a href="https://sheeptester.github.io/htmlifier/">HTMLifier</a></li>
+        </ul>
+        <p>All of these websites will generate standalone HTML or zip files that include all the scripts and assets necessary to run your project.</p>
+        <p>Store the HTML file or extracted zip somewhere on your web server, then use HTML like this to embed it:</p>
+        <p>
+          <code>&lt;iframe src="<u>path_to_project.html</u>" width="<u>480</u>" height="<u>360</u>" allowtransparency="true" frameborder="0" scrolling="no" allowfullscreen&gt;&lt;/iframe&gt;</code>
+        </p>
+        <p>Depending on the environment you used, where you stored the project, and what you named it, the src attribute will vary. For extracted zips, you usually want to target the iframe's src at the zip's index.html file.</p>
+
+        <h3>Disable the warning</h3>
+        <p>You can add <code>&disable-unshared-warning</code> to the embedded page URL or script URL to disable the console warning and any future warnings. If your embed looks like this:</p>
+        <p>
+          <code>&lt;iframe src="https://forkphorus.github.io/embed.html?id=280227362&auto-start=false&light-content=false" allowfullscreen="true" allowtransparency="true" style="border:none;" width="482" height="393"&gt;&lt;/iframe&gt;</code>
+        </p>
+        <p>Change it to this:</p>
+        <p>
+          <code>&lt;iframe src="https://forkphorus.github.io/embed.html?id=280227362&auto-start=false&light-content=false<u>&disable-unshared-warning</u>" allowfullscreen="true" allowtransparency="true" style="border:none;" width="482" height="393"&gt;&lt;/iframe&gt;</code>
+        </p>
+        <p>This doesn't solve the issue; it just disables the warnings. You will still need to use one of the previous options to actually fix it.</p>
+      </section>
+
+      <section>
+        <h2>Questions & concerns</h2>
+        <p>Please email: <a href="mailto:forkphorus@turbowarp.org">forkphorus@turbowarp.org</a></p>
+        <p>Please remember that this project is maintained by volunteers. We'll do our best to help.</p>
+      </section>
+    </main>
+  </body>
+</html>
