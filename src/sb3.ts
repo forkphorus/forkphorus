@@ -3151,7 +3151,7 @@ namespace P.sb3.compiler {
   inputLibrary['operator_random'] = function(util) {
     const FROM = util.getInput('FROM', 'string');
     const TO = util.getInput('TO', 'string');
-    return util.numberInput(`random(${FROM}, ${TO})`);
+    return util.numberInput(`randomScratch3(${FROM}, ${TO})`);
   };
   inputLibrary['operator_round'] = function(util) {
     const NUM = util.getInput('NUM', 'number');

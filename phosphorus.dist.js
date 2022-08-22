@@ -3971,6 +3971,21 @@ var P;
             }
             return Math.random() * (y - x) + x;
         };
+        var randomScratch3 = function (x, y) {
+            var fractional = (typeof x === 'string' && x.indexOf('.') > -1) ||
+                (typeof y === 'string' && y.indexOf('.') > -1);
+            x = +x || 0;
+            y = +y || 0;
+            if (x > y) {
+                var tmp = y;
+                y = x;
+                x = tmp;
+            }
+            if (!fractional && (x % 1 === 0 && y % 1 === 0)) {
+                return Math.floor(Math.random() * (y - x + 1)) + x;
+            }
+            return Math.random() * (y - x) + x;
+        };
         var clone = function (name) {
             const parent = name === '_myself_' ? S : self.getObject(name);
             if (!parent || !P.core.isSprite(parent)) {
@@ -8706,7 +8721,7 @@ var P;
     inputLibrary['operator_random'] = function (util) {
         const FROM = util.getInput('FROM', 'string');
         const TO = util.getInput('TO', 'string');
-        return util.numberInput(`random(${FROM}, ${TO})`);
+        return util.numberInput(`randomScratch3(${FROM}, ${TO})`);
     };
     inputLibrary['operator_round'] = function (util) {
         const NUM = util.getInput('NUM', 'number');
