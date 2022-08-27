@@ -3110,7 +3110,7 @@ namespace P.sb3.compiler {
       case 'sin':
         return util.numberInput(`(Math.round(Math.sin(${NUM} * Math.PI / 180) * 1e10) / 1e10)`);
       case 'tan':
-        return util.numberInput(`tanS3(${NUM})`);
+        return util.numberInput(`tan3(${NUM})`);
       case 'asin':
         return util.numberInput(`(Math.asin(${NUM}) * 180 / Math.PI)`);
       case 'acos':
@@ -3151,7 +3151,7 @@ namespace P.sb3.compiler {
   inputLibrary['operator_random'] = function(util) {
     const FROM = util.getInput('FROM', 'string');
     const TO = util.getInput('TO', 'string');
-    return util.numberInput(`randomScratch3(${FROM}, ${TO})`);
+    return util.numberInput(`random3(${FROM}, ${TO})`);
   };
   inputLibrary['operator_round'] = function(util) {
     const NUM = util.getInput('NUM', 'number');

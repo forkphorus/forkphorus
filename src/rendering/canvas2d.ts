@@ -122,7 +122,7 @@ namespace P.renderer.canvas2d {
         if (c.filters.brightness !== 0 && c.filters.color === 0) {
           const ws = w * globalScale;
           const hs = h * globalScale;
-          
+
           workingRenderer.canvas.width = ws;
           workingRenderer.canvas.height = hs;
           workingRenderer.ctx.save();
@@ -411,7 +411,6 @@ namespace P.renderer.canvas2d {
       workingRenderer.ctx.globalCompositeOperation = 'destination-in';
       workingRenderer.noEffects = true;
       workingRenderer.drawChild(sprite);
-      
       workingRenderer.noEffects = false;
       workingRenderer.ctx.restore();
 
@@ -448,7 +447,7 @@ namespace P.renderer.canvas2d {
       workingRenderer2.noEffects = true;
       workingRenderer2.drawChild(sprite);
       workingRenderer2.noEffects = false;
-      
+
       workingRenderer.ctx.restore();
       workingRenderer2.ctx.restore();
 

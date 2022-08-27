@@ -3971,7 +3971,7 @@ var P;
             }
             return Math.random() * (y - x) + x;
         };
-        var randomScratch3 = function (x, y) {
+        var random3 = function (x, y) {
             var fractional = (typeof x === 'string' && x.indexOf('.') > -1) ||
                 (typeof y === 'string' && y.indexOf('.') > -1);
             x = +x || 0;
@@ -4139,7 +4139,7 @@ var P;
             }
             return 0;
         };
-        var tanS3 = function (angle) {
+        var tan3 = function (angle) {
             angle = angle - Math.floor(angle / 360) * 360;
             if (angle === 90)
                 return Infinity;
@@ -8680,7 +8680,7 @@ var P;
             case 'sin':
                 return util.numberInput(`(Math.round(Math.sin(${NUM} * Math.PI / 180) * 1e10) / 1e10)`);
             case 'tan':
-                return util.numberInput(`tanS3(${NUM})`);
+                return util.numberInput(`tan3(${NUM})`);
             case 'asin':
                 return util.numberInput(`(Math.asin(${NUM}) * 180 / Math.PI)`);
             case 'acos':
@@ -8721,7 +8721,7 @@ var P;
     inputLibrary['operator_random'] = function (util) {
         const FROM = util.getInput('FROM', 'string');
         const TO = util.getInput('TO', 'string');
-        return util.numberInput(`randomScratch3(${FROM}, ${TO})`);
+        return util.numberInput(`random3(${FROM}, ${TO})`);
     };
     inputLibrary['operator_round'] = function (util) {
         const NUM = util.getInput('NUM', 'number');

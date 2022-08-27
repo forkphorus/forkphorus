@@ -154,7 +154,7 @@ namespace P.runtime {
     return Math.random() * (y - x) + x;
   };
 
-  var randomScratch3 = function(x, y) {
+  var random3 = function(x, y) {
     var fractional =
       (typeof x === 'string' && x.indexOf('.') > -1) ||
       (typeof y === 'string' && y.indexOf('.') > -1);
@@ -323,12 +323,12 @@ namespace P.runtime {
   };
 
   // https://github.com/LLK/scratch-vm/blob/3fcbc005d17ae1d09121cf63a678127c227c8b86/src/util/math-util.js#L48-L65
-  var tanS3 = function(angle) {
+  var tan3 = function(angle) {
     angle = angle - Math.floor(angle / 360) * 360;
     if (angle === 90) return Infinity;
     if (angle === 270) return -Infinity;
     return Math.round(Math.tan(angle * Math.PI / 180) * 1e10) / 1e10;
-  }
+  };
 
   var attribute = function(attr, objName) {
     // https://github.com/LLK/scratch-vm/blob/e236d29ff5e03f7c4d77a614751da860521771fd/src/blocks/scratch3_sensing.js#L280
