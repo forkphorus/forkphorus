@@ -36,6 +36,7 @@
     'sb3/empty-sound-does-not-play-last.sb3',
     'sb3/negative-zero.sb3',
     'sb3/variable-id-name-desync-name-fallback.sb3',
+    'sb3/non-finite-direction.sb3',
 
     'scratch-vm/broadcast-wait-arg-change.sb2',
     'scratch-vm/control-if-false-then-else.sb2',
