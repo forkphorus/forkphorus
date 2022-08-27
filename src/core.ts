@@ -237,11 +237,22 @@ namespace P.core {
 
   export const enum SpecialKeys {
     Enter = 'enter',
-    Space = '32',
+    Space = 'space',
     Left = 'left arrow',
     Up = 'up arrow',
     Right = 'right arrow',
     Down = 'down arrow',
+    Tab = 'tab',
+    Backspace = 'backspace',
+    Delete = 'delete',
+    Insert = 'insert',
+    Home = 'home',
+    End = 'end',
+    PageUp = 'page up',
+    PageDown = 'page down',
+    Escape = 'esc',
+    Control = 'control',
+    Shift = '_shift', // Using 'shift' causes issues because of it's prototypes
   }
 
   export abstract class Base {
@@ -657,8 +668,9 @@ namespace P.core {
       const b = this.rotatedBounds();
       const left = 240 + b.right;
       var bottom = 180 + b.top;
-      const width = this.bubbleContainer.offsetWidth / this.stage.zoom;
-      const height = this.bubbleContainer.offsetHeight / this.stage.zoom;
+      const bcr = this.bubbleContainer.getBoundingClientRect();
+      const height = (bcr.bottom - bcr.top) / this.stage.zoom;
+      const width = (bcr.right - bcr.left) / this.stage.zoom;
       this.bubblePointer.style.top = ((height - 6) / 14) + 'em';
       if (left + width + 2 > 480) {
         var d = (240 - b.left) / 14;
@@ -968,18 +980,29 @@ namespace P.core {
     private keyEventToCode(e: KeyboardEvent): string | null {
       const key = e.key || '';
       switch (key) {
+        case ' ': return SpecialKeys.Space;
         case 'Enter': return SpecialKeys.Enter;
         case 'ArrowLeft': case 'Left': return SpecialKeys.Left;
         case 'ArrowUp': case 'Up': return SpecialKeys.Up;
         case 'ArrowRight': case 'Right': return SpecialKeys.Right;
         case 'ArrowDown': case 'Down': return SpecialKeys.Down;
+        case 'Escape': return SpecialKeys.Escape;
+        case 'Tab': return SpecialKeys.Tab;
+        case 'Backspace': return SpecialKeys.Backspace;
+        case 'Delete': return SpecialKeys.Delete;
+        case 'Shift': return SpecialKeys.Shift;
+        case 'Control': return SpecialKeys.Control;
+        case 'Insert': return SpecialKeys.Insert;
+        case 'Home': return SpecialKeys.Home;
+        case 'End': return SpecialKeys.End;
+        case 'PageUp': return SpecialKeys.PageUp;
+        case 'PageDown': return SpecialKeys.PageDown;
       }
       if (key.length !== 1) {
-        // Additional keys that we don't care about such as volume keys (AudioVolumeUp/Down) and modifier keys (Shift)
-        // TODO: see if we can support Shift because Scratch 2 did
+        // Additional keys that we don't care about such as volume keys (AudioVolumeUp/Down) and modifier keys
         return null;
       }
-      return '' + key.toUpperCase().charCodeAt(0);
+      return '' + key.toLowerCase().charCodeAt(0);
     }
 
     private _onkeyup(e: KeyboardEvent) {
@@ -996,9 +1019,10 @@ namespace P.core {
     private _onkeydown(e: KeyboardEvent) {
       const c = this.keyEventToCode(e);
       if (c === null) return;
+      if (c == SpecialKeys.Tab && !e.shiftKey) return;
       if (!this.keys[c]) this.keys.any++;
       this.keys[c] = true;
-      if (e.ctrlKey || e.altKey || e.metaKey || c === '27') return;
+      if (e.ctrlKey || e.altKey || e.metaKey || c === SpecialKeys.Escape) return;
       e.stopPropagation();
       if (e.target === this.canvas) {
         e.preventDefault();
@@ -1567,6 +1591,7 @@ namespace P.core {
 
     // Faces in a direction.
     setDirection(degrees: number) {
+      if (!isFinite(degrees)) return;
       var d = degrees % 360;
       if (d > 180) d -= 360;
       if (d <= -180) d += 360;
@@ -1730,7 +1755,9 @@ namespace P.core {
       }
       const dx = position.x - this.scratchX;
       const dy = position.y - this.scratchY;
-      this.direction = dx === 0 && dy === 0 ? 90 : Math.atan2(dx, dy) * 180 / Math.PI;
+      const dir = dx === 0 && dy === 0 ? 90 : Math.atan2(dx, dy) * 180 / Math.PI;
+      if (!isFinite(dir)) return;
+      this.direction = dir;
       if (this.saying) this.updateBubble();
     }
   }

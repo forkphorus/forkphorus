@@ -942,8 +942,9 @@ var P;
                 const b = this.rotatedBounds();
                 const left = 240 + b.right;
                 var bottom = 180 + b.top;
-                const width = this.bubbleContainer.offsetWidth / this.stage.zoom;
-                const height = this.bubbleContainer.offsetHeight / this.stage.zoom;
+                const bcr = this.bubbleContainer.getBoundingClientRect();
+                const height = (bcr.bottom - bcr.top) / this.stage.zoom;
+                const width = (bcr.right - bcr.left) / this.stage.zoom;
                 this.bubblePointer.style.top = ((height - 6) / 14) + 'em';
                 if (left + width + 2 > 480) {
                     var d = (240 - b.left) / 14;
@@ -1157,6 +1158,7 @@ var P;
             keyEventToCode(e) {
                 const key = e.key || '';
                 switch (key) {
+                    case ' ': return "space";
                     case 'Enter': return "enter";
                     case 'ArrowLeft':
                     case 'Left': return "left arrow";
@@ -1166,11 +1168,22 @@ var P;
                     case 'Right': return "right arrow";
                     case 'ArrowDown':
                     case 'Down': return "down arrow";
+                    case 'Escape': return "esc";
+                    case 'Tab': return "tab";
+                    case 'Backspace': return "backspace";
+                    case 'Delete': return "delete";
+                    case 'Shift': return "_shift";
+                    case 'Control': return "control";
+                    case 'Insert': return "insert";
+                    case 'Home': return "home";
+                    case 'End': return "end";
+                    case 'PageUp': return "page up";
+                    case 'PageDown': return "page down";
                 }
                 if (key.length !== 1) {
                     return null;
                 }
-                return '' + key.toUpperCase().charCodeAt(0);
+                return '' + key.toLowerCase().charCodeAt(0);
             }
             _onkeyup(e) {
                 const c = this.keyEventToCode(e);
@@ -1188,10 +1201,12 @@ var P;
                 const c = this.keyEventToCode(e);
                 if (c === null)
                     return;
+                if (c == "tab" && !e.shiftKey)
+                    return;
                 if (!this.keys[c])
                     this.keys.any++;
                 this.keys[c] = true;
-                if (e.ctrlKey || e.altKey || e.metaKey || c === '27')
+                if (e.ctrlKey || e.altKey || e.metaKey || c === "esc")
                     return;
                 e.stopPropagation();
                 if (e.target === this.canvas) {
@@ -1631,6 +1646,8 @@ var P;
                 }
             }
             setDirection(degrees) {
+                if (!isFinite(degrees))
+                    return;
                 var d = degrees % 360;
                 if (d > 180)
                     d -= 360;
@@ -1758,7 +1775,10 @@ var P;
                 }
                 const dx = position.x - this.scratchX;
                 const dy = position.y - this.scratchY;
-                this.direction = dx === 0 && dy === 0 ? 90 : Math.atan2(dx, dy) * 180 / Math.PI;
+                const dir = dx === 0 && dy === 0 ? 90 : Math.atan2(dx, dy) * 180 / Math.PI;
+                if (!isFinite(dir))
+                    return;
+                this.direction = dir;
                 if (this.saying)
                     this.updateBubble();
             }
@@ -3970,7 +3990,7 @@ var P;
             return +v !== 0 && v !== '' && v !== 'false' && v !== false;
         };
         var compare = function (x, y) {
-            if ((typeof x === 'number' || DIGIT.test(x)) && (typeof y === 'number' || DIGIT.test(y))) {
+            if ((typeof x !== 'string' || DIGIT.test(x)) && (typeof y !== 'string' || DIGIT.test(y))) {
                 var nx = +x;
                 var ny = +y;
                 if (nx === nx && ny === ny) {
@@ -4048,6 +4068,21 @@ var P;
         var random = function (x, y) {
             var fractional = (typeof x === 'string' && !isNaN(+x) && x.indexOf('.') > -1) ||
                 (typeof y === 'string' && !isNaN(+y) && y.indexOf('.') > -1);
+            x = +x || 0;
+            y = +y || 0;
+            if (x > y) {
+                var tmp = y;
+                y = x;
+                x = tmp;
+            }
+            if (!fractional && (x % 1 === 0 && y % 1 === 0)) {
+                return Math.floor(Math.random() * (y - x + 1)) + x;
+            }
+            return Math.random() * (y - x) + x;
+        };
+        var random3 = function (x, y) {
+            var fractional = (typeof x === 'string' && x.indexOf('.') > -1) ||
+                (typeof y === 'string' && y.indexOf('.') > -1);
             x = +x || 0;
             y = +y || 0;
             if (x > y) {
@@ -4213,6 +4248,14 @@ var P;
             }
             return 0;
         };
+        var tan3 = function (angle) {
+            angle = angle - Math.floor(angle / 360) * 360;
+            if (angle === 90)
+                return Infinity;
+            if (angle === 270)
+                return -Infinity;
+            return Math.round(Math.tan(angle * Math.PI / 180) * 1e10) / 1e10;
+        };
         var attribute = function (attr, objName) {
             const o = self.getObject(objName);
             if (!o)
@@ -4264,27 +4307,49 @@ var P;
         function getKeyCode(keyName) {
             keyName = keyName + '';
             switch (keyName.toLowerCase()) {
-                case 'space': return "32";
-                case 'left arrow': return "left arrow";
-                case 'up arrow': return "up arrow";
-                case 'right arrow': return "right arrow";
-                case 'down arrow': return "down arrow";
+                case 'space':
+                case '\x20': return "space";
+                case 'left arrow':
+                case '\x1C': return "left arrow";
+                case 'up arrow':
+                case '\x1E': return "up arrow";
+                case 'right arrow':
+                case '\x1D': return "right arrow";
+                case 'down arrow':
+                case '\x1F': return "down arrow";
                 case 'any': return 'any';
+                case '\x0D': return "enter";
+                case '\x1B': return "esc";
+                case '\x09': return "tab";
+                case '\x08': return "backspace";
+                case '\x7F': return "delete";
+                case '': return "_shift";
             }
-            return '' + keyName.toUpperCase().charCodeAt(0);
+            return '' + keyName.charCodeAt(0);
         }
         runtime_1.getKeyCode = getKeyCode;
         var getKeyCode3 = function (keyName) {
             switch (keyName.toLowerCase()) {
-                case 'space': return "32";
+                case 'space':
+                case '\x20': return "space";
                 case 'left arrow': return "left arrow";
                 case 'up arrow': return "up arrow";
                 case 'right arrow': return "right arrow";
                 case 'down arrow': return "down arrow";
-                case 'enter': return "enter";
                 case 'any': return 'any';
+                case 'enter': return "enter";
+                case 'escape': return "esc";
+                case 'backspace': return "backspace";
+                case 'delete': return "delete";
+                case 'insert': return "insert";
+                case 'home': return "home";
+                case 'end': return "end";
+                case 'page up': return "page up";
+                case 'page down': return "page down";
+                case 'control': return "control";
+                case 'shift': return "_shift";
             }
-            return '' + keyName.toUpperCase().charCodeAt(0);
+            return '' + keyName.toLowerCase().charCodeAt(0);
         };
         const audioContext = P.audio.context;
         if (audioContext) {
@@ -5784,7 +5849,7 @@ var P;
                     source += 'save();\n';
                     source += 'R.start = runtime.now();\n';
                     source += 'R.duration = ' + num(dur) + ' * 60 / self.tempoBPM;\n';
-                    source += 'var first = true;\n';
+                    source += 'var first = !WARP;\n';
                 };
                 var beatTail = function () {
                     var id = label();
@@ -5801,7 +5866,7 @@ var P;
                     source += 'save();\n';
                     source += 'R.start = runtime.now();\n';
                     source += 'R.duration = ' + dur + ';\n';
-                    source += 'var first = true;\n';
+                    source += 'var first = !WARP;\n';
                     var id = label();
                     source += 'if (runtime.now() - R.start < R.duration * 1000 || first) {\n';
                     source += '  var first;\n';
@@ -5913,8 +5978,10 @@ var P;
                         source += 'R.id = S.say(' + val(block[1]) + ', false);\n';
                         source += 'R.start = runtime.now();\n';
                         source += 'R.duration = ' + num(block[2]) + ';\n';
+                        source += 'var first = !WARP;\n';
                         var id = label();
-                        source += 'if (runtime.now() - R.start < R.duration * 1000) {\n';
+                        source += 'if (runtime.now() - R.start < R.duration * 1000 || first) {\n';
+                        source += '  var first;\n';
                         forceQueue(id);
                         source += '}\n';
                         source += 'if (S.sayId === R.id) {\n';
@@ -5930,8 +5997,10 @@ var P;
                         source += 'R.id = S.say(' + val(block[1]) + ', true);\n';
                         source += 'R.start = runtime.now();\n';
                         source += 'R.duration = ' + num(block[2]) + ';\n';
+                        source += 'var first = !WARP;\n';
                         var id = label();
-                        source += 'if (runtime.now() - R.start < R.duration * 1000) {\n';
+                        source += 'if (runtime.now() - R.start < R.duration * 1000 || first) {\n';
+                        source += '  var first;\n';
                         forceQueue(id);
                         source += '}\n';
                         source += 'if (S.sayId === R.id) {\n';
@@ -7463,13 +7532,19 @@ var P;
                         .replace(/\*\//g, '');
                     return `/* ${content} */`;
                 }
-                findVariable(id) {
+                findVariable({ id, name }) {
                     const stage = this.target.stage;
                     if (stage.varIds.hasOwnProperty(id)) {
                         return { scope: 'self', name: stage.varIds[id] };
                     }
+                    else if (stage.vars.hasOwnProperty(name)) {
+                        return { scope: 'self', name: name };
+                    }
                     else if (this.target.varIds.hasOwnProperty(id)) {
                         return { scope: 'S', name: this.target.varIds[id] };
+                    }
+                    else if (this.target.vars.hasOwnProperty(name)) {
+                        return { scope: 'S', name: name };
                     }
                     else {
                         this.target.vars[id] = 0;
@@ -7477,13 +7552,19 @@ var P;
                         return { scope: 'S', name: id };
                     }
                 }
-                findList(id) {
+                findList({ id, name }) {
                     const stage = this.target.stage;
                     if (stage.listIds.hasOwnProperty(id)) {
                         return { scope: 'self', name: stage.listIds[id] };
                     }
+                    else if (stage.lists.hasOwnProperty(name)) {
+                        return { scope: 'self', name: name };
+                    }
                     else if (this.target.listIds.hasOwnProperty(id)) {
                         return { scope: 'S', name: this.target.listIds[id] };
+                    }
+                    else if (this.target.lists.hasOwnProperty(name)) {
+                        return { scope: 'S', name: name };
                     }
                     else {
                         this.target.lists[id] = sb3.createList();
@@ -7491,13 +7572,13 @@ var P;
                         return { scope: 'S', name: id };
                     }
                 }
-                getVariableReference(id) {
-                    const { scope, name } = this.findVariable(id);
-                    return `${scope}.vars[${this.sanitizedString(name)}]`;
+                getVariableReference({ id, name }) {
+                    const varInfo = this.findVariable({ id: id, name: name });
+                    return `${varInfo.scope}.vars[${this.sanitizedString(varInfo.name)}]`;
                 }
-                getListReference(id) {
-                    const { scope, name } = this.findList(id);
-                    return `${scope}.lists[${this.sanitizedString(name)}]`;
+                getListReference({ id, name }) {
+                    const listInfo = this.findList({ id: id, name: name });
+                    return `${listInfo.scope}.lists[${this.sanitizedString(listInfo.name)}]`;
                 }
                 isStringLiteralPotentialNumber(text) {
                     return /\d|true|false|Infinity/.test(text);
@@ -7534,9 +7615,9 @@ var P;
                             return input;
                         }
                         case 12:
-                            return anyInput(this.getVariableReference(native[2]));
+                            return anyInput(this.getVariableReference({ id: native[2], name: native[1] }));
                         case 13:
-                            return new CompiledInput(this.getListReference(native[2]), 'list');
+                            return new CompiledInput(this.getListReference({ id: native[2], name: native[1] }), 'list');
                         case 11:
                             return this.sanitizedInput(native[1]);
                         case 9: {
@@ -7592,9 +7673,9 @@ var P;
                     const value = block.fields[fieldName];
                     if (!value) {
                         this.warn('missing variable field', fieldName);
-                        return '';
+                        return { id: '', name: '' };
                     }
-                    return '' + value[1];
+                    return { id: '' + value[1], name: '' + value[0] };
                 }
                 compileSubstackInput(block, substackName) {
                     if (!block.inputs[substackName]) {
@@ -7864,7 +7945,9 @@ var P;
         util.writeLn('save();');
         util.writeLn('R.start = runtime.currentMSecs;');
         util.writeLn(`R.duration = ${DURATION};`);
-        util.writeLn(`var first = true;`);
+        if (!util.compiler.state.isWarp || util.substacksQueue) {
+            util.writeLn(`var first = true;`);
+        }
         const label = util.addLabel();
         util.writeLn('if (runtime.currentMSecs - R.start < R.duration * 1000 || first) {');
         util.writeLn('  var first;');
@@ -7996,10 +8079,10 @@ var P;
         util.writeLn('if (i !== -1) {');
         util.writeLn('  self.children.splice(i, 1);');
         if (FORWARD_BACKWARD === 'forward') {
-            util.writeLn(`  self.children.splice(Math.max(0, Math.min(self.children.length - 1, i + ${NUM})), 0, S);`);
+            util.writeLn(`  self.children.splice(Math.max(0, Math.min(self.children.length, i + ${NUM})), 0, S);`);
         }
         else {
-            util.writeLn(`  self.children.splice(Math.max(0, Math.min(self.children.length - 1, i - ${NUM})), 0, S);`);
+            util.writeLn(`  self.children.splice(Math.max(0, Math.min(self.children.length, i - ${NUM})), 0, S);`);
         }
         util.writeLn('}');
     };
@@ -8041,8 +8124,10 @@ var P;
         util.visual('visible');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${SECS};`);
+        util.writeLn(`var first = true;`);
         const label = util.addLabel();
-        util.writeLn('if (runtime.now() - R.start < R.duration * 1000) {');
+        util.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
+        util.writeLn('  var first;');
         util.forceQueue(label);
         util.writeLn('}');
         util.writeLn('if (S.sayId === R.id) {');
@@ -8104,8 +8189,10 @@ var P;
         util.visual('visible');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${SECS};`);
+        util.writeLn(`var first = true;`);
         const label = util.addLabel();
-        util.writeLn('if (runtime.now() - R.start < R.duration * 1000) {');
+        util.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
+        util.writeLn('  var first;');
         util.forceQueue(label);
         util.writeLn('}');
         util.writeLn('if (S.sayId === R.id) {');
@@ -8234,7 +8321,9 @@ var P;
         util.writeLn('save();');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
-        util.writeLn(`var first = true;`);
+        if (!util.compiler.state.isWarp || util.substacksQueue) {
+            util.writeLn(`var first = true;`);
+        }
         if (P.audio.context) {
             util.writeLn(`R.sound = playSpan(DRUMS[Math.round(${DRUM}) - 1] || DRUMS[2], 60, 10);`);
         }
@@ -8257,7 +8346,6 @@ var P;
         util.writeLn('save();');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
-        util.writeLn(`var first = true;`);
         if (P.audio.context) {
             util.writeLn(`R.sound = playNote(${NOTE}, R.duration);`);
         }
@@ -8266,8 +8354,7 @@ var P;
         }
         const id = util.addLabel();
         util.writeLn('S.activeSounds.add(R.sound);');
-        util.writeLn('if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
-        util.writeLn('  var first;');
+        util.writeLn('if ((runtime.now() - R.start < R.duration * 1000) && !R.sound.stopped) {');
         util.forceQueue(id);
         util.writeLn('}');
         util.writeLn('S.activeSounds.delete(R.sound);');
@@ -8278,7 +8365,9 @@ var P;
         util.writeLn('save();');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
-        util.writeLn(`var first = true;`);
+        if (!util.compiler.state.isWarp || util.substacksQueue) {
+            util.writeLn(`var first = true;`);
+        }
         const id = util.addLabel();
         util.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
         util.writeLn('  var first;');
@@ -8700,7 +8789,7 @@ var P;
             case 'sin':
                 return util.numberInput(`(Math.round(Math.sin(${NUM} * Math.PI / 180) * 1e10) / 1e10)`);
             case 'tan':
-                return util.numberInput(`Math.tan(${NUM} * Math.PI / 180)`);
+                return util.numberInput(`tan3(${NUM})`);
             case 'asin':
                 return util.numberInput(`(Math.asin(${NUM}) * 180 / Math.PI)`);
             case 'acos':
@@ -8741,7 +8830,7 @@ var P;
     inputLibrary['operator_random'] = function (util) {
         const FROM = util.getInput('FROM', 'string');
         const TO = util.getInput('TO', 'string');
-        return util.numberInput(`random(${FROM}, ${TO})`);
+        return util.numberInput(`random3(${FROM}, ${TO})`);
     };
     inputLibrary['operator_round'] = function (util) {
         const NUM = util.getInput('NUM', 'number');
@@ -9731,8 +9820,8 @@ var P;
                     const image = costume.getImage();
                     const x = -costume.rotationCenterX * objectScale | 0;
                     const y = -costume.rotationCenterY * objectScale | 0;
-                    const w = costume.width * objectScale;
-                    const h = costume.height * objectScale;
+                    const w = costume.width * objectScale | 0;
+                    const h = costume.height * objectScale | 0;
                     if (w < 1 || h < 1) {
                         ctx.restore();
                         return;
@@ -9740,12 +9829,14 @@ var P;
                     if (!this.noEffects) {
                         ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
                         if (c.filters.brightness !== 0 && c.filters.color === 0) {
-                            workingRenderer.canvas.width = w;
-                            workingRenderer.canvas.height = h;
+                            const ws = w * globalScale;
+                            const hs = h * globalScale;
+                            workingRenderer.canvas.width = ws;
+                            workingRenderer.canvas.height = hs;
                             workingRenderer.ctx.save();
                             workingRenderer.ctx.imageSmoothingEnabled = false;
                             workingRenderer.ctx.translate(0, 0);
-                            workingRenderer.ctx.drawImage(image, 0, 0, w, h);
+                            workingRenderer.ctx.drawImage(image, 0, 0, ws, hs);
                             workingRenderer.ctx.globalCompositeOperation = 'source-atop';
                             workingRenderer.ctx.globalAlpha = Math.abs(c.filters.brightness / 100);
                             if (c.filters.brightness > 0) {
@@ -9754,8 +9845,8 @@ var P;
                             else {
                                 workingRenderer.ctx.fillStyle = 'black';
                             }
-                            workingRenderer.ctx.fillRect(0, 0, w, h);
-                            ctx.drawImage(workingRenderer.canvas, x, y);
+                            workingRenderer.ctx.fillRect(0, 0, ws, hs);
+                            ctx.drawImage(workingRenderer.canvas, x, y, w, h);
                             workingRenderer.ctx.restore();
                         }
                         else {
@@ -9973,7 +10064,9 @@ var P;
                     workingRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
                     this.drawAllExcept(workingRenderer, sprite);
                     workingRenderer.ctx.globalCompositeOperation = 'destination-in';
+                    workingRenderer.noEffects = true;
                     workingRenderer.drawChild(sprite);
+                    workingRenderer.noEffects = false;
                     workingRenderer.ctx.restore();
                     const data = workingRenderer.ctx.getImageData(0, 0, width, height).data;
                     color = color & COLOR_MASK;
@@ -9999,7 +10092,9 @@ var P;
                     workingRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
                     workingRenderer2.ctx.translate(-(240 + rb.left), -(180 - rb.top));
                     this.drawAllExcept(workingRenderer, sprite);
+                    workingRenderer2.noEffects = true;
                     workingRenderer2.drawChild(sprite);
+                    workingRenderer2.noEffects = false;
                     workingRenderer.ctx.restore();
                     workingRenderer2.ctx.restore();
                     var dataA = workingRenderer.ctx.getImageData(0, 0, width, height).data;

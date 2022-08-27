@@ -48,7 +48,7 @@ namespace P.runtime {
   };
 
   var compare = function(x, y) {
-    if ((typeof x === 'number' || DIGIT.test(x)) && (typeof y === 'number' || DIGIT.test(y))) {
+    if ((typeof x !== 'string' || DIGIT.test(x)) && (typeof y !== 'string' || DIGIT.test(y))) {
       var nx = +x;
       var ny = +y;
       if (nx === nx && ny === ny) {
@@ -141,6 +141,23 @@ namespace P.runtime {
     var fractional =
       (typeof x === 'string' && !isNaN(+x) && x.indexOf('.') > -1) ||
       (typeof y === 'string' && !isNaN(+y) && y.indexOf('.') > -1);
+    x = +x || 0;
+    y = +y || 0;
+    if (x > y) {
+      var tmp = y;
+      y = x;
+      x = tmp;
+    }
+    if (!fractional && (x % 1 === 0 && y % 1 === 0)) {
+      return Math.floor(Math.random() * (y - x + 1)) + x;
+    }
+    return Math.random() * (y - x) + x;
+  };
+
+  var random3 = function(x, y) {
+    var fractional =
+      (typeof x === 'string' && x.indexOf('.') > -1) ||
+      (typeof y === 'string' && y.indexOf('.') > -1);
     x = +x || 0;
     y = +y || 0;
     if (x > y) {
@@ -305,6 +322,14 @@ namespace P.runtime {
     return 0;
   };
 
+  // https://github.com/LLK/scratch-vm/blob/3fcbc005d17ae1d09121cf63a678127c227c8b86/src/util/math-util.js#L48-L65
+  var tan3 = function(angle) {
+    angle = angle - Math.floor(angle / 360) * 360;
+    if (angle === 90) return Infinity;
+    if (angle === 270) return -Infinity;
+    return Math.round(Math.tan(angle * Math.PI / 180) * 1e10) / 1e10;
+  };
+
   var attribute = function(attr, objName) {
     // https://github.com/LLK/scratch-vm/blob/e236d29ff5e03f7c4d77a614751da860521771fd/src/blocks/scratch3_sensing.js#L280
     const o = self.getObject(objName);
@@ -360,28 +385,45 @@ namespace P.runtime {
   export function getKeyCode(keyName: any): string {
     keyName = keyName + '';
     switch (keyName.toLowerCase()) {
-      case 'space': return P.core.SpecialKeys.Space;
-      case 'left arrow': return P.core.SpecialKeys.Left;
-      case 'up arrow': return P.core.SpecialKeys.Up;
-      case 'right arrow': return P.core.SpecialKeys.Right;
-      case 'down arrow': return P.core.SpecialKeys.Down;
+      case 'space': case '\x20': return P.core.SpecialKeys.Space;
+      case 'left arrow': case '\x1C': return P.core.SpecialKeys.Left;
+      case 'up arrow': case '\x1E': return P.core.SpecialKeys.Up;
+      case 'right arrow': case '\x1D': return P.core.SpecialKeys.Right;
+      case 'down arrow': case '\x1F': return P.core.SpecialKeys.Down;
       case 'any': return 'any';
+      case '\x0D': return P.core.SpecialKeys.Enter;
+      case '\x1B': return P.core.SpecialKeys.Escape;
+      case '\x09': return P.core.SpecialKeys.Tab;
+      case '\x08': return P.core.SpecialKeys.Backspace;
+      case '\x7F': return P.core.SpecialKeys.Delete;
+      case '': return P.core.SpecialKeys.Shift;
     }
-    return '' + keyName.toUpperCase().charCodeAt(0);
+    return '' + keyName.charCodeAt(0);
   }
 
   var getKeyCode3 = function(keyName: any): string {
     switch (keyName.toLowerCase()) {
-      case 'space': return P.core.SpecialKeys.Space;
+      case 'space': case '\x20': return P.core.SpecialKeys.Space;
       case 'left arrow': return P.core.SpecialKeys.Left;
       case 'up arrow': return P.core.SpecialKeys.Up;
       case 'right arrow': return P.core.SpecialKeys.Right;
       case 'down arrow': return P.core.SpecialKeys.Down;
+      case 'any': return 'any';
       // Scratch 3 added support for 'enter'
       case 'enter': return P.core.SpecialKeys.Enter;
-      case 'any': return 'any';
+      // Incomplete parity with TurboWarp
+      case 'escape': return P.core.SpecialKeys.Escape;
+      case 'backspace': return P.core.SpecialKeys.Backspace;
+      case 'delete': return P.core.SpecialKeys.Delete;
+      case 'insert': return P.core.SpecialKeys.Insert;
+      case 'home': return P.core.SpecialKeys.Home;
+      case 'end': return P.core.SpecialKeys.End;
+      case 'page up': return P.core.SpecialKeys.PageUp;
+      case 'page down': return P.core.SpecialKeys.PageDown;
+      case 'control': return P.core.SpecialKeys.Control;
+      case 'shift': return P.core.SpecialKeys.Shift;
     }
-    return '' + keyName.toUpperCase().charCodeAt(0);
+    return '' + keyName.toLowerCase().charCodeAt(0);
   };
 
   // Load audio methods if audio is supported
