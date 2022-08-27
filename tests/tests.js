@@ -40,6 +40,7 @@
     'sb3/ghost-100-touching.sb3',
     'sb3/boolean-number-comparison.sb3',
     'sb3/non-finite-size-100-brightness.sb3',
+    'sb3/random-with-invalid-number-with-period.sb3',
 
     'scratch-vm/broadcast-wait-arg-change.sb2',
     'scratch-vm/control-if-false-then-else.sb2',
