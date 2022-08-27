@@ -670,11 +670,10 @@
       setSearchParam('phost', e.target.checked ? 'legacy' : false, e);
     });
     function setSearchParam(key, value, event) {
+      event.preventDefault();
       if (!confirm(P.i18n.translate('index.advanced.confirmation'))) {
-        event.preventDefault();
         return;
       }
-      event.preventDefault();
       // if value === false, remove the key
       // if value === true, add a key with no value
       // else, add a key with the given value
