@@ -7945,9 +7945,7 @@ var P;
         util.writeLn('save();');
         util.writeLn('R.start = runtime.currentMSecs;');
         util.writeLn(`R.duration = ${DURATION};`);
-        if (!util.compiler.state.isWarp || util.substacksQueue) {
-            util.writeLn(`var first = true;`);
-        }
+        util.writeLn(`var first = !WARP;`);
         const label = util.addLabel();
         util.writeLn('if (runtime.currentMSecs - R.start < R.duration * 1000 || first) {');
         util.writeLn('  var first;');
@@ -8321,9 +8319,7 @@ var P;
         util.writeLn('save();');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
-        if (!util.compiler.state.isWarp || util.substacksQueue) {
-            util.writeLn(`var first = true;`);
-        }
+        util.writeLn(`var first = !WARP;`);
         if (P.audio.context) {
             util.writeLn(`R.sound = playSpan(DRUMS[Math.round(${DRUM}) - 1] || DRUMS[2], 60, 10);`);
         }
@@ -8365,9 +8361,7 @@ var P;
         util.writeLn('save();');
         util.writeLn('R.start = runtime.now();');
         util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
-        if (!util.compiler.state.isWarp || util.substacksQueue) {
-            util.writeLn(`var first = true;`);
-        }
+        util.writeLn(`var first = !WARP;`);
         const id = util.addLabel();
         util.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
         util.writeLn('  var first;');
