@@ -109,8 +109,8 @@ namespace P.renderer.canvas2d {
       const image = costume.getImage();
       const x = -costume.rotationCenterX * objectScale | 0;
       const y = -costume.rotationCenterY * objectScale | 0;
-      const w = costume.width * objectScale;
-      const h = costume.height * objectScale;
+      const w = costume.width * objectScale | 0;
+      const h = costume.height * objectScale | 0;
       if (w < 1 || h < 1) {
         ctx.restore();
         return;
@@ -120,13 +120,16 @@ namespace P.renderer.canvas2d {
         ctx.globalAlpha = Math.max(0, Math.min(1, 1 - c.filters.ghost / 100));
 
         if (c.filters.brightness !== 0 && c.filters.color === 0) {
-          workingRenderer.canvas.width = w;
-          workingRenderer.canvas.height = h;
+          const ws = w * globalScale;
+          const hs = h * globalScale;
+
+          workingRenderer.canvas.width = ws;
+          workingRenderer.canvas.height = hs;
           workingRenderer.ctx.save();
           workingRenderer.ctx.imageSmoothingEnabled = false;
 
           workingRenderer.ctx.translate(0, 0);
-          workingRenderer.ctx.drawImage(image, 0, 0, w, h);
+          workingRenderer.ctx.drawImage(image, 0, 0, ws, hs);
           workingRenderer.ctx.globalCompositeOperation = 'source-atop';
           workingRenderer.ctx.globalAlpha = Math.abs(c.filters.brightness / 100);
           if (c.filters.brightness > 0) {
@@ -134,8 +137,8 @@ namespace P.renderer.canvas2d {
           } else {
             workingRenderer.ctx.fillStyle = 'black';
           }
-          workingRenderer.ctx.fillRect(0, 0, w, h);
-          ctx.drawImage(workingRenderer.canvas, x, y);
+          workingRenderer.ctx.fillRect(0, 0, ws, hs);
+          ctx.drawImage(workingRenderer.canvas, x, y, w, h);
 
           workingRenderer.ctx.restore();
         } else {
@@ -406,8 +409,9 @@ namespace P.renderer.canvas2d {
 
       this.drawAllExcept(workingRenderer, sprite);
       workingRenderer.ctx.globalCompositeOperation = 'destination-in';
+      workingRenderer.noEffects = true;
       workingRenderer.drawChild(sprite);
-
+      workingRenderer.noEffects = false;
       workingRenderer.ctx.restore();
 
       const data = workingRenderer.ctx.getImageData(0, 0, width, height).data;
@@ -440,7 +444,9 @@ namespace P.renderer.canvas2d {
       workingRenderer2.ctx.translate(-(240 + rb.left), -(180 - rb.top));
 
       this.drawAllExcept(workingRenderer, sprite);
+      workingRenderer2.noEffects = true;
       workingRenderer2.drawChild(sprite);
+      workingRenderer2.noEffects = false;
 
       workingRenderer.ctx.restore();
       workingRenderer2.ctx.restore();

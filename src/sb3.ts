@@ -1684,12 +1684,16 @@ namespace P.sb3.compiler {
      * Find the scope and name of a variable from its ID.
      * The variable may be created if it does not exist.
      */
-    findVariable(id: string): { scope: string; name: string; } {
+    findVariable({id, name}: {id: string, name: string}): { scope: string; name: string; } {
       const stage = this.target.stage as Target;
       if (stage.varIds.hasOwnProperty(id)) {
         return { scope: 'self', name: stage.varIds[id] };
+      } else if (stage.vars.hasOwnProperty(name)) {
+        return { scope: 'self', name: name };
       } else if (this.target.varIds.hasOwnProperty(id)) {
         return { scope: 'S', name: this.target.varIds[id] };
+      } else if (this.target.vars.hasOwnProperty(name)) {
+        return { scope: 'S', name: name };
       } else {
         // Create missing variables in the sprite.
         // We use the variable ID as the name, and store this in varIds for future lookups.
@@ -1703,12 +1707,16 @@ namespace P.sb3.compiler {
      * Find the scope and name of a list from its ID.
      * The list may be created if it does not exist.
      */
-    findList(id: string): { scope: string; name: string; } {
+    findList({id, name}: {id: string, name: string}): { scope: string; name: string; } {
       const stage = this.target.stage as Target;
       if (stage.listIds.hasOwnProperty(id)) {
         return { scope: 'self', name: stage.listIds[id] };
+      } else if (stage.lists.hasOwnProperty(name)) {
+        return { scope: 'self', name: name };
       } else if (this.target.listIds.hasOwnProperty(id)) {
         return { scope: 'S', name: this.target.listIds[id] };
+      } else if (this.target.lists.hasOwnProperty(name)) {
+        return { scope: 'S', name: name };
       } else {
         // Create missing lists in the sprite.
         // We use the list ID as the name, and store this in listIds for future lookups.
@@ -1721,17 +1729,17 @@ namespace P.sb3.compiler {
     /**
      * Gets the runtime reference to a variable.
      */
-    getVariableReference(id: string): string {
-      const { scope, name } = this.findVariable(id);
-      return `${scope}.vars[${this.sanitizedString(name)}]`;
+    getVariableReference({id, name}: {id: string, name: string}): string {
+      const varInfo = this.findVariable({id: id, name: name});
+      return `${varInfo.scope}.vars[${this.sanitizedString(varInfo.name)}]`;
     }
 
     /**
      * Gets the runtime reference to a list.
      */
-    getListReference(id: string): string {
-      const { scope, name } = this.findList(id);
-      return `${scope}.lists[${this.sanitizedString(name)}]`;
+    getListReference({id, name}: {id: string, name: string}): string {
+      const listInfo = this.findList({id: id, name: name});
+      return `${listInfo.scope}.lists[${this.sanitizedString(listInfo.name)}]`;
     }
 
     /**
@@ -1795,11 +1803,11 @@ namespace P.sb3.compiler {
 
         case NativeTypes.VAR:
           // [type, name, id]
-          return anyInput(this.getVariableReference(native[2]));
+          return anyInput(this.getVariableReference({id: native[2], name: native[1]}));
 
         case NativeTypes.LIST:
           // [type, name, id]
-          return new CompiledInput(this.getListReference(native[2]), 'list');
+          return new CompiledInput(this.getListReference({id: native[2], name: native[1]}), 'list');
 
         case NativeTypes.BROADCAST:
           // [type, name, id]
@@ -1886,14 +1894,14 @@ namespace P.sb3.compiler {
      * Get the value of a variable field of a block.
      * @returns The variable ID
      */
-    getVariableField(block: SB3Block, fieldName: string): string {
+    getVariableField(block: SB3Block, fieldName: string): {id: string; name: string} {
       const value = block.fields[fieldName];
       if (!value) {
         // This could be a sign of another issue, so log a warning.
         this.warn('missing variable field', fieldName);
-        return '';
+        return {id: '', name: ''};
       }
-      return '' + value[1];
+      return {id: '' + value[1], name: '' + value[0]};
     }
 
     /**
@@ -2233,7 +2241,7 @@ namespace P.sb3.compiler {
     util.writeLn('save();');
     util.writeLn('R.start = runtime.currentMSecs;');
     util.writeLn(`R.duration = ${DURATION};`);
-    util.writeLn(`var first = true;`);
+    util.writeLn(`var first = !WARP;`);
     const label = util.addLabel();
     util.writeLn('if (runtime.currentMSecs - R.start < R.duration * 1000 || first) {');
     util.writeLn('  var first;');
@@ -2364,9 +2372,9 @@ namespace P.sb3.compiler {
     util.writeLn('if (i !== -1) {');
     util.writeLn('  self.children.splice(i, 1);');
     if (FORWARD_BACKWARD === 'forward') {
-      util.writeLn(`  self.children.splice(Math.max(0, Math.min(self.children.length - 1, i + ${NUM})), 0, S);`);
+      util.writeLn(`  self.children.splice(Math.max(0, Math.min(self.children.length, i + ${NUM})), 0, S);`);
     } else {
-      util.writeLn(`  self.children.splice(Math.max(0, Math.min(self.children.length - 1, i - ${NUM})), 0, S);`);
+      util.writeLn(`  self.children.splice(Math.max(0, Math.min(self.children.length, i - ${NUM})), 0, S);`);
     }
     util.writeLn('}');
   };
@@ -2407,8 +2415,10 @@ namespace P.sb3.compiler {
     util.visual('visible');
     util.writeLn('R.start = runtime.now();');
     util.writeLn(`R.duration = ${SECS};`);
+    util.writeLn(`var first = true;`);
     const label = util.addLabel();
-    util.writeLn('if (runtime.now() - R.start < R.duration * 1000) {');
+    util.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
+    util.writeLn('  var first;');
     util.forceQueue(label);
     util.writeLn('}');
     util.writeLn('if (S.sayId === R.id) {');
@@ -2472,8 +2482,10 @@ namespace P.sb3.compiler {
     util.visual('visible');
     util.writeLn('R.start = runtime.now();');
     util.writeLn(`R.duration = ${SECS};`);
+    util.writeLn(`var first = true;`);
     const label = util.addLabel();
-    util.writeLn('if (runtime.now() - R.start < R.duration * 1000) {');
+    util.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
+    util.writeLn('  var first;');
     util.forceQueue(label);
     util.writeLn('}');
     util.writeLn('if (S.sayId === R.id) {');
@@ -2605,7 +2617,7 @@ namespace P.sb3.compiler {
     util.writeLn('save();');
     util.writeLn('R.start = runtime.now();');
     util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
-    util.writeLn(`var first = true;`);
+    util.writeLn(`var first = !WARP;`);
 
     if (P.audio.context) {
       util.writeLn(`R.sound = playSpan(DRUMS[Math.round(${DRUM}) - 1] || DRUMS[2], 60, 10);`);
@@ -2631,7 +2643,6 @@ namespace P.sb3.compiler {
     util.writeLn('save();');
     util.writeLn('R.start = runtime.now();');
     util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
-    util.writeLn(`var first = true;`);
 
     if (P.audio.context) {
       util.writeLn(`R.sound = playNote(${NOTE}, R.duration);`);
@@ -2641,8 +2652,7 @@ namespace P.sb3.compiler {
 
     const id = util.addLabel();
     util.writeLn('S.activeSounds.add(R.sound);')
-    util.writeLn('if ((runtime.now() - R.start < R.duration * 1000 || first) && !R.sound.stopped) {');
-    util.writeLn('  var first;');
+    util.writeLn('if ((runtime.now() - R.start < R.duration * 1000) && !R.sound.stopped) {');
     util.forceQueue(id);
     util.writeLn('}');
     util.writeLn('S.activeSounds.delete(R.sound);');
@@ -2653,7 +2663,7 @@ namespace P.sb3.compiler {
     util.writeLn('save();');
     util.writeLn('R.start = runtime.now();');
     util.writeLn(`R.duration = ${BEATS} * 60 / self.tempoBPM;`);
-    util.writeLn(`var first = true;`);
+    util.writeLn(`var first = !WARP;`);
     const id = util.addLabel();
     util.writeLn('if (runtime.now() - R.start < R.duration * 1000 || first) {');
     util.writeLn('  var first;');
@@ -3094,7 +3104,7 @@ namespace P.sb3.compiler {
       case 'sin':
         return util.numberInput(`(Math.round(Math.sin(${NUM} * Math.PI / 180) * 1e10) / 1e10)`);
       case 'tan':
-        return util.numberInput(`Math.tan(${NUM} * Math.PI / 180)`);
+        return util.numberInput(`tan3(${NUM})`);
       case 'asin':
         return util.numberInput(`(Math.asin(${NUM}) * 180 / Math.PI)`);
       case 'acos':
@@ -3135,7 +3145,7 @@ namespace P.sb3.compiler {
   inputLibrary['operator_random'] = function(util) {
     const FROM = util.getInput('FROM', 'string');
     const TO = util.getInput('TO', 'string');
-    return util.numberInput(`random(${FROM}, ${TO})`);
+    return util.numberInput(`random3(${FROM}, ${TO})`);
   };
   inputLibrary['operator_round'] = function(util) {
     const NUM = util.getInput('NUM', 'number');

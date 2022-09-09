@@ -223,8 +223,6 @@ window.Packer = (function() {
       this.projectType = null;
       this.projectData = null;
 
-      this.projectAttribution = '';
-
       this.archiveProgress = new Progress();
     }
 
@@ -242,11 +240,17 @@ window.Packer = (function() {
       }
     }
 
+    _getProjectTypeFromJSON(data) {
+      if ('targets' in data) return 'sb3';
+      if ('objName' in data) return 'sb2';
+      throw new Error('Unknown project type');
+    }
+
     /**
      * @param {string} id
      */
     async _getProjectTypeById(id) {
-      const res = await fetch('https://projects.scratch.mit.edu/' + id);
+      const res = await SBDL.fetchProjectDataWithToken(id);
       if (res.status !== 200) {
         if (res.status === 404) {
           throw new Error('Project does not exist: ' + id);
@@ -260,21 +264,20 @@ window.Packer = (function() {
       try {
         data = await res.json();
       } catch (e) {
+        console.warn('Project was not JSON, trying to interpret as zip', e);
         // binary file, try to see if it could be a Scratch 2 project
         const blob = await responseClone.blob();
         try {
-          await JSZip.loadAsync(blob);
-          // if loadAsync doesn't reject, this is valid zip, and is probably a Scratch 2 project
-          return 'sb2';
+          const zip = await JSZip.loadAsync(blob);
+          const zippedProjectJSON = JSON.parse(await zip.file('project.json').async('text'));
+          return this._getProjectTypeFromJSON(zippedProjectJSON);
         } catch (e) {
-          // not a zip, probably a .sb
+          // not a valid project zip, probably a .sb
           return 'sb';
         }
       }
 
-      if ('targets' in data) return 'sb3';
-      if ('objName' in data) return 'sb2';
-      throw new Error('Unknown project type');
+      return this._getProjectTypeFromJSON(data);
     }
 
     /**
@@ -447,6 +450,7 @@ ${scripts}
   var progressBarFill = document.querySelector('.progress-bar');
 
   var player = new P.player.Player();
+  window.player = player;
   player.setOptions({ theme: 'dark' });
   var errorHandler = new P.player.ErrorHandler(player, {
     container: document.querySelector('.error-report'),
@@ -486,7 +490,6 @@ ${scripts}
   // Project type...
   var type = '${this.projectType}';
   // Project data...
-  // Attribution Notice: ${this.projectAttribution}
   var project = '${this.projectData}';
 
   // Player options...

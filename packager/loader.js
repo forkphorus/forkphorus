@@ -21,7 +21,14 @@ window.SBDL = (function() {
     }
   }
 
-  const SB_MAGIC = 'ScratchV01';
+  class CannotAccessProjectError extends Error {
+    constructor(message) {
+      super(message);
+      this.name = 'CannotAccessProjectError';
+    }
+  }
+
+  const SB_MAGIC = 'ScratchV0';
   const ZIP_MAGIC = 'PK';
 
   const fetchQueue = {
@@ -210,7 +217,8 @@ window.SBDL = (function() {
       'png',
       'jpg',
       'jpeg',
-      'bmp'
+      'bmp',
+      'gif'
     ];
     const SOUND_EXTENSIONS = [
       'wav',
@@ -319,9 +327,39 @@ window.SBDL = (function() {
       });
   }
 
+  async function fetchToken(id) {
+    const metadataRequest = await fetch(`https://trampoline.turbowarp.org/proxy/projects/${id}`);
+    if (metadataRequest.status === 404) {
+      throw new CannotAccessProjectError("Cannot access project metadata. This probably means the project is unshared, never existed, or the ID is invalid.");
+    }
+    if (!metadataRequest.ok) {
+      throw new Error(`Unknown error fetching project metadata: status ${metadataRequest.status}`);
+    }
+    const metadata = await metadataRequest.json();
+    const token = metadata.project_token;
+    return token;
+  }
+
+  async function fetchProjectDataWithToken(id) {
+    const token = await fetchToken(id).catch((err) => {
+      // For now, this is a non-critical error.
+      console.error('Error fetching project token', err);
+      return null;
+    });
+    const tokenPart = token ? `?token=${token}` : '';
+    let url = `https://projects.scratch.mit.edu/${id}${tokenPart}`;
+    const projectRequest = await fetch(url);
+    if (projectRequest.ok) {
+      return projectRequest;
+    }
+    if (projectRequest.status === 404) {
+      throw new Error('Project does not exist but could access metadata');
+    }
+    throw new Error(`Could not fetch project data: status ${projectRequest.status}`);
+  }
+
   // Loads a Scratch 3 project
   function loadScratch3Project(id) {
-    const PROJECTS_API = 'https://projects.scratch.mit.edu/$id';
     const ASSETS_API = 'https://assets.scratch.mit.edu/internalapi/asset/$path/get/';
 
     const result = {
@@ -333,7 +371,7 @@ window.SBDL = (function() {
 
     function addFile(data) {
       progressHooks.newTask();
-      const path = data.md5ext || data.assetId + '.' + data.dataFormat;
+      const path = data.md5ext;
       return fetch(ASSETS_API.replace('$path', path))
         .then((request) => request.arrayBuffer())
         .then((buffer) => {
@@ -342,12 +380,18 @@ window.SBDL = (function() {
         });
     }
 
-    // Removes assets with the same ID
-    function dedupeAssets(assets) {
+    function processAssets(assets) {
       const result = [];
       const knownIds = new Set();
 
       for (const i of assets) {
+        // Make sure md5ext always exists.
+        // https://github.com/forkphorus/forkphorus/issues/504
+        if (!i.md5ext) {
+          i.md5ext = i.assetId + '.' + i.dataFormat;
+        }
+
+        // Deduplicate assets.
         const id = i.md5ext;
         if (knownIds.has(id)) {
           continue;
@@ -362,8 +406,20 @@ window.SBDL = (function() {
     progressHooks.start();
     progressHooks.newTask();
 
-    return fetch(PROJECTS_API.replace('$id', id))
-      .then((request) => request.json())
+    return fetchProjectDataWithToken(id)
+      .then((request) => {
+        const clonedResponse = request.clone();
+        return request.json()
+          .catch((err) => {
+            // It's not JSON. It might be a full compressed zip project.
+            console.warn('Project was not JSON, trying to interpret as zip', err);
+            return clonedResponse.arrayBuffer()
+              .then((buffer) => JSZip.loadAsync(buffer))
+              .then((zip) => zip.file('project.json').async('text'))
+              .then((jsonText) => JSON.parse(jsonText));
+            // For now we won't try to use the files in the zip and will just re-fetch everything from Scratch.
+          });
+      })
       .then((projectData) => {
         if (typeof projectData.objName === 'string') {
           throw new ProjectFormatError('Not a Scratch 3 project (found objName)', 'sb2');
@@ -377,7 +433,7 @@ window.SBDL = (function() {
         const targets = projectData.targets;
         const costumes = [].concat.apply([], targets.map((t) => t.costumes || []));
         const sounds = [].concat.apply([], targets.map((t) => t.sounds || []));
-        const assets = dedupeAssets([].concat.apply([], [costumes, sounds]));
+        const assets = processAssets([].concat.apply([], [costumes, sounds]));
 
         return Promise.all(assets.map((a) => addFile(a)));
       })
@@ -428,6 +484,7 @@ window.SBDL = (function() {
     loadScratch1Project: loadScratch1Project,
     loadScratch2Project: loadScratch2Project,
     loadScratch3Project: loadScratch3Project,
+    fetchProjectDataWithToken: fetchProjectDataWithToken,
     loadProject: loadProject,
     createArchive: createArchive,
     progressHooks: progressHooks,

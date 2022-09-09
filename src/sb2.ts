@@ -1227,7 +1227,7 @@ namespace P.sb2.compiler {
       source += 'save();\n';
       source += 'R.start = runtime.now();\n';
       source += 'R.duration = ' + num(dur) + ' * 60 / self.tempoBPM;\n';
-      source += 'var first = true;\n';
+      source += 'var first = !WARP;\n';
     };
 
     var beatTail = function() {
@@ -1246,7 +1246,7 @@ namespace P.sb2.compiler {
       source += 'save();\n';
       source += 'R.start = runtime.now();\n';
       source += 'R.duration = ' + dur + ';\n';
-      source += 'var first = true;\n';
+      source += 'var first = !WARP;\n';
 
       var id = label();
       source += 'if (runtime.now() - R.start < R.duration * 1000 || first) {\n';
@@ -1375,9 +1375,11 @@ namespace P.sb2.compiler {
         source += 'R.id = S.say(' + val(block[1]) + ', false);\n';
         source += 'R.start = runtime.now();\n';
         source += 'R.duration = ' + num(block[2]) + ';\n';
+        source += 'var first = !WARP;\n';
 
         var id = label();
-        source += 'if (runtime.now() - R.start < R.duration * 1000) {\n';
+        source += 'if (runtime.now() - R.start < R.duration * 1000 || first) {\n';
+        source += '  var first;\n';
         forceQueue(id);
         source += '}\n';
 
@@ -1396,9 +1398,11 @@ namespace P.sb2.compiler {
         source += 'R.id = S.say(' + val(block[1]) + ', true);\n';
         source += 'R.start = runtime.now();\n';
         source += 'R.duration = ' + num(block[2]) + ';\n';
+        source += 'var first = !WARP;\n';
 
         var id = label();
-        source += 'if (runtime.now() - R.start < R.duration * 1000) {\n';
+        source += 'if (runtime.now() - R.start < R.duration * 1000 || first) {\n';
+        source += '  var first;\n';
         forceQueue(id);
         source += '}\n';
 

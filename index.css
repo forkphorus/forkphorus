@@ -6,7 +6,7 @@ body {
 .dark {
   background-color: #111;
   color: #ddd;
-  scrollbar-color: #444 #222;
+  color-scheme: dark;
 }
 
 b {
@@ -308,4 +308,11 @@ code {
 #examples-footer {
   font-size: 0.8em;
   color: rgb(127, 127, 127);
+}
+
+#unshared-projects h1 {
+  padding-top: 16px;
+}
+#unshared-projects p {
+  margin-bottom: 4px;
 }

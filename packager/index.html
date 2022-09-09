@@ -57,7 +57,6 @@
     input[type=text], input[type=number], input[type=checkbox], select {
       box-sizing: border-box;
       width: 100%;
-      color: black;
       padding: 2px;
     }
     label ~ label input[type=radio] {
@@ -79,10 +78,11 @@
       cursor: pointer;
     }
 
-    @media (prefers-color-scheme: dark) {
-      body {
+    @media (prefers-color-scheme: light) {
+      :root {
         background-color: #111;
         color: #ddd;
+        color-scheme: dark;
       }
       a {
         color: #4af;
@@ -781,15 +781,12 @@
           if (!/^\d+$/.test(projectId.value)) {
             throw new Error('Invalid Project ID');
           }
-          // Comply with CC BY-SA 2.0
-          packager.projectAttribution = 'Project is loaded from: https://scratch.mit.edu/projects/' + projectId.value + '. Projects from scratch.mit.edu are generally licensed under CC BY-SA 2.0';
           await packager.loadProjectById(projectId.value);
         } else if (projectSource.value === 'file') {
           if (!projectFile.value) {
             throw new Error('No file selected');
           }
           await packager.loadProjectFromFile(projectFile.value);
-          packager.projectAttribution = 'No license assumed.';
         } else {
           throw new Error('projectSource is an unknown value: ' + projectSource.value);
         }

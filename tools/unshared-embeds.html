@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="robots" content="noindex">
+    <style>
+      body {
+        font-family: sans-serif;
+      }
+      iframe {
+        display: block;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h2>no autostart, 480x360</h2>
+    <iframe src="/embed.html?id=1&auto-start=false&light-content=false" width="482" height="393" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
+
+    <h2>no autostart, 960x720</h2>
+    <iframe src="/embed.html?id=1&auto-start=false&light-content=false" width="962" height="753" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
+
+    <h2>no autostart, 240x180</h2>
+    <iframe src="/embed.html?id=1&auto-start=false&light-content=false" width="242" height="213" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
+
+    <h2>autostart, 480x360</h2>
+    <iframe src="/embed.html?id=1&auto-start=true&light-content=false" width="482" height="393" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
+
+    <h2>autostart, 480x360, 60 fps</h2>
+    <iframe src="/embed.html?id=1&auto-start=true&light-content=false&fps=60" width="482" height="393" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
+
+    <h2>Light controls (for dark themes)</h2>
+    <p>(black background not set by the embed, the embed is transparent so set background-color on the iframe or its container)</p>
+    <div style="background-color: #111; width: 480px; padding: 10px;">
+      <iframe src="/embed.html?id=1&auto-start=false&light-content=true" width="482" height="393" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
+    </div>
+
+    <h2>Hide UI (autostart)</h2>
+    <iframe src="/embed.html?id=1&ui=false" width="480" height="360" allowfullscreen="true" allowtransparency="true" style="border:none;"></iframe>
+
+    <h2>Legacy embed.js</h2>
+    <script src="/embed.js?id=1"></script>
+  </body>
+</html>

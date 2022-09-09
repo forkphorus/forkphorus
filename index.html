@@ -49,6 +49,21 @@
       <a target="_blank" class="project-link" title="View project on Scratch" rel="noopener" href="https://scratch.mit.edu/"></a>
     </div>
 
+    <div class="area" id="unshared-projects">
+      <!-- 
+        I won't link these in the public website because there will be way too much spam if we do that, but here are the relevant links:
+        https://github.com/LLK/scratch-gui/pull/8269
+        https://github.com/LLK/scratch-www/pull/6773
+       -->
+      <h1>The future of unshared projects</h1>
+      <p>
+        June 1, 2022 - Unshared projects will no longer be accessible using just their project ID at some point in the future due to upcoming Scratch API changes. This affects forkphorus, embeds, and all other third-party sites.
+      </p>
+      <p>
+        For more information, visit: <a href="https://docs.turbowarp.org/unshared-projects" target="_blank" rel="noopener noreferrer">https://docs.turbowarp.org/unshared-projects</a>
+      </p>
+    </div>
+
     <div class="area" id="project-area">
 
       <section>
@@ -191,14 +206,6 @@
       'index.advanced.confirmation': 'This will refresh this page, resetting the project. Continue?',
       'index.privacy': 'Privacy Policy',
     });
-    P.i18n.addTranslations('es', {
-      'studioview.authorAttribution': 'por $author',
-      'studioview.projectHoverText': '$title por $author',
-      'index.report': 'Reportar un problema',
-      'index.settings': 'Configuraciones',
-      'index.credits': 'Créditos',
-      'index.code': 'Código',
-    });
   </script>
 
   <script>
@@ -235,6 +242,7 @@
     var titleArea = querySelector('#title-area');
     var playerArea = querySelector('#player-area');
     var projectArea = querySelector('#project-area');
+    var unsharedProjectArea = querySelector('#unshared-projects');
 
     var player = new P.player.Player();
     player.addControls();
@@ -274,6 +282,7 @@
     var titleAreaHeight = titleArea.offsetHeight;
     var playerAreaHeight = playerArea.offsetHeight;
     var projectAreaHeight = projectArea.offsetHeight;
+    var unsharedProjectAreaHeight = unsharedProjectArea.offsetHeight;
     var studioViewAreaHeight = 330;
     playerArea.style.height = projectArea.style.height = 0;
 
@@ -338,6 +347,7 @@
         examplesViewContainer.appendChild(studioView.root);
         studioView.projectList.scrollTop = studioView.scrollTop;
       }
+      unsharedProjectArea.style.height = unsharedProjectAreaHeight + 'px';
       resetTitle();
     }
     function showPlayerArea() {
@@ -346,6 +356,7 @@
       projectArea.style.height = projectAreaHeight + 'px';
       hideStudioView();
       examplesContainer.style.height = '0px';
+      unsharedProjectArea.style.height = '0px';
     }
     function loadProjectId(id) {
       showPlayerArea();
@@ -389,8 +400,11 @@
       var stageId = player.stageId;
       player.getProjectMeta().load()
         .then(function(meta) {
-          var title = meta.getTitle();
           if (player.stageId === stageId) {
+            if (meta.isUnshared()) {
+              unsharedProjectArea.style.height = unsharedProjectAreaHeight + 'px';
+            }
+            var title = meta.getTitle();
             if (title) {
               player.projectTitle = title;
               document.title = title + ' - forkphorus';
@@ -670,8 +684,8 @@
       setSearchParam('phost', e.target.checked ? 'legacy' : false, e);
     });
     function setSearchParam(key, value, event) {
+      event.preventDefault();
       if (!confirm(P.i18n.translate('index.advanced.confirmation'))) {
-        event.preventDefault();
         return;
       }
       // if value === false, remove the key
