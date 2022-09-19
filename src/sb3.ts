@@ -755,6 +755,12 @@ namespace P.sb3 {
     }
     P.fonts.addFontRules(svg, usedFonts);
 
+    // Disable image interpolation
+    let style = document.createElement("style");
+    let css = "image { image-rendering: pixelated; }";
+    style.appendChild(document.createTextNode(css));
+    svg.appendChild(style);
+
     return svg;
   }
 
