@@ -1331,7 +1331,7 @@ namespace P.player {
       el.appendChild(section1);
 
       const section2 = document.createElement('div');
-      section2.textContent = "We're working to resolve the latter, but unfortunately unshared projects are no longer accessible using their project ID due to Scratch API changes. ";
+      section2.textContent = "We're working to work around the latter, but unfortunately unshared projects are no longer accessible using their project ID due to Scratch API changes. ";
       section2.appendChild(Object.assign(document.createElement('a'), {
         textContent: 'More information',
         href: 'https://docs.turbowarp.org/unshared-projects',
