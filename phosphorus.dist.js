@@ -3677,11 +3677,9 @@ var P;
                 try {
                     const meta = new RemoteProjectMeta(id);
                     this.projectMeta = meta;
-                    try {
-                        await meta.load();
-                    }
-                    catch (e) {
-                        console.error(e);
+                    await meta.load();
+                    if (meta.isUnshared()) {
+                        throw new CannotAccessProjectError(id);
                     }
                     const blob = await this.fetchProject(id, meta.getToken());
                     const loader = await getLoader(blob);
@@ -3867,11 +3865,11 @@ var P;
             handleCannotAccessProjectError(error) {
                 const el = document.createElement('div');
                 const section1 = document.createElement('div');
-                section1.textContent = "Can't access project metadata. This probably means the project is unshared, never existed, or the ID is invalid.";
+                section1.textContent = "Can't access project token. This usually means the project is unshared, never existed, the ID is invalid, or your network is blocking turbowarp.org.";
                 section1.style.marginBottom = '4px';
                 el.appendChild(section1);
                 const section2 = document.createElement('div');
-                section2.textContent = 'Unshared projects are no longer accessible using their project ID due to Scratch API changes. Instead, you can save the project to your computer (File > Save to your computer) and load the downloaded file. ';
+                section2.textContent = "We're working to resolve the latter, but unfortunately unshared projects are no longer accessible using their project ID due to Scratch API changes. ";
                 section2.appendChild(Object.assign(document.createElement('a'), {
                     textContent: 'More information',
                     href: 'https://docs.turbowarp.org/unshared-projects',
@@ -3880,7 +3878,7 @@ var P;
                 section2.appendChild(document.createTextNode('.'));
                 el.appendChild(section2);
                 const section3 = document.createElement('div');
-                section3.textContent = 'If the project was shared recently, it may take up to an hour for this message to go away.';
+                section3.textContent = 'If the project was shared recently, it may take a few minutes for this message to go away.';
                 el.appendChild(section3);
                 return el;
             }
