@@ -1106,11 +1106,18 @@ namespace P.player {
       try {
         const meta = new RemoteProjectMeta(id);
         this.projectMeta = meta;
-        await meta.load();
-        if (meta.isUnshared()) {
-          throw new CannotAccessProjectError(id);
+
+        const needsToken = this.options.projectHost.startsWith('https://projects.scratch.mit.edu/');
+        let token: string | null = null;
+        if (needsToken) {
+          await meta.load();
+          if (meta.isUnshared()) {
+            throw new CannotAccessProjectError(id);
+          }
+          token = meta.getToken();
         }
-        const blob = await this.fetchProject(id, meta.getToken());
+
+        const blob = await this.fetchProject(id, token);
         const loader = await getLoader(blob);
         await this.loadLoader(loaderId, loader);
       } catch (e) {
