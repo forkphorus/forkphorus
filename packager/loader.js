@@ -341,12 +341,8 @@ window.SBDL = (function() {
   }
 
   async function fetchProjectDataWithToken(id) {
-    const token = await fetchToken(id).catch((err) => {
-      // For now, this is a non-critical error.
-      console.error('Error fetching project token', err);
-      return null;
-    });
-    const tokenPart = token ? `?token=${token}` : '';
+    const token = await fetchToken(id);
+    const tokenPart = `?token=${token}`;
     let url = `https://projects.scratch.mit.edu/${id}${tokenPart}`;
     const projectRequest = await fetch(url);
     if (projectRequest.ok) {
@@ -354,6 +350,9 @@ window.SBDL = (function() {
     }
     if (projectRequest.status === 404) {
       throw new Error('Project does not exist but could access metadata');
+    }
+    if (projectRequest.status === 403) {
+      throw new Error('Obtained token but permission was denied anyways')
     }
     throw new Error(`Could not fetch project data: status ${projectRequest.status}`);
   }
