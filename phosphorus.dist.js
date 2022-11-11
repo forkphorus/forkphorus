@@ -3610,6 +3610,9 @@ var P;
                     if (request.getStatus() === 404) {
                         throw new ProjectDoesNotExistError(id);
                     }
+                    if (request.getStatus() === 403) {
+                        throw new Error('Obtained token but permission was denied anyways. Try refreshing.');
+                    }
                     return response;
                 });
             }
