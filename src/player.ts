@@ -284,9 +284,11 @@ namespace P.player {
       if (!this.startedLoading) {
         this.startedLoading = true;
         new P.io.Request([
-          // Some school filters block turbowarp.org, so we'll try two URLs and hopefully one will work.
+          // Some school filters block turbowarp.org, so we'll try a few URLs. Hopefully one will work.
           'https://trampoline.turbowarp.org/proxy/projects/$id'.replace('$id', this.id),
           'https://trampoline.turbowarp.xyz/proxy/projects/$id'.replace('$id', this.id),
+          // TODO: see whether this experiment has worked after a few months
+          'https://t.unsandboxed.org/proxy/projects/$id'.replace('$id', this.id),
         ])
           .setMaxAttempts(1)
           .load('json')

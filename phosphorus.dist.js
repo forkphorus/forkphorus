@@ -3053,6 +3053,7 @@ var P;
                     new P.io.Request([
                         'https://trampoline.turbowarp.org/proxy/projects/$id'.replace('$id', this.id),
                         'https://trampoline.turbowarp.xyz/proxy/projects/$id'.replace('$id', this.id),
+                        'https://t.unsandboxed.org/proxy/projects/$id'.replace('$id', this.id),
                     ])
                         .setMaxAttempts(1)
                         .load('json')
