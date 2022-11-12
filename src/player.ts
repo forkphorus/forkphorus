@@ -306,12 +306,8 @@ namespace P.player {
             this.loadCallbacks.length = 0;
           })
           .catch((err) => {
-            if (err && err.status === 404) {
-              // This project is unshared.
-              this.unshared = true;
-            } else {
-              // Inconclusive.
-            }
+            console.error(err);
+            this.unshared = true;
             for (const callback of this.loadCallbacks) {
               callback(this);
             }

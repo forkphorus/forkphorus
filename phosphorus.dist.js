@@ -3070,11 +3070,8 @@ var P;
                         this.loadCallbacks.length = 0;
                     })
                         .catch((err) => {
-                        if (err && err.status === 404) {
-                            this.unshared = true;
-                        }
-                        else {
-                        }
+                        console.error(err);
+                        this.unshared = true;
                         for (const callback of this.loadCallbacks) {
                             callback(this);
                         }
