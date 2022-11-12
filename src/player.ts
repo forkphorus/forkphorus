@@ -1334,12 +1334,12 @@ namespace P.player {
       const el = document.createElement('div');
 
       const section1 = document.createElement('div');
-      section1.textContent = "Can't access project token. This usually means the project is unshared, never existed, the ID is invalid, or your network is blocking turbowarp.org.";
+      section1.textContent = "Can't access project token. This usually means the project is unshared, never existed, or the ID is invalid.";
       section1.style.marginBottom = '4px';
       el.appendChild(section1);
 
       const section2 = document.createElement('div');
-      section2.textContent = "We're working to work around the latter, but unfortunately unshared projects are no longer accessible using their project ID due to Scratch API changes. ";
+      section2.textContent = "Unshared projects are no longer accessible using their project ID due to Scratch API changes. ";
       section2.appendChild(Object.assign(document.createElement('a'), {
         textContent: 'More information',
         href: 'https://docs.turbowarp.org/unshared-projects',
@@ -1349,7 +1349,7 @@ namespace P.player {
       el.appendChild(section2);
 
       const section3 = document.createElement('div');
-      section3.textContent = 'If the project was shared recently, it may take a few minutes for this message to go away.';
+      section3.textContent = 'If the project was shared recently, it may take a few minutes for this message to go away. If the project is actually shared, please report a bug.';
       el.appendChild(section3);
 
       return el;
