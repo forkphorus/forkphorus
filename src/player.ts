@@ -283,22 +283,27 @@ namespace P.player {
     load() {
       if (!this.startedLoading) {
         this.startedLoading = true;
-        new P.io.Request([
+        const request = new P.io.Request([
           // Some school filters block turbowarp.org, so we'll try a few URLs. Hopefully one will work.
           'https://trampoline.turbowarp.org/proxy/projects/$id'.replace('$id', this.id),
           'https://trampoline.turbowarp.xyz/proxy/projects/$id'.replace('$id', this.id),
           // TODO: see whether this experiment has worked after a few months
           'https://t.unsandboxed.org/proxy/projects/$id'.replace('$id', this.id),
-        ])
+        ]);
+        request
           .setMaxAttempts(1)
+          .ignoreErrors()
           .load('json')
           .then((data) => {
-            // Project is shared.
-            if (data.title) {
-              this.title = data.title;
-            }
-            if (data.project_token) {
-              this.token = data.project_token;
+            if (request.getStatus() === 404) {
+              this.unshared = true;
+            } else {
+              if (data.title) {
+                this.title = data.title;
+              }
+              if (data.project_token) {
+                this.token = data.project_token;
+              }
             }
             for (const callback of this.loadCallbacks) {
               callback(this);

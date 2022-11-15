@@ -3050,19 +3050,26 @@ var P;
             load() {
                 if (!this.startedLoading) {
                     this.startedLoading = true;
-                    new P.io.Request([
+                    const request = new P.io.Request([
                         'https://trampoline.turbowarp.org/proxy/projects/$id'.replace('$id', this.id),
                         'https://trampoline.turbowarp.xyz/proxy/projects/$id'.replace('$id', this.id),
                         'https://t.unsandboxed.org/proxy/projects/$id'.replace('$id', this.id),
-                    ])
+                    ]);
+                    request
                         .setMaxAttempts(1)
+                        .ignoreErrors()
                         .load('json')
                         .then((data) => {
-                        if (data.title) {
-                            this.title = data.title;
+                        if (request.getStatus() === 404) {
+                            this.unshared = true;
                         }
-                        if (data.project_token) {
-                            this.token = data.project_token;
+                        else {
+                            if (data.title) {
+                                this.title = data.title;
+                            }
+                            if (data.project_token) {
+                                this.token = data.project_token;
+                            }
                         }
                         for (const callback of this.loadCallbacks) {
                             callback(this);
