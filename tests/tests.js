@@ -45,6 +45,7 @@
     'sb3/say-zero-seconds-in-warp-mode.sb3',
     'sb3/tangent.sb3',
     'sb3/run-blocks-after-self-broadcast.sb3',
+    'sb3/scripts-run-after-stop-all.sb3',
 
     'scratch-vm/broadcast-wait-arg-change.sb2',
     'scratch-vm/control-if-false-then-else.sb2',

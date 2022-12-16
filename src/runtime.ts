@@ -33,6 +33,8 @@ namespace P.runtime {
   var IMMEDIATE: Fn | null | undefined;
   // Has a "visual change" been made in this frame?
   var VISUAL: boolean;
+  // Have the current thread been stopped (by either itself or another thread before it)?
+  var STOPPED: boolean;
 
   // Note:
   // Your editor might warn you about "unused variables" or things like that.
@@ -525,7 +527,8 @@ namespace P.runtime {
                 base: BASE,
                 fn: procedure.fn,
                 calls: CALLS,
-                warp: WARP
+                warp: WARP,
+                stopped: false
               };
               return;
             }
@@ -582,12 +585,14 @@ namespace P.runtime {
   };
 
   var forceQueue = function(id) {
+    if (STOPPED) return;
     runtime.queue[THREAD] = {
       sprite: S,
       base: BASE,
       fn: S.fns[id],
       calls: CALLS,
-      warp: WARP
+      warp: WARP,
+      stopped: false
     };
   };
 
@@ -605,6 +610,7 @@ namespace P.runtime {
     fn: Fn;
     calls: ThreadCall[];
     warp: number;
+    stopped: boolean;
   }
 
   export class Runtime {
@@ -634,7 +640,8 @@ namespace P.runtime {
           args: [],
           stack: [{}],
         }],
-        warp: 0
+        warp: 0,
+        stopped: false
       };
 
       // Find if this spread is already being executed.
@@ -752,7 +759,7 @@ namespace P.runtime {
 
     /**
      * Stops this runtime.
-     * - stops all scripts
+     * - marks all threads as stopped, to let them finish running within this step before they get removed
      * - removes all clones
      * - resets filters, speech bubbles, sounds
      * - Does *NOT* stop the event loop. Use pause() for that.
@@ -761,7 +768,11 @@ namespace P.runtime {
       this.stage.hidePrompt = false;
       this.stage.prompter.style.display = 'none';
       this.stage.promptId = this.stage.nextPromptId = 0;
-      this.queue.length = 0;
+      for (var i = 0; i < this.queue.length; i++) {
+        const thread = this.queue[i];
+        if(thread) thread.stopped = true;
+      }
+      STOPPED = true;
       this.stage.resetFilters();
       this.stage.stopSounds();
       for (var i = 0; i < this.stage.children.length; i++) {
@@ -841,6 +852,7 @@ namespace P.runtime {
             R = STACK.pop();
             queue[THREAD] = undefined;
             WARP = thread.warp;
+            STOPPED = thread.stopped;
 
             while (IMMEDIATE) {
               const fn = IMMEDIATE;
@@ -853,9 +865,10 @@ namespace P.runtime {
           }
         }
 
-        // Remove empty elements in the queue list
+        // Remove empty and stopped elements in the queue list
         for (let i = queue.length; i--;) {
-          if (!queue[i]) {
+          const thread = queue[i];
+          if (!thread || thread.stopped) {
             queue.splice(i, 1);
           }
         }
