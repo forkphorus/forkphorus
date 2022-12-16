@@ -1793,7 +1793,8 @@ namespace P.sb2.compiler {
         source += '    S.stopSoundsExcept(BASE);\n';
         source += '    for (var i = 0; i < runtime.queue.length; i++) {\n';
         source += '      if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
-        source += '        runtime.queue[i] = undefined;\n';
+        source += '        runtime.queue[i].stopped = true;\n';
+        source += '        runtime.queue[i].fn = undefined;\n';
         source += '      }\n';
         source += '    }\n';
         source += '    break;\n';

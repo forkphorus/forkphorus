@@ -607,7 +607,7 @@ namespace P.runtime {
   interface Thread {
     sprite: P.core.Base;
     base: Fn;
-    fn: Fn;
+    fn?: Fn;
     calls: ThreadCall[];
     warp: number;
     stopped: boolean;

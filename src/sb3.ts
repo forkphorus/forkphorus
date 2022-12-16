@@ -2235,7 +2235,8 @@ namespace P.sb3.compiler {
         util.writeLn('S.stopSoundsExcept(BASE);');
         util.writeLn('for (var i = 0; i < runtime.queue.length; i++) {');
         util.writeLn('  if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {');
-        util.writeLn('    runtime.queue[i] = undefined;');
+        util.writeLn('    runtime.queue[i].stopped = true;');
+        util.writeLn('    runtime.queue[i].fn = undefined;');
         util.writeLn('  }');
         util.writeLn('}');
         break;
