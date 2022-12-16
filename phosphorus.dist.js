@@ -750,7 +750,7 @@ var P;
                         return;
                     }
                 }
-                var i = (Math.floor(costume) - 1 || 0) % this.costumes.length;
+                var i = (Math.floor(costume) - 1 | 0) % this.costumes.length;
                 if (i < 0)
                     i += this.costumes.length;
                 this.currentCostumeIndex = i;
