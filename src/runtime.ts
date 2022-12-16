@@ -850,9 +850,9 @@ namespace P.runtime {
             C = CALLS.pop();
             STACK = C.stack;
             R = STACK.pop();
-            queue[THREAD] = undefined;
             WARP = thread.warp;
             STOPPED = thread.stopped;
+            thread.stopped = true;
 
             while (IMMEDIATE) {
               const fn = IMMEDIATE;
