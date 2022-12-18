@@ -8711,7 +8711,9 @@ var P;
     inputLibrary['operator_add'] = function (util) {
         const NUM1 = util.getInput('NUM1', 'number');
         const NUM2 = util.getInput('NUM2', 'number');
-        return util.numberInput(`(${NUM1} + ${NUM2} || 0)`);
+        const input = util.numberInput(`(${NUM1} + ${NUM2})`);
+        input.enableFlag(1);
+        return input;
     };
     inputLibrary['operator_and'] = function (util) {
         const OPERAND1 = util.getInput('OPERAND1', 'any');
@@ -8827,7 +8829,9 @@ var P;
     inputLibrary['operator_multiply'] = function (util) {
         const NUM1 = util.getInput('NUM1', 'number');
         const NUM2 = util.getInput('NUM2', 'number');
-        return util.numberInput(`(${NUM1} * ${NUM2} || 0)`);
+        const input = util.numberInput(`(${NUM1} * ${NUM2})`);
+        input.enableFlag(1);
+        return input;
     };
     inputLibrary['operator_not'] = function (util) {
         const OPERAND = util.getInput('OPERAND', 'any');
@@ -8850,7 +8854,9 @@ var P;
     inputLibrary['operator_subtract'] = function (util) {
         const NUM1 = util.getInput('NUM1', 'number');
         const NUM2 = util.getInput('NUM2', 'number');
-        return util.numberInput(`(${NUM1} - ${NUM2} || 0)`);
+        const input = util.numberInput(`(${NUM1} - ${NUM2})`);
+        input.enableFlag(1);
+        return input;
     };
     inputLibrary['pen_menu_colorParam'] = function (util) {
         return util.fieldInput('colorParam');
