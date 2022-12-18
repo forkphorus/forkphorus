@@ -1006,19 +1006,19 @@ namespace P.sb2.compiler {
 
       } else if (e[0] === '+') { /* Operators */
 
-        return '(' + num(e[1]) + ' + ' + num(e[2]) + ' || 0)';
+        return '(' + num(e[1]) + ' + ' + num(e[2]) + ')';
 
       } else if (e[0] === '-') {
 
-        return '(' + num(e[1]) + ' - ' + num(e[2]) + ' || 0)';
+        return '(' + num(e[1]) + ' - ' + num(e[2]) + ')';
 
       } else if (e[0] === '*') {
 
-        return '(' + num(e[1]) + ' * ' + num(e[2]) + ' || 0)';
+        return '(' + num(e[1]) + ' * ' + num(e[2]) + ')';
 
       } else if (e[0] === '/') {
 
-        return '(' + num(e[1]) + ' / ' + num(e[2]) + ' || 0)';
+        return '(' + num(e[1]) + ' / ' + num(e[2]) + ')';
 
       } else if (e[0] === 'randomFrom:to:') {
 

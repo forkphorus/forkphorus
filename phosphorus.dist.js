@@ -5681,16 +5681,16 @@ var P;
                         return listRef(e[1]) + '.length';
                     }
                     else if (e[0] === '+') {
-                        return '(' + num(e[1]) + ' + ' + num(e[2]) + ' || 0)';
+                        return '(' + num(e[1]) + ' + ' + num(e[2]) + ')';
                     }
                     else if (e[0] === '-') {
-                        return '(' + num(e[1]) + ' - ' + num(e[2]) + ' || 0)';
+                        return '(' + num(e[1]) + ' - ' + num(e[2]) + ')';
                     }
                     else if (e[0] === '*') {
-                        return '(' + num(e[1]) + ' * ' + num(e[2]) + ' || 0)';
+                        return '(' + num(e[1]) + ' * ' + num(e[2]) + ')';
                     }
                     else if (e[0] === '/') {
-                        return '(' + num(e[1]) + ' / ' + num(e[2]) + ' || 0)';
+                        return '(' + num(e[1]) + ' / ' + num(e[2]) + ')';
                     }
                     else if (e[0] === 'randomFrom:to:') {
                         return 'random(' + num(e[1]) + ', ' + num(e[2]) + ')';

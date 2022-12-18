@@ -9,6 +9,7 @@
     'sb2/sb2-template.sb2',
     'sb2/non-standard-json.sb2',
     'sb2/color-formats.sb2',
+    'sb2/operators-output-NaN.sb2',
 
     'sb3/sb3-template.sb3',
     'sb3/quicksort.sb3',
