@@ -2342,7 +2342,8 @@ namespace P.sb3.compiler {
   };
   statementLibrary['event_broadcast'] = function(util) {
     const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
-    util.writeLn(`broadcast(${BROADCAST_INPUT});`);
+    util.writeLn(`var threads = broadcast(${BROADCAST_INPUT});`);
+    util.writeLn(`if(threads.indexOf(BASE) !== -1) {STOPPED = true;}`);
   };
   statementLibrary['event_broadcastandwait'] = function(util) {
     const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');

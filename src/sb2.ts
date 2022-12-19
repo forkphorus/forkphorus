@@ -1650,7 +1650,8 @@ namespace P.sb2.compiler {
 
       } else if (block[0] === 'broadcast:') { /* Control */
 
-        source += 'broadcast(' + val(block[1]) + ');\n';
+        source += 'var threads = broadcast(' + val(block[1]) + ');\n';
+        source += 'if (threads.indexOf(BASE) !== -1) {STOPPED = true;}\n';
 
       } else if (block[0] === 'call') {
 

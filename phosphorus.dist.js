@@ -6211,7 +6211,8 @@ var P;
                         }
                     }
                     else if (block[0] === 'broadcast:') {
-                        source += 'broadcast(' + val(block[1]) + ');\n';
+                        source += 'var threads = broadcast(' + val(block[1]) + ');\n';
+                        source += 'if (threads.indexOf(BASE) !== -1) {STOPPED = true;}\n';
                     }
                     else if (block[0] === 'call') {
                         if (P.config.debug && block[1] === 'phosphorus: debug') {
@@ -8058,7 +8059,8 @@ var P;
     };
     statementLibrary['event_broadcast'] = function (util) {
         const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
-        util.writeLn(`broadcast(${BROADCAST_INPUT});`);
+        util.writeLn(`var threads = broadcast(${BROADCAST_INPUT});`);
+        util.writeLn(`if(threads.indexOf(BASE) !== -1) {STOPPED = true;}`);
     };
     statementLibrary['event_broadcastandwait'] = function (util) {
         const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
