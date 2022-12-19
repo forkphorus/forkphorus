@@ -770,7 +770,9 @@ namespace P.runtime {
       this.stage.promptId = this.stage.nextPromptId = 0;
       for (var i = 0; i < this.queue.length; i++) {
         const thread = this.queue[i];
-        if(thread) thread.stopped = true;
+        if (thread) {
+          thread.stopped = true;
+        }
       }
       STOPPED = true;
       this.stage.resetFilters();

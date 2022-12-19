@@ -4636,8 +4636,9 @@ var P;
                 this.stage.promptId = this.stage.nextPromptId = 0;
                 for (var i = 0; i < this.queue.length; i++) {
                     const thread = this.queue[i];
-                    if (thread)
+                    if (thread) {
                         thread.stopped = true;
+                    }
                 }
                 STOPPED = true;
                 this.stage.resetFilters();
@@ -8063,7 +8064,7 @@ var P;
     statementLibrary['event_broadcast'] = function (util) {
         const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
         util.writeLn(`var threads = broadcast(${BROADCAST_INPUT});`);
-        util.writeLn(`if(threads.indexOf(BASE) !== -1) {STOPPED = true;}`);
+        util.writeLn(`if (threads.indexOf(BASE) !== -1) {STOPPED = true;}`);
     };
     statementLibrary['event_broadcastandwait'] = function (util) {
         const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
