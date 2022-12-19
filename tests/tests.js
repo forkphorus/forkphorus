@@ -51,6 +51,7 @@
     'sb3/preserve-order-after-stop-other-scripts.sb3',
     'sb3/operators-output-NaN.sb3',
     'sb3/costume-name-infinity-nan.sb3',
+    'sb3/cannot-forceQueue-after-broadcast.sb3',
 
     'scratch-vm/broadcast-wait-arg-change.sb2',
     'scratch-vm/control-if-false-then-else.sb2',
