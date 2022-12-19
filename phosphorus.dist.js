@@ -750,7 +750,10 @@ var P;
                         return;
                     }
                 }
-                var i = (Math.floor(costume) - 1 || 0) % this.costumes.length;
+                if (Number.isNaN(costume) || costume === Infinity || costume === -Infinity) {
+                    costume = 1;
+                }
+                var i = (Math.floor(costume) - 1) % this.costumes.length;
                 if (i < 0)
                     i += this.costumes.length;
                 this.currentCostumeIndex = i;
@@ -3993,6 +3996,7 @@ var P;
         var THREAD;
         var IMMEDIATE;
         var VISUAL;
+        var STOPPED;
         const epoch = Date.UTC(2000, 0, 1);
         const INSTRUMENTS = P.audio.instruments;
         const DRUMS = P.audio.drums;
@@ -4448,7 +4452,8 @@ var P;
                                     base: BASE,
                                     fn: procedure.fn,
                                     calls: CALLS,
-                                    warp: WARP
+                                    warp: WARP,
+                                    stopped: false
                                 };
                                 return;
                             }
@@ -4501,12 +4506,15 @@ var P;
             }
         };
         var forceQueue = function (id) {
+            if (STOPPED)
+                return;
             runtime.queue[THREAD] = {
                 sprite: S,
                 base: BASE,
                 fn: S.fns[id],
                 calls: CALLS,
-                warp: WARP
+                warp: WARP,
+                stopped: false
             };
         };
         class Runtime {
@@ -4533,7 +4541,8 @@ var P;
                             args: [],
                             stack: [{}],
                         }],
-                    warp: 0
+                    warp: 0,
+                    stopped: false
                 };
                 for (let i = 0; i < this.queue.length; i++) {
                     const q = this.queue[i];
@@ -4636,7 +4645,13 @@ var P;
                 this.stage.hidePrompt = false;
                 this.stage.prompter.style.display = 'none';
                 this.stage.promptId = this.stage.nextPromptId = 0;
-                this.queue.length = 0;
+                for (var i = 0; i < this.queue.length; i++) {
+                    const thread = this.queue[i];
+                    if (thread) {
+                        thread.stopped = true;
+                    }
+                }
+                STOPPED = true;
                 this.stage.resetFilters();
                 this.stage.stopSounds();
                 for (var i = 0; i < this.stage.children.length; i++) {
@@ -4699,8 +4714,9 @@ var P;
                             C = CALLS.pop();
                             STACK = C.stack;
                             R = STACK.pop();
-                            queue[THREAD] = undefined;
                             WARP = thread.warp;
+                            STOPPED = thread.stopped;
+                            thread.stopped = true;
                             while (IMMEDIATE) {
                                 const fn = IMMEDIATE;
                                 IMMEDIATE = null;
@@ -4711,7 +4727,8 @@ var P;
                         }
                     }
                     for (let i = queue.length; i--;) {
-                        if (!queue[i]) {
+                        const thread = queue[i];
+                        if (!thread || thread.stopped) {
                             queue.splice(i, 1);
                         }
                     }
@@ -5679,16 +5696,16 @@ var P;
                         return listRef(e[1]) + '.length';
                     }
                     else if (e[0] === '+') {
-                        return '(' + num(e[1]) + ' + ' + num(e[2]) + ' || 0)';
+                        return '(' + num(e[1]) + ' + ' + num(e[2]) + ')';
                     }
                     else if (e[0] === '-') {
-                        return '(' + num(e[1]) + ' - ' + num(e[2]) + ' || 0)';
+                        return '(' + num(e[1]) + ' - ' + num(e[2]) + ')';
                     }
                     else if (e[0] === '*') {
-                        return '(' + num(e[1]) + ' * ' + num(e[2]) + ' || 0)';
+                        return '(' + num(e[1]) + ' * ' + num(e[2]) + ')';
                     }
                     else if (e[0] === '/') {
-                        return '(' + num(e[1]) + ' / ' + num(e[2]) + ' || 0)';
+                        return '(' + num(e[1]) + ' / ' + num(e[2]) + ')';
                     }
                     else if (e[0] === 'randomFrom:to:') {
                         return 'random(' + num(e[1]) + ', ' + num(e[2]) + ')';
@@ -6210,7 +6227,7 @@ var P;
                     }
                     else if (block[0] === 'broadcast:') {
                         source += 'var threads = broadcast(' + val(block[1]) + ');\n';
-                        source += 'if (threads.indexOf(BASE) !== -1) {return;}\n';
+                        source += 'if (threads.indexOf(BASE) !== -1) {STOPPED = true;}\n';
                     }
                     else if (block[0] === 'call') {
                         if (P.config.debug && block[1] === 'phosphorus: debug') {
@@ -6332,7 +6349,8 @@ var P;
                         source += '    S.stopSoundsExcept(BASE);\n';
                         source += '    for (var i = 0; i < runtime.queue.length; i++) {\n';
                         source += '      if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
-                        source += '        runtime.queue[i] = undefined;\n';
+                        source += '        runtime.queue[i].stopped = true;\n';
+                        source += '        runtime.queue[i].fn = undefined;\n';
                         source += '      }\n';
                         source += '    }\n';
                         source += '    break;\n';
@@ -6954,6 +6972,10 @@ var P;
                 }
             }
             P.fonts.addFontRules(svg, usedFonts);
+            let style = document.createElement("style");
+            let css = "image { image-rendering: pixelated; }";
+            style.appendChild(document.createTextNode(css));
+            svg.appendChild(style);
             return svg;
         }
         class BaseSB3Loader extends P.io.Loader {
@@ -7944,7 +7966,8 @@ var P;
                 util.writeLn('S.stopSoundsExcept(BASE);');
                 util.writeLn('for (var i = 0; i < runtime.queue.length; i++) {');
                 util.writeLn('  if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {');
-                util.writeLn('    runtime.queue[i] = undefined;');
+                util.writeLn('    runtime.queue[i].stopped = true;');
+                util.writeLn('    runtime.queue[i].fn = undefined;');
                 util.writeLn('  }');
                 util.writeLn('}');
                 break;
@@ -8052,7 +8075,7 @@ var P;
     statementLibrary['event_broadcast'] = function (util) {
         const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
         util.writeLn(`var threads = broadcast(${BROADCAST_INPUT});`);
-        util.writeLn('if (threads.indexOf(BASE) !== -1) {return;}');
+        util.writeLn(`if (threads.indexOf(BASE) !== -1) {STOPPED = true;}`);
     };
     statementLibrary['event_broadcastandwait'] = function (util) {
         const BROADCAST_INPUT = util.getInput('BROADCAST_INPUT', 'any');
@@ -8705,7 +8728,9 @@ var P;
     inputLibrary['operator_add'] = function (util) {
         const NUM1 = util.getInput('NUM1', 'number');
         const NUM2 = util.getInput('NUM2', 'number');
-        return util.numberInput(`(${NUM1} + ${NUM2} || 0)`);
+        const input = util.numberInput(`(${NUM1} + ${NUM2})`);
+        input.enableFlag(1);
+        return input;
     };
     inputLibrary['operator_and'] = function (util) {
         const OPERAND1 = util.getInput('OPERAND1', 'any');
@@ -8821,7 +8846,9 @@ var P;
     inputLibrary['operator_multiply'] = function (util) {
         const NUM1 = util.getInput('NUM1', 'number');
         const NUM2 = util.getInput('NUM2', 'number');
-        return util.numberInput(`(${NUM1} * ${NUM2} || 0)`);
+        const input = util.numberInput(`(${NUM1} * ${NUM2})`);
+        input.enableFlag(1);
+        return input;
     };
     inputLibrary['operator_not'] = function (util) {
         const OPERAND = util.getInput('OPERAND', 'any');
@@ -8844,7 +8871,9 @@ var P;
     inputLibrary['operator_subtract'] = function (util) {
         const NUM1 = util.getInput('NUM1', 'number');
         const NUM2 = util.getInput('NUM2', 'number');
-        return util.numberInput(`(${NUM1} - ${NUM2} || 0)`);
+        const input = util.numberInput(`(${NUM1} - ${NUM2})`);
+        input.enableFlag(1);
+        return input;
     };
     inputLibrary['pen_menu_colorParam'] = function (util) {
         return util.fieldInput('colorParam');
