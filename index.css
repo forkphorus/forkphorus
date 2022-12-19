@@ -1,11 +1,8 @@
-html {
-  min-width: fit-content;
-}
 body {
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-size: 16px;
   line-height: 1.5;
-  min-width: fit-content;
+  margin: 0;
 }
 .dark {
   background-color: #111;
@@ -44,7 +41,7 @@ input[disabled] {
 #app {
   width: 480px;
   margin: 24px auto 0;
-  padding-bottom: 24px;
+  padding: 0 8px 24px 8px;
 }
 
 .title {
