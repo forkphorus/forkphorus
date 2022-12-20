@@ -6,8 +6,10 @@ window.Packer = (function() {
 
   // @ts-ignore
   const SBDL = window.SBDL;
+
+  // SBDL Standalone re-exports its internal JSZip
   // @ts-ignore
-  const JSZip = window.JSZip;
+  const JSZip = SBDL.JSZip.default;
 
   /**
    * A file that represents a script or stylesheet to be included in the packager output.
