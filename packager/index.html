@@ -153,8 +153,7 @@
   </div>
 
   <script src="../lib/details-element-polyfill.js"></script>
-  <script src="../lib/jszip.min.js"></script>
-  <script src="loader.js"></script>
+  <script src="../lib/sbdl-standalone.min.js"></script>
   <script src="packer.js"></script>
 
   <!-- Core File Loader & Assets -->
@@ -705,9 +704,9 @@
 
     function bindProgress(name, progress) {
       progress.start = () => setAction(name);
-      fileLoader.progress.newTask = () => newTask();
-      fileLoader.progress.endTask = () => endTask();
-      fileLoader.progress.setProgress = (progress) => setProgress(progress);
+      progress.newTask = () => newTask();
+      progress.endTask = () => endTask();
+      progress.setProgress = (progress) => setProgress(progress);
     }
 
     function setInputsUsable(usable) {
@@ -717,11 +716,7 @@
       }
     }
 
-    SBDL.progressHooks.start = () => setAction('Loading project files');
-    SBDL.progressHooks.newTask = () => newTask();
-    SBDL.progressHooks.finishTask = () => endTask();
-
-    bindProgress('Loading internal files', fileLoader.progress);
+    bindProgress('Downloading internal files', fileLoader.progress);
 
     function addDownloadLink(content, fileName) {
       function getBlob() {
@@ -760,7 +755,10 @@
 
         // Init Packager
         const packager = new Packer.Packager({ fileLoader });
-        bindProgress('Creating archive', packager.archiveProgress);
+        bindProgress('Downloading metadata', packager.downloadMetadataProgress);
+        bindProgress('Downloading project data', packager.downloadProjectDataProgress);
+        bindProgress('Downloading assets', packager.downloadAssetsProgress);
+        bindProgress('Compressing project', packager.compressProjectProgress);
 
         // Set options
         packager.playerOptions.turbo = turbo.value;
@@ -776,7 +774,6 @@
         packager.loadingScreenOptions.text = loadingScreen.text.value;
 
         // Fetch the project
-        setAction('Loading project data');
         if (projectSource.value === 'id') {
           if (!/^\d+$/.test(projectId.value)) {
             throw new Error('Invalid Project ID');
@@ -786,6 +783,7 @@
           if (!projectFile.value) {
             throw new Error('No file selected');
           }
+          setAction('Loading project');
           await packager.loadProjectFromFile(projectFile.value);
         } else {
           throw new Error('projectSource is an unknown value: ' + projectSource.value);
