@@ -101,6 +101,8 @@ input[disabled] {
 
 .area {
   overflow: hidden;
+  margin: 0 -1px;
+  padding: 0 1px;
   -webkit-transition: height .2s;
   -o-transition: height .2s;
   -moz-transition: height .2s;
