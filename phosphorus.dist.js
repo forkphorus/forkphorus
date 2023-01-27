@@ -10369,6 +10369,7 @@ var P;
       }
       #endif
       vec4 color = texture2D(u_texture, texcoord);
+      color.rgb /= color.w;
       #ifndef DISABLE_MINIMUM_ALPHA
       if (color.a < minimumAlpha) {
         discard;
@@ -10539,6 +10540,7 @@ var P;
                     this.gl = gl;
                     this.shaders = new Shaders(gl);
                     this.gl.clearColor(0, 0, 0, 0);
+                    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
                     gl.enable(this.gl.BLEND);
                     gl.blendFuncSeparate(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA, this.gl.ONE, this.gl.ONE_MINUS_SRC_ALPHA);
                     this.quadBuffer = this.gl.createBuffer();
