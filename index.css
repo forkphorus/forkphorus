@@ -2,6 +2,7 @@ body {
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-size: 16px;
   line-height: 1.5;
+  margin: 0;
 }
 .dark {
   background-color: #111;
@@ -40,7 +41,7 @@ input[disabled] {
 #app {
   width: 480px;
   margin: 24px auto 0;
-  padding-bottom: 24px;
+  padding: 0 8px 24px 8px;
 }
 
 .title {
@@ -100,8 +101,8 @@ input[disabled] {
 
 .area {
   overflow: hidden;
-  margin: 0 -24px;
-  padding: 0 24px;
+  margin: 0 -1px;
+  padding: 0 1px;
   -webkit-transition: height .2s;
   -o-transition: height .2s;
   -moz-transition: height .2s;

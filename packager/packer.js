@@ -6,8 +6,10 @@ window.Packer = (function() {
 
   // @ts-ignore
   const SBDL = window.SBDL;
+
+  // SBDL Standalone re-exports its internal JSZip
   // @ts-ignore
-  const JSZip = window.JSZip;
+  const JSZip = SBDL.JSZip.default;
 
   /**
    * A file that represents a script or stylesheet to be included in the packager output.
@@ -223,20 +225,31 @@ window.Packer = (function() {
       this.projectType = null;
       this.projectData = null;
 
-      this.archiveProgress = new Progress();
+      this.downloadMetadataProgress = new Progress();
+      this.downloadProjectDataProgress = new Progress();
+      this.downloadAssetsProgress = new Progress();
+      this.compressProjectProgress = new Progress();
+      this._oldProgressTarget = null;
     }
 
-    _resultToBlob(result) {
-      switch (result.type) {
-        case 'zip': {
-          return createArchive(result.files, this.archiveProgress);
+    handleSBDLProgress(type, loaded, total) {
+      let progressTarget;
+      if (type === 'metadata') {
+        progressTarget = this.downloadMetadataProgress;
+      } else if (type === 'project') {
+        progressTarget = this.downloadProjectDataProgress;
+      } else if (type === 'assets') {
+        progressTarget = this.downloadAssetsProgress;
+      } else if (type === 'compress') {
+        progressTarget = this.compressProjectProgress;
+      }
+
+      if (progressTarget) {
+        if (progressTarget !== this._oldProgressTarget) {
+          this._oldProgressTarget = progressTarget;
+          progressTarget.start();
         }
-        case 'buffer': {
-          return new Blob([result.buffer]);
-        }
-        default: {
-          throw new Error('Unknown result type: ' + result.type);
-        }
+        progressTarget.setProgress(loaded / total);
       }
     }
 
@@ -249,49 +262,15 @@ window.Packer = (function() {
     /**
      * @param {string} id
      */
-    async _getProjectTypeById(id) {
-      const res = await SBDL.fetchProjectDataWithToken(id);
-      if (res.status !== 200) {
-        if (res.status === 404) {
-          throw new Error('Project does not exist: ' + id);
-        }
-        throw new Error('Cannot get project, got error code: ' + res.status);
-      }
-
-      const responseClone = res.clone();
-
-      let data;
-      try {
-        data = await res.json();
-      } catch (e) {
-        console.warn('Project was not JSON, trying to interpret as zip', e);
-        // binary file, try to see if it could be a Scratch 2 project
-        const blob = await responseClone.blob();
-        try {
-          const zip = await JSZip.loadAsync(blob);
-          const zippedProjectJSON = JSON.parse(await zip.file('project.json').async('text'));
-          return this._getProjectTypeFromJSON(zippedProjectJSON);
-        } catch (e) {
-          // not a valid project zip, probably a .sb
-          return 'sb';
-        }
-      }
-
-      return this._getProjectTypeFromJSON(data);
-    }
-
-    /**
-     * @param {string} id
-     */
     async _getProjectById(id) {
-      // TODO: don't fetch the project data twice, especially important for binary projects.
-      const type = await this._getProjectTypeById(id);
-      const result = await SBDL.loadProject(id, type);
-      const blob = await this._resultToBlob(result);
+      const result = await SBDL.downloadProjectFromID(id, {
+        onProgress: this.handleSBDLProgress.bind(this)
+      });
+      const blob = new Blob([result.arrayBuffer]);
       const url = await readAsURL(blob);
       return {
         url: url,
-        type: type,
+        type: result.type,
       };
     }
 

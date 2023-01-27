@@ -1006,19 +1006,19 @@ namespace P.sb2.compiler {
 
       } else if (e[0] === '+') { /* Operators */
 
-        return '(' + num(e[1]) + ' + ' + num(e[2]) + ' || 0)';
+        return '(' + num(e[1]) + ' + ' + num(e[2]) + ')';
 
       } else if (e[0] === '-') {
 
-        return '(' + num(e[1]) + ' - ' + num(e[2]) + ' || 0)';
+        return '(' + num(e[1]) + ' - ' + num(e[2]) + ')';
 
       } else if (e[0] === '*') {
 
-        return '(' + num(e[1]) + ' * ' + num(e[2]) + ' || 0)';
+        return '(' + num(e[1]) + ' * ' + num(e[2]) + ')';
 
       } else if (e[0] === '/') {
 
-        return '(' + num(e[1]) + ' / ' + num(e[2]) + ' || 0)';
+        return '(' + num(e[1]) + ' / ' + num(e[2]) + ')';
 
       } else if (e[0] === 'randomFrom:to:') {
 
@@ -1651,7 +1651,7 @@ namespace P.sb2.compiler {
       } else if (block[0] === 'broadcast:') { /* Control */
 
         source += 'var threads = broadcast(' + val(block[1]) + ');\n';
-        source += 'if (threads.indexOf(BASE) !== -1) {return;}\n';
+        source += 'if (threads.indexOf(BASE) !== -1) {STOPPED = true;}\n';
 
       } else if (block[0] === 'call') {
 
@@ -1794,7 +1794,8 @@ namespace P.sb2.compiler {
         source += '    S.stopSoundsExcept(BASE);\n';
         source += '    for (var i = 0; i < runtime.queue.length; i++) {\n';
         source += '      if (i !== THREAD && runtime.queue[i] && runtime.queue[i].sprite === S) {\n';
-        source += '        runtime.queue[i] = undefined;\n';
+        source += '        runtime.queue[i].stopped = true;\n';
+        source += '        runtime.queue[i].fn = undefined;\n';
         source += '      }\n';
         source += '    }\n';
         source += '    break;\n';

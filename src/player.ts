@@ -283,20 +283,27 @@ namespace P.player {
     load() {
       if (!this.startedLoading) {
         this.startedLoading = true;
-        new P.io.Request([
-          // Some school filters block turbowarp.org, so we'll try two URLs and hopefully one will work.
+        const request = new P.io.Request([
+          // Some school filters block turbowarp.org, so we'll try a few URLs. Hopefully one will work.
           'https://trampoline.turbowarp.org/proxy/projects/$id'.replace('$id', this.id),
           'https://trampoline.turbowarp.xyz/proxy/projects/$id'.replace('$id', this.id),
-        ])
+          // TODO: see whether this experiment has worked after a few months
+          'https://t.unsandboxed.org/proxy/projects/$id'.replace('$id', this.id),
+        ]);
+        request
           .setMaxAttempts(1)
+          .ignoreErrors()
           .load('json')
           .then((data) => {
-            // Project is shared.
-            if (data.title) {
-              this.title = data.title;
-            }
-            if (data.project_token) {
-              this.token = data.project_token;
+            if (request.getStatus() === 404) {
+              this.unshared = true;
+            } else {
+              if (data.title) {
+                this.title = data.title;
+              }
+              if (data.project_token) {
+                this.token = data.project_token;
+              }
             }
             for (const callback of this.loadCallbacks) {
               callback(this);
@@ -304,12 +311,8 @@ namespace P.player {
             this.loadCallbacks.length = 0;
           })
           .catch((err) => {
-            if (err && err.status === 404) {
-              // This project is unshared.
-              this.unshared = true;
-            } else {
-              // Inconclusive.
-            }
+            console.error(err);
+            this.unshared = true;
             for (const callback of this.loadCallbacks) {
               callback(this);
             }
@@ -1010,6 +1013,9 @@ namespace P.player {
           if (request.getStatus() === 404) {
             throw new ProjectDoesNotExistError(id);
           }
+          if (request.getStatus() === 403) {
+            throw new Error('Obtained token but permission was denied anyways. Try refreshing.');
+          }
           return response;
         });
     }
@@ -1106,13 +1112,18 @@ namespace P.player {
       try {
         const meta = new RemoteProjectMeta(id);
         this.projectMeta = meta;
-        try {
+
+        const needsToken = this.options.projectHost.startsWith('https://projects.scratch.mit.edu/');
+        let token: string | null = null;
+        if (needsToken) {
           await meta.load();
-        } catch (e) {
-          // For now, this is not a critical error.
-          console.error(e);
+          if (meta.isUnshared()) {
+            throw new CannotAccessProjectError(id);
+          }
+          token = meta.getToken();
         }
-        const blob = await this.fetchProject(id, meta.getToken());
+
+        const blob = await this.fetchProject(id, token);
         const loader = await getLoader(blob);
         await this.loadLoader(loaderId, loader);
       } catch (e) {
@@ -1328,12 +1339,12 @@ namespace P.player {
       const el = document.createElement('div');
 
       const section1 = document.createElement('div');
-      section1.textContent = "Can't access project metadata. This probably means the project is unshared, never existed, or the ID is invalid.";
+      section1.textContent = "Can't access project token. This usually means the project is unshared, never existed, or the ID is invalid.";
       section1.style.marginBottom = '4px';
       el.appendChild(section1);
 
       const section2 = document.createElement('div');
-      section2.textContent = 'Unshared projects are no longer accessible using their project ID due to Scratch API changes. Instead, you can save the project to your computer (File > Save to your computer) and load the downloaded file. ';
+      section2.textContent = "Unshared projects are no longer accessible using their project ID due to Scratch API changes. ";
       section2.appendChild(Object.assign(document.createElement('a'), {
         textContent: 'More information',
         href: 'https://docs.turbowarp.org/unshared-projects',
@@ -1343,7 +1354,7 @@ namespace P.player {
       el.appendChild(section2);
 
       const section3 = document.createElement('div');
-      section3.textContent = 'If the project was shared recently, it may take up to an hour for this message to go away.';
+      section3.textContent = 'If the project was shared recently, it may take a few minutes for this message to go away. If the project is actually shared, please report a bug.';
       el.appendChild(section3);
 
       return el;
