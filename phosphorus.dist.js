@@ -11131,7 +11131,8 @@ var P;
                 drawAllExcept(skip) {
                     this.useShader(this.shaders.allEffects);
                     this.drawChild(this.stage);
-                    this.drawTextureOverlay(this.penTexture, true);
+                    this.drawTextureOverlay(this.penTexture);
+                    this.useShader(this.shaders.allEffects);
                     for (var i = 0; i < this.stage.children.length; i++) {
                         var child = this.stage.children[i];
                         if (child.visible && child !== skip) {

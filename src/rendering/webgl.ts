@@ -1286,7 +1286,8 @@ namespace P.renderer.webgl {
       this.useShader(this.shaders.allEffects);
       
       this.drawChild(this.stage);
-      this.drawTextureOverlay(this.penTexture, true);
+      this.drawTextureOverlay(this.penTexture);
+      this.useShader(this.shaders.allEffects);
       
       for (var i = 0; i < this.stage.children.length; i++) {
         var child = this.stage.children[i];
