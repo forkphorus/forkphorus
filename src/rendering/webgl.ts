@@ -181,6 +181,7 @@ namespace P.renderer.webgl {
     public shapeEffects: Shader;
     public touchingColorAllEffects: Shader;
     public touchingColorShapeEffects: Shader;
+    public touchingColorNoEffects: Shader;
 
     constructor(gl: WebGLRenderingContext) {
       this.gl = gl;
@@ -216,6 +217,9 @@ namespace P.renderer.webgl {
         'ENABLE_PIXELATE',
         'ENABLE_MOSAIC',
         'ENABLE_WHIRL',
+        'ENABLE_COLOR_TEST',
+      ]);
+      this.touchingColorNoEffects = this.createShader(Shaders.spriteVshSrc, Shaders.spriteFshSrc, [
         'ENABLE_COLOR_TEST',
       ]);
     }
@@ -444,6 +448,8 @@ namespace P.renderer.webgl {
     private collisionDepthRenderbuffer: WebGLRenderbuffer;
     private collisionFramebuffer: WebGLFramebuffer;
     private rescaleFramebuffer: WebGLFramebuffer;
+    private collisionTexture2: WebGLTexture;
+    private collisionFramebuffer2: WebGLFramebuffer;
 
     private shaders: Shaders;
 
@@ -514,6 +520,10 @@ namespace P.renderer.webgl {
       this.collisionDepthRenderbuffer = this.createDepthRenderbuffer(480, 360);
       this.collisionFramebuffer = this.createFramebuffer(this.collisionTexture, this.collisionDepthRenderbuffer);
 
+      this.collisionTexture2 = this.createTexture();
+      this.fillTexture(this.collisionTexture2, 480, 360, null);
+      this.collisionFramebuffer2 = this.createFramebuffer(this.collisionTexture2);
+
       // Similar to collision framebuffer, but without depth attachment.
       // During collision both texture and renderbuffer stay 480x360.
       // Rescaling pen requires other resolutions. In order for framebuffer to
@@ -546,6 +556,7 @@ namespace P.renderer.webgl {
       this.resetCanvas(this.zoom);
       this.drawChild(this.stage);
       this.drawTextureOverlay(this.penTexture);
+
       this.useShader(this.shaders.allEffects);
       for (var i = 0; i < this.stage.children.length; i++) {
         var child = this.stage.children[i];
@@ -1032,7 +1043,7 @@ namespace P.renderer.webgl {
 
         this.gl.scissor(240 + left, 180 + bottom, width, height);
         this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
-        this.gl.colorMask(false, false, false, false);    
+        this.gl.colorMask(false, false, false, false);
         this.gl.enable(this.gl.DEPTH_TEST); // Depth writing only occurs with depth test enabled
         this.gl.depthFunc(this.gl.ALWAYS);
 
@@ -1072,7 +1083,7 @@ namespace P.renderer.webgl {
     spriteTouchesColor(sprite: P.core.Base, color: number): boolean {
       this.drawPendingOperations();
       this.enableScissors();
-      this.useFramebuffer(this.collisionFramebuffer, 480, 360);
+      this.useFramebuffer(this.collisionFramebuffer2, 480, 360);
       
       const mb = sprite.rotatedBounds();
 
@@ -1085,14 +1096,19 @@ namespace P.renderer.webgl {
       const height = Math.max(top - bottom, 1);
 
       this.gl.scissor(240 + left, 180 + bottom, width, height);
-      this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
-      this.gl.colorMask(false, false, false, false);    
-      this.gl.enable(this.gl.DEPTH_TEST);
-      this.gl.depthFunc(this.gl.ALWAYS);
+      this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
       const globalScaleMatrixBackup = this.globalScaleMatrix;
       this.globalScaleMatrix = P.m3.scaling(1, 1);
-      this.drawAllWithColorExcept(color, sprite);
+      this.drawAllExcept(sprite);
+
+      this.useFramebuffer(this.collisionFramebuffer, 480, 360);
+      this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+      this.gl.colorMask(false, false, false, false);
+      this.gl.enable(this.gl.DEPTH_TEST);
+      this.gl.depthFunc(this.gl.ALWAYS);
+
+      this.drawTextureOverlayWithColor(this.collisionTexture2, color);
 
       this.gl.depthFunc(this.gl.EQUAL);
       this.gl.colorMask(true, true, true, true);
@@ -1126,7 +1142,7 @@ namespace P.renderer.webgl {
     spriteColorTouchesColor(sprite: P.core.Base, spriteColor: number, otherColor: number): boolean {
       this.drawPendingOperations();
       this.enableScissors();
-      this.useFramebuffer(this.collisionFramebuffer, 480, 360);
+      this.useFramebuffer(this.collisionFramebuffer2, 480, 360);
       
       const mb = sprite.rotatedBounds();
 
@@ -1139,15 +1155,20 @@ namespace P.renderer.webgl {
       const height = Math.max(top - bottom, 1);
 
       this.gl.scissor(240 + left, 180 + bottom, width, height);
-      this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
-      this.gl.colorMask(false, false, false, false);    
-      this.gl.enable(this.gl.DEPTH_TEST);
-      this.gl.depthFunc(this.gl.ALWAYS);
+      this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
       const globalScaleMatrixBackup = this.globalScaleMatrix;
       this.globalScaleMatrix = P.m3.scaling(1, 1);
-      this.drawAllWithColorExcept(otherColor, sprite);
-      
+      this.drawAllExcept(sprite);
+
+      this.useFramebuffer(this.collisionFramebuffer, 480, 360);
+      this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+      this.gl.colorMask(false, false, false, false);
+      this.gl.enable(this.gl.DEPTH_TEST);
+      this.gl.depthFunc(this.gl.ALWAYS);
+
+      this.drawTextureOverlayWithColor(this.collisionTexture2, otherColor);
+
       this.gl.depthFunc(this.gl.EQUAL);
       this.gl.colorMask(true, true, true, true);
 
@@ -1261,9 +1282,8 @@ namespace P.renderer.webgl {
       this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
     }
 
-    private drawAllWithColorExcept(color: number, skip: P.core.Base): void {
-      this.useShader(this.shaders.touchingColorAllEffects);
-      this.currentShader.uniform3f("u_colorTest", Math.floor((Math.floor(color/65536)%256)/8), Math.floor((Math.floor(color/256)%256)/8), Math.floor((color%256)/16));
+    private drawAllExcept(skip: P.core.Base): void {
+      this.useShader(this.shaders.allEffects);
       
       this.drawChild(this.stage);
       this.drawTextureOverlay(this.penTexture, true);
@@ -1284,6 +1304,27 @@ namespace P.renderer.webgl {
         shader = this.shaders.noEffects;
         this.useShader(shader);
       }
+
+      this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+
+      shader.attributeBuffer('a_position', this.quadBuffer);
+
+      const matrix = P.m3.projection(this.currentWidth, this.currentHeight);
+      P.m3.multiply(matrix, this.globalScaleMatrix);
+      P.m3.multiply(matrix, P.m3.translation(240, 180));
+      P.m3.multiply(matrix, P.m3.scaling(1, -1));
+      P.m3.multiply(matrix, P.m3.translation(-240, -180));
+      P.m3.multiply(matrix, P.m3.scaling(480, 360));
+
+      shader.uniformMatrix3('u_matrix', matrix);
+
+      this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+    }
+
+    private drawTextureOverlayWithColor(texture: WebGLTexture, color: number): void {
+      const shader = this.shaders.touchingColorNoEffects;
+      this.useShader(shader);
+      shader.uniform3f("u_colorTest", Math.floor((Math.floor(color/65536)%256)/8), Math.floor((Math.floor(color/256)%256)/8), Math.floor((color%256)/16));
 
       this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
 

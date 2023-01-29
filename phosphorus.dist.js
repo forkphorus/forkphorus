@@ -10271,6 +10271,9 @@ var P;
                         'ENABLE_WHIRL',
                         'ENABLE_COLOR_TEST',
                     ]);
+                    this.touchingColorNoEffects = this.createShader(Shaders.spriteVshSrc, Shaders.spriteFshSrc, [
+                        'ENABLE_COLOR_TEST',
+                    ]);
                 }
                 compileShader(type, source, definitions) {
                     if (definitions) {
@@ -10600,6 +10603,9 @@ var P;
                     this.fillTexture(this.collisionTexture, 480, 360, null);
                     this.collisionDepthRenderbuffer = this.createDepthRenderbuffer(480, 360);
                     this.collisionFramebuffer = this.createFramebuffer(this.collisionTexture, this.collisionDepthRenderbuffer);
+                    this.collisionTexture2 = this.createTexture();
+                    this.fillTexture(this.collisionTexture2, 480, 360, null);
+                    this.collisionFramebuffer2 = this.createFramebuffer(this.collisionTexture2);
                     this.rescaleFramebuffer = this.createFramebuffer(this.collisionTexture);
                     this.positionBuffer = this.gl.createBuffer();
                     this.lineBuffer = this.gl.createBuffer();
@@ -10975,7 +10981,7 @@ var P;
                 spriteTouchesColor(sprite, color) {
                     this.drawPendingOperations();
                     this.enableScissors();
-                    this.useFramebuffer(this.collisionFramebuffer, 480, 360);
+                    this.useFramebuffer(this.collisionFramebuffer2, 480, 360);
                     const mb = sprite.rotatedBounds();
                     const left = Math.max(-240, Math.round(mb.left));
                     const top = Math.min(180, Math.round(mb.top));
@@ -10984,13 +10990,16 @@ var P;
                     const width = Math.max(right - left, 1);
                     const height = Math.max(top - bottom, 1);
                     this.gl.scissor(240 + left, 180 + bottom, width, height);
+                    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                    const globalScaleMatrixBackup = this.globalScaleMatrix;
+                    this.globalScaleMatrix = P.m3.scaling(1, 1);
+                    this.drawAllExcept(sprite);
+                    this.useFramebuffer(this.collisionFramebuffer, 480, 360);
                     this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
                     this.gl.colorMask(false, false, false, false);
                     this.gl.enable(this.gl.DEPTH_TEST);
                     this.gl.depthFunc(this.gl.ALWAYS);
-                    const globalScaleMatrixBackup = this.globalScaleMatrix;
-                    this.globalScaleMatrix = P.m3.scaling(1, 1);
-                    this.drawAllWithColorExcept(color, sprite);
+                    this.drawTextureOverlayWithColor(this.collisionTexture2, color);
                     this.gl.depthFunc(this.gl.EQUAL);
                     this.gl.colorMask(true, true, true, true);
                     this.useShader(this.shaders.shapeEffects);
@@ -11010,7 +11019,7 @@ var P;
                 spriteColorTouchesColor(sprite, spriteColor, otherColor) {
                     this.drawPendingOperations();
                     this.enableScissors();
-                    this.useFramebuffer(this.collisionFramebuffer, 480, 360);
+                    this.useFramebuffer(this.collisionFramebuffer2, 480, 360);
                     const mb = sprite.rotatedBounds();
                     const left = Math.max(-240, Math.round(mb.left));
                     const top = Math.min(180, Math.round(mb.top));
@@ -11019,13 +11028,16 @@ var P;
                     const width = Math.max(right - left, 1);
                     const height = Math.max(top - bottom, 1);
                     this.gl.scissor(240 + left, 180 + bottom, width, height);
+                    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                    const globalScaleMatrixBackup = this.globalScaleMatrix;
+                    this.globalScaleMatrix = P.m3.scaling(1, 1);
+                    this.drawAllExcept(sprite);
+                    this.useFramebuffer(this.collisionFramebuffer, 480, 360);
                     this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
                     this.gl.colorMask(false, false, false, false);
                     this.gl.enable(this.gl.DEPTH_TEST);
                     this.gl.depthFunc(this.gl.ALWAYS);
-                    const globalScaleMatrixBackup = this.globalScaleMatrix;
-                    this.globalScaleMatrix = P.m3.scaling(1, 1);
-                    this.drawAllWithColorExcept(otherColor, sprite);
+                    this.drawTextureOverlayWithColor(this.collisionTexture2, otherColor);
                     this.gl.depthFunc(this.gl.EQUAL);
                     this.gl.colorMask(true, true, true, true);
                     this.useShader(this.shaders.touchingColorShapeEffects);
@@ -11116,9 +11128,8 @@ var P;
                     }
                     this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
                 }
-                drawAllWithColorExcept(color, skip) {
-                    this.useShader(this.shaders.touchingColorAllEffects);
-                    this.currentShader.uniform3f("u_colorTest", Math.floor((Math.floor(color / 65536) % 256) / 8), Math.floor((Math.floor(color / 256) % 256) / 8), Math.floor((color % 256) / 16));
+                drawAllExcept(skip) {
+                    this.useShader(this.shaders.allEffects);
                     this.drawChild(this.stage);
                     this.drawTextureOverlay(this.penTexture, true);
                     for (var i = 0; i < this.stage.children.length; i++) {
@@ -11137,6 +11148,21 @@ var P;
                         shader = this.shaders.noEffects;
                         this.useShader(shader);
                     }
+                    this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+                    shader.attributeBuffer('a_position', this.quadBuffer);
+                    const matrix = P.m3.projection(this.currentWidth, this.currentHeight);
+                    P.m3.multiply(matrix, this.globalScaleMatrix);
+                    P.m3.multiply(matrix, P.m3.translation(240, 180));
+                    P.m3.multiply(matrix, P.m3.scaling(1, -1));
+                    P.m3.multiply(matrix, P.m3.translation(-240, -180));
+                    P.m3.multiply(matrix, P.m3.scaling(480, 360));
+                    shader.uniformMatrix3('u_matrix', matrix);
+                    this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+                }
+                drawTextureOverlayWithColor(texture, color) {
+                    const shader = this.shaders.touchingColorNoEffects;
+                    this.useShader(shader);
+                    shader.uniform3f("u_colorTest", Math.floor((Math.floor(color / 65536) % 256) / 8), Math.floor((Math.floor(color / 256) % 256) / 8), Math.floor((color % 256) / 16));
                     this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
                     shader.attributeBuffer('a_position', this.quadBuffer);
                     const matrix = P.m3.projection(this.currentWidth, this.currentHeight);
