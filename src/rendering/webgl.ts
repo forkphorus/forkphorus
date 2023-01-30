@@ -174,7 +174,7 @@ namespace P.renderer.webgl {
     }`;
 
     private gl: WebGLRenderingContext;
-    
+
     public noEffects: Shader;
     public allEffects: Shader;
     public pen: Shader;
@@ -482,7 +482,7 @@ namespace P.renderer.webgl {
       const canvas = document.createElement('canvas');
       canvas.width = 480;
       canvas.height = 360;
-      
+
       const gl = canvas.getContext('webgl', {alpha: false});
       if (!gl) throw new Error('cannot get webgl rendering context');
 
@@ -564,7 +564,7 @@ namespace P.renderer.webgl {
           this.drawChild(child);
         }
       }
-      
+
       // We flush to ensure that the GPU finishes rendering as quickly as possible.
       // This is especially important as we do not use requestAnimationFrame.
       // Unlike finish(), flush() does not block the main thread. This is important.
@@ -1081,6 +1081,8 @@ namespace P.renderer.webgl {
     }
     
     spriteTouchesColor(sprite: P.core.Base, color: number): boolean {
+      color += color < 0 ? 0x100000000 : 0;
+
       this.drawPendingOperations();
       this.enableScissors();
       this.useFramebuffer(this.collisionFramebuffer2, 480, 360);
@@ -1096,7 +1098,9 @@ namespace P.renderer.webgl {
       const height = Math.max(top - bottom, 1);
 
       this.gl.scissor(240 + left, 180 + bottom, width, height);
+      this.gl.clearColor(1, 1, 1, 1);
       this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+      this.gl.clearColor(0, 0, 0, 0);
 
       const globalScaleMatrixBackup = this.globalScaleMatrix;
       this.globalScaleMatrix = P.m3.scaling(1, 1);
@@ -1140,6 +1144,9 @@ namespace P.renderer.webgl {
     }
     
     spriteColorTouchesColor(sprite: P.core.Base, spriteColor: number, otherColor: number): boolean {
+      spriteColor += spriteColor < 0 ? 0x100000000 : 0;
+      otherColor += otherColor < 0 ? 0x100000000 : 0;
+
       this.drawPendingOperations();
       this.enableScissors();
       this.useFramebuffer(this.collisionFramebuffer2, 480, 360);
@@ -1155,7 +1162,9 @@ namespace P.renderer.webgl {
       const height = Math.max(top - bottom, 1);
 
       this.gl.scissor(240 + left, 180 + bottom, width, height);
+      this.gl.clearColor(1, 1, 1, 1);
       this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+      this.gl.clearColor(0, 0, 0, 0);
 
       const globalScaleMatrixBackup = this.globalScaleMatrix;
       this.globalScaleMatrix = P.m3.scaling(1, 1);

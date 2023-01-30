@@ -10979,6 +10979,7 @@ var P;
                     return false;
                 }
                 spriteTouchesColor(sprite, color) {
+                    color += color < 0 ? 0x100000000 : 0;
                     this.drawPendingOperations();
                     this.enableScissors();
                     this.useFramebuffer(this.collisionFramebuffer2, 480, 360);
@@ -10990,7 +10991,9 @@ var P;
                     const width = Math.max(right - left, 1);
                     const height = Math.max(top - bottom, 1);
                     this.gl.scissor(240 + left, 180 + bottom, width, height);
+                    this.gl.clearColor(1, 1, 1, 1);
                     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                    this.gl.clearColor(0, 0, 0, 0);
                     const globalScaleMatrixBackup = this.globalScaleMatrix;
                     this.globalScaleMatrix = P.m3.scaling(1, 1);
                     this.drawAllExcept(sprite);
@@ -11017,6 +11020,8 @@ var P;
                     return false;
                 }
                 spriteColorTouchesColor(sprite, spriteColor, otherColor) {
+                    spriteColor += spriteColor < 0 ? 0x100000000 : 0;
+                    otherColor += otherColor < 0 ? 0x100000000 : 0;
                     this.drawPendingOperations();
                     this.enableScissors();
                     this.useFramebuffer(this.collisionFramebuffer2, 480, 360);
@@ -11028,7 +11033,9 @@ var P;
                     const width = Math.max(right - left, 1);
                     const height = Math.max(top - bottom, 1);
                     this.gl.scissor(240 + left, 180 + bottom, width, height);
+                    this.gl.clearColor(1, 1, 1, 1);
                     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                    this.gl.clearColor(0, 0, 0, 0);
                     const globalScaleMatrixBackup = this.globalScaleMatrix;
                     this.globalScaleMatrix = P.m3.scaling(1, 1);
                     this.drawAllExcept(sprite);
