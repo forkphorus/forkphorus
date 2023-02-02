@@ -177,7 +177,8 @@ namespace P.core {
         case PenMode.RGBA:
           return this.css;
         case PenMode.HSLA:
-          return 'hsla(' + this.x + ',' + this.y + '%,' + (this.z > 100 ? 200 - this.z : this.z) + '%,' + this.a + ')';
+          const rgb = P.utils.hslToRGB(this.x / 360, this.y / 100, this.z / 100);
+          return 'rgba(' + rgb[0] + ', ' + rgb[1] + ', ' + rgb[2] + ', ' + this.a + ')';
         case PenMode.HSVA: {
           const rgb = P.utils.hsvToRGB(this.x / 360, this.y / 100, this.z / 100);
           return 'rgba(' + rgb[0] + ', ' + rgb[1] + ', ' + rgb[2] + ', ' + this.a + ')';

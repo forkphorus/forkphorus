@@ -573,7 +573,8 @@ var P;
                     case 0:
                         return this.css;
                     case 1:
-                        return 'hsla(' + this.x + ',' + this.y + '%,' + (this.z > 100 ? 200 - this.z : this.z) + '%,' + this.a + ')';
+                        const rgb = P.utils.hslToRGB(this.x / 360, this.y / 100, this.z / 100);
+                        return 'rgba(' + rgb[0] + ', ' + rgb[1] + ', ' + rgb[2] + ', ' + this.a + ')';
                     case 2: {
                         const rgb = P.utils.hsvToRGB(this.x / 360, this.y / 100, this.z / 100);
                         return 'rgba(' + rgb[0] + ', ' + rgb[1] + ', ' + rgb[2] + ', ' + this.a + ')';
@@ -2878,7 +2879,7 @@ var P;
                 g = hue2rgb(p, q, h);
                 b = hue2rgb(p, q, h - 1 / 3);
             }
-            return [r * 255, g * 255, b * 255];
+            return [r * 255 | 0, g * 255 | 0, b * 255 | 0];
         }
         utils.hslToRGB = hslToRGB;
         function hslToHSV(h, s, l) {
