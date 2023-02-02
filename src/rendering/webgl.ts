@@ -179,8 +179,7 @@ namespace P.renderer.webgl {
     public allEffects: Shader;
     public pen: Shader;
     public shapeEffects: Shader;
-    public touchingColorAllEffects: Shader;
-    public touchingColorShapeEffects: Shader;
+    public touchingColorAllEffectsExceptGhost: Shader;
     public touchingColorNoEffects: Shader;
 
     constructor(gl: WebGLRenderingContext) {
@@ -202,20 +201,12 @@ namespace P.renderer.webgl {
         'ENABLE_MOSAIC',
         'ENABLE_WHIRL',
       ]);
-      this.touchingColorAllEffects = this.createShader(Shaders.spriteVshSrc, Shaders.spriteFshSrc, [
+      this.touchingColorAllEffectsExceptGhost = this.createShader(Shaders.spriteVshSrc, Shaders.spriteFshSrc, [
         'ENABLE_BRIGHTNESS',
         'ENABLE_COLOR',
-        'ENABLE_GHOST',
         'ENABLE_FISHEYE',
         'ENABLE_MOSAIC',
         'ENABLE_PIXELATE',
-        'ENABLE_WHIRL',
-        'ENABLE_COLOR_TEST',
-      ]);
-      this.touchingColorShapeEffects = this.createShader(Shaders.spriteVshSrc, Shaders.spriteFshSrc, [
-        'ENABLE_FISHEYE',
-        'ENABLE_PIXELATE',
-        'ENABLE_MOSAIC',
         'ENABLE_WHIRL',
         'ENABLE_COLOR_TEST',
       ]);
@@ -462,22 +453,22 @@ namespace P.renderer.webgl {
     private quadBuffer: WebGLBuffer;
     private zoom: number = 1;
     private globalScaleMatrix: P.m3.Matrix3 = P.m3.scaling(1, 1);
-    
+
     private costumeTextures: Map<P.core.Costume, WebGLTexture> = new Map();
 
 
     private penCoords: Float32Array = new Float32Array(65536);
     private penLines: Float32Array = new Float32Array(32768);
     private penColors: Float32Array = new Float32Array(65536);
-    
+
     private penCoordsIndex: number = 0;
     private penLinesIndex: number = 0;
     private penColorsIndex: number = 0;
-    
+
     private positionBuffer: WebGLBuffer;
     private lineBuffer: WebGLBuffer;
     private colorBuffer: WebGLBuffer;
-    
+
     constructor(stage: P.core.Stage) {
       const canvas = document.createElement('canvas');
       canvas.width = 480;
@@ -548,7 +539,7 @@ namespace P.renderer.webgl {
       gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer);
       gl.bufferData(gl.ARRAY_BUFFER, this.penColors, gl.STREAM_DRAW);
     }
-    
+
     drawFrame(): void {
       this.disableScissors();
       this.drawPendingOperations();
@@ -570,24 +561,24 @@ namespace P.renderer.webgl {
       // Unlike finish(), flush() does not block the main thread. This is important.
       this.gl.flush();
     }
-    
+
     init(root: HTMLElement): void {
       root.appendChild(this.canvas);
     }
-    
+
     destroy(): void {
       const extension = this.gl.getExtension('WEBGL_lose_context');
       if (extension) {
         extension.loseContext();
       }
     }
-    
+
     onStageFiltersChanged(): void {}
-    
+
     resize(scale: number): void {
       this.zoom = scale;
     }
-    
+
     penLine(color: P.core.PenColor, size: number, x1: number, y1: number, x2: number, y2: number): void {
       const circleRes = this.getCircleResolution(size);
 
@@ -977,7 +968,7 @@ namespace P.renderer.webgl {
       this.penColorsIndex = 0;
       this.gl.clear(this.gl.COLOR_BUFFER_BIT);
     }
-    
+
     spriteTouchesPoint(sprite: P.core.Sprite, x: number, y: number): boolean {
       const bounds = sprite.rotatedBounds();
       if (x < bounds.left || y < bounds.bottom || x > bounds.right || y > bounds.top || sprite.scale === 0) {
@@ -987,7 +978,7 @@ namespace P.renderer.webgl {
       // We will render one pixel of the sprite, and see if it has a non-zero alpha.
       const cx = 240 + x | 0;
       const cy = 180 + y | 0;
-      
+
       this.enableScissors();
       this.useFramebuffer(this.collisionFramebuffer, 480, 360);
       this.gl.scissor(cx, cy, 1, 1);
@@ -1015,12 +1006,12 @@ namespace P.renderer.webgl {
     // purpose would probably make more logical sense, but since WebGL 1 doesn't
     // provide a supported-everywhere way to only use stencil buffer without
     // depth buffer, current way of doing it ends up being more efficient.
-    
+
     spritesIntersect(spriteA: core.Sprite, otherSprites: core.Base[]): boolean {
       this.enableScissors();
       this.useFramebuffer(this.collisionFramebuffer, 480, 360);
       this.useShader(this.shaders.shapeEffects);
-      
+
       const mb = spriteA.rotatedBounds();
 
       for (const spriteB of otherSprites) {
@@ -1057,7 +1048,7 @@ namespace P.renderer.webgl {
         this.drawChild(spriteB);
         this.gl.disable(this.gl.DEPTH_TEST);
         this.globalScaleMatrix = globalScaleMatrixBackup;
-  
+
         var data = new Uint8Array(width * height * 4);
         this.gl.readPixels(
           240 + left,
@@ -1079,14 +1070,14 @@ namespace P.renderer.webgl {
 
       return false;
     }
-    
+
     spriteTouchesColor(sprite: P.core.Base, color: number): boolean {
       color += color < 0 ? 0x100000000 : 0;
 
       this.drawPendingOperations();
       this.enableScissors();
       this.useFramebuffer(this.collisionFramebuffer2, 480, 360);
-      
+
       const mb = sprite.rotatedBounds();
 
       const left = Math.max(-240, Math.round(mb.left));
@@ -1121,7 +1112,7 @@ namespace P.renderer.webgl {
       this.drawChild(sprite);
       this.gl.disable(this.gl.DEPTH_TEST);
       this.globalScaleMatrix = globalScaleMatrixBackup;
-  
+
       var data = new Uint8Array(width * height * 4);
       this.gl.readPixels(
         240 + left,
@@ -1142,7 +1133,7 @@ namespace P.renderer.webgl {
 
       return false;
     }
-    
+
     spriteColorTouchesColor(sprite: P.core.Base, spriteColor: number, otherColor: number): boolean {
       spriteColor += spriteColor < 0 ? 0x100000000 : 0;
       otherColor += otherColor < 0 ? 0x100000000 : 0;
@@ -1150,7 +1141,7 @@ namespace P.renderer.webgl {
       this.drawPendingOperations();
       this.enableScissors();
       this.useFramebuffer(this.collisionFramebuffer2, 480, 360);
-      
+
       const mb = sprite.rotatedBounds();
 
       const left = Math.max(-240, Math.round(mb.left));
@@ -1181,12 +1172,12 @@ namespace P.renderer.webgl {
       this.gl.depthFunc(this.gl.EQUAL);
       this.gl.colorMask(true, true, true, true);
 
-      this.useShader(this.shaders.touchingColorShapeEffects);
+      this.useShader(this.shaders.touchingColorAllEffectsExceptGhost);
       this.currentShader.uniform3f("u_colorTest", Math.floor((Math.floor(spriteColor/65536)%256)/8), Math.floor((Math.floor(spriteColor/256)%256)/8), Math.floor((spriteColor%256)/16));
       this.drawChild(sprite);
       this.gl.disable(this.gl.DEPTH_TEST);
       this.globalScaleMatrix = globalScaleMatrixBackup;
-  
+
       var data = new Uint8Array(width * height * 4);
       this.gl.readPixels(
         240 + left,
@@ -1207,10 +1198,10 @@ namespace P.renderer.webgl {
 
       return false;
     }
-    
+
     private drawChild(child: P.core.Base): void {
       let shader = this.currentShader;
-      
+
       // Rescale if possible
       const costume = child.costumes[child.currentCostumeIndex];
       if (costume.isScalable) {
@@ -1221,7 +1212,7 @@ namespace P.renderer.webgl {
         } else {
           costume.requestSize(child.stage.zoom * P.config.scale * costume.scale);
         }
-        if(vectorCostume.currentScale !== oldScale && this.costumeTextures.has(costume)) {
+        if (vectorCostume.currentScale !== oldScale && this.costumeTextures.has(costume)) {
           const texture = this.costumeTextures.get(costume)!;
           const image = costume.getImage();
           this.fillTexture(texture, null, null, image);
@@ -1236,7 +1227,7 @@ namespace P.renderer.webgl {
         this.costumeTextures.set(costume, texture);
       }
       this.gl.bindTexture(this.gl.TEXTURE_2D, this.costumeTextures.get(costume)!);
-      
+
       shader.attributeBuffer('a_position', this.quadBuffer);
 
       // TODO: optimize
@@ -1293,11 +1284,11 @@ namespace P.renderer.webgl {
 
     private drawAllExcept(skip: P.core.Base): void {
       this.useShader(this.shaders.allEffects);
-      
+
       this.drawChild(this.stage);
       this.drawTextureOverlay(this.penTexture);
       this.useShader(this.shaders.allEffects);
-      
+
       for (var i = 0; i < this.stage.children.length; i++) {
         var child = this.stage.children[i];
         if (child.visible && child !== skip) {
@@ -1305,7 +1296,7 @@ namespace P.renderer.webgl {
         }
       }
     }
-    
+
     private drawTextureOverlay(texture: WebGLTexture, keepShader: boolean = false): void {
       let shader;
       if (keepShader) {
@@ -1357,7 +1348,7 @@ namespace P.renderer.webgl {
         return;
       }
       this.disableScissors();
-      
+
       const gl = this.gl;
       const shader = this.shaders.pen;
 

@@ -10254,20 +10254,12 @@ var P;
                         'ENABLE_MOSAIC',
                         'ENABLE_WHIRL',
                     ]);
-                    this.touchingColorAllEffects = this.createShader(Shaders.spriteVshSrc, Shaders.spriteFshSrc, [
+                    this.touchingColorAllEffectsExceptGhost = this.createShader(Shaders.spriteVshSrc, Shaders.spriteFshSrc, [
                         'ENABLE_BRIGHTNESS',
                         'ENABLE_COLOR',
-                        'ENABLE_GHOST',
                         'ENABLE_FISHEYE',
                         'ENABLE_MOSAIC',
                         'ENABLE_PIXELATE',
-                        'ENABLE_WHIRL',
-                        'ENABLE_COLOR_TEST',
-                    ]);
-                    this.touchingColorShapeEffects = this.createShader(Shaders.spriteVshSrc, Shaders.spriteFshSrc, [
-                        'ENABLE_FISHEYE',
-                        'ENABLE_PIXELATE',
-                        'ENABLE_MOSAIC',
                         'ENABLE_WHIRL',
                         'ENABLE_COLOR_TEST',
                     ]);
@@ -11047,7 +11039,7 @@ var P;
                     this.drawTextureOverlayWithColor(this.collisionTexture2, otherColor);
                     this.gl.depthFunc(this.gl.EQUAL);
                     this.gl.colorMask(true, true, true, true);
-                    this.useShader(this.shaders.touchingColorShapeEffects);
+                    this.useShader(this.shaders.touchingColorAllEffectsExceptGhost);
                     this.currentShader.uniform3f("u_colorTest", Math.floor((Math.floor(spriteColor / 65536) % 256) / 8), Math.floor((Math.floor(spriteColor / 256) % 256) / 8), Math.floor((spriteColor % 256) / 16));
                     this.drawChild(sprite);
                     this.gl.disable(this.gl.DEPTH_TEST);
