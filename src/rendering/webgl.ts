@@ -519,7 +519,7 @@ namespace P.renderer.webgl {
       // During collision both texture and renderbuffer stay 480x360.
       // Rescaling pen requires other resolutions. In order for framebuffer to
       // be considered complete, resolutions of all attachments need to match.
-      // The thing below is done to avoid rescaling depth rendebuffer, when 
+      // The thing below is done to avoid rescaling depth rendebuffer, when
       // reusing collision texture to rescale pen. This texture multipurpose
       // degrades performance during rescaling (which is rare, so it is not a
       // big deal), but saves memory for 1 screen sized texture.
@@ -1401,7 +1401,7 @@ namespace P.renderer.webgl {
 
     private fillTexture(texture: WebGLTexture, width: number | null, height: number | null, content): void {
       const gl = this.gl;
-      
+
       gl.bindTexture(gl.TEXTURE_2D, texture);
       if (content) {
         if (width && height) {
@@ -1454,7 +1454,7 @@ namespace P.renderer.webgl {
         this.scissorsEnabled = true;
       }
     }
-    
+
     private disableScissors(): void {
       if (this.scissorsEnabled) {
         this.gl.disable(this.gl.SCISSOR_TEST);
@@ -1467,7 +1467,7 @@ namespace P.renderer.webgl {
       if (this.globalScaleMatrix[0] !== effectiveScale) {
         this.globalScaleMatrix = P.m3.scaling(effectiveScale, effectiveScale);
       }
-      
+
       const width = Math.max(1, 480 * effectiveScale) | 0;
       const height = Math.max(1, 360 * effectiveScale) | 0;
 
@@ -1480,7 +1480,7 @@ namespace P.renderer.webgl {
         this.fillTexture(this.penTexture, width, height, null);
         this.useFramebuffer(this.penFramebuffer, width, height);
         this.drawTextureOverlay(this.collisionTexture);
-        this.fillTexture(this.collisionTexture, 480, 360, null);       
+        this.fillTexture(this.collisionTexture, 480, 360, null);
       }
       this.useFramebuffer(null, width, height);
       this.gl.clearColor(1, 1, 1, 1);
