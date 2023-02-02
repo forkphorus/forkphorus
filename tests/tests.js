@@ -53,6 +53,7 @@
     'sb3/costume-name-infinity-nan.sb3',
     'sb3/cannot-forceQueue-after-broadcast.sb3',
     'sb3/stop-other-scripts-in-sprite.sb3',
+    'sb3/hsl-pen-exact-color.sb3',
 
     'scratch-vm/broadcast-wait-arg-change.sb2',
     'scratch-vm/control-if-false-then-else.sb2',
