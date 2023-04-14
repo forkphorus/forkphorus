@@ -3062,9 +3062,9 @@ var P;
                 if (!this.startedLoading) {
                     this.startedLoading = true;
                     const request = new P.io.Request([
-                        'https://trampoline.turbowarp.org/proxy/projects/$id'.replace('$id', this.id),
-                        'https://trampoline.turbowarp.xyz/proxy/projects/$id'.replace('$id', this.id),
-                        'https://t.unsandboxed.org/proxy/projects/$id'.replace('$id', this.id),
+                        'https://trampoline.turbowarp.org/api/projects/$id'.replace('$id', this.id),
+                        'https://trampoline.turbowarp.xyz/api/projects/$id'.replace('$id', this.id),
+                        'https://t.unsandboxed.org/api/projects/$id'.replace('$id', this.id),
                     ]);
                     request
                         .setMaxAttempts(1)
