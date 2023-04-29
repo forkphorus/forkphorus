@@ -987,7 +987,7 @@ namespace P.renderer.webgl {
 
       this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
-      this.useShader(this.shaders.allEffects);
+      this.useShader(this.shaders.shapeEffects);
       this.drawChild(sprite);
       this.globalScaleMatrix = globalScaleMatrixBackup;
 
