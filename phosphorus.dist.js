@@ -10641,6 +10641,10 @@ var P;
                     this.zoom = scale;
                 }
                 penLine(color, size, x1, y1, x2, y2) {
+                    if (x1 == x2 && y1 == y2) {
+                        this.penDot(color, size, x1, y1);
+                        return;
+                    }
                     const circleRes = this.getCircleResolution(size);
                     if (this.buffersCanFit(24 * (circleRes + 1))) {
                         this.drawPendingOperations();
