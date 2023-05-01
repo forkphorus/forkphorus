@@ -10000,6 +10000,10 @@ var P;
                     this.penContext.fill();
                 }
                 penLine(color, size, x1, y1, x2, y2) {
+                    if (x1 === x2 && y1 === y2) {
+                        this.penDot(color, size, x1, y1);
+                        return;
+                    }
                     this.penModified = true;
                     this.penContext.lineCap = 'round';
                     if (this.penZoom === 1) {

@@ -276,6 +276,12 @@ namespace P.renderer.canvas2d {
     }
 
     penLine(color: P.core.PenColor, size: number, x1: number, y1: number, x2: number, y2: number) {
+      if (x1 === x2 && y1 === y2) {
+        // Fixes 0-length lines in GNOME Web
+        this.penDot(color, size, x1, y1);
+        return;
+      }
+
       this.penModified = true;
       this.penContext.lineCap = 'round';
       if (this.penZoom === 1) {
