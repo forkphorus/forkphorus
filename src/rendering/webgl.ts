@@ -580,6 +580,11 @@ namespace P.renderer.webgl {
     }
 
     penLine(color: P.core.PenColor, size: number, x1: number, y1: number, x2: number, y2: number): void {
+      if (x1 == x2 && y1 == y2) {
+        this.penDot(color, size, x1, y1);
+        return;
+      }
+
       const circleRes = this.getCircleResolution(size);
 
       // Redraw when buffers are full.
@@ -987,7 +992,7 @@ namespace P.renderer.webgl {
 
       this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
-      this.useShader(this.shaders.allEffects);
+      this.useShader(this.shaders.shapeEffects);
       this.drawChild(sprite);
       this.globalScaleMatrix = globalScaleMatrixBackup;
 
