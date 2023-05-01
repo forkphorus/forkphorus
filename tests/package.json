@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "local-web-server": "^4.2.1",
-    "playwright": "^1.25.1"
+    "playwright": "^1.33.0"
   },
   "repository": {
     "type": "git",
