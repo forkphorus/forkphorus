@@ -4835,7 +4835,7 @@ var P;
 (function (P) {
     var sb2;
     (function (sb2) {
-        const ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
+        const ASSET_URL = 'https://scratch-assets.scratch.org/internalapi/asset/';
         class Scratch2VariableWatcher extends P.core.Watcher {
             constructor(stage, targetName, data) {
                 super(stage, targetName);
@@ -6502,7 +6502,7 @@ var P;
 (function (P) {
     var sb3;
     (function (sb3) {
-        sb3.ASSETS_API = 'https://assets.scratch.mit.edu/internalapi/asset/$md5ext/get/';
+        sb3.ASSETS_API = 'https://scratch-assets.scratch.org/internalapi/asset/$md5ext/get/';
         class Scratch3Stage extends P.core.Stage {
             constructor() {
                 super(...arguments);
