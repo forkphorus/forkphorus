@@ -674,7 +674,7 @@
     advancedWebGL.addEventListener('click', function(e) {
       setSearchParam('webgl', e.target.checked, e);
     });
-    advancedLegacy.checked = player.getOptions().projectHost === 'https://projects.scratch.mit.edu/internalapi/project/$id/get/';
+    advancedLegacy.checked = player.getOptions().projectHost === 'https://scratch-projects.scratch.org/internalapi/project/$id/get/';
     advancedLegacy.addEventListener('click', function(e) {
       setSearchParam('phost', e.target.checked ? 'legacy' : false, e);
     });

@@ -101,7 +101,7 @@ var Common = (function() {
         setPlayerFlag('cloudHost', value);
         break;
       case 'phost':
-        if (value === 'legacy') value = 'https://projects.scratch.mit.edu/internalapi/project/$id/get/';
+        if (value === 'legacy') value = 'https://scratch-projects.scratch.org/internalapi/project/$id/get/';
         setPlayerFlag('projectHost', value);
         break;
       case 'chhost':

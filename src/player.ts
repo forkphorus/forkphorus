@@ -363,7 +363,7 @@ namespace P.player {
       focusOnLoad: true,
       spriteFencing: false,
       removeLimits: false,
-      projectHost: 'https://projects.scratch.mit.edu/$id',
+      projectHost: 'https://scratch-projects.scratch.org/$id',
       // cloudHost: 'ws://localhost:9080', // for cloud-server development
       cloudHost: ['wss://stratus.turbowarp.org', 'wss://stratus.turbowarp.xyz']
     };
@@ -1112,7 +1112,7 @@ namespace P.player {
         const meta = new RemoteProjectMeta(id);
         this.projectMeta = meta;
 
-        const needsToken = this.options.projectHost.startsWith('https://projects.scratch.mit.edu/');
+        const needsToken = this.options.projectHost.startsWith('https://scratch-projects.scratch.org/');
         let token: string | null = null;
         if (needsToken) {
           await meta.load();
@@ -1364,7 +1364,7 @@ namespace P.player {
      */
     private handleDoesNotExistError(error: ProjectDoesNotExistError): HTMLElement {
       const el = document.createElement('div');
-      const LEGACY_HOST = 'https://projects.scratch.mit.edu/internalapi/project/$id/get/';
+      const LEGACY_HOST = 'https://scratch-projects.scratch.org/internalapi/project/$id/get/';
       if (this.player.getOptions().projectHost === LEGACY_HOST) {
         el.textContent = P.i18n.translate('player.errorhandler.error.doesnotexistlegacy').replace('$id', error.id);
       } else {

@@ -77,7 +77,7 @@ var P;
         config.supportVideoSensing = false;
         config.experimentalOptimizations = false;
         config.scale = window.devicePixelRatio || 1;
-        config.PROJECT_API = 'https://projects.scratch.mit.edu/$id';
+        config.PROJECT_API = 'https://scratch-projects.scratch.org/$id';
     })(config = P.config || (P.config = {}));
 })(P || (P = {}));
 var P;
@@ -3696,7 +3696,7 @@ var P;
                 try {
                     const meta = new RemoteProjectMeta(id);
                     this.projectMeta = meta;
-                    const needsToken = this.options.projectHost.startsWith('https://projects.scratch.mit.edu/');
+                    const needsToken = this.options.projectHost.startsWith('https://scratch-projects.scratch.org/');
                     let token = null;
                     if (needsToken) {
                         await meta.load();
@@ -3778,7 +3778,7 @@ var P;
             focusOnLoad: true,
             spriteFencing: false,
             removeLimits: false,
-            projectHost: 'https://projects.scratch.mit.edu/$id',
+            projectHost: 'https://scratch-projects.scratch.org/$id',
             cloudHost: ['wss://stratus.turbowarp.org', 'wss://stratus.turbowarp.xyz']
         };
         player_1.Player = Player;
@@ -3908,7 +3908,7 @@ var P;
             }
             handleDoesNotExistError(error) {
                 const el = document.createElement('div');
-                const LEGACY_HOST = 'https://projects.scratch.mit.edu/internalapi/project/$id/get/';
+                const LEGACY_HOST = 'https://scratch-projects.scratch.org/internalapi/project/$id/get/';
                 if (this.player.getOptions().projectHost === LEGACY_HOST) {
                     el.textContent = P.i18n.translate('player.errorhandler.error.doesnotexistlegacy').replace('$id', error.id);
                 }
