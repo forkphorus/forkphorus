@@ -45,8 +45,8 @@
     <div class="area" id="player-area"></div>
 
     <div class="title">
-      <input class="url" value="https://scratch.mit.edu/projects/" spellcheck="false">
-      <a target="_blank" class="project-link" title="View project on Scratch" rel="noopener" href="https://scratch.mit.edu/"></a>
+      <input class="url" value="https://scratch.org/projects/" spellcheck="false">
+      <a target="_blank" class="project-link" title="View project on Scratch" rel="noopener" href="https://scratch.org/"></a>
     </div>
 
     <div class="area" id="unshared-projects">
@@ -63,7 +63,7 @@
 
       <section>
         <h1 data-i18n="index.report">Report a problem</h1>
-        <p>forkphorus is still in development. <a id="bug-link" target="_blank" rel="noopener" href="https://github.com/forkphorus/forkphorus/issues/new">Click here</a> to report a problem with this project. You can also comment problems <a href="https://scratch.mit.edu/projects/366001364/" target="_blank" rel="noopener">here</a> if you don't have a GitHub account.</p>
+        <p>forkphorus is still in development. <a id="bug-link" target="_blank" rel="noopener" href="https://github.com/forkphorus/forkphorus/issues/new">Click here</a> to report a problem with this project. You can also comment problems <a href="https://scratch.org/projects/366001364/" target="_blank" rel="noopener">here</a> if you don't have a GitHub account.</p>
       </section>
 
       <section class=package>
@@ -153,7 +153,7 @@
       <p style="margin-bottom: 0;"><a id="turbowarp" href="https://turbowarp.org/" target="_black" rel="noopener">TurboWarp</a> typically has better performance and compatibility than forkphorus and has an editor. Give it a try, you might like it.</p>
 
       <h1 data-i18n="index.credits">Credits</h1>
-      <p>forkphorus is maintained by <a href="https://scratch.mit.edu/users/GarboMuffin/">GarboMuffin</a> and <a href="https://github.com/forkphorus/forkphorus/graphs/contributors">other contributors</a>. It is a fork of <a href="https://github.com/nathan">Nathan</a>'s <a href="https://phosphorus.github.io/">phosphorus</a>. Its CPS-style compilation was inspired by <a href="https://github.com/RHY3756547">Rhys</a>'s <a href="https://code.google.com/p/sb2-js/">sb2.js</a>. The <a href="https://stuk.github.io/jszip/">JSZip</a> library is used to read <code>.sb2</code> and <code>.sb3</code> files. The <a href="https://github.com/canvg/canvg">canvg</a> library is used to render SVGs for Scratch 2 projects. The <a href="https://github.com/LLK/scratch-sb1-converter">scratch-sb1-converter</a> library is used to support Scratch 1 projects.</p>
+      <p>forkphorus is maintained by <a href="https://scratch.org/users/GarboMuffin/">GarboMuffin</a> and <a href="https://github.com/forkphorus/forkphorus/graphs/contributors">other contributors</a>. It is a fork of <a href="https://github.com/nathan">Nathan</a>'s <a href="https://phosphorus.github.io/">phosphorus</a>. Its CPS-style compilation was inspired by <a href="https://github.com/RHY3756547">Rhys</a>'s <a href="https://code.google.com/p/sb2-js/">sb2.js</a>. The <a href="https://stuk.github.io/jszip/">JSZip</a> library is used to read <code>.sb2</code> and <code>.sb3</code> files. The <a href="https://github.com/canvg/canvg">canvg</a> library is used to render SVGs for Scratch 2 projects. The <a href="https://github.com/LLK/scratch-sb1-converter">scratch-sb1-converter</a> library is used to support Scratch 1 projects.</p>
 
       <h1 data-i18n="index.code">Code</h1>
       <p>The source code for forkphorus is available <a href=https://github.com/forkphorus/forkphorus>on GitHub</a>.</p>
@@ -230,7 +230,7 @@
     P.i18n.translateElement(document.body);
 
     /** Constants **/
-    var PROJECT_PREFIX = 'https://scratch.mit.edu/projects/';
+    var PROJECT_PREFIX = 'https://scratch.org/projects/';
     var STUDIO = '15926401';
 
     /** Core Player Logic **/
@@ -252,7 +252,7 @@
       }
       err = '' + err;
       var el = document.createElement('div');
-      el.innerHTML = `Alternatively, <a href="https://scratch.mit.edu/projects/366001364/" target="_blank">post a Scratch comment</a> and include: "<span style="font-family: monospace; user-select: all">${err.replace(/<>/g, '')} (${player.getProjectMeta().getId()})</span>"`;
+      el.innerHTML = `Alternatively, <a href="https://scratch.org/projects/366001364/" target="_blank">post a Scratch comment</a> and include: "<span style="font-family: monospace; user-select: all">${err.replace(/<>/g, '')} (${player.getProjectMeta().getId()})</span>"`;
       errorHandler.errorEl.appendChild(el);
       if (errorHandler.generatedErrorLink) {
         bugLink.href = errorHandler.generatedErrorLink;
@@ -373,10 +373,10 @@
     function updateLinks() {
       bugLink.href = errorHandler.createBugReportLink();
       if (player.getProjectMeta().isFromScratch()) {
-        projectLink.href = 'https://scratch.mit.edu/projects/' + player.getProjectMeta().getId();
+        projectLink.href = 'https://scratch.org/projects/' + player.getProjectMeta().getId();
         htmlPackagerLink.href = 'packager/#' + player.getProjectMeta().getId();
       } else {
-        projectLink.href = 'https://scratch.mit.edu/';
+        projectLink.href = 'https://scratch.org/';
         htmlPackagerLink.href = 'packager';
       }
       updatePackageLink();

@@ -518,7 +518,7 @@ namespace P.runtime {
         if (VISUAL) {
           // Look through the call stack and determine if this procedure has already been called once.
           // If so, we'll delay this thread until the next iteration instead of setting IMMEDIATE
-          // See https://scratch.mit.edu/projects/337681947/ for an example
+          // See https://scratch.org/projects/337681947/ for an example
           // 5 is an arbitrary number that works good enough and limits the possible performance impact
           for (var i = CALLS.length, j = 5; i-- && j--;) {
             if (CALLS[i].base === procedure.fn) {

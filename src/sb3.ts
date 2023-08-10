@@ -742,7 +742,7 @@ namespace P.sb3 {
           found = true;
           // We let the system handle their respective 'sans-serif' fonts
           // This is different from Scratch's 'Sans Serif' font.
-          // https://scratch.mit.edu/projects/319138929/
+          // https://scratch.org/projects/319138929/
           break;
         }
       }
@@ -1086,7 +1086,7 @@ namespace P.sb3 {
     }
   }
 
-  // Loads a Scratch 3 project from the scratch.mit.edu website
+  // Loads a Scratch 3 project from the scratch.org website
   // Uses either a loaded project.json or its ID
   export class Scratch3Loader extends BaseSB3Loader {
     private projectId: number | null;
