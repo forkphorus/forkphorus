@@ -487,7 +487,7 @@
       .label('Project ID')
       .input({ pattern: '.*[0-9]+.*', value: location.hash ? location.hash.substr(1) : '10128407' })
       .parser((input) => input.match(/\d+/)[0])
-      .description('Load a project from scratch.mit.edu. Project ID or URL are accepted. Note: Projects on scratch.mit.edu are licensed under <a href="https://creativecommons.org/licenses/by-sa/2.0/" target="_blank" rel="noopener">CC BY-SA 2.0</a>. Please ensure you comply with this license if this is not your project.')
+      .description('Load a project from scratch.org. Project ID or URL are accepted. Note: Projects on scratch.org are licensed under <a href="https://creativecommons.org/licenses/by-sa/2.0/" target="_blank" rel="noopener">CC BY-SA 2.0</a>. Please ensure you comply with this license if this is not your project.')
       .add();
 
     const projectFile = new Option()
@@ -608,7 +608,7 @@
 
   <description>Some description.</description>
 
-  <author href="https://scratch.mit.edu/users/you" email="you@example.com">You</author>
+  <author href="https://scratch.org/users/you" email="you@example.com">You</author>
 
   <icon src="icon.png" />
 

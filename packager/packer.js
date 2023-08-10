@@ -275,7 +275,7 @@ window.Packer = (function() {
     }
 
     /**
-     * Load a project using its ID on scratch.mit.edu
+     * Load a project using its ID on scratch.org
      * @param {string} id The project's ID
      */
     async loadProjectById(id) {

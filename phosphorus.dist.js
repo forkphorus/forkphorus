@@ -26,7 +26,7 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-Parts of forkphorus are based on Sulfurous (https://sulfurous.aau.at/) and Scratch (https://scratch.mit.edu/)
+Parts of forkphorus are based on Sulfurous (https://sulfurous.aau.at/) and Scratch (https://scratch.org/)
 
 License for Sulfurous:
 The MIT License (MIT)
@@ -77,7 +77,7 @@ var P;
         config.supportVideoSensing = false;
         config.experimentalOptimizations = false;
         config.scale = window.devicePixelRatio || 1;
-        config.PROJECT_API = 'https://projects.scratch.mit.edu/$id';
+        config.PROJECT_API = 'https://scratch-projects.scratch.org/$id';
     })(config = P.config || (P.config = {}));
 })(P || (P = {}));
 var P;
@@ -3696,7 +3696,7 @@ var P;
                 try {
                     const meta = new RemoteProjectMeta(id);
                     this.projectMeta = meta;
-                    const needsToken = this.options.projectHost.startsWith('https://projects.scratch.mit.edu/');
+                    const needsToken = this.options.projectHost.startsWith('https://scratch-projects.scratch.org/');
                     let token = null;
                     if (needsToken) {
                         await meta.load();
@@ -3778,7 +3778,7 @@ var P;
             focusOnLoad: true,
             spriteFencing: false,
             removeLimits: false,
-            projectHost: 'https://projects.scratch.mit.edu/$id',
+            projectHost: 'https://scratch-projects.scratch.org/$id',
             cloudHost: ['wss://stratus.turbowarp.org', 'wss://stratus.turbowarp.xyz']
         };
         player_1.Player = Player;
@@ -3863,10 +3863,10 @@ var P;
                 const projectMeta = this.player.getProjectMeta();
                 if (projectMeta.isFromScratch()) {
                     if (projectMeta.getTitle()) {
-                        return 'https://scratch.mit.edu/projects/' + projectMeta.getId();
+                        return 'https://scratch.org/projects/' + projectMeta.getId();
                     }
                     else {
-                        return 'https://scratch.mit.edu/projects/' + projectMeta.getId() + ' (probably unshared)';
+                        return 'https://scratch.org/projects/' + projectMeta.getId() + ' (probably unshared)';
                     }
                 }
                 return 'Not from Scratch: ' + projectMeta.getId();
@@ -3908,7 +3908,7 @@ var P;
             }
             handleDoesNotExistError(error) {
                 const el = document.createElement('div');
-                const LEGACY_HOST = 'https://projects.scratch.mit.edu/internalapi/project/$id/get/';
+                const LEGACY_HOST = 'https://scratch-projects.scratch.org/internalapi/project/$id/get/';
                 if (this.player.getOptions().projectHost === LEGACY_HOST) {
                     el.textContent = P.i18n.translate('player.errorhandler.error.doesnotexistlegacy').replace('$id', error.id);
                 }
@@ -4835,7 +4835,7 @@ var P;
 (function (P) {
     var sb2;
     (function (sb2) {
-        const ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
+        const ASSET_URL = 'https://scratch-assets.scratch.org/internalapi/asset/';
         class Scratch2VariableWatcher extends P.core.Watcher {
             constructor(stage, targetName, data) {
                 super(stage, targetName);
@@ -6502,7 +6502,7 @@ var P;
 (function (P) {
     var sb3;
     (function (sb3) {
-        sb3.ASSETS_API = 'https://assets.scratch.mit.edu/internalapi/asset/$md5ext/get/';
+        sb3.ASSETS_API = 'https://scratch-assets.scratch.org/internalapi/asset/$md5ext/get/';
         class Scratch3Stage extends P.core.Stage {
             constructor() {
                 super(...arguments);

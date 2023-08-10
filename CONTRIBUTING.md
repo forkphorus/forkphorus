@@ -4,7 +4,7 @@
 
 NOTE:
 
- - Please keep this section similar to https://scratch.mit.edu/projects/366001364/
+ - Please keep this section similar to https://scratch.org/projects/366001364/
  - Ensure that the issue templates are up to date with the contents of this page.
  - Ensure that the generated error pages have similar content to the issue templates.
 

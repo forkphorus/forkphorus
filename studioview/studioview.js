@@ -332,11 +332,11 @@
 
   // The URL for project pages.
   // $id is replaced with the project ID.
-  StudioView.PROJECT_PAGE = 'https://scratch.mit.edu/projects/$id/';
+  StudioView.PROJECT_PAGE = 'https://scratch.org/projects/$id/';
 
   // The URL for studio pages.
   // $id is replaced with the studio ID.
-  StudioView.STUDIO_PAGE = 'https://scratch.mit.edu/studios/$id/';
+  StudioView.STUDIO_PAGE = 'https://scratch.org/studios/$id/';
 
   // The text to appear under a project to credit the author of the project.
   // $author is replaced with the author's name.

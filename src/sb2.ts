@@ -5,7 +5,7 @@
 /// <reference path="config.ts" />
 
 namespace P.sb2 {
-  const ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
+  const ASSET_URL = 'https://scratch-assets.scratch.org/internalapi/asset/';
 
   export class Scratch2VariableWatcher extends P.core.Watcher {
     private cmd: string;

@@ -152,11 +152,11 @@ namespace P.player {
     /**
      * Returns the project ID, if any.
      * A project ID is a unique identifier for a project.
-     * Usually this is a project ID from scratch.mit.edu, but it could be anything, such as a filename.
+     * Usually this is a project ID from scratch.org, but it could be anything, such as a filename.
      */
     getId(): string;
     /**
-     * Whether this project was loaded from scratch.mit.edu
+     * Whether this project was loaded from scratch.org
      */
     isFromScratch(): boolean;
     /**
@@ -164,7 +164,7 @@ namespace P.player {
      */
     getToken(): string | null;
     /**
-     * Returns true if this is a project from scratch.mit.edu and it is probably unshared.
+     * Returns true if this is a project from scratch.org and it is probably unshared.
      */
     isUnshared(): boolean;
   }
@@ -363,7 +363,7 @@ namespace P.player {
       focusOnLoad: true,
       spriteFencing: false,
       removeLimits: false,
-      projectHost: 'https://projects.scratch.mit.edu/$id',
+      projectHost: 'https://scratch-projects.scratch.org/$id',
       // cloudHost: 'ws://localhost:9080', // for cloud-server development
       cloudHost: ['wss://stratus.turbowarp.org', 'wss://stratus.turbowarp.xyz']
     };
@@ -997,7 +997,7 @@ namespace P.player {
     }
 
     /**
-     * Download a project from the scratch.mit.edu using its ID.
+     * Download a project from the scratch.org using its ID.
      */
     private fetchProject(id: string, token: string | null): Promise<Blob> {
       let url = this.options.projectHost.replace('$id', id);
@@ -1062,12 +1062,12 @@ namespace P.player {
       const { loaderId } = this.beginLoadingProject();
 
       const getLoader = async (blob: Blob): Promise<P.io.Loader<P.core.Stage>> => {
-        // When downloaded from scratch.mit.edu, there are two types of projects:
+        // When downloaded from scratch.org, there are two types of projects:
         // 1. "JSON projects" which are only the project.json of a sb2 or sb3 file.
         //    This is most projects, especially as this is the only format of Scratch 3 projects.
         // 2. "Binary projects" which are full binary .sb, .sb2, or .sb3 files. Examples:
-        //    https://scratch.mit.edu/projects/250740608/ (sb2)
-        //    https://scratch.mit.edu/projects/418795494/ (sb3)
+        //    https://scratch.org/projects/250740608/ (sb2)
+        //    https://scratch.org/projects/418795494/ (sb3)
 
         try {
           // We will try to read the project as JSON text.
@@ -1112,7 +1112,7 @@ namespace P.player {
         const meta = new RemoteProjectMeta(id);
         this.projectMeta = meta;
 
-        const needsToken = this.options.projectHost.startsWith('https://projects.scratch.mit.edu/');
+        const needsToken = this.options.projectHost.startsWith('https://scratch-projects.scratch.org/');
         let token: string | null = null;
         if (needsToken) {
           await meta.load();
@@ -1305,9 +1305,9 @@ namespace P.player {
       const projectMeta = this.player.getProjectMeta();
       if (projectMeta.isFromScratch()) {
         if (projectMeta.getTitle()) {
-          return 'https://scratch.mit.edu/projects/' + projectMeta.getId();
+          return 'https://scratch.org/projects/' + projectMeta.getId();
         } else {
-          return 'https://scratch.mit.edu/projects/' + projectMeta.getId() + ' (probably unshared)';
+          return 'https://scratch.org/projects/' + projectMeta.getId() + ' (probably unshared)';
         }
       }
       return 'Not from Scratch: ' + projectMeta.getId();
@@ -1364,7 +1364,7 @@ namespace P.player {
      */
     private handleDoesNotExistError(error: ProjectDoesNotExistError): HTMLElement {
       const el = document.createElement('div');
-      const LEGACY_HOST = 'https://projects.scratch.mit.edu/internalapi/project/$id/get/';
+      const LEGACY_HOST = 'https://scratch-projects.scratch.org/internalapi/project/$id/get/';
       if (this.player.getOptions().projectHost === LEGACY_HOST) {
         el.textContent = P.i18n.translate('player.errorhandler.error.doesnotexistlegacy').replace('$id', error.id);
       } else {
