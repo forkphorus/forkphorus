@@ -1364,12 +1364,7 @@ namespace P.player {
      */
     private handleDoesNotExistError(error: ProjectDoesNotExistError): HTMLElement {
       const el = document.createElement('div');
-      const LEGACY_HOST = 'https://projects.scratch.mit.edu/internalapi/project/$id/get/';
-      if (this.player.getOptions().projectHost === LEGACY_HOST) {
-        el.textContent = P.i18n.translate('player.errorhandler.error.doesnotexistlegacy').replace('$id', error.id);
-      } else {
-        el.textContent = P.i18n.translate('player.errorhandler.error.doesnotexist').replace('$id', error.id);
-      }
+      el.textContent = P.i18n.translate('player.errorhandler.error.doesnotexist').replace('$id', error.id);
       return el;
     }
 

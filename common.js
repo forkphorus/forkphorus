@@ -101,8 +101,10 @@ var Common = (function() {
         setPlayerFlag('cloudHost', value);
         break;
       case 'phost':
-        if (value === 'legacy') value = 'https://projects.scratch.mit.edu/internalapi/project/$id/get/';
-        setPlayerFlag('projectHost', value);
+        // Legacy mode was removed by Scratch. We will just ignore it.
+        if (value !== 'legacy') {
+          setPlayerFlag('projectHost', value);
+        }
         break;
       case 'chhost':
         setPlayerFlag('cloudHistoryHost', value);

@@ -80,6 +80,5 @@ namespace P.i18n {
     'player.controls.flag.title.disabled': 'Turbo mode is disabled. Shift+click to enable turbo mode.',
     'player.errorhandler.error': 'An internal error occurred. <a $attrs>Click here</a> to file a bug report.',
     'player.errorhandler.error.doesnotexist': 'There is no project with ID $id. It was probably deleted, never existed, or you made a typo.',
-    'player.errorhandler.error.doesnotexistlegacy': 'The project with ID $id can not be used with legacy mode enabled. Turn off legacy mode to use this project.',
   });
 }

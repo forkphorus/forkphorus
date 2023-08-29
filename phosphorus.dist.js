@@ -2100,7 +2100,6 @@ var P;
             'player.controls.flag.title.disabled': 'Turbo mode is disabled. Shift+click to enable turbo mode.',
             'player.errorhandler.error': 'An internal error occurred. <a $attrs>Click here</a> to file a bug report.',
             'player.errorhandler.error.doesnotexist': 'There is no project with ID $id. It was probably deleted, never existed, or you made a typo.',
-            'player.errorhandler.error.doesnotexistlegacy': 'The project with ID $id can not be used with legacy mode enabled. Turn off legacy mode to use this project.',
         });
     })(i18n = P.i18n || (P.i18n = {}));
 })(P || (P = {}));
@@ -3908,13 +3907,7 @@ var P;
             }
             handleDoesNotExistError(error) {
                 const el = document.createElement('div');
-                const LEGACY_HOST = 'https://projects.scratch.mit.edu/internalapi/project/$id/get/';
-                if (this.player.getOptions().projectHost === LEGACY_HOST) {
-                    el.textContent = P.i18n.translate('player.errorhandler.error.doesnotexistlegacy').replace('$id', error.id);
-                }
-                else {
-                    el.textContent = P.i18n.translate('player.errorhandler.error.doesnotexist').replace('$id', error.id);
-                }
+                el.textContent = P.i18n.translate('player.errorhandler.error.doesnotexist').replace('$id', error.id);
                 return el;
             }
             onerror(error) {
