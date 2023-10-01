@@ -58,6 +58,8 @@
     'sb3/and-or-not-cast-to-boolean.sb3',
     'sb3/change-size-NaN.sb3',
     'sb3/change-pen-size-limits.sb3',
+    'sb3/glide-negative-time.sb3',
+    'sb3/glide-xy-NaN.sb3',
 
     'scratch-vm/broadcast-wait-arg-change.sb2',
     'scratch-vm/control-if-false-then-else.sb2',
