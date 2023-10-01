@@ -8432,7 +8432,7 @@ var P;
     };
     statementLibrary['pen_changePenSizeBy'] = function (util) {
         const SIZE = util.getInput('SIZE', 'number');
-        util.writeLn(`S.penSize = Math.max(1, S.penSize + ${SIZE});`);
+        util.writeLn(`S.penSize = Math.max(1, Math.min(S.penSize + ${SIZE}, 1200));`);
     };
     statementLibrary['pen_clear'] = function (util) {
         util.writeLn('self.clearPen();');
