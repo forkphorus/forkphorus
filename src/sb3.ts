@@ -2363,7 +2363,7 @@ namespace P.sb3.compiler {
     util.visual('visible');
   };
   statementLibrary['looks_changesizeby'] = function(util) {
-    const CHANGE = util.getInput('CHANGE', 'any');
+    const CHANGE = util.getInput('CHANGE', 'number');
     util.writeLn(`var f = S.scale + ${CHANGE} / 100;`);
     util.writeLn('S.scale = f < 0 ? 0 : f;');
     util.visual('visible');
