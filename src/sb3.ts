@@ -3022,8 +3022,8 @@ namespace P.sb3.compiler {
     return input;
   };
   inputLibrary['operator_and'] = function(util) {
-    const OPERAND1 = util.getInput('OPERAND1', 'any');
-    const OPERAND2 = util.getInput('OPERAND2', 'any');
+    const OPERAND1 = util.getInput('OPERAND1', 'boolean');
+    const OPERAND2 = util.getInput('OPERAND2', 'boolean');
     return util.booleanInput(`(${OPERAND1} && ${OPERAND2})`);
   };
   inputLibrary['operator_contains'] = function(util) {
@@ -3145,12 +3145,12 @@ namespace P.sb3.compiler {
     return input;
   };
   inputLibrary['operator_not'] = function(util) {
-    const OPERAND = util.getInput('OPERAND', 'any');
+    const OPERAND = util.getInput('OPERAND', 'boolean'); // !"0" should be true
     return util.booleanInput(`!${OPERAND}`);
   };
   inputLibrary['operator_or'] = function(util) {
-    const OPERAND1 = util.getInput('OPERAND1', 'any');
-    const OPERAND2 = util.getInput('OPERAND2', 'any');
+    const OPERAND1 = util.getInput('OPERAND1', 'boolean');
+    const OPERAND2 = util.getInput('OPERAND2', 'boolean');
     return util.booleanInput(`(${OPERAND1} || ${OPERAND2})`);
   };
   inputLibrary['operator_random'] = function(util) {
