@@ -8813,22 +8813,46 @@ var P;
             }
             case 'ceiling':
                 return util.numberInput(`Math.ceil(${NUM})`);
-            case 'cos':
-                return util.numberInput(`(Math.round(Math.cos(${NUM} * Math.PI / 180) * 1e10) / 1e10)`);
-            case 'sin':
-                return util.numberInput(`(Math.round(Math.sin(${NUM} * Math.PI / 180) * 1e10) / 1e10)`);
-            case 'tan':
-                return util.numberInput(`tan3(${NUM})`);
-            case 'asin':
-                return util.numberInput(`(Math.asin(${NUM}) * 180 / Math.PI)`);
-            case 'acos':
-                return util.numberInput(`(Math.acos(${NUM}) * 180 / Math.PI)`);
-            case 'atan':
-                return util.numberInput(`(Math.atan(${NUM}) * 180 / Math.PI)`);
-            case 'ln':
-                return util.numberInput(`Math.log(${NUM})`);
-            case 'log':
-                return util.numberInput(`(Math.log(${NUM}) / Math.LN10)`);
+            case 'cos': {
+                const input = util.numberInput(`(Math.round(Math.cos(${NUM} * Math.PI / 180) * 1e10) / 1e10)`);
+                input.enableFlag(1);
+                return input;
+            }
+            case 'sin': {
+                const input = util.numberInput(`(Math.round(Math.sin(${NUM} * Math.PI / 180) * 1e10) / 1e10)`);
+                input.enableFlag(1);
+                return input;
+            }
+            case 'tan': {
+                const input = util.numberInput(`tan3(${NUM})`);
+                input.enableFlag(1);
+                return input;
+            }
+            case 'asin': {
+                const input = util.numberInput(`(Math.asin(${NUM}) * 180 / Math.PI)`);
+                input.enableFlag(1);
+                return input;
+            }
+            case 'acos': {
+                const input = util.numberInput(`(Math.acos(${NUM}) * 180 / Math.PI)`);
+                input.enableFlag(1);
+                return input;
+            }
+            case 'atan': {
+                const input = util.numberInput(`(Math.atan(${NUM}) * 180 / Math.PI)`);
+                input.enableFlag(1);
+                return input;
+            }
+            case 'ln': {
+                const input = util.numberInput(`Math.log(${NUM})`);
+                input.enableFlag(1);
+                return input;
+            }
+            case 'log': {
+                const input = util.numberInput(`(Math.log(${NUM}) / Math.LN10)`);
+                input.enableFlag(1);
+                return input;
+            }
             case 'e ^':
                 return util.numberInput(`Math.exp(${NUM})`);
             case '10 ^':
