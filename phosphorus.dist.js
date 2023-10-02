@@ -8096,7 +8096,7 @@ var P;
         util.visual('visible');
     };
     statementLibrary['looks_changesizeby'] = function (util) {
-        const CHANGE = util.getInput('CHANGE', 'any');
+        const CHANGE = util.getInput('CHANGE', 'number');
         util.writeLn(`var f = S.scale + ${CHANGE} / 100;`);
         util.writeLn('S.scale = f < 0 ? 0 : f;');
         util.visual('visible');
@@ -8244,13 +8244,12 @@ var P;
         util.visual('drawing');
     };
     statementLibrary['motion_glidesecstoxy'] = function (util) {
-        const SECS = util.getInput('SECS', 'any');
-        const X = util.getInput('X', 'any');
-        const Y = util.getInput('Y', 'any');
-        util.visual('drawing');
+        const SECS = util.getInput('SECS', 'number');
+        const X = util.getInput('X', 'number');
+        const Y = util.getInput('Y', 'number');
         util.writeLn('save();');
         util.writeLn('R.start = runtime.now();');
-        util.writeLn(`R.duration = ${SECS};`);
+        util.writeLn(`R.duration = Math.max(0, ${SECS});`);
         util.writeLn('R.baseX = S.scratchX;');
         util.writeLn('R.baseY = S.scratchY;');
         util.writeLn(`R.deltaX = ${X} - S.scratchX;`);
@@ -8266,16 +8265,15 @@ var P;
         util.writeLn('restore();');
     };
     statementLibrary['motion_glideto'] = function (util) {
-        const SECS = util.getInput('SECS', 'any');
+        const SECS = util.getInput('SECS', 'number');
         const TO = util.getInput('TO', 'any');
-        util.visual('drawing');
-        util.writeLn('save();');
-        util.writeLn('R.start = runtime.now();');
-        util.writeLn(`R.duration = ${SECS};`);
-        util.writeLn('R.baseX = S.scratchX;');
-        util.writeLn('R.baseY = S.scratchY;');
         util.writeLn(`var to = self.getPosition(${TO});`);
         util.writeLn('if (to) {');
+        util.writeLn('  save();');
+        util.writeLn('  R.start = runtime.now();');
+        util.writeLn(`  R.duration = Math.max(0, ${SECS});`);
+        util.writeLn('  R.baseX = S.scratchX;');
+        util.writeLn('  R.baseY = S.scratchY;');
         util.writeLn('  R.deltaX = to.x - S.scratchX;');
         util.writeLn('  R.deltaY = to.y - S.scratchY;');
         const label = util.addLabel();
@@ -8432,7 +8430,7 @@ var P;
     };
     statementLibrary['pen_changePenSizeBy'] = function (util) {
         const SIZE = util.getInput('SIZE', 'number');
-        util.writeLn(`S.penSize = Math.max(1, S.penSize + ${SIZE});`);
+        util.writeLn(`S.penSize = Math.max(1, Math.min(S.penSize + ${SIZE}, 1200));`);
     };
     statementLibrary['pen_clear'] = function (util) {
         util.writeLn('self.clearPen();');
@@ -8734,8 +8732,8 @@ var P;
         return input;
     };
     inputLibrary['operator_and'] = function (util) {
-        const OPERAND1 = util.getInput('OPERAND1', 'any');
-        const OPERAND2 = util.getInput('OPERAND2', 'any');
+        const OPERAND1 = util.getInput('OPERAND1', 'boolean');
+        const OPERAND2 = util.getInput('OPERAND2', 'boolean');
         return util.booleanInput(`(${OPERAND1} && ${OPERAND2})`);
     };
     inputLibrary['operator_contains'] = function (util) {
@@ -8815,22 +8813,46 @@ var P;
             }
             case 'ceiling':
                 return util.numberInput(`Math.ceil(${NUM})`);
-            case 'cos':
-                return util.numberInput(`(Math.round(Math.cos(${NUM} * Math.PI / 180) * 1e10) / 1e10)`);
-            case 'sin':
-                return util.numberInput(`(Math.round(Math.sin(${NUM} * Math.PI / 180) * 1e10) / 1e10)`);
-            case 'tan':
-                return util.numberInput(`tan3(${NUM})`);
-            case 'asin':
-                return util.numberInput(`(Math.asin(${NUM}) * 180 / Math.PI)`);
-            case 'acos':
-                return util.numberInput(`(Math.acos(${NUM}) * 180 / Math.PI)`);
-            case 'atan':
-                return util.numberInput(`(Math.atan(${NUM}) * 180 / Math.PI)`);
-            case 'ln':
-                return util.numberInput(`Math.log(${NUM})`);
-            case 'log':
-                return util.numberInput(`(Math.log(${NUM}) / Math.LN10)`);
+            case 'cos': {
+                const input = util.numberInput(`(Math.round(Math.cos(${NUM} * Math.PI / 180) * 1e10) / 1e10)`);
+                input.enableFlag(1);
+                return input;
+            }
+            case 'sin': {
+                const input = util.numberInput(`(Math.round(Math.sin(${NUM} * Math.PI / 180) * 1e10) / 1e10)`);
+                input.enableFlag(1);
+                return input;
+            }
+            case 'tan': {
+                const input = util.numberInput(`tan3(${NUM})`);
+                input.enableFlag(1);
+                return input;
+            }
+            case 'asin': {
+                const input = util.numberInput(`(Math.asin(${NUM}) * 180 / Math.PI)`);
+                input.enableFlag(1);
+                return input;
+            }
+            case 'acos': {
+                const input = util.numberInput(`(Math.acos(${NUM}) * 180 / Math.PI)`);
+                input.enableFlag(1);
+                return input;
+            }
+            case 'atan': {
+                const input = util.numberInput(`(Math.atan(${NUM}) * 180 / Math.PI)`);
+                input.enableFlag(1);
+                return input;
+            }
+            case 'ln': {
+                const input = util.numberInput(`Math.log(${NUM})`);
+                input.enableFlag(1);
+                return input;
+            }
+            case 'log': {
+                const input = util.numberInput(`(Math.log(${NUM}) / Math.LN10)`);
+                input.enableFlag(1);
+                return input;
+            }
             case 'e ^':
                 return util.numberInput(`Math.exp(${NUM})`);
             case '10 ^':
@@ -8852,12 +8874,12 @@ var P;
         return input;
     };
     inputLibrary['operator_not'] = function (util) {
-        const OPERAND = util.getInput('OPERAND', 'any');
+        const OPERAND = util.getInput('OPERAND', 'boolean');
         return util.booleanInput(`!${OPERAND}`);
     };
     inputLibrary['operator_or'] = function (util) {
-        const OPERAND1 = util.getInput('OPERAND1', 'any');
-        const OPERAND2 = util.getInput('OPERAND2', 'any');
+        const OPERAND1 = util.getInput('OPERAND1', 'boolean');
+        const OPERAND2 = util.getInput('OPERAND2', 'boolean');
         return util.booleanInput(`(${OPERAND1} || ${OPERAND2})`);
     };
     inputLibrary['operator_random'] = function (util) {
@@ -9853,8 +9875,8 @@ var P;
                     }
                     ctx.imageSmoothingEnabled = costume.isScalable || this.imageSmoothingEnabled;
                     const image = costume.getImage();
-                    const x = -costume.rotationCenterX * objectScale | 0;
-                    const y = -costume.rotationCenterY * objectScale | 0;
+                    const x = -costume.rotationCenterX * objectScale;
+                    const y = -costume.rotationCenterY * objectScale;
                     const w = costume.width * objectScale | 0;
                     const h = costume.height * objectScale | 0;
                     if (w < 1 || h < 1) {

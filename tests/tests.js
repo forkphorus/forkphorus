@@ -55,6 +55,12 @@
     'sb3/stop-other-scripts-in-sprite.sb3',
     'sb3/hsl-pen-exact-color.sb3',
     'sb3/zero-length-pen-line.sb3',
+    'sb3/and-or-not-cast-to-boolean.sb3',
+    'sb3/change-size-NaN.sb3',
+    'sb3/change-pen-size-limits.sb3',
+    'sb3/glide-negative-time.sb3',
+    'sb3/glide-xy-NaN.sb3',
+    'sb3/mathop-NaN.sb3',
 
     'scratch-vm/broadcast-wait-arg-change.sb2',
     'scratch-vm/control-if-false-then-else.sb2',
