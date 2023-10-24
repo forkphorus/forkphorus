@@ -16,12 +16,13 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: "<h1>You need to ask the creators of educationroomlearning.web.app to update their website. We just maintain a library they use; we can't help you.</h1> They need to use a version of forkphorus from after November 2022 as it contains mandatory fixes for Scratch API changes.",
+              body: "<h1>To play that game, you MUST ask the creators of educationroomlearning.web.app to update their website. We just maintain a library they use; we can't help you.</h1> They need to use a version of forkphorus from after November 2022 as it contains mandatory fixes for Scratch API changes.",
             });
             github.rest.issues.update({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: "closed",
+              state_reason: "not_planned",
               labels: ["invalid"],
             });
