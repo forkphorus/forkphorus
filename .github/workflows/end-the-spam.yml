@@ -1,0 +1,27 @@
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  end-the-spam:
+    if: contains(github.event.issue.body, 'educationroomlearning.web.app')
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "<h1>You need to ask the creators of educationroomlearning.web.app to update their website. We just maintain a library they use; we can't help you.</h1> They need to use a version of forkphorus from after November 2022 as it contains mandatory fixes for Scratch API changes.",
+            });
+            github.rest.issues.update({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "closed",
+              labels: ["invalid"],
+            });
