@@ -3943,7 +3943,7 @@ var P;
                 this.errorEl = el;
             }
         }
-        ErrorHandler.BUG_REPORT_LINK = 'https://github.com/forkphorus/forkphorus/issues/new?template=bug_report.md&labels=bug&title=$title&body=$body&';
+        ErrorHandler.BUG_REPORT_LINK = 'https://forkphorus.github.io/bug_report.html?title=$title&body=$body';
         player_1.ErrorHandler = ErrorHandler;
         class ProgressBar {
             constructor(player, options = {}) {

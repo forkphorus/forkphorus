@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>forkphorus bug report redirector</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="robots" content="noindex">
+        <meta name="color-scheme" content="light dark">
+    </head>
+
+    <body>
+        <noscript>
+            <p>Please enable JavaScript.</p>
+        </noscript>
+
+        <script>
+            var searchParams = new URLSearchParams(location.search);
+            var title = encodeURIComponent(searchParams.get('title') || '');
+            var body = encodeURIComponent(searchParams.get('body') || '');
+            location.replace('https://github.com/forkphorus/forkphorus/issues/new?template=bug_report&labels=bug&title=' + title + '&body=' + body);
+        </script>
+    </body>
+</html>
