@@ -233,4 +233,13 @@ namespace P.utils {
     }
     return 0;
   };
+
+  export function escapeXML(unsafe: string): string {
+    return unsafe
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
 }

@@ -1328,8 +1328,8 @@ namespace P.player {
       const el = document.createElement('div');
       const errorLink = this.createBugReportLink(error);
       this.generatedErrorLink = errorLink;
-      const attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
-      // use of innerHTML intentional
+      const attributes = 'href="' + P.utils.escapeXML(errorLink) + '" target="_blank" ref="noopener"';
+      // use of innerHTML is intentional and is safe
       el.innerHTML = P.i18n.translate('player.errorhandler.error').replace('$attrs', attributes);
       return el;
     }

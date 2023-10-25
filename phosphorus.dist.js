@@ -2939,6 +2939,15 @@ var P;
         }
         utils.parseColor = parseColor;
         ;
+        function escapeXML(unsafe) {
+            return unsafe
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+        utils.escapeXML = escapeXML;
     })(utils = P.utils || (P.utils = {}));
 })(P || (P = {}));
 var P;
@@ -3881,7 +3890,7 @@ var P;
                 const el = document.createElement('div');
                 const errorLink = this.createBugReportLink(error);
                 this.generatedErrorLink = errorLink;
-                const attributes = 'href="' + errorLink + '" target="_blank" ref="noopener"';
+                const attributes = 'href="' + P.utils.escapeXML(errorLink) + '" target="_blank" ref="noopener"';
                 el.innerHTML = P.i18n.translate('player.errorhandler.error').replace('$attrs', attributes);
                 return el;
             }
