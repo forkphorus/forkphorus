@@ -1862,8 +1862,6 @@ namespace P.core {
     public static MAX_SCALE = 16;
     /** Maximum width or height of a Vector costume. Overrides MAX_SCALE. */
     public static MAX_SIZE = 2048;
-    /** Disables rasterize/zoom. */
-    public static DISABLE_RASTERIZE = false;
 
     private svg: HTMLImageElement;
     public currentScale: number;
@@ -1927,9 +1925,9 @@ namespace P.core {
       const scale = Math.min(Math.ceil(costumeScale), this.maxScale);
       if (this.currentScale < scale) {
         this.currentScale = scale;
-        if (VectorCostume.DISABLE_RASTERIZE) {
+        if (P.config.useWebGL) {
           this.resizeSvg();
-        } else {
+        } else if (P.config.allowRasterizeVectors) {
           this.render();
         }
       }
@@ -1944,7 +1942,7 @@ namespace P.core {
     }
 
     getImage() {
-      if (VectorCostume.DISABLE_RASTERIZE) {
+      if (!P.config.allowRasterizeVectors) {
         return this.svg;
       }
       if (this.canvas) {
@@ -1953,14 +1951,6 @@ namespace P.core {
       this.render();
       return this.canvas;
     }
-  }
-
-  // TEMPORARY FIX:
-  // Disable image scaling on Safari.
-  // detection method from https://stackoverflow.com/a/23522755
-  if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
-    console.log('Vector rasterization is disabled. This may affect performance.');
-    VectorCostume.DISABLE_RASTERIZE = true;
   }
 
   interface SoundOptions {

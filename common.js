@@ -117,7 +117,6 @@ var Common = (function() {
       // Feature flags
       case 'webgl':
         P.config.useWebGL = true;
-        P.core.VectorCostume.DISABLE_RASTERIZE = false; // temporary
         break;
       case 'debug':
         P.config.debug = true;
@@ -129,7 +128,7 @@ var Common = (function() {
         P.config.experimentalOptimizations = true;
         break;
       case 'svgr':
-        P.core.VectorCostume.DISABLE_RASTERIZE = true;
+        P.config.allowRasterizeVectors = false;
         break;
     }
   });
