@@ -15,17 +15,23 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            github.rest.issues.createComment({
+            await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: "<h1>To play that game, you MUST ask the creators of educationroomlearning.web.app to update their website. We just maintain a library they use; we can't help you.</h1> They need to use a version of forkphorus from after November 2022 as it contains mandatory fixes for Scratch API changes.",
+              body: "<h1>To play that game, YOU MUST ask the creators of educationroomlearning.web.app to update their version of forkphorus.</h1><h1>We fixed this OVER A YEAR AGO, but the website owner can't be bothered to update their site. Find another website.</h1><h1>WE CAN'T FIX IT FOR YOU. DO NOT CONTACT US AGAIN.</h1>",
             });
-            github.rest.issues.update({
+            await github.rest.issues.update({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: "closed",
               state_reason: "not_planned",
               labels: ["invalid"],
+            });
+            await github.rest.issues.lock({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              lock_reason: "spam"
             });
