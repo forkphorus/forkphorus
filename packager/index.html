@@ -577,6 +577,7 @@
         { value: 'nwjs-win', label: 'NW.js (Windows/Linux)' },
         { value: 'nwjs-mac', label: 'NW.js (Mac)' },
         { value: 'zip', label: 'Zip (for websites)' },
+        { value: 'zip-loose', label: 'Zip with loose files (for websites)' },
       ])
       .description('Enable special behavior for certain environments. You <b>must</b> read <a href="guide.html" target="_blank">the guide</a> before changing this value. This setting does not do anything on its own, additional configuration and steps are required.')
       .add(environment);
@@ -589,7 +590,7 @@
       .add(environment);
 
     environment.environment.onchange = (value) => {
-      environment.icon.setVisible(value !== 'none' && value !== 'nwjs-mac' && value !== 'zip');
+      environment.icon.setVisible(value !== 'none' && value !== 'nwjs-mac' && value !== 'zip' && value !== 'zip-loose');
       phonegap.setVisible(value === 'phonegap');
       nwjs.setVisible(value === 'nwjs-win' || value === 'nwjs-mac');
     };
@@ -793,6 +794,15 @@
         if (environmentType === 'zip') {
           originalProjectData = packager.projectData;
           packager.projectData = 'project.zip';
+        } else if (environmentType === 'zip-loose') {
+          if (packager.projectType !== 'sb3') {
+            throw new Error('Zip with loose files only works for Scratch 3 (sb3) projects');
+          }
+
+          originalProjectData = packager.projectData;
+          packager.projectData = 'assets/project.json';
+          packager.loadProjectAs = 'json';
+          packager.assetsAPI = './assets/$md5ext';
         }
 
         // Package to HTML
@@ -801,9 +811,9 @@
         let result = await packager.run();
 
         // Environments
-        if (environment.environment.value !== 'none') {
+        if (environmentType !== 'none') {
           let icon = environment.icon.value;
-          if (!icon && !(environment.environment.value === 'nwjs-mac' || environment.environment.value === 'zip')) {
+          if (!icon && !(environmentType === 'nwjs-mac' || environmentType === 'zip' || environmentType === 'zip-loose')) {
             // Apply & load default icon
             if (!environment.defaultIconAsset.blob) {
               bindProgress('Loading default icon', environment.loader.progress);
@@ -832,10 +842,13 @@
             zipper.addFile('icon.png', icon);
             zipper.addFile('package.json', nwjs.json.value);
           } else if (environmentType === 'zip') {
-            const res = await fetch(originalProjectData);
-            const blob = await res.blob();
             filetype = 'zip';
-            zipper.addFile('project.zip', blob);
+            zipper.addFile('project.zip', originalProjectData);
+            zipper.addFile('index.html', result);
+          } else if (environmentType === 'zip-loose') {
+            filetype = 'zip';
+            const sb3 = await SBDL.JSZip.default.loadAsync(originalProjectData);
+            zipper.addFromZip('assets', sb3);
             zipper.addFile('index.html', result);
           } else {
             throw new Error('Unknown environment: ' + environmentType);

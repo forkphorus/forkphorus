@@ -53,31 +53,6 @@ window.Packer = (function() {
   }
 
   /**
-   * Create an archive from an SBDL files result
-   * @param {*} files
-   * @param {Progress} progress
-   */
-  function createArchive(files, progress) {
-    progress.start();
-    const zip = new JSZip();
-    for (const file of files) {
-      const path = file.path;
-      const data = file.data;
-      zip.file(path, data);
-    }
-    return zip.generateAsync({
-      type: 'blob',
-      compression: 'DEFLATE',
-    }, (metadata) => {
-      progress.setProgress(metadata.percent);
-      progress.setCaption(metadata.currentFile);
-    }).then((archive) => {
-      progress.setProgress(1);
-      return archive;
-    });
-  }
-
-  /**
    * Helper class for users to implement progress monitoring.
    */
   class Progress {
@@ -182,6 +157,7 @@ window.Packer = (function() {
     constructor() {
       this.progress = new Progress();
       this.files = [];
+      this.jszip = new JSZip();
     }
 
     /**
@@ -190,14 +166,34 @@ window.Packer = (function() {
      * @param {string|Blob} data The file's data
      */
     addFile(name, data) {
-      this.files.push({ path: name, data });
+      this.jszip.file(name, data);
+    }
+
+    /**
+     * @param {string} rootName name of the folder
+     * @param {JSZip} zip other zip
+     */
+    addFromZip(rootName, zip) {
+      for (const [path, file] of Object.entries(zip.files)) {
+        this.jszip.files[`${rootName}/${path}`] = file;
+      }
     }
 
     /**
      * @param {string} html HTML output from a Packager
      */
     zip(html) {
-      return createArchive(this.files, this.progress);
+      this.progress.start();
+      return this.jszip.generateAsync({
+        type: 'blob',
+        compression: 'DEFLATE',
+      }, (metadata) => {
+        this.progress.setProgress(metadata.percent);
+        this.progress.setCaption(metadata.currentFile);
+      }).then((archive) => {
+        this.progress.setProgress(1);
+        return archive;
+      });
     }
   }
 
@@ -222,8 +218,11 @@ window.Packer = (function() {
         text: 'forkphorus',
       };
 
+      this.assetsAPI = 'https://assets.scratch.mit.edu/internalapi/asset/$md5ext/get/';
+
       this.projectType = null;
       this.projectData = null;
+      this.loadProjectAs = 'buffer';
 
       this.downloadMetadataProgress = new Progress();
       this.downloadProjectDataProgress = new Progress();
@@ -267,9 +266,8 @@ window.Packer = (function() {
         onProgress: this.handleSBDLProgress.bind(this)
       });
       const blob = new Blob([result.arrayBuffer]);
-      const url = await readAsURL(blob);
       return {
-        url: url,
+        blob,
         type: result.type,
       };
     }
@@ -279,8 +277,8 @@ window.Packer = (function() {
      * @param {string} id The project's ID
      */
     async loadProjectById(id) {
-      const { url, type } = await this._getProjectById(id);
-      this.projectData = url;
+      const { blob, type } = await this._getProjectById(id);
+      this.projectData = blob;
       this.projectType = type;
     }
 
@@ -290,9 +288,8 @@ window.Packer = (function() {
      */
     async loadProjectFromFile(file) {
       const extension = file.name.split('.').pop();
-      const url = await readAsURL(file);
+      this.projectData = file;
       this.projectType = extension;
-      this.projectData = url;
     }
 
     /**
@@ -467,23 +464,33 @@ ${scripts}
   });
 
   // Project type...
-  var type = '${this.projectType}';
+  var type = ${JSON.stringify(this.projectType)};
   // Project data...
-  var project = '${this.projectData}';
+  var project = '${typeof this.projectData === 'string' ? this.projectData : await readAsURL(this.projectData)}';
+  // Project data format...
+  var loadProjectAs = ${JSON.stringify(this.loadProjectAs)};
 
   // Player options...
   var playerOptions = ${JSON.stringify(this.playerOptions)};
   // Controls options...
   var controlsOptions = ${JSON.stringify(this.controlsOptions)};
+  // Where to load any extra assets from...
+  P.sb3.ASSETS_API = ${JSON.stringify(this.assetsAPI)};
 
   player.setOptions(playerOptions);
   if (controlsOptions) {
     player.addControls(controlsOptions);
   }
 
-  fetch(project)
-    .then(function(request) { return request.arrayBuffer(); })
-    .then(function(buffer) { return player.loadProjectFromBuffer(buffer, type); })
+  (loadProjectAs === 'buffer' ? (
+    fetch(project)
+      .then(function(request) { return request.arrayBuffer(); })
+      .then(function(buffer) { return player.loadProjectFromBuffer(buffer, type); })
+  ) : (
+    fetch(project)
+      .then(function(request) { return request.blob(); })
+      .then(function(blob) { return player.loadProjectFromJSON(blob); })
+  ))
     .then(function() {
       player.enterFullscreen();
       splash.style.display = 'none';

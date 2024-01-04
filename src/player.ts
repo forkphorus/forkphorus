@@ -1058,55 +1058,55 @@ namespace P.player {
       return stage;
     }
 
+    private async getLoader(blob: Blob): Promise<P.io.Loader<P.core.Stage>> {
+      // When downloaded from scratch.mit.edu, there are two types of projects:
+      // 1. "JSON projects" which are only the project.json of a sb2 or sb3 file.
+      //    This is most projects, especially as this is the only format of Scratch 3 projects.
+      // 2. "Binary projects" which are full binary .sb, .sb2, or .sb3 files. Examples:
+      //    https://scratch.mit.edu/projects/250740608/ (sb2)
+      //    https://scratch.mit.edu/projects/418795494/ (sb3)
+
+      try {
+        // We will try to read the project as JSON text.
+        // This will error if this is not a JSON project.
+        const projectText = await P.io.readers.toText(blob);
+        const projectJson = P.json.parse(projectText);
+
+        switch (this.determineProjectType(projectJson)) {
+          case 'sb2': return new P.sb2.Scratch2Loader(projectJson);
+          case 'sb3': return new P.sb3.Scratch3Loader(projectJson);
+        }
+      } catch (e) {
+        // if the project cannot be loaded as JSON, it may be a binary project.
+        let buffer = await P.io.readers.toArrayBuffer(blob);
+
+        // Scratch 1 is converted to Scratch 2.
+        if (this.isScratch1Project(buffer)) {
+          buffer = await this.convertScratch1Project(buffer);
+        } else {
+            try {
+            // Examine project.json to determine project type.
+            const zip = await JSZip.loadAsync(buffer);
+            const projectJSON = zip.file('project.json');
+            if (!projectJSON) {
+              throw new Error('zip is missing project.json');
+            }
+            const projectDataText = await projectJSON.async('text');
+            const projectData = JSON.parse(projectDataText);
+            if (this.determineProjectType(projectData) === 'sb3') {
+              return new P.sb3.SB3FileLoader(buffer);
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
+
+        return new P.sb2.SB2FileLoader(buffer);
+      }
+    }
+
     async loadProjectById(id: string): Promise<void> {
       const { loaderId } = this.beginLoadingProject();
-
-      const getLoader = async (blob: Blob): Promise<P.io.Loader<P.core.Stage>> => {
-        // When downloaded from scratch.mit.edu, there are two types of projects:
-        // 1. "JSON projects" which are only the project.json of a sb2 or sb3 file.
-        //    This is most projects, especially as this is the only format of Scratch 3 projects.
-        // 2. "Binary projects" which are full binary .sb, .sb2, or .sb3 files. Examples:
-        //    https://scratch.mit.edu/projects/250740608/ (sb2)
-        //    https://scratch.mit.edu/projects/418795494/ (sb3)
-
-        try {
-          // We will try to read the project as JSON text.
-          // This will error if this is not a JSON project.
-          const projectText = await P.io.readers.toText(blob);
-          const projectJson = P.json.parse(projectText);
-
-          switch (this.determineProjectType(projectJson)) {
-            case 'sb2': return new P.sb2.Scratch2Loader(projectJson);
-            case 'sb3': return new P.sb3.Scratch3Loader(projectJson);
-          }
-        } catch (e) {
-          // if the project cannot be loaded as JSON, it may be a binary project.
-          let buffer = await P.io.readers.toArrayBuffer(blob);
-
-          // Scratch 1 is converted to Scratch 2.
-          if (this.isScratch1Project(buffer)) {
-            buffer = await this.convertScratch1Project(buffer);
-          } else {
-              try {
-              // Examine project.json to determine project type.
-              const zip = await JSZip.loadAsync(buffer);
-              const projectJSON = zip.file('project.json');
-              if (!projectJSON) {
-                throw new Error('zip is missing project.json');
-              }
-              const projectDataText = await projectJSON.async('text');
-              const projectData = JSON.parse(projectDataText);
-              if (this.determineProjectType(projectData) === 'sb3') {
-                return new P.sb3.SB3FileLoader(buffer);
-              }
-            } catch (e) {
-              // ignore
-            }
-          }
-
-          return new P.sb2.SB2FileLoader(buffer);
-        }
-      };
 
       try {
         const meta = new RemoteProjectMeta(id);
@@ -1123,7 +1123,7 @@ namespace P.player {
         }
 
         const blob = await this.fetchProject(id, token);
-        const loader = await getLoader(blob);
+        const loader = await this.getLoader(blob);
         await this.loadLoader(loaderId, loader);
       } catch (e) {
         if (loaderId.isActive()) {
@@ -1176,6 +1176,20 @@ namespace P.player {
       try {
         this.projectMeta = new BinaryProjectMeta();
         return await this.loadProjectFromBufferWithType(loaderId, buffer, type);
+      } catch (e) {
+        if (loaderId.isActive()) {
+          this.handleError(e);
+        }
+      }
+    }
+
+    async loadProjectFromJSON(blob: Blob): Promise<void> {
+      const { loaderId } = this.beginLoadingProject();
+
+      try {
+        this.projectMeta = new BinaryProjectMeta();
+        const loader = await this.getLoader(blob);
+        await this.loadLoader(loaderId, loader);
       } catch (e) {
         if (loaderId.isActive()) {
           this.handleError(e);

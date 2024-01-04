@@ -3662,41 +3662,41 @@ var P;
                 loader.cleanup();
                 return stage;
             }
+            async getLoader(blob) {
+                try {
+                    const projectText = await P.io.readers.toText(blob);
+                    const projectJson = P.json.parse(projectText);
+                    switch (this.determineProjectType(projectJson)) {
+                        case 'sb2': return new P.sb2.Scratch2Loader(projectJson);
+                        case 'sb3': return new P.sb3.Scratch3Loader(projectJson);
+                    }
+                }
+                catch (e) {
+                    let buffer = await P.io.readers.toArrayBuffer(blob);
+                    if (this.isScratch1Project(buffer)) {
+                        buffer = await this.convertScratch1Project(buffer);
+                    }
+                    else {
+                        try {
+                            const zip = await JSZip.loadAsync(buffer);
+                            const projectJSON = zip.file('project.json');
+                            if (!projectJSON) {
+                                throw new Error('zip is missing project.json');
+                            }
+                            const projectDataText = await projectJSON.async('text');
+                            const projectData = JSON.parse(projectDataText);
+                            if (this.determineProjectType(projectData) === 'sb3') {
+                                return new P.sb3.SB3FileLoader(buffer);
+                            }
+                        }
+                        catch (e) {
+                        }
+                    }
+                    return new P.sb2.SB2FileLoader(buffer);
+                }
+            }
             async loadProjectById(id) {
                 const { loaderId } = this.beginLoadingProject();
-                const getLoader = async (blob) => {
-                    try {
-                        const projectText = await P.io.readers.toText(blob);
-                        const projectJson = P.json.parse(projectText);
-                        switch (this.determineProjectType(projectJson)) {
-                            case 'sb2': return new P.sb2.Scratch2Loader(projectJson);
-                            case 'sb3': return new P.sb3.Scratch3Loader(projectJson);
-                        }
-                    }
-                    catch (e) {
-                        let buffer = await P.io.readers.toArrayBuffer(blob);
-                        if (this.isScratch1Project(buffer)) {
-                            buffer = await this.convertScratch1Project(buffer);
-                        }
-                        else {
-                            try {
-                                const zip = await JSZip.loadAsync(buffer);
-                                const projectJSON = zip.file('project.json');
-                                if (!projectJSON) {
-                                    throw new Error('zip is missing project.json');
-                                }
-                                const projectDataText = await projectJSON.async('text');
-                                const projectData = JSON.parse(projectDataText);
-                                if (this.determineProjectType(projectData) === 'sb3') {
-                                    return new P.sb3.SB3FileLoader(buffer);
-                                }
-                            }
-                            catch (e) {
-                            }
-                        }
-                        return new P.sb2.SB2FileLoader(buffer);
-                    }
-                };
                 try {
                     const meta = new RemoteProjectMeta(id);
                     this.projectMeta = meta;
@@ -3710,7 +3710,7 @@ var P;
                         token = meta.getToken();
                     }
                     const blob = await this.fetchProject(id, token);
-                    const loader = await getLoader(blob);
+                    const loader = await this.getLoader(blob);
                     await this.loadLoader(loaderId, loader);
                 }
                 catch (e) {
@@ -3760,6 +3760,19 @@ var P;
                 try {
                     this.projectMeta = new BinaryProjectMeta();
                     return await this.loadProjectFromBufferWithType(loaderId, buffer, type);
+                }
+                catch (e) {
+                    if (loaderId.isActive()) {
+                        this.handleError(e);
+                    }
+                }
+            }
+            async loadProjectFromJSON(blob) {
+                const { loaderId } = this.beginLoadingProject();
+                try {
+                    this.projectMeta = new BinaryProjectMeta();
+                    const loader = await this.getLoader(blob);
+                    await this.loadLoader(loaderId, loader);
                 }
                 catch (e) {
                     if (loaderId.isActive()) {
