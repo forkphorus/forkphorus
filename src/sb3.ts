@@ -1156,7 +1156,7 @@ namespace P.sb3.compiler {
   }
 
   export const enum InputFlags {
-    NaN = 1,
+    NotANumber = 1,
   }
 
   /**
@@ -1636,7 +1636,7 @@ namespace P.sb3.compiler {
       // If the types are already identical, no changes are necessary
       if (input.type === type) {
         // if the input could be NaN, number conversion is always required (NaN will be converted to 0)
-        if (type === 'number' && input.hasFlag(InputFlags.NaN)) {
+        if (type === 'number' && input.hasFlag(InputFlags.NotANumber)) {
           return new CompiledInput('(' + input.source + ' || 0)', type);
         }
         return input;
@@ -3016,7 +3016,7 @@ namespace P.sb3.compiler {
     const NUM1 = util.getInput('NUM1', 'number');
     const NUM2 = util.getInput('NUM2', 'number');
     const input = util.numberInput(`(${NUM1} + ${NUM2})`);
-    input.enableFlag(P.sb3.compiler.InputFlags.NaN); // Infinity + (-Infitity)
+    input.enableFlag(P.sb3.compiler.InputFlags.NotANumber); // Infinity + (-Infitity)
     return input;
   };
   inputLibrary['operator_and'] = function(util) {
@@ -3033,7 +3033,7 @@ namespace P.sb3.compiler {
     const NUM1 = util.getInput('NUM1', 'number');
     const NUM2 = util.getInput('NUM2', 'number');
     const input = util.numberInput(`(${NUM1} / ${NUM2})`);
-    input.enableFlag(P.sb3.compiler.InputFlags.NaN); // 0 / 0
+    input.enableFlag(P.sb3.compiler.InputFlags.NotANumber); // 0 / 0
     return input;
   };
   inputLibrary['operator_equals'] = function(util) {
@@ -3101,49 +3101,49 @@ namespace P.sb3.compiler {
         return util.numberInput(`Math.floor(${NUM})`);
       case 'sqrt': {
         const input = util.numberInput(`Math.sqrt(${NUM})`);
-        input.enableFlag(P.sb3.compiler.InputFlags.NaN);
+        input.enableFlag(P.sb3.compiler.InputFlags.NotANumber);
         return input;
       }
       case 'ceiling':
         return util.numberInput(`Math.ceil(${NUM})`);
       case 'cos': {
         const input = util.numberInput(`(Math.round(Math.cos(${NUM} * Math.PI / 180) * 1e10) / 1e10)`);
-        input.enableFlag(P.sb3.compiler.InputFlags.NaN);
+        input.enableFlag(P.sb3.compiler.InputFlags.NotANumber);
         return input;
       }
       case 'sin': {
         const input = util.numberInput(`(Math.round(Math.sin(${NUM} * Math.PI / 180) * 1e10) / 1e10)`);
-        input.enableFlag(P.sb3.compiler.InputFlags.NaN);
+        input.enableFlag(P.sb3.compiler.InputFlags.NotANumber);
         return input;
       }
       case 'tan': {
         const input = util.numberInput(`tan3(${NUM})`);
-        input.enableFlag(P.sb3.compiler.InputFlags.NaN);
+        input.enableFlag(P.sb3.compiler.InputFlags.NotANumber);
         return input;
       }
       case 'asin': {
         const input = util.numberInput(`(Math.asin(${NUM}) * 180 / Math.PI)`);
-        input.enableFlag(P.sb3.compiler.InputFlags.NaN);
+        input.enableFlag(P.sb3.compiler.InputFlags.NotANumber);
         return input;
       }
       case 'acos': {
         const input = util.numberInput(`(Math.acos(${NUM}) * 180 / Math.PI)`);
-        input.enableFlag(P.sb3.compiler.InputFlags.NaN);
+        input.enableFlag(P.sb3.compiler.InputFlags.NotANumber);
         return input;
       }
       case 'atan': {
         const input = util.numberInput(`(Math.atan(${NUM}) * 180 / Math.PI)`);
-        input.enableFlag(P.sb3.compiler.InputFlags.NaN);
+        input.enableFlag(P.sb3.compiler.InputFlags.NotANumber);
         return input;
       }
       case 'ln': {
         const input = util.numberInput(`Math.log(${NUM})`);
-        input.enableFlag(P.sb3.compiler.InputFlags.NaN);
+        input.enableFlag(P.sb3.compiler.InputFlags.NotANumber);
         return input;
       }
       case 'log': {
         const input = util.numberInput(`(Math.log(${NUM}) / Math.LN10)`);
-        input.enableFlag(P.sb3.compiler.InputFlags.NaN);
+        input.enableFlag(P.sb3.compiler.InputFlags.NotANumber);
         return input;
       }
       case 'e ^':
@@ -3163,7 +3163,7 @@ namespace P.sb3.compiler {
     const NUM1 = util.getInput('NUM1', 'number');
     const NUM2 = util.getInput('NUM2', 'number');
     const input = util.numberInput(`(${NUM1} * ${NUM2})`);
-    input.enableFlag(P.sb3.compiler.InputFlags.NaN); // Infinity * 0
+    input.enableFlag(P.sb3.compiler.InputFlags.NotANumber); // Infinity * 0
     return input;
   };
   inputLibrary['operator_not'] = function(util) {
@@ -3188,7 +3188,7 @@ namespace P.sb3.compiler {
     const NUM1 = util.getInput('NUM1', 'number');
     const NUM2 = util.getInput('NUM2', 'number');
     const input = util.numberInput(`(${NUM1} - ${NUM2})`);
-    input.enableFlag(P.sb3.compiler.InputFlags.NaN); // Infinity - Infinity
+    input.enableFlag(P.sb3.compiler.InputFlags.NotANumber); // Infinity - Infinity
     return input;
   };
   inputLibrary['pen_menu_colorParam'] = function(util) {
