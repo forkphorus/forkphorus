@@ -1,5 +1,11 @@
 Fonts used by forkphorus to render text in SVGs. All fonts belong to their respective owners (see below).
 
+Scratch 2 font reference: https://github.com/scratchfoundation/scratch-flash/tree/develop/src/assets/fonts
+
+Scratch 3 font reference: https://github.com/scratchfoundation/scratch-render-fonts/tree/master/src
+
+Fonts are compressed to woff2 to reduce size.
+
 -----
 
 Donegal One
@@ -15,7 +21,7 @@ https://fonts.google.com/specimen/Gloria+Hallelujah
 Grand9K-Pixel
 Copyright (c) 2013, Grand Chaos Productions. Some Rights Reserved.
 Creative Commons (CC-BY-SA 3.0)
-https://www.dafont.com/grand9k-pixel.font#top
+https://www.dafont.com/grand9k-pixel.font
 
 Griffy
 Copyright (c) 2012 by Font Diner, Inc DBA Neapolitan (diner@fontdiner.com) with Reseved Font Name "Griffy"

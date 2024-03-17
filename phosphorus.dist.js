@@ -1978,12 +1978,12 @@ var P;
     (function (fonts_1) {
         const fontFamilyCache = {};
         fonts_1.scratch3 = {
-            'Marker': 'fonts/Knewave-Regular.woff',
-            'Handwriting': 'fonts/Handlee-Regular.woff',
-            'Pixel': 'fonts/Grand9K-Pixel.ttf',
-            'Curly': 'fonts/Griffy-Regular.woff',
-            'Serif': 'fonts/SourceSerifPro-Regular.woff',
-            'Sans Serif': 'fonts/NotoSans-Regular.woff',
+            'Marker': 'fonts/Knewave.woff2',
+            'Handwriting': 'fonts/handlee-regular.woff2',
+            'Pixel': 'fonts/Grand9K-Pixel.woff2',
+            'Curly': 'fonts/Griffy-Regular.woff2',
+            'Serif': 'fonts/SourceSerifPro-Regular.woff2',
+            'Sans Serif': 'fonts/NotoSans-Medium.woff2',
         };
         function loadLocalFont(fontFamily, src) {
             if (fontFamilyCache[fontFamily]) {
