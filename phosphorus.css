@@ -23,19 +23,19 @@
 /* Scratch 2 fonts */
 @font-face {
   font-family: "Donegal One";
-  src: url("fonts/DonegalOne-Regular.woff") format("woff");
+  src: url("fonts/DonegalOne-Regular.woff2") format("woff2");
 }
 @font-face {
   font-family: "Gloria Hallelujah";
-  src: url("fonts/GloriaHallelujah.woff") format("woff");
+  src: url("fonts/GloriaHallelujah.woff2") format("woff2");
 }
 @font-face {
   font-family: "Mystery Quest";
-  src: url("fonts/MysteryQuest-Regular.woff") format("woff");
+  src: url("fonts/MysteryQuest-Regular.woff2") format("woff2");
 }
 @font-face {
   font-family: "Permanent Marker";
-  src: url("fonts/PermanentMarker-Regular.woff") format("woff");
+  src: url("fonts/PermanentMarker.woff2") format("woff2");
 }
 
 /* Scratch 3 Variable Watchers */
