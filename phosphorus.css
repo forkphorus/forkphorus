@@ -37,6 +37,10 @@
   font-family: "Permanent Marker";
   src: url("fonts/PermanentMarker.woff2") format("woff2");
 }
+@font-face {
+  font-family: "Scratch";
+  src: url("fonts/ScratchSavers_b2.woff2") format("woff2");
+}
 
 /* Scratch 3 Variable Watchers */
 .s3-watcher-container {

@@ -57,3 +57,9 @@ Source Serif Pro
 Copyright 2014 Adobe Systems Incorporated. All Rights Reserved.
 SIL Open Font License, 1.1
 https://fonts.google.com/specimen/Source+Serif+Pro
+
+Scratch Savers
+From https://github.com/TurboWarp/scratch-gui/pull/909
+Based on the Impallari Type's "Life Savers" font (SIL Open Font License 1.1) with
+modifications by valadaptive to look similar to pizzadude's "Black boys on mopeds"
+font (commonly referred to as "Scratch")
