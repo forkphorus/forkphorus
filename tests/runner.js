@@ -89,11 +89,6 @@ function exit(status) {
       });
     });
 
-    // Workaround Firefox headless bug
-    if (browserType === 'firefox') {
-      results = results.filter((i) => i.path !== 'sb3/pen-color-shift.sb3');
-    }
-
     const testsSuccessful = results.every((i) => i.success);
 
     for (const i of results) {
