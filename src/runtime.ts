@@ -815,9 +815,20 @@ namespace P.runtime {
     }
 
     /**
+     * Wrapper for _step with error handling.
+     */
+    step () {
+      try {
+        this._step();
+      } catch (e) {
+        this.onError(e);
+      }
+    }
+
+    /**
      * Advances one frame into the future.
      */
-    step() {
+    _step() {
       // Reset runtime variables
       self = this.stage;
       runtime = this;
@@ -879,13 +890,20 @@ namespace P.runtime {
       this.stage.draw();
     }
 
-    onError(e) {
+    /**
+     * Called when an internal error occurs
+     * @param e Error object
+     */
+    onError(e: unknown) {
       clearInterval(this.interval);
-      this.handleError(e.error);
+      this.handleError(e);
     }
 
-    handleError(e) {
-      // Default error handler
+    /**
+     * Overridden to cusutomize error handling.
+     * @param e The error object
+     */
+    handleError(e: unknown) {
       console.error(e);
     }
   }

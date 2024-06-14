@@ -4706,6 +4706,14 @@ var P;
                 }
             }
             step() {
+                try {
+                    this._step();
+                }
+                catch (e) {
+                    this.onError(e);
+                }
+            }
+            _step() {
                 self = this.stage;
                 runtime = this;
                 VISUAL = false;
@@ -4756,7 +4764,7 @@ var P;
             }
             onError(e) {
                 clearInterval(this.interval);
-                this.handleError(e.error);
+                this.handleError(e);
             }
             handleError(e) {
                 console.error(e);
