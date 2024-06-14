@@ -4633,7 +4633,6 @@ var P;
                 this.isRunning = true;
                 if (this.interval)
                     return;
-                window.addEventListener('error', this.onError);
                 this.baseTime = Date.now();
                 this.interval = setInterval(this.step, 1000 / this.framerate);
                 if (audioContext)
@@ -4645,7 +4644,6 @@ var P;
                     this.baseNow = this.now();
                     clearInterval(this.interval);
                     this.interval = 0;
-                    window.removeEventListener('error', this.onError);
                     if (audioContext)
                         audioContext.suspend();
                     this.stage.pauseExtensions();
