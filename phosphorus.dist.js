@@ -4633,7 +4633,6 @@ var P;
                 this.isRunning = true;
                 if (this.interval)
                     return;
-                window.addEventListener('error', this.onError);
                 this.baseTime = Date.now();
                 this.interval = setInterval(this.step, 1000 / this.framerate);
                 if (audioContext)
@@ -4645,7 +4644,6 @@ var P;
                     this.baseNow = this.now();
                     clearInterval(this.interval);
                     this.interval = 0;
-                    window.removeEventListener('error', this.onError);
                     if (audioContext)
                         audioContext.suspend();
                     this.stage.pauseExtensions();
@@ -4708,6 +4706,14 @@ var P;
                 }
             }
             step() {
+                try {
+                    this._step();
+                }
+                catch (e) {
+                    this.onError(e);
+                }
+            }
+            _step() {
                 self = this.stage;
                 runtime = this;
                 VISUAL = false;
@@ -4758,7 +4764,7 @@ var P;
             }
             onError(e) {
                 clearInterval(this.interval);
-                this.handleError(e.error);
+                this.handleError(e);
             }
             handleError(e) {
                 console.error(e);
