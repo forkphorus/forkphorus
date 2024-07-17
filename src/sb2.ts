@@ -690,7 +690,7 @@ namespace P.sb2 {
   }
 
   function patchSVG(svg, element) {
-    const FONTS: ObjectMap<string> = {
+    const FONTS: Record<string, string> = {
       '': 'Helvetica',
       Donegal: 'Donegal One',
       Gloria: 'Gloria Hallelujah',
@@ -698,7 +698,7 @@ namespace P.sb2 {
       Mystery: 'Mystery Quest'
     };
 
-    const LINE_HEIGHTS: ObjectMap<number> = {
+    const LINE_HEIGHTS: Record<string, number> = {
       Helvetica: 1.13,
       'Donegal One': 1.25,
       'Gloria Hallelujah': 1.97,

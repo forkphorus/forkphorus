@@ -36,10 +36,10 @@ namespace P.sb3 {
     currentCostume: number;
     rotationStyle: string;
     layerOrder: number;
-    lists: ObjectMap<SB3List>;
-    variables: ObjectMap<SB3Variable>;
-    blocks: ObjectMap<SB3Block>;
-    broadcasts: ObjectMap<string>;
+    lists: Record<string, SB3List>;
+    variables: Record<string, SB3Variable>;
+    blocks: Record<string, SB3Block>;
+    broadcasts: Record<string, string>;
     volume: number;
   }
 
@@ -81,8 +81,8 @@ namespace P.sb3 {
   export interface SB3Block {
     opcode: string;
     topLevel: boolean;
-    inputs: ObjectMap<any>;
-    fields: ObjectMap<any>;
+    inputs: Record<string, any>;
+    fields: Record<string, any>;
     mutation: any;
     parent: string | null;
     next: string | null;
@@ -117,15 +117,15 @@ namespace P.sb3 {
   // Implements a Scratch 3 Stage.
   export class Scratch3Stage extends P.core.Stage {
     public sb3data: SB3Target;
-    public listIds: ObjectMap<string> = {};
-    public varIds: ObjectMap<string> = {};
+    public listIds: Record<string, string> = {};
+    public varIds: Record<string, string> = {};
   }
 
   // Implements a Scratch 3 Sprite.
   export class Scratch3Sprite extends P.core.Sprite {
     public sb3data: SB3Target;
-    public listIds: ObjectMap<string> = {};
-    public varIds: ObjectMap<string> = {};
+    public listIds: Record<string, string> = {};
+    public varIds: Record<string, string> = {};
 
     _clone() {
       return new Scratch3Sprite(this.stage);
@@ -1474,10 +1474,10 @@ namespace P.sb3.compiler {
   }
 
   // Block definitions
-  export const statementLibrary: ObjectMap<StatementCompiler> = Object.create(null);
-  export const inputLibrary: ObjectMap<InputCompiler> = Object.create(null);
-  export const hatLibrary: ObjectMap<HatCompiler> = Object.create(null);
-  export const watcherLibrary: ObjectMap<WatchedValue> = Object.create(null);
+  export const statementLibrary: Record<string, StatementCompiler> = Object.create(null);
+  export const inputLibrary: Record<string, InputCompiler> = Object.create(null);
+  export const hatLibrary: Record<string, HatCompiler> = Object.create(null);
+  export const watcherLibrary: Record<string, WatchedValue> = Object.create(null);
 
   const safeNumberToString = (n: number): string => {
     // -0 toString() returns "0"
@@ -1502,7 +1502,7 @@ namespace P.sb3.compiler {
     /**
      * The blocks of this target.
      */
-    public blocks: ObjectMap<SB3Block>;
+    public blocks: Record<string, SB3Block>;
     /**
      * Total number of labels created by this compiler.
      */
@@ -2006,7 +2006,7 @@ namespace P.sb3.compiler {
     /**
      * Parse a generated script for label locations, and remove redundant data.
      */
-    parseScript(script: string): { labels: ObjectMap<number>, script: string; } {
+    parseScript(script: string): { labels: Record<string, number>, script: string; } {
       const labels = {};
       let index = 0;
       let accumulator = 0;

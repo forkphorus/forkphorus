@@ -25,9 +25,9 @@ namespace P.core {
     whenClicked: P.runtime.Fn[];
     whenCloned: P.runtime.Fn[];
     whenGreenFlag: P.runtime.Fn[];
-    whenIReceive: ObjectMap<P.runtime.Fn[]>;
-    whenKeyPressed: ObjectMap<P.runtime.Fn[]>;
-    whenSceneStarts: ObjectMap<P.runtime.Fn[]>;
+    whenIReceive: Record<string, P.runtime.Fn[]>;
+    whenKeyPressed: Record<string, P.runtime.Fn[]>;
+    whenSceneStarts: Record<string, P.runtime.Fn[]>;
     edgeActivated: P.runtime.Fn[];
   }
 
@@ -305,7 +305,7 @@ namespace P.core {
     /**
      * Maps the names of sounds to the corresponding Sound
      */
-    public soundRefs: ObjectMap<Sound> = {};
+    public soundRefs: Record<string, Sound> = {};
     /**
      * Currently selected instrument
      */
@@ -325,23 +325,23 @@ namespace P.core {
     /**
      * Variable watchers that this object owns.
      */
-    public watchers: ObjectMap<Watcher> = {};
+    public watchers: Record<string, Watcher> = {};
     /**
      * List watchers that this object owns.
      */
-    public listWatchers: ObjectMap<Watcher> = {};
+    public listWatchers: Record<string, Watcher> = {};
     /**
      * Variables of this object.
      * Maps variable names (or ids) to their value.
      * Values can be of any type and should likely be converted first.
      */
-    public vars: ObjectMap<any> = {};
+    public vars: Record<string, any> = {};
     /**
      * Lists of this object.
      * Maps list names (or ids) to their list.
      * Each list can contain objects of any type, and should be converted first.
      */
-    public lists: ObjectMap<Array<any>> = {};
+    public lists: Record<string, Array<any>> = {};
     /**
      * Is this object saying something?
      */
@@ -360,7 +360,7 @@ namespace P.core {
     /**
      * Maps procedure names (usually includes parameters) to the Procedure object
      */
-    public procedures: ObjectMap<Procedure> = {};
+    public procedures: Record<string, Procedure> = {};
     public listeners: Listeners = {
       whenClicked: [],
       whenCloned: [],

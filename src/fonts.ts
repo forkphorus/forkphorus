@@ -10,7 +10,7 @@ declare var FontFaceObserver: FontFaceObserver;
  * Font helpers
  */
 namespace P.fonts {
-  const fontFamilyCache: ObjectMap<string> = {};
+  const fontFamilyCache: Record<string, string> = {};
 
   export const scratch3 = {
     'Marker': 'fonts/Knewave.woff2',

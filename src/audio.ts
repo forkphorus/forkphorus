@@ -389,7 +389,7 @@ namespace P.audio {
       return cb(new Error('Unrecognized audio format'));
     }
 
-    var blocks: ObjectMap<number> = {};
+    var blocks: Record<string, number> = {};
     var i = 12, l = dv.byteLength - 8;
     while (i < l) {
       blocks[String.fromCharCode(

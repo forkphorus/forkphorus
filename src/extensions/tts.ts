@@ -25,7 +25,7 @@ namespace P.ext.tts {
 
   type Voice = { gender: Gender; pitch: number; rate: number; };
 
-  const scratchVoices: ObjectMap<Voice> = {
+  const scratchVoices: Record<string, Voice> = {
     ALTO: { gender: Gender.Female, pitch: 1, rate: 1 },
     TENOR: { gender: Gender.Male, pitch: 1.5, rate: 1 },
     GIANT: { gender: Gender.Male, pitch: 0.5, rate: 0.75 },
