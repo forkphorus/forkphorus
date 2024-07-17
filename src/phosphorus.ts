@@ -67,7 +67,3 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 */
 
 type Awaitable<T> = Promise<T> | T;
-
-if (!('Promise' in window)) {
-  throw new Error('Browser does not support Promise');
-}
