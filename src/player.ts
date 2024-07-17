@@ -1094,7 +1094,7 @@ namespace P.player {
             const projectDataText = await projectJSON.async('text');
             const projectData = JSON.parse(projectDataText);
             if (this.determineProjectType(projectData) === 'sb3') {
-              return new P.sb3.SB3FileLoader(buffer);
+              return new P.sb3.Scratch3Loader(buffer);
             }
           } catch (e) {
             // ignore
@@ -1143,7 +1143,7 @@ namespace P.player {
 
       switch (type) {
         case 'sb2': loader = new P.sb2.SB2FileLoader(buffer); break;
-        case 'sb3': loader = new P.sb3.SB3FileLoader(buffer); break;
+        case 'sb3': loader = new P.sb3.Scratch3Loader(buffer); break;
         default: throw new Error('Unknown type: ' + type);
       }
       await this.loadLoader(loaderId, loader);
