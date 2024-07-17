@@ -824,10 +824,16 @@ namespace P.sb3 {
           const image = await new Promise<HTMLImageElement>((resolve, reject) => {
             const image = new Image();
             image.onload = () => {
+              // Clearing event listeners helps ensure it can be GC'd properly
+              image.onload = null;
+              image.onerror = null;
               task.markComplete();
               resolve(image);
             };
             image.onerror = (error) => {
+              // Clearing event listeners helps ensure it can be GC'd properly
+              image.onload = null;
+              image.onerror = null;
               reject(new Error('Failed to load image: ' + path + '.' + format));
             };
             image.src = 'data:image/' + format + ';base64,' + base64;

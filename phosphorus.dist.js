@@ -7059,10 +7059,14 @@ var P;
                         const image = await new Promise((resolve, reject) => {
                             const image = new Image();
                             image.onload = () => {
+                                image.onload = null;
+                                image.onerror = null;
                                 task.markComplete();
                                 resolve(image);
                             };
                             image.onerror = (error) => {
+                                image.onload = null;
+                                image.onerror = null;
                                 reject(new Error('Failed to load image: ' + path + '.' + format));
                             };
                             image.src = 'data:image/' + format + ';base64,' + base64;
