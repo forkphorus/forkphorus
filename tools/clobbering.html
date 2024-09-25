@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="robots" content="noindex">
+</head>
+
+<body>
+  <p>If the clobbering attack works, you'll see some big text below. If you just see an invalid image icon then it is safe.</p>
+
+  <!-- name=currentScript overrides document.currentScript -->
+  <!-- src= can be any URL, just needs to contain a ? anywhere to avoid an error in the query parser -->
+  <img name="currentScript" src="data:text/html;,<h1>If you can see this, the clobbering attack worked</h1> <!-- ? -->">
+
+  <script src="../embed.js?id=280227362"></script>
+</body>
+
+</html>
