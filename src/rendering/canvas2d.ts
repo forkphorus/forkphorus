@@ -20,10 +20,10 @@ namespace P.renderer.canvas2d {
     return filter;
   }
 
-  function create2dCanvas(): { canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D } {
+  function create2dCanvas(width: number, height: number): { canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D } {
     const canvas = document.createElement('canvas');
-    canvas.width = 480;
-    canvas.height = 360;
+    canvas.width = width;
+    canvas.height = height;
     const ctx = canvas.getContext('2d');
     if (!ctx) {
       throw new Error('Cannot get 2d rendering context in create2dCanvas');
@@ -45,8 +45,8 @@ namespace P.renderer.canvas2d {
     public noEffects: boolean = false
     public imageSmoothingEnabled: boolean = false;
 
-    constructor() {
-      const { canvas, ctx } = create2dCanvas();
+    constructor(public nativeWidth: number, public nativeHeight: number) {
+      const { canvas, ctx } = create2dCanvas(nativeWidth, nativeHeight);
       this.canvas = canvas;
       this.ctx = ctx;
     }
@@ -71,8 +71,8 @@ namespace P.renderer.canvas2d {
 
     protected _reset(ctx: CanvasRenderingContext2D, scale: number) {
       const effectiveScale = scale * P.config.scale;
-      const width = Math.max(1, 480 * effectiveScale);
-      const height = Math.max(1, 360 * effectiveScale);
+      const width = Math.max(1, this.nativeWidth * effectiveScale);
+      const height = Math.max(1, this.nativeHeight * effectiveScale);
       // This is not optimal, but necessary to avoid issues caused by some browsers resetting canvas data
       // and transforms without informing us.
       ctx.canvas.width = width;
@@ -89,7 +89,7 @@ namespace P.renderer.canvas2d {
       ctx.save();
 
       const globalScale = c.stage.zoom * P.config.scale;
-      ctx.translate(((c.scratchX + 240) * globalScale | 0) / globalScale, ((180 - c.scratchY) * globalScale | 0) / globalScale);
+      ctx.translate(((c.scratchX + (this.nativeWidth / 2)) * globalScale | 0) / globalScale, (((this.nativeHeight / 2) - c.scratchY) * globalScale | 0) / globalScale);
 
       let objectScale = costume.scale;
       if (P.core.isSprite(c)) {
@@ -157,8 +157,8 @@ namespace P.renderer.canvas2d {
   }
 
   // Renderers used for some features such as collision detection
-  const workingRenderer = new SpriteRenderer2D();
-  const workingRenderer2 = new SpriteRenderer2D();
+  const workingRenderer = new SpriteRenderer2D(1, 1);
+  const workingRenderer2 = new SpriteRenderer2D(1, 1);
 
   export class ProjectRenderer2D extends SpriteRenderer2D implements ProjectRenderer {
     public stageLayer: HTMLCanvasElement;
@@ -176,12 +176,13 @@ namespace P.renderer.canvas2d {
     private stageCostumeIndex: number = -1;
 
     constructor(public stage: P.core.Stage) {
-      super();
-      const { ctx: stageContext, canvas: stageLayer } = create2dCanvas();
+      super(stage.width, stage.height);
+
+      const { ctx: stageContext, canvas: stageLayer } = create2dCanvas(stage.width, stage.height);
       this.stageContext = stageContext;
       this.stageLayer = stageLayer;
 
-      const { ctx: penContext, canvas: penLayer } = create2dCanvas();
+      const { ctx: penContext, canvas: penLayer } = create2dCanvas(stage.width, stage.height);
       this.penContext = penContext;
       this.penLayer = penLayer;
     }
@@ -220,7 +221,7 @@ namespace P.renderer.canvas2d {
      */
     drawAllExcept(renderer: SpriteRenderer2D, skip: P.core.Base) {
       renderer.drawChild(this.stage);
-      renderer.ctx.drawImage(this.penLayer, 0, 0, 480, 360);
+      renderer.ctx.drawImage(this.penLayer, 0, 0, this.nativeWidth, this.nativeHeight);
       for (var i = 0; i < this.stage.children.length; i++) {
         var child = this.stage.children[i];
         if (!child.visible || child === skip) {
@@ -228,6 +229,20 @@ namespace P.renderer.canvas2d {
         }
         renderer.drawChild(child);
       }
+    }
+
+    setNativeSize(width: number, height: number): void {
+      this.nativeWidth = width;
+      this.nativeHeight = height;
+
+      this.canvas.width = width;
+      this.canvas.height = height;
+
+      this.stageLayer.width = width;
+      this.stageLayer.height = height;
+
+      this.penLayer.width = width;
+      this.penLayer.height = height;
     }
 
     resize(zoom: number) {
@@ -246,7 +261,7 @@ namespace P.renderer.canvas2d {
         workingRenderer.canvas.height = this.penLayer.height;
         workingRenderer.ctx.drawImage(this.penLayer, 0, 0);
         this._reset(this.penContext, zoom);
-        this.penContext.drawImage(workingRenderer.canvas, 0, 0, 480, 360);
+        this.penContext.drawImage(workingRenderer.canvas, 0, 0, this.nativeWidth, this.nativeHeight);
       } else if (!this.penModified) {
         // Immediately scale down if no changes have been made
         this.penZoom = zoom;
@@ -264,14 +279,14 @@ namespace P.renderer.canvas2d {
         this.penZoom = this.penTargetZoom;
         this.penTargetZoom = -1;
       }
-      this.penContext.clearRect(0, 0, 480, 360);
+      this.penContext.clearRect(0, 0, this.nativeWidth, this.nativeHeight);
     }
 
     penDot(color: P.core.PenColor, size: number, x: number, y: number) {
       this.penModified = true;
       this.penContext.fillStyle = color.toCSS();
       this.penContext.beginPath();
-      this.penContext.arc(240 + x, 180 - y, size / 2, 0, 2 * Math.PI, false);
+      this.penContext.arc((this.nativeWidth / 2) + x, (this.nativeHeight / 2) - y, size / 2, 0, 2 * Math.PI, false);
       this.penContext.fill();
     }
 
@@ -295,8 +310,8 @@ namespace P.renderer.canvas2d {
       this.penContext.strokeStyle = color.toCSS();
       this.penContext.lineWidth = size;
       this.penContext.beginPath();
-      this.penContext.moveTo(240 + x1, 180 - y1);
-      this.penContext.lineTo(240 + x2, 180 - y2);
+      this.penContext.moveTo((this.nativeWidth / 2) + x1, (this.nativeHeight / 2) - y1);
+      this.penContext.lineTo((this.nativeWidth / 2) + x2, (this.nativeHeight / 2) - y2);
       this.penContext.stroke();
     }
 
@@ -374,7 +389,7 @@ namespace P.renderer.canvas2d {
         workingRenderer.ctx.save();
         workingRenderer.noEffects = true;
 
-        workingRenderer.ctx.translate(-(left + 240), -(180 - top));
+        workingRenderer.ctx.translate(-(left + (this.nativeWidth / 2)), -((this.nativeHeight / 2) - top));
         workingRenderer.drawChild(spriteA);
         workingRenderer.ctx.globalCompositeOperation = 'source-in';
         workingRenderer.drawChild(spriteB);
@@ -411,7 +426,7 @@ namespace P.renderer.canvas2d {
       workingRenderer.ctx.fillRect(0, 0, width, height);
 
       workingRenderer.ctx.save();
-      workingRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
+      workingRenderer.ctx.translate(-((this.nativeWidth / 2) + b.left), -((this.nativeHeight / 2) - b.top));
 
       this.drawAllExcept(workingRenderer, sprite);
       workingRenderer.ctx.globalCompositeOperation = 'destination-in';
@@ -446,8 +461,8 @@ namespace P.renderer.canvas2d {
 
       workingRenderer.ctx.save();
       workingRenderer2.ctx.save();
-      workingRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
-      workingRenderer2.ctx.translate(-(240 + rb.left), -(180 - rb.top));
+      workingRenderer.ctx.translate(-((this.nativeWidth / 2) + rb.left), -((this.nativeHeight / 2) - rb.top));
+      workingRenderer2.ctx.translate(-((this.nativeWidth / 2) + rb.left), -((this.nativeHeight / 2) - rb.top));
 
       this.drawAllExcept(workingRenderer, sprite);
       workingRenderer2.noEffects = true;
