@@ -943,14 +943,14 @@ var P;
                 }
                 this.bubbleContainer.style.display = 'block';
                 const b = this.rotatedBounds();
-                const left = 240 + b.right;
-                var bottom = 180 + b.top;
+                const left = (this.stage.width / 2) + b.right;
+                var bottom = (this.stage.height / 2) + b.top;
                 const bcr = this.bubbleContainer.getBoundingClientRect();
                 const height = (bcr.bottom - bcr.top) / this.stage.zoom;
                 const width = (bcr.right - bcr.left) / this.stage.zoom;
                 this.bubblePointer.style.top = ((height - 6) / 14) + 'em';
-                if (left + width + 2 > 480) {
-                    var d = (240 - b.left) / 14;
+                if (left + width + 2 > this.stage.width) {
+                    var d = ((this.stage.width / 2) - b.left) / 14;
                     if (d > 25)
                         d = 25;
                     this.bubbleContainer.style.right = d + 'em';
@@ -966,8 +966,8 @@ var P;
                     this.bubblePointer.style.right = 'auto';
                     this.bubblePointer.style.backgroundPositionY = (-4 / 14) + 'em';
                 }
-                if (bottom + height + 2 > 360) {
-                    bottom = 360 - height - 2;
+                if (bottom + height + 2 > this.stage.height) {
+                    bottom = this.stage.height - height - 2;
                 }
                 if (bottom < 19) {
                     bottom = 19;
@@ -1052,6 +1052,8 @@ var P;
                 this.extensions = [];
                 this.useSpriteFencing = false;
                 this.removeLimits = false;
+                this.width = 480;
+                this.height = 360;
                 this.runtime = new P.runtime.Runtime(this);
                 this.keys = [];
                 this.keys.any = 0;
@@ -1316,18 +1318,18 @@ var P;
             }
             updateMousePosition(e) {
                 var rect = this.canvas.getBoundingClientRect();
-                var x = (e.clientX - rect.left) / this.zoom - 240;
-                var y = 180 - (e.clientY - rect.top) / this.zoom;
+                var x = (e.clientX - rect.left) / this.zoom - (this.width / 2);
+                var y = (this.height / 2) - (e.clientY - rect.top) / this.zoom;
                 this.rawMouseX = x;
                 this.rawMouseY = y;
-                if (x < -240)
-                    x = -240;
-                if (x > 240)
-                    x = 240;
-                if (y < -180)
-                    y = -180;
-                if (y > 180)
-                    y = 180;
+                if (x < -(this.width / 2))
+                    x = -(this.width / 2);
+                if (x > (this.width / 2))
+                    x = (this.width / 2);
+                if (y < -(this.height / 2))
+                    y = -(this.height / 2);
+                if (y > (this.height / 2))
+                    y = (this.height / 2);
                 this.mouseX = Math.round(x);
                 this.mouseY = Math.round(y);
             }
@@ -1335,8 +1337,8 @@ var P;
                 if (this.zoom === zoom)
                     return;
                 this.renderer.resize(zoom);
-                this.root.style.width = (480 * zoom | 0) + 'px';
-                this.root.style.height = (360 * zoom | 0) + 'px';
+                this.root.style.width = (this.stage.width * zoom | 0) + 'px';
+                this.root.style.height = (this.stage.height * zoom | 0) + 'px';
                 this.root.style.fontSize = (zoom * 10) + 'px';
                 this.zoom = zoom;
                 for (const watcher of this.allWatchers) {
@@ -1405,8 +1407,8 @@ var P;
                         y: this.mouseY,
                     };
                     case "_random_": return {
-                        x: Math.round(480 * Math.random() - 240),
-                        y: Math.round(360 * Math.random() - 180),
+                        x: Math.round(this.stage.width * Math.random() - (this.stage.width / 2)),
+                        y: Math.round(this.stage.height * Math.random() - (this.stage.height / 2)),
                     };
                 }
                 const sprite = this.getObject(name);
@@ -1599,8 +1601,8 @@ var P;
                 var div = document.createElement('div');
                 div.style.outline = '1px solid red';
                 div.style.position = 'absolute';
-                div.style.left = (240 + bounds.left) + 'px';
-                div.style.top = (180 - bounds.top) + 'px';
+                div.style.left = ((this.stage.width / 2) + bounds.left) + 'px';
+                div.style.top = ((this.stage.height / 2) - bounds.top) + 'px';
                 div.style.width = (bounds.right - bounds.left) + 'px';
                 div.style.height = (bounds.top - bounds.bottom) + 'px';
                 this.stage.canvas.parentNode.appendChild(div);
@@ -1617,17 +1619,17 @@ var P;
                 const width = rb.right - rb.left;
                 const height = rb.top - rb.bottom;
                 const bounds = Math.min(15, Math.floor(Math.min(width, height) / 2));
-                if (rb.right - bounds < -240) {
-                    this.scratchX -= rb.right - bounds + 240;
+                if (rb.right - bounds < -(this.stage.width / 2)) {
+                    this.scratchX -= rb.right - bounds + (this.stage.width / 2);
                 }
-                if (rb.left + bounds > 240) {
-                    this.scratchX -= rb.left + bounds - 240;
+                if (rb.left + bounds > (this.stage.width / 2)) {
+                    this.scratchX -= rb.left + bounds - (this.stage.width / 2);
                 }
-                if (rb.bottom + bounds > 180) {
-                    this.scratchY -= rb.bottom + bounds - 180;
+                if (rb.bottom + bounds > (this.stage.height / 2)) {
+                    this.scratchY -= rb.bottom + bounds - (this.stage.height / 2);
                 }
-                if (rb.top - bounds < -180) {
-                    this.scratchY -= rb.top - bounds + 180;
+                if (rb.top - bounds < -(this.stage.height / 2)) {
+                    this.scratchY -= rb.top - bounds + (this.stage.height / 2);
                 }
             }
             moveTo(x, y) {
@@ -1710,7 +1712,7 @@ var P;
                 }
                 else if (thing === "_edge_") {
                     const bounds = this.rotatedBounds();
-                    return bounds.left <= -240 || bounds.right >= 240 || bounds.top >= 180 || bounds.bottom <= -180;
+                    return bounds.left <= -(this.stage.width / 2) || bounds.right >= (this.stage.width / 2) || bounds.top >= (this.stage.height / 2) || bounds.bottom <= -(this.stage.height / 2);
                 }
                 else {
                     if (!this.visible)
@@ -1727,10 +1729,10 @@ var P;
             }
             bounceOffEdge() {
                 var b = this.rotatedBounds();
-                var dl = 240 + b.left;
-                var dt = 180 - b.top;
-                var dr = 240 - b.right;
-                var db = 180 + b.bottom;
+                var dl = (this.stage.width / 2) + b.left;
+                var dt = (this.stage.height / 2) - b.top;
+                var dr = (this.stage.width / 2) - b.right;
+                var db = (this.stage.height / 2) + b.bottom;
                 var d = Math.min(dl, dt, dr, db);
                 if (d > 0)
                     return;
@@ -3312,6 +3314,11 @@ var P;
                 this.stage.useSpriteFencing = this.options.spriteFencing;
                 this.stage.removeLimits = this.options.removeLimits;
                 this.stage.renderer.imageSmoothingEnabled = this.options.imageSmoothing;
+                if (this.stage.width !== this.options.stageWidth || this.stage.height !== this.options.stageHeight) {
+                    this.stage.width = this.options.stageWidth;
+                    this.stage.height = this.options.stageHeight;
+                    this.stage.renderer.setNativeSize(this.stage.width, this.stage.height);
+                }
             }
             generateUsernameIfMissing() {
                 if (!this.options.username) {
@@ -3483,17 +3490,20 @@ var P;
                 this.throwWithoutStage();
                 const controlsHeight = this.controlsContainer ? this.controlsContainer.offsetHeight : 0;
                 window.scrollTo(0, 0);
-                let w = window.innerWidth - this.options.fullscreenPadding * 2;
-                let h = window.innerHeight - this.options.fullscreenPadding - controlsHeight;
-                w = Math.min(w, h / 0.75);
-                w = Math.min(w, this.options.fullscreenMaxWidth);
-                h = w * 0.75 + controlsHeight;
-                if (this.controlsContainer) {
-                    this.controlsContainer.style.width = w + 'px';
+                const availableWidth = window.innerWidth - this.options.fullscreenPadding * 2;
+                const availableHeight = window.innerHeight - this.options.fullscreenPadding - controlsHeight;
+                let width = availableHeight / this.stage.height * this.stage.width;
+                let height = availableHeight;
+                if (width > availableWidth) {
+                    height = availableWidth / this.stage.width * this.stage.height;
+                    width = availableWidth;
                 }
-                this.root.style.paddingLeft = (window.innerWidth - w) / 2 + 'px';
-                this.root.style.paddingTop = (window.innerHeight - h - this.options.fullscreenPadding) / 2 + 'px';
-                this.stage.setZoom(w / 480);
+                if (this.controlsContainer) {
+                    this.controlsContainer.style.width = width + 'px';
+                }
+                this.root.style.paddingLeft = (window.innerWidth - width) / 2 + 'px';
+                this.root.style.paddingTop = (window.innerHeight - height - this.options.fullscreenPadding) / 2 + 'px';
+                this.stage.setZoom(width / this.stage.width);
             }
             onfullscreenchange() {
                 if (typeof document.fullscreen === 'boolean' && document.fullscreen !== this.fullscreenEnabled) {
@@ -3794,7 +3804,9 @@ var P;
             spriteFencing: false,
             removeLimits: false,
             projectHost: 'https://projects.scratch.mit.edu/$id',
-            cloudHost: ['wss://stratus.turbowarp.org', 'wss://stratus.turbowarp.xyz']
+            cloudHost: ['wss://stratus.turbowarp.org', 'wss://stratus.turbowarp.xyz'],
+            stageWidth: 480,
+            stageHeight: 360
         };
         player_1.Player = Player;
         class ErrorHandler {
@@ -9809,10 +9821,10 @@ var P;
                 }
                 return filter;
             }
-            function create2dCanvas() {
+            function create2dCanvas(width, height) {
                 const canvas = document.createElement('canvas');
-                canvas.width = 480;
-                canvas.height = 360;
+                canvas.width = width;
+                canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 if (!ctx) {
                     throw new Error('Cannot get 2d rendering context in create2dCanvas');
@@ -9822,10 +9834,12 @@ var P;
             }
             const COLOR_MASK = 0b111110001111100011110000;
             class SpriteRenderer2D {
-                constructor() {
+                constructor(nativeWidth, nativeHeight) {
+                    this.nativeWidth = nativeWidth;
+                    this.nativeHeight = nativeHeight;
                     this.noEffects = false;
                     this.imageSmoothingEnabled = false;
-                    const { canvas, ctx } = create2dCanvas();
+                    const { canvas, ctx } = create2dCanvas(nativeWidth, nativeHeight);
                     this.canvas = canvas;
                     this.ctx = ctx;
                 }
@@ -9846,8 +9860,8 @@ var P;
                 }
                 _reset(ctx, scale) {
                     const effectiveScale = scale * P.config.scale;
-                    const width = Math.max(1, 480 * effectiveScale);
-                    const height = Math.max(1, 360 * effectiveScale);
+                    const width = Math.max(1, this.nativeWidth * effectiveScale);
+                    const height = Math.max(1, this.nativeHeight * effectiveScale);
                     ctx.canvas.width = width;
                     ctx.canvas.height = height;
                     ctx.scale(effectiveScale, effectiveScale);
@@ -9859,7 +9873,7 @@ var P;
                     }
                     ctx.save();
                     const globalScale = c.stage.zoom * P.config.scale;
-                    ctx.translate(((c.scratchX + 240) * globalScale | 0) / globalScale, ((180 - c.scratchY) * globalScale | 0) / globalScale);
+                    ctx.translate(((c.scratchX + (this.nativeWidth / 2)) * globalScale | 0) / globalScale, (((this.nativeHeight / 2) - c.scratchY) * globalScale | 0) / globalScale);
                     let objectScale = costume.scale;
                     if (P.core.isSprite(c)) {
                         if (c.rotationStyle === 0) {
@@ -9921,11 +9935,11 @@ var P;
                 }
             }
             canvas2d.SpriteRenderer2D = SpriteRenderer2D;
-            const workingRenderer = new SpriteRenderer2D();
-            const workingRenderer2 = new SpriteRenderer2D();
+            const workingRenderer = new SpriteRenderer2D(1, 1);
+            const workingRenderer2 = new SpriteRenderer2D(1, 1);
             class ProjectRenderer2D extends SpriteRenderer2D {
                 constructor(stage) {
-                    super();
+                    super(stage.width, stage.height);
                     this.stage = stage;
                     this.zoom = 1;
                     this.penScalingEnabled = true;
@@ -9933,10 +9947,10 @@ var P;
                     this.penTargetZoom = -1;
                     this.penZoom = 1;
                     this.stageCostumeIndex = -1;
-                    const { ctx: stageContext, canvas: stageLayer } = create2dCanvas();
+                    const { ctx: stageContext, canvas: stageLayer } = create2dCanvas(stage.width, stage.height);
                     this.stageContext = stageContext;
                     this.stageLayer = stageLayer;
-                    const { ctx: penContext, canvas: penLayer } = create2dCanvas();
+                    const { ctx: penContext, canvas: penLayer } = create2dCanvas(stage.width, stage.height);
                     this.penContext = penContext;
                     this.penLayer = penLayer;
                 }
@@ -9964,7 +9978,7 @@ var P;
                 }
                 drawAllExcept(renderer, skip) {
                     renderer.drawChild(this.stage);
-                    renderer.ctx.drawImage(this.penLayer, 0, 0, 480, 360);
+                    renderer.ctx.drawImage(this.penLayer, 0, 0, this.nativeWidth, this.nativeHeight);
                     for (var i = 0; i < this.stage.children.length; i++) {
                         var child = this.stage.children[i];
                         if (!child.visible || child === skip) {
@@ -9972,6 +9986,16 @@ var P;
                         }
                         renderer.drawChild(child);
                     }
+                }
+                setNativeSize(width, height) {
+                    this.nativeWidth = width;
+                    this.nativeHeight = height;
+                    this.canvas.width = width;
+                    this.canvas.height = height;
+                    this.stageLayer.width = width;
+                    this.stageLayer.height = height;
+                    this.penLayer.width = width;
+                    this.penLayer.height = height;
                 }
                 resize(zoom) {
                     this.zoom = zoom;
@@ -9988,7 +10012,7 @@ var P;
                         workingRenderer.canvas.height = this.penLayer.height;
                         workingRenderer.ctx.drawImage(this.penLayer, 0, 0);
                         this._reset(this.penContext, zoom);
-                        this.penContext.drawImage(workingRenderer.canvas, 0, 0, 480, 360);
+                        this.penContext.drawImage(workingRenderer.canvas, 0, 0, this.nativeWidth, this.nativeHeight);
                     }
                     else if (!this.penModified) {
                         this.penZoom = zoom;
@@ -10005,13 +10029,13 @@ var P;
                         this.penZoom = this.penTargetZoom;
                         this.penTargetZoom = -1;
                     }
-                    this.penContext.clearRect(0, 0, 480, 360);
+                    this.penContext.clearRect(0, 0, this.nativeWidth, this.nativeHeight);
                 }
                 penDot(color, size, x, y) {
                     this.penModified = true;
                     this.penContext.fillStyle = color.toCSS();
                     this.penContext.beginPath();
-                    this.penContext.arc(240 + x, 180 - y, size / 2, 0, 2 * Math.PI, false);
+                    this.penContext.arc((this.nativeWidth / 2) + x, (this.nativeHeight / 2) - y, size / 2, 0, 2 * Math.PI, false);
                     this.penContext.fill();
                 }
                 penLine(color, size, x1, y1, x2, y2) {
@@ -10032,8 +10056,8 @@ var P;
                     this.penContext.strokeStyle = color.toCSS();
                     this.penContext.lineWidth = size;
                     this.penContext.beginPath();
-                    this.penContext.moveTo(240 + x1, 180 - y1);
-                    this.penContext.lineTo(240 + x2, 180 - y2);
+                    this.penContext.moveTo((this.nativeWidth / 2) + x1, (this.nativeHeight / 2) - y1);
+                    this.penContext.lineTo((this.nativeWidth / 2) + x2, (this.nativeHeight / 2) - y2);
                     this.penContext.stroke();
                 }
                 penStamp(sprite) {
@@ -10094,7 +10118,7 @@ var P;
                         workingRenderer.canvas.height = height;
                         workingRenderer.ctx.save();
                         workingRenderer.noEffects = true;
-                        workingRenderer.ctx.translate(-(left + 240), -(180 - top));
+                        workingRenderer.ctx.translate(-(left + (this.nativeWidth / 2)), -((this.nativeHeight / 2) - top));
                         workingRenderer.drawChild(spriteA);
                         workingRenderer.ctx.globalCompositeOperation = 'source-in';
                         workingRenderer.drawChild(spriteB);
@@ -10122,7 +10146,7 @@ var P;
                     workingRenderer.ctx.fillStyle = 'white';
                     workingRenderer.ctx.fillRect(0, 0, width, height);
                     workingRenderer.ctx.save();
-                    workingRenderer.ctx.translate(-(240 + b.left), -(180 - b.top));
+                    workingRenderer.ctx.translate(-((this.nativeWidth / 2) + b.left), -((this.nativeHeight / 2) - b.top));
                     this.drawAllExcept(workingRenderer, sprite);
                     workingRenderer.ctx.globalCompositeOperation = 'destination-in';
                     workingRenderer.noEffects = true;
@@ -10150,8 +10174,8 @@ var P;
                     workingRenderer.canvas.height = workingRenderer2.canvas.height = height;
                     workingRenderer.ctx.save();
                     workingRenderer2.ctx.save();
-                    workingRenderer.ctx.translate(-(240 + rb.left), -(180 - rb.top));
-                    workingRenderer2.ctx.translate(-(240 + rb.left), -(180 - rb.top));
+                    workingRenderer.ctx.translate(-((this.nativeWidth / 2) + rb.left), -((this.nativeHeight / 2) - rb.top));
+                    workingRenderer2.ctx.translate(-((this.nativeWidth / 2) + rb.left), -((this.nativeHeight / 2) - rb.top));
                     this.drawAllExcept(workingRenderer, sprite);
                     workingRenderer2.noEffects = true;
                     workingRenderer2.drawChild(sprite);
@@ -10656,6 +10680,8 @@ var P;
                     }
                 }
                 onStageFiltersChanged() { }
+                setNativeSize(width, height) {
+                }
                 resize(scale) {
                     this.zoom = scale;
                 }
