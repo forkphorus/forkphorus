@@ -130,6 +130,8 @@ namespace P.player {
     // $id is replaced with project ID
     projectHost: string;
     cloudHost: string[] | string;
+    stageWidth: number;
+    stageHeight: number;
   }
 
   interface ControlsOptions {
@@ -365,7 +367,9 @@ namespace P.player {
       removeLimits: false,
       projectHost: 'https://projects.scratch.mit.edu/$id',
       // cloudHost: 'ws://localhost:9080', // for cloud-server development
-      cloudHost: ['wss://stratus.turbowarp.org', 'wss://stratus.turbowarp.xyz']
+      cloudHost: ['wss://stratus.turbowarp.org', 'wss://stratus.turbowarp.xyz'],
+      stageWidth: 480,
+      stageHeight: 360
     };
 
     public onprogress = new Slot<number>();
@@ -609,6 +613,12 @@ namespace P.player {
       this.stage.useSpriteFencing = this.options.spriteFencing;
       this.stage.removeLimits = this.options.removeLimits;
       (this.stage.renderer as P.renderer.canvas2d.ProjectRenderer2D).imageSmoothingEnabled = this.options.imageSmoothing;
+
+      if (this.stage.width !== this.options.stageWidth || this.stage.height !== this.options.stageHeight) {
+        this.stage.width = this.options.stageWidth;
+        this.stage.height = this.options.stageHeight;
+        this.stage.renderer.setNativeSize(this.stage.width, this.stage.height);
+      }
     }
 
     generateUsernameIfMissing() {
@@ -816,19 +826,23 @@ namespace P.player {
       const controlsHeight = this.controlsContainer ? this.controlsContainer.offsetHeight : 0;
       window.scrollTo(0, 0);
 
-      let w = window.innerWidth - this.options.fullscreenPadding * 2;
-      let h = window.innerHeight - this.options.fullscreenPadding - controlsHeight;
-      w = Math.min(w, h / 0.75);
-      w = Math.min(w, this.options.fullscreenMaxWidth);
-      h = w * 0.75 + controlsHeight;
+      const availableWidth = window.innerWidth - this.options.fullscreenPadding * 2;
+      const availableHeight = window.innerHeight - this.options.fullscreenPadding - controlsHeight;
 
-      if (this.controlsContainer) {
-        this.controlsContainer.style.width = w + 'px';
+      let width = availableHeight / this.stage.height * this.stage.width;
+      let height = availableHeight;
+      if (width > availableWidth) {
+        height = availableWidth / this.stage.width * this.stage.height;
+        width = availableWidth;
       }
 
-      this.root.style.paddingLeft = (window.innerWidth - w) / 2 + 'px';
-      this.root.style.paddingTop = (window.innerHeight - h - this.options.fullscreenPadding) / 2 + 'px';
-      this.stage.setZoom(w / 480);
+      if (this.controlsContainer) {
+        this.controlsContainer.style.width = width + 'px';
+      }
+
+      this.root.style.paddingLeft = (window.innerWidth - width) / 2 + 'px';
+      this.root.style.paddingTop = (window.innerHeight - height - this.options.fullscreenPadding) / 2 + 'px';
+      this.stage.setZoom(width / this.stage.width);
     }
 
     /**

@@ -114,6 +114,14 @@ var Common = (function() {
         // projectId is also read from location.hash if not found here.
         projectId = value;
         break;
+      case 'stage': {
+        var parts = value.match(/^(\d+)[^\d+](\d+)$/);
+        if (parts) {
+          playerOptions.stageWidth = +parts[1];
+          playerOptions.stageHeight = +parts[2];
+        }
+        break;
+      }
       // Feature flags
       case 'webgl':
         P.config.useWebGL = true;
