@@ -23,42 +23,40 @@ namespace P.io {
    * Utilities for asynchronously reading Blobs or Files
    */
   export namespace readers {
-    type Readable = Blob | File;
-
-    export function toArrayBuffer(object: Readable): Promise<ArrayBuffer> {
+    export function toArrayBuffer(object: Blob): Promise<ArrayBuffer> {
       return new Promise((resolve, reject) => {
         const fileReader = new FileReader();
-        fileReader.onloadend = function() {
+        fileReader.onloadend = () => {
           resolve(fileReader.result as ArrayBuffer);
         };
-        fileReader.onerror = function(err) {
-          reject(new Error('Could not read object as ArrayBuffer'));
+        fileReader.onerror = () => {
+          reject(new Error(`Could not read as ArrayBuffer: ${fileReader.error}`));
         };
         fileReader.readAsArrayBuffer(object);
       });
     }
 
-    export function toDataURL(object: Readable): Promise<string> {
+    export function toDataURL(object: Blob): Promise<string> {
       return new Promise((resolve, reject) => {
         const fileReader = new FileReader();
-        fileReader.onloadend = function() {
+        fileReader.onloadend = () => {
           resolve(fileReader.result as string);
         };
-        fileReader.onerror = function(err) {
-          reject(new Error('Could not read object as data: URL'));
+        fileReader.onerror = () => {
+          reject(new Error(`Could not read as data: URL ${fileReader.error}`));
         };
         fileReader.readAsDataURL(object);
       });
     }
 
-    export function toText(object: Readable): Promise<string> {
+    export function toText(object: Blob): Promise<string> {
       return new Promise((resolve, reject) => {
         const fileReader = new FileReader();
-        fileReader.onloadend = function() {
+        fileReader.onloadend = () => {
           resolve(fileReader.result as string);
         };
-        fileReader.onerror = function(err) {
-          reject(new Error('Could not read object as text'));
+        fileReader.onerror = () => {
+          reject(new Error(`Could not read as text: ${fileReader.error}`));
         };
         fileReader.readAsText(object);
       });

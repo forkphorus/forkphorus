@@ -2112,11 +2112,11 @@ var P;
             function toArrayBuffer(object) {
                 return new Promise((resolve, reject) => {
                     const fileReader = new FileReader();
-                    fileReader.onloadend = function () {
+                    fileReader.onloadend = () => {
                         resolve(fileReader.result);
                     };
-                    fileReader.onerror = function (err) {
-                        reject(new Error('Could not read object as ArrayBuffer'));
+                    fileReader.onerror = () => {
+                        reject(new Error(`Could not read as ArrayBuffer: ${fileReader.error}`));
                     };
                     fileReader.readAsArrayBuffer(object);
                 });
@@ -2125,11 +2125,11 @@ var P;
             function toDataURL(object) {
                 return new Promise((resolve, reject) => {
                     const fileReader = new FileReader();
-                    fileReader.onloadend = function () {
+                    fileReader.onloadend = () => {
                         resolve(fileReader.result);
                     };
-                    fileReader.onerror = function (err) {
-                        reject(new Error('Could not read object as data: URL'));
+                    fileReader.onerror = () => {
+                        reject(new Error(`Could not read as data: URL ${fileReader.error}`));
                     };
                     fileReader.readAsDataURL(object);
                 });
@@ -2138,11 +2138,11 @@ var P;
             function toText(object) {
                 return new Promise((resolve, reject) => {
                     const fileReader = new FileReader();
-                    fileReader.onloadend = function () {
+                    fileReader.onloadend = () => {
                         resolve(fileReader.result);
                     };
-                    fileReader.onerror = function (err) {
-                        reject(new Error('Could not read object as text'));
+                    fileReader.onerror = () => {
+                        reject(new Error(`Could not read as text: ${fileReader.error}`));
                     };
                     fileReader.readAsText(object);
                 });
