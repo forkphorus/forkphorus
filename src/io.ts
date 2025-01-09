@@ -23,43 +23,78 @@ namespace P.io {
    * Utilities for asynchronously reading Blobs or Files
    */
   export namespace readers {
-    export function toArrayBuffer(object: Blob): Promise<ArrayBuffer> {
-      return new Promise((resolve, reject) => {
-        const fileReader = new FileReader();
-        fileReader.onloadend = () => {
-          resolve(fileReader.result as ArrayBuffer);
-        };
-        fileReader.onerror = () => {
-          reject(new Error(`Could not read as ArrayBuffer: ${fileReader.error}`));
-        };
-        fileReader.readAsArrayBuffer(object);
-      });
+    // We prefer to use FileReader when it is available since it has better compatibility and we're
+    // more confident that it works reliably. However Apple's lockdown mode disables FileReader, so
+    // we also have fallback paths that use the modern equivalents which lockdown mode does not
+    // disable.
+
+    export function toArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
+      if (typeof FileReader === 'function') {
+        return new Promise((resolve, reject) => {
+          const fileReader = new FileReader();
+          fileReader.onloadend = () => {
+            resolve(fileReader.result as ArrayBuffer);
+          };
+          fileReader.onerror = () => {
+            reject(new Error(`Could not read as ArrayBuffer: ${fileReader.error}`));
+          };
+          fileReader.readAsArrayBuffer(blob);
+        });
+      } else if (typeof blob.arrayBuffer === 'function') {
+        return blob.arrayBuffer();
+      } else {
+        return Promise.reject(new Error('Browser does not support read as ArrayBuffer'));
+      }
     }
 
-    export function toDataURL(object: Blob): Promise<string> {
-      return new Promise((resolve, reject) => {
-        const fileReader = new FileReader();
-        fileReader.onloadend = () => {
-          resolve(fileReader.result as string);
-        };
-        fileReader.onerror = () => {
-          reject(new Error(`Could not read as data: URL ${fileReader.error}`));
-        };
-        fileReader.readAsDataURL(object);
-      });
+    export function toDataURL(blob: Blob): Promise<string> {
+      if (typeof FileReader === 'function') {
+        return new Promise((resolve, reject) => {
+          const fileReader = new FileReader();
+          fileReader.onloadend = () => {
+            resolve(fileReader.result as string);
+          };
+          fileReader.onerror = () => {
+            reject(new Error(`Could not read as data: URL ${fileReader.error}`));
+          };
+          fileReader.readAsDataURL(blob);
+        });
+      } else if (typeof blob.arrayBuffer === 'function') {
+        // Blob#arrayBuffer() has much better support than Blob#bytes()
+        return blob.arrayBuffer()
+          .then(arrayBuffer => {
+            // This is a fallback route used very rarely so it's not critical for it to be efficient.
+            const bytes = new Uint8Array(arrayBuffer);
+            let str = '';
+            for (let i = 0; i < bytes.length; i++) {
+              str += String.fromCharCode(bytes[i]);
+            }
+            const base64 = btoa(str);
+            const dataUrl = `data:${blob.type};base64,${base64}`;
+            return dataUrl;
+          });
+      } else {
+        return Promise.reject(new Error('Browser does not support read as data: URL'));
+      }
     }
 
-    export function toText(object: Blob): Promise<string> {
-      return new Promise((resolve, reject) => {
-        const fileReader = new FileReader();
-        fileReader.onloadend = () => {
-          resolve(fileReader.result as string);
-        };
-        fileReader.onerror = () => {
-          reject(new Error(`Could not read as text: ${fileReader.error}`));
-        };
-        fileReader.readAsText(object);
-      });
+    export function toText(blob: Blob): Promise<string> {
+      if (typeof FileReader === 'function') {
+        return new Promise((resolve, reject) => {
+          const fileReader = new FileReader();
+          fileReader.onloadend = () => {
+            resolve(fileReader.result as string);
+          };
+          fileReader.onerror = () => {
+            reject(new Error(`Could not read as text: ${fileReader.error}`));
+          };
+          fileReader.readAsText(blob);
+        });
+      } else if (typeof blob.text === 'function') {
+        return blob.text();
+      } else {
+        return Promise.reject(new Error('Browser does not support read as text'));
+      }
     }
   }
 

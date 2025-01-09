@@ -2109,43 +2109,77 @@ var P;
         }
         let readers;
         (function (readers) {
-            function toArrayBuffer(object) {
-                return new Promise((resolve, reject) => {
-                    const fileReader = new FileReader();
-                    fileReader.onloadend = () => {
-                        resolve(fileReader.result);
-                    };
-                    fileReader.onerror = () => {
-                        reject(new Error(`Could not read as ArrayBuffer: ${fileReader.error}`));
-                    };
-                    fileReader.readAsArrayBuffer(object);
-                });
+            function toArrayBuffer(blob) {
+                if (typeof FileReader === 'function') {
+                    return new Promise((resolve, reject) => {
+                        const fileReader = new FileReader();
+                        fileReader.onloadend = () => {
+                            resolve(fileReader.result);
+                        };
+                        fileReader.onerror = () => {
+                            reject(new Error(`Could not read as ArrayBuffer: ${fileReader.error}`));
+                        };
+                        fileReader.readAsArrayBuffer(blob);
+                    });
+                }
+                else if (typeof blob.arrayBuffer === 'function') {
+                    return blob.arrayBuffer();
+                }
+                else {
+                    return Promise.reject(new Error('Browser does not support read as ArrayBuffer'));
+                }
             }
             readers.toArrayBuffer = toArrayBuffer;
-            function toDataURL(object) {
-                return new Promise((resolve, reject) => {
-                    const fileReader = new FileReader();
-                    fileReader.onloadend = () => {
-                        resolve(fileReader.result);
-                    };
-                    fileReader.onerror = () => {
-                        reject(new Error(`Could not read as data: URL ${fileReader.error}`));
-                    };
-                    fileReader.readAsDataURL(object);
-                });
+            function toDataURL(blob) {
+                if (typeof FileReader === 'function') {
+                    return new Promise((resolve, reject) => {
+                        const fileReader = new FileReader();
+                        fileReader.onloadend = () => {
+                            resolve(fileReader.result);
+                        };
+                        fileReader.onerror = () => {
+                            reject(new Error(`Could not read as data: URL ${fileReader.error}`));
+                        };
+                        fileReader.readAsDataURL(blob);
+                    });
+                }
+                else if (typeof blob.arrayBuffer === 'function') {
+                    return blob.arrayBuffer()
+                        .then(arrayBuffer => {
+                        const bytes = new Uint8Array(arrayBuffer);
+                        let str = '';
+                        for (let i = 0; i < bytes.length; i++) {
+                            str += String.fromCharCode(bytes[i]);
+                        }
+                        const base64 = btoa(str);
+                        const dataUrl = `data:${blob.type};base64,${base64}`;
+                        return dataUrl;
+                    });
+                }
+                else {
+                    return Promise.reject(new Error('Browser does not support read as data: URL'));
+                }
             }
             readers.toDataURL = toDataURL;
-            function toText(object) {
-                return new Promise((resolve, reject) => {
-                    const fileReader = new FileReader();
-                    fileReader.onloadend = () => {
-                        resolve(fileReader.result);
-                    };
-                    fileReader.onerror = () => {
-                        reject(new Error(`Could not read as text: ${fileReader.error}`));
-                    };
-                    fileReader.readAsText(object);
-                });
+            function toText(blob) {
+                if (typeof FileReader === 'function') {
+                    return new Promise((resolve, reject) => {
+                        const fileReader = new FileReader();
+                        fileReader.onloadend = () => {
+                            resolve(fileReader.result);
+                        };
+                        fileReader.onerror = () => {
+                            reject(new Error(`Could not read as text: ${fileReader.error}`));
+                        };
+                        fileReader.readAsText(blob);
+                    });
+                }
+                else if (typeof blob.text === 'function') {
+                    return blob.text();
+                }
+                else {
+                    return Promise.reject(new Error('Browser does not support read as text'));
+                }
             }
             readers.toText = toText;
         })(readers = io.readers || (io.readers = {}));
