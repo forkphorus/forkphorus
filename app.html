@@ -118,19 +118,11 @@
       e.preventDefault();
     }, { passive: false });
 
-    Common.parseSearch(function(key, value) {
-      switch (key) {
-        case 'full-screen':
-          // legacy value
-          player.setOptions({ fullscreenMaxWidth: value !== 'false' ? Infinity : 480 });
-          break;
-        case 'w':
-          player.setOptions({ fullscreenMaxWidth: Number(value) || 480 });
-          break;
-        case 'controls':
-          player.addControls({ enableFullscreen: false });
-          break;
-      }
+    player.setOptions(Common.playerOptions);
+
+    player.setOptions({
+      fullscreenMode: 'window',
+      autoplayPolicy: 'if-audio-playable',
     });
 
     // do not focus the stage when embedded
@@ -138,11 +130,24 @@
       player.setOptions({ focusOnLoad: false });
     }
 
-    player.setOptions(Common.playerOptions);
-
-    player.setOptions({
-      fullscreenMode: 'window',
-      autoplayPolicy: 'if-audio-playable',
+    Common.parseSearch(function(key, value) {
+      switch (key) {
+        case 'full-screen':
+          // legacy value
+          player.setOptions({ fullscreenMaxWidth: value !== 'false' ? Infinity : player.stage.width });
+          break;
+        case 'w':
+          player.setOptions({ fullscreenMaxWidth: Number(value) || player.stage.height });
+          break;
+        case 'controls':
+          player.addControls({ enableFullscreen: false });
+          break;
+        case 'autostart':
+          player.setOptions({
+            autoplayPolicy: 'always'
+          });
+          break;
+      }
     });
 
     player.loadProjectById(Common.projectId)
