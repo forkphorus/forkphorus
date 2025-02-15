@@ -1,5 +1,5 @@
-const playwright = require("playwright");
-const LocalWebServer = require('local-web-server');
+const playwright = require('playwright');
+const express = require('express');
 const path = require('path');
 
 const BROWSERS = ['chromium', 'firefox', 'webkit'];
@@ -15,19 +15,28 @@ const IGNORE_LOG_MESSAGES = [
 // In order to run the browsers, we must setup a local HTTP server for them to run on.
 // Browsers have a lot of restrictions on file:// URLs that we can't easily workaround and may break.
 const PORT = 18930; // arbitrary
-const ws = LocalWebServer.create({
-  // @ts-ignore
-  port: 18930,
-  directory: path.dirname(__dirname),
-});
-console.log(`[Runner] [LWS] Server started on port ${PORT}`);
+const app = express();
+app.use(express.static(path.dirname(__dirname)));
+
+function startLocalServer() {
+  return new Promise((resolve, reject) => {
+    app.listen(PORT, (err) => {
+      if (err) {
+        reject(err);
+      } else {
+        console.log(`[Runner] [LWS] Server starting on port ${PORT}`);
+        resolve(app);
+      }
+    });
+  });
+}
 
 function exit(status) {
-  ws.server.close();
   process.exit(status);
 }
 
 (async () => {
+  await startLocalServer();
 
   const browsersWithErrors = new Set();
   const url = `http://localhost:${PORT}/tests/suite.html?automatedtest&nostart`;
@@ -40,7 +49,6 @@ function exit(status) {
   }, 1000 * 60 * 5);
 
   for (const browserType of BROWSERS) {
-
     const LOG_PREFIX = `[Runner] [${browserType}]`;
 
     console.log('');
