@@ -267,10 +267,13 @@
     console.log('Sprites are exposed in `player.stage.children`');
 
     var initialId = Common.projectId || '';
-    player.setOptions(Common.playerOptions);
     player.setOptions({
+      // Player default is if-audio-playable which doesn't work
+      // well on the website by default. Set this before applying
+      // options from Common since it can be overridden by parameter.
       autoplayPolicy: 'never'
     });
+    player.setOptions(Common.playerOptions);
 
     playerArea.style.height = projectArea.style.height = 'auto';
     var titleAreaHeight = titleArea.offsetHeight;
