@@ -530,9 +530,9 @@ namespace P.sb2 {
         }
         patchSVG(svg, svg);
       } finally {
-        // Regardless of any errors trying to patch up the SVG, remove the SVG
-        // from the document as an extra security precaution.
-        document.body.removeChild(svg);
+        // Regardless of any errors trying to patch up the SVG, put the SVG back into the
+        // inert document it was parsed in as an extra security precaution.
+        doc.appendChild(svg);
       }
 
       const canvas = document.createElement('canvas');

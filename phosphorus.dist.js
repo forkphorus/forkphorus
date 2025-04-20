@@ -5347,7 +5347,7 @@ var P;
                     patchSVG(svg, svg);
                 }
                 finally {
-                    document.body.removeChild(svg);
+                    doc.appendChild(svg);
                 }
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
