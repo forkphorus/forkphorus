@@ -294,7 +294,9 @@ namespace P.player {
           .ignoreErrors()
           .load('json')
           .then((data) => {
-            if (request.getStatus() === 404) {
+            // 404 is returned for unshared projects
+            // 400 is returned for requests for invalid project IDs (eg. letters, negatives, way too big)
+            if (request.getStatus() === 404 || request.getStatus() === 400) {
               this.unshared = true;
             } else {
               if (data.title) {

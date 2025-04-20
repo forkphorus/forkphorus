@@ -3107,7 +3107,7 @@ var P;
                         .ignoreErrors()
                         .load('json')
                         .then((data) => {
-                        if (request.getStatus() === 404) {
+                        if (request.getStatus() === 404 || request.getStatus() === 400) {
                             this.unshared = true;
                         }
                         else {
