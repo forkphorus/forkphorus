@@ -24,6 +24,6 @@
   "homepage": "https://github.com/forkphorus/forkphorus#readme",
   "private": true,
   "dependencies": {
-    "typescript": "^5.6.2"
+    "typescript": "^5.8.3"
   }
 }
