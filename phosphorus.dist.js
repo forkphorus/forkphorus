@@ -4882,6 +4882,44 @@ var P;
 })(P || (P = {}));
 var P;
 (function (P) {
+    var sandbox;
+    (function (sandbox) {
+        let iframe = null;
+        sandbox.getSandbox = () => {
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.className = 'forkphorus-sandbox';
+                iframe.sandbox = 'allow-same-origin';
+                iframe.style.position = 'absolute';
+                iframe.style.top = '-10000px';
+                iframe.style.left = '-10000px';
+                iframe.style.width = '0';
+                iframe.style.height = '0';
+                iframe.style.opacity = '0';
+                iframe.style.visibility = 'hidden';
+                iframe.style.pointerEvents = 'none';
+                iframe.tabIndex = -1;
+                iframe.ariaHidden = 'true';
+                document.body.appendChild(iframe);
+                iframe.contentDocument.open();
+                iframe.contentDocument.write(`
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <meta charset="utf-8">
+                    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline' data:; font-src data:; img-src data:">
+                </head>
+                <body></body>
+            </html>
+            `);
+                iframe.contentDocument.close();
+            }
+            return iframe.contentDocument.body;
+        };
+    })(sandbox = P.sandbox || (P.sandbox = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
     var sb2;
     (function (sb2) {
         const ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
@@ -5334,7 +5372,7 @@ var P;
                     USE_PROFILES: { svg: true }
                 });
                 try {
-                    document.body.appendChild(svg);
+                    P.sandbox.getSandbox().appendChild(svg);
                     const viewBox = svg.viewBox.baseVal;
                     if (viewBox && (viewBox.x || viewBox.y)) {
                         svg.width.baseVal.value = viewBox.width - viewBox.x;

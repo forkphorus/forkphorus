@@ -3,6 +3,7 @@
 /// <reference path="core.ts" />
 /// <reference path="fonts.ts" />
 /// <reference path="config.ts" />
+/// <reference path="sandbox.ts" />
 
 namespace P.sb2 {
   const ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
@@ -518,7 +519,7 @@ namespace P.sb2 {
         USE_PROFILES: { svg: true }
       });
       try {
-        document.body.appendChild(svg);
+        P.sandbox.getSandbox().appendChild(svg);
         const viewBox = svg.viewBox.baseVal;
         if (viewBox && (viewBox.x || viewBox.y)) {
           svg.width.baseVal.value = viewBox.width - viewBox.x;
