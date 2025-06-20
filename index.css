@@ -3,6 +3,7 @@ body {
   font-size: 16px;
   line-height: 1.5;
   margin: 0;
+  background-color: #fafafa;
 }
 .dark {
   background-color: #111;
@@ -172,13 +173,37 @@ code {
   width: 64px;
   text-align: center;
 }
+#embed-copy {
+  padding: 2px 8px;
+  margin-left: 4px;
+  background: linear-gradient(#fafafa, #e8e8e8);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, .35),
+    0 1px 4px rgba(0, 0, 0, .2);
+  border-radius: 3px;
+  cursor: pointer;
+  color: #000;
+  text-decoration: none;
+}
 #package-link:hover {
   background: linear-gradient(#fff, #eaeaea);
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, .4),
     0 1px 4px rgba(0, 0, 0, .3);
 }
+#embed-copy:hover {
+  background: linear-gradient(#fff, #eaeaea);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, .4),
+    0 1px 4px rgba(0, 0, 0, .3);
+}
 #package-link:active {
+  background: linear-gradient(#ddd, #eaeaea);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, .5),
+    inset 0 2px 5px rgba(0, 0, 0, .15);
+}
+#embed-copy:active {
   background: linear-gradient(#ddd, #eaeaea);
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, .5),

@@ -71,6 +71,7 @@
         <p data-i18n="index.embed.description">Include the forkphorus player in your web site.</p>
         <p class="embed-options">
           <input readonly id="embed-code">
+          <button id="embed-copy" type="button" data-i18n="index.embed.copy">Copy</button>
           <input type="checkbox" id="embed-auto-start" checked>
           <label for="embed-auto-start" data-i18n="index.embed.autostart">Start automatically</label>
           <input type="checkbox" id="embed-light-content">
@@ -196,6 +197,8 @@
       'index.embed.autostart': 'Start automatically',
       'index.embed.lightControls': 'Light controls',
       'index.embed.hideUI': 'Hide UI',
+      'index.embed.copy': 'Copy',
+      'index.embed.copied': 'Copied!',
       'index.advanced': 'Advanced Settings',
       'index.advanced.confirmation': 'This will refresh this page, resetting the project. Continue?',
       'index.privacy': 'Privacy Policy',
@@ -467,6 +470,7 @@
     var embedOther = querySelector('#embed-other');
     var embedOtherWidth = querySelector('#embed-other-width');
     var embedOtherHeight = querySelector('#embed-other-height');
+    var embedCopyButton = querySelector('#embed-copy');
 
     function updateEmbedCode(e) {
       // Hide UI replaces other options.
@@ -519,6 +523,19 @@
     embedOther.addEventListener('change', updateEmbedCode);
     embedOtherHeight.addEventListener('change', updateEmbedCode);
     embedOtherWidth.addEventListener('change', updateEmbedCode);
+    embedCopyButton.addEventListener('click', function() {
+      selectEmbedCode();
+      try {
+        navigator.clipboard.writeText(embedCode.value);
+        var original = P.i18n.translate('index.embed.copy');
+        embedCopyButton.innerText = P.i18n.translate('index.embed.copied');
+        setTimeout(function() {
+          embedCopyButton.innerText = original;
+        }, 1000);
+      } catch (err) {
+        document.execCommand('copy');
+      }
+    });
 
     /** Local File Loading **/
     var uploadFileInput = querySelector('#upload-file-input');
