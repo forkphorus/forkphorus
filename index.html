@@ -4,9 +4,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Forkphorus is a JavaScript compiler for Scratch 3, 2, and 1 projects.">
-  <link rel="canonical" href="https://forkphorus.github.io/" />
-  <title>forkphorus - phosphorus for Scratch 3</title>
+  <meta name="description" content="Wickphorus is a JavaScript compiler for Scratch 3, 2, and 1 projects.">
+  <link rel="canonical" href="https://wickphorus.github.io/" />
+  <title>wickphorus - phosphorus for Scratch 3</title>
   <script>
     // Apply local dark mode preference very early to avoid a flash of white
     (function() {
@@ -33,8 +33,8 @@
   <div id="app">
 
     <div class="area" id="title-area">
-      <h1 class="title">forkphorus</h1>
-      <p>forkphorus runs Scratch 3, 2, and 1 projects really fast by compiling them to JavaScript. Try it out by pasting a project ID or URL into the field below, <a class="upload-button"><input id="upload-file-input" type="file" autocomplete="off" accept=".sb,.sb2,.sb3">selecting a project file</a>, dropping a file on the page, or <a id="examples">exploring the examples studio</a>.</p>
+      <h1 class="title">wickphorus</h1>
+      <p>wickphorus runs Scratch 3, 2, and 1 projects really fast by compiling them to JavaScript. Try it out by pasting a project ID or URL into the field below, <a class="upload-button"><input id="upload-file-input" type="file" autocomplete="off" accept=".sb,.sb2,.sb3">selecting a project file</a>, dropping a file on the page, or <a id="examples">exploring the examples studio</a>.</p>
     </div>
 
     <div id="examples-container" class="area">
@@ -63,12 +63,12 @@
 
       <section>
         <h1 data-i18n="index.report">Report a problem</h1>
-        <p>forkphorus is in maintenance mode, but it still receives occasional bug fixes. <a id="bug-link" target="_blank" rel="noopener" href="https://github.com/forkphorus/forkphorus/issues/new">Click here</a> to report a problem with this project. You can also comment problems <a href="https://scratch.mit.edu/projects/366001364/" target="_blank" rel="noopener">here</a> if you don't have a GitHub account.</p>
+        <p>wickphorus is in maintenance mode, but it still receives occasional bug fixes. <a id="bug-link" target="_blank" rel="noopener" href="https://github.com/wiktorlaskowski/wickphorus/issues/new">Click here</a> to report a problem with this project. You can also comment problems <a href="https://scratch.mit.edu/projects/366001364/" target="_blank" rel="noopener">here</a> if you don't have a GitHub account.</p>
       </section>
 
       <section class=package>
         <h1 data-i18n="index.embed">Embed this project</h1>
-        <p data-i18n="index.embed.description">Include the forkphorus player in your web site.</p>
+        <p data-i18n="index.embed.description">Include the wickphorus player in your web site.</p>
         <p class="embed-options">
           <input readonly id="embed-code">
           <button id="embed-copy" type="button" data-i18n="index.embed.copy">Copy</button>
@@ -119,7 +119,7 @@
       <h1 data-i18n="index.settings">Settings</h1>
       <table id="settings">
         <tr>
-          <td class="name" title="Forkphorus will **attempt** to run at this framerate."><label for="settings-fps">Framerate (FPS)</label></td>
+          <td class="name" title="Wickphorus will **attempt** to run at this framerate."><label for="settings-fps">Framerate (FPS)</label></td>
           <td class="value"><input id="settings-fps" value="0" placeholder="30" type="number" step="any" min="0" required autocomplete="off"></td>
         </tr>
         <tr>
@@ -142,7 +142,7 @@
       <p>Changes are applied automatically.</p>
 
       <h1 data-i18n="index.advanced">Advanced Settings</h1>
-      <p>Help test unfinished features. These require a refresh to apply.</b> <a href="https://github.com/forkphorus/forkphorus/wiki/Advanced-Features" target="_blank">Please read this first</a>.</p>
+      <p>Help test unfinished features. These require a refresh to apply.</b> <a href="https://github.com/wiktorlaskowski/wickphorus/wiki/Advanced-Features" target="_blank">Please read this first</a>.</p>
       <div class="advanced">
         <label><input id="advanced-webgl" class="advanced-feature" type="checkbox"> WebGL Renderer</label>
       </div>
@@ -150,13 +150,13 @@
 
     <section>
       <h1>Try out TurboWarp</h1>
-      <p style="margin-bottom: 0;"><a id="turbowarp" href="https://turbowarp.org/" target="_black" rel="noopener">TurboWarp</a> typically has better performance and compatibility than forkphorus and has an editor. Give it a try, you might like it.</p>
+      <p style="margin-bottom: 0;"><a id="turbowarp" href="https://turbowarp.org/" target="_black" rel="noopener">TurboWarp</a> typically has better performance and compatibility than wickphorus and has an editor. Give it a try, you might like it.</p>
 
       <h1 data-i18n="index.credits">Credits</h1>
-      <p>forkphorus is maintained by <a href="https://scratch.mit.edu/users/GarboMuffin/">GarboMuffin</a> and <a href="https://github.com/forkphorus/forkphorus/graphs/contributors">other contributors</a>. It is a fork of <a href="https://github.com/nathan">Nathan</a>'s <a href="https://phosphorus.github.io/">phosphorus</a>. Its CPS-style compilation was inspired by <a href="https://github.com/RHY3756547">Rhys</a>'s <a href="https://code.google.com/p/sb2-js/">sb2.js</a>. The <a href="https://stuk.github.io/jszip/">JSZip</a> library is used to read <code>.sb2</code> and <code>.sb3</code> files. The <a href="https://github.com/canvg/canvg">canvg</a> library is used to render SVGs for Scratch 2 projects. The <a href="https://github.com/LLK/scratch-sb1-converter">scratch-sb1-converter</a> library is used to support Scratch 1 projects.</p>
+      <p>wickphorus is maintained by <a href="https://scratch.mit.edu/users/GarboMuffin/">GarboMuffin</a> and <a href="https://github.com/wiktorlaskowski/wickphorus/graphs/contributors">other contributors</a>. It is a fork of <a href="https://github.com/nathan">Nathan</a>'s <a href="https://phosphorus.github.io/">phosphorus</a>. Its CPS-style compilation was inspired by <a href="https://github.com/RHY3756547">Rhys</a>'s <a href="https://code.google.com/p/sb2-js/">sb2.js</a>. The <a href="https://stuk.github.io/jszip/">JSZip</a> library is used to read <code>.sb2</code> and <code>.sb3</code> files. The <a href="https://github.com/canvg/canvg">canvg</a> library is used to render SVGs for Scratch 2 projects. The <a href="https://github.com/LLK/scratch-sb1-converter">scratch-sb1-converter</a> library is used to support Scratch 1 projects.</p>
 
       <h1 data-i18n="index.code">Code</h1>
-      <p>The source code for forkphorus is available <a href=https://github.com/forkphorus/forkphorus>on GitHub</a>.</p>
+      <p>The source code for wickphorus is available <a href=https://github.com/wiktorlaskowski/wickphorus>on GitHub</a>.</p>
 
       <footer>
         <a data-i18n="index.privacy" href="privacy">Privacy Policy</a>
@@ -178,7 +178,7 @@
     P.i18n.addTranslations('en', {
       'studioview.authorAttribution': 'by $author',
       'studioview.projectHoverText': '$title by $author',
-      'index.document.title': 'forkphorus - phosphorus for Scratch 3',
+      'index.document.title': 'wickphorus - phosphorus for Scratch 3',
       'index.report': 'Report a problem',
       'index.embed': 'Embed this project',
       'index.package': 'Package this project',
@@ -193,7 +193,7 @@
       'index.package.480': '480\u00D7360',
       'index.package.custom': 'Other:',
       'index.package.divider': '\u00D7',
-      'index.embed.description': 'Include the forkphorus player in your web site.',
+      'index.embed.description': 'Include the wickphorus player in your web site.',
       'index.embed.autostart': 'Start automatically',
       'index.embed.lightControls': 'Light controls',
       'index.embed.hideUI': 'Hide UI',
@@ -264,7 +264,7 @@
 
     // expose player on the global object
     window.player = player;
-    console.log('forkphorus is open source https://github.com/forkphorus/forkphorus');
+    console.log('wickphorus is open source https://github.com/wiktorlaskowski/wickphorus');
     console.log('The project player is exposed as `player`');
     console.log('The project is exposed as `player.stage`');
     console.log('Sprites are exposed in `player.stage.children`');
@@ -404,7 +404,7 @@
             var title = meta.getTitle();
             if (title) {
               player.projectTitle = title;
-              document.title = title + ' - forkphorus';
+              document.title = title + ' - wickphorus';
               updateLinks();
             } else {
               resetTitle();
