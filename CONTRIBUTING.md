@@ -23,8 +23,6 @@ Feel free to bump your bug by commenting on it if it seems to be going nowhere f
 
 **If you made the project:** If possible, please try to identify which blocks are misbehaving, and create a small demo project that only contains the blocks necessary to demonstrate the bug, or at least point out which blocks in the original project are misbehaving. This isn't required but it helps a lot.
 
-**Warning when submitting bugs for unshared projects:** It is possible to download unshared projects using the project ID (included in most bug reports). Keep this in mind when submitting bug reports for these projects.
-
 # Suggesting Features
 
 Feature suggestions are welcome.
