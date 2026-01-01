@@ -7,7 +7,7 @@
     "test": "node runner.js"
   },
   "dependencies": {
-    "express": "^4.21.2",
+    "express": "^4.22.1",
     "playwright": "^1.55.1"
   },
   "repository": {
