@@ -48,13 +48,6 @@
     var hasUI = true;
     Common.parseSearch(function(key, value) {
       switch (key) {
-        case 'auto-start':
-          if (value === 'true') {
-            player.setOptions({ autoplayPolicy: 'always' });
-          } else {
-            player.setOptions({ autoplayPolicy: 'never' });
-          }
-          break;
         case 'light-content':
           if (value === 'true') {
             player.setOptions({ theme: 'dark' });

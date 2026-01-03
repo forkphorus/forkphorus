@@ -109,6 +109,15 @@ var Common = (function() {
       case 'chhost':
         setPlayerFlag('cloudHistoryHost', value);
         break;
+      case 'auto-start':
+        // "?auto-start" without a value should be interpreted as enabling
+        // auto-start.
+        if (FALSE.includes(value)) {
+          setPlayerOption('autoplayPolicy', 'never');
+        } else {
+          setPlayerOption('autoplayPolicy', 'always');
+        }
+        break;
       // Project ID
       case 'id':
         // projectId is also read from location.hash if not found here.
