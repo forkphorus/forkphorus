@@ -287,7 +287,6 @@ namespace P.player {
           // Some school filters block turbowarp.org, so we'll try a few URLs. Hopefully one will work.
           'https://trampoline.turbowarp.org/api/projects/$id'.replace('$id', this.id),
           'https://trampoline.turbowarp.xyz/api/projects/$id'.replace('$id', this.id),
-          'https://t.unsandboxed.org/api/projects/$id'.replace('$id', this.id),
         ]);
         request
           .setMaxAttempts(1)
