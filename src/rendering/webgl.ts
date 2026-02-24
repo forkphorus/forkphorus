@@ -575,6 +575,10 @@ namespace P.renderer.webgl {
 
     onStageFiltersChanged(): void {}
 
+    setNativeSize(width: number, height: number): void {
+      // TODO
+    }
+
     resize(scale: number): void {
       this.zoom = scale;
     }
