@@ -5547,7 +5547,7 @@ var P;
             loadMD5(hash, id, isAudio = false) {
                 const f = isAudio ? (this.zip.file(id + '.wav') || this.zip.file(id + '.mp3')) : this.zip.file(id + '.gif') || (this.zip.file(id + '.png') || this.zip.file(id + '.jpg') || this.zip.file(id + '.svg'));
                 if (!f) {
-                    throw new Error('cannot find md5: ' + hash + ' (isAudio=' + isAudio + ')');
+                    return Promise.reject(new Error('cannot find md5: ' + hash + ' (isAudio=' + isAudio + ')'));
                 }
                 hash = f.name;
                 if (isAudio) {
