@@ -1994,17 +1994,16 @@ var P;
         }
         function loadDefaultVector() {
             if (!_cachedVector) {
-                _cachedVector = loadImage(`data:image/svg+xml;,${encodeURIComponent(DEFAULT_VECTOR_SVG)}`);
+                _cachedVector = loadImage(`data:image/svg+xml,${encodeURIComponent(DEFAULT_VECTOR_SVG)}`);
             }
             return _cachedVector;
         }
         function loadDefaultSound() {
-            var _a;
             if (!P.audio.context) {
                 throw new Error('No audio context');
             }
             if (!_cachedSound) {
-                _cachedSound = (_a = P.audio.context) === null || _a === void 0 ? void 0 : _a.createBuffer(1, 1, 44000);
+                _cachedSound = P.audio.context.createBuffer(1, 1, 44000);
             }
             return _cachedSound;
         }

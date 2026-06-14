@@ -19,7 +19,7 @@ namespace P.broken {
       img.src = src;
     });
   }
-  
+
   function loadDefaultBitmap(): Promise<HTMLImageElement> {
     if (!_cachedBitmap) {
       _cachedBitmap = loadImage(DEFAULT_BITMAP_URL);
@@ -29,7 +29,7 @@ namespace P.broken {
 
   function loadDefaultVector(): Promise<HTMLImageElement> {
     if (!_cachedVector) {
-      _cachedVector = loadImage(`data:image/svg+xml;,${encodeURIComponent(DEFAULT_VECTOR_SVG)}`);
+      _cachedVector = loadImage(`data:image/svg+xml,${encodeURIComponent(DEFAULT_VECTOR_SVG)}`);
     }
     return _cachedVector;
   }
@@ -39,7 +39,7 @@ namespace P.broken {
       throw new Error('No audio context');
     }
     if (!_cachedSound) {
-      _cachedSound = P.audio.context?.createBuffer(1, 1, 44000);
+      _cachedSound = P.audio.context.createBuffer(1, 1, 44000);
     }
     return _cachedSound;
   }
