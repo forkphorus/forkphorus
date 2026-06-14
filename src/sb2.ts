@@ -4,6 +4,7 @@
 /// <reference path="fonts.ts" />
 /// <reference path="config.ts" />
 /// <reference path="sandbox.ts" />
+/// <reference path="broken.ts" />
 
 namespace P.sb2 {
   const ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
@@ -487,6 +488,10 @@ namespace P.sb2 {
             rotationCenterX: data.rotationCenterX,
             rotationCenterY: data.rotationCenterY,
           });
+        })
+        .catch((err) => {
+          this.missingAsset(err);
+          return P.broken.createDefaultBitmap(data.costumeName);
         });
     }
 
@@ -500,8 +505,8 @@ namespace P.sb2 {
             }));
           })
           .catch((err) => {
-            resolve(null);
-            console.warn('Could not load sound: ' + err);
+            this.missingAsset(err);
+            resolve(P.broken.createDefaultSound(data.soundName));
           });
       });
     }

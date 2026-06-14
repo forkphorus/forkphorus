@@ -494,6 +494,15 @@ namespace P.io {
       // Users of the Loader class are expected to override this method.
     }
 
+    missingAsset(error: Error) {
+      console.error('An asset unrecoverably failed to load; using fallback instead', error);
+      this.onmissingasset(error);
+    }
+
+    onmissingasset(error: Error) {
+      // Users of the Loader class are expected to override this method.
+    }
+
     abstract load(): Promise<T>;
   }
 }

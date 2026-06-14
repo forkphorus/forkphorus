@@ -74,6 +74,8 @@ namespace P.i18n {
 
   addTranslations('en', {
     'player.controls.turboIndicator': 'Turbo Mode',
+    'player.controls.missingAssets': '$count assets failed to load',
+    'player.controls.missingAssets.one': '1 asset failed to load',
     'player.controls.fullscreen.title': 'Click to fullscreen player, Shift+click to just maximize.',
     'player.controls.flag.title': 'Shift+click to enable turbo mode.',
     'player.controls.flag.title.enabled': 'Turbo mode is enabled. Shift+click to disable turbo mode.',

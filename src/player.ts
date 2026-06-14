@@ -396,6 +396,8 @@ namespace P.player {
     private fullscreenEnabled: boolean = false;
     private savedTheme: Theme;
     private clickToPlayContainer: HTMLElement | null = null;
+    private missingAssetLabel: HTMLElement | null = null;
+    private missingAssetCount: number = 0;
 
     constructor(options: Partial<PlayerOptions> = {}) {
       this.root = document.createElement('div');
@@ -558,6 +560,12 @@ namespace P.player {
         flagButton.addEventListener('touchstart', preventDefault);
       }
 
+      const missingAssetLabel = document.createElement('span');
+      missingAssetLabel.className = 'player-label player-missing-assets';
+      this.controlsContainer.appendChild(missingAssetLabel);
+      this.missingAssetLabel = missingAssetLabel;
+      this.updateMissingAssetLabel();
+
       if (options.enableTurbo !== false) {
         var turboText = document.createElement('span');
         turboText.innerText = P.i18n.translate('player.controls.turboIndicator');
@@ -592,6 +600,21 @@ namespace P.player {
       });
 
       this.root.insertBefore(this.controlsContainer, this.root.firstChild);
+    }
+
+    private updateMissingAssetLabel(): void {
+      if (!this.missingAssetLabel) {
+        return;
+      }
+      if (this.missingAssetCount > 1) {
+        this.missingAssetLabel.style.display = 'block';
+        this.missingAssetLabel.textContent = P.i18n.translate('player.controls.missingAssets').replace('$count', this.missingAssetCount.toString());
+      } else if (this.missingAssetCount === 1) {
+        this.missingAssetLabel.style.display = 'block';
+        this.missingAssetLabel.textContent = P.i18n.translate('player.controls.missingAssets.one');
+      } else {
+        this.missingAssetLabel.style.display = 'none';
+      }
     }
 
     /**
@@ -952,6 +975,8 @@ namespace P.player {
       this.onstartload.emit();
       const loaderId = new LoaderIdentifier();
       this.currentLoader = loaderId;
+      this.missingAssetCount = 0;
+      this.updateMissingAssetLabel();
       return { loaderId };
     }
 
@@ -1050,6 +1075,12 @@ namespace P.player {
       loader.onprogress = (progress) => {
         if (loaderId.isActive()) {
           this.onprogress.emit(progress);
+        }
+      };
+      loader.onmissingasset = () => {
+        if (loaderId.isActive()) {
+          this.missingAssetCount++;
+          this.updateMissingAssetLabel();
         }
       };
       const stage = await loader.load();
