@@ -4,6 +4,7 @@
 /// <reference path="fonts.ts" />
 /// <reference path="config.ts" />
 /// <reference path="runtime.ts" />
+/// <reference path="broken.ts" />
 
 // Scratch 3 project loader and runtime objects
 namespace P.sb3 {
@@ -881,10 +882,18 @@ namespace P.sb3 {
       };
       if (data.dataFormat === 'svg') {
         return this.getSVG(path, costumeOptions)
-          .then((svg) => new P.core.VectorCostume(svg, costumeOptions));
+          .then((svg) => new P.core.VectorCostume(svg, costumeOptions))
+          .catch((err) => {
+            this.missingAsset(err);
+            return P.broken.createDefaultVector(data.name);
+          });
       } else {
         return this.getBitmapImage(path, data.dataFormat)
-          .then((image) => new P.core.BitmapCostume(image, costumeOptions));
+          .then((image) => new P.core.BitmapCostume(image, costumeOptions))
+          .catch((err) => {
+            this.missingAsset(err);
+            return P.broken.createDefaultBitmap(data.name);
+          });
       }
     }
 
@@ -897,7 +906,7 @@ namespace P.sb3 {
     }
 
     loadSound(data: SB3Sound): Promise<P.core.Sound | null> {
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve) => {
         this.getAudioBuffer(data.md5ext)
           .then((buffer) => {
             resolve(new P.core.Sound({
@@ -906,7 +915,10 @@ namespace P.sb3 {
             }))
           })
           .catch((err) => {
-            console.warn('Could not load sound: ' + err);
+            this.missingAsset(err);
+            resolve(P.broken.createDefaultSound(data.name));
+          })
+          .catch(() => {
             resolve(null);
           });
       });

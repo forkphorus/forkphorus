@@ -1971,6 +1971,73 @@ var P;
 })(P || (P = {}));
 var P;
 (function (P) {
+    var broken;
+    (function (broken) {
+        const DEFAULT_VECTOR_SVG = '<?xml version="1.0"?>\n<svg width="128" height="128" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">\n <g>\n  <rect fill="#CCC" height="128" width="128"/>\n  <text fill="black" y="107" x="35.5" font-size="128">?</text>\n </g>\n</svg>\n';
+        const DEFAULT_BITMAP_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAAAAADmVT4XAAADZElEQVR42u3a70vbQBgH8O/7vOibvsmbFUEEWUGGUhQ25nDuhSKIUFDxlYi0SAd94atRmFiHCH2x4W8iiNtwowXRgd1QipJYY3N/1F4kTQ6XLKS9yyHcvWyO8MnT5y53Tw5EcIMESIAESIAESIAESIAEPFVAq/6l8G4oAQCp4aniwbUVJ6BVzafwqKXy1VZMgNb+CHzbyK4ZB+Bi0nnk0VyhsDiSoAmvvnMHmGUVAF6UG+0ffsxRhsRHky/AyCsAUpumX0wAAIs6T4CxDADDtcdZsal6gjmdH8AsAEC6+s8Fa48SFExeAKusAEju+V367AmUCi9ANQ0AU3pwcOw2cMEH0FwAAKz5X228pRLR5AI4TgIAtIDL24oLUE94AB6W7LsH/cONN14Ilh44AOqD9s2LQR1KHiB9zgGgOSGeuA3ocPrME1Q4ANaceyePAzrcjHmAZYs9IBeW4/fzHiAwTCwAgTle9ACZK44ALDT9e6x7gL4aT0BQCHb4AqgA5/1TTOMLoJ7vZSMM0H/GHnCeDnu+CrU8vGYPcN5FADBYD0vCaYPDy+i0p337GSMsS1Z4vA3t9QgAZTt0IuIxFRPSKicAQHlvhk3FXF5GhBByMa8qo/sBO6BarwuYbYrYnFKDYEvE7phKgcxvEQBqnvhgiQCUOgoAO4C3JOS3L/hv23UXxVldBECfcueAqpAa0WGy/QeULREAY6aTXRFDgBuA13+ElOncAERMAGaA9hBQD4gQQHsIRE1AZoD2xrgQS5nOZyHgFKmWDSIG4GRAVidiAE4GRB6AzAB2AKIPQFaA5myHA5AV4ESNugZhC7BLR50lIBPAebrzBGQCKAFQNSIMcDvRTQIwAHxNApM3RBygGK0uyhxwOwGsPAgEnPWj5ycRCNiJtBHlAChGKQVwANzPY+CXSMDNWISiLA9AfRA5IhJQ68UnoQAt+AtOPIBKhJosF8B6UM0yLkAxQk2WCyDX9SiUh1gkQAIkoCuAvjGuquMbuijAtwG7MPL8yBICOHSPk3W8Ne8KcEUdmBi6FADYos+QleIH0N/ogOxd7AD6uAS6WRU8WcBdlgZMG/EnYUlwEpLLoQ4PjzGbiA5UsRMRsbQ+5ziDJmYqJuR6NaMomdXuFuZyPSABEiABEiABEiABEiAc8Bd6VyvCEKGqcQAAAABJRU5ErkJggg==';
+        let _cachedBitmap = null;
+        let _cachedVector = null;
+        let _cachedSound = null;
+        function loadImage(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onerror = () => reject(new Error('Failed to load fallback image'));
+                img.onload = () => resolve(img);
+                img.src = src;
+            });
+        }
+        function loadDefaultBitmap() {
+            if (!_cachedBitmap) {
+                _cachedBitmap = loadImage(DEFAULT_BITMAP_URL);
+            }
+            return _cachedBitmap;
+        }
+        function loadDefaultVector() {
+            if (!_cachedVector) {
+                _cachedVector = loadImage(`data:image/svg+xml,${encodeURIComponent(DEFAULT_VECTOR_SVG)}`);
+            }
+            return _cachedVector;
+        }
+        function loadDefaultSound() {
+            if (!P.audio.context) {
+                throw new Error('No audio context');
+            }
+            if (!_cachedSound) {
+                _cachedSound = P.audio.context.createBuffer(1, 1, 44000);
+            }
+            return _cachedSound;
+        }
+        async function createDefaultBitmap(name) {
+            const image = await loadDefaultBitmap();
+            return new P.core.BitmapCostume(image, {
+                name,
+                bitmapResolution: 1,
+                rotationCenterX: 64,
+                rotationCenterY: 64,
+            });
+        }
+        broken.createDefaultBitmap = createDefaultBitmap;
+        async function createDefaultVector(name) {
+            const svg = await loadDefaultVector();
+            return new P.core.VectorCostume(svg, {
+                name,
+                bitmapResolution: 1,
+                rotationCenterX: 64,
+                rotationCenterY: 64,
+            });
+        }
+        broken.createDefaultVector = createDefaultVector;
+        function createDefaultSound(name) {
+            return new P.core.Sound({
+                name,
+                buffer: loadDefaultSound(),
+            });
+        }
+        broken.createDefaultSound = createDefaultSound;
+    })(broken = P.broken || (P.broken = {}));
+})(P || (P = {}));
+var P;
+(function (P) {
     var fonts;
     (function (fonts_1) {
         const fontFamilyCache = {};
@@ -2088,6 +2155,8 @@ var P;
         i18n.addTranslations = addTranslations;
         addTranslations('en', {
             'player.controls.turboIndicator': 'Turbo Mode',
+            'player.controls.missingAssets': '$count assets failed to load',
+            'player.controls.missingAssets.one': '1 asset failed to load',
             'player.controls.fullscreen.title': 'Click to fullscreen player, Shift+click to just maximize.',
             'player.controls.flag.title': 'Shift+click to enable turbo mode.',
             'player.controls.flag.title.enabled': 'Turbo mode is enabled. Shift+click to disable turbo mode.',
@@ -2502,6 +2571,12 @@ var P;
                 this._tasks.length = 0;
             }
             onprogress(progress) {
+            }
+            missingAsset(error) {
+                console.error('An asset unrecoverably failed to load; using fallback instead', error);
+                this.onmissingasset(error);
+            }
+            onmissingasset(error) {
             }
         }
         io.Loader = Loader;
@@ -3170,6 +3245,8 @@ var P;
                 this.currentLoader = null;
                 this.fullscreenEnabled = false;
                 this.clickToPlayContainer = null;
+                this.missingAssetLabel = null;
+                this.missingAssetCount = 0;
                 this.root = document.createElement('div');
                 this.root.className = 'player-root';
                 this.playerContainer = document.createElement('div');
@@ -3301,6 +3378,11 @@ var P;
                     flagButton.addEventListener('touchstart', startTouchFlag);
                     flagButton.addEventListener('touchstart', preventDefault);
                 }
+                const missingAssetLabel = document.createElement('span');
+                missingAssetLabel.className = 'player-label player-missing-assets';
+                this.controlsContainer.appendChild(missingAssetLabel);
+                this.missingAssetLabel = missingAssetLabel;
+                this.updateMissingAssetLabel();
                 if (options.enableTurbo !== false) {
                     var turboText = document.createElement('span');
                     turboText.innerText = P.i18n.translate('player.controls.turboIndicator');
@@ -3332,6 +3414,22 @@ var P;
                     }
                 });
                 this.root.insertBefore(this.controlsContainer, this.root.firstChild);
+            }
+            updateMissingAssetLabel() {
+                if (!this.missingAssetLabel) {
+                    return;
+                }
+                if (this.missingAssetCount > 1) {
+                    this.missingAssetLabel.style.display = 'block';
+                    this.missingAssetLabel.textContent = P.i18n.translate('player.controls.missingAssets').replace('$count', this.missingAssetCount.toString());
+                }
+                else if (this.missingAssetCount === 1) {
+                    this.missingAssetLabel.style.display = 'block';
+                    this.missingAssetLabel.textContent = P.i18n.translate('player.controls.missingAssets.one');
+                }
+                else {
+                    this.missingAssetLabel.style.display = 'none';
+                }
             }
             applyOptionsToStage() {
                 if (this.stage.runtime.framerate !== this.options.fps) {
@@ -3618,6 +3716,8 @@ var P;
                 this.onstartload.emit();
                 const loaderId = new LoaderIdentifier();
                 this.currentLoader = loaderId;
+                this.missingAssetCount = 0;
+                this.updateMissingAssetLabel();
                 return { loaderId };
             }
             determineProjectType(data) {
@@ -3685,6 +3785,12 @@ var P;
                 loader.onprogress = (progress) => {
                     if (loaderId.isActive()) {
                         this.onprogress.emit(progress);
+                    }
+                };
+                loader.onmissingasset = () => {
+                    if (loaderId.isActive()) {
+                        this.missingAssetCount++;
+                        this.updateMissingAssetLabel();
                     }
                 };
                 const stage = await loader.load();
@@ -5341,10 +5447,14 @@ var P;
                         rotationCenterX: data.rotationCenterX,
                         rotationCenterY: data.rotationCenterY,
                     });
+                })
+                    .catch((err) => {
+                    this.missingAsset(err);
+                    return P.broken.createDefaultBitmap(data.costumeName);
                 });
             }
             loadSound(data) {
-                return new Promise((resolve, reject) => {
+                return new Promise((resolve) => {
                     this.loadMD5(data.md5, data.soundID, true)
                         .then((buffer) => {
                         resolve(new P.core.Sound({
@@ -5353,8 +5463,11 @@ var P;
                         }));
                     })
                         .catch((err) => {
+                        this.missingAsset(err);
+                        resolve(P.broken.createDefaultSound(data.soundName));
+                    })
+                        .catch(() => {
                         resolve(null);
-                        console.warn('Could not load sound: ' + err);
                     });
                 });
             }
@@ -5436,7 +5549,7 @@ var P;
             loadMD5(hash, id, isAudio = false) {
                 const f = isAudio ? (this.zip.file(id + '.wav') || this.zip.file(id + '.mp3')) : this.zip.file(id + '.gif') || (this.zip.file(id + '.png') || this.zip.file(id + '.jpg') || this.zip.file(id + '.svg'));
                 if (!f) {
-                    throw new Error('cannot find md5: ' + hash + ' (isAudio=' + isAudio + ')');
+                    return Promise.reject(new Error('cannot find md5: ' + hash + ' (isAudio=' + isAudio + ')'));
                 }
                 hash = f.name;
                 if (isAudio) {
@@ -7177,11 +7290,19 @@ var P;
                 };
                 if (data.dataFormat === 'svg') {
                     return this.getSVG(path, costumeOptions)
-                        .then((svg) => new P.core.VectorCostume(svg, costumeOptions));
+                        .then((svg) => new P.core.VectorCostume(svg, costumeOptions))
+                        .catch((err) => {
+                        this.missingAsset(err);
+                        return P.broken.createDefaultVector(data.name);
+                    });
                 }
                 else {
                     return this.getBitmapImage(path, data.dataFormat)
-                        .then((image) => new P.core.BitmapCostume(image, costumeOptions));
+                        .then((image) => new P.core.BitmapCostume(image, costumeOptions))
+                        .catch((err) => {
+                        this.missingAsset(err);
+                        return P.broken.createDefaultBitmap(data.name);
+                    });
                 }
             }
             getAudioBuffer(path) {
@@ -7192,7 +7313,7 @@ var P;
                 });
             }
             loadSound(data) {
-                return new Promise((resolve, reject) => {
+                return new Promise((resolve) => {
                     this.getAudioBuffer(data.md5ext)
                         .then((buffer) => {
                         resolve(new P.core.Sound({
@@ -7201,7 +7322,10 @@ var P;
                         }));
                     })
                         .catch((err) => {
-                        console.warn('Could not load sound: ' + err);
+                        this.missingAsset(err);
+                        resolve(P.broken.createDefaultSound(data.name));
+                    })
+                        .catch(() => {
                         resolve(null);
                     });
                 });

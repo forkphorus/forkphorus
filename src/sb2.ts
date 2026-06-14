@@ -4,6 +4,7 @@
 /// <reference path="fonts.ts" />
 /// <reference path="config.ts" />
 /// <reference path="sandbox.ts" />
+/// <reference path="broken.ts" />
 
 namespace P.sb2 {
   const ASSET_URL = 'https://cdn.assets.scratch.mit.edu/internalapi/asset/';
@@ -487,11 +488,15 @@ namespace P.sb2 {
             rotationCenterX: data.rotationCenterX,
             rotationCenterY: data.rotationCenterY,
           });
+        })
+        .catch((err) => {
+          this.missingAsset(err);
+          return P.broken.createDefaultBitmap(data.costumeName);
         });
     }
 
     loadSound(data: SB2Sound): Promise<P.core.Sound | null> {
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve) => {
         this.loadMD5(data.md5, data.soundID, true)
           .then((buffer) => {
             resolve(new P.core.Sound({
@@ -500,8 +505,11 @@ namespace P.sb2 {
             }));
           })
           .catch((err) => {
+            this.missingAsset(err);
+            resolve(P.broken.createDefaultSound(data.soundName));
+          })
+          .catch(() => {
             resolve(null);
-            console.warn('Could not load sound: ' + err);
           });
       });
     }
@@ -601,7 +609,7 @@ namespace P.sb2 {
     loadMD5(hash: string, id: string, isAudio: boolean = false): Promise<HTMLImageElement | HTMLCanvasElement | AudioBuffer | null> {
       const f = isAudio ? (this.zip.file(id + '.wav') || this.zip.file(id + '.mp3')) : this.zip.file(id + '.gif') || (this.zip.file(id + '.png') || this.zip.file(id + '.jpg') || this.zip.file(id + '.svg'));
       if (!f) {
-        throw new Error('cannot find md5: ' + hash + ' (isAudio=' + isAudio + ')');
+        return Promise.reject(new Error('cannot find md5: ' + hash + ' (isAudio=' + isAudio + ')'));
       }
       hash = f.name;
 

@@ -312,6 +312,14 @@
   display: none;
   float: right;
 }
+.player-controls .player-missing-assets {
+  display: none;
+  float: right;
+  color: #e67e00;
+}
+.player-root[theme=dark] .player-controls .player-missing-assets {
+  color: #ff9d29;
+}
 .player-root[turbo] .player-turbo {
   display: block;
 }
