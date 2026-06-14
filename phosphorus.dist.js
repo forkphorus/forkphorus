@@ -5455,7 +5455,7 @@ var P;
                 });
             }
             loadSound(data) {
-                return new Promise((resolve, reject) => {
+                return new Promise((resolve) => {
                     this.loadMD5(data.md5, data.soundID, true)
                         .then((buffer) => {
                         resolve(new P.core.Sound({
@@ -5466,6 +5466,9 @@ var P;
                         .catch((err) => {
                         this.missingAsset(err);
                         resolve(P.broken.createDefaultSound(data.soundName));
+                    })
+                        .catch(() => {
+                        resolve(null);
                     });
                 });
             }
@@ -7311,7 +7314,7 @@ var P;
                 });
             }
             loadSound(data) {
-                return new Promise((resolve, reject) => {
+                return new Promise((resolve) => {
                     this.getAudioBuffer(data.md5ext)
                         .then((buffer) => {
                         resolve(new P.core.Sound({

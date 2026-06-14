@@ -496,7 +496,7 @@ namespace P.sb2 {
     }
 
     loadSound(data: SB2Sound): Promise<P.core.Sound | null> {
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve) => {
         this.loadMD5(data.md5, data.soundID, true)
           .then((buffer) => {
             resolve(new P.core.Sound({
@@ -507,6 +507,9 @@ namespace P.sb2 {
           .catch((err) => {
             this.missingAsset(err);
             resolve(P.broken.createDefaultSound(data.soundName));
+          })
+          .catch(() => {
+            resolve(null);
           });
       });
     }

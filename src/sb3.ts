@@ -906,7 +906,7 @@ namespace P.sb3 {
     }
 
     loadSound(data: SB3Sound): Promise<P.core.Sound | null> {
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve) => {
         this.getAudioBuffer(data.md5ext)
           .then((buffer) => {
             resolve(new P.core.Sound({
