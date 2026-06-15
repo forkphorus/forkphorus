@@ -127,6 +127,8 @@
     'scratch-vm/tw-when-backdrop-switches-to-next-backdrop.sb3',
     'scratch-vm/tw-when-backdrop-switches-to-switch-backdrop-to.sb3',
     'scratch-vm/tw-zombie-cube-escape-284516654.sb3',
+    'scratch-vm/tw-comparison-matrix-inline.sb3',
+    'scratch-vm/tw-comparison-matrix-runtime.sb3',
   ];
 
   /**

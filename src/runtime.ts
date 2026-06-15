@@ -85,7 +85,7 @@ namespace P.runtime {
   };
 
   var equal = function(x: any, y: any) {
-    if ((typeof x === 'number' || typeof x === 'boolean' || DIGIT.test(x)) && (typeof y === 'number' || typeof x === 'boolean' || DIGIT.test(y))) {
+    if ((typeof x === 'number' || typeof x === 'boolean' || DIGIT.test(x)) && (typeof y === 'number' || typeof y === 'boolean' || DIGIT.test(y))) {
       var nx = +x;
       var ny = +y;
       if (nx === nx && ny === ny) {
