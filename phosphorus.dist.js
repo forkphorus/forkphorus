@@ -4532,7 +4532,7 @@ var P;
                     if (span.top >= key || span.top === 128)
                         break;
                 }
-                return playSpan(span, key, duration);
+                return playSpan(span, Math.max(0, Math.min(127, +key || 0)), duration);
             };
             var playSpan = function (span, key, duration) {
                 const node = P.audio.playSpan(span, key, duration, S.getAudioNode());
