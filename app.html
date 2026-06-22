@@ -122,10 +122,10 @@
       switch (key) {
         case 'full-screen':
           // legacy value
-          player.setOptions({ fullscreenMaxWidth: value !== 'false' ? Infinity : 480 });
+          player.setOptions({ fullscreenMaxWidth: value !== 'false' ? Infinity : player.stage.width });
           break;
         case 'w':
-          player.setOptions({ fullscreenMaxWidth: Number(value) || 480 });
+          player.setOptions({ fullscreenMaxWidth: Number(value) || player.stage.height });
           break;
         case 'controls':
           player.addControls({ enableFullscreen: false });

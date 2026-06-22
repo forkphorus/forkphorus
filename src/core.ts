@@ -672,14 +672,14 @@ namespace P.core {
 
       this.bubbleContainer.style.display = 'block';
       const b = this.rotatedBounds();
-      const left = 240 + b.right;
-      var bottom = 180 + b.top;
+      const left = (this.stage.width / 2) + b.right;
+      var bottom = (this.stage.height / 2) + b.top;
       const bcr = this.bubbleContainer.getBoundingClientRect();
       const height = (bcr.bottom - bcr.top) / this.stage.zoom;
       const width = (bcr.right - bcr.left) / this.stage.zoom;
       this.bubblePointer.style.top = ((height - 6) / 14) + 'em';
-      if (left + width + 2 > 480) {
-        var d = (240 - b.left) / 14;
+      if (left + width + 2 > this.stage.width) {
+        var d = ((this.stage.width / 2) - b.left) / 14;
         if (d > 25) d = 25;
         this.bubbleContainer.style.right = d + 'em';
         this.bubbleContainer.style.left = 'auto';
@@ -693,8 +693,8 @@ namespace P.core {
         this.bubblePointer.style.right = 'auto';
         this.bubblePointer.style.backgroundPositionY = (-4/14)+'em';
       }
-      if (bottom + height + 2 > 360) {
-        bottom = 360 - height - 2;
+      if (bottom + height + 2 > this.stage.height) {
+        bottom = this.stage.height - height - 2;
       }
       if (bottom < 19) {
         bottom = 19;
@@ -855,6 +855,9 @@ namespace P.core {
 
     public useSpriteFencing: boolean = false;
     public removeLimits: boolean = false;
+
+    public width: number = 480;
+    public height: number = 360;
 
     constructor() {
       super();
@@ -1157,14 +1160,14 @@ namespace P.core {
 
     updateMousePosition(e) {
       var rect = this.canvas.getBoundingClientRect();
-      var x = (e.clientX - rect.left) / this.zoom - 240;
-      var y = 180 - (e.clientY - rect.top) / this.zoom;
+      var x = (e.clientX - rect.left) / this.zoom - (this.width / 2);
+      var y = (this.height / 2) - (e.clientY - rect.top) / this.zoom;
       this.rawMouseX = x;
       this.rawMouseY = y;
-      if (x < -240) x = -240;
-      if (x > 240) x = 240;
-      if (y < -180) y = -180;
-      if (y > 180) y = 180;
+      if (x < -(this.width / 2)) x = -(this.width / 2);
+      if (x > (this.width / 2)) x = (this.width / 2);
+      if (y < -(this.height / 2)) y = -(this.height / 2);
+      if (y > (this.height / 2)) y = (this.height / 2);
       this.mouseX = Math.round(x);
       this.mouseY = Math.round(y);
     }
@@ -1175,8 +1178,8 @@ namespace P.core {
     setZoom(zoom: number) {
       if (this.zoom === zoom) return;
       this.renderer.resize(zoom);
-      this.root.style.width = (480 * zoom | 0) + 'px';
-      this.root.style.height = (360 * zoom | 0) + 'px';
+      this.root.style.width = (this.stage.width * zoom | 0) + 'px';
+      this.root.style.height = (this.stage.height * zoom | 0) + 'px';
       this.root.style.fontSize = (zoom*10) + 'px';
       this.zoom = zoom;
       // Temporary fix to make Scratch 3 list watchers properly resize
@@ -1264,8 +1267,8 @@ namespace P.core {
           y: this.mouseY,
         };
         case SpecialObjects.Random: return {
-          x: Math.round(480 * Math.random() - 240),
-          y: Math.round(360 * Math.random() - 180),
+          x: Math.round(this.stage.width * Math.random() - (this.stage.width / 2)),
+          y: Math.round(this.stage.height * Math.random() - (this.stage.height / 2)),
         };
       }
 
@@ -1530,8 +1533,8 @@ namespace P.core {
       var div = document.createElement('div');
       div.style.outline = '1px solid red';
       div.style.position = 'absolute';
-      div.style.left = (240 + bounds.left) + 'px';
-      div.style.top = (180 - bounds.top) + 'px';
+      div.style.left = ((this.stage.width / 2) + bounds.left) + 'px';
+      div.style.top = ((this.stage.height / 2) - bounds.top) + 'px';
       div.style.width = (bounds.right - bounds.left) + 'px';
       div.style.height = (bounds.top - bounds.bottom) + 'px';
       this.stage.canvas.parentNode!.appendChild(div);
@@ -1557,17 +1560,17 @@ namespace P.core {
 
       const bounds = Math.min(15, Math.floor(Math.min(width, height) / 2));
 
-      if (rb.right - bounds < -240) {
-        this.scratchX -= rb.right - bounds + 240;
+      if (rb.right - bounds < -(this.stage.width / 2)) {
+        this.scratchX -= rb.right - bounds + (this.stage.width / 2);
       }
-      if (rb.left + bounds > 240) {
-        this.scratchX -= rb.left + bounds - 240;
+      if (rb.left + bounds > (this.stage.width / 2)) {
+        this.scratchX -= rb.left + bounds - (this.stage.width / 2);
       }
-      if (rb.bottom + bounds > 180) {
-        this.scratchY -= rb.bottom + bounds - 180;
+      if (rb.bottom + bounds > (this.stage.height / 2)) {
+        this.scratchY -= rb.bottom + bounds - (this.stage.height / 2);
       }
-      if (rb.top - bounds < -180) {
-        this.scratchY -= rb.top - bounds + 180;
+      if (rb.top - bounds < -(this.stage.height / 2)) {
+        this.scratchY -= rb.top - bounds + (this.stage.height / 2);
       }
     }
 
@@ -1671,7 +1674,7 @@ namespace P.core {
         return this.stage.renderer.spriteTouchesPoint(this, x, y);
       } else if (thing === SpecialObjects.Edge) {
         const bounds = this.rotatedBounds();
-        return bounds.left <= -240 || bounds.right >= 240 || bounds.top >= 180 || bounds.bottom <= -180;
+        return bounds.left <= -(this.stage.width / 2) || bounds.right >= (this.stage.width / 2) || bounds.top >= (this.stage.height / 2) || bounds.bottom <= -(this.stage.height / 2);
       } else {
         if (!this.visible) return false;
         const sprites = this.stage.getObjects(thing);
@@ -1701,10 +1704,10 @@ namespace P.core {
      */
     bounceOffEdge() {
       var b = this.rotatedBounds();
-      var dl = 240 + b.left;
-      var dt = 180 - b.top;
-      var dr = 240 - b.right;
-      var db = 180 + b.bottom;
+      var dl = (this.stage.width / 2) + b.left;
+      var dt = (this.stage.height / 2) - b.top;
+      var dr = (this.stage.width / 2) - b.right;
+      var db = (this.stage.height / 2) + b.bottom;
 
       var d = Math.min(dl, dt, dr, db);
       if (d > 0) return;
