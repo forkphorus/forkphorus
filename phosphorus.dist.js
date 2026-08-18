@@ -3172,9 +3172,10 @@ var P;
             load() {
                 if (!this.startedLoading) {
                     this.startedLoading = true;
+                    const buster = '?rudebuster=' + Math.random();
                     const request = new P.io.Request([
-                        'https://trampoline.turbowarp.org/api/projects/$id'.replace('$id', this.id),
-                        'https://trampoline.turbowarp.xyz/api/projects/$id'.replace('$id', this.id),
+                        'https://trampoline.turbowarp.org/api/projects/$id'.replace('$id', this.id) + buster,
+                        'https://trampoline.turbowarp.xyz/api/projects/$id'.replace('$id', this.id) + buster,
                     ]);
                     request
                         .setMaxAttempts(1)
