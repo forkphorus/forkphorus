@@ -36,6 +36,12 @@ namespace P.renderer {
      */
     resize(scale: number): void;
     /**
+     * Change the native size of the stage
+     * @param width in Scratch pixels
+     * @param height in Scratch pixels
+     */
+    setNativeSize(width: number, height: number): void;
+    /**
      * Draws a line on the pen canvas
      * @param color Color of the line
      * @param size Width of the line
