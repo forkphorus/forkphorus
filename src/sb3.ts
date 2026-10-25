@@ -1660,16 +1660,6 @@ namespace P.sb3.compiler {
     }
 
     /**
-     * Creates a sanitized block comment with the given contents.
-     */
-    sanitizedComment(content: string): string {
-      // just disallow the content from ending the comment, and everything should be fine.
-      content = content
-        .replace(/\*\//g, '');
-      return `/* ${content} */`;
-    }
-
-    /**
      * Find the scope and name of a variable from its ID.
      * The variable may be created if it does not exist.
      */
@@ -1859,10 +1849,6 @@ namespace P.sb3.compiler {
       const util = new InputUtil(this, inputBlock);
       let result = compiler(util);
 
-      if (P.config.debug) {
-        result.source = this.sanitizedComment(inputBlock.opcode) + result.source;
-      }
-
       return this.convertInputType(result, type);
     }
 
@@ -1934,10 +1920,6 @@ namespace P.sb3.compiler {
       while (true) {
         var opcode = block.opcode;
         const compiler = this.getStatementCompiler(opcode);
-
-        if (P.config.debug) {
-          script += this.sanitizedComment(block.opcode);
-        }
 
         if (compiler) {
           const util = new StatementUtil(this, block);

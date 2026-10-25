@@ -7756,11 +7756,6 @@ var P;
                         .replace(/\}/g, '\\x7d');
                     return `"${string}"`;
                 }
-                sanitizedComment(content) {
-                    content = content
-                        .replace(/\*\//g, '');
-                    return `/* ${content} */`;
-                }
                 findVariable({ id, name }) {
                     const stage = this.target.stage;
                     if (stage.varIds.hasOwnProperty(id)) {
@@ -7885,9 +7880,6 @@ var P;
                     }
                     const util = new InputUtil(this, inputBlock);
                     let result = compiler(util);
-                    if (P.config.debug) {
-                        result.source = this.sanitizedComment(inputBlock.opcode) + result.source;
-                    }
                     return this.convertInputType(result, type);
                 }
                 getField(block, fieldName) {
@@ -7931,9 +7923,6 @@ var P;
                     while (true) {
                         var opcode = block.opcode;
                         const compiler = this.getStatementCompiler(opcode);
-                        if (P.config.debug) {
-                            script += this.sanitizedComment(block.opcode);
-                        }
                         if (compiler) {
                             const util = new StatementUtil(this, block);
                             compiler(util);
