@@ -188,7 +188,9 @@
     if (this.loadNextPageObserver) {
       // If it doesn't exist, then I guess you won't be loading any more pages :shrug:
       this.loadNextPageObserver.disconnect();
-      this.loadNextPageObserver.observe(this.projectList.lastChild);
+      if (this.projectList.lastChild) {
+        this.loadNextPageObserver.observe(this.projectList.lastChild);
+      }
     }
   };
 
@@ -324,7 +326,7 @@
     };
   };
 
-  StudioView.STUDIO_API = 'https://trampoline.turbowarp.org/proxy/studios/$id/projectstemporary/$offset';
+  StudioView.STUDIO_API = 'https://trampoline.turbowarp.org/proxy/studios/$id/projects?offset=$offset';
 
   // The URL to download thumbnails from.
   // $id is replaced with the project's ID.

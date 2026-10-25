@@ -438,7 +438,7 @@ namespace P.runtime {
         span = spans[i];
         if (span.top >= key || span.top === 128) break;
       }
-      return playSpan(span, key, duration);
+      return playSpan(span, Math.max(0, Math.min(127, +key || 0)), duration);
     };
 
     var playSpan = function(span, key, duration) {

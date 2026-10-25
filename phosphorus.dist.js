@@ -3174,9 +3174,10 @@ var P;
             load() {
                 if (!this.startedLoading) {
                     this.startedLoading = true;
+                    const buster = '?rudebuster=' + Math.random();
                     const request = new P.io.Request([
-                        'https://trampoline.turbowarp.org/api/projects/$id'.replace('$id', this.id),
-                        'https://trampoline.turbowarp.xyz/api/projects/$id'.replace('$id', this.id),
+                        'https://trampoline.turbowarp.org/api/projects/$id'.replace('$id', this.id) + buster,
+                        'https://trampoline.turbowarp.xyz/api/projects/$id'.replace('$id', this.id) + buster,
                     ]);
                     request
                         .setMaxAttempts(1)
@@ -4544,7 +4545,7 @@ var P;
                     if (span.top >= key || span.top === 128)
                         break;
                 }
-                return playSpan(span, key, duration);
+                return playSpan(span, Math.max(0, Math.min(127, +key || 0)), duration);
             };
             var playSpan = function (span, key, duration) {
                 const node = P.audio.playSpan(span, key, duration, S.getAudioNode());
@@ -7767,11 +7768,6 @@ var P;
                         .replace(/\}/g, '\\x7d');
                     return `"${string}"`;
                 }
-                sanitizedComment(content) {
-                    content = content
-                        .replace(/\*\//g, '');
-                    return `/* ${content} */`;
-                }
                 findVariable({ id, name }) {
                     const stage = this.target.stage;
                     if (stage.varIds.hasOwnProperty(id)) {
@@ -7896,9 +7892,6 @@ var P;
                     }
                     const util = new InputUtil(this, inputBlock);
                     let result = compiler(util);
-                    if (P.config.debug) {
-                        result.source = this.sanitizedComment(inputBlock.opcode) + result.source;
-                    }
                     return this.convertInputType(result, type);
                 }
                 getField(block, fieldName) {
@@ -7942,9 +7935,6 @@ var P;
                     while (true) {
                         var opcode = block.opcode;
                         const compiler = this.getStatementCompiler(opcode);
-                        if (P.config.debug) {
-                            script += this.sanitizedComment(block.opcode);
-                        }
                         if (compiler) {
                             const util = new StatementUtil(this, block);
                             compiler(util);

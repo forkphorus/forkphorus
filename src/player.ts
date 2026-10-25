@@ -285,10 +285,11 @@ namespace P.player {
     load() {
       if (!this.startedLoading) {
         this.startedLoading = true;
+        const buster = '?rudebuster=' + Math.random();
         const request = new P.io.Request([
           // Some school filters block turbowarp.org, so we'll try a few URLs. Hopefully one will work.
-          'https://trampoline.turbowarp.org/api/projects/$id'.replace('$id', this.id),
-          'https://trampoline.turbowarp.xyz/api/projects/$id'.replace('$id', this.id),
+          'https://trampoline.turbowarp.org/api/projects/$id'.replace('$id', this.id) + buster,
+          'https://trampoline.turbowarp.xyz/api/projects/$id'.replace('$id', this.id) + buster,
         ]);
         request
           .setMaxAttempts(1)
